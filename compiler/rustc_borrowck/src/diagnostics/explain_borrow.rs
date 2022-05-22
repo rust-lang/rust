@@ -24,7 +24,7 @@ use crate::{
 use super::{find_use, RegionName, UseSpans};
 
 #[derive(Debug)]
-pub(crate) enum BorrowExplanation {
+pub(crate) enum BorrowExplanation<'tcx> {
     UsedLater(LaterUseKind, Span, Option<Span>),
     UsedLaterInLoop(LaterUseKind, Span, Option<Span>),
     UsedLaterWhenDropped {
@@ -33,7 +33,7 @@ pub(crate) enum BorrowExplanation {
         should_note_order: bool,
     },
     MustBeValidFor {
-        category: ConstraintCategory,
+        category: ConstraintCategory<'tcx>,
         from_closure: bool,
         span: Span,
         region_name: RegionName,
@@ -51,11 +51,11 @@ pub(crate) enum LaterUseKind {
     Other,
 }
 
-impl BorrowExplanation {
+impl<'tcx> BorrowExplanation<'tcx> {
     pub(crate) fn is_explained(&self) -> bool {
         !matches!(self, BorrowExplanation::Unexplained)
     }
-    pub(crate) fn add_explanation_to_diagnostic<'tcx>(
+    pub(crate) fn add_explanation_to_diagnostic(
         &self,
         tcx: TyCtxt<'tcx>,
         body: &Body<'tcx>,
@@ -276,7 +276,7 @@ impl BorrowExplanation {
     pub(crate) fn add_lifetime_bound_suggestion_to_diagnostic(
         &self,
         err: &mut Diagnostic,
-        category: &ConstraintCategory,
+        category: &ConstraintCategory<'tcx>,
         span: Span,
         region_name: &RegionName,
     ) {
@@ -305,7 +305,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         &self,
         borrow_region: RegionVid,
         outlived_region: RegionVid,
-    ) -> (ConstraintCategory, bool, Span, Option<RegionName>) {
+    ) -> (ConstraintCategory<'tcx>, bool, Span, Option<RegionName>) {
         let BlameConstraint { category, from_closure, cause, variance_info: _ } =
             self.regioncx.best_blame_constraint(
                 &self.body,
@@ -337,7 +337,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         location: Location,
         borrow: &BorrowData<'tcx>,
         kind_place: Option<(WriteKind, Place<'tcx>)>,
-    ) -> BorrowExplanation {
+    ) -> BorrowExplanation<'tcx> {
         debug!(
             "explain_why_borrow_contains_point(location={:?}, borrow={:?}, kind_place={:?})",
             location, borrow, kind_place

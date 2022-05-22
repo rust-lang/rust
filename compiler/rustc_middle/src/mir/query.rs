@@ -1,7 +1,7 @@
 //! Values computed by queries that use MIR.
 
 use crate::mir::{self, Body, Promoted};
-use crate::ty::{self, OpaqueHiddenType, Ty, TyCtxt};
+use crate::ty::{self, subst::SubstsRef, OpaqueHiddenType, Ty, TyCtxt};
 use rustc_data_structures::stable_map::FxHashMap;
 use rustc_data_structures::vec_map::VecMap;
 use rustc_errors::ErrorGuaranteed;
@@ -338,11 +338,8 @@ pub struct ClosureOutlivesRequirement<'tcx> {
     pub blame_span: Span,
 
     // ... due to this reason.
-    pub category: ConstraintCategory,
+    pub category: ConstraintCategory<'tcx>,
 }
-
-// Make sure this enum doesn't unintentionally grow
-rustc_data_structures::static_assert_size!(ConstraintCategory, 12);
 
 /// Outlives-constraints can be categorized to determine whether and why they
 /// are interesting (for error reporting). Order of variants indicates sort
@@ -351,7 +348,7 @@ rustc_data_structures::static_assert_size!(ConstraintCategory, 12);
 /// See also `rustc_const_eval::borrow_check::constraints`.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 #[derive(TyEncodable, TyDecodable, HashStable)]
-pub enum ConstraintCategory {
+pub enum ConstraintCategory<'tcx> {
     Return(ReturnConstraint),
     Yield,
     UseAsConst,
@@ -363,7 +360,7 @@ pub enum ConstraintCategory {
     ///
     /// We try to get the category that the closure used when reporting this.
     ClosureBounds,
-    CallArgument,
+    CallArgument(Option<(DefId, SubstsRef<'tcx>)>),
     CopyBound,
     SizedBound,
     Assignment,
