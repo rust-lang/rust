@@ -31,16 +31,19 @@ trait FileDescriptor: std::fmt::Debug {
         communicate_allowed: bool,
         bytes: &mut [u8],
     ) -> InterpResult<'tcx, io::Result<usize>>;
+
     fn write<'tcx>(
         &self,
         communicate_allowed: bool,
         bytes: &[u8],
     ) -> InterpResult<'tcx, io::Result<usize>>;
+
     fn seek<'tcx>(
         &mut self,
         communicate_allowed: bool,
         offset: SeekFrom,
     ) -> InterpResult<'tcx, io::Result<u64>>;
+
     fn close<'tcx>(
         self: Box<Self>,
         _communicate_allowed: bool,
@@ -304,14 +307,14 @@ pub struct FileHandler {
 impl<'tcx> FileHandler {
     pub(crate) fn new(mute_stdout_stderr: bool) -> FileHandler {
         let mut handles: BTreeMap<_, Box<dyn FileDescriptor>> = BTreeMap::new();
+        handles.insert(0i32, Box::new(io::stdin()));
         if mute_stdout_stderr {
-            handles.insert(0i32, Box::new(DummyOutput));
             handles.insert(1i32, Box::new(DummyOutput));
+            handles.insert(2i32, Box::new(DummyOutput));
         } else {
-            handles.insert(0i32, Box::new(io::stdin()));
             handles.insert(1i32, Box::new(io::stdout()));
+            handles.insert(2i32, Box::new(io::stderr()));
         }
-        handles.insert(2i32, Box::new(io::stderr()));
         FileHandler { handles }
     }
 

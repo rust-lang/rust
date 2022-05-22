@@ -1,5 +1,6 @@
 // compile-flags: -Zmiri-mute-stdout-stderr
 
 fn main() {
-    println!("cake");
+    println!("print to stdout");
+    eprintln!("print to stderr");
 }
