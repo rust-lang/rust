@@ -1,4 +1,4 @@
-use rand::{SeedableRng, Rng, rngs::SmallRng};
+use rand::{rngs::SmallRng, Rng, SeedableRng};
 
 // Having more than 1 test does seem to make a difference
 // (i.e., this calls ptr::swap which having just one test does not).
@@ -49,14 +49,27 @@ fn cargo_env() {
 }
 
 #[test]
-#[should_panic(expected="Explicit panic")]
-fn do_panic() { // In large, friendly letters :)
+#[should_panic(expected = "Explicit panic")]
+fn do_panic() // In large, friendly letters :)
+{
     panic!("Explicit panic from test!");
 }
 
 #[test]
 #[allow(unconditional_panic)]
-#[should_panic(expected="the len is 0 but the index is 42")]
+#[should_panic(expected = "the len is 0 but the index is 42")]
 fn fail_index_check() {
     [][42]
+}
+
+#[test]
+fn page_size() {
+    let page_size = page_size::get();
+
+    // In particular, this checks that it is not 0.
+    assert!(
+        page_size.next_power_of_two() == page_size,
+        "page size not a power of two: {}",
+        page_size
+    );
 }

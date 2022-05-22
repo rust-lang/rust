@@ -178,9 +178,11 @@ pub struct AllocExtra {
 pub struct PrimitiveLayouts<'tcx> {
     pub unit: TyAndLayout<'tcx>,
     pub i8: TyAndLayout<'tcx>,
+    pub i16: TyAndLayout<'tcx>,
     pub i32: TyAndLayout<'tcx>,
     pub isize: TyAndLayout<'tcx>,
     pub u8: TyAndLayout<'tcx>,
+    pub u16: TyAndLayout<'tcx>,
     pub u32: TyAndLayout<'tcx>,
     pub usize: TyAndLayout<'tcx>,
     pub bool: TyAndLayout<'tcx>,
@@ -194,9 +196,11 @@ impl<'mir, 'tcx: 'mir> PrimitiveLayouts<'tcx> {
         Ok(Self {
             unit: layout_cx.layout_of(tcx.mk_unit())?,
             i8: layout_cx.layout_of(tcx.types.i8)?,
+            i16: layout_cx.layout_of(tcx.types.i16)?,
             i32: layout_cx.layout_of(tcx.types.i32)?,
             isize: layout_cx.layout_of(tcx.types.isize)?,
             u8: layout_cx.layout_of(tcx.types.u8)?,
+            u16: layout_cx.layout_of(tcx.types.u16)?,
             u32: layout_cx.layout_of(tcx.types.u32)?,
             usize: layout_cx.layout_of(tcx.types.usize)?,
             bool: layout_cx.layout_of(tcx.types.bool)?,

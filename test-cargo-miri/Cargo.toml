@@ -22,6 +22,7 @@ rand = { version = "0.8", features = ["small_rng"] }
 getrandom_1 = { package = "getrandom", version = "0.1" }
 getrandom_2 = { package = "getrandom", version = "0.2" }
 serde_derive = "1.0" # not actually used, but exercises some unique code path (`--extern` .so file)
+page_size = "0.4.1"
 
 [lib]
 test = false # test that this is respected (will show in the output)
