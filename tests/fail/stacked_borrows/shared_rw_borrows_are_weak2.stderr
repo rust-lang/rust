@@ -9,12 +9,12 @@ LL |         let _val = *y;
    |
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
    = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information
-help: <TAG> was created by a retag at offsets [$HEX..$HEX]
+help: <TAG> was created by a SharedReadOnly retag at offsets [$HEX..$HEX]
   --> $DIR/shared_rw_borrows_are_weak2.rs:LL:CC
    |
 LL |         let y: &i32 = mem::transmute(&*x.borrow()); // launder lifetime
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: <TAG> was later invalidated at offsets [$HEX..$HEX]
+help: <TAG> was later invalidated at offsets [$HEX..$HEX] by a Unique retag
   --> $DIR/shared_rw_borrows_are_weak2.rs:LL:CC
    |
 LL |         shr_rw.replace(1);

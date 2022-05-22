@@ -9,12 +9,12 @@ LL |     let _val = *reference;
    |
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
    = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information
-help: <TAG> was created by a retag at offsets [0x0..0x4]
+help: <TAG> was created by a SharedReadOnly retag at offsets [0x0..0x4]
   --> $DIR/illegal_write4.rs:LL:CC
    |
 LL |     let reference = unsafe { &*raw }; // freeze
    |                              ^^^^^
-help: <TAG> was later invalidated at offsets [0x0..0x4]
+help: <TAG> was later invalidated at offsets [0x0..0x4] by a Unique retag
   --> $DIR/illegal_write4.rs:LL:CC
    |
 LL |     let _mut_ref: &mut i32 = unsafe { mem::transmute(raw) }; // &mut, with raw tag

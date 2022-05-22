@@ -178,20 +178,15 @@ pub fn report_error<'tcx, 'mir>(
                         (None, format!("this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental")),
                         (None, format!("see {url} for further information")),
                     ];
-                    match history {
-                        Some(TagHistory::Tagged {tag, created: (created_range, created_span), invalidated, protected }) => {
-                            let msg = format!("{tag:?} was created by a retag at offsets {created_range:?}");
-                            helps.push((Some(*created_span), msg));
-                            if let Some((invalidated_range, invalidated_span)) = invalidated {
-                                let msg = format!("{tag:?} was later invalidated at offsets {invalidated_range:?}");
-                                helps.push((Some(*invalidated_span), msg));
-                            }
-                            if let Some((protecting_tag, protecting_tag_span, protection_span)) = protected {
-                                helps.push((Some(*protecting_tag_span), format!("{tag:?} was protected due to {protecting_tag:?} which was created here")));
-                                helps.push((Some(*protection_span), format!("this protector is live for this call")));
-                            }
+                    if let Some(TagHistory {created, invalidated, protected}) = history.clone() {
+                        helps.push((Some(created.1), created.0));
+                        if let Some((msg, span)) = invalidated {
+                            helps.push((Some(span), msg));
                         }
-                        None => {}
+                        if let Some([(protector_msg, protector_span), (protection_msg, protection_span)]) = protected {
+                            helps.push((Some(protector_span), protector_msg));
+                            helps.push((Some(protection_span), protection_msg));
+                        }
                     }
                     helps
                 }

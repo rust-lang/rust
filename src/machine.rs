@@ -137,7 +137,7 @@ pub enum Provenance {
 }
 
 /// The "extra" information a pointer has over a regular AllocId.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq)]
 pub enum ProvenanceExtra {
     Concrete(SbTag),
     Wildcard,
@@ -706,15 +706,10 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         }
 
         let alloc = alloc.into_owned();
-        let stacks = ecx.machine.stacked_borrows.as_ref().map(|stacked_borrows| {
-            Stacks::new_allocation(
-                id,
-                alloc.size(),
-                stacked_borrows,
-                kind,
-                ecx.machine.current_span(),
-            )
-        });
+        let stacks =
+            ecx.machine.stacked_borrows.as_ref().map(|stacked_borrows| {
+                Stacks::new_allocation(id, alloc.size(), stacked_borrows, kind)
+            });
         let race_alloc = ecx.machine.data_race.as_ref().map(|data_race| {
             data_race::AllocExtra::new_allocation(
                 data_race,
@@ -808,7 +803,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
 
     #[inline(always)]
     fn before_memory_read(
-        _tcx: TyCtxt<'tcx>,
+        tcx: TyCtxt<'tcx>,
         machine: &Self,
         alloc_extra: &AllocExtra,
         (alloc_id, prov_extra): (AllocId, Self::ProvenanceExtra),
@@ -828,7 +823,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
                 prov_extra,
                 range,
                 machine.stacked_borrows.as_ref().unwrap(),
-                machine.current_span(),
+                machine.current_span(tcx),
                 &machine.threads,
             )?;
         }
@@ -840,7 +835,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
 
     #[inline(always)]
     fn before_memory_write(
-        _tcx: TyCtxt<'tcx>,
+        tcx: TyCtxt<'tcx>,
         machine: &mut Self,
         alloc_extra: &mut AllocExtra,
         (alloc_id, prov_extra): (AllocId, Self::ProvenanceExtra),
@@ -860,7 +855,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
                 prov_extra,
                 range,
                 machine.stacked_borrows.as_ref().unwrap(),
-                machine.current_span(),
+                machine.current_span(tcx),
                 &machine.threads,
             )?;
         }
@@ -872,7 +867,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
 
     #[inline(always)]
     fn before_memory_deallocation(
-        _tcx: TyCtxt<'tcx>,
+        tcx: TyCtxt<'tcx>,
         machine: &mut Self,
         alloc_extra: &mut AllocExtra,
         (alloc_id, prove_extra): (AllocId, Self::ProvenanceExtra),
@@ -895,6 +890,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
                 prove_extra,
                 range,
                 machine.stacked_borrows.as_ref().unwrap(),
+                machine.current_span(tcx),
                 &machine.threads,
             )
         } else {

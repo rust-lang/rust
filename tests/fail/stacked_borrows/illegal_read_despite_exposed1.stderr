@@ -9,6 +9,16 @@ LL |         let _val = *root2;
    |
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
    = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information
+help: <TAG> was created by a Unique retag at offsets [0x0..0x4]
+  --> $DIR/illegal_read_despite_exposed1.rs:LL:CC
+   |
+LL |         let root2 = &mut *exposed_ptr;
+   |                     ^^^^^^^^^^^^^^^^^
+help: <TAG> was later invalidated at offsets [0x0..0x4] by a write access
+  --> $DIR/illegal_read_despite_exposed1.rs:LL:CC
+   |
+LL |         *exposed_ptr = 0;
+   |         ^^^^^^^^^^^^^^^^
    = note: backtrace:
    = note: inside `main` at $DIR/illegal_read_despite_exposed1.rs:LL:CC
 
