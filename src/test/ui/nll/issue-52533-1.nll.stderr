@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/issue-52533-1.rs:9:18
+  --> $DIR/issue-52533-1.rs:13:18
    |
 LL |     gimme(|x, y| y)
    |            -  -  ^ closure was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`

@@ -1,5 +1,5 @@
 error[E0308]: `match` arms have incompatible types
-  --> $DIR/issue-17728.rs:109:14
+  --> $DIR/issue-17728.rs:113:14
    |
 LL | /     match to_parse {
 LL | |         "w" | "west" => RoomDirection::West,

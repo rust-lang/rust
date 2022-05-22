@@ -1,5 +1,5 @@
 error[E0311]: the parameter type `T` may not live long enough
-  --> $DIR/missing-lifetimes-in-signature-2.rs:20:5
+  --> $DIR/missing-lifetimes-in-signature-2.rs:24:5
    |
 LL | /     foo.bar(move |_| {
 LL | |
@@ -8,12 +8,12 @@ LL | |     });
    | |______^
    |
 note: the parameter type `T` must be valid for the anonymous lifetime defined here...
-  --> $DIR/missing-lifetimes-in-signature-2.rs:19:24
+  --> $DIR/missing-lifetimes-in-signature-2.rs:23:24
    |
 LL | fn func<T: Test>(foo: &Foo, t: T) {
    |                        ^^^
 note: ...so that the type `T` will meet its required lifetime bounds
-  --> $DIR/missing-lifetimes-in-signature-2.rs:20:5
+  --> $DIR/missing-lifetimes-in-signature-2.rs:24:5
    |
 LL | /     foo.bar(move |_| {
 LL | |

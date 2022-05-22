@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/placeholder-pattern-fail.rs:9:47
+  --> $DIR/placeholder-pattern-fail.rs:13:47
    |
 LL |     let _: for<'a, 'b> fn(Inv<'a>, Inv<'b>) = sub;
    |                                               ^^^ one type is more general than the other

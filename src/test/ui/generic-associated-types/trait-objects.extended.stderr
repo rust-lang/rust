@@ -1,5 +1,5 @@
 error[E0621]: explicit lifetime required in the type of `x`
-  --> $DIR/trait-objects.rs:16:7
+  --> $DIR/trait-objects.rs:18:7
    |
 LL | fn min_size(x: &mut dyn for<'a> StreamingIterator<Item<'a> = &'a i32>) -> usize {
    |                ------------------------------------------------------ help: add explicit lifetime `'a` to the type of `x`: `&'a mut (dyn StreamingIterator<for<'a> Item = &'a i32> + 'a)`

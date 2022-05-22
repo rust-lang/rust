@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/E0490.rs:2:12
+  --> $DIR/E0490.rs:6:12
    |
 LL | fn f<'a, 'b>(y: &'b ()) {
    |      --  -- lifetime `'b` defined here
@@ -11,7 +11,7 @@ LL |     let x: &'a _ = &y;
    = help: consider adding the following bound: `'b: 'a`
 
 error[E0597]: `y` does not live long enough
-  --> $DIR/E0490.rs:2:20
+  --> $DIR/E0490.rs:6:20
    |
 LL | fn f<'a, 'b>(y: &'b ()) {
    |      -- lifetime `'a` defined here

@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/issue-54943.rs:6:13
+  --> $DIR/issue-54943.rs:10:13
    |
 LL | fn boo<'a>() {
    |        -- lifetime `'a` defined here

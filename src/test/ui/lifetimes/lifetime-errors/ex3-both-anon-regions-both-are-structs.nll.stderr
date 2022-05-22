@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/ex3-both-anon-regions-both-are-structs.rs:6:5
+  --> $DIR/ex3-both-anon-regions-both-are-structs.rs:10:5
    |
 LL | fn foo(mut x: Vec<Ref>, y: Ref) {
    |        -----            - has type `Ref<'1>`

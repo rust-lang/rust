@@ -1,11 +1,11 @@
 error[E0310]: the parameter type `impl Debug` may not live long enough
-  --> $DIR/suggest-impl-trait-lifetime.rs:7:5
+  --> $DIR/suggest-impl-trait-lifetime.rs:12:5
    |
 LL |     bar(d);
    |     ^^^ ...so that the type `impl Debug` will meet its required lifetime bounds...
    |
 note: ...that is required by this bound
-  --> $DIR/suggest-impl-trait-lifetime.rs:12:24
+  --> $DIR/suggest-impl-trait-lifetime.rs:17:24
    |
 LL | fn bar(d: impl Debug + 'static) {
    |                        ^^^^^^^

@@ -1,11 +1,17 @@
 #![feature(unboxed_closures)]
-#![feature(rustc_attrs)]
 // Test for projection cache. We should be able to project distinct
 // lifetimes from `foo` as we reinstantiate it multiple times, but not
 // if we do it just once. In this variant, the region `'a` is used in
 // an invariant position, which affects the results.
 
 // revisions: ok oneuse transmute krisskross
+//[ok] check-pass
+
+// ignore-compare-mode-nll
+// FIXME(nll): When stabilizing, this test should be replaced with `project-fn-ret-invariant-nll.rs`
+// The two would normally be just revisions, but this test uses revisions heavily, so splitting into
+// a separate test is just easier.
+
 #![allow(dead_code, unused_variables)]
 
 use std::marker::PhantomData;
@@ -56,6 +62,4 @@ fn transmute<'a, 'b>(x: Type<'a>, y: Type<'b>) -> (Type<'a>, Type<'b>) {
     (a, b) //[krisskross]~ ERROR E0623
 }
 
-#[rustc_error]
 fn main() {}
-//[ok]~^ ERROR fatal error triggered by #[rustc_error]

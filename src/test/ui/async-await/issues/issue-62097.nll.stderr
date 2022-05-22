@@ -1,5 +1,5 @@
 error[E0373]: closure may outlive the current function, but it borrows `self`, which is owned by the current function
-  --> $DIR/issue-62097.rs:13:13
+  --> $DIR/issue-62097.rs:18:13
    |
 LL |         foo(|| self.bar()).await;
    |             ^^ ---- `self` is borrowed here
@@ -7,7 +7,7 @@ LL |         foo(|| self.bar()).await;
    |             may outlive borrowed value `self`
    |
 note: function requires argument type to outlive `'static`
-  --> $DIR/issue-62097.rs:13:9
+  --> $DIR/issue-62097.rs:18:9
    |
 LL |         foo(|| self.bar()).await;
    |         ^^^^^^^^^^^^^^^^^^
@@ -17,13 +17,14 @@ LL |         foo(move || self.bar()).await;
    |             ++++
 
 error[E0521]: borrowed data escapes outside of associated function
-  --> $DIR/issue-62097.rs:13:9
+  --> $DIR/issue-62097.rs:18:9
    |
 LL |     pub async fn run_dummy_fn(&self) {
    |                               -----
    |                               |
    |                               `self` is a reference that is only valid in the associated function body
    |                               let's call the lifetime of this reference `'1`
+LL |
 LL |         foo(|| self.bar()).await;
    |         ^^^^^^^^^^^^^^^^^^
    |         |

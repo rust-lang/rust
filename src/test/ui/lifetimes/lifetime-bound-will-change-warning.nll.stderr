@@ -1,5 +1,5 @@
 error[E0521]: borrowed data escapes outside of function
-  --> $DIR/lifetime-bound-will-change-warning.rs:34:5
+  --> $DIR/lifetime-bound-will-change-warning.rs:38:5
    |
 LL | fn test2<'a>(x: &'a Box<dyn Fn() + 'a>) {
    |          --  - `x` is a reference that is only valid in the function body
@@ -13,7 +13,7 @@ LL |     ref_obj(x)
    |     argument requires that `'a` must outlive `'static`
 
 error[E0521]: borrowed data escapes outside of function
-  --> $DIR/lifetime-bound-will-change-warning.rs:39:5
+  --> $DIR/lifetime-bound-will-change-warning.rs:45:5
    |
 LL | fn test2cc<'a>(x: &'a Box<dyn Fn() + 'a>) {
    |            --  - `x` is a reference that is only valid in the function body
