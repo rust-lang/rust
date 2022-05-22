@@ -1,3 +1,7 @@
+// revisions: base nll
+// ignore-compare-mode-nll
+//[nll] compile-flags: -Z borrowck=mir
+
 // Test a case where variance and higher-ranked types interact in surprising ways.
 //
 // In particular, we test this pattern in trait solving, where it is not connected

@@ -1,5 +1,5 @@
 error: implementation of `Bar` is not general enough
-  --> $DIR/hrtb-perfect-forwarding.rs:43:5
+  --> $DIR/hrtb-perfect-forwarding.rs:47:5
    |
 LL |     foo_hrtb_bar_not(&mut t);
    |     ^^^^^^^^^^^^^^^^ implementation of `Bar` is not general enough
@@ -8,7 +8,7 @@ LL |     foo_hrtb_bar_not(&mut t);
    = note: ...but it actually implements `Bar<&'b isize>`
 
 error: implementation of `Bar` is not general enough
-  --> $DIR/hrtb-perfect-forwarding.rs:43:5
+  --> $DIR/hrtb-perfect-forwarding.rs:47:5
    |
 LL |     foo_hrtb_bar_not(&mut t);
    |     ^^^^^^^^^^^^^^^^ implementation of `Bar` is not general enough
