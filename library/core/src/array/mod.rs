@@ -435,6 +435,21 @@ impl<T, const N: usize> [T; N] {
     /// let y = x.map(|v| v.len());
     /// assert_eq!(y, [6, 9, 3, 3]);
     /// ```
+    #[stable(feature = "len", since = "1.??.0")]
+    pub fn len() -> usize
+    /// Returns the length of the array.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// let arr: [&str; 3] = ["first","second","last"];
+    /// 
+    /// let lastItem: &str = arr[arr.len()-1];
+    ///  
+    /// println!("{}",lastItem);
+    /// ```
     #[stable(feature = "array_map", since = "1.55.0")]
     pub fn map<F, U>(self, f: F) -> [U; N]
     where
