@@ -695,14 +695,25 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                     },
                     |this| {
                         this.visit_generic_params(&bare_fn.generic_params, false);
-                        this.resolve_fn_signature(
-                            ty.id,
-                            None,
-                            false,
-                            // We don't need to deal with patterns in parameters, because
-                            // they are not possible for foreign or bodiless functions.
-                            bare_fn.decl.inputs.iter().map(|Param { ty, .. }| (None, &**ty)),
-                            &bare_fn.decl.output,
+                        this.with_lifetime_rib(
+                            LifetimeRibKind::AnonymousCreateParameter {
+                                binder: ty.id,
+                                report_in_path: false,
+                            },
+                            |this| {
+                                this.resolve_fn_signature(
+                                    ty.id,
+                                    false,
+                                    // We don't need to deal with patterns in parameters, because
+                                    // they are not possible for foreign or bodiless functions.
+                                    bare_fn
+                                        .decl
+                                        .inputs
+                                        .iter()
+                                        .map(|Param { ty, .. }| (None, &**ty)),
+                                    &bare_fn.decl.output,
+                                )
+                            },
                         );
                     },
                 )
@@ -782,12 +793,19 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
             | FnKind::Fn(_, _, sig, _, generics, None) => {
                 self.visit_fn_header(&sig.header);
                 self.visit_generics(generics);
-                self.resolve_fn_signature(
-                    fn_id,
-                    None,
-                    sig.decl.has_self(),
-                    sig.decl.inputs.iter().map(|Param { ty, .. }| (None, &**ty)),
-                    &sig.decl.output,
+                self.with_lifetime_rib(
+                    LifetimeRibKind::AnonymousCreateParameter {
+                        binder: fn_id,
+                        report_in_path: false,
+                    },
+                    |this| {
+                        this.resolve_fn_signature(
+                            fn_id,
+                            sig.decl.has_self(),
+                            sig.decl.inputs.iter().map(|Param { ty, .. }| (None, &**ty)),
+                            &sig.decl.output,
+                        )
+                    },
                 );
                 return;
             }
@@ -812,15 +830,22 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                         let declaration = &sig.decl;
                         let async_node_id = sig.header.asyncness.opt_return_id();
 
-                        this.resolve_fn_signature(
-                            fn_id,
-                            async_node_id,
-                            declaration.has_self(),
-                            declaration
-                                .inputs
-                                .iter()
-                                .map(|Param { pat, ty, .. }| (Some(&**pat), &**ty)),
-                            &declaration.output,
+                        this.with_lifetime_rib(
+                            LifetimeRibKind::AnonymousCreateParameter {
+                                binder: fn_id,
+                                report_in_path: async_node_id.is_some(),
+                            },
+                            |this| {
+                                this.resolve_fn_signature(
+                                    fn_id,
+                                    declaration.has_self(),
+                                    declaration
+                                        .inputs
+                                        .iter()
+                                        .map(|Param { pat, ty, .. }| (Some(&**pat), &**ty)),
+                                    &declaration.output,
+                                )
+                            },
                         );
 
                         // Construct the list of in-scope lifetime parameters for async lowering.
@@ -1035,12 +1060,19 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                                 kind: LifetimeBinderKind::PolyTrait,
                                 ..
                             } => {
-                                self.resolve_fn_signature(
-                                    binder,
-                                    None,
-                                    false,
-                                    p_args.inputs.iter().map(|ty| (None, &**ty)),
-                                    &p_args.output,
+                                self.with_lifetime_rib(
+                                    LifetimeRibKind::AnonymousCreateParameter {
+                                        binder,
+                                        report_in_path: false,
+                                    },
+                                    |this| {
+                                        this.resolve_fn_signature(
+                                            binder,
+                                            false,
+                                            p_args.inputs.iter().map(|ty| (None, &**ty)),
+                                            &p_args.output,
+                                        )
+                                    },
                                 );
                                 break;
                             }
@@ -1813,18 +1845,12 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     fn resolve_fn_signature(
         &mut self,
         fn_id: NodeId,
-        async_node_id: Option<NodeId>,
         has_self: bool,
         inputs: impl Iterator<Item = (Option<&'ast Pat>, &'ast Ty)> + Clone,
         output_ty: &'ast FnRetTy,
     ) {
         // Add each argument to the rib.
-        let parameter_rib = LifetimeRibKind::AnonymousCreateParameter {
-            binder: fn_id,
-            report_in_path: async_node_id.is_some(),
-        };
-        let elision_lifetime =
-            self.with_lifetime_rib(parameter_rib, |this| this.resolve_fn_params(has_self, inputs));
+        let elision_lifetime = self.resolve_fn_params(has_self, inputs);
         debug!(?elision_lifetime);
 
         let outer_failures = take(&mut self.diagnostic_metadata.current_elision_failures);
