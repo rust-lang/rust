@@ -228,7 +228,7 @@ impl<T> FixedSizeEncoding for Option<LazyArray<T>> {
         let ([ref position_bytes, ref meta_bytes],[])= b.as_chunks::<4>() else { panic!() };
         let position = NonZeroUsize::new(u32::from_bytes(position_bytes) as usize)?;
         let len = u32::from_bytes(meta_bytes) as usize;
-        Some(LazyArray::from_position_and_len(position, len))
+        Some(LazyArray::from_position_and_num_elems(position, len))
     }
 
     #[inline]
@@ -239,7 +239,7 @@ impl<T> FixedSizeEncoding for Option<LazyArray<T>> {
         let position: u32 = position.try_into().unwrap();
         position.write_to_bytes(position_bytes);
 
-        let len = self.map_or(0, |lazy| lazy.len);
+        let len = self.map_or(0, |lazy| lazy.num_elems);
         let len: u32 = len.try_into().unwrap();
         len.write_to_bytes(meta_bytes);
     }
@@ -289,7 +289,10 @@ where
             buf.emit_raw_bytes(block).unwrap();
         }
         let num_bytes = self.blocks.len() * N;
-        LazyTable::from_position_and_len(NonZeroUsize::new(pos as usize).unwrap(), num_bytes)
+        LazyTable::from_position_and_encoded_size(
+            NonZeroUsize::new(pos as usize).unwrap(),
+            num_bytes,
+        )
     }
 }
 
@@ -307,10 +310,10 @@ where
     where
         Option<T>: FixedSizeEncoding<ByteArray = [u8; N]>,
     {
-        debug!("LazyTable::lookup: index={:?} len={:?}", i, self.len);
+        debug!("LazyTable::lookup: index={:?} len={:?}", i, self.encoded_size);
 
         let start = self.position.get();
-        let bytes = &metadata.blob()[start..start + self.len];
+        let bytes = &metadata.blob()[start..start + self.encoded_size];
         let (bytes, []) = bytes.as_chunks::<N>() else { panic!() };
         let bytes = bytes.get(i.index())?;
         FixedSizeEncoding::from_bytes(bytes)
@@ -321,6 +324,6 @@ where
     where
         Option<T>: FixedSizeEncoding<ByteArray = [u8; N]>,
     {
-        self.len / N
+        self.encoded_size / N
     }
 }

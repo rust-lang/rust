@@ -269,7 +269,7 @@ impl<'a, 'tcx, T: Decodable<DecodeContext<'a, 'tcx>>> LazyValue<T> {
 }
 
 struct DecodeIterator<'a, 'tcx, T> {
-    range: std::ops::Range<usize>,
+    elem_counter: std::ops::Range<usize>,
     dcx: DecodeContext<'a, 'tcx>,
     _phantom: PhantomData<fn() -> T>,
 }
@@ -278,7 +278,7 @@ impl<'a, 'tcx, T: Decodable<DecodeContext<'a, 'tcx>>> Iterator for DecodeIterato
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.range.next().map(|_| T::decode(&mut self.dcx))
+        self.elem_counter.next().map(|_| T::decode(&mut self.dcx))
     }
 }
 
@@ -286,7 +286,7 @@ impl<'a, 'tcx, T: Decodable<DecodeContext<'a, 'tcx>>> ExactSizeIterator
     for DecodeIterator<'a, 'tcx, T>
 {
     fn len(&self) -> usize {
-        self.range.len()
+        self.elem_counter.len()
     }
 }
 
@@ -294,7 +294,7 @@ impl<'a: 'x, 'tcx: 'x, 'x, T: Decodable<DecodeContext<'a, 'tcx>>> LazyArray<T> {
     fn decode<M: Metadata<'a, 'tcx>>(self, metadata: M) -> DecodeIterator<'a, 'tcx, T> {
         let mut dcx = metadata.decoder(self.position.get());
         dcx.lazy_state = LazyState::NodeStart(self.position);
-        DecodeIterator { range: (0..self.len), dcx, _phantom: PhantomData }
+        DecodeIterator { elem_counter: (0..self.num_elems), dcx, _phantom: PhantomData }
     }
 }
 
@@ -342,11 +342,11 @@ impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
     }
 
     fn read_lazy_array<T>(&mut self, len: usize) -> LazyArray<T> {
-        self.read_lazy_offset_then(|pos| LazyArray::from_position_and_len(pos, len))
+        self.read_lazy_offset_then(|pos| LazyArray::from_position_and_num_elems(pos, len))
     }
 
     fn read_lazy_table<I, T>(&mut self, len: usize) -> LazyTable<I, T> {
-        self.read_lazy_offset_then(|pos| LazyTable::from_position_and_len(pos, len))
+        self.read_lazy_offset_then(|pos| LazyTable::from_position_and_encoded_size(pos, len))
     }
 
     #[inline]

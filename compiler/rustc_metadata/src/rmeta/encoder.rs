@@ -132,8 +132,8 @@ impl<'a, 'tcx, T> Encodable<EncodeContext<'a, 'tcx>> for LazyValue<T> {
 
 impl<'a, 'tcx, T> Encodable<EncodeContext<'a, 'tcx>> for LazyArray<T> {
     fn encode(&self, e: &mut EncodeContext<'a, 'tcx>) -> opaque::EncodeResult {
-        e.emit_usize(self.len)?;
-        if self.len == 0 {
+        e.emit_usize(self.num_elems)?;
+        if self.num_elems == 0 {
             return Ok(());
         }
         e.emit_lazy_distance(self.position)
@@ -142,7 +142,7 @@ impl<'a, 'tcx, T> Encodable<EncodeContext<'a, 'tcx>> for LazyArray<T> {
 
 impl<'a, 'tcx, I, T> Encodable<EncodeContext<'a, 'tcx>> for LazyTable<I, T> {
     fn encode(&self, e: &mut EncodeContext<'a, 'tcx>) -> opaque::EncodeResult {
-        e.emit_usize(self.len)?;
+        e.emit_usize(self.encoded_size)?;
         e.emit_lazy_distance(self.position)
     }
 }
@@ -421,7 +421,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         assert!(pos.get() <= self.position());
 
-        LazyArray::from_position_and_len(pos, len)
+        LazyArray::from_position_and_num_elems(pos, len)
     }
 
     fn encode_info_for_items(&mut self) {

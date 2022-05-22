@@ -77,20 +77,7 @@ pub const METADATA_HEADER: &[u8] = &[b'r', b'u', b's', b't', 0, 0, 0, METADATA_V
 /// Distances start at 1, as 0-byte nodes are invalid.
 /// Also invalid are nodes being referred in a different
 /// order than they were encoded in.
-///
-/// # Sequences (`LazyArray<T>`)
-///
-/// Unlike `Lazy<Vec<T>>`, the length is encoded next to the
-/// position, not at the position, which means that the length
-/// doesn't need to be known before encoding all the elements.
-///
-/// If the length is 0, no position is encoded, but otherwise,
-/// the encoding is that of `Lazy`, with the distinction that
-/// the minimal distance the length of the sequence, i.e.
-/// it's assumed there's no 0-byte element in the sequence.
 #[must_use]
-// FIXME(#59875) the `Meta` parameter only exists to dodge
-// invariance wrt `T` (coming from the `meta: T::Meta` field).
 struct LazyValue<T> {
     position: NonZeroUsize,
     _marker: PhantomData<fn() -> T>,
@@ -102,34 +89,49 @@ impl<T> LazyValue<T> {
     }
 }
 
+/// A list of lazily-decoded values.
+///
+/// Unlike `Lazy<Vec<T>>`, the length is encoded next to the
+/// position, not at the position, which means that the length
+/// doesn't need to be known before encoding all the elements.
+///
+/// If the length is 0, no position is encoded, but otherwise,
+/// the encoding is that of `Lazy`, with the distinction that
+/// the minimal distance the length of the sequence, i.e.
+/// it's assumed there's no 0-byte element in the sequence.
 struct LazyArray<T> {
     position: NonZeroUsize,
-    len: usize,
+    num_elems: usize,
     _marker: PhantomData<fn() -> T>,
 }
 
 impl<T> LazyArray<T> {
-    fn from_position_and_len(position: NonZeroUsize, len: usize) -> LazyArray<T> {
-        LazyArray { position, len, _marker: PhantomData }
+    fn from_position_and_num_elems(position: NonZeroUsize, num_elems: usize) -> LazyArray<T> {
+        LazyArray { position, num_elems, _marker: PhantomData }
     }
 
     fn empty() -> LazyArray<T> {
-        LazyArray::from_position_and_len(NonZeroUsize::new(1).unwrap(), 0)
+        LazyArray::from_position_and_num_elems(NonZeroUsize::new(1).unwrap(), 0)
     }
 }
 
+/// A list of lazily-decoded values, with the added capability of random access.
+///
 /// Random-access table (i.e. offering constant-time `get`/`set`), similar to
 /// `LazyArray<T>`, but without requiring encoding or decoding all the values
 /// eagerly and in-order.
 struct LazyTable<I, T> {
     position: NonZeroUsize,
-    len: usize,
+    encoded_size: usize,
     _marker: PhantomData<fn(I) -> T>,
 }
 
 impl<I, T> LazyTable<I, T> {
-    fn from_position_and_len(position: NonZeroUsize, len: usize) -> LazyTable<I, T> {
-        LazyTable { position, len, _marker: PhantomData }
+    fn from_position_and_encoded_size(
+        position: NonZeroUsize,
+        encoded_size: usize,
+    ) -> LazyTable<I, T> {
+        LazyTable { position, encoded_size, _marker: PhantomData }
     }
 }
 
