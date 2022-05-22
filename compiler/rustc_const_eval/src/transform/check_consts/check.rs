@@ -229,18 +229,6 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
 
         // The local type and predicate checks are not free and only relevant for `const fn`s.
         if self.const_kind() == hir::ConstContext::ConstFn {
-            // Prevent const trait methods from being annotated as `stable`.
-            // FIXME: Do this as part of stability checking.
-            if self.is_const_stable_const_fn() {
-                if crate::const_eval::is_parent_const_impl_raw(tcx, def_id) {
-                    self.ccx
-                        .tcx
-                        .sess
-                        .struct_span_err(self.span, "trait methods cannot be stable const fn")
-                        .emit();
-                }
-            }
-
             for (idx, local) in body.local_decls.iter_enumerated() {
                 // Handle the return place below.
                 if idx == RETURN_PLACE || local.internal {
@@ -944,7 +932,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 // have no `rustc_const_stable` attributes to be const-unstable as well. This
                 // should be fixed later.
                 let callee_is_unstable_unmarked = tcx.lookup_const_stability(callee).is_none()
-                    && tcx.lookup_stability(callee).map_or(false, |s| s.level.is_unstable());
+                    && tcx.lookup_stability(callee).map_or(false, |s| s.is_unstable());
                 if callee_is_unstable_unmarked {
                     trace!("callee_is_unstable_unmarked");
                     // We do not use `const` modifiers for intrinsic "functions", as intrinsics are
