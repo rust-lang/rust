@@ -153,9 +153,6 @@ where
         assert_eq!(<super::Mask<T, LANES> as ToBitMaskArray>::BYTES, N);
 
         // Safety: N is the correct bitmask size
-        //
-        // The transmute below allows this function to be marked safe, since it will prevent
-        // monomorphization errors in the case of an incorrect size.
         unsafe {
             // Compute the bitmask
             let bitmask: [u8; <super::Mask<T, LANES> as ToBitMaskArray>::BYTES] =
@@ -186,9 +183,6 @@ where
         assert_eq!(<super::Mask<T, LANES> as ToBitMaskArray>::BYTES, N);
 
         // Safety: N is the correct bitmask size
-        //
-        // The transmute below allows this function to be marked safe, since it will prevent
-        // monomorphization errors in the case of an incorrect size.
         unsafe {
             // LLVM assumes bit order should match endianness
             if cfg!(target_endian = "big") {
