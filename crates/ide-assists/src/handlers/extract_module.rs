@@ -413,7 +413,10 @@ impl Module {
                                         ctx,
                                     )
                                 {
-                                    import_paths_to_be_removed.push(import_path);
+                                    check_intersection_and_push(
+                                        &mut import_paths_to_be_removed,
+                                        import_path,
+                                    );
                                 }
                             }
                         }
@@ -439,28 +442,10 @@ impl Module {
                                         ctx,
                                     )
                                 {
-                                    if import_paths_to_be_removed.len() > 0 {
-                                        // Text ranges recieved here for imports are extended to the
-                                        // next/previous comma which can cause intersections among them
-                                        // and later deletion of these can cause panics similar
-                                        // to reported in #11766. So to mitigate it, we
-                                        // check for intersection between all current members
-                                        // and if it exists we combine both text ranges into
-                                        // one
-                                        for i in 0..import_paths_to_be_removed.len() {
-                                            if let Some(_) =
-                                                import_paths_to_be_removed[i].intersect(import_path)
-                                            {
-                                                import_paths_to_be_removed[i] =
-                                                    import_paths_to_be_removed[i]
-                                                        .cover(import_path);
-                                            } else {
-                                                import_paths_to_be_removed.push(import_path);
-                                            }
-                                        }
-                                    } else {
-                                        import_paths_to_be_removed.push(import_path);
-                                    }
+                                    check_intersection_and_push(
+                                        &mut import_paths_to_be_removed,
+                                        import_path,
+                                    );
                                 }
                             }
                         }
@@ -572,12 +557,14 @@ impl Module {
                 }
 
                 if source_exists_outside_sel_in_same_mod {
-                    let first_path_in_use_tree = use_tree_str[use_tree_str.len() - 1].to_string();
-                    if !first_path_in_use_tree.contains("super")
-                        && !first_path_in_use_tree.contains("crate")
-                    {
-                        let super_path = make::ext::ident_path("super");
-                        use_tree_str.push(super_path);
+                    if let Some(first_path_in_use_tree) = use_tree_str.last() {
+                        let first_path_in_use_tree_str = first_path_in_use_tree.to_string();
+                        if !first_path_in_use_tree_str.contains("super")
+                            && !first_path_in_use_tree_str.contains("crate")
+                        {
+                            let super_path = make::ext::ident_path("super");
+                            use_tree_str.push(super_path);
+                        }
                     }
                 }
 
@@ -593,10 +580,12 @@ impl Module {
 
             if !(!exists_outside_sel && exists_inside_sel && source_exists_outside_sel_in_same_mod)
             {
-                let first_path_in_use_tree = use_tree_str[0].to_string();
-                if first_path_in_use_tree.contains("super") {
-                    let super_path = make::ext::ident_path("super");
-                    use_tree_str.insert(0, super_path)
+                if let Some(first_path_in_use_tree) = use_tree_str.first() {
+                    let first_path_in_use_tree_str = first_path_in_use_tree.to_string();
+                    if first_path_in_use_tree_str.contains("super") {
+                        let super_path = make::ext::ident_path("super");
+                        use_tree_str.insert(0, super_path)
+                    }
                 }
             }
 
@@ -655,6 +644,32 @@ impl Module {
         }
 
         None
+    }
+}
+
+fn check_intersection_and_push(
+    import_paths_to_be_removed: &mut Vec<TextRange>,
+    import_path: TextRange,
+) {
+    if import_paths_to_be_removed.len() > 0 {
+        // Text ranges recieved here for imports are extended to the
+        // next/previous comma which can cause intersections among them
+        // and later deletion of these can cause panics similar
+        // to reported in #11766. So to mitigate it, we
+        // check for intersection between all current members
+        // and if it exists we combine both text ranges into
+        // one
+        let r = import_paths_to_be_removed
+            .into_iter()
+            .position(|it| it.intersect(import_path).is_some());
+        match r {
+            Some(it) => {
+                import_paths_to_be_removed[it] = import_paths_to_be_removed[it].cover(import_path)
+            }
+            None => import_paths_to_be_removed.push(import_path),
+        }
+    } else {
+        import_paths_to_be_removed.push(import_path);
     }
 }
 
