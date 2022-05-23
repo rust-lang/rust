@@ -232,6 +232,9 @@
                     return true;
                 }
                 searchStr = searchStr.toLowerCase();
+                if (searchStr.startsWith("clippy::")) {
+                    searchStr = searchStr.slice(8);
+                }
 
                 // Search by id
                 if (lint.id.indexOf(searchStr.replace("-", "_")) !== -1) {
