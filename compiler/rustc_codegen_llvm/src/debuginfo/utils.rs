@@ -1,10 +1,12 @@
 // Utility Functions.
 
 use super::namespace::item_namespace;
-use super::CrateDebugContext;
+use super::CodegenUnitDebugContext;
 
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty::DefIdTree;
+use rustc_middle::ty::layout::{HasParamEnv, LayoutOf};
+use rustc_middle::ty::{self, DefIdTree, Ty};
+use tracing::trace;
 
 use crate::common::CodegenCx;
 use crate::llvm;
@@ -33,7 +35,7 @@ pub fn create_DIArray<'ll>(
 #[inline]
 pub fn debug_context<'a, 'll, 'tcx>(
     cx: &'a CodegenCx<'ll, 'tcx>,
-) -> &'a CrateDebugContext<'ll, 'tcx> {
+) -> &'a CodegenUnitDebugContext<'ll, 'tcx> {
     cx.dbg_cx.as_ref().unwrap()
 }
 
@@ -44,5 +46,54 @@ pub fn DIB<'a, 'll>(cx: &'a CodegenCx<'ll, '_>) -> &'a DIBuilder<'ll> {
 }
 
 pub fn get_namespace_for_item<'ll>(cx: &CodegenCx<'ll, '_>, def_id: DefId) -> &'ll DIScope {
-    item_namespace(cx, cx.tcx.parent(def_id).expect("get_namespace_for_item: missing parent?"))
+    item_namespace(cx, cx.tcx.parent(def_id))
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) enum FatPtrKind {
+    Slice,
+    Dyn,
+}
+
+/// Determines if `pointee_ty` is slice-like or trait-object-like, i.e.
+/// if the second field of the fat pointer is a length or a vtable-pointer.
+/// If `pointee_ty` does not require a fat pointer (because it is Sized) then
+/// the function returns `None`.
+pub(crate) fn fat_pointer_kind<'ll, 'tcx>(
+    cx: &CodegenCx<'ll, 'tcx>,
+    pointee_ty: Ty<'tcx>,
+) -> Option<FatPtrKind> {
+    let pointee_tail_ty = cx.tcx.struct_tail_erasing_lifetimes(pointee_ty, cx.param_env());
+    let layout = cx.layout_of(pointee_tail_ty);
+    trace!(
+        "fat_pointer_kind: {:?} has layout {:?} (is_unsized? {})",
+        pointee_tail_ty,
+        layout,
+        layout.is_unsized()
+    );
+
+    if !layout.is_unsized() {
+        return None;
+    }
+
+    match *pointee_tail_ty.kind() {
+        ty::Str | ty::Slice(_) => Some(FatPtrKind::Slice),
+        ty::Dynamic(..) => Some(FatPtrKind::Dyn),
+        ty::Foreign(_) => {
+            // Assert that pointers to foreign types really are thin:
+            debug_assert_eq!(
+                cx.size_of(cx.tcx.mk_imm_ptr(pointee_tail_ty)),
+                cx.size_of(cx.tcx.mk_imm_ptr(cx.tcx.types.u8))
+            );
+            None
+        }
+        _ => {
+            // For all other pointee types we should already have returned None
+            // at the beginning of the function.
+            panic!(
+                "fat_pointer_kind() - Encountered unexpected `pointee_tail_ty`: {:?}",
+                pointee_tail_ty
+            )
+        }
+    }
 }

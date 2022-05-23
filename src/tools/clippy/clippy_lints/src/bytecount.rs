@@ -41,9 +41,9 @@ declare_lint_pass!(ByteCount => [NAIVE_BYTECOUNT]);
 impl<'tcx> LateLintPass<'tcx> for ByteCount {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
         if_chain! {
-            if let ExprKind::MethodCall(count, _, [count_recv], _) = expr.kind;
+            if let ExprKind::MethodCall(count, [count_recv], _) = expr.kind;
             if count.ident.name == sym::count;
-            if let ExprKind::MethodCall(filter, _, [filter_recv, filter_arg], _) = count_recv.kind;
+            if let ExprKind::MethodCall(filter, [filter_recv, filter_arg], _) = count_recv.kind;
             if filter.ident.name == sym!(filter);
             if let ExprKind::Closure(_, _, body_id, _, _) = filter_arg.kind;
             let body = cx.tcx.hir().body(body_id);
@@ -68,7 +68,7 @@ impl<'tcx> LateLintPass<'tcx> for ByteCount {
             if ty::Uint(UintTy::U8) == *cx.typeck_results().expr_ty(needle).peel_refs().kind();
             if !is_local_used(cx, needle, arg_id);
             then {
-                let haystack = if let ExprKind::MethodCall(path, _, args, _) =
+                let haystack = if let ExprKind::MethodCall(path, args, _) =
                         filter_recv.kind {
                     let p = path.ident.name;
                     if (p == sym::iter || p == sym!(iter_mut)) && args.len() == 1 {

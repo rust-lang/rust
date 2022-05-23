@@ -4,47 +4,15 @@ use crate::ty;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::{GenericParam, ItemLocalId};
-use rustc_hir::{GenericParamKind, LifetimeParamKind};
+use rustc_hir::ItemLocalId;
 use rustc_macros::HashStable;
-
-/// The origin of a named lifetime definition.
-///
-/// This is used to prevent the usage of in-band lifetimes in `Fn`/`fn` syntax.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable, Debug, HashStable)]
-pub enum LifetimeDefOrigin {
-    // Explicit binders like `fn foo<'a>(x: &'a u8)` or elided like `impl Foo<&u32>`
-    ExplicitOrElided,
-    // In-band declarations like `fn foo(x: &'a u8)`
-    InBand,
-    // Some kind of erroneous origin
-    Error,
-}
-
-impl LifetimeDefOrigin {
-    pub fn from_param(param: &GenericParam<'_>) -> Self {
-        match param.kind {
-            GenericParamKind::Lifetime { kind } => match kind {
-                LifetimeParamKind::InBand => LifetimeDefOrigin::InBand,
-                LifetimeParamKind::Explicit => LifetimeDefOrigin::ExplicitOrElided,
-                LifetimeParamKind::Elided => LifetimeDefOrigin::ExplicitOrElided,
-                LifetimeParamKind::Error => LifetimeDefOrigin::Error,
-            },
-            _ => bug!("expected a lifetime param"),
-        }
-    }
-}
+use rustc_span::symbol::Symbol;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, TyEncodable, TyDecodable, Debug, HashStable)]
 pub enum Region {
     Static,
-    EarlyBound(/* index */ u32, /* lifetime decl */ DefId, LifetimeDefOrigin),
-    LateBound(
-        ty::DebruijnIndex,
-        /* late-bound index */ u32,
-        /* lifetime decl */ DefId,
-        LifetimeDefOrigin,
-    ),
+    EarlyBound(/* index */ u32, /* lifetime decl */ DefId),
+    LateBound(ty::DebruijnIndex, /* late-bound index */ u32, /* lifetime decl */ DefId),
     LateBoundAnon(ty::DebruijnIndex, /* late-bound index */ u32, /* anon index */ u32),
     Free(DefId, /* lifetime decl */ DefId),
 }
@@ -56,7 +24,7 @@ pub enum Region {
 pub enum LifetimeScopeForPath {
     // Contains all lifetime names that are in scope and could possibly be used in generics
     // arguments of path.
-    NonElided(Vec<String>),
+    NonElided(Vec<Symbol>),
 
     // Information that allows us to suggest args of the form `<'_>` in case
     // no generic arguments were provided for a path.
@@ -96,7 +64,7 @@ pub struct ResolveLifetimes {
     /// Set of lifetime def ids that are late-bound; a region can
     /// be late-bound if (a) it does NOT appear in a where-clause and
     /// (b) it DOES appear in the arguments.
-    pub late_bound: FxHashMap<LocalDefId, FxHashSet<ItemLocalId>>,
+    pub late_bound: FxHashMap<LocalDefId, FxHashSet<LocalDefId>>,
 
     pub late_bound_vars: FxHashMap<LocalDefId, FxHashMap<ItemLocalId, Vec<ty::BoundVariableKind>>>,
 }

@@ -34,7 +34,7 @@ pub(super) const MIN_LEN: usize = node::MIN_LEN_AFTER_SPLIT;
 // An empty map is represented either by the absence of a root node or by a
 // root node that is an empty leaf.
 
-/// A map based on a [B-Tree].
+/// An ordered map based on a [B-Tree].
 ///
 /// B-Trees represent a fundamental compromise between cache-efficiency and actually minimizing
 /// the amount of work performed in a search. In theory, a binary search tree (BST) is the optimal
@@ -68,6 +68,10 @@ pub(super) const MIN_LEN: usize = node::MIN_LEN_AFTER_SPLIT;
 /// incorrect results, aborts, memory leaks, or non-termination) but will not be undefined
 /// behavior.
 ///
+/// Iterators obtained from functions such as [`BTreeMap::iter`], [`BTreeMap::values`], or
+/// [`BTreeMap::keys`] produce their items in order by key, and take worst-case logarithmic and
+/// amortized constant time per item returned.
+///
 /// [B-Tree]: https://en.wikipedia.org/wiki/B-tree
 /// [`Cell`]: core::cell::Cell
 /// [`RefCell`]: core::cell::RefCell
@@ -100,8 +104,8 @@ pub(super) const MIN_LEN: usize = node::MIN_LEN_AFTER_SPLIT;
 /// let to_find = ["Up!", "Office Space"];
 /// for movie in &to_find {
 ///     match movie_reviews.get(movie) {
-///        Some(review) => println!("{}: {}", movie, review),
-///        None => println!("{} is unreviewed.", movie)
+///        Some(review) => println!("{movie}: {review}"),
+///        None => println!("{movie} is unreviewed.")
 ///     }
 /// }
 ///
@@ -110,7 +114,7 @@ pub(super) const MIN_LEN: usize = node::MIN_LEN_AFTER_SPLIT;
 ///
 /// // iterate over everything.
 /// for (movie, review) in &movie_reviews {
-///     println!("{}: \"{}\"", movie, review);
+///     println!("{movie}: \"{review}\"");
 /// }
 /// ```
 ///
@@ -208,7 +212,7 @@ impl<K: Clone, V: Clone> Clone for BTreeMap<K, V> {
                     let mut out_tree = clone_subtree(internal.first_edge().descend());
 
                     {
-                        let out_root = BTreeMap::ensure_is_owned(&mut out_tree.root);
+                        let out_root = out_tree.root.as_mut().unwrap();
                         let mut out_node = out_root.push_internal_level();
                         let mut in_edge = internal.first_edge();
                         while let Ok(kv) = in_edge.right_kv() {
@@ -274,11 +278,12 @@ where
 
     fn replace(&mut self, key: K) -> Option<K> {
         let (map, dormant_map) = DormantMutRef::new(self);
-        let root_node = Self::ensure_is_owned(&mut map.root).borrow_mut();
+        let root_node = map.root.get_or_insert_with(Root::new).borrow_mut();
         match root_node.search_tree::<K>(&key) {
             Found(mut kv) => Some(mem::replace(kv.key_mut(), key)),
             GoDown(handle) => {
-                VacantEntry { key, handle, dormant_map, _marker: PhantomData }.insert(());
+                VacantEntry { key, handle: Some(handle), dormant_map, _marker: PhantomData }
+                    .insert(());
                 None
             }
         }
@@ -959,7 +964,7 @@ impl<K, V> BTreeMap<K, V> {
 
     /// Retains only the elements specified by the predicate.
     ///
-    /// In other words, remove all pairs `(k, v)` such that `f(&k, &mut v)` returns `false`.
+    /// In other words, remove all pairs `(k, v)` for which `f(&k, &mut v)` returns `false`.
     /// The elements are visited in ascending key order.
     ///
     /// # Examples
@@ -982,7 +987,7 @@ impl<K, V> BTreeMap<K, V> {
         self.drain_filter(|k, v| !f(k, v));
     }
 
-    /// Moves all elements from `other` into `Self`, leaving `other` empty.
+    /// Moves all elements from `other` into `self`, leaving `other` empty.
     ///
     /// # Examples
     ///
@@ -1028,7 +1033,7 @@ impl<K, V> BTreeMap<K, V> {
 
         let self_iter = mem::take(self).into_iter();
         let other_iter = mem::take(other).into_iter();
-        let root = BTreeMap::ensure_is_owned(&mut self.root);
+        let root = self.root.get_or_insert_with(Root::new);
         root.append_from_sorted_iters(self_iter, other_iter, &mut self.length)
     }
 
@@ -1057,7 +1062,7 @@ impl<K, V> BTreeMap<K, V> {
     /// map.insert(5, "b");
     /// map.insert(8, "c");
     /// for (&key, &value) in map.range((Included(&4), Included(&8))) {
-    ///     println!("{}: {}", key, value);
+    ///     println!("{key}: {value}");
     /// }
     /// assert_eq!(Some((&5, &"b")), map.range(4..).next());
     /// ```
@@ -1094,15 +1099,13 @@ impl<K, V> BTreeMap<K, V> {
     /// ```
     /// use std::collections::BTreeMap;
     ///
-    /// let mut map: BTreeMap<&str, i32> = ["Alice", "Bob", "Carol", "Cheryl"]
-    ///     .iter()
-    ///     .map(|&s| (s, 0))
-    ///     .collect();
+    /// let mut map: BTreeMap<&str, i32> =
+    ///     [("Alice", 0), ("Bob", 0), ("Carol", 0), ("Cheryl", 0)].into();
     /// for (_, balance) in map.range_mut("B".."Cheryl") {
     ///     *balance += 100;
     /// }
     /// for (name, balance) in &map {
-    ///     println!("{} => {}", name, balance);
+    ///     println!("{name} => {balance}");
     /// }
     /// ```
     #[stable(feature = "btree_range", since = "1.17.0")]
@@ -1131,7 +1134,7 @@ impl<K, V> BTreeMap<K, V> {
     /// let mut count: BTreeMap<&str, usize> = BTreeMap::new();
     ///
     /// // count the number of occurrences of letters in the vec
-    /// for x in vec!["a", "b", "a", "c", "a", "b"] {
+    /// for x in ["a", "b", "a", "c", "a", "b"] {
     ///     *count.entry(x).or_insert(0) += 1;
     /// }
     ///
@@ -1142,14 +1145,20 @@ impl<K, V> BTreeMap<K, V> {
     where
         K: Ord,
     {
-        // FIXME(@porglezomp) Avoid allocating if we don't insert
         let (map, dormant_map) = DormantMutRef::new(self);
-        let root_node = Self::ensure_is_owned(&mut map.root).borrow_mut();
-        match root_node.search_tree(&key) {
-            Found(handle) => Occupied(OccupiedEntry { handle, dormant_map, _marker: PhantomData }),
-            GoDown(handle) => {
-                Vacant(VacantEntry { key, handle, dormant_map, _marker: PhantomData })
-            }
+        match map.root {
+            None => Vacant(VacantEntry { key, handle: None, dormant_map, _marker: PhantomData }),
+            Some(ref mut root) => match root.borrow_mut().search_tree(&key) {
+                Found(handle) => {
+                    Occupied(OccupiedEntry { handle, dormant_map, _marker: PhantomData })
+                }
+                GoDown(handle) => Vacant(VacantEntry {
+                    key,
+                    handle: Some(handle),
+                    dormant_map,
+                    _marker: PhantomData,
+                }),
+            },
         }
     }
 
@@ -1231,8 +1240,8 @@ impl<K, V> BTreeMap<K, V> {
     /// let mut map: BTreeMap<i32, i32> = (0..8).map(|x| (x, x)).collect();
     /// let evens: BTreeMap<_, _> = map.drain_filter(|k, _v| k % 2 == 0).collect();
     /// let odds = map;
-    /// assert_eq!(evens.keys().copied().collect::<Vec<_>>(), vec![0, 2, 4, 6]);
-    /// assert_eq!(odds.keys().copied().collect::<Vec<_>>(), vec![1, 3, 5, 7]);
+    /// assert_eq!(evens.keys().copied().collect::<Vec<_>>(), [0, 2, 4, 6]);
+    /// assert_eq!(odds.keys().copied().collect::<Vec<_>>(), [1, 3, 5, 7]);
     /// ```
     #[unstable(feature = "btree_drain_filter", issue = "70530")]
     pub fn drain_filter<F>(&mut self, pred: F) -> DrainFilter<'_, K, V, F>
@@ -1981,7 +1990,7 @@ impl<'a, K: Ord + Copy, V: Copy> Extend<(&'a K, &'a V)> for BTreeMap<K, V> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K: Hash, V: Hash> Hash for BTreeMap<K, V> {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.len().hash(state);
+        state.write_length_prefix(self.len());
         for elt in self {
             elt.hash(state);
         }
@@ -2050,6 +2059,8 @@ where
 
 #[stable(feature = "std_collections_from_array", since = "1.56.0")]
 impl<K: Ord, V, const N: usize> From<[(K, V); N]> for BTreeMap<K, V> {
+    /// Converts a `[(K, V); N]` into a `BTreeMap<(K, V)>`.
+    ///
     /// ```
     /// use std::collections::BTreeMap;
     ///
@@ -2084,7 +2095,7 @@ impl<K, V> BTreeMap<K, V> {
     /// map.insert(1, "a");
     ///
     /// for (key, value) in map.iter() {
-    ///     println!("{}: {}", key, value);
+    ///     println!("{key}: {value}");
     /// }
     ///
     /// let (first_key, first_value) = map.iter().next().unwrap();
@@ -2242,12 +2253,6 @@ impl<K, V> BTreeMap<K, V> {
     #[rustc_const_unstable(feature = "const_btree_new", issue = "71835")]
     pub const fn is_empty(&self) -> bool {
         self.len() == 0
-    }
-
-    /// If the root node is the empty (non-allocated) root node, allocate our
-    /// own node. Is an associated function to avoid borrowing the entire BTreeMap.
-    fn ensure_is_owned(root: &mut Option<Root<K, V>>) -> &mut Root<K, V> {
-        root.get_or_insert_with(Root::new)
     }
 }
 

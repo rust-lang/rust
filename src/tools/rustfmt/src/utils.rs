@@ -507,12 +507,12 @@ pub(crate) fn is_block_expr(context: &RewriteContext<'_>, expr: &ast::Expr, repr
         | ast::ExprKind::Err
         | ast::ExprKind::Field(..)
         | ast::ExprKind::InlineAsm(..)
-        | ast::ExprKind::LlvmInlineAsm(..)
         | ast::ExprKind::Let(..)
         | ast::ExprKind::Path(..)
         | ast::ExprKind::Range(..)
         | ast::ExprKind::Repeat(..)
         | ast::ExprKind::Ret(..)
+        | ast::ExprKind::Yeet(..)
         | ast::ExprKind::Tup(..)
         | ast::ExprKind::Type(..)
         | ast::ExprKind::Yield(None)
@@ -647,9 +647,22 @@ pub(crate) fn trim_left_preserve_layout(
 }
 
 /// Based on the given line, determine if the next line can be indented or not.
-/// This allows to preserve the indentation of multi-line literals.
-pub(crate) fn indent_next_line(kind: FullCodeCharKind, _line: &str, config: &Config) -> bool {
-    !(kind.is_string() || (config.version() == Version::Two && kind.is_commented_string()))
+/// This allows to preserve the indentation of multi-line literals when
+/// re-inserted a code block that has been formatted separately from the rest
+/// of the code, such as code in macro defs or code blocks doc comments.
+pub(crate) fn indent_next_line(kind: FullCodeCharKind, line: &str, config: &Config) -> bool {
+    if kind.is_string() {
+        // If the string ends with '\', the string has been wrapped over
+        // multiple lines. If `format_strings = true`, then the indentation of
+        // strings wrapped over multiple lines will have been adjusted while
+        // formatting the code block, therefore the string's indentation needs
+        // to be adjusted for the code surrounding the code block.
+        config.format_strings() && line.ends_with('\\')
+    } else if config.version() == Version::Two {
+        !kind.is_commented_string()
+    } else {
+        true
+    }
 }
 
 pub(crate) fn is_empty_line(s: &str) -> bool {

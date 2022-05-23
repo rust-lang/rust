@@ -187,6 +187,9 @@ pub use self::range::OneSidedRange;
 #[unstable(feature = "try_trait_v2", issue = "84277")]
 pub use self::try_trait::{FromResidual, Try};
 
+#[unstable(feature = "try_trait_v2_yeet", issue = "96374")]
+pub use self::try_trait::Yeet;
+
 #[unstable(feature = "try_trait_v2_residual", issue = "91285")]
 pub use self::try_trait::Residual;
 

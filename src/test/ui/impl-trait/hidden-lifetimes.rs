@@ -26,8 +26,8 @@ impl<T> Swap for Rc<RefCell<T>> {
 // Here we are hiding `'b` making the caller believe that `&'a mut &'s T` and
 // `&'a mut &'l T` are the same type.
 fn hide_ref<'a, 'b, T: 'static>(x: &'a mut &'b T) -> impl Swap + 'a {
-    //~^ ERROR hidden type
     x
+    //~^ ERROR hidden type
 }
 
 fn dangle_ref() -> &'static [i32; 3] {
@@ -43,8 +43,8 @@ fn dangle_ref() -> &'static [i32; 3] {
 // This is different to the previous example because the concrete return type
 // only has a single lifetime.
 fn hide_rc_refcell<'a, 'b: 'a, T: 'static>(x: Rc<RefCell<&'b T>>) -> impl Swap + 'a {
-    //~^ ERROR hidden type
     x
+    //~^ ERROR hidden type
 }
 
 fn dangle_rc_refcell() -> &'static [i32; 3] {

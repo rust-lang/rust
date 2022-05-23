@@ -24,7 +24,7 @@ body:
     attributes:
       label: Reproducer
       description: >
-        Please provide the code and steps to repoduce the bug together with the
+        Please provide the code and steps to reproduce the bug together with the
         output from Clippy.
       value: |
         I tried this code:

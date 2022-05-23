@@ -53,5 +53,10 @@ fn test_command_fork_no_unwind() {
     let status = got.expect("panic unexpectedly propagated");
     dbg!(status);
     let signal = status.signal().expect("expected child process to die of signal");
-    assert!(signal == libc::SIGABRT || signal == libc::SIGILL || signal == libc::SIGTRAP);
+    assert!(
+        signal == libc::SIGABRT
+            || signal == libc::SIGILL
+            || signal == libc::SIGTRAP
+            || signal == libc::SIGSEGV
+    );
 }

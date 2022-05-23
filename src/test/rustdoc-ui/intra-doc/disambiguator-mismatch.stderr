@@ -138,5 +138,16 @@ LL - /// Link to [const@f]
 LL + /// Link to [f()]
    | 
 
-error: aborting due to 12 previous errors
+error: unresolved link to `std`
+  --> $DIR/disambiguator-mismatch.rs:77:14
+   |
+LL | /// Link to [fn@std]
+   |              ^^^^^^ this link resolves to the crate `std`, which is not in the value namespace
+   |
+help: to link to the crate, prefix with `mod@`
+   |
+LL | /// Link to [mod@std]
+   |              ~~~~
+
+error: aborting due to 13 previous errors
 

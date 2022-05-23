@@ -60,7 +60,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.59.0"]
     pub RETURN_SELF_NOT_MUST_USE,
-    suspicious,
+    pedantic,
     "missing `#[must_use]` annotation on a method returning `Self`"
 }
 
@@ -111,7 +111,7 @@ impl<'tcx> LateLintPass<'tcx> for ReturnSelfNotMustUse {
     ) {
         if_chain! {
             // We are only interested in methods, not in functions or associated functions.
-            if matches!(kind, FnKind::Method(_, _, _));
+            if matches!(kind, FnKind::Method(_, _));
             if let Some(fn_def) = cx.tcx.hir().opt_local_def_id(hir_id);
             if let Some(impl_def) = cx.tcx.impl_of_method(fn_def.to_def_id());
             // We don't want this method to be te implementation of a trait because the

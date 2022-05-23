@@ -29,7 +29,7 @@
 //!
 //! Suppose we have the following always applicable impl:
 //!
-//! ```rust
+//! ```ignore (illustrative)
 //! impl<T> SpecExtend<T> for std::vec::IntoIter<T> { /* specialized impl */ }
 //! impl<T, I: Iterator<Item=T>> SpecExtend<T> for I { /* default impl */ }
 //! ```
@@ -66,6 +66,7 @@
 //! on traits with methods can.
 
 use crate::constrained_generic_params as cgp;
+use crate::errors::SubstsOnOverriddenImpl;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -164,12 +165,9 @@ fn get_impl_substs<'tcx>(
     // Conservatively use an empty `ParamEnv`.
     let outlives_env = OutlivesEnvironment::new(ty::ParamEnv::empty());
     infcx.resolve_regions_and_report_errors(impl1_def_id, &outlives_env, RegionckMode::default());
-    let impl2_substs = match infcx.fully_resolve(impl2_substs) {
-        Ok(s) => s,
-        Err(_) => {
-            tcx.sess.struct_span_err(span, "could not resolve substs on overridden impl").emit();
-            return None;
-        }
+    let Ok(impl2_substs) = infcx.fully_resolve(impl2_substs) else {
+        tcx.sess.emit_err(SubstsOnOverriddenImpl { span });
+        return None;
     };
     Some((impl1_substs, impl2_substs))
 }
@@ -199,22 +197,22 @@ fn unconstrained_parent_impl_substs<'tcx>(
     for (predicate, _) in impl_generic_predicates.predicates.iter() {
         if let ty::PredicateKind::Projection(proj) = predicate.kind().skip_binder() {
             let projection_ty = proj.projection_ty;
-            let projected_ty = proj.ty;
+            let projected_ty = proj.term;
 
             let unbound_trait_ref = projection_ty.trait_ref(tcx);
             if Some(unbound_trait_ref) == impl_trait_ref {
                 continue;
             }
 
-            unconstrained_parameters.extend(cgp::parameters_for(tcx, &projection_ty, true));
+            unconstrained_parameters.extend(cgp::parameters_for(&projection_ty, true));
 
-            for param in cgp::parameters_for(tcx, &projected_ty, false) {
+            for param in cgp::parameters_for(&projected_ty, false) {
                 if !unconstrained_parameters.contains(&param) {
                     constrained_params.insert(param.0);
                 }
             }
 
-            unconstrained_parameters.extend(cgp::parameters_for(tcx, &projected_ty, true));
+            unconstrained_parameters.extend(cgp::parameters_for(&projected_ty, true));
         }
     }
 
@@ -248,7 +246,7 @@ fn check_duplicate_params<'tcx>(
     parent_substs: &Vec<GenericArg<'tcx>>,
     span: Span,
 ) {
-    let mut base_params = cgp::parameters_for(tcx, parent_substs, true);
+    let mut base_params = cgp::parameters_for(parent_substs, true);
     base_params.sort_by_key(|param| param.0);
     if let (_, [duplicate, ..]) = base_params.partition_dedup() {
         let param = impl1_substs[duplicate.0 as usize];
@@ -269,7 +267,7 @@ fn check_static_lifetimes<'tcx>(
     parent_substs: &Vec<GenericArg<'tcx>>,
     span: Span,
 ) {
-    if tcx.any_free_region_meets(parent_substs, |r| *r == ty::ReStatic) {
+    if tcx.any_free_region_meets(parent_substs, |r| r.is_static()) {
         tcx.sess.struct_span_err(span, "cannot specialize on `'static` lifetime").emit();
     }
 }
@@ -376,7 +374,7 @@ fn check_specialization_on<'tcx>(tcx: TyCtxt<'tcx>, predicate: ty::Predicate<'tc
     match predicate.kind().skip_binder() {
         // Global predicates are either always true or always false, so we
         // are fine to specialize on.
-        _ if predicate.is_global(tcx) => (),
+        _ if predicate.is_global() => (),
         // We allow specializing on explicitly marked traits with no associated
         // items.
         ty::PredicateKind::Trait(ty::TraitPredicate {
@@ -396,13 +394,14 @@ fn check_specialization_on<'tcx>(tcx: TyCtxt<'tcx>, predicate: ty::Predicate<'tc
                             tcx.def_path_str(trait_ref.def_id),
                         ),
                     )
-                    .emit()
+                    .emit();
             }
         }
-        _ => tcx
-            .sess
-            .struct_span_err(span, &format!("cannot specialize on `{:?}`", predicate))
-            .emit(),
+        _ => {
+            tcx.sess
+                .struct_span_err(span, &format!("cannot specialize on `{:?}`", predicate))
+                .emit();
+        }
     }
 }
 

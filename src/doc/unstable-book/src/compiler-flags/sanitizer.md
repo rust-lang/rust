@@ -16,11 +16,16 @@ This feature allows for use of one of following sanitizers:
   AddressSanitizer, but based on partial hardware assistance.
 * [LeakSanitizer][clang-lsan] a run-time memory leak detector.
 * [MemorySanitizer][clang-msan] a detector of uninitialized reads.
+* [MemTagSanitizer][clang-memtag] fast memory error detector based on
+  Armv8.5-A Memory Tagging Extension.
 * [ThreadSanitizer][clang-tsan] a fast data race detector.
 
 To enable a sanitizer compile with `-Zsanitizer=address`,`-Zsanitizer=cfi`,
-`-Zsanitizer=hwaddress`, `-Zsanitizer=leak`, `-Zsanitizer=memory` or
-`-Zsanitizer=thread`.
+`-Zsanitizer=hwaddress`, `-Zsanitizer=leak`, `-Zsanitizer=memory`,
+`-Zsanitizer=memtag`, or `-Zsanitizer=thread`. You might also need the `--target` and `build-std` flags. Example:
+```shell
+$ RUSTFLAGS=-Zsanitizer=address cargo build -Zbuild-std --target x86_64-unknown-linux-gnu
+```
 
 # AddressSanitizer
 
@@ -210,7 +215,7 @@ fn add_one(x: i32) -> i32 {
 
 #[naked]
 pub extern "C" fn add_two(x: i32) {
-    // x + 2 preceeded by a landing pad/nop block
+    // x + 2 preceded by a landing pad/nop block
     unsafe {
         asm!(
             "
@@ -238,7 +243,7 @@ fn do_twice(f: fn(i32) -> i32, arg: i32) -> i32 {
 fn main() {
     let answer = do_twice(add_one, 5);
 
-    println!("The answer is: {}", answer);
+    println!("The answer is: {answer}");
 
     println!("With CFI enabled, you should not see the next answer");
     let f: fn(i32) -> i32 = unsafe {
@@ -248,7 +253,7 @@ fn main() {
     };
     let next_answer = do_twice(f, 5);
 
-    println!("The next answer is: {}", next_answer);
+    println!("The next answer is: {next_answer}");
 }
 ```
 Fig. 1. Modified example from the [Advanced Functions and
@@ -301,14 +306,14 @@ fn do_twice(f: fn(i32) -> i32, arg: i32) -> i32 {
 fn main() {
     let answer = do_twice(add_one, 5);
 
-    println!("The answer is: {}", answer);
+    println!("The answer is: {answer}");
 
     println!("With CFI enabled, you should not see the next answer");
     let f: fn(i32) -> i32 =
         unsafe { mem::transmute::<*const u8, fn(i32) -> i32>(add_two as *const u8) };
     let next_answer = do_twice(f, 5);
 
-    println!("The next answer is: {}", next_answer);
+    println!("The next answer is: {next_answer}");
 }
 ```
 Fig. 4. Another modified example from the [Advanced Functions and
@@ -493,6 +498,20 @@ $ cargo run -Zbuild-std --target x86_64-unknown-linux-gnu
   Uninitialized value was created by an allocation of 'a' in the stack frame of function '_ZN6memory4main17hd2333c1899d997f5E'
     #0 0x560c04b2bc50 in memory::main::hd2333c1899d997f5 $CWD/src/main.rs:3
 ```
+
+# MemTagSanitizer
+
+MemTagSanitizer detects a similar class of errors as AddressSanitizer and HardwareAddressSanitizer, but with lower overhead suitable for use as hardening for production binaries.
+
+MemTagSanitizer is supported on the following targets:
+
+* `aarch64-linux-android`
+* `aarch64-unknown-linux-gnu`
+
+MemTagSanitizer requires hardware support and the `mte` target feature.
+To enable this target feature compile with `-C target-feature="+mte"`.
+
+More information can be found in the associated [LLVM documentation](https://llvm.org/docs/MemTagSanitizer.html).
 
 # ThreadSanitizer
 

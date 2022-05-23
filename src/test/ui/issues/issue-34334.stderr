@@ -6,6 +6,11 @@ LL |     let sr: Vec<(u32, _, _) = vec![];
    |         |                 |
    |         |                 maybe try to close unmatched angle bracket
    |         while parsing the type for `sr`
+   |
+help: you might have meant to end the type parameters here
+   |
+LL |     let sr: Vec<(u32, _, _)> = vec![];
+   |                            +
 
 error[E0277]: a value of type `Vec<(u32, _, _)>` cannot be built from an iterator over elements of type `()`
   --> $DIR/issue-34334.rs:5:87
@@ -14,6 +19,7 @@ LL |     let sr2: Vec<(u32, _, _)> = sr.iter().map(|(faction, th_sender, th_rece
    |                                                                                       ^^^^^^^ value of type `Vec<(u32, _, _)>` cannot be built from `std::iter::Iterator<Item=()>`
    |
    = help: the trait `FromIterator<()>` is not implemented for `Vec<(u32, _, _)>`
+   = help: the trait `FromIterator<T>` is implemented for `Vec<T>`
 note: required by a bound in `collect`
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
    |

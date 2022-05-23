@@ -6,7 +6,7 @@
 
 pub fn f() {
     let a = A;
-    let b = (0i32, 1i32, 2i32, 3i32);
+    let b = (0i32, 1i32, 2i32, 3 as *const i32);
     let c = || {};
 
     a(String::new(), String::new());
@@ -21,7 +21,7 @@ struct A(String, String);
 // CHECK-NOT:  inlinehint
 // CHECK-SAME: {{$}}
 
-// CHECK:      ; <(i32, i32, i32, i32) as core::clone::Clone>::clone
+// CHECK:      ; <(i32, i32, i32, *const i{{16|32|64}}) as core::clone::Clone>::clone
 // CHECK-NEXT: ; Function Attrs: inlinehint
 
 // CHECK:      ; inline_hint::f::{closure#0}

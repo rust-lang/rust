@@ -16,8 +16,6 @@ use std::path::{Path, PathBuf};
 use std::process::{exit, Command, Stdio};
 use std::str;
 
-use build_helper::{output, t, up_to_date};
-use filetime::FileTime;
 use serde::Deserialize;
 
 use crate::builder::Cargo;
@@ -27,9 +25,9 @@ use crate::config::{LlvmLibunwind, TargetSelection};
 use crate::dist;
 use crate::native;
 use crate::tool::SourceType;
-use crate::util::{exe, is_debug_info, is_dylib, symlink_dir};
+use crate::util::{exe, is_debug_info, is_dylib, output, symlink_dir, t, up_to_date};
 use crate::LLVM_TOOLS;
-use crate::{Compiler, DependencyType, GitRepo, Mode};
+use crate::{CLang, Compiler, DependencyType, GitRepo, Mode};
 
 #[derive(Debug, PartialOrd, Ord, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Std {
@@ -45,7 +43,7 @@ impl Step for Std {
         // When downloading stage1, the standard library has already been copied to the sysroot, so
         // there's no need to rebuild it.
         let download_rustc = run.builder.config.download_rustc;
-        run.all_krates("test").default_condition(!download_rustc)
+        run.all_krates("test").path("library").default_condition(!download_rustc)
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -177,6 +175,7 @@ fn copy_third_party_objects(
     }
 
     if target == "x86_64-fortanix-unknown-sgx"
+        || target.contains("pc-windows-gnullvm")
         || builder.config.llvm_libunwind == LlvmLibunwind::InTree
             && (target.contains("linux") || target.contains("fuchsia"))
     {
@@ -227,8 +226,10 @@ fn copy_self_contained_objects(
             target_deps.push((target, DependencyType::TargetSelfContained));
         }
 
-        let libunwind_path = copy_llvm_libunwind(builder, target, &libdir_self_contained);
-        target_deps.push((libunwind_path, DependencyType::TargetSelfContained));
+        if !target.starts_with("s390x") {
+            let libunwind_path = copy_llvm_libunwind(builder, target, &libdir_self_contained);
+            target_deps.push((libunwind_path, DependencyType::TargetSelfContained));
+        }
     } else if target.ends_with("-wasi") {
         let srcdir = builder
             .wasi_root(target)
@@ -246,9 +247,9 @@ fn copy_self_contained_objects(
                 DependencyType::TargetSelfContained,
             );
         }
-    } else if target.contains("windows-gnu") {
+    } else if target.ends_with("windows-gnu") {
         for obj in ["crt2.o", "dllcrt2.o"].iter() {
-            let src = compiler_file(builder, builder.cc(target), target, obj);
+            let src = compiler_file(builder, builder.cc(target), target, CLang::C, obj);
             let target = libdir_self_contained.join(obj);
             builder.copy(&src, &target);
             target_deps.push((target, DependencyType::TargetSelfContained));
@@ -477,7 +478,7 @@ impl Step for StartupObjects {
     fn run(self, builder: &Builder<'_>) -> Vec<(PathBuf, DependencyType)> {
         let for_compiler = self.compiler;
         let target = self.target;
-        if !target.contains("windows-gnu") {
+        if !target.ends_with("windows-gnu") {
             return vec![];
         }
 
@@ -647,7 +648,7 @@ impl Step for Rustc {
 pub fn rustc_cargo(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelection) {
     cargo
         .arg("--features")
-        .arg(builder.rustc_features())
+        .arg(builder.rustc_features(builder.kind))
         .arg("--manifest-path")
         .arg(builder.src.join("compiler/rustc/Cargo.toml"));
     rustc_cargo_env(builder, cargo, target);
@@ -660,6 +661,10 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
         .env("CFG_RELEASE", builder.rust_release())
         .env("CFG_RELEASE_CHANNEL", &builder.config.channel)
         .env("CFG_VERSION", builder.rust_version());
+
+    if let Some(backend) = builder.config.rust_codegen_backends.get(0) {
+        cargo.env("CFG_DEFAULT_CODEGEN_BACKEND", backend);
+    }
 
     let libdir_relative = builder.config.libdir_relative().unwrap_or_else(|| Path::new("lib"));
     let target_config = builder.config.target_config.get(&target);
@@ -685,6 +690,8 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
     }
 
     if builder.config.rustc_parallel {
+        // keep in sync with `bootstrap/lib.rs:Build::rustc_features`
+        // `cfg` option for rustc, `features` option for cargo, for conditional compilation
         cargo.rustflag("--cfg=parallel_compiler");
         cargo.rustdocflag("--cfg=parallel_compiler");
     }
@@ -697,7 +704,7 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
     //
     // Note that this is disabled if LLVM itself is disabled or we're in a check
     // build. If we are in a check build we still go ahead here presuming we've
-    // detected that LLVM is alreay built and good to go which helps prevent
+    // detected that LLVM is already built and good to go which helps prevent
     // busting caches (e.g. like #71152).
     if builder.config.llvm_enabled()
         && (builder.kind != Kind::Check
@@ -722,10 +729,16 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
             && !target.contains("msvc")
             && !target.contains("apple")
         {
-            let file = compiler_file(builder, builder.cxx(target).unwrap(), target, "libstdc++.a");
+            let file = compiler_file(
+                builder,
+                builder.cxx(target).unwrap(),
+                target,
+                CLang::Cxx,
+                "libstdc++.a",
+            );
             cargo.env("LLVM_STATIC_STDCPP", file);
         }
-        if builder.config.llvm_link_shared {
+        if builder.llvm_link_shared() {
             cargo.env("LLVM_LINK_SHARED", "1");
         }
         if builder.config.llvm_use_libcxx {
@@ -783,7 +796,7 @@ impl Step for CodegenBackend {
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("compiler/rustc_codegen_cranelift")
+        run.paths(&["compiler/rustc_codegen_cranelift", "compiler/rustc_codegen_gcc"])
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -943,10 +956,11 @@ pub fn compiler_file(
     builder: &Builder<'_>,
     compiler: &Path,
     target: TargetSelection,
+    c: CLang,
     file: &str,
 ) -> PathBuf {
     let mut cmd = Command::new(compiler);
-    cmd.args(builder.cflags(target, GitRepo::Rustc));
+    cmd.args(builder.cflags(target, GitRepo::Rustc, c));
     cmd.arg(format!("-print-file-name={}", file));
     let out = output(&mut cmd);
     PathBuf::from(out.trim())
@@ -1034,7 +1048,7 @@ impl Step for Assemble {
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("compiler/rustc")
+        run.path("compiler/rustc").path("compiler")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1174,7 +1188,7 @@ impl Step for Assemble {
                 for tool in LLVM_TOOLS {
                     let tool_exe = exe(tool, target_compiler.host);
                     let src_path = llvm_bin_dir.join(&tool_exe);
-                    // When using `donwload-ci-llvm`, some of the tools
+                    // When using `download-ci-llvm`, some of the tools
                     // may not exist, so skip trying to copy them.
                     if src_path.exists() {
                         builder.copy(&src_path, &libdir_bin.join(&tool_exe));
@@ -1332,8 +1346,9 @@ pub fn run_cargo(
                     .map(|s| s.starts_with('-') && s.ends_with(&extension[..]))
                     .unwrap_or(false)
         });
-        let max = candidates
-            .max_by_key(|&&(_, _, ref metadata)| FileTime::from_last_modification_time(metadata));
+        let max = candidates.max_by_key(|&&(_, _, ref metadata)| {
+            metadata.modified().expect("mtime should be available on all relevant OSes")
+        });
         let path_to_add = match max {
             Some(triple) => triple.0.to_str().unwrap(),
             None => panic!("no output generated for {:?} {:?}", prefix, extension),

@@ -19,116 +19,102 @@ bitflags! {
         // Does this have parameters? Used to determine whether substitution is
         // required.
         /// Does this have `Param`?
-        const HAS_KNOWN_TY_PARAM                = 1 << 0;
+        const HAS_TY_PARAM                = 1 << 0;
         /// Does this have `ReEarlyBound`?
-        const HAS_KNOWN_RE_PARAM                = 1 << 1;
+        const HAS_RE_PARAM                = 1 << 1;
         /// Does this have `ConstKind::Param`?
-        const HAS_KNOWN_CT_PARAM                = 1 << 2;
+        const HAS_CT_PARAM                = 1 << 2;
 
-        const KNOWN_NEEDS_SUBST                 = TypeFlags::HAS_KNOWN_TY_PARAM.bits
-                                                | TypeFlags::HAS_KNOWN_RE_PARAM.bits
-                                                | TypeFlags::HAS_KNOWN_CT_PARAM.bits;
+        const NEEDS_SUBST                 = TypeFlags::HAS_TY_PARAM.bits
+                                          | TypeFlags::HAS_RE_PARAM.bits
+                                          | TypeFlags::HAS_CT_PARAM.bits;
 
         /// Does this have `Infer`?
-        const HAS_TY_INFER                      = 1 << 3;
+        const HAS_TY_INFER                = 1 << 3;
         /// Does this have `ReVar`?
-        const HAS_RE_INFER                      = 1 << 4;
+        const HAS_RE_INFER                = 1 << 4;
         /// Does this have `ConstKind::Infer`?
-        const HAS_CT_INFER                      = 1 << 5;
+        const HAS_CT_INFER                = 1 << 5;
 
         /// Does this have inference variables? Used to determine whether
         /// inference is required.
-        const NEEDS_INFER                       = TypeFlags::HAS_TY_INFER.bits
-                                                | TypeFlags::HAS_RE_INFER.bits
-                                                | TypeFlags::HAS_CT_INFER.bits;
+        const NEEDS_INFER                 = TypeFlags::HAS_TY_INFER.bits
+                                          | TypeFlags::HAS_RE_INFER.bits
+                                          | TypeFlags::HAS_CT_INFER.bits;
 
         /// Does this have `Placeholder`?
-        const HAS_TY_PLACEHOLDER                = 1 << 6;
+        const HAS_TY_PLACEHOLDER          = 1 << 6;
         /// Does this have `RePlaceholder`?
-        const HAS_RE_PLACEHOLDER                = 1 << 7;
+        const HAS_RE_PLACEHOLDER          = 1 << 7;
         /// Does this have `ConstKind::Placeholder`?
-        const HAS_CT_PLACEHOLDER                = 1 << 8;
+        const HAS_CT_PLACEHOLDER          = 1 << 8;
 
         /// `true` if there are "names" of regions and so forth
         /// that are local to a particular fn/inferctxt
-        const HAS_KNOWN_FREE_LOCAL_REGIONS      = 1 << 9;
+        const HAS_FREE_LOCAL_REGIONS      = 1 << 9;
 
         /// `true` if there are "names" of types and regions and so forth
         /// that are local to a particular fn
-        const HAS_KNOWN_FREE_LOCAL_NAMES        = TypeFlags::HAS_KNOWN_TY_PARAM.bits
-                                                | TypeFlags::HAS_KNOWN_CT_PARAM.bits
-                                                | TypeFlags::HAS_TY_INFER.bits
-                                                | TypeFlags::HAS_CT_INFER.bits
-                                                | TypeFlags::HAS_TY_PLACEHOLDER.bits
-                                                | TypeFlags::HAS_CT_PLACEHOLDER.bits
-                                                // We consider 'freshened' types and constants
-                                                // to depend on a particular fn.
-                                                // The freshening process throws away information,
-                                                // which can make things unsuitable for use in a global
-                                                // cache. Note that there is no 'fresh lifetime' flag -
-                                                // freshening replaces all lifetimes with `ReErased`,
-                                                // which is different from how types/const are freshened.
-                                                | TypeFlags::HAS_TY_FRESH.bits
-                                                | TypeFlags::HAS_CT_FRESH.bits
-                                                | TypeFlags::HAS_KNOWN_FREE_LOCAL_REGIONS.bits;
-
-        const HAS_POTENTIAL_FREE_LOCAL_NAMES    = TypeFlags::HAS_KNOWN_FREE_LOCAL_NAMES.bits
-                                                | TypeFlags::HAS_UNKNOWN_DEFAULT_CONST_SUBSTS.bits;
+        const HAS_FREE_LOCAL_NAMES        = TypeFlags::HAS_TY_PARAM.bits
+                                          | TypeFlags::HAS_CT_PARAM.bits
+                                          | TypeFlags::HAS_TY_INFER.bits
+                                          | TypeFlags::HAS_CT_INFER.bits
+                                          | TypeFlags::HAS_TY_PLACEHOLDER.bits
+                                          | TypeFlags::HAS_CT_PLACEHOLDER.bits
+                                          // The `evaluate_obligation` query does not return further
+                                          // obligations. If it evaluates an obligation with an opaque
+                                          // type, that opaque type may get compared to another type,
+                                          // constraining it. We would lose this information.
+                                          // FIXME: differentiate between crate-local opaque types
+                                          // and opaque types from other crates, as only opaque types
+                                          // from the local crate can possibly be a local name
+                                          | TypeFlags::HAS_TY_OPAQUE.bits
+                                          // We consider 'freshened' types and constants
+                                          // to depend on a particular fn.
+                                          // The freshening process throws away information,
+                                          // which can make things unsuitable for use in a global
+                                          // cache. Note that there is no 'fresh lifetime' flag -
+                                          // freshening replaces all lifetimes with `ReErased`,
+                                          // which is different from how types/const are freshened.
+                                          | TypeFlags::HAS_TY_FRESH.bits
+                                          | TypeFlags::HAS_CT_FRESH.bits
+                                          | TypeFlags::HAS_FREE_LOCAL_REGIONS.bits;
 
         /// Does this have `Projection`?
-        const HAS_TY_PROJECTION                 = 1 << 10;
+        const HAS_TY_PROJECTION           = 1 << 10;
         /// Does this have `Opaque`?
-        const HAS_TY_OPAQUE                     = 1 << 11;
+        const HAS_TY_OPAQUE               = 1 << 11;
         /// Does this have `ConstKind::Unevaluated`?
-        const HAS_CT_PROJECTION                 = 1 << 12;
+        const HAS_CT_PROJECTION           = 1 << 12;
 
         /// Could this type be normalized further?
-        const HAS_PROJECTION                    = TypeFlags::HAS_TY_PROJECTION.bits
-                                                | TypeFlags::HAS_TY_OPAQUE.bits
-                                                | TypeFlags::HAS_CT_PROJECTION.bits;
+        const HAS_PROJECTION              = TypeFlags::HAS_TY_PROJECTION.bits
+                                          | TypeFlags::HAS_TY_OPAQUE.bits
+                                          | TypeFlags::HAS_CT_PROJECTION.bits;
 
         /// Is an error type/const reachable?
-        const HAS_ERROR                         = 1 << 13;
+        const HAS_ERROR                   = 1 << 13;
 
         /// Does this have any region that "appears free" in the type?
         /// Basically anything but `ReLateBound` and `ReErased`.
-        const HAS_KNOWN_FREE_REGIONS            = 1 << 14;
-
-        const HAS_POTENTIAL_FREE_REGIONS        = TypeFlags::HAS_KNOWN_FREE_REGIONS.bits
-                                                | TypeFlags::HAS_UNKNOWN_DEFAULT_CONST_SUBSTS.bits;
+        const HAS_FREE_REGIONS            = 1 << 14;
 
         /// Does this have any `ReLateBound` regions? Used to check
         /// if a global bound is safe to evaluate.
-        const HAS_RE_LATE_BOUND                 = 1 << 15;
+        const HAS_RE_LATE_BOUND           = 1 << 15;
 
         /// Does this have any `ReErased` regions?
-        const HAS_RE_ERASED                     = 1 << 16;
+        const HAS_RE_ERASED               = 1 << 16;
 
         /// Does this value have parameters/placeholders/inference variables which could be
         /// replaced later, in a way that would change the results of `impl` specialization?
-        ///
-        /// Note that this flag being set is not a guarantee, as it is also
-        /// set if there are any anon consts with unknown default substs.
-        const STILL_FURTHER_SPECIALIZABLE       = 1 << 17;
+        const STILL_FURTHER_SPECIALIZABLE = 1 << 17;
 
         /// Does this value have `InferTy::FreshTy/FreshIntTy/FreshFloatTy`?
-        const HAS_TY_FRESH                      = 1 << 18;
+        const HAS_TY_FRESH                = 1 << 18;
 
         /// Does this value have `InferConst::Fresh`?
-        const HAS_CT_FRESH                      = 1 << 19;
-
-        /// Does this value have unknown default anon const substs.
-        ///
-        /// For more details refer to...
-        /// FIXME(@lcnr): ask me for now, still have to write all of this.
-        const HAS_UNKNOWN_DEFAULT_CONST_SUBSTS  = 1 << 20;
-        /// Flags which can be influenced by default anon const substs.
-        const MAY_NEED_DEFAULT_CONST_SUBSTS     = TypeFlags::HAS_KNOWN_RE_PARAM.bits
-                                                | TypeFlags::HAS_KNOWN_TY_PARAM.bits
-                                                | TypeFlags::HAS_KNOWN_CT_PARAM.bits
-                                                | TypeFlags::HAS_KNOWN_FREE_LOCAL_REGIONS.bits
-                                                | TypeFlags::HAS_KNOWN_FREE_REGIONS.bits;
-
+        const HAS_CT_FRESH                = 1 << 19;
     }
 }
 
@@ -136,16 +122,16 @@ rustc_index::newtype_index! {
     /// A [De Bruijn index][dbi] is a standard means of representing
     /// regions (and perhaps later types) in a higher-ranked setting. In
     /// particular, imagine a type like this:
-    ///
-    ///     for<'a> fn(for<'b> fn(&'b isize, &'a isize), &'a char)
-    ///     ^          ^            |          |           |
-    ///     |          |            |          |           |
-    ///     |          +------------+ 0        |           |
-    ///     |                                  |           |
-    ///     +----------------------------------+ 1         |
-    ///     |                                              |
-    ///     +----------------------------------------------+ 0
-    ///
+    /// ```ignore (illustrative)
+    ///    for<'a> fn(for<'b> fn(&'b isize, &'a isize), &'a char)
+    /// // ^          ^            |          |           |
+    /// // |          |            |          |           |
+    /// // |          +------------+ 0        |           |
+    /// // |                                  |           |
+    /// // +----------------------------------+ 1         |
+    /// // |                                              |
+    /// // +----------------------------------------------+ 0
+    /// ```
     /// In this type, there are two binders (the outer fn and the inner
     /// fn). We need to be able to determine, for any given region, which
     /// fn type it is bound by, the inner or the outer one. There are
@@ -217,7 +203,7 @@ impl DebruijnIndex {
     /// it will now be bound at INNERMOST. This is an appropriate thing to do
     /// when moving a region out from inside binders:
     ///
-    /// ```
+    /// ```ignore (illustrative)
     ///             for<'a>   fn(for<'b>   for<'c>   fn(&'a u32), _)
     /// // Binder:  D3           D2        D1            ^^
     /// ```
@@ -422,9 +408,11 @@ pub enum InferTy {
 /// they carry no values.
 impl UnifyKey for TyVid {
     type Value = ();
+    #[inline]
     fn index(&self) -> u32 {
         self.as_u32()
     }
+    #[inline]
     fn from_index(i: u32) -> TyVid {
         TyVid::from_u32(i)
     }
@@ -441,6 +429,7 @@ impl UnifyKey for IntVid {
     fn index(&self) -> u32 {
         self.index
     }
+    #[inline]
     fn from_index(i: u32) -> IntVid {
         IntVid { index: i }
     }
@@ -453,9 +442,11 @@ impl EqUnifyValue for FloatVarValue {}
 
 impl UnifyKey for FloatVid {
     type Value = Option<FloatVarValue>;
+    #[inline]
     fn index(&self) -> u32 {
         self.index
     }
+    #[inline]
     fn from_index(i: u32) -> FloatVid {
         FloatVid { index: i }
     }
@@ -480,9 +471,9 @@ impl Variance {
     /// variance with which the argument appears.
     ///
     /// Example 1:
-    ///
-    ///     *mut Vec<i32>
-    ///
+    /// ```ignore (illustrative)
+    /// *mut Vec<i32>
+    /// ```
     /// Here, the "ambient" variance starts as covariant. `*mut T` is
     /// invariant with respect to `T`, so the variance in which the
     /// `Vec<i32>` appears is `Covariant.xform(Invariant)`, which
@@ -492,9 +483,9 @@ impl Variance {
     /// (again) in `Invariant`.
     ///
     /// Example 2:
-    ///
-    ///     fn(*const Vec<i32>, *mut Vec<i32)
-    ///
+    /// ```ignore (illustrative)
+    /// fn(*const Vec<i32>, *mut Vec<i32)
+    /// ```
     /// The ambient variance is covariant. A `fn` type is
     /// contravariant with respect to its parameters, so the variance
     /// within which both pointer types appear is

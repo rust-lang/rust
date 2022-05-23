@@ -179,7 +179,7 @@ pub fn compute_stamp_hash(config: &Config) -> String {
         }
 
         Some(Debugger::Lldb) => {
-            config.lldb_python.hash(&mut hash);
+            config.python.hash(&mut hash);
             config.lldb_python_dir.hash(&mut hash);
             env::var_os("PATH").hash(&mut hash);
             env::var_os("PYTHONPATH").hash(&mut hash);
@@ -500,7 +500,19 @@ impl<'test> TestCx<'test> {
             expected = expected.replace(&cr, "");
         }
 
-        self.compare_source(&expected, &actual);
+        if !self.config.bless {
+            self.compare_source(&expected, &actual);
+        } else if expected != actual {
+            let filepath_buf;
+            let filepath = match &self.props.pp_exact {
+                Some(file) => {
+                    filepath_buf = self.testpaths.file.parent().unwrap().join(file);
+                    &filepath_buf
+                }
+                None => &self.testpaths.file,
+            };
+            fs::write(filepath, &actual).unwrap();
+        }
 
         // If we're only making sure that the output matches then just stop here
         if self.props.pretty_compare_only {
@@ -649,6 +661,21 @@ impl<'test> TestCx<'test> {
     }
 
     fn run_debuginfo_cdb_test_no_opt(&self) {
+        let exe_file = self.make_exe_name();
+
+        // Existing PDB files are update in-place. When changing the debuginfo
+        // the compiler generates for something, this can lead to the situation
+        // where both the old and the new version of the debuginfo for the same
+        // type is present in the PDB, which is very confusing.
+        // Therefore we delete any existing PDB file before compiling the test
+        // case.
+        // FIXME: If can reliably detect that MSVC's link.exe is used, then
+        //        passing `/INCREMENTAL:NO` might be a cleaner way to do this.
+        let pdb_file = exe_file.with_extension(".pdb");
+        if pdb_file.exists() {
+            std::fs::remove_file(pdb_file).unwrap();
+        }
+
         // compile test file (it should have 'compile-flags:-g' in the header)
         let should_run = self.run_if_enabled();
         let compile_result = self.compile_test(should_run, EmitMetadata::No);
@@ -658,8 +685,6 @@ impl<'test> TestCx<'test> {
         if let WillExecute::Disabled = should_run {
             return;
         }
-
-        let exe_file = self.make_exe_name();
 
         let prefixes = {
             static PREFIXES: &[&str] = &["cdb", "cdbg"];
@@ -1116,7 +1141,7 @@ impl<'test> TestCx<'test> {
         // Prepare the lldb_batchmode which executes the debugger script
         let lldb_script_path = rust_src_root.join("src/etc/lldb_batchmode.py");
         self.cmd2procres(
-            Command::new(&self.config.lldb_python)
+            Command::new(&self.config.python)
                 .arg(&lldb_script_path)
                 .arg(test_executable)
                 .arg(debugger_script)
@@ -1262,6 +1287,16 @@ impl<'test> TestCx<'test> {
             self.fatal_proc_rec("process did not return an error status", proc_res);
         }
 
+        if self.props.known_bug {
+            if !expected_errors.is_empty() {
+                self.fatal_proc_rec(
+                    "`known_bug` tests should not have an expected errors",
+                    proc_res,
+                );
+            }
+            return;
+        }
+
         // On Windows, keep all '\' path separators to match the paths reported in the JSON output
         // from the compiler
         let os_file_name = self.testpaths.file.display().to_string();
@@ -1298,6 +1333,7 @@ impl<'test> TestCx<'test> {
                 }
 
                 None => {
+                    // If the test is a known bug, don't require that the error is annotated
                     if self.is_unexpected_compiler_message(actual_error, expect_help, expect_note) {
                         self.error(&format!(
                             "{}:{}: unexpected {}: '{}'",
@@ -1820,10 +1856,14 @@ impl<'test> TestCx<'test> {
                 rustc.args(&[
                     "-Copt-level=1",
                     "-Zdump-mir=all",
-                    "-Zmir-opt-level=4",
                     "-Zvalidate-mir",
                     "-Zdump-mir-exclude-pass-number",
                 ]);
+                if let Some(pass) = &self.props.mir_unit_test {
+                    rustc.args(&["-Zmir-opt-level=0", &format!("-Zmir-enable-passes=+{}", pass)]);
+                } else {
+                    rustc.arg("-Zmir-opt-level=4");
+                }
 
                 let mir_dump_dir = self.get_mir_dump_dir();
                 let _ = fs::remove_dir_all(&mir_dump_dir);
@@ -2220,7 +2260,7 @@ impl<'test> TestCx<'test> {
             self.check_rustdoc_test_option(proc_res);
         } else {
             let root = self.config.find_rust_src_root().unwrap();
-            let mut cmd = Command::new(&self.config.docck_python);
+            let mut cmd = Command::new(&self.config.python);
             cmd.arg(root.join("src/etc/htmldocck.py")).arg(&out_dir).arg(&self.testpaths.file);
             if self.config.bless {
                 cmd.arg("--bless");
@@ -2412,13 +2452,16 @@ impl<'test> TestCx<'test> {
         );
 
         if !res.status.success() {
-            self.fatal_proc_rec("jsondocck failed!", &res)
+            self.fatal_proc_rec_with_ctx("jsondocck failed!", &res, |_| {
+                println!("Rustdoc Output:");
+                proc_res.print_info();
+            })
         }
 
         let mut json_out = out_dir.join(self.testpaths.file.file_stem().unwrap());
         json_out.set_extension("json");
         let res = self.cmd2procres(
-            Command::new(&self.config.docck_python)
+            Command::new(&self.config.python)
                 .arg(root.join("src/etc/check_missing_items.py"))
                 .arg(&json_out),
         );
@@ -2813,7 +2856,7 @@ impl<'test> TestCx<'test> {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .env("TARGET", &self.config.target)
-            .env("PYTHON", &self.config.docck_python)
+            .env("PYTHON", &self.config.python)
             .env("S", src_root)
             .env("RUST_BUILD_STAGE", &self.config.stage_id)
             .env("RUSTC", cwd.join(&self.config.rustc_path))
@@ -2893,15 +2936,22 @@ impl<'test> TestCx<'test> {
                 .map(|s| s.replace("/", "-"))
                 .collect::<Vec<_>>()
                 .join(" ");
+            let cxxflags = self
+                .config
+                .cxxflags
+                .split(' ')
+                .map(|s| s.replace("/", "-"))
+                .collect::<Vec<_>>()
+                .join(" ");
 
             cmd.env("IS_MSVC", "1")
                 .env("IS_WINDOWS", "1")
                 .env("MSVC_LIB", format!("'{}' -nologo", lib.display()))
                 .env("CC", format!("'{}' {}", self.config.cc, cflags))
-                .env("CXX", format!("'{}'", &self.config.cxx));
+                .env("CXX", format!("'{}' {}", &self.config.cxx, cxxflags));
         } else {
             cmd.env("CC", format!("{} {}", self.config.cc, self.config.cflags))
-                .env("CXX", format!("{} {}", self.config.cxx, self.config.cflags))
+                .env("CXX", format!("{} {}", self.config.cxx, self.config.cxxflags))
                 .env("AR", &self.config.ar);
 
             if self.config.target.contains("windows") {
@@ -3444,22 +3494,21 @@ impl<'test> TestCx<'test> {
         normalize_path(parent_dir, "$DIR");
 
         // Paths into the libstd/libcore
-        let src_dir = self
-            .config
-            .src_base
-            .parent()
-            .unwrap()
-            .parent()
-            .unwrap()
-            .parent()
-            .unwrap()
-            .join("library");
+        let base_dir = self.config.src_base.parent().unwrap().parent().unwrap().parent().unwrap();
+        let src_dir = base_dir.join("library");
         normalize_path(&src_dir, "$SRC_DIR");
+
+        // `ui-fulldeps` tests can show paths to the compiler source when testing macros from
+        // `rustc_macros`
+        // eg. /home/user/rust/compiler
+        let compiler_src_dir = base_dir.join("compiler");
+        normalize_path(&compiler_src_dir, "$COMPILER_DIR");
 
         if let Some(virtual_rust_source_base_dir) =
             option_env!("CFG_VIRTUAL_RUST_SOURCE_BASE_DIR").map(PathBuf::from)
         {
             normalize_path(&virtual_rust_source_base_dir.join("library"), "$SRC_DIR");
+            normalize_path(&virtual_rust_source_base_dir.join("compiler"), "$COMPILER_DIR");
         }
 
         // Paths into the build directory
@@ -3486,10 +3535,12 @@ impl<'test> TestCx<'test> {
         // with placeholders as we do not want tests needing updated when compiler source code
         // changes.
         // eg. $SRC_DIR/libcore/mem.rs:323:14 becomes $SRC_DIR/libcore/mem.rs:LL:COL
-        normalized = Regex::new("SRC_DIR(.+):\\d+:\\d+(: \\d+:\\d+)?")
-            .unwrap()
-            .replace_all(&normalized, "SRC_DIR$1:LL:COL")
-            .into_owned();
+        lazy_static! {
+            static ref SRC_DIR_RE: Regex =
+                Regex::new("SRC_DIR(.+):\\d+:\\d+(: \\d+:\\d+)?").unwrap();
+        }
+
+        normalized = SRC_DIR_RE.replace_all(&normalized, "SRC_DIR$1:LL:COL").into_owned();
 
         normalized = Self::normalize_platform_differences(&normalized);
         normalized = normalized.replace("\t", "\\t"); // makes tabs visible
@@ -3498,73 +3549,38 @@ impl<'test> TestCx<'test> {
         // since they duplicate actual errors and make the output hard to read.
         // This mirrors the regex in src/tools/tidy/src/style.rs, please update
         // both if either are changed.
-        normalized =
-            Regex::new("\\s*//(\\[.*\\])?~.*").unwrap().replace_all(&normalized, "").into_owned();
+        lazy_static! {
+            static ref ANNOTATION_RE: Regex = Regex::new("\\s*//(\\[.*\\])?~.*").unwrap();
+        }
 
-        // This code normalizes various hashes in both
-        // v0 and legacy symbol names that are emitted in
-        // the ui and mir-opt tests.
-        //
-        // Some tests still require normalization with headers.
-        const DEFID_HASH_REGEX: &str = r"\[[0-9a-z]{4}\]";
-        const DEFID_HASH_PLACEHOLDER: &str = r"[HASH]";
-        const V0_DEMANGLING_HASH_REGEX: &str = r"\[[0-9a-z]+\]";
-        const V0_DEMANGLING_HASH_PLACEHOLDER: &str = r"[HASH]";
-        const V0_CRATE_HASH_PREFIX_REGEX: &str = r"_R.*?Cs[0-9a-zA-Z]+_";
-        const V0_CRATE_HASH_REGEX: &str = r"Cs[0-9a-zA-Z]+_";
+        normalized = ANNOTATION_RE.replace_all(&normalized, "").into_owned();
+
+        // This code normalizes various hashes in v0 symbol mangling that is
+        // emitted in the ui and mir-opt tests.
+        lazy_static! {
+            static ref V0_CRATE_HASH_PREFIX_RE: Regex =
+                Regex::new(r"_R.*?Cs[0-9a-zA-Z]+_").unwrap();
+            static ref V0_CRATE_HASH_RE: Regex = Regex::new(r"Cs[0-9a-zA-Z]+_").unwrap();
+        }
+
         const V0_CRATE_HASH_PLACEHOLDER: &str = r"CsCRATE_HASH_";
-        const V0_BACK_REF_PREFIX_REGEX: &str = r"\(_R.*?B[0-9a-zA-Z]_";
-        const V0_BACK_REF_REGEX: &str = r"B[0-9a-zA-Z]_";
-        const V0_BACK_REF_PLACEHOLDER: &str = r"B<REF>_";
-        const LEGACY_SYMBOL_HASH_REGEX: &str = r"h[\w]{16}E?\)";
-        const LEGACY_SYMBOL_HASH_PLACEHOLDER: &str = r"h<SYMBOL_HASH>)";
-        let test_name = self
-            .output_testname_unique()
-            .into_os_string()
-            .into_string()
-            .unwrap()
-            .split('.')
-            .next()
-            .unwrap()
-            .replace("-", "_");
-        // Normalize `DefId` hashes
-        let defid_regex = format!("{}{}", test_name, DEFID_HASH_REGEX);
-        let defid_placeholder = format!("{}{}", test_name, DEFID_HASH_PLACEHOLDER);
-        normalized = Regex::new(&defid_regex)
-            .unwrap()
-            .replace_all(&normalized, defid_placeholder)
-            .into_owned();
-        // Normalize v0 demangling hashes
-        let demangling_regex = format!("{}{}", test_name, V0_DEMANGLING_HASH_REGEX);
-        let demangling_placeholder = format!("{}{}", test_name, V0_DEMANGLING_HASH_PLACEHOLDER);
-        normalized = Regex::new(&demangling_regex)
-            .unwrap()
-            .replace_all(&normalized, demangling_placeholder)
-            .into_owned();
-        // Normalize v0 crate hashes (see RFC 2603)
-        let symbol_mangle_prefix_re = Regex::new(V0_CRATE_HASH_PREFIX_REGEX).unwrap();
-        if symbol_mangle_prefix_re.is_match(&normalized) {
+        if V0_CRATE_HASH_PREFIX_RE.is_match(&normalized) {
             // Normalize crate hash
-            normalized = Regex::new(V0_CRATE_HASH_REGEX)
-                .unwrap()
-                .replace_all(&normalized, V0_CRATE_HASH_PLACEHOLDER)
-                .into_owned();
+            normalized =
+                V0_CRATE_HASH_RE.replace_all(&normalized, V0_CRATE_HASH_PLACEHOLDER).into_owned();
         }
-        let back_ref_prefix_re = Regex::new(V0_BACK_REF_PREFIX_REGEX).unwrap();
-        if back_ref_prefix_re.is_match(&normalized) {
+
+        lazy_static! {
+            static ref V0_BACK_REF_PREFIX_RE: Regex = Regex::new(r"\(_R.*?B[0-9a-zA-Z]_").unwrap();
+            static ref V0_BACK_REF_RE: Regex = Regex::new(r"B[0-9a-zA-Z]_").unwrap();
+        }
+
+        const V0_BACK_REF_PLACEHOLDER: &str = r"B<REF>_";
+        if V0_BACK_REF_PREFIX_RE.is_match(&normalized) {
             // Normalize back references (see RFC 2603)
-            let back_ref_regex = format!("{}", V0_BACK_REF_REGEX);
-            let back_ref_placeholder = format!("{}", V0_BACK_REF_PLACEHOLDER);
-            normalized = Regex::new(&back_ref_regex)
-                .unwrap()
-                .replace_all(&normalized, back_ref_placeholder)
-                .into_owned();
+            normalized =
+                V0_BACK_REF_RE.replace_all(&normalized, V0_BACK_REF_PLACEHOLDER).into_owned();
         }
-        // Normalize legacy mangled symbols
-        normalized = Regex::new(LEGACY_SYMBOL_HASH_REGEX)
-            .unwrap()
-            .replace_all(&normalized, LEGACY_SYMBOL_HASH_PLACEHOLDER)
-            .into_owned();
 
         // Custom normalization rules
         for rule in custom_rules {
@@ -3759,28 +3775,36 @@ pub struct ProcRes {
 }
 
 impl ProcRes {
+    pub fn print_info(&self) {
+        fn render(name: &str, contents: &str) -> String {
+            let contents = json::extract_rendered(contents);
+            let contents = contents.trim();
+            if contents.is_empty() {
+                format!("{name}: none")
+            } else {
+                format!(
+                    "\
+                     --- {name} -------------------------------\n\
+                     {contents}\n\
+                     ------------------------------------------",
+                )
+            }
+        }
+
+        println!(
+            "status: {}\ncommand: {}\n{}\n{}\n",
+            self.status,
+            self.cmdline,
+            render("stdout", &self.stdout),
+            render("stderr", &self.stderr),
+        );
+    }
+
     pub fn fatal(&self, err: Option<&str>, on_failure: impl FnOnce()) -> ! {
         if let Some(e) = err {
             println!("\nerror: {}", e);
         }
-        print!(
-            "\
-             status: {}\n\
-             command: {}\n\
-             stdout:\n\
-             ------------------------------------------\n\
-             {}\n\
-             ------------------------------------------\n\
-             stderr:\n\
-             ------------------------------------------\n\
-             {}\n\
-             ------------------------------------------\n\
-             \n",
-            self.status,
-            self.cmdline,
-            json::extract_rendered(&self.stdout),
-            json::extract_rendered(&self.stderr),
-        );
+        self.print_info();
         on_failure();
         // Use resume_unwind instead of panic!() to prevent a panic message + backtrace from
         // compiletest, which is unnecessary noise.

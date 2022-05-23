@@ -24,8 +24,8 @@ all:
 	$(RUSTC) -C lto dummy.rs
 
 	# Should not link dead code...
-	$(RUSTC) -Z print-link-args dummy.rs 2>&1 | \
+	$(RUSTC) --print link-args dummy.rs 2>&1 | \
 		$(CGREP) -e '--gc-sections|-z[^ ]* [^ ]*<ignore>|-dead_strip|/OPT:REF'
 	# ... unless you specifically ask to keep it
-	$(RUSTC) -Z print-link-args -C link-dead-code dummy.rs 2>&1 | \
+	$(RUSTC) --print link-args -C link-dead-code dummy.rs 2>&1 | \
 		$(CGREP) -ve '--gc-sections|-z[^ ]* [^ ]*<ignore>|-dead_strip|/OPT:REF'

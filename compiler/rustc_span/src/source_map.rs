@@ -629,26 +629,41 @@ impl SourceMap {
     }
 
     /// Extends the given `Span` to just after the previous occurrence of `pat` when surrounded by
-    /// whitespace. Returns the same span if no character could be found or if an error occurred
-    /// while retrieving the code snippet.
-    pub fn span_extend_to_prev_str(&self, sp: Span, pat: &str, accept_newlines: bool) -> Span {
+    /// whitespace. Returns None if the pattern could not be found or if an error occurred while
+    /// retrieving the code snippet.
+    pub fn span_extend_to_prev_str(
+        &self,
+        sp: Span,
+        pat: &str,
+        accept_newlines: bool,
+        include_whitespace: bool,
+    ) -> Option<Span> {
         // assure that the pattern is delimited, to avoid the following
         //     fn my_fn()
         //           ^^^^ returned span without the check
         //     ---------- correct span
+        let prev_source = self.span_to_prev_source(sp).ok()?;
         for ws in &[" ", "\t", "\n"] {
             let pat = pat.to_owned() + ws;
-            if let Ok(prev_source) = self.span_to_prev_source(sp) {
-                let prev_source = prev_source.rsplit(&pat).next().unwrap_or("").trim_start();
-                if prev_source.is_empty() && sp.lo().0 != 0 {
-                    return sp.with_lo(BytePos(sp.lo().0 - 1));
-                } else if accept_newlines || !prev_source.contains('\n') {
-                    return sp.with_lo(BytePos(sp.lo().0 - prev_source.len() as u32));
+            if let Some(pat_pos) = prev_source.rfind(&pat) {
+                let just_after_pat_pos = pat_pos + pat.len() - 1;
+                let just_after_pat_plus_ws = if include_whitespace {
+                    just_after_pat_pos
+                        + prev_source[just_after_pat_pos..]
+                            .find(|c: char| !c.is_whitespace())
+                            .unwrap_or(0)
+                } else {
+                    just_after_pat_pos
+                };
+                let len = prev_source.len() - just_after_pat_plus_ws;
+                let prev_source = &prev_source[just_after_pat_plus_ws..];
+                if accept_newlines || !prev_source.trim_start().contains('\n') {
+                    return Some(sp.with_lo(BytePos(sp.lo().0 - len as u32)));
                 }
             }
         }
 
-        sp
+        None
     }
 
     /// Returns the source snippet as `String` after the given `Span`.
@@ -927,7 +942,7 @@ impl SourceMap {
     }
 
     pub fn generate_fn_name_span(&self, span: Span) -> Option<Span> {
-        let prev_span = self.span_extend_to_prev_str(span, "fn", true);
+        let prev_span = self.span_extend_to_prev_str(span, "fn", true, true).unwrap_or(span);
         if let Ok(snippet) = self.span_to_snippet(prev_span) {
             debug!(
                 "generate_fn_name_span: span={:?}, prev_span={:?}, snippet={:?}",
@@ -968,8 +983,7 @@ impl SourceMap {
     pub fn generate_local_type_param_snippet(&self, span: Span) -> Option<(Span, String)> {
         // Try to extend the span to the previous "fn" keyword to retrieve the function
         // signature.
-        let sugg_span = self.span_extend_to_prev_str(span, "fn", false);
-        if sugg_span != span {
+        if let Some(sugg_span) = self.span_extend_to_prev_str(span, "fn", false, true) {
             if let Ok(snippet) = self.span_to_snippet(sugg_span) {
                 // Consume the function name.
                 let mut offset = snippet
@@ -1044,10 +1058,11 @@ impl SourceMap {
 
     /// Tries to find the span of the semicolon of a macro call statement.
     /// The input must be the *call site* span of a statement from macro expansion.
-    ///
-    ///           v output
-    ///     mac!();
-    ///     ^^^^^^ input
+    /// ```ignore (illustrative)
+    /// //       v output
+    ///    mac!();
+    /// // ^^^^^^ input
+    /// ```
     pub fn mac_call_stmt_semi_span(&self, mac_call: Span) -> Option<Span> {
         let span = self.span_extend_while(mac_call, char::is_whitespace).ok()?;
         let span = span.shrink_to_hi().with_hi(BytePos(span.hi().0.checked_add(1)?));
@@ -1083,16 +1098,45 @@ impl FilePathMapping {
     /// The return value is the remapped path and a boolean indicating whether
     /// the path was affected by the mapping.
     pub fn map_prefix(&self, path: PathBuf) -> (PathBuf, bool) {
-        // NOTE: We are iterating over the mapping entries from last to first
-        //       because entries specified later on the command line should
-        //       take precedence.
-        for &(ref from, ref to) in self.mapping.iter().rev() {
-            if let Ok(rest) = path.strip_prefix(from) {
-                return (to.join(rest), true);
-            }
+        if path.as_os_str().is_empty() {
+            // Exit early if the path is empty and therefore there's nothing to remap.
+            // This is mostly to reduce spam for `RUSTC_LOG=[remap_path_prefix]`.
+            return (path, false);
         }
 
-        (path, false)
+        return remap_path_prefix(&self.mapping, path);
+
+        #[instrument(level = "debug", skip(mapping))]
+        fn remap_path_prefix(mapping: &[(PathBuf, PathBuf)], path: PathBuf) -> (PathBuf, bool) {
+            // NOTE: We are iterating over the mapping entries from last to first
+            //       because entries specified later on the command line should
+            //       take precedence.
+            for &(ref from, ref to) in mapping.iter().rev() {
+                debug!("Trying to apply {:?} => {:?}", from, to);
+
+                if let Ok(rest) = path.strip_prefix(from) {
+                    let remapped = if rest.as_os_str().is_empty() {
+                        // This is subtle, joining an empty path onto e.g. `foo/bar` will
+                        // result in `foo/bar/`, that is, there'll be an additional directory
+                        // separator at the end. This can lead to duplicated directory separators
+                        // in remapped paths down the line.
+                        // So, if we have an exact match, we just return that without a call
+                        // to `Path::join()`.
+                        to.clone()
+                    } else {
+                        to.join(rest)
+                    };
+                    debug!("Match - remapped {:?} => {:?}", path, remapped);
+
+                    return (remapped, true);
+                } else {
+                    debug!("No match - prefix {:?} does not match {:?}", from, path);
+                }
+            }
+
+            debug!("Path {:?} was not remapped", path);
+            (path, false)
+        }
     }
 
     fn map_filename_prefix(&self, file: &FileName) -> (FileName, bool) {
@@ -1111,6 +1155,85 @@ impl FilePathMapping {
             }
             FileName::Real(_) => unreachable!("attempted to remap an already remapped filename"),
             other => (other.clone(), false),
+        }
+    }
+
+    /// Expand a relative path to an absolute path with remapping taken into account.
+    /// Use this when absolute paths are required (e.g. debuginfo or crate metadata).
+    ///
+    /// The resulting `RealFileName` will have its `local_path` portion erased if
+    /// possible (i.e. if there's also a remapped path).
+    pub fn to_embeddable_absolute_path(
+        &self,
+        file_path: RealFileName,
+        working_directory: &RealFileName,
+    ) -> RealFileName {
+        match file_path {
+            // Anything that's already remapped we don't modify, except for erasing
+            // the `local_path` portion.
+            RealFileName::Remapped { local_path: _, virtual_name } => {
+                RealFileName::Remapped {
+                    // We do not want any local path to be exported into metadata
+                    local_path: None,
+                    // We use the remapped name verbatim, even if it looks like a relative
+                    // path. The assumption is that the user doesn't want us to further
+                    // process paths that have gone through remapping.
+                    virtual_name,
+                }
+            }
+
+            RealFileName::LocalPath(unmapped_file_path) => {
+                // If no remapping has been applied yet, try to do so
+                let (new_path, was_remapped) = self.map_prefix(unmapped_file_path);
+                if was_remapped {
+                    // It was remapped, so don't modify further
+                    return RealFileName::Remapped { local_path: None, virtual_name: new_path };
+                }
+
+                if new_path.is_absolute() {
+                    // No remapping has applied to this path and it is absolute,
+                    // so the working directory cannot influence it either, so
+                    // we are done.
+                    return RealFileName::LocalPath(new_path);
+                }
+
+                debug_assert!(new_path.is_relative());
+                let unmapped_file_path_rel = new_path;
+
+                match working_directory {
+                    RealFileName::LocalPath(unmapped_working_dir_abs) => {
+                        let file_path_abs = unmapped_working_dir_abs.join(unmapped_file_path_rel);
+
+                        // Although neither `working_directory` nor the file name were subject
+                        // to path remapping, the concatenation between the two may be. Hence
+                        // we need to do a remapping here.
+                        let (file_path_abs, was_remapped) = self.map_prefix(file_path_abs);
+                        if was_remapped {
+                            RealFileName::Remapped {
+                                // Erase the actual path
+                                local_path: None,
+                                virtual_name: file_path_abs,
+                            }
+                        } else {
+                            // No kind of remapping applied to this path, so
+                            // we leave it as it is.
+                            RealFileName::LocalPath(file_path_abs)
+                        }
+                    }
+                    RealFileName::Remapped {
+                        local_path: _,
+                        virtual_name: remapped_working_dir_abs,
+                    } => {
+                        // If working_directory has been remapped, then we emit
+                        // Remapped variant as the expanded path won't be valid
+                        RealFileName::Remapped {
+                            local_path: None,
+                            virtual_name: Path::new(remapped_working_dir_abs)
+                                .join(unmapped_file_path_rel),
+                        }
+                    }
+                }
+            }
         }
     }
 }

@@ -1,6 +1,7 @@
 use crate::astconv::AstConv;
+use crate::errors::{ManualImplementation, MissingTypeParams};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{pluralize, struct_span_err, Applicability};
+use rustc_errors::{pluralize, struct_span_err, Applicability, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty;
@@ -10,7 +11,6 @@ use rustc_span::symbol::{sym, Ident};
 use rustc_span::{Span, DUMMY_SP};
 
 use std::collections::BTreeSet;
-use std::iter;
 
 impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     /// On missing type parameters, emit an E0393 error and provide a structured suggestion using
@@ -25,65 +25,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         if missing_type_params.is_empty() {
             return;
         }
-        let display =
-            missing_type_params.iter().map(|n| format!("`{}`", n)).collect::<Vec<_>>().join(", ");
-        let mut err = struct_span_err!(
-            self.tcx().sess,
+
+        self.tcx().sess.emit_err(MissingTypeParams {
             span,
-            E0393,
-            "the type parameter{} {} must be explicitly specified",
-            pluralize!(missing_type_params.len()),
-            display,
-        );
-        err.span_label(
-            self.tcx().def_span(def_id),
-            &format!(
-                "type parameter{} {} must be specified for this",
-                pluralize!(missing_type_params.len()),
-                display,
-            ),
-        );
-        let mut suggested = false;
-        if let (Ok(snippet), true) = (
-            self.tcx().sess.source_map().span_to_snippet(span),
-            // Don't suggest setting the type params if there are some already: the order is
-            // tricky to get right and the user will already know what the syntax is.
+            def_span: self.tcx().def_span(def_id),
+            missing_type_params,
             empty_generic_args,
-        ) {
-            if snippet.ends_with('>') {
-                // The user wrote `Trait<'a, T>` or similar. To provide an accurate suggestion
-                // we would have to preserve the right order. For now, as clearly the user is
-                // aware of the syntax, we do nothing.
-            } else {
-                // The user wrote `Iterator`, so we don't have a type we can suggest, but at
-                // least we can clue them to the correct syntax `Iterator<Type>`.
-                err.span_suggestion(
-                    span,
-                    &format!(
-                        "set the type parameter{plural} to the desired type{plural}",
-                        plural = pluralize!(missing_type_params.len()),
-                    ),
-                    format!("{}<{}>", snippet, missing_type_params.join(", ")),
-                    Applicability::HasPlaceholders,
-                );
-                suggested = true;
-            }
-        }
-        if !suggested {
-            err.span_label(
-                span,
-                format!(
-                    "missing reference{} to {}",
-                    pluralize!(missing_type_params.len()),
-                    display,
-                ),
-            );
-        }
-        err.note(
-            "because of the default `Self` reference, type parameters must be \
-                  specified on object types",
-        );
-        err.emit();
+        });
     }
 
     /// When the code is using the `Fn` traits directly, instead of the `Fn(A) -> B` syntax, emit
@@ -93,61 +41,87 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         span: Span,
         trait_def_id: DefId,
         trait_segment: &'_ hir::PathSegment<'_>,
+        is_impl: bool,
     ) {
-        let trait_def = self.tcx().trait_def(trait_def_id);
+        if self.tcx().features().unboxed_closures {
+            return;
+        }
 
-        if !self.tcx().features().unboxed_closures
-            && trait_segment.args().parenthesized != trait_def.paren_sugar
-        {
-            let sess = &self.tcx().sess.parse_sess;
+        let trait_def = self.tcx().trait_def(trait_def_id);
+        if !trait_def.paren_sugar {
+            if trait_segment.args().parenthesized {
+                // For now, require that parenthetical notation be used only with `Fn()` etc.
+                let mut err = feature_err(
+                    &self.tcx().sess.parse_sess,
+                    sym::unboxed_closures,
+                    span,
+                    "parenthetical notation is only stable when used with `Fn`-family traits",
+                );
+                err.emit();
+            }
+
+            return;
+        }
+
+        let sess = self.tcx().sess;
+
+        if !trait_segment.args().parenthesized {
             // For now, require that parenthetical notation be used only with `Fn()` etc.
-            let (msg, sugg) = if trait_def.paren_sugar {
-                (
-                    "the precise format of `Fn`-family traits' type parameters is subject to \
-                     change",
-                    Some(format!(
-                        "{}{} -> {}",
-                        trait_segment.ident,
-                        trait_segment
-                            .args
-                            .as_ref()
-                            .and_then(|args| args.args.get(0))
-                            .and_then(|arg| match arg {
-                                hir::GenericArg::Type(ty) => match ty.kind {
-                                    hir::TyKind::Tup(t) => t
-                                        .iter()
-                                        .map(|e| sess.source_map().span_to_snippet(e.span))
-                                        .collect::<Result<Vec<_>, _>>()
-                                        .map(|a| a.join(", ")),
-                                    _ => sess.source_map().span_to_snippet(ty.span),
-                                }
-                                .map(|s| format!("({})", s))
-                                .ok(),
-                                _ => None,
-                            })
-                            .unwrap_or_else(|| "()".to_string()),
-                        trait_segment
-                            .args()
-                            .bindings
-                            .iter()
-                            .find_map(|b| match (b.ident.name == sym::Output, &b.kind) {
-                                (true, hir::TypeBindingKind::Equality { ty }) => {
-                                    sess.source_map().span_to_snippet(ty.span).ok()
-                                }
-                                _ => None,
-                            })
-                            .unwrap_or_else(|| "()".to_string()),
-                    )),
-                )
-            } else {
-                ("parenthetical notation is only stable when used with `Fn`-family traits", None)
-            };
-            let mut err = feature_err(sess, sym::unboxed_closures, span, msg);
-            if let Some(sugg) = sugg {
-                let msg = "use parenthetical notation instead";
-                err.span_suggestion(span, msg, sugg, Applicability::MaybeIncorrect);
+            let mut err = feature_err(
+                &sess.parse_sess,
+                sym::unboxed_closures,
+                span,
+                "the precise format of `Fn`-family traits' type parameters is subject to change",
+            );
+            // Do not suggest the other syntax if we are in trait impl:
+            // the desugaring would contain an associated type constraint.
+            if !is_impl {
+                let args = trait_segment
+                    .args
+                    .as_ref()
+                    .and_then(|args| args.args.get(0))
+                    .and_then(|arg| match arg {
+                        hir::GenericArg::Type(ty) => match ty.kind {
+                            hir::TyKind::Tup(t) => t
+                                .iter()
+                                .map(|e| sess.source_map().span_to_snippet(e.span))
+                                .collect::<Result<Vec<_>, _>>()
+                                .map(|a| a.join(", ")),
+                            _ => sess.source_map().span_to_snippet(ty.span),
+                        }
+                        .map(|s| format!("({})", s))
+                        .ok(),
+                        _ => None,
+                    })
+                    .unwrap_or_else(|| "()".to_string());
+                let ret = trait_segment
+                    .args()
+                    .bindings
+                    .iter()
+                    .find_map(|b| match (b.ident.name == sym::Output, &b.kind) {
+                        (true, hir::TypeBindingKind::Equality { term }) => {
+                            let span = match term {
+                                hir::Term::Ty(ty) => ty.span,
+                                hir::Term::Const(c) => self.tcx().hir().span(c.hir_id),
+                            };
+                            sess.source_map().span_to_snippet(span).ok()
+                        }
+                        _ => None,
+                    })
+                    .unwrap_or_else(|| "()".to_string());
+                err.span_suggestion(
+                    span,
+                    "use parenthetical notation instead",
+                    format!("{}{} -> {}", trait_segment.ident, args, ret),
+                    Applicability::MaybeIncorrect,
+                );
             }
             err.emit();
+        }
+
+        if is_impl {
+            let trait_name = self.tcx().def_path_str(trait_def_id);
+            self.tcx().sess.emit_err(ManualImplementation { span, trait_name });
         }
     }
 
@@ -157,7 +131,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         ty_param_name: &str,
         assoc_name: Ident,
         span: Span,
-    ) where
+    ) -> ErrorGuaranteed
+    where
         I: Iterator<Item = ty::PolyTraitRef<'tcx>>,
     {
         // The fallback span is needed because `assoc_name` might be an `Fn()`'s `Output` without a
@@ -173,10 +148,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         );
 
         let all_candidate_names: Vec<_> = all_candidates()
-            .map(|r| self.tcx().associated_items(r.def_id()).in_definition_order())
-            .flatten()
+            .flat_map(|r| self.tcx().associated_items(r.def_id()).in_definition_order())
             .filter_map(
-                |item| if item.kind == ty::AssocKind::Type { Some(item.ident.name) } else { None },
+                |item| if item.kind == ty::AssocKind::Type { Some(item.name) } else { None },
             )
             .collect();
 
@@ -194,7 +168,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             err.span_label(span, format!("associated type `{}` not found", assoc_name));
         }
 
-        err.emit();
+        err.emit()
     }
 
     /// When there are any missing associated types, emit an E0191 error and attempt to supply a
@@ -232,7 +206,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 let trait_def_id = assoc_item.container.id();
                 names.push(format!(
                     "`{}` (from trait `{}`)",
-                    assoc_item.ident,
+                    assoc_item.name,
                     tcx.def_path_str(trait_def_id),
                 ));
             }
@@ -285,15 +259,16 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let mut suggestions = vec![];
         let mut types_count = 0;
         let mut where_constraints = vec![];
+        let mut already_has_generics_args_suggestion = false;
         for (span, assoc_items) in &associated_types {
             let mut names: FxHashMap<_, usize> = FxHashMap::default();
             for item in assoc_items {
                 types_count += 1;
-                *names.entry(item.ident.name).or_insert(0) += 1;
+                *names.entry(item.name).or_insert(0) += 1;
             }
             let mut dupes = false;
             for item in assoc_items {
-                let prefix = if names[&item.ident.name] > 1 {
+                let prefix = if names[&item.name] > 1 {
                     let trait_def_id = item.container.id();
                     dupes = true;
                     format!("{}::", tcx.def_path_str(trait_def_id))
@@ -301,25 +276,19 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     String::new()
                 };
                 if let Some(sp) = tcx.hir().span_if_local(item.def_id) {
-                    err.span_label(sp, format!("`{}{}` defined here", prefix, item.ident));
+                    err.span_label(sp, format!("`{}{}` defined here", prefix, item.name));
                 }
             }
             if potential_assoc_types.len() == assoc_items.len() {
-                // Only suggest when the amount of missing associated types equals the number of
-                // extra type arguments present, as that gives us a relatively high confidence
-                // that the user forgot to give the associtated type's name. The canonical
-                // example would be trying to use `Iterator<isize>` instead of
-                // `Iterator<Item = isize>`.
-                for (potential, item) in iter::zip(&potential_assoc_types, assoc_items) {
-                    if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(*potential) {
-                        suggestions.push((*potential, format!("{} = {}", item.ident, snippet)));
-                    }
-                }
+                // When the amount of missing associated types equals the number of
+                // extra type arguments present.  A suggesting to replace the generic args with
+                // associated types is already emitted.
+                already_has_generics_args_suggestion = true;
             } else if let (Ok(snippet), false) =
                 (tcx.sess.source_map().span_to_snippet(*span), dupes)
             {
                 let types: Vec<_> =
-                    assoc_items.iter().map(|item| format!("{} = Type", item.ident)).collect();
+                    assoc_items.iter().map(|item| format!("{} = Type", item.name)).collect();
                 let code = if snippet.ends_with('>') {
                     // The user wrote `Trait<'a>` or similar and we don't have a type we can
                     // suggest, but at least we can clue them to the correct syntax
@@ -344,23 +313,23 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             // the same associated type name.
             err.help(where_msg);
         }
-        if suggestions.len() != 1 {
+        if suggestions.len() != 1 || already_has_generics_args_suggestion {
             // We don't need this label if there's an inline suggestion, show otherwise.
             for (span, assoc_items) in &associated_types {
                 let mut names: FxHashMap<_, usize> = FxHashMap::default();
                 for item in assoc_items {
                     types_count += 1;
-                    *names.entry(item.ident.name).or_insert(0) += 1;
+                    *names.entry(item.name).or_insert(0) += 1;
                 }
                 let mut label = vec![];
                 for item in assoc_items {
-                    let postfix = if names[&item.ident.name] > 1 {
+                    let postfix = if names[&item.name] > 1 {
                         let trait_def_id = item.container.id();
                         format!(" (from trait `{}`)", tcx.def_path_str(trait_def_id))
                     } else {
                         String::new()
                     };
-                    label.push(format!("`{}`{}", item.ident, postfix));
+                    label.push(format!("`{}`{}", item.name, postfix));
                 }
                 if !label.is_empty() {
                     err.span_label(

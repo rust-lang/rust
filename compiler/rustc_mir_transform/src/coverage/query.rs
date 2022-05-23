@@ -66,7 +66,7 @@ impl CoverageVisitor {
                 // The operand ID is outside the known range of counter IDs and also outside the
                 // known range of expression IDs. In either case, the result of a missing operand
                 // (if and when used in an expression) will be zero, so from a computation
-                // perspective, it doesn't matter whether it is interepretted as a counter or an
+                // perspective, it doesn't matter whether it is interpreted as a counter or an
                 // expression.
                 //
                 // However, the `num_counters` and `num_expressions` query results are used to
@@ -140,7 +140,7 @@ fn covered_code_regions<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Vec<&'tcx Cod
     let body = mir_body(tcx, def_id);
     body.basic_blocks()
         .iter()
-        .map(|data| {
+        .flat_map(|data| {
             data.statements.iter().filter_map(|statement| match statement.kind {
                 StatementKind::Coverage(box ref coverage) => {
                     if is_inlined(body, statement) {
@@ -152,7 +152,6 @@ fn covered_code_regions<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Vec<&'tcx Cod
                 _ => None,
             })
         })
-        .flatten()
         .collect()
 }
 

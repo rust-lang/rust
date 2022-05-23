@@ -15,24 +15,31 @@ note: the lint level is defined here
    |
 LL | #![deny(large_assignments)]
    |         ^^^^^^^^^^^^^^^^^
+   = note: The current maximum size is 1000, but it can be customized with the move_size_limit attribute: `#![move_size_limit = "..."]`
 
 error: moving 10024 bytes
   --> $DIR/large_moves.rs:18:14
    |
 LL |     let z = (x, 42);
    |              ^ value moved from here
+   |
+   = note: The current maximum size is 1000, but it can be customized with the move_size_limit attribute: `#![move_size_limit = "..."]`
 
 error: moving 10024 bytes
   --> $DIR/large_moves.rs:18:13
    |
 LL |     let z = (x, 42);
    |             ^^^^^^^ value moved from here
+   |
+   = note: The current maximum size is 1000, but it can be customized with the move_size_limit attribute: `#![move_size_limit = "..."]`
 
 error: moving 10024 bytes
   --> $DIR/large_moves.rs:20:13
    |
 LL |     let a = z.0;
    |             ^^^ value moved from here
+   |
+   = note: The current maximum size is 1000, but it can be customized with the move_size_limit attribute: `#![move_size_limit = "..."]`
 
 error: aborting due to 4 previous errors
 

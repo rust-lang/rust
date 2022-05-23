@@ -5,18 +5,37 @@ fn test_lev_distance() {
     use std::char::{from_u32, MAX};
     // Test bytelength agnosticity
     for c in (0..MAX as u32).filter_map(from_u32).map(|i| i.to_string()) {
-        assert_eq!(lev_distance(&c[..], &c[..]), 0);
+        assert_eq!(lev_distance(&c[..], &c[..], usize::MAX), Some(0));
     }
 
     let a = "\nMäry häd ä little lämb\n\nLittle lämb\n";
     let b = "\nMary häd ä little lämb\n\nLittle lämb\n";
     let c = "Mary häd ä little lämb\n\nLittle lämb\n";
-    assert_eq!(lev_distance(a, b), 1);
-    assert_eq!(lev_distance(b, a), 1);
-    assert_eq!(lev_distance(a, c), 2);
-    assert_eq!(lev_distance(c, a), 2);
-    assert_eq!(lev_distance(b, c), 1);
-    assert_eq!(lev_distance(c, b), 1);
+    assert_eq!(lev_distance(a, b, usize::MAX), Some(1));
+    assert_eq!(lev_distance(b, a, usize::MAX), Some(1));
+    assert_eq!(lev_distance(a, c, usize::MAX), Some(2));
+    assert_eq!(lev_distance(c, a, usize::MAX), Some(2));
+    assert_eq!(lev_distance(b, c, usize::MAX), Some(1));
+    assert_eq!(lev_distance(c, b, usize::MAX), Some(1));
+}
+
+#[test]
+fn test_lev_distance_limit() {
+    assert_eq!(lev_distance("abc", "abcd", 1), Some(1));
+    assert_eq!(lev_distance("abc", "abcd", 0), None);
+    assert_eq!(lev_distance("abc", "xyz", 3), Some(3));
+    assert_eq!(lev_distance("abc", "xyz", 2), None);
+}
+
+#[test]
+fn test_method_name_similarity_score() {
+    assert_eq!(lev_distance_with_substrings("empty", "is_empty", 1), Some(1));
+    assert_eq!(lev_distance_with_substrings("shrunk", "rchunks", 2), None);
+    assert_eq!(lev_distance_with_substrings("abc", "abcd", 1), Some(1));
+    assert_eq!(lev_distance_with_substrings("a", "abcd", 1), None);
+    assert_eq!(lev_distance_with_substrings("edf", "eq", 1), None);
+    assert_eq!(lev_distance_with_substrings("abc", "xyz", 3), Some(3));
+    assert_eq!(lev_distance_with_substrings("abcdef", "abcdef", 2), Some(0));
 }
 
 #[test]

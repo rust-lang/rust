@@ -10,6 +10,7 @@
           StorageLive(_2);                 // scope 0 at $DIR/deaggregator_test_enum.rs:8:19: 8:20
           _2 = _1;                         // scope 0 at $DIR/deaggregator_test_enum.rs:8:19: 8:20
 -         _0 = Baz::Foo { x: move _2 };    // scope 0 at $DIR/deaggregator_test_enum.rs:8:5: 8:22
++         Deinit(_0);                      // scope 0 at $DIR/deaggregator_test_enum.rs:8:5: 8:22
 +         ((_0 as Foo).0: usize) = move _2; // scope 0 at $DIR/deaggregator_test_enum.rs:8:5: 8:22
 +         discriminant(_0) = 1;            // scope 0 at $DIR/deaggregator_test_enum.rs:8:5: 8:22
           StorageDead(_2);                 // scope 0 at $DIR/deaggregator_test_enum.rs:8:21: 8:22

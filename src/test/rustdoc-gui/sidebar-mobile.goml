@@ -4,17 +4,39 @@
 goto: file://|DOC_PATH|/test_docs/struct.Foo.html
 // Switching to "mobile view" by reducing the width to 600px.
 size: (600, 600)
-assert-css: (".sidebar-elems", {"display": "block", "left": "-246px"})
+assert-css: (".sidebar", {"display": "block", "left": "-1000px"})
 // Opening the sidebar menu.
-click: ".sidebar-menu"
-assert-css: (".sidebar-elems", {"display": "block", "left": "0px"})
+click: ".sidebar-menu-toggle"
+assert-css: (".sidebar", {"display": "block", "left": "0px"})
 // Closing the sidebar menu.
-click: ".sidebar-menu"
-assert-css: (".sidebar-elems", {"display": "block", "left": "-246px"})
+click: ".sidebar-menu-toggle"
+assert-css: (".sidebar", {"display": "block", "left": "-1000px"})
 // Force the sidebar open by focusing a link inside it.
 // This makes it easier for keyboard users to get to it.
 focus: ".sidebar-title a"
-assert-css: (".sidebar-elems", {"display": "block", "left": "0px"})
+assert-css: (".sidebar", {"display": "block", "left": "0px"})
 // When we tab out of the sidebar, close it.
 focus: ".search-input"
-assert-css: (".sidebar-elems", {"display": "block", "left": "-246px"})
+assert-css: (".sidebar", {"display": "block", "left": "-1000px"})
+
+// Open the sidebar menu.
+click: ".sidebar-menu-toggle"
+assert-css: (".sidebar", {"left": "0px"})
+
+// Click elsewhere.
+click: "body"
+assert-css: (".sidebar", {"display": "block", "left": "-1000px"})
+
+// Check that the topbar is visible
+assert-property: (".mobile-topbar", {"clientHeight": "45"})
+
+// Check that clicking an element from the sidebar scrolls to the right place
+// so the target is not obscured by the topbar.
+click: ".sidebar-menu-toggle"
+click: ".sidebar-elems section .block li > a"
+assert-position: ("#method\.must_use", {"y": 45})
+
+// Check that the bottom-most item on the sidebar menu can be scrolled fully into view.
+click: ".sidebar-menu-toggle"
+scroll-to: ".block.keyword li:nth-child(1)"
+compare-elements-position-near: (".block.keyword li:nth-child(1)", ".mobile-topbar", {"y": 543})

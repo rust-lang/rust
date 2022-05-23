@@ -139,10 +139,18 @@ LL |     x.field.map(|ref value| { do_nothing(value + captured) });
 error: called `map(f)` on an `Option` value where `f` is a function that returns the unit type `()`
   --> $DIR/option_map_unit_fn_fixable.rs:83:5
    |
-LL |     option().map(do_nothing);}
+LL |     option().map(do_nothing);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^-
    |     |
    |     help: try this: `if let Some(a) = option() { do_nothing(a) }`
 
-error: aborting due to 18 previous errors
+error: called `map(f)` on an `Option` value where `f` is a closure that returns the unit type `()`
+  --> $DIR/option_map_unit_fn_fixable.rs:85:5
+   |
+LL |     option().map(|value| println!("{:?}", value));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
+   |     |
+   |     help: try this: `if let Some(value) = option() { println!("{:?}", value) }`
+
+error: aborting due to 19 previous errors
 

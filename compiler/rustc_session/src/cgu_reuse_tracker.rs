@@ -52,7 +52,7 @@ impl CguReuseTracker {
 
     pub fn set_actual_reuse(&self, cgu_name: &str, kind: CguReuse) {
         if let Some(ref data) = self.data {
-            debug!("set_actual_reuse({:?}, {:?})", cgu_name, kind);
+            debug!("set_actual_reuse({cgu_name:?}, {kind:?})");
 
             let prev_reuse = data.lock().unwrap().actual_reuse.insert(cgu_name.to_string(), kind);
 
@@ -74,7 +74,7 @@ impl CguReuseTracker {
         comparison_kind: ComparisonKind,
     ) {
         if let Some(ref data) = self.data {
-            debug!("set_expectation({:?}, {:?}, {:?})", cgu_name, expected_reuse, comparison_kind);
+            debug!("set_expectation({cgu_name:?}, {expected_reuse:?}, {comparison_kind:?})");
             let mut data = data.lock().unwrap();
 
             data.expected_reuse.insert(
@@ -100,17 +100,15 @@ impl CguReuseTracker {
                     if error {
                         let at_least = if at_least { "at least " } else { "" };
                         let msg = format!(
-                            "CGU-reuse for `{}` is `{:?}` but \
-                                           should be {}`{:?}`",
-                            cgu_user_name, actual_reuse, at_least, expected_reuse
+                            "CGU-reuse for `{cgu_user_name}` is `{actual_reuse:?}` but \
+                                           should be {at_least}`{expected_reuse:?}`"
                         );
                         diag.span_err(error_span.0, &msg);
                     }
                 } else {
                     let msg = format!(
-                        "CGU-reuse for `{}` (mangled: `{}`) was \
-                                       not recorded",
-                        cgu_user_name, cgu_name
+                        "CGU-reuse for `{cgu_user_name}` (mangled: `{cgu_name}`) was \
+                                       not recorded"
                     );
                     diag.span_fatal(error_span.0, &msg)
                 }

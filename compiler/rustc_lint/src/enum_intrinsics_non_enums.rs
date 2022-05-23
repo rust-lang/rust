@@ -38,7 +38,7 @@ declare_lint_pass!(EnumIntrinsicsNonEnums => [ENUM_INTRINSICS_NON_ENUMS]);
 /// Returns `true` if we know for sure that the given type is not an enum. Note that for cases where
 /// the type is generic, we can't be certain if it will be an enum so we have to assume that it is.
 fn is_non_enum(t: Ty<'_>) -> bool {
-    !t.is_enum() && !t.potentially_needs_subst()
+    !t.is_enum() && !t.needs_subst()
 }
 
 fn enforce_mem_discriminant(

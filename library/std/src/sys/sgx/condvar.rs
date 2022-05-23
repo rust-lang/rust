@@ -1,4 +1,4 @@
-use crate::sys::mutex::Mutex;
+use crate::sys::locks::Mutex;
 use crate::time::Duration;
 
 use super::waitqueue::{SpinMutex, WaitQueue, WaitVariable};

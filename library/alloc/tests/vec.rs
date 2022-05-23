@@ -1,3 +1,6 @@
+use core::alloc::{Allocator, Layout};
+use core::ptr::NonNull;
+use std::alloc::System;
 use std::assert_matches::assert_matches;
 use std::borrow::Cow;
 use std::cell::Cell;
@@ -100,7 +103,7 @@ fn test_debug_fmt() {
     assert_eq!("[0, 1]", format!("{:?}", vec2));
 
     let slice: &[isize] = &[4, 5];
-    assert_eq!("[4, 5]", format!("{:?}", slice));
+    assert_eq!("[4, 5]", format!("{slice:?}"));
 }
 
 #[test]
@@ -918,7 +921,7 @@ fn test_into_iter_as_mut_slice() {
 fn test_into_iter_debug() {
     let vec = vec!['a', 'b', 'c'];
     let into_iter = vec.into_iter();
-    let debug = format!("{:?}", into_iter);
+    let debug = format!("{into_iter:?}");
     assert_eq!(debug, "IntoIter(['a', 'b', 'c'])");
 }
 
@@ -989,6 +992,31 @@ fn test_into_iter_advance_by() {
     i.advance_back_by(0).unwrap();
 
     assert_eq!(i.len(), 0);
+}
+
+#[test]
+fn test_into_iter_drop_allocator() {
+    struct ReferenceCountedAllocator<'a>(DropCounter<'a>);
+
+    unsafe impl Allocator for ReferenceCountedAllocator<'_> {
+        fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, core::alloc::AllocError> {
+            System.allocate(layout)
+        }
+
+        unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
+            System.deallocate(ptr, layout)
+        }
+    }
+
+    let mut drop_count = 0;
+
+    let allocator = ReferenceCountedAllocator(DropCounter { count: &mut drop_count });
+    let _ = Vec::<u32, _>::new_in(allocator);
+    assert_eq!(drop_count, 1);
+
+    let allocator = ReferenceCountedAllocator(DropCounter { count: &mut drop_count });
+    let _ = Vec::<u32, _>::new_in(allocator).into_iter();
+    assert_eq!(drop_count, 2);
 }
 
 #[test]
@@ -2336,7 +2364,7 @@ fn test_vec_dedup_panicking() {
     let ok = vec.iter().zip(expected.iter()).all(|(x, y)| x.index == y.index);
 
     if !ok {
-        panic!("expected: {:?}\ngot: {:?}\n", expected, vec);
+        panic!("expected: {expected:?}\ngot: {vec:?}\n");
     }
 }
 
@@ -2379,4 +2407,11 @@ fn test_extend_from_within_panicing_clone() {
     std::panic::catch_unwind(move || vec.extend_from_within(..)).unwrap_err();
 
     assert_eq!(count.load(Ordering::SeqCst), 4);
+}
+
+#[test]
+#[should_panic = "vec len overflow"]
+fn test_into_flattened_size_overflow() {
+    let v = vec![[(); usize::MAX]; 2];
+    let _ = v.into_flattened();
 }

@@ -4,17 +4,5 @@ error: removing an expression is not supported in this position
 LL |     let _ = #[cfg_eval] #[cfg(FALSE)] 0;
    |                         ^^^^^^^^^^^^^
 
-error: removing an expression is not supported in this position
-  --> $DIR/cfg-eval-fail.rs:5:25
-   |
-LL |     let _ = #[cfg_eval] #[cfg(FALSE)] 0;
-   |                         ^^^^^^^^^^^^^
-
-error: removing an expression is not supported in this position
-  --> $DIR/cfg-eval-fail.rs:5:25
-   |
-LL |     let _ = #[cfg_eval] #[cfg(FALSE)] 0;
-   |                         ^^^^^^^^^^^^^
-
-error: aborting due to 3 previous errors
+error: aborting due to previous error
 

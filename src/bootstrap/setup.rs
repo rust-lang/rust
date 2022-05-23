@@ -1,7 +1,9 @@
-use crate::TargetSelection;
 use crate::{t, VERSION};
+use crate::{Config, TargetSelection};
+use std::env::consts::EXE_SUFFIX;
 use std::fmt::Write as _;
-use std::path::{Path, PathBuf};
+use std::fs::File;
+use std::path::{Path, PathBuf, MAIN_SEPARATOR};
 use std::process::Command;
 use std::str::FromStr;
 use std::{
@@ -79,24 +81,22 @@ impl fmt::Display for Profile {
     }
 }
 
-pub fn setup(src_path: &Path, profile: Profile) {
-    let cfg_file = env::var_os("BOOTSTRAP_CONFIG").map(PathBuf::from);
+pub fn setup(config: &Config, profile: Profile) {
+    let path = &config.config;
 
-    if cfg_file.as_ref().map_or(false, |f| f.exists()) {
-        let file = cfg_file.unwrap();
+    if path.exists() {
         println!(
             "error: you asked `x.py` to setup a new config file, but one already exists at `{}`",
-            file.display()
+            path.display()
         );
-        println!("help: try adding `profile = \"{}\"` at the top of {}", profile, file.display());
+        println!("help: try adding `profile = \"{}\"` at the top of {}", profile, path.display());
         println!(
             "note: this will use the configuration in {}",
-            profile.include_path(src_path).display()
+            profile.include_path(&config.src).display()
         );
         std::process::exit(1);
     }
 
-    let path = cfg_file.unwrap_or_else(|| "config.toml".into());
     let settings = format!(
         "# Includes one of the default files in src/bootstrap/defaults\n\
     profile = \"{}\"\n\
@@ -105,11 +105,12 @@ pub fn setup(src_path: &Path, profile: Profile) {
     );
     t!(fs::write(path, settings));
 
-    let include_path = profile.include_path(src_path);
+    let include_path = profile.include_path(&config.src);
     println!("`x.py` will now use the configuration at {}", include_path.display());
 
     let build = TargetSelection::from_user(&env!("BUILD_TRIPLE"));
-    let stage_path = ["build", build.rustc_target_arg(), "stage1"].join("/");
+    let stage_path =
+        ["build", build.rustc_target_arg(), "stage1"].join(&MAIN_SEPARATOR.to_string());
 
     println!();
 
@@ -135,7 +136,7 @@ pub fn setup(src_path: &Path, profile: Profile) {
 
     println!();
 
-    t!(install_git_hook_maybe(src_path));
+    t!(install_git_hook_maybe(&config.src));
 
     println!();
 
@@ -160,9 +161,9 @@ fn rustup_installed() -> bool {
 }
 
 fn stage_dir_exists(stage_path: &str) -> bool {
-    match fs::create_dir(&stage_path[..]) {
+    match fs::create_dir(&stage_path) {
         Ok(_) => true,
-        Err(_) => Path::new(&stage_path[..]).exists(),
+        Err(_) => Path::new(&stage_path).exists(),
     }
 }
 
@@ -171,7 +172,14 @@ fn attempt_toolchain_link(stage_path: &str) {
         return;
     }
 
-    if try_link_toolchain(&stage_path[..]) {
+    if !ensure_stage1_toolchain_placeholder_exists(stage_path) {
+        println!(
+            "Failed to create a template for stage 1 toolchain or confirm that it already exists"
+        );
+        return;
+    }
+
+    if try_link_toolchain(&stage_path) {
         println!(
             "Added `stage1` rustup toolchain; try `cargo +stage1 build` on a separate rust project to run a newly-built toolchain"
         );
@@ -180,7 +188,7 @@ fn attempt_toolchain_link(stage_path: &str) {
         println!(
             "To manually link stage 1 build to `stage1` toolchain, run:\n
             `rustup toolchain link stage1 {}`",
-            &stage_path[..]
+            &stage_path
         );
     }
 }
@@ -214,9 +222,36 @@ fn toolchain_is_linked() -> bool {
 fn try_link_toolchain(stage_path: &str) -> bool {
     Command::new("rustup")
         .stdout(std::process::Stdio::null())
-        .args(&["toolchain", "link", "stage1", &stage_path[..]])
+        .args(&["toolchain", "link", "stage1", &stage_path])
         .output()
         .map_or(false, |output| output.status.success())
+}
+
+fn ensure_stage1_toolchain_placeholder_exists(stage_path: &str) -> bool {
+    let pathbuf = PathBuf::from(stage_path);
+
+    if fs::create_dir_all(pathbuf.join("lib")).is_err() {
+        return false;
+    };
+
+    let pathbuf = pathbuf.join("bin");
+    if fs::create_dir_all(&pathbuf).is_err() {
+        return false;
+    };
+
+    let pathbuf = pathbuf.join(format!("rustc{}", EXE_SUFFIX));
+
+    if pathbuf.exists() {
+        return true;
+    }
+
+    // Take care not to overwrite the file
+    let result = File::options().append(true).create(true).open(&pathbuf);
+    if result.is_err() {
+        return false;
+    }
+
+    return true;
 }
 
 // Used to get the path for `Subcommand::Setup`
@@ -271,9 +306,9 @@ fn install_git_hook_maybe(src_path: &Path) -> io::Result<()> {
     let mut input = String::new();
     println!(
         "Rust's CI will automatically fail if it doesn't pass `tidy`, the internal tool for ensuring code quality.
-If you'd like, x.py can install a git hook for you that will automatically run `tidy --bless` on each commit
-to ensure your code is up to par. If you decide later that this behavior is undesirable,
-simply delete the `pre-commit` file from .git/hooks."
+If you'd like, x.py can install a git hook for you that will automatically run `tidy --bless` before
+pushing your code to ensure your code is up to par. If you decide later that this behavior is
+undesirable, simply delete the `pre-push` file from .git/hooks."
     );
 
     let should_install = loop {
@@ -293,21 +328,21 @@ simply delete the `pre-commit` file from .git/hooks."
     };
 
     if should_install {
-        let src = src_path.join("src").join("etc").join("pre-commit.sh");
+        let src = src_path.join("src").join("etc").join("pre-push.sh");
         let git = t!(Command::new("git").args(&["rev-parse", "--git-common-dir"]).output().map(
             |output| {
                 assert!(output.status.success(), "failed to run `git`");
                 PathBuf::from(t!(String::from_utf8(output.stdout)).trim())
             }
         ));
-        let dst = git.join("hooks").join("pre-commit");
+        let dst = git.join("hooks").join("pre-push");
         match fs::hard_link(src, &dst) {
             Err(e) => println!(
                 "error: could not create hook {}: do you already have the git hook installed?\n{}",
                 dst.display(),
                 e
             ),
-            Ok(_) => println!("Linked `src/etc/pre-commit.sh` to `.git/hooks/pre-commit`"),
+            Ok(_) => println!("Linked `src/etc/pre-push.sh` to `.git/hooks/pre-push`"),
         };
     } else {
         println!("Ok, skipping installation!");

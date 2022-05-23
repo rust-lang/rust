@@ -1,3 +1,7 @@
+// revisions: base nll
+// ignore-compare-mode-nll
+//[nll] compile-flags: -Z borrowck=mir
+
 // Test an `exists<'a> { forall<'b> { 'a = 'b } }` pattern -- which should not compile!
 //
 // In particular, we test this pattern in trait solving, where it is not connected

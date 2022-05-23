@@ -8,7 +8,7 @@ fn main() {
 
     [(); { for _ in 0usize.. {}; 0}];
     //~^ ERROR `for` is not allowed in a `const`
-    //~| ERROR calls in constants are limited to constant functions
+    //~| ERROR cannot convert
     //~| ERROR mutable references are not allowed in constants
-    //~| ERROR calls in constants are limited to constant functions
+    //~| ERROR cannot call non-const fn
 }

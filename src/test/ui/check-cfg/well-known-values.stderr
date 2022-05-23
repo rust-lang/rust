@@ -1,0 +1,53 @@
+warning: unexpected `cfg` condition value
+  --> $DIR/well-known-values.rs:7:7
+   |
+LL | #[cfg(target_os = "linuz")]
+   |       ^^^^^^^^^^^^-------
+   |                   |
+   |                   help: did you mean: `"linux"`
+   |
+   = note: `#[warn(unexpected_cfgs)]` on by default
+   = note: expected values for `target_os` are: android, cuda, dragonfly, emscripten, espidf, freebsd, fuchsia, haiku, hermit, horizon, illumos, ios, l4re, linux, macos, netbsd, none, openbsd, psp, redox, solaris, solid_asp3, tvos, uefi, unknown, vxworks, wasi, windows
+
+warning: unexpected `cfg` condition value
+  --> $DIR/well-known-values.rs:14:7
+   |
+LL | #[cfg(target_has_atomic = "0")]
+   |       ^^^^^^^^^^^^^^^^^^^^---
+   |                           |
+   |                           help: did you mean: `"8"`
+   |
+   = note: expected values for `target_has_atomic` are: 128, 16, 32, 64, 8, ptr
+
+warning: unexpected `cfg` condition value
+  --> $DIR/well-known-values.rs:21:7
+   |
+LL | #[cfg(unix = "aa")]
+   |       ^^^^-------
+   |           |
+   |           help: remove the value
+   |
+   = note: no expected value for `unix`
+
+warning: unexpected `cfg` condition value
+  --> $DIR/well-known-values.rs:28:7
+   |
+LL | #[cfg(miri = "miri")]
+   |       ^^^^---------
+   |           |
+   |           help: remove the value
+   |
+   = note: no expected value for `miri`
+
+warning: unexpected `cfg` condition value
+  --> $DIR/well-known-values.rs:35:7
+   |
+LL | #[cfg(doc = "linux")]
+   |       ^^^----------
+   |          |
+   |          help: remove the value
+   |
+   = note: no expected value for `doc`
+
+warning: 5 warnings emitted
+

@@ -19,18 +19,7 @@ error[E0596]: cannot borrow data in a `&` reference as mutable
 LL | const S: &'static mut str = &mut " hello ";
    |                             ^^^^^^^^^^^^^^ cannot borrow as mutable
 
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/issue-76510.rs:5:1
-   |
-LL | const S: &'static mut str = &mut " hello ";
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered mutable reference in a `const`
-   |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 16, align: 8) {
-               ╾───────alloc3────────╼ 07 00 00 00 00 00 00 00 │ ╾──────╼........
-           }
+error: aborting due to 3 previous errors
 
-error: aborting due to 4 previous errors
-
-Some errors have detailed explanations: E0080, E0596, E0658, E0764.
-For more information about an error, try `rustc --explain E0080`.
+Some errors have detailed explanations: E0596, E0658, E0764.
+For more information about an error, try `rustc --explain E0596`.

@@ -1,11 +1,11 @@
 #![no_std]
 #![unstable(feature = "panic_unwind", issue = "32837")]
 #![feature(link_cfg)]
-#![feature(native_link_modifiers)]
 #![feature(native_link_modifiers_bundle)]
 #![feature(nll)]
 #![feature(staged_api)]
 #![feature(c_unwind)]
+#![feature(cfg_target_abi)]
 #![cfg_attr(not(target_env = "msvc"), feature(libc))]
 
 cfg_if::cfg_if! {
@@ -84,5 +84,9 @@ extern "C" {}
 extern "C" {}
 
 #[cfg(all(target_vendor = "fortanix", target_env = "sgx"))]
+#[link(name = "unwind", kind = "static", modifiers = "-bundle")]
+extern "C" {}
+
+#[cfg(all(target_os = "windows", target_env = "gnu", target_abi = "llvm"))]
 #[link(name = "unwind", kind = "static", modifiers = "-bundle")]
 extern "C" {}

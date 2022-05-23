@@ -13,7 +13,7 @@ pub(super) fn check<'tcx>(
     e: &'tcx Expr<'_>,
     from_ty: Ty<'tcx>,
     to_ty: Ty<'tcx>,
-    args: &'tcx [Expr<'_>],
+    arg: &'tcx Expr<'_>,
 ) -> bool {
     match (&from_ty.kind(), &to_ty.kind()) {
         _ if from_ty == to_ty => {
@@ -32,9 +32,9 @@ pub(super) fn check<'tcx>(
                 e.span,
                 "transmute from a reference to a pointer",
                 |diag| {
-                    if let Some(arg) = sugg::Sugg::hir_opt(cx, &args[0]) {
+                    if let Some(arg) = sugg::Sugg::hir_opt(cx, arg) {
                         let rty_and_mut = ty::TypeAndMut {
-                            ty: rty,
+                            ty: *rty,
                             mutbl: *rty_mutbl,
                         };
 
@@ -57,7 +57,7 @@ pub(super) fn check<'tcx>(
                 e.span,
                 "transmute from an integer to a pointer",
                 |diag| {
-                    if let Some(arg) = sugg::Sugg::hir_opt(cx, &args[0]) {
+                    if let Some(arg) = sugg::Sugg::hir_opt(cx, arg) {
                         diag.span_suggestion(
                             e.span,
                             "try",

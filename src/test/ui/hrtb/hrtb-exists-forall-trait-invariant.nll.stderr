@@ -1,5 +1,5 @@
 error: implementation of `Trait` is not general enough
-  --> $DIR/hrtb-exists-forall-trait-invariant.rs:28:5
+  --> $DIR/hrtb-exists-forall-trait-invariant.rs:32:5
    |
 LL |     foo::<()>();
    |     ^^^^^^^^^^^ implementation of `Trait` is not general enough

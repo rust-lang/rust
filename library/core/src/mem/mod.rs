@@ -21,6 +21,12 @@ mod maybe_uninit;
 #[stable(feature = "maybe_uninit", since = "1.36.0")]
 pub use maybe_uninit::MaybeUninit;
 
+mod valid_align;
+// For now this type is left crate-local.  It could potentially make sense to expose
+// it publicly, as it would be a nice parameter type for methods which need to take
+// alignment as a parameter, such as `Layout::padding_needed_for`.
+pub(crate) use valid_align::ValidAlign;
+
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(inline)]
 pub use crate::intrinsics::transmute;
@@ -299,7 +305,7 @@ pub fn forget_unsized<T: ?Sized>(t: T) {
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_promotable]
-#[rustc_const_stable(feature = "const_size_of", since = "1.24.0")]
+#[rustc_const_stable(feature = "const_mem_size_of", since = "1.24.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "mem_size_of")]
 pub const fn size_of<T>() -> usize {
     intrinsics::size_of::<T>()
@@ -383,7 +389,7 @@ pub const unsafe fn size_of_val_raw<T: ?Sized>(val: *const T) -> usize {
     unsafe { intrinsics::size_of_val(val) }
 }
 
-/// Returns the [ABI]-required minimum alignment of a type.
+/// Returns the [ABI]-required minimum alignment of a type in bytes.
 ///
 /// Every reference to a value of the type `T` must be a multiple of this number.
 ///
@@ -402,12 +408,13 @@ pub const unsafe fn size_of_val_raw<T: ?Sized>(val: *const T) -> usize {
 #[inline]
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_deprecated(reason = "use `align_of` instead", since = "1.2.0")]
+#[deprecated(note = "use `align_of` instead", since = "1.2.0")]
 pub fn min_align_of<T>() -> usize {
     intrinsics::min_align_of::<T>()
 }
 
-/// Returns the [ABI]-required minimum alignment of the type of the value that `val` points to.
+/// Returns the [ABI]-required minimum alignment of the type of the value that `val` points to in
+/// bytes.
 ///
 /// Every reference to a value of the type `T` must be a multiple of this number.
 ///
@@ -424,13 +431,13 @@ pub fn min_align_of<T>() -> usize {
 #[inline]
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_deprecated(reason = "use `align_of_val` instead", since = "1.2.0")]
+#[deprecated(note = "use `align_of_val` instead", since = "1.2.0")]
 pub fn min_align_of_val<T: ?Sized>(val: &T) -> usize {
     // SAFETY: val is a reference, so it's a valid raw pointer
     unsafe { intrinsics::min_align_of_val(val) }
 }
 
-/// Returns the [ABI]-required minimum alignment of a type.
+/// Returns the [ABI]-required minimum alignment of a type in bytes.
 ///
 /// Every reference to a value of the type `T` must be a multiple of this number.
 ///
@@ -454,7 +461,8 @@ pub const fn align_of<T>() -> usize {
     intrinsics::min_align_of::<T>()
 }
 
-/// Returns the [ABI]-required minimum alignment of the type of the value that `val` points to.
+/// Returns the [ABI]-required minimum alignment of the type of the value that `val` points to in
+/// bytes.
 ///
 /// Every reference to a value of the type `T` must be a multiple of this number.
 ///
@@ -477,7 +485,8 @@ pub const fn align_of_val<T: ?Sized>(val: &T) -> usize {
     unsafe { intrinsics::min_align_of_val(val) }
 }
 
-/// Returns the [ABI]-required minimum alignment of the type of the value that `val` points to.
+/// Returns the [ABI]-required minimum alignment of the type of the value that `val` points to in
+/// bytes.
 ///
 /// Every reference to a value of the type `T` must be a multiple of this number.
 ///
@@ -581,7 +590,7 @@ pub const unsafe fn align_of_val_raw<T: ?Sized>(val: *const T) -> usize {
 #[inline]
 #[must_use]
 #[stable(feature = "needs_drop", since = "1.21.0")]
-#[rustc_const_stable(feature = "const_needs_drop", since = "1.36.0")]
+#[rustc_const_stable(feature = "const_mem_needs_drop", since = "1.36.0")]
 #[rustc_diagnostic_item = "needs_drop"]
 pub const fn needs_drop<T>() -> bool {
     intrinsics::needs_drop::<T>()
@@ -664,7 +673,7 @@ pub unsafe fn zeroed<T>() -> T {
 /// [inv]: MaybeUninit#initialization-invariant
 #[inline(always)]
 #[must_use]
-#[rustc_deprecated(since = "1.39.0", reason = "use `mem::MaybeUninit` instead")]
+#[deprecated(since = "1.39.0", note = "use `mem::MaybeUninit` instead")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(deprecated_in_future)]
 #[allow(deprecated)]
@@ -700,10 +709,66 @@ pub unsafe fn uninitialized<T>() -> T {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_swap", issue = "83163")]
 pub const fn swap<T>(x: &mut T, y: &mut T) {
-    // SAFETY: the raw pointers have been created from safe mutable references satisfying all the
-    // constraints on `ptr::swap_nonoverlapping_one`
+    // NOTE(eddyb) SPIR-V's Logical addressing model doesn't allow for arbitrary
+    // reinterpretation of values as (chunkable) byte arrays, and the loop in the
+    // block optimization in `swap_slice` is hard to rewrite back
+    // into the (unoptimized) direct swapping implementation, so we disable it.
+    // FIXME(eddyb) the block optimization also prevents MIR optimizations from
+    // understanding `mem::replace`, `Option::take`, etc. - a better overall
+    // solution might be to make `ptr::swap_nonoverlapping` into an intrinsic, which
+    // a backend can choose to implement using the block optimization, or not.
+    // NOTE(scottmcm) MIRI is disabled here as reading in smaller units is a
+    // pessimization for it.  Also, if the type contains any unaligned pointers,
+    // copying those over multiple reads is difficult to support.
+    #[cfg(not(any(target_arch = "spirv", miri)))]
+    {
+        // For types that are larger multiples of their alignment, the simple way
+        // tends to copy the whole thing to stack rather than doing it one part
+        // at a time, so instead treat them as one-element slices and piggy-back
+        // the slice optimizations that will split up the swaps.
+        if size_of::<T>() / align_of::<T>() > 4 {
+            // SAFETY: exclusive references always point to one non-overlapping
+            // element and are non-null and properly aligned.
+            return unsafe { ptr::swap_nonoverlapping(x, y, 1) };
+        }
+    }
+
+    // If a scalar consists of just a small number of alignment units, let
+    // the codegen just swap those pieces directly, as it's likely just a
+    // few instructions and anything else is probably overcomplicated.
+    //
+    // Most importantly, this covers primitives and simd types that tend to
+    // have size=align where doing anything else can be a pessimization.
+    // (This will also be used for ZSTs, though any solution works for them.)
+    swap_simple(x, y);
+}
+
+/// Same as [`swap`] semantically, but always uses the simple implementation.
+///
+/// Used elsewhere in `mem` and `ptr` at the bottom layer of calls.
+#[rustc_const_unstable(feature = "const_swap", issue = "83163")]
+#[inline]
+pub(crate) const fn swap_simple<T>(x: &mut T, y: &mut T) {
+    // We arrange for this to typically be called with small types,
+    // so this reads-and-writes approach is actually better than using
+    // copy_nonoverlapping as it easily puts things in LLVM registers
+    // directly and doesn't end up inlining allocas.
+    // And LLVM actually optimizes it to 3×memcpy if called with
+    // a type larger than it's willing to keep in a register.
+    // Having typed reads and writes in MIR here is also good as
+    // it lets MIRI and CTFE understand them better, including things
+    // like enforcing type validity for them.
+    // Importantly, read+copy_nonoverlapping+write introduces confusing
+    // asymmetry to the behaviour where one value went through read+write
+    // whereas the other was copied over by the intrinsic (see #94371).
+
+    // SAFETY: exclusive references are always valid to read/write,
+    // including being aligned, and nothing here panics so it's drop-safe.
     unsafe {
-        ptr::swap_nonoverlapping_one(x, y);
+        let a = ptr::read(x);
+        let b = ptr::read(y);
+        ptr::write(x, b);
+        ptr::write(y, a);
     }
 }
 

@@ -2,6 +2,7 @@
 
 use super::{to_nonzero, Feature, State};
 
+use rustc_data_structures::fx::FxHashSet;
 use rustc_span::edition::Edition;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
@@ -47,6 +48,8 @@ macro_rules! declare_features {
             pub declared_lang_features: Vec<(Symbol, Span, Option<Symbol>)>,
             /// `#![feature]` attrs for non-language (library) features.
             pub declared_lib_features: Vec<(Symbol, Span)>,
+            /// Features enabled for this crate.
+            pub active_features: FxHashSet<Symbol>,
             $(
                 $(#[doc = $doc])*
                 pub $feature: bool
@@ -56,6 +59,11 @@ macro_rules! declare_features {
         impl Features {
             pub fn walk_feature_fields(&self, mut f: impl FnMut(&str, bool)) {
                 $(f(stringify!($feature), self.$feature);)+
+            }
+
+            /// Is the given feature active?
+            pub fn active(&self, feature: Symbol) -> bool {
+                self.active_features.contains(&feature)
             }
 
             /// Is the given feature enabled?
@@ -161,6 +169,14 @@ declare_features! (
     (active, staged_api, "1.0.0", None, None),
     /// Added for testing E0705; perma-unstable.
     (active, test_2018_feature, "1.31.0", None, Some(Edition::Edition2018)),
+    /// Added for testing unstable lints; perma-unstable.
+    (active, test_unstable_lint, "1.60.0", None, None),
+    /// Allows non-`unsafe` —and thus, unsound— access to `Pin` constructions.
+    /// Marked `incomplete` since perma-unstable and unsound.
+    (incomplete, unsafe_pin_internals, "1.60.0", None, None),
+    /// Use for stable + negative coherence and strict coherence depending on trait's
+    /// rustc_strict_coherence value.
+    (active, with_negative_coherence, "1.60.0", None, None),
     // !!!!    !!!!    !!!!    !!!!   !!!!    !!!!    !!!!    !!!!    !!!!    !!!!    !!!!
     // Features are listed in alphabetical order. Tidy will fail if you don't keep it this way.
     // !!!!    !!!!    !!!!    !!!!   !!!!    !!!!    !!!!    !!!!    !!!!    !!!!    !!!!
@@ -227,8 +243,7 @@ declare_features! (
     // FIXME: Document these and merge with the list below.
 
     // Unstable `#[target_feature]` directives.
-    (active, aarch64_target_feature, "1.27.0", Some(44839), None),
-    (active, adx_target_feature, "1.32.0", Some(44839), None),
+    (active, aarch64_ver_target_feature, "1.27.0", Some(44839), None),
     (active, arm_target_feature, "1.27.0", Some(44839), None),
     (active, avx512_target_feature, "1.27.0", Some(44839), None),
     (active, bpf_target_feature, "1.54.0", Some(44839), None),
@@ -271,23 +286,23 @@ declare_features! (
     /// Allows `extern "x86-interrupt" fn()`.
     (active, abi_x86_interrupt, "1.17.0", Some(40180), None),
     /// Allows additional const parameter types, such as `&'static str` or user defined types
-    (incomplete, adt_const_params, "1.56.0", Some(44580), None),
+    (incomplete, adt_const_params, "1.56.0", Some(95174), None),
     /// Allows defining an `#[alloc_error_handler]`.
     (active, alloc_error_handler, "1.29.0", Some(51540), None),
-    /// Allows a test to fail without failing the whole suite.
-    (active, allow_fail, "1.19.0", Some(46488), None),
     /// Allows explicit discriminants on non-unit enum variants.
     (active, arbitrary_enum_discriminant, "1.37.0", Some(60553), None),
     /// Allows trait methods with arbitrary self types.
     (active, arbitrary_self_types, "1.23.0", Some(44874), None),
     /// Allows using `const` operands in inline assembly.
-    (active, asm_const, "1.58.0", Some(72016), None),
+    (active, asm_const, "1.58.0", Some(93332), None),
     /// Enables experimental inline assembly support for additional architectures.
-    (active, asm_experimental_arch, "1.58.0", Some(72016), None),
+    (active, asm_experimental_arch, "1.58.0", Some(93335), None),
     /// Allows using `sym` operands in inline assembly.
-    (active, asm_sym, "1.58.0", Some(72016), None),
+    (active, asm_sym, "1.58.0", Some(93333), None),
     /// Allows the `may_unwind` option in inline assembly.
-    (active, asm_unwind, "1.58.0", Some(72016), None),
+    (active, asm_unwind, "1.58.0", Some(93334), None),
+    /// Allows users to enforce equality of associated constants `TraitImpl<AssocConst=3>`.
+    (active, associated_const_equality, "1.58.0", Some(92827), None),
     /// Allows the user of associated type bounds.
     (active, associated_type_bounds, "1.34.0", Some(52662), None),
     /// Allows associated type defaults.
@@ -300,14 +315,14 @@ declare_features! (
     (active, c_variadic, "1.34.0", Some(44930), None),
     /// Allows capturing disjoint fields in a closure/generator (RFC 2229).
     (incomplete, capture_disjoint_fields, "1.49.0", Some(53488), None),
-    /// Enables `#[cfg(panic = "...")]` config key.
-    (active, cfg_panic, "1.49.0", Some(77443), None),
     /// Allows the use of `#[cfg(sanitize = "option")]`; set when -Zsanitizer is used.
     (active, cfg_sanitize, "1.41.0", Some(39699), None),
     /// Allows `cfg(target_abi = "...")`.
     (active, cfg_target_abi, "1.55.0", Some(80970), None),
-    /// Allows `cfg(target_has_atomic = "...")`.
-    (active, cfg_target_has_atomic, "1.9.0", Some(32976), None),
+    /// Allows `cfg(target_has_atomic_load_store = "...")`.
+    (active, cfg_target_has_atomic, "1.60.0", Some(94039), None),
+    /// Allows `cfg(target_has_atomic_equal_alignment = "...")`.
+    (active, cfg_target_has_atomic_equal_alignment, "1.60.0", Some(93822), None),
     /// Allows `cfg(target_thread_local)`.
     (active, cfg_target_thread_local, "1.7.0", Some(29594), None),
     /// Allow conditional compilation depending on rust version
@@ -324,14 +339,8 @@ declare_features! (
     (active, const_extern_fn, "1.40.0", Some(64926), None),
     /// Allows basic arithmetic on floating point types in a `const fn`.
     (active, const_fn_floating_point_arithmetic, "1.48.0", Some(57241), None),
-    /// Allows using and casting function pointers in a `const fn`.
-    (active, const_fn_fn_ptr_basics, "1.48.0", Some(57563), None),
-    /// Allows trait bounds in `const fn`.
-    (active, const_fn_trait_bound, "1.53.0", Some(57563), None),
     /// Allows `for _ in _` loops in const contexts.
     (active, const_for, "1.56.0", Some(87575), None),
-    /// Allows argument and return position `impl Trait` in a `const fn`.
-    (active, const_impl_trait, "1.48.0", Some(77463), None),
     /// Allows using `&mut` in constant functions.
     (active, const_mut_refs, "1.41.0", Some(57349), None),
     /// Be more precise when looking for live drops in a const context.
@@ -348,14 +357,18 @@ declare_features! (
     (active, custom_inner_attributes, "1.30.0", Some(54726), None),
     /// Allows custom test frameworks with `#![test_runner]` and `#[test_case]`.
     (active, custom_test_frameworks, "1.30.0", Some(50297), None),
+    /// Allows using `#[debugger_visualizer]`.
+    (active, debugger_visualizer, "1.62.0", Some(95939), None),
     /// Allows declarative macros 2.0 (`macro`).
     (active, decl_macro, "1.17.0", Some(39412), None),
     /// Allows rustc to inject a default alloc_error_handler
     (active, default_alloc_error_handler, "1.48.0", Some(66741), None),
     /// Allows default type parameters to influence type inference.
     (active, default_type_parameter_fallback, "1.3.0", Some(27336), None),
-    /// Allows `#[derive(Default)]` and `#[default]` on enums.
-    (active, derive_default_enum, "1.56.0", Some(86985), None),
+    /// Allows using `#[deprecated_safe]` to deprecate the safeness of a function or trait
+    (active, deprecated_safe, "1.61.0", Some(94978), None),
+    /// Allows having using `suggestion` in the `#[deprecated]` attribute.
+    (active, deprecated_suggestion, "1.61.0", Some(94785), None),
     /// Tells rustdoc to automatically generate `#[doc(cfg(...))]`.
     (active, doc_auto_cfg, "1.58.0", Some(43781), None),
     /// Allows `#[doc(cfg(...))]`.
@@ -386,6 +399,8 @@ declare_features! (
     (active, generic_arg_infer, "1.55.0", Some(85077), None),
     /// Allows associated types to be generic, e.g., `type Foo<T>;` (RFC 1598).
     (active, generic_associated_types, "1.23.0", Some(44265), None),
+    /// An extension to the `generic_associated_types` feature, allowing incomplete features.
+    (incomplete, generic_associated_types_extended, "1.61.0", Some(95451), None),
     /// Allows non-trivial generic constants which have to have wfness manually propagated to callers
     (incomplete, generic_const_exprs, "1.56.0", Some(76560), None),
     /// Allows using `..X`, `..=X`, `...X`, and `X..` as a pattern.
@@ -394,8 +409,6 @@ declare_features! (
     (active, if_let_guard, "1.47.0", Some(51114), None),
     /// Allows using imported `main` function
     (active, imported_main, "1.53.0", Some(28937), None),
-    /// Allows in-band quantification of lifetime bindings (e.g., `fn foo(x: &'a u8) -> &'a u8`).
-    (active, in_band_lifetimes, "1.23.0", Some(44524), None),
     /// Allows inferring `'static` outlives requirements (RFC 2093).
     (active, infer_static_outlives_requirements, "1.26.0", Some(54185), None),
     /// Allows associated types in inherent impls.
@@ -413,13 +426,15 @@ declare_features! (
     // Allows setting the threshold for the `large_assignments` lint.
     (active, large_assignments, "1.52.0", Some(83518), None),
     /// Allows `if/while p && let q = r && ...` chains.
-    (incomplete, let_chains, "1.37.0", Some(53667), None),
+    (active, let_chains, "1.37.0", Some(53667), None),
     /// Allows `let...else` statements.
     (active, let_else, "1.56.0", Some(87335), None),
     /// Allows `#[link(..., cfg(..))]`.
     (active, link_cfg, "1.14.0", Some(37406), None),
     /// Allows using `reason` in lint attributes and the `#[expect(lint)]` lint check.
     (active, lint_reasons, "1.31.0", Some(54503), None),
+    /// Give access to additional metadata about declarative macro meta-variables.
+    (active, macro_metavar_expr, "1.61.0", Some(83527), None),
     /// Allows `#[marker]` on certain traits allowing overlapping implementations.
     (active, marker_trait_attr, "1.30.0", Some(29864), None),
     /// A minimal, sound subset of specialization intended to be used by the
@@ -432,16 +447,12 @@ declare_features! (
     (active, must_not_suspend, "1.57.0", Some(83310), None),
     /// Allows using `#[naked]` on functions.
     (active, naked_functions, "1.9.0", Some(32408), None),
-    /// Allows specifying modifiers in the link attribute: `#[link(modifiers = "...")]`
-    (active, native_link_modifiers, "1.53.0", Some(81490), None),
     /// Allows specifying the as-needed link modifier
     (active, native_link_modifiers_as_needed, "1.53.0", Some(81490), None),
     /// Allows specifying the bundle link modifier
     (active, native_link_modifiers_bundle, "1.53.0", Some(81490), None),
     /// Allows specifying the verbatim link modifier
     (active, native_link_modifiers_verbatim, "1.53.0", Some(81490), None),
-    /// Allows specifying the whole-archive link modifier
-    (active, native_link_modifiers_whole_archive, "1.53.0", Some(81490), None),
     /// Allow negative trait implementations.
     (active, negative_impls, "1.44.0", Some(68318), None),
     /// Allows the `!` type. Does not imply 'exhaustive_patterns' (below) any more.
@@ -493,6 +504,8 @@ declare_features! (
     (active, static_nobundle, "1.16.0", Some(37403), None),
     /// Allows attributes on expressions and non-item statements.
     (active, stmt_expr_attributes, "1.6.0", Some(15701), None),
+    /// Allows lints part of the strict provenance effort.
+    (active, strict_provenance, "1.61.0", Some(95228), None),
     /// Allows the use of `#[target_feature]` on safe functions.
     (active, target_feature_11, "1.45.0", Some(69098), None),
     /// Allows using `#[thread_local]` on `static` items.
@@ -528,8 +541,12 @@ declare_features! (
     ///
     /// NOTE: A limited form of `union U { ... }` was accepted in 1.19.0.
     (active, untagged_unions, "1.13.0", Some(55149), None),
+    /// Allows using the `#[used(linker)]` (or `#[used(compiler)]`) attribute.
+    (active, used_with_arg, "1.60.0", Some(93798), None),
     /// Allows `extern "wasm" fn`
     (active, wasm_abi, "1.53.0", Some(83788), None),
+    /// Allows `do yeet` expressions
+    (active, yeet_expr, "1.62.0", Some(96373), None),
     // !!!!    !!!!    !!!!    !!!!   !!!!    !!!!    !!!!    !!!!    !!!!    !!!!    !!!!
     // Features are listed in alphabetical order. Tidy will fail if you don't keep it this way.
     // !!!!    !!!!    !!!!    !!!!   !!!!    !!!!    !!!!    !!!!    !!!!    !!!!    !!!!

@@ -66,8 +66,8 @@ impl<'tcx> MirPass<'tcx> for InstrumentCoverage {
             return;
         }
 
-        let hir_id = tcx.hir().local_def_id_to_hir_id(mir_source.def_id().expect_local());
-        let is_fn_like = tcx.hir().get(hir_id).fn_kind().is_some();
+        let is_fn_like =
+            tcx.hir().get_by_def_id(mir_source.def_id().expect_local()).fn_kind().is_some();
 
         // Only instrument functions, methods, and closures (not constants since they are evaluated
         // at compile time by Miri).
@@ -579,7 +579,7 @@ fn hash_mir_source<'tcx>(tcx: TyCtxt<'tcx>, hir_body: &'tcx rustc_hir::Body<'tcx
     let mut hcx = tcx.create_no_span_stable_hashing_context();
     let mut stable_hasher = StableHasher::new();
     let owner = hir_body.id().hir_id.owner;
-    let bodies = &tcx.hir_owner_nodes(owner).as_ref().unwrap().bodies;
+    let bodies = &tcx.hir_owner_nodes(owner).unwrap().bodies;
     hcx.with_hir_bodies(false, owner, bodies, |hcx| {
         hir_body.value.hash_stable(hcx, &mut stable_hasher)
     });

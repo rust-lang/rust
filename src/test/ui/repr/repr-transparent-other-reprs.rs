@@ -1,5 +1,3 @@
-#![feature(repr_align)]
-
 // See also repr-transparent.rs
 
 #[repr(transparent, C)] //~ ERROR cannot have other repr

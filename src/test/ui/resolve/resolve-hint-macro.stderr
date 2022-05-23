@@ -1,5 +1,21 @@
+error: expected identifier, found `1`
+  --> $DIR/resolve-hint-macro.rs:5:17
+   |
+LL |     assert_eq { 1, 1 };
+   |     ---------   ^ expected identifier
+   |     |
+   |     while parsing this struct
+
+error: expected identifier, found `1`
+  --> $DIR/resolve-hint-macro.rs:5:20
+   |
+LL |     assert_eq { 1, 1 };
+   |     ---------      ^ expected identifier
+   |     |
+   |     while parsing this struct
+
 error[E0423]: expected function, found macro `assert_eq`
-  --> $DIR/resolve-hint-macro.rs:2:5
+  --> $DIR/resolve-hint-macro.rs:3:5
    |
 LL |     assert_eq(1, 1);
    |     ^^^^^^^^^ not a function
@@ -9,6 +25,29 @@ help: use `!` to invoke the macro
 LL |     assert_eq!(1, 1);
    |              +
 
-error: aborting due to previous error
+error[E0574]: expected struct, variant or union type, found macro `assert_eq`
+  --> $DIR/resolve-hint-macro.rs:5:5
+   |
+LL |     assert_eq { 1, 1 };
+   |     ^^^^^^^^^ not a struct, variant or union type
+   |
+help: use `!` to invoke the macro
+   |
+LL |     assert_eq! { 1, 1 };
+   |              +
 
-For more information about this error, try `rustc --explain E0423`.
+error[E0423]: expected value, found macro `assert`
+  --> $DIR/resolve-hint-macro.rs:9:5
+   |
+LL |     assert[true];
+   |     ^^^^^^ not a value
+   |
+help: use `!` to invoke the macro
+   |
+LL |     assert![true];
+   |           +
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0423, E0574.
+For more information about an error, try `rustc --explain E0423`.

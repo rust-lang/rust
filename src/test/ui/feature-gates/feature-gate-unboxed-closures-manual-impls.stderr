@@ -38,9 +38,25 @@ error[E0658]: the precise format of `Fn`-family traits' type parameters is subje
   --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:9:6
    |
 LL | impl Fn<()> for Foo {
-   |      ^^^^^^ help: use parenthetical notation instead: `Fn() -> ()`
+   |      ^^^^^^
    |
    = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
+   = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
+
+error[E0183]: manual implementations of `Fn` are experimental
+  --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:9:6
+   |
+LL | impl Fn<()> for Foo {
+   |      ^^^^^^ manual implementations of `Fn` are experimental
+   |
+   = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
+
+error[E0183]: manual implementations of `FnOnce` are experimental
+  --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:16:6
+   |
+LL | impl FnOnce() for Foo1 {
+   |      ^^^^^^^^ manual implementations of `FnOnce` are experimental
+   |
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
 
 error[E0229]: associated type bindings are not allowed here
@@ -53,49 +69,33 @@ error[E0658]: the precise format of `Fn`-family traits' type parameters is subje
   --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:23:6
    |
 LL | impl FnMut<()> for Bar {
-   |      ^^^^^^^^^ help: use parenthetical notation instead: `FnMut() -> ()`
+   |      ^^^^^^^^^
    |
    = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
+   = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
+
+error[E0183]: manual implementations of `FnMut` are experimental
+  --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:23:6
+   |
+LL | impl FnMut<()> for Bar {
+   |      ^^^^^^^^^ manual implementations of `FnMut` are experimental
+   |
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
 
 error[E0658]: the precise format of `Fn`-family traits' type parameters is subject to change
   --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:30:6
    |
 LL | impl FnOnce<()> for Baz {
-   |      ^^^^^^^^^^ help: use parenthetical notation instead: `FnOnce() -> ()`
+   |      ^^^^^^^^^^
    |
    = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
 
-error[E0183]: manual implementations of `Fn` are experimental
-  --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:9:1
-   |
-LL | impl Fn<()> for Foo {
-   | ^^^^^^^^^^^^^^^^^^^ manual implementations of `Fn` are experimental
-   |
-   = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
-
-error[E0183]: manual implementations of `FnMut` are experimental
-  --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:23:1
-   |
-LL | impl FnMut<()> for Bar {
-   | ^^^^^^^^^^^^^^^^^^^^^^ manual implementations of `FnMut` are experimental
-   |
-   = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
-
 error[E0183]: manual implementations of `FnOnce` are experimental
-  --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:16:1
-   |
-LL | impl FnOnce() for Foo1 {
-   | ^^^^^^^^^^^^^^^^^^^^^^ manual implementations of `FnOnce` are experimental
-   |
-   = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
-
-error[E0183]: manual implementations of `FnOnce` are experimental
-  --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:30:1
+  --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:30:6
    |
 LL | impl FnOnce<()> for Baz {
-   | ^^^^^^^^^^^^^^^^^^^^^^^ manual implementations of `FnOnce` are experimental
+   |      ^^^^^^^^^^ manual implementations of `FnOnce` are experimental
    |
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
 

@@ -302,6 +302,7 @@ pub trait Try: FromResidual {
         enclosing_scope = "this function should return `Result` or `Option` to accept `?`"
     ),
 )]
+#[rustc_diagnostic_item = "FromResidual"]
 #[unstable(feature = "try_trait_v2", issue = "84277")]
 pub trait FromResidual<R = <Self as Try>::Residual> {
     /// Constructs the type from a compatible `Residual` type.
@@ -327,6 +328,22 @@ pub trait FromResidual<R = <Self as Try>::Residual> {
     #[lang = "from_residual"]
     #[unstable(feature = "try_trait_v2", issue = "84277")]
     fn from_residual(residual: R) -> Self;
+}
+
+#[cfg(not(bootstrap))]
+#[unstable(
+    feature = "yeet_desugar_details",
+    issue = "none",
+    reason = "just here to simplify the desugaring; will never be stabilized"
+)]
+#[inline]
+#[track_caller] // because `Result::from_residual` has it
+#[lang = "from_yeet"]
+pub fn from_yeet<T, Y>(yeeted: Y) -> T
+where
+    T: FromResidual<Yeet<Y>>,
+{
+    FromResidual::from_residual(Yeet(yeeted))
 }
 
 /// Allows retrieving the canonical type implementing [`Try`] that has this type
@@ -359,6 +376,14 @@ pub(crate) type ChangeOutputType<T, V> = <<T as Try>::Residual as Residual<V>>::
 #[repr(transparent)]
 pub(crate) struct NeverShortCircuit<T>(pub T);
 
+impl<T> NeverShortCircuit<T> {
+    /// Wrap a binary `FnMut` to return its result wrapped in a `NeverShortCircuit`.
+    #[inline]
+    pub fn wrap_mut_2<A, B>(mut f: impl FnMut(A, B) -> T) -> impl FnMut(A, B) -> Self {
+        move |a, b| NeverShortCircuit(f(a, b))
+    }
+}
+
 pub(crate) enum NeverShortCircuitResidual {}
 
 impl<T> Try for NeverShortCircuit<T> {
@@ -386,3 +411,9 @@ impl<T> FromResidual for NeverShortCircuit<T> {
 impl<T> Residual<T> for NeverShortCircuitResidual {
     type TryType = NeverShortCircuit<T>;
 }
+
+/// Implement `FromResidual<Yeet<T>>` on your type to enable
+/// `do yeet expr` syntax in functions returning your type.
+#[unstable(feature = "try_trait_v2_yeet", issue = "96374")]
+#[derive(Debug)]
+pub struct Yeet<T>(pub T);

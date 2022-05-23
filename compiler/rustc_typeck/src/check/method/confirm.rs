@@ -2,9 +2,9 @@ use super::{probe, MethodCallee};
 
 use crate::astconv::{AstConv, CreateSubstsForGenericArgsCtxt, IsMethodCall};
 use crate::check::{callee, FnCtxt};
-use crate::hir::def_id::DefId;
-use crate::hir::GenericArg;
 use rustc_hir as hir;
+use rustc_hir::def_id::DefId;
+use rustc_hir::GenericArg;
 use rustc_infer::infer::{self, InferOk};
 use rustc_middle::traits::{ObligationCauseCode, UnifyReceiverContext};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, PointerCast};
@@ -149,26 +149,24 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         // time writing the results into the various typeck results.
         let mut autoderef =
             self.autoderef_overloaded_span(self.span, unadjusted_self_ty, self.call_expr.span);
-        let (_, n) = match autoderef.nth(pick.autoderefs) {
-            Some(n) => n,
-            None => {
-                return self.tcx.ty_error_with_message(
-                    rustc_span::DUMMY_SP,
-                    &format!("failed autoderef {}", pick.autoderefs),
-                );
-            }
+        let Some((ty, n)) = autoderef.nth(pick.autoderefs) else {
+            return self.tcx.ty_error_with_message(
+                rustc_span::DUMMY_SP,
+                &format!("failed autoderef {}", pick.autoderefs),
+            );
         };
         assert_eq!(n, pick.autoderefs);
 
         let mut adjustments = self.adjust_steps(&autoderef);
+        let mut target = self.structurally_resolved_type(autoderef.span(), ty);
 
-        let mut target =
-            self.structurally_resolved_type(autoderef.span(), autoderef.final_ty(false));
-
-        match &pick.autoref_or_ptr_adjustment {
+        match pick.autoref_or_ptr_adjustment {
             Some(probe::AutorefOrPtrAdjustment::Autoref { mutbl, unsize }) => {
                 let region = self.next_region_var(infer::Autoref(self.span));
-                target = self.tcx.mk_ref(region, ty::TypeAndMut { mutbl: *mutbl, ty: target });
+                // Type we're wrapping in a reference, used later for unsizing
+                let base_ty = target;
+
+                target = self.tcx.mk_ref(region, ty::TypeAndMut { mutbl, ty: target });
                 let mutbl = match mutbl {
                     hir::Mutability::Not => AutoBorrowMutability::Not,
                     hir::Mutability::Mut => AutoBorrowMutability::Mut {
@@ -182,18 +180,26 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                     target,
                 });
 
-                if let Some(unsize_target) = unsize {
+                if unsize {
+                    let unsized_ty = if let ty::Array(elem_ty, _) = base_ty.kind() {
+                        self.tcx.mk_slice(*elem_ty)
+                    } else {
+                        bug!(
+                            "AutorefOrPtrAdjustment's unsize flag should only be set for array ty, found {}",
+                            base_ty
+                        )
+                    };
                     target = self
                         .tcx
-                        .mk_ref(region, ty::TypeAndMut { mutbl: mutbl.into(), ty: unsize_target });
+                        .mk_ref(region, ty::TypeAndMut { mutbl: mutbl.into(), ty: unsized_ty });
                     adjustments
                         .push(Adjustment { kind: Adjust::Pointer(PointerCast::Unsize), target });
                 }
             }
             Some(probe::AutorefOrPtrAdjustment::ToConstPtr) => {
                 target = match target.kind() {
-                    ty::RawPtr(ty::TypeAndMut { ty, mutbl }) => {
-                        assert_eq!(*mutbl, hir::Mutability::Mut);
+                    &ty::RawPtr(ty::TypeAndMut { ty, mutbl }) => {
+                        assert_eq!(mutbl, hir::Mutability::Mut);
                         self.tcx.mk_ptr(ty::TypeAndMut { mutbl: hir::Mutability::Not, ty })
                     }
                     other => panic!("Cannot adjust receiver type {:?} to const ptr", other),
@@ -454,21 +460,15 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
 
         debug!("method_predicates after subst = {:?}", method_predicates);
 
-        let sig = self.tcx.fn_sig(def_id);
+        let sig = self.tcx.bound_fn_sig(def_id);
 
-        // Instantiate late-bound regions and substitute the trait
-        // parameters into the method type to get the actual method type.
-        //
-        // N.B., instantiate late-bound regions first so that
-        // `instantiate_type_scheme` can normalize associated types that
-        // may reference those regions.
-        let method_sig = self.replace_bound_vars_with_fresh_vars(sig);
-        debug!("late-bound lifetimes from method instantiated, method_sig={:?}", method_sig);
+        let sig = sig.subst(self.tcx, all_substs);
+        debug!("type scheme substituted, sig={:?}", sig);
 
-        let method_sig = method_sig.subst(self.tcx, all_substs);
-        debug!("type scheme substituted, method_sig={:?}", method_sig);
+        let sig = self.replace_bound_vars_with_fresh_vars(sig);
+        debug!("late-bound lifetimes from method instantiated, sig={:?}", sig);
 
-        (method_sig, method_predicates)
+        (sig, method_predicates)
     }
 
     fn add_obligations(
@@ -511,10 +511,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         &self,
         predicates: &ty::InstantiatedPredicates<'tcx>,
     ) -> Option<Span> {
-        let sized_def_id = match self.tcx.lang_items().sized_trait() {
-            Some(def_id) => def_id,
-            None => return None,
-        };
+        let sized_def_id = self.tcx.lang_items().sized_trait()?;
 
         traits::elaborate_predicates(self.tcx, predicates.predicates.iter().copied())
             // We don't care about regions here.

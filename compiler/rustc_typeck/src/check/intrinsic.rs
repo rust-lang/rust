@@ -7,7 +7,7 @@ use crate::errors::{
 };
 use crate::require_same_types;
 
-use rustc_errors::{pluralize, struct_span_err};
+use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::subst::Subst;
@@ -43,7 +43,6 @@ fn equate_intrinsic_type<'tcx>(
                 span,
                 found,
                 expected,
-                expected_pluralize: pluralize!(expected),
                 descr,
             });
             false
@@ -130,7 +129,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
                 ty::INNERMOST,
                 ty::BoundRegion { var: ty::BoundVar::from_u32(1), kind: ty::BrEnv },
             ));
-            let va_list_ty = tcx.type_of(did).subst(tcx, &[region.into()]);
+            let va_list_ty = tcx.bound_type_of(did).subst(tcx, &[region.into()]);
             (tcx.mk_ref(env_region, ty::TypeAndMut { ty: va_list_ty, mutbl }), va_list_ty)
         })
     };
@@ -297,9 +296,17 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
             sym::const_allocate => {
                 (0, vec![tcx.types.usize, tcx.types.usize], tcx.mk_mut_ptr(tcx.types.u8))
             }
+            sym::const_deallocate => (
+                0,
+                vec![tcx.mk_mut_ptr(tcx.types.u8), tcx.types.usize, tcx.types.usize],
+                tcx.mk_unit(),
+            ),
 
             sym::ptr_offset_from => {
                 (1, vec![tcx.mk_imm_ptr(param(0)), tcx.mk_imm_ptr(param(0))], tcx.types.isize)
+            }
+            sym::ptr_offset_from_unsigned => {
+                (1, vec![tcx.mk_imm_ptr(param(0)), tcx.mk_imm_ptr(param(0))], tcx.types.usize)
             }
             sym::unchecked_div | sym::unchecked_rem | sym::exact_div => {
                 (1, vec![param(0), param(0)], param(0))
@@ -433,6 +440,7 @@ pub fn check_platform_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>)
         | sym::simd_fpow
         | sym::simd_saturating_add
         | sym::simd_saturating_sub => (1, vec![param(0), param(0)], param(0)),
+        sym::simd_arith_offset => (2, vec![param(0), param(1)], param(0)),
         sym::simd_neg
         | sym::simd_fsqrt
         | sym::simd_fsin
@@ -453,7 +461,7 @@ pub fn check_platform_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>)
         sym::simd_scatter => (3, vec![param(0), param(1), param(2)], tcx.mk_unit()),
         sym::simd_insert => (2, vec![param(0), tcx.types.u32, param(1)], param(0)),
         sym::simd_extract => (2, vec![param(0), tcx.types.u32], param(1)),
-        sym::simd_cast => (2, vec![param(0)], param(1)),
+        sym::simd_cast | sym::simd_as => (2, vec![param(0)], param(1)),
         sym::simd_bitmask => (2, vec![param(0)], param(1)),
         sym::simd_select | sym::simd_select_bitmask => {
             (2, vec![param(0), param(1), param(1)], param(1))
@@ -480,14 +488,14 @@ pub fn check_platform_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>)
                 }
                 Err(_) => {
                     let msg =
-                        format!("unrecognized platform-specific intrinsic function: `{}`", name);
+                        format!("unrecognized platform-specific intrinsic function: `{name}`");
                     tcx.sess.struct_span_err(it.span, &msg).emit();
                     return;
                 }
             }
         }
         _ => {
-            let msg = format!("unrecognized platform-specific intrinsic function: `{}`", name);
+            let msg = format!("unrecognized platform-specific intrinsic function: `{name}`");
             tcx.sess.struct_span_err(it.span, &msg).emit();
             return;
         }

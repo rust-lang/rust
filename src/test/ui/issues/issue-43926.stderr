@@ -1,4 +1,4 @@
-error: `cfg()` must have an argument
+error: link cfg must have a single predicate argument
   --> $DIR/issue-43926.rs:1:22
    |
 LL | #[link(name = "foo", cfg())]

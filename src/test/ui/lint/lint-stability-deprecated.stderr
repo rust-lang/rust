@@ -88,37 +88,37 @@ warning: use of deprecated struct `lint_stability::DeprecatedUnstableStruct`: te
 LL |         let _ = DeprecatedUnstableStruct {
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: use of deprecated struct `lint_stability::DeprecatedUnitStruct`: text
+warning: use of deprecated unit struct `lint_stability::DeprecatedUnitStruct`: text
   --> $DIR/lint-stability-deprecated.rs:118:17
    |
 LL |         let _ = DeprecatedUnitStruct;
    |                 ^^^^^^^^^^^^^^^^^^^^
 
-warning: use of deprecated struct `lint_stability::DeprecatedUnstableUnitStruct`: text
+warning: use of deprecated unit struct `lint_stability::DeprecatedUnstableUnitStruct`: text
   --> $DIR/lint-stability-deprecated.rs:119:17
    |
 LL |         let _ = DeprecatedUnstableUnitStruct;
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: use of deprecated variant `lint_stability::Enum::DeprecatedVariant`: text
+warning: use of deprecated unit variant `lint_stability::Enum::DeprecatedVariant`: text
   --> $DIR/lint-stability-deprecated.rs:123:23
    |
 LL |         let _ = Enum::DeprecatedVariant;
    |                       ^^^^^^^^^^^^^^^^^
 
-warning: use of deprecated variant `lint_stability::Enum::DeprecatedUnstableVariant`: text
+warning: use of deprecated unit variant `lint_stability::Enum::DeprecatedUnstableVariant`: text
   --> $DIR/lint-stability-deprecated.rs:124:23
    |
 LL |         let _ = Enum::DeprecatedUnstableVariant;
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: use of deprecated struct `lint_stability::DeprecatedTupleStruct`: text
+warning: use of deprecated tuple struct `lint_stability::DeprecatedTupleStruct`: text
   --> $DIR/lint-stability-deprecated.rs:128:17
    |
 LL |         let _ = DeprecatedTupleStruct (1);
    |                 ^^^^^^^^^^^^^^^^^^^^^
 
-warning: use of deprecated struct `lint_stability::DeprecatedUnstableTupleStruct`: text
+warning: use of deprecated tuple struct `lint_stability::DeprecatedUnstableTupleStruct`: text
   --> $DIR/lint-stability-deprecated.rs:129:17
    |
 LL |         let _ = DeprecatedUnstableTupleStruct (1);

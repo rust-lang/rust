@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/regions-early-bound-error.rs:19:5
+  --> $DIR/regions-early-bound-error.rs:23:5
    |
 LL | fn get<'a,'b,G:GetRef<'a, isize>>(g1: G, b: &'b isize) -> &'b isize {
    |        -- -- lifetime `'b` defined here

@@ -21,22 +21,22 @@ use crate::core;
 /// This module is used to store stuff from Rust's AST in a more convenient
 /// manner (and with prettier names) before cleaning.
 #[derive(Debug)]
-crate struct Module<'hir> {
-    crate name: Symbol,
-    crate where_inner: Span,
-    crate mods: Vec<Module<'hir>>,
-    crate id: hir::HirId,
+pub(crate) struct Module<'hir> {
+    pub(crate) name: Symbol,
+    pub(crate) where_inner: Span,
+    pub(crate) mods: Vec<Module<'hir>>,
+    pub(crate) id: hir::HirId,
     // (item, renamed)
-    crate items: Vec<(&'hir hir::Item<'hir>, Option<Symbol>)>,
-    crate foreigns: Vec<(&'hir hir::ForeignItem<'hir>, Option<Symbol>)>,
+    pub(crate) items: Vec<(&'hir hir::Item<'hir>, Option<Symbol>)>,
+    pub(crate) foreigns: Vec<(&'hir hir::ForeignItem<'hir>, Option<Symbol>)>,
 }
 
 impl Module<'_> {
-    crate fn new(name: Symbol, id: hir::HirId, where_inner: Span) -> Self {
+    pub(crate) fn new(name: Symbol, id: hir::HirId, where_inner: Span) -> Self {
         Module { name, id, where_inner, mods: Vec::new(), items: Vec::new(), foreigns: Vec::new() }
     }
 
-    crate fn where_outer(&self, tcx: TyCtxt<'_>) -> Span {
+    pub(crate) fn where_outer(&self, tcx: TyCtxt<'_>) -> Span {
         tcx.hir().span(self.id)
     }
 }
@@ -48,7 +48,7 @@ fn def_id_to_path(tcx: TyCtxt<'_>, did: DefId) -> Vec<Symbol> {
     std::iter::once(crate_name).chain(relative).collect()
 }
 
-crate fn inherits_doc_hidden(tcx: TyCtxt<'_>, mut node: hir::HirId) -> bool {
+pub(crate) fn inherits_doc_hidden(tcx: TyCtxt<'_>, mut node: hir::HirId) -> bool {
     while let Some(id) = tcx.hir().get_enclosing_scope(node) {
         node = id;
         if tcx.hir().attrs(node).lists(sym::doc).has_word(sym::hidden) {
@@ -61,7 +61,7 @@ crate fn inherits_doc_hidden(tcx: TyCtxt<'_>, mut node: hir::HirId) -> bool {
 // Also, is there some reason that this doesn't use the 'visit'
 // framework from syntax?.
 
-crate struct RustdocVisitor<'a, 'tcx> {
+pub(crate) struct RustdocVisitor<'a, 'tcx> {
     cx: &'a mut core::DocContext<'tcx>,
     view_item_stack: FxHashSet<hir::HirId>,
     inlining: bool,
@@ -71,7 +71,7 @@ crate struct RustdocVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
-    crate fn new(cx: &'a mut core::DocContext<'tcx>) -> RustdocVisitor<'a, 'tcx> {
+    pub(crate) fn new(cx: &'a mut core::DocContext<'tcx>) -> RustdocVisitor<'a, 'tcx> {
         // If the root is re-exported, terminate all recursion.
         let mut stack = FxHashSet::default();
         stack.insert(hir::CRATE_HIR_ID);
@@ -89,7 +89,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         self.exact_paths.entry(did).or_insert_with(|| def_id_to_path(tcx, did));
     }
 
-    crate fn visit(mut self) -> Module<'tcx> {
+    pub(crate) fn visit(mut self) -> Module<'tcx> {
         let mut top_level_module = self.visit_mod_contents(
             hir::CRATE_HIR_ID,
             self.cx.tcx.hir().root_module(),
@@ -141,6 +141,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     })
                     .collect::<Vec<_>>()
             })
+            .chain([Cfg::Cfg(sym::test, None)].into_iter())
             .collect();
 
         self.cx.cache.exact_paths = self.exact_paths;
@@ -153,7 +154,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         m: &'tcx hir::Mod<'tcx>,
         name: Symbol,
     ) -> Module<'tcx> {
-        let mut om = Module::new(name, id, m.inner);
+        let mut om = Module::new(name, id, m.spans.inner_span);
         let def_id = self.cx.tcx.hir().local_def_id(id).to_def_id();
         // Keep track of if there were any private modules in the path.
         let orig_inside_public_path = self.inside_public_path;
@@ -187,9 +188,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         debug!("maybe_inline_local res: {:?}", res);
 
         let tcx = self.cx.tcx;
-        let res_did = if let Some(did) = res.opt_def_id() {
-            did
-        } else {
+        let Some(res_did) = res.opt_def_id() else {
             return false;
         };
 
@@ -326,8 +325,8 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
 
                 om.items.push((item, renamed))
             }
-            hir::ItemKind::Macro(ref macro_def) => {
-                // `#[macro_export] macro_rules!` items are handled seperately in `visit()`,
+            hir::ItemKind::Macro(ref macro_def, _) => {
+                // `#[macro_export] macro_rules!` items are handled separately in `visit()`,
                 // above, since they need to be documented at the module top level. Accordingly,
                 // we only want to handle macros if one of three conditions holds:
                 //

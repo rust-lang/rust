@@ -14,7 +14,7 @@ LL | #[rustc_error]
    |
    = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
 
-error[E0658]: the `#[rustc_nonnull_optimization_guaranteed]` attribute is just used to enable niche optimizations in libcore and will never be stable
+error[E0658]: the `#[rustc_nonnull_optimization_guaranteed]` attribute is just used to enable niche optimizations in libcore and libstd and will never be stable
   --> $DIR/feature-gate-rustc-attrs-1.rs:5:1
    |
 LL | #[rustc_nonnull_optimization_guaranteed]

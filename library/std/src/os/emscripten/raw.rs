@@ -3,12 +3,12 @@
 //! except using the musl-specific stat64 structure in liblibc.
 
 #![stable(feature = "raw_ext", since = "1.1.0")]
-#![rustc_deprecated(
+#![deprecated(
     since = "1.8.0",
-    reason = "these type aliases are no longer supported by \
-              the standard library, the `libc` crate on \
-              crates.io should be used instead for the correct \
-              definitions"
+    note = "these type aliases are no longer supported by \
+            the standard library, the `libc` crate on \
+            crates.io should be used instead for the correct \
+            definitions"
 )]
 #![allow(deprecated)]
 

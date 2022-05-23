@@ -51,7 +51,7 @@ impl<'tcx> LateLintPass<'tcx> for GetLastWithLen {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if_chain! {
             // Is a method call
-            if let ExprKind::MethodCall(path, _, args, _) = expr.kind;
+            if let ExprKind::MethodCall(path, args, _) = expr.kind;
 
             // Method name is "get"
             if path.ident.name == sym!(get);
@@ -73,7 +73,7 @@ impl<'tcx> LateLintPass<'tcx> for GetLastWithLen {
             ) = &get_index_arg.kind;
 
             // LHS of subtraction is "x.len()"
-            if let ExprKind::MethodCall(arg_lhs_path, _, lhs_args, _) = &lhs.kind;
+            if let ExprKind::MethodCall(arg_lhs_path, lhs_args, _) = &lhs.kind;
             if arg_lhs_path.ident.name == sym::len;
             if let Some(arg_lhs_struct) = lhs_args.get(0);
 

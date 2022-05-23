@@ -1,5 +1,5 @@
 use super::{abi, error::expect_success};
-use crate::{convert::TryInto, mem::MaybeUninit, time::Duration};
+use crate::{mem::MaybeUninit, time::Duration};
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
 pub struct Instant(abi::SYSTIM);
@@ -12,15 +12,6 @@ impl Instant {
             expect_success(abi::get_tim(out.as_mut_ptr()), &"get_tim");
             Instant(out.assume_init())
         }
-    }
-
-    pub const fn zero() -> Instant {
-        Instant(0)
-    }
-
-    pub fn actually_monotonic() -> bool {
-        // There are ways to change the system time
-        false
     }
 
     pub fn checked_sub_instant(&self, other: &Instant) -> Option<Duration> {

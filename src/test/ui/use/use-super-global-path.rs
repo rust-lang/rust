@@ -9,7 +9,7 @@ mod foo {
 
     pub fn g() {
         use ::super::main; //~ ERROR global paths cannot start with `super`
-        main(); //~ ERROR cannot find function `main` in this scope
+        main();
     }
 }
 

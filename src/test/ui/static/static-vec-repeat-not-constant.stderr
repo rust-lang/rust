@@ -1,8 +1,10 @@
-error[E0015]: calls in statics are limited to constant functions, tuple structs and tuple variants
+error[E0015]: cannot call non-const fn `foo` in statics
   --> $DIR/static-vec-repeat-not-constant.rs:3:25
    |
 LL | static a: [isize; 2] = [foo(); 2];
    |                         ^^^^^
+   |
+   = note: calls in statics are limited to constant functions, tuple structs and tuple variants
 
 error: aborting due to previous error
 

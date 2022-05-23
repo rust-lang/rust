@@ -8,6 +8,11 @@ help: consider importing this struct
    |
 LL | use std::collections::HashMap;
    |
+help: if you import `HashMap`, refer to it directly
+   |
+LL -     let _map = std::hahmap::HashMap::new();
+LL +     let _map = HashMap::new();
+   | 
 
 error: aborting due to previous error
 

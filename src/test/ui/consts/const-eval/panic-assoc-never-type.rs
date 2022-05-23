@@ -13,4 +13,5 @@ impl PrintName {
 
 fn main() {
     let _ = PrintName::VOID;
+    //~^ ERROR erroneous constant used [E0080]
 }

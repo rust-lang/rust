@@ -15,12 +15,9 @@ where
     L: HasLocalDecls<'tcx>,
 {
     debug!("is_disaligned({:?})", place);
-    let pack = match is_within_packed(tcx, local_decls, place) {
-        None => {
-            debug!("is_disaligned({:?}) - not within packed", place);
-            return false;
-        }
-        Some(pack) => pack,
+    let Some(pack) = is_within_packed(tcx, local_decls, place) else {
+        debug!("is_disaligned({:?}) - not within packed", place);
+        return false;
     };
 
     let ty = place.ty(local_decls, tcx).ty;
@@ -58,7 +55,7 @@ where
             ProjectionElem::Field(..) => {
                 let ty = place_base.ty(local_decls, tcx).ty;
                 match ty.kind() {
-                    ty::Adt(def, _) => return def.repr.pack,
+                    ty::Adt(def, _) => return def.repr().pack,
                     _ => {}
                 }
             }

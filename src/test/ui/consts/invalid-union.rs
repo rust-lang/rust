@@ -9,7 +9,6 @@
 // build-fail
 // stderr-per-bitwidth
 #![feature(const_mut_refs)]
-#![feature(const_ptr_offset)]
 #![feature(untagged_unions)]
 use std::cell::Cell;
 

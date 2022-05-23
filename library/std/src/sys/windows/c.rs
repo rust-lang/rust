@@ -4,9 +4,11 @@
 #![cfg_attr(test, allow(dead_code))]
 #![unstable(issue = "none", feature = "windows_c")]
 
-use crate::os::raw::NonZero_c_ulong;
+use crate::mem;
 use crate::os::raw::{c_char, c_int, c_long, c_longlong, c_uint, c_ulong, c_ushort};
+use crate::os::windows::io::{BorrowedHandle, HandleOrInvalid, HandleOrNull};
 use crate::ptr;
+use core::ffi::NonZero_c_ulong;
 
 use libc::{c_void, size_t, wchar_t};
 
@@ -36,6 +38,7 @@ pub type USHORT = c_ushort;
 pub type SIZE_T = usize;
 pub type WORD = u16;
 pub type CHAR = c_char;
+pub type CCHAR = c_char;
 pub type ULONG_PTR = usize;
 pub type ULONG = c_ulong;
 pub type NTSTATUS = LONG;
@@ -81,10 +84,15 @@ pub const CSTR_GREATER_THAN: c_int = 3;
 pub const FILE_ATTRIBUTE_READONLY: DWORD = 0x1;
 pub const FILE_ATTRIBUTE_DIRECTORY: DWORD = 0x10;
 pub const FILE_ATTRIBUTE_REPARSE_POINT: DWORD = 0x400;
+pub const INVALID_FILE_ATTRIBUTES: DWORD = DWORD::MAX;
 
 pub const FILE_SHARE_DELETE: DWORD = 0x4;
 pub const FILE_SHARE_READ: DWORD = 0x1;
 pub const FILE_SHARE_WRITE: DWORD = 0x2;
+
+pub const FILE_OPEN: ULONG = 0x00000001;
+pub const FILE_OPEN_REPARSE_POINT: ULONG = 0x200000;
+pub const OBJ_DONT_REPARSE: ULONG = 0x1000;
 
 pub const CREATE_ALWAYS: DWORD = 2;
 pub const CREATE_NEW: DWORD = 1;
@@ -92,10 +100,12 @@ pub const OPEN_ALWAYS: DWORD = 4;
 pub const OPEN_EXISTING: DWORD = 3;
 pub const TRUNCATE_EXISTING: DWORD = 5;
 
+pub const FILE_LIST_DIRECTORY: DWORD = 0x1;
 pub const FILE_WRITE_DATA: DWORD = 0x00000002;
 pub const FILE_APPEND_DATA: DWORD = 0x00000004;
 pub const FILE_WRITE_EA: DWORD = 0x00000010;
 pub const FILE_WRITE_ATTRIBUTES: DWORD = 0x00000100;
+pub const DELETE: DWORD = 0x10000;
 pub const READ_CONTROL: DWORD = 0x00020000;
 pub const SYNCHRONIZE: DWORD = 0x00100000;
 pub const GENERIC_READ: DWORD = 0x80000000;
@@ -163,7 +173,7 @@ pub const PROGRESS_CONTINUE: DWORD = 0;
 
 pub const E_NOTIMPL: HRESULT = 0x80004001u32 as HRESULT;
 
-pub const INVALID_HANDLE_VALUE: HANDLE = !0 as HANDLE;
+pub const INVALID_HANDLE_VALUE: HANDLE = ptr::invalid_mut(!0);
 
 pub const FACILITY_NT_BIT: DWORD = 0x1000_0000;
 
@@ -261,8 +271,81 @@ pub const FD_SETSIZE: usize = 64;
 pub const STACK_SIZE_PARAM_IS_A_RESERVATION: DWORD = 0x00010000;
 
 pub const STATUS_SUCCESS: NTSTATUS = 0x00000000;
+pub const STATUS_DELETE_PENDING: NTSTATUS = 0xc0000056_u32 as _;
+pub const STATUS_INVALID_PARAMETER: NTSTATUS = 0xc000000d_u32 as _;
+
+pub const STATUS_PENDING: NTSTATUS = 0x103 as _;
+pub const STATUS_END_OF_FILE: NTSTATUS = 0xC0000011_u32 as _;
+
+// Equivalent to the `NT_SUCCESS` C preprocessor macro.
+// See: https://docs.microsoft.com/en-us/windows-hardware/drivers/kernel/using-ntstatus-values
+pub fn nt_success(status: NTSTATUS) -> bool {
+    status >= 0
+}
 
 pub const BCRYPT_USE_SYSTEM_PREFERRED_RNG: DWORD = 0x00000002;
+
+#[repr(C)]
+pub struct UNICODE_STRING {
+    pub Length: u16,
+    pub MaximumLength: u16,
+    pub Buffer: *mut u16,
+}
+impl UNICODE_STRING {
+    pub fn from_ref(slice: &[u16]) -> Self {
+        let len = slice.len() * mem::size_of::<u16>();
+        Self { Length: len as _, MaximumLength: len as _, Buffer: slice.as_ptr() as _ }
+    }
+}
+#[repr(C)]
+pub struct OBJECT_ATTRIBUTES {
+    pub Length: ULONG,
+    pub RootDirectory: HANDLE,
+    pub ObjectName: *const UNICODE_STRING,
+    pub Attributes: ULONG,
+    pub SecurityDescriptor: *mut c_void,
+    pub SecurityQualityOfService: *mut c_void,
+}
+impl Default for OBJECT_ATTRIBUTES {
+    fn default() -> Self {
+        Self {
+            Length: mem::size_of::<Self>() as _,
+            RootDirectory: ptr::null_mut(),
+            ObjectName: ptr::null_mut(),
+            Attributes: 0,
+            SecurityDescriptor: ptr::null_mut(),
+            SecurityQualityOfService: ptr::null_mut(),
+        }
+    }
+}
+#[repr(C)]
+union IO_STATUS_BLOCK_union {
+    Status: NTSTATUS,
+    Pointer: *mut c_void,
+}
+impl Default for IO_STATUS_BLOCK_union {
+    fn default() -> Self {
+        Self { Pointer: ptr::null_mut() }
+    }
+}
+#[repr(C)]
+#[derive(Default)]
+pub struct IO_STATUS_BLOCK {
+    u: IO_STATUS_BLOCK_union,
+    pub Information: usize,
+}
+
+pub type LPOVERLAPPED_COMPLETION_ROUTINE = unsafe extern "system" fn(
+    dwErrorCode: DWORD,
+    dwNumberOfBytesTransfered: DWORD,
+    lpOverlapped: *mut OVERLAPPED,
+);
+
+type IO_APC_ROUTINE = unsafe extern "system" fn(
+    ApcContext: *mut c_void,
+    IoStatusBlock: *mut IO_STATUS_BLOCK,
+    Reserved: ULONG,
+);
 
 #[repr(C)]
 #[cfg(not(target_pointer_width = "64"))]
@@ -353,9 +436,43 @@ pub enum FILE_INFO_BY_HANDLE_CLASS {
     FileIdInfo = 18,                     // 0x12
     FileIdExtdDirectoryInfo = 19,        // 0x13
     FileIdExtdDirectoryRestartInfo = 20, // 0x14
+    FileDispositionInfoEx = 21,          // 0x15, Windows 10 version 1607
     MaximumFileInfoByHandlesClass,
 }
 
+#[repr(C)]
+pub struct FILE_DISPOSITION_INFO {
+    pub DeleteFile: BOOLEAN,
+}
+
+pub const FILE_DISPOSITION_DELETE: DWORD = 0x1;
+pub const FILE_DISPOSITION_POSIX_SEMANTICS: DWORD = 0x2;
+pub const FILE_DISPOSITION_IGNORE_READONLY_ATTRIBUTE: DWORD = 0x10;
+
+#[repr(C)]
+pub struct FILE_DISPOSITION_INFO_EX {
+    pub Flags: DWORD,
+}
+
+#[repr(C)]
+#[derive(Default)]
+pub struct FILE_ID_BOTH_DIR_INFO {
+    pub NextEntryOffset: DWORD,
+    pub FileIndex: DWORD,
+    pub CreationTime: LARGE_INTEGER,
+    pub LastAccessTime: LARGE_INTEGER,
+    pub LastWriteTime: LARGE_INTEGER,
+    pub ChangeTime: LARGE_INTEGER,
+    pub EndOfFile: LARGE_INTEGER,
+    pub AllocationSize: LARGE_INTEGER,
+    pub FileAttributes: DWORD,
+    pub FileNameLength: DWORD,
+    pub EaSize: DWORD,
+    pub ShortNameLength: CCHAR,
+    pub ShortName: [WCHAR; 12],
+    pub FileId: LARGE_INTEGER,
+    pub FileName: [WCHAR; 1],
+}
 #[repr(C)]
 pub struct FILE_BASIC_INFO {
     pub CreationTime: LARGE_INTEGER,
@@ -418,15 +535,6 @@ pub struct CONDITION_VARIABLE {
 #[repr(C)]
 pub struct SRWLOCK {
     pub ptr: LPVOID,
-}
-#[repr(C)]
-pub struct CRITICAL_SECTION {
-    CriticalSectionDebug: LPVOID,
-    LockCount: LONG,
-    RecursionCount: LONG,
-    OwningThread: HANDLE,
-    LockSemaphore: HANDLE,
-    SpinCount: ULONG_PTR,
 }
 
 #[repr(C)]
@@ -680,6 +788,10 @@ if #[cfg(not(target_vendor = "uwp"))] {
 
     #[link(name = "advapi32")]
     extern "system" {
+        // Forbidden when targeting UWP
+        #[link_name = "SystemFunction036"]
+        pub fn RtlGenRandom(RandomBuffer: *mut u8, RandomBufferLength: ULONG) -> BOOLEAN;
+
         // Allowed but unused by UWP
         pub fn OpenProcessToken(
             ProcessHandle: HANDLE,
@@ -750,16 +862,6 @@ if #[cfg(target_vendor = "uwp")] {
         pub DeletePending: BOOLEAN,
         pub Directory: BOOLEAN,
     }
-
-    #[link(name = "kernel32")]
-    extern "system" {
-        pub fn GetFileInformationByHandleEx(
-            hFile: HANDLE,
-            fileInfoClass: FILE_INFO_BY_HANDLE_CLASS,
-            lpFileInformation: LPVOID,
-            dwBufferSize: DWORD,
-        ) -> BOOL;
-    }
 }
 }
 
@@ -768,11 +870,6 @@ if #[cfg(target_vendor = "uwp")] {
 #[link(name = "kernel32")]
 extern "system" {
     pub fn GetCurrentProcessId() -> DWORD;
-    pub fn InitializeCriticalSection(CriticalSection: *mut CRITICAL_SECTION);
-    pub fn EnterCriticalSection(CriticalSection: *mut CRITICAL_SECTION);
-    pub fn TryEnterCriticalSection(CriticalSection: *mut CRITICAL_SECTION) -> BOOL;
-    pub fn LeaveCriticalSection(CriticalSection: *mut CRITICAL_SECTION);
-    pub fn DeleteCriticalSection(CriticalSection: *mut CRITICAL_SECTION);
 
     pub fn GetSystemDirectoryW(lpBuffer: LPWSTR, uSize: UINT) -> UINT;
     pub fn RemoveDirectoryW(lpPathName: LPCWSTR) -> BOOL;
@@ -801,10 +898,11 @@ extern "system" {
         lpParameter: LPVOID,
         dwCreationFlags: DWORD,
         lpThreadId: LPDWORD,
-    ) -> HANDLE;
+    ) -> HandleOrNull;
     pub fn WaitForSingleObject(hHandle: HANDLE, dwMilliseconds: DWORD) -> DWORD;
     pub fn SwitchToThread() -> BOOL;
     pub fn Sleep(dwMilliseconds: DWORD);
+    pub fn SleepEx(dwMilliseconds: DWORD, bAlertable: BOOL) -> DWORD;
     pub fn GetProcessId(handle: HANDLE) -> DWORD;
     pub fn CopyFileExW(
         lpExistingFileName: LPCWSTR,
@@ -865,18 +963,25 @@ extern "system" {
         dwOptions: DWORD,
     ) -> BOOL;
     pub fn ReadFile(
-        hFile: HANDLE,
+        hFile: BorrowedHandle<'_>,
         lpBuffer: LPVOID,
         nNumberOfBytesToRead: DWORD,
         lpNumberOfBytesRead: LPDWORD,
         lpOverlapped: LPOVERLAPPED,
     ) -> BOOL;
-    pub fn WriteFile(
-        hFile: HANDLE,
+    pub fn ReadFileEx(
+        hFile: BorrowedHandle<'_>,
+        lpBuffer: LPVOID,
+        nNumberOfBytesToRead: DWORD,
+        lpOverlapped: LPOVERLAPPED,
+        lpCompletionRoutine: LPOVERLAPPED_COMPLETION_ROUTINE,
+    ) -> BOOL;
+    pub fn WriteFileEx(
+        hFile: BorrowedHandle<'_>,
         lpBuffer: LPVOID,
         nNumberOfBytesToWrite: DWORD,
-        lpNumberOfBytesWritten: LPDWORD,
         lpOverlapped: LPOVERLAPPED,
+        lpCompletionRoutine: LPOVERLAPPED_COMPLETION_ROUTINE,
     ) -> BOOL;
     pub fn CloseHandle(hObject: HANDLE) -> BOOL;
     pub fn MoveFileExW(lpExistingFileName: LPCWSTR, lpNewFileName: LPCWSTR, dwFlags: DWORD)
@@ -896,7 +1001,7 @@ extern "system" {
         dwCreationDisposition: DWORD,
         dwFlagsAndAttributes: DWORD,
         hTemplateFile: HANDLE,
-    ) -> HANDLE;
+    ) -> HandleOrInvalid;
 
     pub fn FindFirstFileW(fileName: LPCWSTR, findFileData: LPWIN32_FIND_DATAW) -> HANDLE;
     pub fn FindNextFileW(findFile: HANDLE, findFileData: LPWIN32_FIND_DATAW) -> BOOL;
@@ -949,6 +1054,12 @@ extern "system" {
         cchFilePath: DWORD,
         dwFlags: DWORD,
     ) -> DWORD;
+    pub fn GetFileInformationByHandleEx(
+        hFile: HANDLE,
+        fileInfoClass: FILE_INFO_BY_HANDLE_CLASS,
+        lpFileInformation: LPVOID,
+        dwBufferSize: DWORD,
+    ) -> BOOL;
     pub fn SetFileInformationByHandle(
         hFile: HANDLE,
         FileInformationClass: FILE_INFO_BY_HANDLE_CLASS,
@@ -985,6 +1096,7 @@ extern "system" {
         lpBuffer: LPWSTR,
         lpFilePart: *mut LPWSTR,
     ) -> DWORD;
+    pub fn GetFileAttributesW(lpFileName: LPCWSTR) -> DWORD;
 }
 
 #[link(name = "ws2_32")]
@@ -1139,6 +1251,52 @@ compat_fn! {
 
 compat_fn! {
     "ntdll":
+    pub fn NtCreateFile(
+        FileHandle: *mut HANDLE,
+        DesiredAccess: ACCESS_MASK,
+        ObjectAttributes: *const OBJECT_ATTRIBUTES,
+        IoStatusBlock: *mut IO_STATUS_BLOCK,
+        AllocationSize: *mut i64,
+        FileAttributes: ULONG,
+        ShareAccess: ULONG,
+        CreateDisposition: ULONG,
+        CreateOptions: ULONG,
+        EaBuffer: *mut c_void,
+        EaLength: ULONG
+    ) -> NTSTATUS {
+        panic!("`NtCreateFile` not available");
+    }
+    pub fn NtReadFile(
+        FileHandle: BorrowedHandle<'_>,
+        Event: HANDLE,
+        ApcRoutine: Option<IO_APC_ROUTINE>,
+        ApcContext: *mut c_void,
+        IoStatusBlock: &mut IO_STATUS_BLOCK,
+        Buffer: *mut crate::mem::MaybeUninit<u8>,
+        Length: ULONG,
+        ByteOffset: Option<&LARGE_INTEGER>,
+        Key: Option<&ULONG>
+    ) -> NTSTATUS {
+        panic!("`NtReadFile` not available");
+    }
+    pub fn NtWriteFile(
+        FileHandle: BorrowedHandle<'_>,
+        Event: HANDLE,
+        ApcRoutine: Option<IO_APC_ROUTINE>,
+        ApcContext: *mut c_void,
+        IoStatusBlock: &mut IO_STATUS_BLOCK,
+        Buffer: *const u8,
+        Length: ULONG,
+        ByteOffset: Option<&LARGE_INTEGER>,
+        Key: Option<&ULONG>
+    ) -> NTSTATUS {
+        panic!("`NtWriteFile` not available");
+    }
+    pub fn RtlNtStatusToDosError(
+        Status: NTSTATUS
+    ) -> ULONG {
+        panic!("`RtlNtStatusToDosError` not available");
+    }
     pub fn NtCreateKeyedEvent(
         KeyedEventHandle: LPHANDLE,
         DesiredAccess: ACCESS_MASK,

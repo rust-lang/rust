@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/variance-associated-types2.rs:13:12
+  --> $DIR/variance-associated-types2.rs:17:12
    |
 LL | fn take<'a>(_: &'a u32) {
    |         -- lifetime `'a` defined here

@@ -102,10 +102,10 @@ fn emit_aapcs_va_arg<'ll, 'tcx>(
     let va_list_ty = va_list_layout.llvm_type(bx);
     let layout = bx.cx.layout_of(target_ty);
 
-    let mut maybe_reg = bx.build_sibling_block("va_arg.maybe_reg");
-    let mut in_reg = bx.build_sibling_block("va_arg.in_reg");
-    let mut on_stack = bx.build_sibling_block("va_arg.on_stack");
-    let mut end = bx.build_sibling_block("va_arg.end");
+    let maybe_reg = bx.append_sibling_block("va_arg.maybe_reg");
+    let in_reg = bx.append_sibling_block("va_arg.in_reg");
+    let on_stack = bx.append_sibling_block("va_arg.on_stack");
+    let end = bx.append_sibling_block("va_arg.end");
     let zero = bx.const_i32(0);
     let offset_align = Align::from_bytes(4).unwrap();
 
@@ -125,53 +125,53 @@ fn emit_aapcs_va_arg<'ll, 'tcx>(
     // if the offset >= 0 then the value will be on the stack
     let mut reg_off_v = bx.load(bx.type_i32(), reg_off, offset_align);
     let use_stack = bx.icmp(IntPredicate::IntSGE, reg_off_v, zero);
-    bx.cond_br(use_stack, on_stack.llbb(), maybe_reg.llbb());
+    bx.cond_br(use_stack, on_stack, maybe_reg);
 
     // The value at this point might be in a register, but there is a chance that
     // it could be on the stack so we have to update the offset and then check
     // the offset again.
 
+    bx.switch_to_block(maybe_reg);
     if gr_type && layout.align.abi.bytes() > 8 {
-        reg_off_v = maybe_reg.add(reg_off_v, bx.const_i32(15));
-        reg_off_v = maybe_reg.and(reg_off_v, bx.const_i32(-16));
+        reg_off_v = bx.add(reg_off_v, bx.const_i32(15));
+        reg_off_v = bx.and(reg_off_v, bx.const_i32(-16));
     }
-    let new_reg_off_v = maybe_reg.add(reg_off_v, bx.const_i32(slot_size as i32));
+    let new_reg_off_v = bx.add(reg_off_v, bx.const_i32(slot_size as i32));
 
-    maybe_reg.store(new_reg_off_v, reg_off, offset_align);
+    bx.store(new_reg_off_v, reg_off, offset_align);
 
     // Check to see if we have overflowed the registers as a result of this.
     // If we have then we need to use the stack for this value
-    let use_stack = maybe_reg.icmp(IntPredicate::IntSGT, new_reg_off_v, zero);
-    maybe_reg.cond_br(use_stack, on_stack.llbb(), in_reg.llbb());
+    let use_stack = bx.icmp(IntPredicate::IntSGT, new_reg_off_v, zero);
+    bx.cond_br(use_stack, on_stack, in_reg);
 
+    bx.switch_to_block(in_reg);
     let top_type = bx.type_i8p();
-    let top = in_reg.struct_gep(va_list_ty, va_list_addr, reg_top_index);
-    let top = in_reg.load(top_type, top, bx.tcx().data_layout.pointer_align.abi);
+    let top = bx.struct_gep(va_list_ty, va_list_addr, reg_top_index);
+    let top = bx.load(top_type, top, bx.tcx().data_layout.pointer_align.abi);
 
     // reg_value = *(@top + reg_off_v);
-    let mut reg_addr = in_reg.gep(bx.type_i8(), top, &[reg_off_v]);
+    let mut reg_addr = bx.gep(bx.type_i8(), top, &[reg_off_v]);
     if bx.tcx().sess.target.endian == Endian::Big && layout.size.bytes() != slot_size {
         // On big-endian systems the value is right-aligned in its slot.
         let offset = bx.const_i32((slot_size - layout.size.bytes()) as i32);
-        reg_addr = in_reg.gep(bx.type_i8(), reg_addr, &[offset]);
+        reg_addr = bx.gep(bx.type_i8(), reg_addr, &[offset]);
     }
     let reg_type = layout.llvm_type(bx);
-    let reg_addr = in_reg.bitcast(reg_addr, bx.cx.type_ptr_to(reg_type));
-    let reg_value = in_reg.load(reg_type, reg_addr, layout.align.abi);
-    in_reg.br(end.llbb());
+    let reg_addr = bx.bitcast(reg_addr, bx.cx.type_ptr_to(reg_type));
+    let reg_value = bx.load(reg_type, reg_addr, layout.align.abi);
+    bx.br(end);
 
     // On Stack block
+    bx.switch_to_block(on_stack);
     let stack_value =
-        emit_ptr_va_arg(&mut on_stack, list, target_ty, false, Align::from_bytes(8).unwrap(), true);
-    on_stack.br(end.llbb());
+        emit_ptr_va_arg(bx, list, target_ty, false, Align::from_bytes(8).unwrap(), true);
+    bx.br(end);
 
-    let val = end.phi(
-        layout.immediate_llvm_type(bx),
-        &[reg_value, stack_value],
-        &[in_reg.llbb(), on_stack.llbb()],
-    );
+    bx.switch_to_block(end);
+    let val =
+        bx.phi(layout.immediate_llvm_type(bx), &[reg_value, stack_value], &[in_reg, on_stack]);
 
-    *bx = end;
     val
 }
 

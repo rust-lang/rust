@@ -9,7 +9,7 @@ note: required by a bound in `Tsized`
   --> $DIR/issue-61631-default-type-param-can-reference-self-in-trait.rs:17:14
    |
 LL | trait Tsized<P: Sized = [Self]> {}
-   |              ^ required by this bound in `Tsized`
+   |              ^^^^^^^^^^^^^^^^^ required by this bound in `Tsized`
 
 error: aborting due to previous error
 

@@ -1,81 +1,81 @@
 error: using `write!()` with a format string that ends in a single newline
   --> $DIR/write_with_newline.rs:13:5
    |
-LL |     write!(&mut v, "Hello/n");
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     write!(v, "Hello/n");
+   |     ^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::write-with-newline` implied by `-D warnings`
 help: use `writeln!()` instead
    |
-LL -     write!(&mut v, "Hello/n");
-LL +     writeln!(&mut v, "Hello");
+LL -     write!(v, "Hello/n");
+LL +     writeln!(v, "Hello");
    | 
 
 error: using `write!()` with a format string that ends in a single newline
   --> $DIR/write_with_newline.rs:14:5
    |
-LL |     write!(&mut v, "Hello {}/n", "world");
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     write!(v, "Hello {}/n", "world");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 help: use `writeln!()` instead
    |
-LL -     write!(&mut v, "Hello {}/n", "world");
-LL +     writeln!(&mut v, "Hello {}", "world");
+LL -     write!(v, "Hello {}/n", "world");
+LL +     writeln!(v, "Hello {}", "world");
    | 
 
 error: using `write!()` with a format string that ends in a single newline
   --> $DIR/write_with_newline.rs:15:5
    |
-LL |     write!(&mut v, "Hello {} {}/n", "world", "#2");
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     write!(v, "Hello {} {}/n", "world", "#2");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 help: use `writeln!()` instead
    |
-LL -     write!(&mut v, "Hello {} {}/n", "world", "#2");
-LL +     writeln!(&mut v, "Hello {} {}", "world", "#2");
+LL -     write!(v, "Hello {} {}/n", "world", "#2");
+LL +     writeln!(v, "Hello {} {}", "world", "#2");
    | 
 
 error: using `write!()` with a format string that ends in a single newline
   --> $DIR/write_with_newline.rs:16:5
    |
-LL |     write!(&mut v, "{}/n", 1265);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     write!(v, "{}/n", 1265);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
    |
 help: use `writeln!()` instead
    |
-LL -     write!(&mut v, "{}/n", 1265);
-LL +     writeln!(&mut v, "{}", 1265);
+LL -     write!(v, "{}/n", 1265);
+LL +     writeln!(v, "{}", 1265);
    | 
 
 error: using `write!()` with a format string that ends in a single newline
   --> $DIR/write_with_newline.rs:17:5
    |
-LL |     write!(&mut v, "/n");
-   |     ^^^^^^^^^^^^^^^^^^^^
+LL |     write!(v, "/n");
+   |     ^^^^^^^^^^^^^^^
    |
 help: use `writeln!()` instead
    |
-LL -     write!(&mut v, "/n");
-LL +     writeln!(&mut v);
+LL -     write!(v, "/n");
+LL +     writeln!(v);
    | 
 
 error: using `write!()` with a format string that ends in a single newline
   --> $DIR/write_with_newline.rs:36:5
    |
-LL |     write!(&mut v, "//n"); // should fail
-   |     ^^^^^^^^^^^^^^^^^^^^^^
+LL |     write!(v, "//n"); // should fail
+   |     ^^^^^^^^^^^^^^^^^
    |
 help: use `writeln!()` instead
    |
-LL -     write!(&mut v, "//n"); // should fail
-LL +     writeln!(&mut v, "/"); // should fail
+LL -     write!(v, "//n"); // should fail
+LL +     writeln!(v, "/"); // should fail
    | 
 
 error: using `write!()` with a format string that ends in a single newline
   --> $DIR/write_with_newline.rs:43:5
    |
 LL | /     write!(
-LL | |         &mut v,
+LL | |         v,
 LL | |         "
 LL | | "
 LL | |     );
@@ -84,7 +84,7 @@ LL | |     );
 help: use `writeln!()` instead
    |
 LL ~     writeln!(
-LL |         &mut v,
+LL |         v,
 LL ~         ""
    |
 
@@ -92,7 +92,7 @@ error: using `write!()` with a format string that ends in a single newline
   --> $DIR/write_with_newline.rs:48:5
    |
 LL | /     write!(
-LL | |         &mut v,
+LL | |         v,
 LL | |         r"
 LL | | "
 LL | |     );
@@ -101,32 +101,32 @@ LL | |     );
 help: use `writeln!()` instead
    |
 LL ~     writeln!(
-LL |         &mut v,
+LL |         v,
 LL ~         r""
    |
 
 error: using `write!()` with a format string that ends in a single newline
   --> $DIR/write_with_newline.rs:57:5
    |
-LL |     write!(&mut v, "/r/n"); //~ ERROR
-   |     ^^^^^^^^^^^^^^^^^^^^^^^
+LL |     write!(v, "/r/n"); //~ ERROR
+   |     ^^^^^^^^^^^^^^^^^^
    |
 help: use `writeln!()` instead
    |
-LL -     write!(&mut v, "/r/n"); //~ ERROR
-LL +     writeln!(&mut v, "/r"); //~ ERROR
+LL -     write!(v, "/r/n"); //~ ERROR
+LL +     writeln!(v, "/r"); //~ ERROR
    | 
 
 error: using `write!()` with a format string that ends in a single newline
   --> $DIR/write_with_newline.rs:58:5
    |
-LL |     write!(&mut v, "foo/rbar/n");
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     write!(v, "foo/rbar/n");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
    |
 help: use `writeln!()` instead
    |
-LL -     write!(&mut v, "foo/rbar/n");
-LL +     writeln!(&mut v, "foo/rbar");
+LL -     write!(v, "foo/rbar/n");
+LL +     writeln!(v, "foo/rbar");
    | 
 
 error: aborting due to 10 previous errors

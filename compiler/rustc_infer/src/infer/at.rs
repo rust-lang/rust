@@ -6,7 +6,7 @@
 //! is always the "expected" output from the POV of diagnostics.
 //!
 //! Examples:
-//!
+//! ```ignore (fragment)
 //!     infcx.at(cause, param_env).sub(a, b)
 //!     // requires that `a <: b`, with `a` considered the "expected" type
 //!
@@ -15,11 +15,11 @@
 //!
 //!     infcx.at(cause, param_env).eq(a, b)
 //!     // requires that `a == b`, with `a` considered the "expected" type
-//!
+//! ```
 //! For finer-grained control, you can also do use `trace`:
-//!
+//! ```ignore (fragment)
 //!     infcx.at(...).trace(a, b).sub(&c, &d)
-//!
+//! ```
 //! This will set `a` and `b` as the "root" values for
 //! error-reporting, but actually operate on `c` and `d`. This is
 //! sometimes useful when the types of `c` and `d` are not traceable
@@ -28,12 +28,18 @@
 use super::*;
 
 use rustc_middle::ty::relate::{Relate, TypeRelation};
-use rustc_middle::ty::Const;
+use rustc_middle::ty::{Const, ImplSubject};
 
 pub struct At<'a, 'tcx> {
     pub infcx: &'a InferCtxt<'a, 'tcx>,
     pub cause: &'a ObligationCause<'tcx>,
     pub param_env: ty::ParamEnv<'tcx>,
+    /// Whether we should define opaque types
+    /// or just treat them opaquely.
+    /// Currently only used to prevent predicate
+    /// matching from matching anything against opaque
+    /// types.
+    pub define_opaque_types: bool,
 }
 
 pub struct Trace<'a, 'tcx> {
@@ -49,7 +55,29 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         cause: &'a ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> At<'a, 'tcx> {
-        At { infcx: self, cause, param_env }
+        At { infcx: self, cause, param_env, define_opaque_types: true }
+    }
+
+    /// Forks the inference context, creating a new inference context with the same inference
+    /// variables in the same state. This can be used to "branch off" many tests from the same
+    /// common state. Used in coherence.
+    pub fn fork(&self) -> Self {
+        Self {
+            tcx: self.tcx,
+            defining_use_anchor: self.defining_use_anchor,
+            in_progress_typeck_results: self.in_progress_typeck_results,
+            inner: self.inner.clone(),
+            skip_leak_check: self.skip_leak_check.clone(),
+            lexical_region_resolutions: self.lexical_region_resolutions.clone(),
+            selection_cache: self.selection_cache.clone(),
+            evaluation_cache: self.evaluation_cache.clone(),
+            reported_trait_errors: self.reported_trait_errors.clone(),
+            reported_closure_mismatch: self.reported_closure_mismatch.clone(),
+            tainted_by_errors_flag: self.tainted_by_errors_flag.clone(),
+            err_count_on_creation: self.err_count_on_creation,
+            in_snapshot: self.in_snapshot.clone(),
+            universe: self.universe.clone(),
+        }
     }
 }
 
@@ -64,6 +92,10 @@ pub trait ToTrace<'tcx>: Relate<'tcx> + Copy {
 }
 
 impl<'a, 'tcx> At<'a, 'tcx> {
+    pub fn define_opaque_types(self, define_opaque_types: bool) -> Self {
+        Self { define_opaque_types, ..self }
+    }
+
     /// Hacky routine for equating two impl headers in coherence.
     pub fn eq_impl_headers(
         self,
@@ -194,7 +226,7 @@ impl<'a, 'tcx> Trace<'a, 'tcx> {
     {
         let Trace { at, trace, a_is_expected } = self;
         at.infcx.commit_if_ok(|_| {
-            let mut fields = at.infcx.combine_fields(trace, at.param_env);
+            let mut fields = at.infcx.combine_fields(trace, at.param_env, at.define_opaque_types);
             fields
                 .sub(a_is_expected)
                 .relate(a, b)
@@ -211,7 +243,7 @@ impl<'a, 'tcx> Trace<'a, 'tcx> {
     {
         let Trace { at, trace, a_is_expected } = self;
         at.infcx.commit_if_ok(|_| {
-            let mut fields = at.infcx.combine_fields(trace, at.param_env);
+            let mut fields = at.infcx.combine_fields(trace, at.param_env, at.define_opaque_types);
             fields
                 .equate(a_is_expected)
                 .relate(a, b)
@@ -226,7 +258,7 @@ impl<'a, 'tcx> Trace<'a, 'tcx> {
     {
         let Trace { at, trace, a_is_expected } = self;
         at.infcx.commit_if_ok(|_| {
-            let mut fields = at.infcx.combine_fields(trace, at.param_env);
+            let mut fields = at.infcx.combine_fields(trace, at.param_env, at.define_opaque_types);
             fields
                 .lub(a_is_expected)
                 .relate(a, b)
@@ -241,12 +273,35 @@ impl<'a, 'tcx> Trace<'a, 'tcx> {
     {
         let Trace { at, trace, a_is_expected } = self;
         at.infcx.commit_if_ok(|_| {
-            let mut fields = at.infcx.combine_fields(trace, at.param_env);
+            let mut fields = at.infcx.combine_fields(trace, at.param_env, at.define_opaque_types);
             fields
                 .glb(a_is_expected)
                 .relate(a, b)
                 .map(move |t| InferOk { value: t, obligations: fields.obligations })
         })
+    }
+}
+
+impl<'tcx> ToTrace<'tcx> for ImplSubject<'tcx> {
+    fn to_trace(
+        tcx: TyCtxt<'tcx>,
+        cause: &ObligationCause<'tcx>,
+        a_is_expected: bool,
+        a: Self,
+        b: Self,
+    ) -> TypeTrace<'tcx> {
+        match (a, b) {
+            (ImplSubject::Trait(trait_ref_a), ImplSubject::Trait(trait_ref_b)) => {
+                ToTrace::to_trace(tcx, cause, a_is_expected, trait_ref_a, trait_ref_b)
+            }
+            (ImplSubject::Inherent(ty_a), ImplSubject::Inherent(ty_b)) => {
+                ToTrace::to_trace(tcx, cause, a_is_expected, ty_a, ty_b)
+            }
+            (ImplSubject::Trait(_), ImplSubject::Inherent(_))
+            | (ImplSubject::Inherent(_), ImplSubject::Trait(_)) => {
+                bug!("can not trace TraitRef and Ty");
+            }
+        }
     }
 }
 
@@ -258,7 +313,10 @@ impl<'tcx> ToTrace<'tcx> for Ty<'tcx> {
         a: Self,
         b: Self,
     ) -> TypeTrace<'tcx> {
-        TypeTrace { cause: cause.clone(), values: Types(ExpectedFound::new(a_is_expected, a, b)) }
+        TypeTrace {
+            cause: cause.clone(),
+            values: Terms(ExpectedFound::new(a_is_expected, a.into(), b.into())),
+        }
     }
 }
 
@@ -274,7 +332,7 @@ impl<'tcx> ToTrace<'tcx> for ty::Region<'tcx> {
     }
 }
 
-impl<'tcx> ToTrace<'tcx> for &'tcx Const<'tcx> {
+impl<'tcx> ToTrace<'tcx> for Const<'tcx> {
     fn to_trace(
         _: TyCtxt<'tcx>,
         cause: &ObligationCause<'tcx>,
@@ -282,7 +340,22 @@ impl<'tcx> ToTrace<'tcx> for &'tcx Const<'tcx> {
         a: Self,
         b: Self,
     ) -> TypeTrace<'tcx> {
-        TypeTrace { cause: cause.clone(), values: Consts(ExpectedFound::new(a_is_expected, a, b)) }
+        TypeTrace {
+            cause: cause.clone(),
+            values: Terms(ExpectedFound::new(a_is_expected, a.into(), b.into())),
+        }
+    }
+}
+
+impl<'tcx> ToTrace<'tcx> for ty::Term<'tcx> {
+    fn to_trace(
+        _: TyCtxt<'tcx>,
+        cause: &ObligationCause<'tcx>,
+        a_is_expected: bool,
+        a: Self,
+        b: Self,
+    ) -> TypeTrace<'tcx> {
+        TypeTrace { cause: cause.clone(), values: Terms(ExpectedFound::new(a_is_expected, a, b)) }
     }
 }
 
@@ -328,7 +401,7 @@ impl<'tcx> ToTrace<'tcx> for ty::ProjectionTy<'tcx> {
         let b_ty = tcx.mk_projection(b.item_def_id, b.substs);
         TypeTrace {
             cause: cause.clone(),
-            values: Types(ExpectedFound::new(a_is_expected, a_ty, b_ty)),
+            values: Terms(ExpectedFound::new(a_is_expected, a_ty.into(), b_ty.into())),
         }
     }
 }

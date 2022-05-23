@@ -34,22 +34,10 @@ pub(crate) fn build_backend(
         _ => unreachable!(),
     }
 
-    // Set the rpath to make the cg_clif executable find librustc_codegen_cranelift without changing
-    // LD_LIBRARY_PATH
-    if cfg!(unix) {
-        if cfg!(target_os = "macos") {
-            rustflags += " -Csplit-debuginfo=unpacked \
-                -Clink-arg=-Wl,-rpath,@loader_path/../lib \
-                -Zosx-rpath-install-name";
-        } else {
-            rustflags += " -Clink-arg=-Wl,-rpath=$ORIGIN/../lib ";
-        }
-    }
-
     cmd.env("RUSTFLAGS", rustflags);
 
     eprintln!("[BUILD] rustc_codegen_cranelift");
-    crate::utils::spawn_and_wait(cmd);
+    super::utils::spawn_and_wait(cmd);
 
     Path::new("target").join(host_triple).join(channel)
 }

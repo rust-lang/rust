@@ -70,7 +70,7 @@ macro_rules! bind {
     };
 }
 
-/// Transforms the given `Option<T>` varibles into `OptionPat<Binding<T>>`.
+/// Transforms the given `Option<T>` variables into `OptionPat<Binding<T>>`.
 /// This displays as `Some($name)` or `None` when printed. The name of the inner binding
 /// is set to the name of the variable passed to the macro.
 macro_rules! opt_bind {
@@ -315,11 +315,11 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 out!("if let Some(Guard::If({expr})) = {arm}.guard;");
                 self.expr(expr);
             },
-            Some(hir::Guard::IfLet(pat, expr)) => {
-                bind!(self, pat, expr);
-                out!("if let Some(Guard::IfLet({pat}, {expr}) = {arm}.guard;");
-                self.pat(pat);
-                self.expr(expr);
+            Some(hir::Guard::IfLet(let_expr)) => {
+                bind!(self, let_expr);
+                out!("if let Some(Guard::IfLet({let_expr}) = {arm}.guard;");
+                self.pat(field!(let_expr.pat));
+                self.expr(field!(let_expr.init));
             },
         }
         self.expr(field!(arm.body));
@@ -402,9 +402,9 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 self.expr(func);
                 self.slice(args, |e| self.expr(e));
             },
-            ExprKind::MethodCall(method_name, _, args, _) => {
+            ExprKind::MethodCall(method_name, args, _) => {
                 bind!(self, method_name, args);
-                kind!("MethodCall({method_name}, _, {args}, _)");
+                kind!("MethodCall({method_name}, {args}, _)");
                 self.ident(field!(method_name.ident));
                 self.slice(args, |e| self.expr(e));
             },
@@ -546,10 +546,6 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
             ExprKind::InlineAsm(_) => {
                 kind!("InlineAsm(_)");
                 out!("// unimplemented: `ExprKind::InlineAsm` is not further destructured at the moment");
-            },
-            ExprKind::LlvmInlineAsm(_) => {
-                kind!("LlvmInlineAsm(_)");
-                out!("// unimplemented: `ExprKind::LlvmInlineAsm` is not further destructured at the moment");
             },
             ExprKind::Struct(qpath, fields, base) => {
                 bind!(self, qpath, fields);

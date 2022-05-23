@@ -91,7 +91,7 @@
 //!     // read a line into buffer
 //!     reader.read_line(&mut buffer)?;
 //!
-//!     println!("{}", buffer);
+//!     println!("{buffer}");
 //!     Ok(())
 //! }
 //! ```
@@ -252,7 +252,6 @@
 mod tests;
 
 use crate::cmp;
-use crate::convert::TryInto;
 use crate::fmt;
 use crate::mem::replace;
 use crate::ops::{Deref, DerefMut};
@@ -268,8 +267,6 @@ pub use self::buffered::WriterPanicked;
 pub use self::stdio::set_output_capture;
 #[unstable(feature = "print_internals", issue = "none")]
 pub use self::stdio::{_eprint, _print};
-#[unstable(feature = "stdio_locked", issue = "86845")]
-pub use self::stdio::{stderr_locked, stdin_locked, stdout_locked};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::{
     buffered::{BufReader, BufWriter, IntoInnerError, LineWriter},
@@ -282,6 +279,7 @@ pub use self::{
 
 #[unstable(feature = "read_buf", issue = "78485")]
 pub use self::readbuf::ReadBuf;
+pub(crate) use error::const_io_error;
 
 mod buffered;
 pub(crate) mod copy;
@@ -337,7 +335,10 @@ where
     let ret = f(g.buf);
     if str::from_utf8(&g.buf[g.len..]).is_err() {
         ret.and_then(|_| {
-            Err(Error::new_const(ErrorKind::InvalidData, &"stream did not contain valid UTF-8"))
+            Err(error::const_io_error!(
+                ErrorKind::InvalidData,
+                "stream did not contain valid UTF-8"
+            ))
         })
     } else {
         g.len = g.buf.len();
@@ -454,7 +455,7 @@ pub(crate) fn default_read_exact<R: Read + ?Sized>(this: &mut R, mut buf: &mut [
         }
     }
     if !buf.is_empty() {
-        Err(Error::new_const(ErrorKind::UnexpectedEof, &"failed to fill whole buffer"))
+        Err(error::const_io_error!(ErrorKind::UnexpectedEof, "failed to fill whole buffer"))
     } else {
         Ok(())
     }
@@ -1031,14 +1032,14 @@ pub trait Read {
 ///
 /// # use std::io;
 /// fn main() -> io::Result<()> {
-///     let stdin = io::read_to_string(&mut io::stdin())?;
+///     let stdin = io::read_to_string(io::stdin())?;
 ///     println!("Stdin was:");
-///     println!("{}", stdin);
+///     println!("{stdin}");
 ///     Ok(())
 /// }
 /// ```
 #[unstable(feature = "io_read_to_string", issue = "80218")]
-pub fn read_to_string<R: Read>(reader: &mut R) -> Result<String> {
+pub fn read_to_string<R: Read>(mut reader: R) -> Result<String> {
     let mut buf = String::new();
     reader.read_to_string(&mut buf)?;
     Ok(buf)
@@ -1512,9 +1513,9 @@ pub trait Write {
         while !buf.is_empty() {
             match self.write(buf) {
                 Ok(0) => {
-                    return Err(Error::new_const(
+                    return Err(error::const_io_error!(
                         ErrorKind::WriteZero,
-                        &"failed to write whole buffer",
+                        "failed to write whole buffer",
                     ));
                 }
                 Ok(n) => buf = &buf[n..],
@@ -1580,9 +1581,9 @@ pub trait Write {
         while !bufs.is_empty() {
             match self.write_vectored(bufs) {
                 Ok(0) => {
-                    return Err(Error::new_const(
+                    return Err(error::const_io_error!(
                         ErrorKind::WriteZero,
-                        &"failed to write whole buffer",
+                        "failed to write whole buffer",
                     ));
                 }
                 Ok(n) => IoSlice::advance_slices(&mut bufs, n),
@@ -1657,7 +1658,7 @@ pub trait Write {
                 if output.error.is_err() {
                     output.error
                 } else {
-                    Err(Error::new_const(ErrorKind::Uncategorized, &"formatter error"))
+                    Err(error::const_io_error!(ErrorKind::Uncategorized, "formatter error"))
                 }
             }
         }
@@ -1759,7 +1760,7 @@ pub trait Seek {
     ///     .open("foo.txt").unwrap();
     ///
     /// let hello = "Hello!\n";
-    /// write!(f, "{}", hello).unwrap();
+    /// write!(f, "{hello}").unwrap();
     /// f.rewind().unwrap();
     ///
     /// let mut buf = String::new();
@@ -1802,7 +1803,7 @@ pub trait Seek {
     ///     let mut f = File::open("foo.txt")?;
     ///
     ///     let len = f.stream_len()?;
-    ///     println!("The file is currently {} bytes long", len);
+    ///     println!("The file is currently {len} bytes long");
     ///     Ok(())
     /// }
     /// ```
@@ -1986,7 +1987,7 @@ pub trait BufRead: Read {
     /// let buffer = stdin.fill_buf().unwrap();
     ///
     /// // work with buffer
-    /// println!("{:?}", buffer);
+    /// println!("{buffer:?}");
     ///
     /// // ensure the bytes we worked with aren't returned again later
     /// let length = buffer.len();
@@ -2040,7 +2041,7 @@ pub trait BufRead: Read {
     ///     let mut line = String::new();
     ///     stdin.read_line(&mut line).unwrap();
     ///     // work with line
-    ///     println!("{:?}", line);
+    ///     println!("{line:?}");
     /// }
     /// ```
     #[unstable(feature = "buf_read_has_data_left", reason = "recently added", issue = "86423")]
@@ -2108,7 +2109,8 @@ pub trait BufRead: Read {
     }
 
     /// Read all bytes until a newline (the `0xA` byte) is reached, and append
-    /// them to the provided buffer.
+    /// them to the provided buffer. You do not need to clear the buffer before
+    /// appending.
     ///
     /// This function will read bytes from the underlying stream until the
     /// newline delimiter (the `0xA` byte) or EOF is found. Once found, all bytes

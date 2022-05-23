@@ -3,10 +3,9 @@ use clippy_utils::higher;
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::SpanlessEq;
 use if_chain::if_chain;
-use rustc_hir::intravisit::{self as visit, NestedVisitorMap, Visitor};
+use rustc_hir::intravisit::{self as visit, Visitor};
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::hir::map::Map;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::sym;
 
@@ -91,8 +90,6 @@ pub struct OppVisitor<'a, 'tcx> {
 }
 
 impl<'tcx> Visitor<'tcx> for OppVisitor<'_, 'tcx> {
-    type Map = Map<'tcx>;
-
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         if let Some(mutex) = is_mutex_lock_call(self.cx, expr) {
             self.found_mutex = Some(mutex);
@@ -100,10 +97,6 @@ impl<'tcx> Visitor<'tcx> for OppVisitor<'_, 'tcx> {
             return;
         }
         visit::walk_expr(self, expr);
-    }
-
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::None
     }
 }
 
@@ -115,8 +108,6 @@ pub struct ArmVisitor<'a, 'tcx> {
 }
 
 impl<'tcx> Visitor<'tcx> for ArmVisitor<'_, 'tcx> {
-    type Map = Map<'tcx>;
-
     fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
         if let Some(mutex) = is_mutex_lock_call(self.cx, expr) {
             self.found_mutex = Some(mutex);
@@ -124,10 +115,6 @@ impl<'tcx> Visitor<'tcx> for ArmVisitor<'_, 'tcx> {
             return;
         }
         visit::walk_expr(self, expr);
-    }
-
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::None
     }
 }
 
@@ -140,7 +127,7 @@ impl<'tcx, 'l> ArmVisitor<'tcx, 'l> {
 
 fn is_mutex_lock_call<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<&'tcx Expr<'tcx>> {
     if_chain! {
-        if let ExprKind::MethodCall(path, _span, [self_arg, ..], _) = &expr.kind;
+        if let ExprKind::MethodCall(path, [self_arg, ..], _) = &expr.kind;
         if path.ident.as_str() == "lock";
         let ty = cx.typeck_results().expr_ty(self_arg);
         if is_type_diagnostic_item(cx, ty, sym::Mutex);

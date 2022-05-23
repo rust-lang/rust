@@ -229,6 +229,32 @@ flag][option-emit] documentation.
 }
 ```
 
+## Future-incompatible reports
+
+If the [`--json=future-incompat`][option-json] flag is used, then a separate
+JSON structure will be emitted if the crate may stop compiling in the future.
+This contains diagnostic information about the particular warnings that may be
+turned into a hard error in the future. This will include the diagnostic
+information, even if the diagnostics have been suppressed (such as with an
+`#[allow]` attribute or the `--cap-lints` option).
+
+```javascript
+{
+    /* An array of objects describing a warning that will become a hard error
+       in the future.
+    */
+    "future_incompat_report":
+    [
+        {
+            /* A diagnostic structure as defined in
+               https://doc.rust-lang.org/rustc/json.html#diagnostics
+            */
+            "diagnostic": {...},
+        }
+    ]
+}
+```
+
 [option-emit]: command-line-arguments.md#option-emit
 [option-error-format]: command-line-arguments.md#option-error-format
 [option-json]: command-line-arguments.md#option-json

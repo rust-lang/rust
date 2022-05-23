@@ -3,10 +3,9 @@ use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{method_chain_args, return_ty};
 use if_chain::if_chain;
 use rustc_hir as hir;
-use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
+use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{Expr, ImplItemKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::hir::map::Map;
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::{sym, Span};
@@ -81,14 +80,12 @@ struct FindExpectUnwrap<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for FindExpectUnwrap<'a, 'tcx> {
-    type Map = Map<'tcx>;
-
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         // check for `expect`
         if let Some(arglists) = method_chain_args(expr, &["expect"]) {
-            let reciever_ty = self.typeck_results.expr_ty(&arglists[0][0]).peel_refs();
-            if is_type_diagnostic_item(self.lcx, reciever_ty, sym::Option)
-                || is_type_diagnostic_item(self.lcx, reciever_ty, sym::Result)
+            let receiver_ty = self.typeck_results.expr_ty(&arglists[0][0]).peel_refs();
+            if is_type_diagnostic_item(self.lcx, receiver_ty, sym::Option)
+                || is_type_diagnostic_item(self.lcx, receiver_ty, sym::Result)
             {
                 self.result.push(expr.span);
             }
@@ -96,9 +93,9 @@ impl<'a, 'tcx> Visitor<'tcx> for FindExpectUnwrap<'a, 'tcx> {
 
         // check for `unwrap`
         if let Some(arglists) = method_chain_args(expr, &["unwrap"]) {
-            let reciever_ty = self.typeck_results.expr_ty(&arglists[0][0]).peel_refs();
-            if is_type_diagnostic_item(self.lcx, reciever_ty, sym::Option)
-                || is_type_diagnostic_item(self.lcx, reciever_ty, sym::Result)
+            let receiver_ty = self.typeck_results.expr_ty(&arglists[0][0]).peel_refs();
+            if is_type_diagnostic_item(self.lcx, receiver_ty, sym::Option)
+                || is_type_diagnostic_item(self.lcx, receiver_ty, sym::Result)
             {
                 self.result.push(expr.span);
             }
@@ -106,10 +103,6 @@ impl<'a, 'tcx> Visitor<'tcx> for FindExpectUnwrap<'a, 'tcx> {
 
         // and check sub-expressions
         intravisit::walk_expr(self, expr);
-    }
-
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::None
     }
 }
 

@@ -1,0 +1,28 @@
+error[E0311]: the parameter type `T` may not live long enough
+  --> $DIR/missing-lifetimes-in-signature-2.rs:24:9
+   |
+LL |     foo.bar(move |_| {
+   |         ^^^
+   |
+note: the parameter type `T` must be valid for the anonymous lifetime defined here...
+  --> $DIR/missing-lifetimes-in-signature-2.rs:23:24
+   |
+LL | fn func<T: Test>(foo: &Foo, t: T) {
+   |                        ^^^
+note: ...so that the type `[closure@$DIR/missing-lifetimes-in-signature-2.rs:24:13: 27:6]` will meet its required lifetime bounds...
+  --> $DIR/missing-lifetimes-in-signature-2.rs:24:9
+   |
+LL |     foo.bar(move |_| {
+   |         ^^^
+note: ...that is required by this bound
+  --> $DIR/missing-lifetimes-in-signature-2.rs:15:12
+   |
+LL |         F: 'a,
+   |            ^^
+help: consider adding an explicit lifetime bound...
+   |
+LL | fn func<T: Test + 'a>(foo: &Foo, t: T) {
+   |                 ++++
+
+error: aborting due to previous error
+

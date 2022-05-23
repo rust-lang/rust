@@ -60,8 +60,8 @@ impl<'cg, 'cx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'cx, 'tcx> {
 
     /// We sometimes have `region` within an rvalue, or within a
     /// call. Make them live at the location where they appear.
-    fn visit_region(&mut self, region: &ty::Region<'tcx>, location: Location) {
-        self.add_regular_live_constraint(*region, location);
+    fn visit_region(&mut self, region: ty::Region<'tcx>, location: Location) {
+        self.add_regular_live_constraint(region, location);
         self.super_region(region);
     }
 

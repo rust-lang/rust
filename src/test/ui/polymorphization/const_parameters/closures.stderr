@@ -11,7 +11,7 @@ error: item has unused generic parameters
   --> $DIR/closures.rs:19:19
    |
 LL | pub fn unused<const T: usize>() -> usize {
-   |                     - generic parameter `T` is unused
+   |               -------------- generic parameter `T` is unused
 LL |
 LL |     let add_one = |x: usize| x + 1;
    |                   ^^^^^^^^^^^^^^^^
@@ -20,13 +20,13 @@ error: item has unused generic parameters
   --> $DIR/closures.rs:17:8
    |
 LL | pub fn unused<const T: usize>() -> usize {
-   |        ^^^^^^       - generic parameter `T` is unused
+   |        ^^^^^^ -------------- generic parameter `T` is unused
 
 error: item has unused generic parameters
   --> $DIR/closures.rs:28:19
    |
 LL | pub fn used_parent<const T: usize>() -> usize {
-   |                          - generic parameter `T` is unused
+   |                    -------------- generic parameter `T` is unused
 LL |     let x: usize = T;
 LL |     let add_one = |x: usize| x + 1;
    |                   ^^^^^^^^^^^^^^^^
@@ -35,7 +35,7 @@ error: item has unused generic parameters
   --> $DIR/closures.rs:48:13
    |
 LL | pub fn unused_upvar<const T: usize>() -> usize {
-   |                           - generic parameter `T` is unused
+   |                     -------------- generic parameter `T` is unused
 LL |     let x: usize = T;
 LL |     let y = || x;
    |             ^^^^

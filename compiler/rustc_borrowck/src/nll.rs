@@ -1,7 +1,7 @@
 //! The entry point of the NLL borrow checker.
 
 use rustc_data_structures::vec_map::VecMap;
-use rustc_errors::Diagnostic;
+use rustc_hir::def_id::DefId;
 use rustc_index::vec::IndexVec;
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::mir::{create_dump_file, dump_enabled, dump_mir, PassWhere};
@@ -9,7 +9,7 @@ use rustc_middle::mir::{
     BasicBlock, Body, ClosureOutlivesSubject, ClosureRegionRequirements, LocalKind, Location,
     Promoted,
 };
-use rustc_middle::ty::{self, OpaqueTypeKey, RegionKind, RegionVid, Ty};
+use rustc_middle::ty::{self, OpaqueHiddenType, Region, RegionVid};
 use rustc_span::symbol::sym;
 use std::env;
 use std::fmt::Debug;
@@ -42,9 +42,9 @@ pub type PoloniusOutput = Output<RustcFacts>;
 
 /// The output of `nll::compute_regions`. This includes the computed `RegionInferenceContext`, any
 /// closure requirements to propagate, and any generated errors.
-crate struct NllOutput<'tcx> {
+pub(crate) struct NllOutput<'tcx> {
     pub regioncx: RegionInferenceContext<'tcx>,
-    pub opaque_type_values: VecMap<OpaqueTypeKey<'tcx>, Ty<'tcx>>,
+    pub opaque_type_values: VecMap<DefId, OpaqueHiddenType<'tcx>>,
     pub polonius_input: Option<Box<AllFacts>>,
     pub polonius_output: Option<Rc<PoloniusOutput>>,
     pub opt_closure_req: Option<ClosureRegionRequirements<'tcx>>,
@@ -86,7 +86,7 @@ fn populate_polonius_move_facts(
 ) {
     all_facts
         .path_is_var
-        .extend(move_data.rev_lookup.iter_locals_enumerated().map(|(v, &m)| (m, v)));
+        .extend(move_data.rev_lookup.iter_locals_enumerated().map(|(l, r)| (r, l)));
 
     for (child, move_path) in move_data.move_paths.iter_enumerated() {
         if let Some(parent) = move_path.parent {
@@ -108,7 +108,7 @@ fn populate_polonius_move_facts(
                     // We are at the terminator of an init that has a panic path,
                     // and where the init should not happen on panic
 
-                    for &successor in block_data.terminator().successors() {
+                    for successor in block_data.terminator().successors() {
                         if body[successor].is_cleanup {
                             continue;
                         }
@@ -136,7 +136,7 @@ fn populate_polonius_move_facts(
         }
     }
 
-    for (local, &path) in move_data.rev_lookup.iter_locals_enumerated() {
+    for (local, path) in move_data.rev_lookup.iter_locals_enumerated() {
         if body.local_kind(local) != LocalKind::Arg {
             // Non-arguments start out deinitialised; we simulate this with an
             // initial move:
@@ -189,6 +189,7 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
             move_data,
             elements,
             upvars,
+            use_polonius,
         );
 
     if let Some(all_facts) = &mut all_facts {
@@ -226,7 +227,7 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
                      fr1={:?}, fr2={:?}",
                     fr1, fr2
                 );
-                all_facts.known_placeholder_subset.push((*fr1, *fr2));
+                all_facts.known_placeholder_subset.push((fr1, fr2));
             }
         }
     }
@@ -305,7 +306,7 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
         infcx.set_tainted_by_errors();
     }
 
-    let remapped_opaque_tys = regioncx.infer_opaque_types(&infcx, opaque_type_values, body.span);
+    let remapped_opaque_tys = regioncx.infer_opaque_types(&infcx, opaque_type_values);
 
     NllOutput {
         regioncx,
@@ -372,8 +373,8 @@ pub(super) fn dump_annotation<'a, 'tcx>(
     body: &Body<'tcx>,
     regioncx: &RegionInferenceContext<'tcx>,
     closure_region_requirements: &Option<ClosureRegionRequirements<'_>>,
-    opaque_type_values: &VecMap<OpaqueTypeKey<'tcx>, Ty<'tcx>>,
-    errors_buffer: &mut Vec<Diagnostic>,
+    opaque_type_values: &VecMap<DefId, OpaqueHiddenType<'tcx>>,
+    errors: &mut crate::error::BorrowckErrors<'tcx>,
 ) {
     let tcx = infcx.tcx;
     let base_def_id = tcx.typeck_root_def_id(body.source.def_id());
@@ -418,7 +419,7 @@ pub(super) fn dump_annotation<'a, 'tcx>(
         err.note(&format!("Inferred opaque type values:\n{:#?}", opaque_type_values));
     }
 
-    err.buffer(errors_buffer);
+    errors.buffer_non_error_diag(err);
 }
 
 fn for_each_region_constraint(
@@ -444,9 +445,9 @@ pub trait ToRegionVid {
     fn to_region_vid(self) -> RegionVid;
 }
 
-impl<'tcx> ToRegionVid for &'tcx RegionKind {
+impl<'tcx> ToRegionVid for Region<'tcx> {
     fn to_region_vid(self) -> RegionVid {
-        if let ty::ReVar(vid) = self { *vid } else { bug!("region is not an ReVar: {:?}", self) }
+        if let ty::ReVar(vid) = *self { vid } else { bug!("region is not an ReVar: {:?}", self) }
     }
 }
 
@@ -456,6 +457,6 @@ impl ToRegionVid for RegionVid {
     }
 }
 
-crate trait ConstraintDescription {
+pub(crate) trait ConstraintDescription {
     fn description(&self) -> &'static str;
 }

@@ -1,9 +1,8 @@
 use crate::ty::context::TyCtxt;
 use crate::ty::{DefId, DefIdTree};
-use rustc_hir::CRATE_HIR_ID;
+use rustc_span::def_id::CRATE_DEF_ID;
 use smallvec::SmallVec;
 use std::mem;
-use std::sync::Arc;
 
 use DefIdForest::*;
 
@@ -18,14 +17,13 @@ use DefIdForest::*;
 /// We store the minimal set of `DefId`s required to represent the whole set. If A and B are
 /// `DefId`s in the `DefIdForest`, and A is a parent of B, then only A will be stored. When this is
 /// used with `type_uninhabited_from`, there will very rarely be more than one `DefId` stored.
-#[derive(Clone, HashStable, Debug)]
-pub enum DefIdForest {
+#[derive(Copy, Clone, HashStable, Debug)]
+pub enum DefIdForest<'a> {
     Empty,
     Single(DefId),
     /// This variant is very rare.
     /// Invariant: >1 elements
-    /// We use `Arc` because this is used in the output of a query.
-    Multiple(Arc<[DefId]>),
+    Multiple(&'a [DefId]),
 }
 
 /// Tests whether a slice of roots contains a given DefId.
@@ -34,21 +32,21 @@ fn slice_contains<'tcx>(tcx: TyCtxt<'tcx>, slice: &[DefId], id: DefId) -> bool {
     slice.iter().any(|root_id| tcx.is_descendant_of(id, *root_id))
 }
 
-impl<'tcx> DefIdForest {
+impl<'tcx> DefIdForest<'tcx> {
     /// Creates an empty forest.
-    pub fn empty() -> DefIdForest {
+    pub fn empty() -> DefIdForest<'tcx> {
         DefIdForest::Empty
     }
 
     /// Creates a forest consisting of a single tree representing the entire
     /// crate.
     #[inline]
-    pub fn full(tcx: TyCtxt<'tcx>) -> DefIdForest {
-        DefIdForest::from_id(tcx.hir().local_def_id(CRATE_HIR_ID).to_def_id())
+    pub fn full() -> DefIdForest<'tcx> {
+        DefIdForest::from_id(CRATE_DEF_ID.to_def_id())
     }
 
     /// Creates a forest containing a `DefId` and all its descendants.
-    pub fn from_id(id: DefId) -> DefIdForest {
+    pub fn from_id(id: DefId) -> DefIdForest<'tcx> {
         DefIdForest::Single(id)
     }
 
@@ -61,11 +59,11 @@ impl<'tcx> DefIdForest {
     }
 
     // Only allocates in the rare `Multiple` case.
-    fn from_slice(root_ids: &[DefId]) -> DefIdForest {
-        match root_ids {
+    fn from_vec(tcx: TyCtxt<'tcx>, root_ids: SmallVec<[DefId; 1]>) -> DefIdForest<'tcx> {
+        match &root_ids[..] {
             [] => Empty,
             [id] => Single(*id),
-            _ => DefIdForest::Multiple(root_ids.into()),
+            _ => DefIdForest::Multiple(tcx.arena.alloc_from_iter(root_ids)),
         }
     }
 
@@ -88,15 +86,15 @@ impl<'tcx> DefIdForest {
     }
 
     /// Calculate the intersection of a collection of forests.
-    pub fn intersection<I>(tcx: TyCtxt<'tcx>, iter: I) -> DefIdForest
+    pub fn intersection<I>(tcx: TyCtxt<'tcx>, iter: I) -> DefIdForest<'tcx>
     where
-        I: IntoIterator<Item = DefIdForest>,
+        I: IntoIterator<Item = DefIdForest<'tcx>>,
     {
         let mut iter = iter.into_iter();
         let mut ret: SmallVec<[_; 1]> = if let Some(first) = iter.next() {
             SmallVec::from_slice(first.as_slice())
         } else {
-            return DefIdForest::full(tcx);
+            return DefIdForest::full();
         };
 
         let mut next_ret: SmallVec<[_; 1]> = SmallVec::new();
@@ -114,13 +112,13 @@ impl<'tcx> DefIdForest {
             mem::swap(&mut next_ret, &mut ret);
             next_ret.clear();
         }
-        DefIdForest::from_slice(&ret)
+        DefIdForest::from_vec(tcx, ret)
     }
 
     /// Calculate the union of a collection of forests.
-    pub fn union<I>(tcx: TyCtxt<'tcx>, iter: I) -> DefIdForest
+    pub fn union<I>(tcx: TyCtxt<'tcx>, iter: I) -> DefIdForest<'tcx>
     where
-        I: IntoIterator<Item = DefIdForest>,
+        I: IntoIterator<Item = DefIdForest<'tcx>>,
     {
         let mut ret: SmallVec<[_; 1]> = SmallVec::new();
         let mut next_ret: SmallVec<[_; 1]> = SmallVec::new();
@@ -142,6 +140,6 @@ impl<'tcx> DefIdForest {
             mem::swap(&mut next_ret, &mut ret);
             next_ret.clear();
         }
-        DefIdForest::from_slice(&ret)
+        DefIdForest::from_vec(tcx, ret)
     }
 }

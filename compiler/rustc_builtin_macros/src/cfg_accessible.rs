@@ -7,7 +7,7 @@ use rustc_parse::validate_attr;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 
-crate struct Expander;
+pub(crate) struct Expander;
 
 fn validate_input<'a>(ecx: &mut ExtCtxt<'_>, mi: &'a ast::MetaItem) -> Option<&'a ast::Path> {
     match mi.meta_item_list() {
@@ -44,9 +44,8 @@ impl MultiItemModifier for Expander {
             template,
         );
 
-        let path = match validate_input(ecx, meta_item) {
-            Some(path) => path,
-            None => return ExpandResult::Ready(Vec::new()),
+        let Some(path) = validate_input(ecx, meta_item) else {
+            return ExpandResult::Ready(Vec::new());
         };
 
         match ecx.resolver.cfg_accessible(ecx.current_expansion.id, path) {

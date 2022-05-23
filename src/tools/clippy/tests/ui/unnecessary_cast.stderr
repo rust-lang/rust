@@ -1,5 +1,5 @@
 error: casting integer literal to `i32` is unnecessary
-  --> $DIR/unnecessary_cast.rs:6:5
+  --> $DIR/unnecessary_cast.rs:7:5
    |
 LL |     1i32 as i32;
    |     ^^^^^^^^^^^ help: try: `1_i32`
@@ -7,16 +7,46 @@ LL |     1i32 as i32;
    = note: `-D clippy::unnecessary-cast` implied by `-D warnings`
 
 error: casting float literal to `f32` is unnecessary
-  --> $DIR/unnecessary_cast.rs:7:5
+  --> $DIR/unnecessary_cast.rs:8:5
    |
 LL |     1f32 as f32;
    |     ^^^^^^^^^^^ help: try: `1_f32`
 
 error: casting to the same type is unnecessary (`bool` -> `bool`)
-  --> $DIR/unnecessary_cast.rs:8:5
+  --> $DIR/unnecessary_cast.rs:9:5
    |
 LL |     false as bool;
    |     ^^^^^^^^^^^^^ help: try: `false`
 
-error: aborting due to 3 previous errors
+error: casting integer literal to `i32` is unnecessary
+  --> $DIR/unnecessary_cast.rs:12:5
+   |
+LL |     -1_i32 as i32;
+   |     ^^^^^^^^^^^^^ help: try: `-1_i32`
+
+error: casting integer literal to `i32` is unnecessary
+  --> $DIR/unnecessary_cast.rs:13:5
+   |
+LL |     - 1_i32 as i32;
+   |     ^^^^^^^^^^^^^^ help: try: `- 1_i32`
+
+error: casting float literal to `f32` is unnecessary
+  --> $DIR/unnecessary_cast.rs:14:5
+   |
+LL |     -1f32 as f32;
+   |     ^^^^^^^^^^^^ help: try: `-1_f32`
+
+error: casting integer literal to `i32` is unnecessary
+  --> $DIR/unnecessary_cast.rs:15:5
+   |
+LL |     1_i32 as i32;
+   |     ^^^^^^^^^^^^ help: try: `1_i32`
+
+error: casting float literal to `f32` is unnecessary
+  --> $DIR/unnecessary_cast.rs:16:5
+   |
+LL |     1_f32 as f32;
+   |     ^^^^^^^^^^^^ help: try: `1_f32`
+
+error: aborting due to 8 previous errors
 

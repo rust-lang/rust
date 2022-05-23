@@ -16,7 +16,7 @@ jobs:
     steps:
     # Setup
     - name: Checkout
-      uses: actions/checkout@v2.3.3
+      uses: actions/checkout@v3.0.2
 
     - name: Setup Node.js
       uses: actions/setup-node@v1.4.4

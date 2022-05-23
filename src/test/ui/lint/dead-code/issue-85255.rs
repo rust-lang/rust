@@ -2,7 +2,6 @@
 // check-pass
 
 #![warn(dead_code)]
-#![feature(crate_visibility_modifier)]
 
 struct Foo {
     a: i32, //~ WARNING: field is never read
@@ -28,12 +27,12 @@ impl Bar1 {
     pub fn b(&self) -> i32 { 6 } //~ WARNING: associated function is never used
 }
 
-crate struct Foo2 {
+pub(crate) struct Foo2 {
     a: i32, //~ WARNING: field is never read
     pub b: i32, //~ WARNING: field is never read
 }
 
-crate struct Bar2;
+pub(crate) struct Bar2;
 
 impl Bar2 {
     fn a(&self) -> i32 { 5 } //~ WARNING: associated function is never used

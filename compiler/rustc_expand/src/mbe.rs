@@ -3,41 +3,29 @@
 //! why we call this module `mbe`. For external documentation, prefer the
 //! official terminology: "declarative macros".
 
-crate mod macro_check;
-crate mod macro_parser;
-crate mod macro_rules;
-crate mod quoted;
-crate mod transcribe;
+pub(crate) mod macro_check;
+pub(crate) mod macro_parser;
+pub(crate) mod macro_rules;
+pub(crate) mod metavar_expr;
+pub(crate) mod quoted;
+pub(crate) mod transcribe;
 
-use rustc_ast::token::{self, NonterminalKind, Token, TokenKind};
+use metavar_expr::MetaVarExpr;
+use rustc_ast::token::{Delimiter, NonterminalKind, Token, TokenKind};
 use rustc_ast::tokenstream::DelimSpan;
-
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
 
-use rustc_data_structures::sync::Lrc;
-
-/// Contains the sub-token-trees of a "delimited" token tree, such as the contents of `(`. Note
-/// that the delimiter itself might be `NoDelim`.
-#[derive(Clone, PartialEq, Encodable, Decodable, Debug)]
+/// Contains the sub-token-trees of a "delimited" token tree such as `(a b c)`.
+/// The delimiters are not represented explicitly in the `tts` vector.
+#[derive(PartialEq, Encodable, Decodable, Debug)]
 struct Delimited {
-    delim: token::DelimToken,
+    delim: Delimiter,
+    /// FIXME: #67062 has details about why this is sub-optimal.
     tts: Vec<TokenTree>,
 }
 
-impl Delimited {
-    /// Returns a `self::TokenTree` with a `Span` corresponding to the opening delimiter.
-    fn open_tt(&self, span: DelimSpan) -> TokenTree {
-        TokenTree::token(token::OpenDelim(self.delim), span.open)
-    }
-
-    /// Returns a `self::TokenTree` with a `Span` corresponding to the closing delimiter.
-    fn close_tt(&self, span: DelimSpan) -> TokenTree {
-        TokenTree::token(token::CloseDelim(self.delim), span.close)
-    }
-}
-
-#[derive(Clone, PartialEq, Encodable, Decodable, Debug)]
+#[derive(PartialEq, Encodable, Decodable, Debug)]
 struct SequenceRepetition {
     /// The sequence of token trees
     tts: Vec<TokenTree>,
@@ -73,33 +61,24 @@ enum KleeneOp {
     ZeroOrOne,
 }
 
-/// Similar to `tokenstream::TokenTree`, except that `$i`, `$i:ident`, and `$(...)`
-/// are "first-class" token trees. Useful for parsing macros.
-#[derive(Debug, Clone, PartialEq, Encodable, Decodable)]
+/// Similar to `tokenstream::TokenTree`, except that `Sequence`, `MetaVar`, `MetaVarDecl`, and
+/// `MetaVarExpr` are "first-class" token trees. Useful for parsing macros.
+#[derive(Debug, PartialEq, Encodable, Decodable)]
 enum TokenTree {
     Token(Token),
-    Delimited(DelimSpan, Lrc<Delimited>),
-    /// A kleene-style repetition sequence
-    Sequence(DelimSpan, Lrc<SequenceRepetition>),
-    /// e.g., `$var`
+    /// A delimited sequence, e.g. `($e:expr)` (RHS) or `{ $e }` (LHS).
+    Delimited(DelimSpan, Delimited),
+    /// A kleene-style repetition sequence, e.g. `$($e:expr)*` (RHS) or `$($e),*` (LHS).
+    Sequence(DelimSpan, SequenceRepetition),
+    /// e.g., `$var`.
     MetaVar(Span, Ident),
-    /// e.g., `$var:expr`. This is only used in the left hand side of MBE macros.
+    /// e.g., `$var:expr`. Only appears on the LHS.
     MetaVarDecl(Span, Ident /* name to bind */, Option<NonterminalKind>),
+    /// A meta-variable expression inside `${...}`.
+    MetaVarExpr(DelimSpan, MetaVarExpr),
 }
 
 impl TokenTree {
-    /// Return the number of tokens in the tree.
-    fn len(&self) -> usize {
-        match *self {
-            TokenTree::Delimited(_, ref delimed) => match delimed.delim {
-                token::NoDelim => delimed.tts.len(),
-                _ => delimed.tts.len() + 2,
-            },
-            TokenTree::Sequence(_, ref seq) => seq.tts.len(),
-            _ => 0,
-        }
-    }
-
     /// Returns `true` if the given token tree is delimited.
     fn is_delimited(&self) -> bool {
         matches!(*self, TokenTree::Delimited(..))
@@ -113,33 +92,15 @@ impl TokenTree {
         }
     }
 
-    /// Gets the `index`-th sub-token-tree. This only makes sense for delimited trees and sequences.
-    fn get_tt(&self, index: usize) -> TokenTree {
-        match (self, index) {
-            (&TokenTree::Delimited(_, ref delimed), _) if delimed.delim == token::NoDelim => {
-                delimed.tts[index].clone()
-            }
-            (&TokenTree::Delimited(span, ref delimed), _) => {
-                if index == 0 {
-                    return delimed.open_tt(span);
-                }
-                if index == delimed.tts.len() + 1 {
-                    return delimed.close_tt(span);
-                }
-                delimed.tts[index - 1].clone()
-            }
-            (&TokenTree::Sequence(_, ref seq), _) => seq.tts[index].clone(),
-            _ => panic!("Cannot expand a token tree"),
-        }
-    }
-
     /// Retrieves the `TokenTree`'s span.
     fn span(&self) -> Span {
         match *self {
             TokenTree::Token(Token { span, .. })
             | TokenTree::MetaVar(span, _)
             | TokenTree::MetaVarDecl(span, _, _) => span,
-            TokenTree::Delimited(span, _) | TokenTree::Sequence(span, _) => span.entire(),
+            TokenTree::Delimited(span, _)
+            | TokenTree::MetaVarExpr(span, _)
+            | TokenTree::Sequence(span, _) => span.entire(),
         }
     }
 

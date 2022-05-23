@@ -2,7 +2,9 @@ error[E0308]: mismatched types
   --> $DIR/suggest-missing-await.rs:12:14
    |
 LL |     take_u32(x)
-   |              ^ expected `u32`, found opaque type
+   |     -------- ^ expected `u32`, found opaque type
+   |     |
+   |     arguments to this function are incorrect
    |
 note: while checking the return type of the `async fn`
   --> $DIR/suggest-missing-await.rs:5:24
@@ -11,6 +13,11 @@ LL | async fn make_u32() -> u32 {
    |                        ^^^ checked the `Output` of this `async fn`, found opaque type
    = note:     expected type `u32`
            found opaque type `impl Future<Output = u32>`
+note: function defined here
+  --> $DIR/suggest-missing-await.rs:3:4
+   |
+LL | fn take_u32(_x: u32) {}
+   |    ^^^^^^^^ -------
 help: consider `await`ing on the `Future`
    |
 LL |     take_u32(x.await)
@@ -53,8 +60,13 @@ LL | |
 LL | |     };
    | |_____- `if` and `else` have incompatible types
    |
-   = note:   expected type `impl Future<Output = ()>`
-           found unit type `()`
+note: while checking the return type of the `async fn`
+  --> $DIR/suggest-missing-await.rs:18:18
+   |
+LL | async fn dummy() {}
+   |                  ^ checked the `Output` of this `async fn`, expected opaque type
+   = note: expected opaque type `impl Future<Output = ()>`
+                found unit type `()`
 help: consider `await`ing on the `Future`
    |
 LL |         dummy().await
@@ -91,6 +103,8 @@ LL ~         1 => dummy().await,
 error[E0308]: mismatched types
   --> $DIR/suggest-missing-await.rs:53:9
    |
+LL |     let _x = match dummy() {
+   |                    ------- this expression has type `impl Future<Output = ()>`
 LL |         () => {}
    |         ^^ expected opaque type, found `()`
    |
@@ -109,6 +123,9 @@ LL |     let _x = match dummy().await {
 error[E0308]: mismatched types
   --> $DIR/suggest-missing-await.rs:67:9
    |
+LL |     match dummy_result() {
+   |           -------------- this expression has type `impl Future<Output = Result<(), ()>>`
+...
 LL |         Ok(_) => {}
    |         ^^^^^ expected opaque type, found enum `Result`
    |
@@ -127,6 +144,9 @@ LL |     match dummy_result().await {
 error[E0308]: mismatched types
   --> $DIR/suggest-missing-await.rs:69:9
    |
+LL |     match dummy_result() {
+   |           -------------- this expression has type `impl Future<Output = Result<(), ()>>`
+...
 LL |         Err(_) => {}
    |         ^^^^^^ expected opaque type, found enum `Result`
    |

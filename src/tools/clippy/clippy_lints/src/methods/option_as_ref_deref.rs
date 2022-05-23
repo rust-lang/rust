@@ -19,9 +19,9 @@ pub(super) fn check<'tcx>(
     as_ref_recv: &hir::Expr<'_>,
     map_arg: &hir::Expr<'_>,
     is_mut: bool,
-    msrv: Option<&RustcVersion>,
+    msrv: Option<RustcVersion>,
 ) {
-    if !meets_msrv(msrv, &msrvs::OPTION_AS_DEREF) {
+    if !meets_msrv(msrv, msrvs::OPTION_AS_DEREF) {
         return;
     }
 
@@ -56,7 +56,7 @@ pub(super) fn check<'tcx>(
             let closure_expr = peel_blocks(&closure_body.value);
 
             match &closure_expr.kind {
-                hir::ExprKind::MethodCall(_, _, args, _) => {
+                hir::ExprKind::MethodCall(_, args, _) => {
                     if_chain! {
                         if args.len() == 1;
                         if path_to_local_id(&args[0], closure_body.params[0].pat.hir_id);

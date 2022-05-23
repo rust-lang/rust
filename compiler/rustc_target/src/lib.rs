@@ -8,12 +8,13 @@
 //! LLVM.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
-#![feature(bool_to_option)]
-#![feature(nll)]
-#![feature(never_type)]
 #![feature(associated_type_bounds)]
 #![feature(exhaustive_patterns)]
+#![feature(let_else)]
 #![feature(min_specialization)]
+#![feature(never_type)]
+#![feature(nll)]
+#![feature(rustc_attrs)]
 #![feature(step_trait)]
 
 use std::iter::FromIterator;

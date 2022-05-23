@@ -38,7 +38,8 @@
 //! [Hasse diagram]: https://en.wikipedia.org/wiki/Hasse_diagram
 //! [poset]: https://en.wikipedia.org/wiki/Partially_ordered_set
 
-use rustc_index::bit_set::BitSet;
+use crate::framework::BitSetExt;
+use rustc_index::bit_set::{BitSet, ChunkedBitSet, HybridBitSet};
 use rustc_index::vec::{Idx, IndexVec};
 use std::iter;
 
@@ -145,6 +146,18 @@ impl<T: Idx> MeetSemiLattice for BitSet<T> {
     }
 }
 
+impl<T: Idx> JoinSemiLattice for ChunkedBitSet<T> {
+    fn join(&mut self, other: &Self) -> bool {
+        self.union(other)
+    }
+}
+
+impl<T: Idx> MeetSemiLattice for ChunkedBitSet<T> {
+    fn meet(&mut self, other: &Self) -> bool {
+        self.intersect(other)
+    }
+}
+
 /// The counterpart of a given semilattice `T` using the [inverse order].
 ///
 /// The dual of a join-semilattice is a meet-semilattice and vice versa. For example, the dual of a
@@ -155,15 +168,21 @@ impl<T: Idx> MeetSemiLattice for BitSet<T> {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Dual<T>(pub T);
 
-impl<T> std::borrow::Borrow<T> for Dual<T> {
-    fn borrow(&self) -> &T {
-        &self.0
+impl<T: Idx> BitSetExt<T> for Dual<BitSet<T>> {
+    fn domain_size(&self) -> usize {
+        self.0.domain_size()
     }
-}
 
-impl<T> std::borrow::BorrowMut<T> for Dual<T> {
-    fn borrow_mut(&mut self) -> &mut T {
-        &mut self.0
+    fn contains(&self, elem: T) -> bool {
+        self.0.contains(elem)
+    }
+
+    fn union(&mut self, other: &HybridBitSet<T>) {
+        self.0.union(other);
+    }
+
+    fn subtract(&mut self, other: &HybridBitSet<T>) {
+        self.0.subtract(other);
     }
 }
 

@@ -1,83 +1,73 @@
-use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::diagnostics::span_lint_and_sugg_for_edges;
 use clippy_utils::is_trait_method;
-use clippy_utils::source::snippet;
+use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::is_type_diagnostic_item;
 use rustc_errors::Applicability;
-use rustc_hir as hir;
+use rustc_hir::Expr;
 use rustc_lint::LateContext;
 use rustc_middle::ty;
-use rustc_span::symbol::sym;
+use rustc_span::{symbol::sym, Span};
 
 use super::MAP_FLATTEN;
 
 /// lint use of `map().flatten()` for `Iterators` and 'Options'
-pub(super) fn check<'tcx>(
-    cx: &LateContext<'tcx>,
-    expr: &'tcx hir::Expr<'_>,
-    recv: &'tcx hir::Expr<'_>,
-    map_arg: &'tcx hir::Expr<'_>,
-) {
-    // lint if caller of `.map().flatten()` is an Iterator
-    if is_trait_method(cx, expr, sym::Iterator) {
-        let map_closure_ty = cx.typeck_results().expr_ty(map_arg);
-        let is_map_to_option = match map_closure_ty.kind() {
-            ty::Closure(_, _) | ty::FnDef(_, _) | ty::FnPtr(_) => {
-                let map_closure_sig = match map_closure_ty.kind() {
-                    ty::Closure(_, substs) => substs.as_closure().sig(),
-                    _ => map_closure_ty.fn_sig(cx.tcx),
-                };
-                let map_closure_return_ty = cx.tcx.erase_late_bound_regions(map_closure_sig.output());
-                is_type_diagnostic_item(cx, map_closure_return_ty, sym::Option)
-            },
-            _ => false,
-        };
-
-        let method_to_use = if is_map_to_option {
-            // `(...).map(...)` has type `impl Iterator<Item=Option<...>>
-            "filter_map"
-        } else {
-            // `(...).map(...)` has type `impl Iterator<Item=impl Iterator<...>>
-            "flat_map"
-        };
-        let func_snippet = snippet(cx, map_arg.span, "..");
-        let hint = format!(".{0}({1})", method_to_use, func_snippet);
-        span_lint_and_sugg(
+pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, map_arg: &Expr<'_>, map_span: Span) {
+    if let Some((caller_ty_name, method_to_use)) = try_get_caller_ty_name_and_method_name(cx, expr, recv, map_arg) {
+        let mut applicability = Applicability::MachineApplicable;
+        let help_msgs = [
+            &format!("try replacing `map` with `{}`", method_to_use),
+            "and remove the `.flatten()`",
+        ];
+        let closure_snippet = snippet_with_applicability(cx, map_arg.span, "..", &mut applicability);
+        span_lint_and_sugg_for_edges(
             cx,
             MAP_FLATTEN,
-            expr.span.with_lo(recv.span.hi()),
-            "called `map(..).flatten()` on an `Iterator`",
-            &format!("try using `{}` instead", method_to_use),
-            hint,
-            Applicability::MachineApplicable,
+            expr.span.with_lo(map_span.lo()),
+            &format!("called `map(..).flatten()` on `{}`", caller_ty_name),
+            &help_msgs,
+            format!("{}({})", method_to_use, closure_snippet),
+            applicability,
         );
     }
+}
 
-    // lint if caller of `.map().flatten()` is an Option or Result
-    let caller_type = match cx.typeck_results().expr_ty(recv).kind() {
-        ty::Adt(adt, _) => {
-            if cx.tcx.is_diagnostic_item(sym::Option, adt.did) {
-                "Option"
-            } else if cx.tcx.is_diagnostic_item(sym::Result, adt.did) {
-                "Result"
-            } else {
-                return;
+fn try_get_caller_ty_name_and_method_name(
+    cx: &LateContext<'_>,
+    expr: &Expr<'_>,
+    caller_expr: &Expr<'_>,
+    map_arg: &Expr<'_>,
+) -> Option<(&'static str, &'static str)> {
+    if is_trait_method(cx, expr, sym::Iterator) {
+        if is_map_to_option(cx, map_arg) {
+            // `(...).map(...)` has type `impl Iterator<Item=Option<...>>
+            Some(("Iterator", "filter_map"))
+        } else {
+            // `(...).map(...)` has type `impl Iterator<Item=impl Iterator<...>>
+            Some(("Iterator", "flat_map"))
+        }
+    } else {
+        if let ty::Adt(adt, _) = cx.typeck_results().expr_ty(caller_expr).kind() {
+            if cx.tcx.is_diagnostic_item(sym::Option, adt.did()) {
+                return Some(("Option", "and_then"));
+            } else if cx.tcx.is_diagnostic_item(sym::Result, adt.did()) {
+                return Some(("Result", "and_then"));
             }
-        },
-        _ => {
-            return;
-        },
-    };
+        }
+        None
+    }
+}
 
-    let func_snippet = snippet(cx, map_arg.span, "..");
-    let hint = format!(".and_then({})", func_snippet);
-    let lint_info = format!("called `map(..).flatten()` on an `{}`", caller_type);
-    span_lint_and_sugg(
-        cx,
-        MAP_FLATTEN,
-        expr.span.with_lo(recv.span.hi()),
-        &lint_info,
-        "try using `and_then` instead",
-        hint,
-        Applicability::MachineApplicable,
-    );
+fn is_map_to_option(cx: &LateContext<'_>, map_arg: &Expr<'_>) -> bool {
+    let map_closure_ty = cx.typeck_results().expr_ty(map_arg);
+    match map_closure_ty.kind() {
+        ty::Closure(_, _) | ty::FnDef(_, _) | ty::FnPtr(_) => {
+            let map_closure_sig = match map_closure_ty.kind() {
+                ty::Closure(_, substs) => substs.as_closure().sig(),
+                _ => map_closure_ty.fn_sig(cx.tcx),
+            };
+            let map_closure_return_ty = cx.tcx.erase_late_bound_regions(map_closure_sig.output());
+            is_type_diagnostic_item(cx, map_closure_return_ty, sym::Option)
+        },
+        _ => false,
+    }
 }

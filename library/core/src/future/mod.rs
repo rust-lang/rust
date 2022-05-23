@@ -1,6 +1,13 @@
 #![stable(feature = "futures_api", since = "1.36.0")]
 
-//! Asynchronous values.
+//! Asynchronous basic functionality.
+//!
+//! Please see the fundamental [`async`] and [`await`] keywords and the [async book]
+//! for more information on asynchronous programming in Rust.
+//!
+//! [`async`]: ../../std/keyword.async.html
+//! [`await`]: ../../std/keyword.await.html
+//! [async book]: https://rust-lang.github.io/async-book/
 
 use crate::{
     ops::{Generator, GeneratorState},

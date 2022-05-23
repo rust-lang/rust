@@ -2,7 +2,7 @@ use crate::ffi::OsStr;
 use crate::os::unix::ffi::OsStrExt;
 use crate::path::Path;
 use crate::sys::cvt;
-use crate::{ascii, fmt, io, iter, mem};
+use crate::{ascii, fmt, io, mem, ptr};
 
 // FIXME(#43348): Make libc adapt #[doc(cfg(...))] so we don't need these fake definitions here?
 #[cfg(not(unix))]
@@ -17,35 +17,38 @@ mod libc {
 
 fn sun_path_offset(addr: &libc::sockaddr_un) -> usize {
     // Work with an actual instance of the type since using a null pointer is UB
-    let base = addr as *const _ as usize;
-    let path = &addr.sun_path as *const _ as usize;
+    let base = (addr as *const libc::sockaddr_un).addr();
+    let path = (&addr.sun_path as *const libc::c_char).addr();
     path - base
 }
 
-pub(super) unsafe fn sockaddr_un(path: &Path) -> io::Result<(libc::sockaddr_un, libc::socklen_t)> {
-    let mut addr: libc::sockaddr_un = mem::zeroed();
+pub(super) fn sockaddr_un(path: &Path) -> io::Result<(libc::sockaddr_un, libc::socklen_t)> {
+    // SAFETY: All zeros is a valid representation for `sockaddr_un`.
+    let mut addr: libc::sockaddr_un = unsafe { mem::zeroed() };
     addr.sun_family = libc::AF_UNIX as libc::sa_family_t;
 
     let bytes = path.as_os_str().as_bytes();
 
     if bytes.contains(&0) {
-        return Err(io::Error::new_const(
+        return Err(io::const_io_error!(
             io::ErrorKind::InvalidInput,
-            &"paths must not contain interior null bytes",
+            "paths must not contain interior null bytes",
         ));
     }
 
     if bytes.len() >= addr.sun_path.len() {
-        return Err(io::Error::new_const(
+        return Err(io::const_io_error!(
             io::ErrorKind::InvalidInput,
-            &"path must be shorter than SUN_LEN",
+            "path must be shorter than SUN_LEN",
         ));
     }
-    for (dst, src) in iter::zip(&mut addr.sun_path, bytes) {
-        *dst = *src as libc::c_char;
-    }
-    // null byte for pathname addresses is already there because we zeroed the
-    // struct
+    // SAFETY: `bytes` and `addr.sun_path` are not overlapping and
+    // both point to valid memory.
+    // NOTE: We zeroed the memory above, so the path is already null
+    // terminated.
+    unsafe {
+        ptr::copy_nonoverlapping(bytes.as_ptr(), addr.sun_path.as_mut_ptr().cast(), bytes.len())
+    };
 
     let mut len = sun_path_offset(&addr) + bytes.len();
     match bytes.get(0) {
@@ -83,7 +86,7 @@ impl<'a> fmt::Display for AsciiEscaped<'a> {
 /// let socket = match UnixListener::bind("/tmp/sock") {
 ///     Ok(sock) => sock,
 ///     Err(e) => {
-///         println!("Couldn't bind: {:?}", e);
+///         println!("Couldn't bind: {e:?}");
 ///         return
 ///     }
 /// };
@@ -118,13 +121,48 @@ impl SocketAddr {
             // linux returns zero bytes of address
             len = sun_path_offset(&addr) as libc::socklen_t; // i.e., zero-length address
         } else if addr.sun_family != libc::AF_UNIX as libc::sa_family_t {
-            return Err(io::Error::new_const(
+            return Err(io::const_io_error!(
                 io::ErrorKind::InvalidInput,
-                &"file descriptor did not correspond to a Unix socket",
+                "file descriptor did not correspond to a Unix socket",
             ));
         }
 
         Ok(SocketAddr { addr, len })
+    }
+
+    /// Constructs a `SockAddr` with the family `AF_UNIX` and the provided path.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the path is longer than `SUN_LEN` or if it contains
+    /// NULL bytes.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::os::unix::net::SocketAddr;
+    /// use std::path::Path;
+    ///
+    /// # fn main() -> std::io::Result<()> {
+    /// let address = SocketAddr::from_pathname("/path/to/socket")?;
+    /// assert_eq!(address.as_pathname(), Some(Path::new("/path/to/socket")));
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// Creating a `SocketAddr` with a NULL byte results in an error.
+    ///
+    /// ```
+    /// use std::os::unix::net::SocketAddr;
+    ///
+    /// assert!(SocketAddr::from_pathname("/path/with/\0/bytes").is_err());
+    /// ```
+    #[stable(feature = "unix_socket_creation", since = "1.61.0")]
+    pub fn from_pathname<P>(path: P) -> io::Result<SocketAddr>
+    where
+        P: AsRef<Path>,
+    {
+        sockaddr_un(path.as_ref()).map(|(addr, len)| SocketAddr { addr, len })
     }
 
     /// Returns `true` if the address is unnamed.
@@ -267,7 +305,7 @@ impl SocketAddr {
     ///     let listener = match UnixListener::bind_addr(&addr) {
     ///         Ok(sock) => sock,
     ///         Err(err) => {
-    ///             println!("Couldn't bind: {:?}", err);
+    ///             println!("Couldn't bind: {err:?}");
     ///             return Err(err);
     ///         }
     ///     };
@@ -283,9 +321,9 @@ impl SocketAddr {
             addr.sun_family = libc::AF_UNIX as libc::sa_family_t;
 
             if namespace.len() + 1 > addr.sun_path.len() {
-                return Err(io::Error::new_const(
+                return Err(io::const_io_error!(
                     io::ErrorKind::InvalidInput,
-                    &"namespace must be shorter than SUN_LEN",
+                    "namespace must be shorter than SUN_LEN",
                 ));
             }
 
@@ -306,7 +344,7 @@ impl fmt::Debug for SocketAddr {
         match self.address() {
             AddressKind::Unnamed => write!(fmt, "(unnamed)"),
             AddressKind::Abstract(name) => write!(fmt, "{} (abstract)", AsciiEscaped(name)),
-            AddressKind::Pathname(path) => write!(fmt, "{:?} (pathname)", path),
+            AddressKind::Pathname(path) => write!(fmt, "{path:?} (pathname)"),
         }
     }
 }

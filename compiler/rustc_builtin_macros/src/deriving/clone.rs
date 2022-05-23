@@ -28,7 +28,7 @@ pub fn expand_deriving_clone(
     // - the item is a union with Copy fields
     //      Unions with generic parameters still can derive Clone because they require Copy
     //      for deriving, Clone alone is not enough.
-    //      Whever Clone is implemented for fields is irrelevant so we don't assert it.
+    //      Wherever Clone is implemented for fields is irrelevant so we don't assert it.
     let bounds;
     let substructure;
     let is_shallow;
@@ -196,12 +196,11 @@ fn cs_clone(
             let fields = all_fields
                 .iter()
                 .map(|field| {
-                    let ident = match field.name {
-                        Some(i) => i,
-                        None => cx.span_bug(
+                    let Some(ident) = field.name else {
+                        cx.span_bug(
                             trait_span,
                             &format!("unnamed field in normal struct in `derive({})`", name,),
-                        ),
+                        );
                     };
                     let call = subcall(cx, field);
                     cx.field_imm(field.span, ident, call)

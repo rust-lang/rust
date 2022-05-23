@@ -5,7 +5,9 @@ LL | impl<bool> Parser<bool> for bool {
    |      ---- this type parameter
 LL |     fn parse(text: &str) -> Option<bool> {
 LL |         Some(true)
-   |              ^^^^ expected type parameter `bool`, found `bool`
+   |         ---- ^^^^ expected type parameter `bool`, found `bool`
+   |         |
+   |         arguments to this enum variant are incorrect
    |
    = note: expected type parameter `bool` (type parameter `bool`)
                         found type `bool` (`bool`)

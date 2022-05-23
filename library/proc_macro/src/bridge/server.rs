@@ -153,7 +153,12 @@ impl ExecutionStrategy for SameThread {
         let mut dispatch = |b| dispatcher.dispatch(b);
 
         run_client(
-            Bridge { cached_buffer: input, dispatch: (&mut dispatch).into(), force_show_panics },
+            Bridge {
+                cached_buffer: input,
+                dispatch: (&mut dispatch).into(),
+                force_show_panics,
+                _marker: marker::PhantomData,
+            },
             client_data,
         )
     }
@@ -189,6 +194,7 @@ impl ExecutionStrategy for CrossThread1 {
                     cached_buffer: input,
                     dispatch: (&mut dispatch).into(),
                     force_show_panics,
+                    _marker: marker::PhantomData,
                 },
                 client_data,
             )
@@ -241,6 +247,7 @@ impl ExecutionStrategy for CrossThread2 {
                     cached_buffer: input,
                     dispatch: (&mut dispatch).into(),
                     force_show_panics,
+                    _marker: marker::PhantomData,
                 },
                 client_data,
             );

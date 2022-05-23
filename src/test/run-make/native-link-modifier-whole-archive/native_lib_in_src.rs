@@ -1,6 +1,4 @@
 #![feature(native_link_modifiers_bundle)]
-#![feature(native_link_modifiers_whole_archive)]
-#![feature(native_link_modifiers)]
 
 use std::io::Write;
 

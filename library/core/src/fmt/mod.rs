@@ -2,7 +2,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use crate::cell::{Cell, Ref, RefCell, RefMut, UnsafeCell};
+use crate::cell::{Cell, Ref, RefCell, RefMut, SyncUnsafeCell, UnsafeCell};
 use crate::char::EscapeDebugExtArgs;
 use crate::marker::PhantomData;
 use crate::mem;
@@ -19,8 +19,9 @@ mod nofloat;
 mod num;
 
 #[stable(feature = "fmt_flags_align", since = "1.28.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "Alignment")]
 /// Possible alignments returned by `Formatter::align`
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Alignment {
     #[stable(feature = "fmt_flags_align", since = "1.28.0")]
     /// Indication that contents should be left-aligned.
@@ -64,7 +65,7 @@ pub mod rt {
 ///
 /// let pythagorean_triple = Triangle { a: 3.0, b: 4.0, c: 5.0 };
 ///
-/// assert_eq!(format!("{}", pythagorean_triple), "(3, 4, 5)");
+/// assert_eq!(format!("{pythagorean_triple}"), "(3, 4, 5)");
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub type Result = result::Result<(), Error>;
@@ -174,7 +175,7 @@ pub trait Write {
     /// use std::fmt::{Error, Write};
     ///
     /// fn writer<W: Write>(f: &mut W, s: &str) -> Result<(), Error> {
-    ///     f.write_fmt(format_args!("{}", s))
+    ///     f.write_fmt(format_args!("{s}"))
     /// }
     ///
     /// let mut buf = String::new();
@@ -308,9 +309,21 @@ static USIZE_MARKER: fn(&usize, &mut Formatter<'_>) -> Result = |ptr, _| {
     loop {}
 };
 
+macro_rules! arg_new {
+    ($f: ident, $t: ident) => {
+        #[doc(hidden)]
+        #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
+        #[inline]
+        pub fn $f<'b, T: $t>(x: &'b T) -> ArgumentV1<'_> {
+            Self::new(x, $t::fmt)
+        }
+    };
+}
+
 impl<'a> ArgumentV1<'a> {
     #[doc(hidden)]
     #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
+    #[inline]
     pub fn new<'b, T>(x: &'b T, f: fn(&T, &mut Formatter<'_>) -> Result) -> ArgumentV1<'b> {
         // SAFETY: `mem::transmute(x)` is safe because
         //     1. `&'b T` keeps the lifetime it originated with `'b`
@@ -323,6 +336,16 @@ impl<'a> ArgumentV1<'a> {
         unsafe { ArgumentV1 { formatter: mem::transmute(f), value: mem::transmute(x) } }
     }
 
+    arg_new!(new_display, Display);
+    arg_new!(new_debug, Debug);
+    arg_new!(new_octal, Octal);
+    arg_new!(new_lower_hex, LowerHex);
+    arg_new!(new_upper_hex, UpperHex);
+    arg_new!(new_pointer, Pointer);
+    arg_new!(new_binary, Binary);
+    arg_new!(new_lower_exp, LowerExp);
+    arg_new!(new_upper_exp, UpperExp);
+
     #[doc(hidden)]
     #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
     pub fn from_usize(x: &usize) -> ArgumentV1<'_> {
@@ -330,6 +353,10 @@ impl<'a> ArgumentV1<'a> {
     }
 
     fn as_usize(&self) -> Option<usize> {
+        // We are type punning a bit here: USIZE_MARKER only takes an &usize but
+        // formatter takes an &Opaque. Rust understandably doesn't think we should compare
+        // the function pointers if they don't have the same signature, so we cast to
+        // usizes to tell it that we just want to compare addresses.
         if self.formatter as usize == USIZE_MARKER as usize {
             // SAFETY: The `formatter` field is only set to USIZE_MARKER if
             // the value is a usize, so this is safe
@@ -436,6 +463,7 @@ impl<'a> Arguments<'a> {
 ///
 /// [`format()`]: ../../std/fmt/fn.format.html
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "Arguments")]
 #[derive(Copy, Clone)]
 pub struct Arguments<'a> {
     // Format string pieces to print.
@@ -540,7 +568,7 @@ impl Display for Arguments<'_> {
 ///
 /// let origin = Point { x: 0, y: 0 };
 ///
-/// assert_eq!(format!("The origin is: {:?}", origin), "The origin is: Point { x: 0, y: 0 }");
+/// assert_eq!(format!("The origin is: {origin:?}"), "The origin is: Point { x: 0, y: 0 }");
 /// ```
 ///
 /// Manually implementing:
@@ -564,7 +592,7 @@ impl Display for Arguments<'_> {
 ///
 /// let origin = Point { x: 0, y: 0 };
 ///
-/// assert_eq!(format!("The origin is: {:?}", origin), "The origin is: Point { x: 0, y: 0 }");
+/// assert_eq!(format!("The origin is: {origin:?}"), "The origin is: Point { x: 0, y: 0 }");
 /// ```
 ///
 /// There are a number of helper methods on the [`Formatter`] struct to help you with manual
@@ -574,7 +602,7 @@ impl Display for Arguments<'_> {
 ///
 /// Types that do not wish to use the standard suite of debug representations
 /// provided by the `Formatter` trait (`debug_struct`, `debug_tuple`,
-/// `debut_list`, `debug_set`, `debug_map`) can do something totally custom by
+/// `debug_list`, `debug_set`, `debug_map`) can do something totally custom by
 /// manually writing an arbitrary representation to the `Formatter`.
 ///
 /// ```
@@ -605,7 +633,7 @@ impl Display for Arguments<'_> {
 ///
 /// let origin = Point { x: 0, y: 0 };
 ///
-/// assert_eq!(format!("The origin is: {:#?}", origin),
+/// assert_eq!(format!("The origin is: {origin:#?}"),
 /// "The origin is: Point {
 ///     x: 0,
 ///     y: 0,
@@ -648,9 +676,9 @@ pub trait Debug {
     /// }
     ///
     /// let position = Position { longitude: 1.987, latitude: 2.983 };
-    /// assert_eq!(format!("{:?}", position), "(1.987, 2.983)");
+    /// assert_eq!(format!("{position:?}"), "(1.987, 2.983)");
     ///
-    /// assert_eq!(format!("{:#?}", position), "(
+    /// assert_eq!(format!("{position:#?}"), "(
     ///     1.987,
     ///     2.983,
     /// )");
@@ -702,11 +730,11 @@ pub use macros::Debug;
 ///
 /// let origin = Point { x: 0, y: 0 };
 ///
-/// assert_eq!(format!("The origin is: {}", origin), "The origin is: (0, 0)");
+/// assert_eq!(format!("The origin is: {origin}"), "The origin is: (0, 0)");
 /// ```
 #[rustc_on_unimplemented(
     on(
-        _Self = "std::path::Path",
+        any(_Self = "std::path::Path", _Self = "std::path::PathBuf"),
         label = "`{Self}` cannot be formatted with the default formatter; call `.display()` on it",
         note = "call `.display()` or `.to_string_lossy()` to safely print paths, \
                 as they may contain non-Unicode data"
@@ -764,8 +792,8 @@ pub trait Display {
 /// ```
 /// let x = 42; // 42 is '52' in octal
 ///
-/// assert_eq!(format!("{:o}", x), "52");
-/// assert_eq!(format!("{:#o}", x), "0o52");
+/// assert_eq!(format!("{x:o}"), "52");
+/// assert_eq!(format!("{x:#o}"), "0o52");
 ///
 /// assert_eq!(format!("{:o}", -16), "37777777760");
 /// ```
@@ -787,9 +815,9 @@ pub trait Display {
 ///
 /// let l = Length(9);
 ///
-/// assert_eq!(format!("l as octal is: {:o}", l), "l as octal is: 11");
+/// assert_eq!(format!("l as octal is: {l:o}"), "l as octal is: 11");
 ///
-/// assert_eq!(format!("l as octal is: {:#06o}", l), "l as octal is: 0o0011");
+/// assert_eq!(format!("l as octal is: {l:#06o}"), "l as octal is: 0o0011");
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Octal {
@@ -818,8 +846,8 @@ pub trait Octal {
 /// ```
 /// let x = 42; // 42 is '101010' in binary
 ///
-/// assert_eq!(format!("{:b}", x), "101010");
-/// assert_eq!(format!("{:#b}", x), "0b101010");
+/// assert_eq!(format!("{x:b}"), "101010");
+/// assert_eq!(format!("{x:#b}"), "0b101010");
 ///
 /// assert_eq!(format!("{:b}", -16), "11111111111111111111111111110000");
 /// ```
@@ -841,10 +869,10 @@ pub trait Octal {
 ///
 /// let l = Length(107);
 ///
-/// assert_eq!(format!("l as binary is: {:b}", l), "l as binary is: 1101011");
+/// assert_eq!(format!("l as binary is: {l:b}"), "l as binary is: 1101011");
 ///
 /// assert_eq!(
-///     format!("l as binary is: {:#032b}", l),
+///     format!("l as binary is: {l:#032b}"),
 ///     "l as binary is: 0b000000000000000000000001101011"
 /// );
 /// ```
@@ -876,8 +904,8 @@ pub trait Binary {
 /// ```
 /// let x = 42; // 42 is '2a' in hex
 ///
-/// assert_eq!(format!("{:x}", x), "2a");
-/// assert_eq!(format!("{:#x}", x), "0x2a");
+/// assert_eq!(format!("{x:x}"), "2a");
+/// assert_eq!(format!("{x:#x}"), "0x2a");
 ///
 /// assert_eq!(format!("{:x}", -16), "fffffff0");
 /// ```
@@ -899,9 +927,9 @@ pub trait Binary {
 ///
 /// let l = Length(9);
 ///
-/// assert_eq!(format!("l as hex is: {:x}", l), "l as hex is: 9");
+/// assert_eq!(format!("l as hex is: {l:x}"), "l as hex is: 9");
 ///
-/// assert_eq!(format!("l as hex is: {:#010x}", l), "l as hex is: 0x00000009");
+/// assert_eq!(format!("l as hex is: {l:#010x}"), "l as hex is: 0x00000009");
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait LowerHex {
@@ -931,8 +959,8 @@ pub trait LowerHex {
 /// ```
 /// let x = 42; // 42 is '2A' in hex
 ///
-/// assert_eq!(format!("{:X}", x), "2A");
-/// assert_eq!(format!("{:#X}", x), "0x2A");
+/// assert_eq!(format!("{x:X}"), "2A");
+/// assert_eq!(format!("{x:#X}"), "0x2A");
 ///
 /// assert_eq!(format!("{:X}", -16), "FFFFFFF0");
 /// ```
@@ -954,9 +982,9 @@ pub trait LowerHex {
 ///
 /// let l = Length(i32::MAX);
 ///
-/// assert_eq!(format!("l as hex is: {:X}", l), "l as hex is: 7FFFFFFF");
+/// assert_eq!(format!("l as hex is: {l:X}"), "l as hex is: 7FFFFFFF");
 ///
-/// assert_eq!(format!("l as hex is: {:#010X}", l), "l as hex is: 0x7FFFFFFF");
+/// assert_eq!(format!("l as hex is: {l:#010X}"), "l as hex is: 0x7FFFFFFF");
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait UpperHex {
@@ -981,7 +1009,7 @@ pub trait UpperHex {
 /// ```
 /// let x = &42;
 ///
-/// let address = format!("{:p}", x); // this produces something like '0x7f06092ac6d0'
+/// let address = format!("{x:p}"); // this produces something like '0x7f06092ac6d0'
 /// ```
 ///
 /// Implementing `Pointer` on a type:
@@ -1002,9 +1030,9 @@ pub trait UpperHex {
 ///
 /// let l = Length(42);
 ///
-/// println!("l is in memory here: {:p}", l);
+/// println!("l is in memory here: {l:p}");
 ///
-/// let l_ptr = format!("{:018p}", l);
+/// let l_ptr = format!("{l:018p}");
 /// assert_eq!(l_ptr.len(), 18);
 /// assert_eq!(&l_ptr[..2], "0x");
 /// ```
@@ -1032,7 +1060,7 @@ pub trait Pointer {
 /// ```
 /// let x = 42.0; // 42.0 is '4.2e1' in scientific notation
 ///
-/// assert_eq!(format!("{:e}", x), "4.2e1");
+/// assert_eq!(format!("{x:e}"), "4.2e1");
 /// ```
 ///
 /// Implementing `LowerExp` on a type:
@@ -1052,12 +1080,12 @@ pub trait Pointer {
 /// let l = Length(100);
 ///
 /// assert_eq!(
-///     format!("l in scientific notation is: {:e}", l),
+///     format!("l in scientific notation is: {l:e}"),
 ///     "l in scientific notation is: 1e2"
 /// );
 ///
 /// assert_eq!(
-///     format!("l in scientific notation is: {:05e}", l),
+///     format!("l in scientific notation is: {l:05e}"),
 ///     "l in scientific notation is: 001e2"
 /// );
 /// ```
@@ -1083,7 +1111,7 @@ pub trait LowerExp {
 /// ```
 /// let x = 42.0; // 42.0 is '4.2E1' in scientific notation
 ///
-/// assert_eq!(format!("{:E}", x), "4.2E1");
+/// assert_eq!(format!("{x:E}"), "4.2E1");
 /// ```
 ///
 /// Implementing `UpperExp` on a type:
@@ -1103,12 +1131,12 @@ pub trait LowerExp {
 /// let l = Length(100);
 ///
 /// assert_eq!(
-///     format!("l in scientific notation is: {:E}", l),
+///     format!("l in scientific notation is: {l:E}"),
 ///     "l in scientific notation is: 1E2"
 /// );
 ///
 /// assert_eq!(
-///     format!("l in scientific notation is: {:05E}", l),
+///     format!("l in scientific notation is: {l:05E}"),
 ///     "l in scientific notation is: 001E2"
 /// );
 /// ```
@@ -1407,8 +1435,8 @@ impl<'a> Formatter<'a> {
     ///     }
     /// }
     ///
-    /// assert_eq!(&format!("{:<4}", Foo), "Foo ");
-    /// assert_eq!(&format!("{:0>4}", Foo), "0Foo");
+    /// assert_eq!(&format!("{Foo:<4}"), "Foo ");
+    /// assert_eq!(&format!("{Foo:0>4}"), "0Foo");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn pad(&mut self, s: &str) -> Result {
@@ -1591,8 +1619,8 @@ impl<'a> Formatter<'a> {
     ///     }
     /// }
     ///
-    /// assert_eq!(&format!("{}", Foo), "Foo");
-    /// assert_eq!(&format!("{:0>8}", Foo), "Foo");
+    /// assert_eq!(&format!("{Foo}"), "Foo");
+    /// assert_eq!(&format!("{Foo:0>8}"), "Foo");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn write_str(&mut self, data: &str) -> Result {
@@ -1625,10 +1653,10 @@ impl<'a> Formatter<'a> {
     /// Flags for formatting
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_deprecated(
+    #[deprecated(
         since = "1.24.0",
-        reason = "use the `sign_plus`, `sign_minus`, `alternate`, \
-                  or `sign_aware_zero_pad` methods instead"
+        note = "use the `sign_plus`, `sign_minus`, `alternate`, \
+                or `sign_aware_zero_pad` methods instead"
     )]
     pub fn flags(&self) -> u32 {
         self.flags
@@ -1648,18 +1676,18 @@ impl<'a> Formatter<'a> {
     ///         let c = formatter.fill();
     ///         if let Some(width) = formatter.width() {
     ///             for _ in 0..width {
-    ///                 write!(formatter, "{}", c)?;
+    ///                 write!(formatter, "{c}")?;
     ///             }
     ///             Ok(())
     ///         } else {
-    ///             write!(formatter, "{}", c)
+    ///             write!(formatter, "{c}")
     ///         }
     ///     }
     /// }
     ///
     /// // We set alignment to the right with ">".
-    /// assert_eq!(&format!("{:G>3}", Foo), "GGG");
-    /// assert_eq!(&format!("{:t>6}", Foo), "tttttt");
+    /// assert_eq!(&format!("{Foo:G>3}"), "GGG");
+    /// assert_eq!(&format!("{Foo:t>6}"), "tttttt");
     /// ```
     #[must_use]
     #[stable(feature = "fmt_flags", since = "1.5.0")]
@@ -1689,14 +1717,14 @@ impl<'a> Formatter<'a> {
     ///         } else {
     ///             "into the void"
     ///         };
-    ///         write!(formatter, "{}", s)
+    ///         write!(formatter, "{s}")
     ///     }
     /// }
     ///
-    /// assert_eq!(&format!("{:<}", Foo), "left");
-    /// assert_eq!(&format!("{:>}", Foo), "right");
-    /// assert_eq!(&format!("{:^}", Foo), "center");
-    /// assert_eq!(&format!("{}", Foo), "into the void");
+    /// assert_eq!(&format!("{Foo:<}"), "left");
+    /// assert_eq!(&format!("{Foo:>}"), "right");
+    /// assert_eq!(&format!("{Foo:^}"), "center");
+    /// assert_eq!(&format!("{Foo}"), "into the void");
     /// ```
     #[must_use]
     #[stable(feature = "fmt_flags_align", since = "1.28.0")]
@@ -2224,7 +2252,7 @@ impl<T: ?Sized> Pointer for *const T {
             }
             f.flags |= 1 << (FlagV1::Alternate as u32);
 
-            let ret = LowerHex::fmt(&(ptr as usize), f);
+            let ret = LowerHex::fmt(&(ptr.addr()), f);
 
             f.width = old_width;
             f.flags = old_flags;
@@ -2371,6 +2399,13 @@ impl<T: ?Sized + Debug> Debug for RefMut<'_, T> {
 impl<T: ?Sized> Debug for UnsafeCell<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         f.debug_struct("UnsafeCell").finish_non_exhaustive()
+    }
+}
+
+#[unstable(feature = "sync_unsafe_cell", issue = "95439")]
+impl<T: ?Sized> Debug for SyncUnsafeCell<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        f.debug_struct("SyncUnsafeCell").finish_non_exhaustive()
     }
 }
 

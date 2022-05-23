@@ -1,17 +1,17 @@
 error[E0515]: cannot return reference to function parameter `val`
-  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound-needing-more-suggestions.rs:21:9
+  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound-needing-more-suggestions.rs:25:9
    |
 LL |         val.use_self()
    |         ^^^^^^^^^^^^^^ returns a reference to data owned by the current function
 
 error[E0515]: cannot return reference to function parameter `val`
-  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound-needing-more-suggestions.rs:43:9
+  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound-needing-more-suggestions.rs:47:9
    |
 LL |         val.use_self()
    |         ^^^^^^^^^^^^^^ returns a reference to data owned by the current function
 
 error[E0515]: cannot return reference to function parameter `val`
-  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound-needing-more-suggestions.rs:109:9
+  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound-needing-more-suggestions.rs:113:9
    |
 LL |         val.use_self()
    |         ^^^^^^^^^^^^^^ returns a reference to data owned by the current function

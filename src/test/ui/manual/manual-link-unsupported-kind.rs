@@ -1,5 +1,5 @@
 // compile-flags:-l raw-dylib=foo
-// error-pattern: unknown library kind `raw-dylib`, expected one of dylib, framework, or static
+// error-pattern: unknown library kind `raw-dylib`, expected one of: static, dylib, framework
 
 fn main() {
 }

@@ -315,17 +315,17 @@ fn test_expr() {
     assert_eq!(stringify_expr!(mac! { ... }), "mac! { ... }");
 
     // ExprKind::Struct
-    assert_eq!(stringify_expr!(Struct {}), "Struct{}"); // FIXME
+    assert_eq!(stringify_expr!(Struct {}), "Struct {}");
     #[rustfmt::skip] // https://github.com/rust-lang/rustfmt/issues/5151
-    assert_eq!(stringify_expr!(<Struct as Trait>::Type {}), "<Struct as Trait>::Type{}");
-    assert_eq!(stringify_expr!(Struct { .. }), "Struct{..}"); // FIXME
-    assert_eq!(stringify_expr!(Struct { ..base }), "Struct{..base}"); // FIXME
-    assert_eq!(stringify_expr!(Struct { x }), "Struct{x,}");
-    assert_eq!(stringify_expr!(Struct { x, .. }), "Struct{x, ..}");
-    assert_eq!(stringify_expr!(Struct { x, ..base }), "Struct{x, ..base}");
-    assert_eq!(stringify_expr!(Struct { x: true }), "Struct{x: true,}");
-    assert_eq!(stringify_expr!(Struct { x: true, .. }), "Struct{x: true, ..}");
-    assert_eq!(stringify_expr!(Struct { x: true, ..base }), "Struct{x: true, ..base}");
+    assert_eq!(stringify_expr!(<Struct as Trait>::Type {}), "<Struct as Trait>::Type {}");
+    assert_eq!(stringify_expr!(Struct { .. }), "Struct { .. }");
+    assert_eq!(stringify_expr!(Struct { ..base }), "Struct { ..base }");
+    assert_eq!(stringify_expr!(Struct { x }), "Struct { x }");
+    assert_eq!(stringify_expr!(Struct { x, .. }), "Struct { x, .. }");
+    assert_eq!(stringify_expr!(Struct { x, ..base }), "Struct { x, ..base }");
+    assert_eq!(stringify_expr!(Struct { x: true }), "Struct { x: true }");
+    assert_eq!(stringify_expr!(Struct { x: true, .. }), "Struct { x: true, .. }");
+    assert_eq!(stringify_expr!(Struct { x: true, ..base }), "Struct { x: true, ..base }");
 
     // ExprKind::Repeat
     assert_eq!(stringify_expr!([(); 0]), "[(); 0]");
@@ -589,7 +589,7 @@ fn test_item() {
         stringify_item!(
             pub trait Trait<T> = Sized where T: 'a;
         ),
-        "", // FIXME
+        "pub trait Trait<T> = Sized where T: 'a;",
     );
 
     // ItemKind::Impl

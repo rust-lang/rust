@@ -4,9 +4,14 @@
 
 use super::raw::{AsRawSocket, FromRawSocket, IntoRawSocket, RawSocket};
 use crate::fmt;
+use crate::io;
 use crate::marker::PhantomData;
+use crate::mem;
 use crate::mem::forget;
+use crate::sys;
 use crate::sys::c;
+#[cfg(not(target_vendor = "uwp"))]
+use crate::sys::cvt;
 
 /// A borrowed socket.
 ///
@@ -17,6 +22,10 @@ use crate::sys::c;
 /// so it can be used in FFI in places where a socket is passed as an argument,
 /// it is not captured or consumed, and it never has the value
 /// `INVALID_SOCKET`.
+///
+/// This type's `.to_owned()` implementation returns another `BorrowedSocket`
+/// rather than an `OwnedSocket`. It just makes a trivial copy of the raw
+/// socket, which is then borrowed under the same lifetime.
 #[derive(Copy, Clone)]
 #[repr(transparent)]
 #[rustc_layout_scalar_valid_range_start(0)]
@@ -26,6 +35,7 @@ use crate::sys::c;
     target_pointer_width = "64",
     rustc_layout_scalar_valid_range_end(0xFF_FF_FF_FF_FF_FF_FF_FE)
 )]
+#[rustc_nonnull_optimization_guaranteed]
 #[unstable(feature = "io_safety", issue = "87074")]
 pub struct BorrowedSocket<'socket> {
     socket: RawSocket,
@@ -48,6 +58,7 @@ pub struct BorrowedSocket<'socket> {
     target_pointer_width = "64",
     rustc_layout_scalar_valid_range_end(0xFF_FF_FF_FF_FF_FF_FF_FE)
 )]
+#[rustc_nonnull_optimization_guaranteed]
 #[unstable(feature = "io_safety", issue = "87074")]
 pub struct OwnedSocket {
     socket: RawSocket,
@@ -63,10 +74,82 @@ impl BorrowedSocket<'_> {
     /// `INVALID_SOCKET`.
     #[inline]
     #[unstable(feature = "io_safety", issue = "87074")]
-    pub unsafe fn borrow_raw_socket(socket: RawSocket) -> Self {
-        debug_assert_ne!(socket, c::INVALID_SOCKET as RawSocket);
+    pub const unsafe fn borrow_raw(socket: RawSocket) -> Self {
+        assert!(socket != c::INVALID_SOCKET as RawSocket);
         Self { socket, _phantom: PhantomData }
     }
+}
+
+impl OwnedSocket {
+    /// Creates a new `OwnedSocket` instance that shares the same underlying socket
+    /// as the existing `OwnedSocket` instance.
+    pub fn try_clone(&self) -> io::Result<Self> {
+        let mut info = unsafe { mem::zeroed::<c::WSAPROTOCOL_INFO>() };
+        let result = unsafe {
+            c::WSADuplicateSocketW(self.as_raw_socket(), c::GetCurrentProcessId(), &mut info)
+        };
+        sys::net::cvt(result)?;
+        let socket = unsafe {
+            c::WSASocketW(
+                info.iAddressFamily,
+                info.iSocketType,
+                info.iProtocol,
+                &mut info,
+                0,
+                c::WSA_FLAG_OVERLAPPED | c::WSA_FLAG_NO_HANDLE_INHERIT,
+            )
+        };
+
+        if socket != c::INVALID_SOCKET {
+            unsafe { Ok(OwnedSocket::from_raw_socket(socket)) }
+        } else {
+            let error = unsafe { c::WSAGetLastError() };
+
+            if error != c::WSAEPROTOTYPE && error != c::WSAEINVAL {
+                return Err(io::Error::from_raw_os_error(error));
+            }
+
+            let socket = unsafe {
+                c::WSASocketW(
+                    info.iAddressFamily,
+                    info.iSocketType,
+                    info.iProtocol,
+                    &mut info,
+                    0,
+                    c::WSA_FLAG_OVERLAPPED,
+                )
+            };
+
+            if socket == c::INVALID_SOCKET {
+                return Err(last_error());
+            }
+
+            unsafe {
+                let socket = OwnedSocket::from_raw_socket(socket);
+                socket.set_no_inherit()?;
+                Ok(socket)
+            }
+        }
+    }
+
+    // FIXME(strict_provenance_magic): we defined RawSocket to be a u64 ;-;
+    #[cfg(not(target_vendor = "uwp"))]
+    pub(crate) fn set_no_inherit(&self) -> io::Result<()> {
+        cvt(unsafe {
+            c::SetHandleInformation(self.as_raw_socket() as c::HANDLE, c::HANDLE_FLAG_INHERIT, 0)
+        })
+        .map(drop)
+    }
+
+    #[cfg(target_vendor = "uwp")]
+    pub(crate) fn set_no_inherit(&self) -> io::Result<()> {
+        Err(io::const_io_error!(io::ErrorKind::Unsupported, "Unavailable on UWP"))
+    }
+}
+
+/// Returns the last error from the Windows socket interface.
+fn last_error() -> io::Error {
+    io::Error::from_raw_os_error(unsafe { c::WSAGetLastError() })
 }
 
 impl AsRawSocket for BorrowedSocket<'_> {
@@ -93,13 +176,6 @@ impl IntoRawSocket for OwnedSocket {
 }
 
 impl FromRawSocket for OwnedSocket {
-    /// Constructs a new instance of `Self` from the given raw socket.
-    ///
-    /// # Safety
-    ///
-    /// The resource pointed to by `socket` must be open and suitable for
-    /// assuming ownership. The resource must not require cleanup other than
-    /// `closesocket`.
     #[inline]
     unsafe fn from_raw_socket(socket: RawSocket) -> Self {
         debug_assert_ne!(socket, c::INVALID_SOCKET as RawSocket);
@@ -135,6 +211,22 @@ pub trait AsSocket {
     fn as_socket(&self) -> BorrowedSocket<'_>;
 }
 
+#[unstable(feature = "io_safety", issue = "87074")]
+impl<T: AsSocket> AsSocket for &T {
+    #[inline]
+    fn as_socket(&self) -> BorrowedSocket<'_> {
+        T::as_socket(self)
+    }
+}
+
+#[unstable(feature = "io_safety", issue = "87074")]
+impl<T: AsSocket> AsSocket for &mut T {
+    #[inline]
+    fn as_socket(&self) -> BorrowedSocket<'_> {
+        T::as_socket(self)
+    }
+}
+
 impl AsSocket for BorrowedSocket<'_> {
     #[inline]
     fn as_socket(&self) -> BorrowedSocket<'_> {
@@ -148,14 +240,14 @@ impl AsSocket for OwnedSocket {
         // Safety: `OwnedSocket` and `BorrowedSocket` have the same validity
         // invariants, and the `BorrowdSocket` is bounded by the lifetime
         // of `&self`.
-        unsafe { BorrowedSocket::borrow_raw_socket(self.as_raw_socket()) }
+        unsafe { BorrowedSocket::borrow_raw(self.as_raw_socket()) }
     }
 }
 
 impl AsSocket for crate::net::TcpStream {
     #[inline]
     fn as_socket(&self) -> BorrowedSocket<'_> {
-        unsafe { BorrowedSocket::borrow_raw_socket(self.as_raw_socket()) }
+        unsafe { BorrowedSocket::borrow_raw(self.as_raw_socket()) }
     }
 }
 
@@ -176,7 +268,7 @@ impl From<OwnedSocket> for crate::net::TcpStream {
 impl AsSocket for crate::net::TcpListener {
     #[inline]
     fn as_socket(&self) -> BorrowedSocket<'_> {
-        unsafe { BorrowedSocket::borrow_raw_socket(self.as_raw_socket()) }
+        unsafe { BorrowedSocket::borrow_raw(self.as_raw_socket()) }
     }
 }
 
@@ -197,7 +289,7 @@ impl From<OwnedSocket> for crate::net::TcpListener {
 impl AsSocket for crate::net::UdpSocket {
     #[inline]
     fn as_socket(&self) -> BorrowedSocket<'_> {
-        unsafe { BorrowedSocket::borrow_raw_socket(self.as_raw_socket()) }
+        unsafe { BorrowedSocket::borrow_raw(self.as_raw_socket()) }
     }
 }
 

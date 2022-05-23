@@ -78,6 +78,10 @@ impl<'tcx> LateLintPass<'tcx> for PanicUnimplemented {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         let Some(macro_call) = root_macro_call_first_node(cx, expr) else { return };
         if is_panic(cx, macro_call.def_id) {
+            if cx.tcx.hir().is_inside_const_context(expr.hir_id) {
+                return;
+            }
+
             span_lint(
                 cx,
                 PANIC,

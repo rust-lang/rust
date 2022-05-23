@@ -84,12 +84,12 @@ struct TupleStructAddField(
 // Tuple Struct Field Visibility -----------------------------------------------
 
 #[cfg(any(cfail1,cfail4))]
-struct TupleStructFieldVisibility(char);
+struct TupleStructFieldVisibility(    char);
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(except="hir_owner,hir_owner_nodes,type_of", cfg="cfail2")]
+#[rustc_clean(cfg="cfail2", except="type_of")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(except="hir_owner,hir_owner_nodes,type_of", cfg="cfail5")]
+#[rustc_clean(cfg="cfail5", except="hir_owner,hir_owner_nodes,type_of")]
 #[rustc_clean(cfg="cfail6")]
 struct TupleStructFieldVisibility(pub char);
 
@@ -142,16 +142,14 @@ struct RecordStructAddField {
 // Record Struct Field Visibility ----------------------------------------------
 
 #[cfg(any(cfail1,cfail4))]
-struct RecordStructFieldVisibility { x: f32 }
+struct RecordStructFieldVisibility {     x: f32 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(except="hir_owner,hir_owner_nodes,type_of", cfg="cfail2")]
+#[rustc_clean(cfg="cfail2", except="type_of")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(except="hir_owner,hir_owner_nodes,type_of", cfg="cfail5")]
+#[rustc_clean(cfg="cfail5", except="hir_owner,hir_owner_nodes,type_of")]
 #[rustc_clean(cfg="cfail6")]
-struct RecordStructFieldVisibility {
-    pub x: f32
-}
+struct RecordStructFieldVisibility { pub x: f32 }
 
 
 // Add Lifetime Parameter ------------------------------------------------------
@@ -257,12 +255,12 @@ pub struct EmptyStruct;
 // Visibility ------------------------------------------------------------------
 
 #[cfg(any(cfail1,cfail4))]
-struct Visibility;
+struct     Visibility;
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(except="hir_owner,hir_owner_nodes", cfg="cfail2")]
+#[rustc_clean(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(except="hir_owner,hir_owner_nodes", cfg="cfail5")]
+#[rustc_clean(cfg="cfail5", except="hir_owner,hir_owner_nodes")]
 #[rustc_clean(cfg="cfail6")]
 pub struct Visibility;
 

@@ -75,12 +75,11 @@
 use crate::check::dropck;
 use crate::check::FnCtxt;
 use crate::mem_categorization as mc;
-use crate::middle::region;
 use crate::outlives::outlives_bounds::InferCtxtExt as _;
 use rustc_data_structures::stable_set::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
-use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
+use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::PatKind;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{self, InferCtxt, RegionObligation, RegionckMode};
@@ -171,8 +170,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Region checking during the WF phase for items. `wf_tys` are the
     /// types from which we should derive implied bounds, if any.
+    #[instrument(level = "debug", skip(self))]
     pub fn regionck_item(&self, item_id: hir::HirId, span: Span, wf_tys: FxHashSet<Ty<'tcx>>) {
-        debug!("regionck_item(item.id={:?}, wf_tys={:?})", item_id, wf_tys);
         let subject = self.tcx.hir().local_def_id(item_id);
         let mut rcx = RegionCtxt::new(self, item_id, Subject(subject), self.param_env);
         rcx.outlives_environment.add_implied_bounds(self, wf_tys, item_id, span);
@@ -219,8 +218,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 pub struct RegionCtxt<'a, 'tcx> {
     pub fcx: &'a FnCtxt<'a, 'tcx>,
 
-    pub region_scope_tree: &'tcx region::ScopeTree,
-
     outlives_environment: OutlivesEnvironment<'tcx>,
 
     // id of innermost fn body id
@@ -247,11 +244,9 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         Subject(subject): Subject,
         param_env: ty::ParamEnv<'tcx>,
     ) -> RegionCtxt<'a, 'tcx> {
-        let region_scope_tree = fcx.tcx.region_scope_tree(subject);
         let outlives_environment = OutlivesEnvironment::new(param_env);
         RegionCtxt {
             fcx,
-            region_scope_tree,
             body_id: initial_body_id,
             body_owner: subject,
             subject_def_id: subject,
@@ -269,7 +264,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
     ///
     /// Consider this silly example:
     ///
-    /// ```
+    /// ```ignore UNSOLVED (does replacing @i32 with Box<i32> preserve the desired semantics for the example?)
     /// fn borrow(x: &i32) -> &i32 {x}
     /// fn foo(x: @i32) -> i32 {  // block: B
     ///     let b = borrow(x);    // region: <R0>
@@ -317,13 +312,8 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         self.body_id = body_id.hir_id;
         self.body_owner = self.tcx.hir().body_owner_def_id(body_id);
 
-        let fn_sig = {
-            match self.typeck_results.borrow().liberated_fn_sigs().get(id) {
-                Some(f) => *f,
-                None => {
-                    bug!("No fn-sig entry for id={:?}", id);
-                }
-            }
+        let Some(fn_sig) = self.typeck_results.borrow().liberated_fn_sigs().get(id) else {
+            bug!("No fn-sig entry for id={:?}", id);
         };
 
         // Collect the types from which we create inferred bounds.
@@ -405,12 +395,6 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionCtxt<'a, 'tcx> {
     // addressed by deferring the construction of the region
     // hierarchy, and in particular the relationships between free
     // regions, until regionck, as described in #3238.
-
-    type Map = intravisit::ErasedMap<'tcx>;
-
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::None
-    }
 
     fn visit_fn(
         &mut self,
@@ -648,12 +632,9 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         ignore_err!(self.with_mc(|mc| {
             mc.cat_pattern(discr_cmt, root_pat, |sub_cmt, hir::Pat { kind, span, hir_id, .. }| {
                 // `ref x` pattern
-                if let PatKind::Binding(..) = kind {
-                    if let Some(ty::BindByReference(mutbl)) =
-                        mc.typeck_results.extract_binding_mode(self.tcx.sess, *hir_id, *span)
-                    {
-                        self.link_region_from_node_type(*span, *hir_id, mutbl, sub_cmt);
-                    }
+                if let PatKind::Binding(..) = kind
+                    && let Some(ty::BindByReference(mutbl)) = mc.typeck_results.extract_binding_mode(self.tcx.sess, *hir_id, *span) {
+                    self.link_region_from_node_type(*span, *hir_id, mutbl, sub_cmt);
                 }
             })
         }));
@@ -695,7 +676,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         let rptr_ty = self.resolve_node_type(id);
         if let ty::Ref(r, _, _) = rptr_ty.kind() {
             debug!("rptr_ty={}", rptr_ty);
-            self.link_region(span, r, ty::BorrowKind::from_mutbl(mutbl), cmt_borrowed);
+            self.link_region(span, *r, ty::BorrowKind::from_mutbl(mutbl), cmt_borrowed);
         }
     }
 

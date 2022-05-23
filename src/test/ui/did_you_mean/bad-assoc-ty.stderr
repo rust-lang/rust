@@ -81,7 +81,7 @@ error[E0223]: ambiguous associated type
 LL | type D = (u8, u8)::AssocTy;
    |          ^^^^^^^^^^^^^^^^^ help: use fully-qualified syntax: `<(u8, u8) as Trait>::AssocTy`
 
-error[E0121]: the type placeholder `_` is not allowed within types on item signatures for type aliases
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for type aliases
   --> $DIR/bad-assoc-ty.rs:17:10
    |
 LL | type E = _::AssocTy;
@@ -136,7 +136,7 @@ error[E0223]: ambiguous associated type
 LL | type I = ty!()::AssocTy;
    |          ^^^^^^^^^^^^^^ help: use fully-qualified syntax: `<u8 as Trait>::AssocTy`
 
-error[E0121]: the type placeholder `_` is not allowed within types on item signatures for functions
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
   --> $DIR/bad-assoc-ty.rs:51:13
    |
 LL | fn foo<X: K<_, _>>(x: X) {}
@@ -149,7 +149,7 @@ help: use type parameters instead
 LL | fn foo<X: K<T, T>, T>(x: X) {}
    |             ~  ~ +++
 
-error[E0121]: the type placeholder `_` is not allowed within types on item signatures for functions
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
   --> $DIR/bad-assoc-ty.rs:54:34
    |
 LL | fn bar<F>(_: F) where F: Fn() -> _ {}
@@ -160,7 +160,7 @@ help: use type parameters instead
 LL | fn bar<F, T>(_: F) where F: Fn() -> T {}
    |         +++                         ~
 
-error[E0121]: the type placeholder `_` is not allowed within types on item signatures for functions
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
   --> $DIR/bad-assoc-ty.rs:57:19
    |
 LL | fn baz<F: Fn() -> _>(_: F) {}
@@ -171,7 +171,7 @@ help: use type parameters instead
 LL | fn baz<F: Fn() -> T, T>(_: F) {}
    |                   ~+++
 
-error[E0121]: the type placeholder `_` is not allowed within types on item signatures for structs
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for structs
   --> $DIR/bad-assoc-ty.rs:60:33
    |
 LL | struct L<F>(F) where F: Fn() -> _;
@@ -182,7 +182,7 @@ help: use type parameters instead
 LL | struct L<F, T>(F) where F: Fn() -> T;
    |           +++                      ~
 
-error[E0121]: the type placeholder `_` is not allowed within types on item signatures for structs
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for structs
   --> $DIR/bad-assoc-ty.rs:62:30
    |
 LL | struct M<F> where F: Fn() -> _ {
@@ -193,7 +193,7 @@ help: use type parameters instead
 LL | struct M<F, T> where F: Fn() -> T {
    |           +++                   ~
 
-error[E0121]: the type placeholder `_` is not allowed within types on item signatures for enums
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for enums
   --> $DIR/bad-assoc-ty.rs:66:28
    |
 LL | enum N<F> where F: Fn() -> _ {
@@ -204,7 +204,7 @@ help: use type parameters instead
 LL | enum N<F, T> where F: Fn() -> T {
    |         +++                   ~
 
-error[E0121]: the type placeholder `_` is not allowed within types on item signatures for unions
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for unions
   --> $DIR/bad-assoc-ty.rs:71:29
    |
 LL | union O<F> where F: Fn() -> _ {
@@ -215,7 +215,7 @@ help: use type parameters instead
 LL | union O<F, T> where F: Fn() -> T {
    |          +++                   ~
 
-error[E0121]: the type placeholder `_` is not allowed within types on item signatures for traits
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for traits
   --> $DIR/bad-assoc-ty.rs:76:29
    |
 LL | trait P<F> where F: Fn() -> _ {
@@ -226,7 +226,7 @@ help: use type parameters instead
 LL | trait P<F, T> where F: Fn() -> T {
    |          +++                   ~
 
-error[E0121]: the type placeholder `_` is not allowed within types on item signatures for functions
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
   --> $DIR/bad-assoc-ty.rs:81:38
    |
 LL |     fn foo<F>(_: F) where F: Fn() -> _ {}

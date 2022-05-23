@@ -9,7 +9,7 @@ use rustc_span::Span;
 
 mod explicit;
 mod implicit_infer;
-crate mod outlives_bounds;
+pub(crate) mod outlives_bounds;
 /// Code to write unit test for outlives.
 pub mod test;
 mod utils;
@@ -35,8 +35,7 @@ fn inferred_outlives_of(tcx: TyCtxt<'_>, item_def_id: DefId) -> &[(ty::Predicate
             //        parent of generics returned by `generics_of`
             //
             // In the above code we want the anon const to have predicates in its param env for `'b: 'a`
-            let item_id = tcx.hir().get_parent_item(id);
-            let item_def_id = tcx.hir().local_def_id(item_id).to_def_id();
+            let item_def_id = tcx.hir().get_parent_item(id);
             // In the above code example we would be calling `inferred_outlives_of(Foo)` here
             return tcx.inferred_outlives_of(item_def_id);
         }
@@ -106,14 +105,14 @@ fn inferred_outlives_crate(tcx: TyCtxt<'_>, (): ()) -> CratePredicatesMap<'_> {
                     match kind1.unpack() {
                         GenericArgKind::Type(ty1) => Some((
                             ty::Binder::dummy(ty::PredicateKind::TypeOutlives(
-                                ty::OutlivesPredicate(ty1, region2),
+                                ty::OutlivesPredicate(ty1, *region2),
                             ))
                             .to_predicate(tcx),
                             span,
                         )),
                         GenericArgKind::Lifetime(region1) => Some((
                             ty::Binder::dummy(ty::PredicateKind::RegionOutlives(
-                                ty::OutlivesPredicate(region1, region2),
+                                ty::OutlivesPredicate(region1, *region2),
                             ))
                             .to_predicate(tcx),
                             span,

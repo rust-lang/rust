@@ -1,13 +1,13 @@
 use super::crt_objects::CrtObjectsFallback;
-use super::{LinkerFlavor, LldFlavor, PanicStrategy, RelocModel, TargetOptions, TlsModel};
+use super::{cvs, LinkerFlavor, LldFlavor, PanicStrategy, RelocModel, TargetOptions, TlsModel};
 use std::collections::BTreeMap;
 
 pub fn options() -> TargetOptions {
     let mut lld_args = Vec::new();
     let mut clang_args = Vec::new();
-    let mut arg = |arg: &str| {
-        lld_args.push(arg.to_string());
-        clang_args.push(format!("-Wl,{}", arg));
+    let mut arg = |arg: &'static str| {
+        lld_args.push(arg.into());
+        clang_args.push(format!("-Wl,{}", arg).into());
     };
 
     // By default LLD only gives us one page of stack (64k) which is a
@@ -61,7 +61,7 @@ pub fn options() -> TargetOptions {
 
     TargetOptions {
         is_like_wasm: true,
-        families: vec!["wasm".to_string()],
+        families: cvs!["wasm"],
 
         // we allow dynamic linking, but only cdylibs. Basically we allow a
         // final library artifact that exports some symbols (a wasm module) but
@@ -73,9 +73,9 @@ pub fn options() -> TargetOptions {
         executables: true,
 
         // relatively self-explanatory!
-        exe_suffix: ".wasm".to_string(),
-        dll_prefix: String::new(),
-        dll_suffix: ".wasm".to_string(),
+        exe_suffix: ".wasm".into(),
+        dll_prefix: "".into(),
+        dll_suffix: ".wasm".into(),
         eh_frame_header: false,
 
         max_atomic_width: Some(64),
@@ -100,7 +100,7 @@ pub fn options() -> TargetOptions {
         limit_rdylib_exports: false,
 
         // we use the LLD shipped with the Rust toolchain by default
-        linker: Some("rust-lld".to_owned()),
+        linker: Some("rust-lld".into()),
         lld_flavor: LldFlavor::Wasm,
         linker_is_gnu: false,
 
@@ -109,7 +109,7 @@ pub fn options() -> TargetOptions {
         crt_objects_fallback: Some(CrtObjectsFallback::Wasm),
 
         // This has no effect in LLVM 8 or prior, but in LLVM 9 and later when
-        // PIC code is implemented this has quite a drastric effect if it stays
+        // PIC code is implemented this has quite a drastic effect if it stays
         // at the default, `pic`. In an effort to keep wasm binaries as minimal
         // as possible we're defaulting to `static` for now, but the hope is
         // that eventually we can ship a `pic`-compatible standard library which

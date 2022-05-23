@@ -4,10 +4,10 @@ error: expected identifier, found keyword `extern`
 LL |     let extern = 0;
    |         ^^^^^^ expected identifier, found keyword
    |
-help: you can escape reserved keywords to use them as identifiers
+help: escape `extern` to use it as an identifier
    |
 LL |     let r#extern = 0;
-   |         ~~~~~~~~
+   |         ++
 
 error: aborting due to previous error
 

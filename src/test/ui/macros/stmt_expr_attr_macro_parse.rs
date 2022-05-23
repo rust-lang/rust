@@ -1,4 +1,6 @@
 // run-pass
+#![allow(unused_macro_rules)]
+
 macro_rules! m {
     ($e:expr) => {
         "expr includes attr"

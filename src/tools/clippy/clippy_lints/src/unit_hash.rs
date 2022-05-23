@@ -49,7 +49,7 @@ declare_lint_pass!(UnitHash => [UNIT_HASH]);
 impl<'tcx> LateLintPass<'tcx> for UnitHash {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         if_chain! {
-            if let ExprKind::MethodCall(name_ident, _, args, _) = &expr.kind;
+            if let ExprKind::MethodCall(name_ident, args, _) = &expr.kind;
             if name_ident.ident.name == sym::hash;
             if let [recv, state_param] = args;
             if cx.typeck_results().expr_ty(recv).is_unit();

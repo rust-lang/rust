@@ -26,6 +26,7 @@ use crate::borrow::Cow;
 use crate::cell;
 use crate::char;
 use crate::fmt::{self, Debug, Display, Write};
+use crate::io;
 use crate::mem::transmute;
 use crate::num;
 use crate::str;
@@ -52,6 +53,7 @@ use crate::time;
 /// high-level module to provide its own errors while also revealing some of the
 /// implementation for debugging via `source` chains.
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "Error")]
 pub trait Error: Debug + Display {
     /// The lower-level source of this error, if any.
     ///
@@ -96,7 +98,7 @@ pub trait Error: Debug + Display {
     /// fn main() {
     ///     match get_super_error() {
     ///         Err(e) => {
-    ///             println!("Error: {}", e);
+    ///             println!("Error: {e}");
     ///             println!("Caused by: {}", e.source().unwrap());
     ///         }
     ///         _ => println!("No error"),
@@ -139,19 +141,19 @@ pub trait Error: Debug + Display {
     /// ```
     /// if let Err(e) = "xc".parse::<u32>() {
     ///     // Print `e` itself, no need for description().
-    ///     eprintln!("Error: {}", e);
+    ///     eprintln!("Error: {e}");
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_deprecated(since = "1.42.0", reason = "use the Display impl or to_string()")]
+    #[deprecated(since = "1.42.0", note = "use the Display impl or to_string()")]
     fn description(&self) -> &str {
         "description() is deprecated; use Display"
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_deprecated(
+    #[deprecated(
         since = "1.33.0",
-        reason = "replaced by Error::source, which can support downcasting"
+        note = "replaced by Error::source, which can support downcasting"
     )]
     #[allow(missing_docs)]
     fn cause(&self) -> Option<&dyn Error> {
@@ -516,6 +518,14 @@ impl<T: Error> Error for Box<T> {
     }
 }
 
+#[unstable(feature = "thin_box", issue = "92791")]
+impl<T: ?Sized + crate::error::Error> crate::error::Error for crate::boxed::ThinBox<T> {
+    fn source(&self) -> Option<&(dyn crate::error::Error + 'static)> {
+        use core::ops::Deref;
+        self.deref().source()
+    }
+}
+
 #[stable(feature = "error_by_ref", since = "1.51.0")]
 impl<'a, T: Error + ?Sized> Error for &'a T {
     #[allow(deprecated, deprecated_in_future)]
@@ -602,7 +612,49 @@ impl Error for char::ParseCharError {
 impl Error for alloc::collections::TryReserveError {}
 
 #[unstable(feature = "duration_checked_float", issue = "83400")]
-impl Error for time::FromSecsError {}
+impl Error for time::FromFloatSecsError {}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Error for alloc::ffi::NulError {
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
+        "nul byte found in data"
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl From<alloc::ffi::NulError> for io::Error {
+    /// Converts a [`alloc::ffi::NulError`] into a [`io::Error`].
+    fn from(_: alloc::ffi::NulError) -> io::Error {
+        io::const_io_error!(io::ErrorKind::InvalidInput, "data provided contains a nul byte")
+    }
+}
+
+#[stable(feature = "frombyteswithnulerror_impls", since = "1.17.0")]
+impl Error for core::ffi::FromBytesWithNulError {
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
+        self.__description()
+    }
+}
+
+#[unstable(feature = "cstr_from_bytes_until_nul", issue = "95027")]
+impl Error for core::ffi::FromBytesUntilNulError {}
+
+#[stable(feature = "cstring_from_vec_with_nul", since = "1.58.0")]
+impl Error for alloc::ffi::FromVecWithNulError {}
+
+#[stable(feature = "cstring_into", since = "1.7.0")]
+impl Error for alloc::ffi::IntoStringError {
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
+        "C string contained non-utf8 bytes"
+    }
+
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        Some(self.__source())
+    }
+}
 
 // Copied from `any.rs`.
 impl dyn Error + 'static {
@@ -811,12 +863,12 @@ impl dyn Error + Send + Sync {
     }
 }
 
-/// An error reporter that print's an error and its sources.
+/// An error reporter that prints an error and its sources.
 ///
 /// Report also exposes configuration options for formatting the error chain, either entirely on a
 /// single line, or in multi-line format with each cause in the error chain on a new line.
 ///
-/// `Report` only requires that the wrapped error implements `Error`. It doesn't require that the
+/// `Report` only requires that the wrapped error implement `Error`. It doesn't require that the
 /// wrapped error be `Send`, `Sync`, or `'static`.
 ///
 /// # Examples
@@ -920,7 +972,7 @@ impl dyn Error + Send + Sync {
 ///
 /// ## Return from `main`
 ///
-/// `Report` also implements `From` for all types that implement [`Error`], this when combined with
+/// `Report` also implements `From` for all types that implement [`Error`]; this when combined with
 /// the `Debug` output means `Report` is an ideal starting place for formatting errors returned
 /// from `main`.
 ///
@@ -968,7 +1020,7 @@ impl dyn Error + Send + Sync {
 /// ```
 ///
 /// **Note**: `Report`s constructed via `?` and `From` will be configured to use the single line
-/// output format, if you want to make sure your `Report`s are pretty printed and include backtrace
+/// output format. If you want to make sure your `Report`s are pretty printed and include backtrace
 /// you will need to manually convert and enable those flags.
 ///
 /// ```should_panic
@@ -1074,7 +1126,7 @@ impl<E> Report<E> {
     ///
     /// let error = SuperError { source: SuperErrorSideKick };
     /// let report = Report::new(error).pretty(true);
-    /// eprintln!("Error: {:?}", report);
+    /// eprintln!("Error: {report:?}");
     /// ```
     ///
     /// This example produces the following output:
@@ -1135,7 +1187,7 @@ impl<E> Report<E> {
     /// let source = SuperErrorSideKick { source };
     /// let error = SuperError { source };
     /// let report = Report::new(error).pretty(true);
-    /// eprintln!("Error: {:?}", report);
+    /// eprintln!("Error: {report:?}");
     /// ```
     ///
     /// This example produces the following output:
@@ -1210,7 +1262,7 @@ impl<E> Report<E> {
     /// let source = SuperErrorSideKick::new();
     /// let error = SuperError { source };
     /// let report = Report::new(error).pretty(true).show_backtrace(true);
-    /// eprintln!("Error: {:?}", report);
+    /// eprintln!("Error: {report:?}");
     /// ```
     ///
     /// This example produces something similar to the following output:
@@ -1267,7 +1319,7 @@ where
         let sources = self.error.source().into_iter().flat_map(<dyn Error>::chain);
 
         for cause in sources {
-            write!(f, ": {}", cause)?;
+            write!(f, ": {cause}")?;
         }
 
         Ok(())
@@ -1278,7 +1330,7 @@ where
     fn fmt_multiline(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let error = &self.error;
 
-        write!(f, "{}", error)?;
+        write!(f, "{error}")?;
 
         if let Some(cause) = error.source() {
             write!(f, "\n\nCaused by:")?;
@@ -1289,9 +1341,9 @@ where
                 writeln!(f)?;
                 let mut indented = Indented { inner: f };
                 if multiple {
-                    write!(indented, "{: >4}: {}", ind, error)?;
+                    write!(indented, "{ind: >4}: {error}")?;
                 } else {
-                    write!(indented, "      {}", error)?;
+                    write!(indented, "      {error}")?;
                 }
             }
         }
@@ -1333,7 +1385,7 @@ impl Report<Box<dyn Error>> {
         let sources = self.error.source().into_iter().flat_map(<dyn Error>::chain);
 
         for cause in sources {
-            write!(f, ": {}", cause)?;
+            write!(f, ": {cause}")?;
         }
 
         Ok(())
@@ -1344,7 +1396,7 @@ impl Report<Box<dyn Error>> {
     fn fmt_multiline(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let error = &self.error;
 
-        write!(f, "{}", error)?;
+        write!(f, "{error}")?;
 
         if let Some(cause) = error.source() {
             write!(f, "\n\nCaused by:")?;
@@ -1355,9 +1407,9 @@ impl Report<Box<dyn Error>> {
                 writeln!(f)?;
                 let mut indented = Indented { inner: f };
                 if multiple {
-                    write!(indented, "{: >4}: {}", ind, error)?;
+                    write!(indented, "{ind: >4}: {error}")?;
                 } else {
-                    write!(indented, "      {}", error)?;
+                    write!(indented, "      {error}")?;
                 }
             }
         }

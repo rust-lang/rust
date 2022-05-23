@@ -56,7 +56,6 @@ pub fn inject(
     is_proc_macro_crate: bool,
     has_proc_macro_decls: bool,
     is_test_crate: bool,
-    num_crate_types: usize,
     handler: &rustc_errors::Handler,
 ) -> ast::Crate {
     let ecfg = ExpansionConfig::default("proc_macro".to_string());
@@ -79,10 +78,6 @@ pub fn inject(
 
     if !is_proc_macro_crate {
         return krate;
-    }
-
-    if num_crate_types > 1 {
-        handler.err("cannot mix `proc-macro` crate type with others");
     }
 
     if is_test_crate {
@@ -108,11 +103,9 @@ impl<'a> CollectProcMacros<'a> {
     }
 
     fn collect_custom_derive(&mut self, item: &'a ast::Item, attr: &'a ast::Attribute) {
-        let (trait_name, proc_attrs) =
-            match parse_macro_name_and_helper_attrs(self.handler, attr, "derive") {
-                Some(name_and_attrs) => name_and_attrs,
-                None => return,
-            };
+        let Some((trait_name, proc_attrs)) = parse_macro_name_and_helper_attrs(self.handler, attr, "derive") else {
+            return;
+        };
 
         if self.in_root && item.vis.kind.is_pub() {
             self.macros.push(ProcMacro::Derive(ProcMacroDerive {
@@ -224,15 +217,12 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
             }
         }
 
-        let attr = match found_attr {
-            None => {
-                self.check_not_pub_in_root(&item.vis, self.source_map.guess_head_span(item.span));
-                let prev_in_root = mem::replace(&mut self.in_root, false);
-                visit::walk_item(self, item);
-                self.in_root = prev_in_root;
-                return;
-            }
-            Some(attr) => attr,
+        let Some(attr) = found_attr else {
+            self.check_not_pub_in_root(&item.vis, self.source_map.guess_head_span(item.span));
+            let prev_in_root = mem::replace(&mut self.in_root, false);
+            visit::walk_item(self, item);
+            self.in_root = prev_in_root;
+            return;
         };
 
         if !is_fn {

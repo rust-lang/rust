@@ -5,7 +5,6 @@ pub struct Good {
     aligned: [u8; 32],
 }
 
-#[deny(unaligned_references)]
 fn main() {
     let good = Good {
         data: &0,

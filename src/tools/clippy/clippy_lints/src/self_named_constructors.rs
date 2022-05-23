@@ -51,7 +51,7 @@ impl<'tcx> LateLintPass<'tcx> for SelfNamedConstructors {
             _ => return,
         }
 
-        let parent = cx.tcx.hir().get_parent_did(impl_item.hir_id());
+        let parent = cx.tcx.hir().get_parent_item(impl_item.hir_id());
         let item = cx.tcx.hir().expect_item(parent);
         let self_ty = cx.tcx.type_of(item.def_id);
         let ret_ty = return_ty(cx, impl_item.hir_id());
@@ -63,16 +63,16 @@ impl<'tcx> LateLintPass<'tcx> for SelfNamedConstructors {
 
         // Ensure method is constructor-like
         if let Some(self_adt) = self_ty.ty_adt_def() {
-            if !contains_adt_constructor(cx.tcx, ret_ty, self_adt) {
+            if !contains_adt_constructor(ret_ty, self_adt) {
                 return;
             }
-        } else if !contains_ty(cx.tcx, ret_ty, self_ty) {
+        } else if !contains_ty(ret_ty, self_ty) {
             return;
         }
 
         if_chain! {
             if let Some(self_def) = self_ty.ty_adt_def();
-            if let Some(self_local_did) = self_def.did.as_local();
+            if let Some(self_local_did) = self_def.did().as_local();
             let self_id = cx.tcx.hir().local_def_id_to_hir_id(self_local_did);
             if let Some(Node::Item(x)) = cx.tcx.hir().find(self_id);
             let type_name = x.ident.name.as_str().to_lowercase();

@@ -1,0 +1,24 @@
+// MIR for `main` after AbortUnwindingCalls
+
+fn main() -> () {
+    let mut _0: ();                      // return place in scope 0 at $DIR/asm_unwind_panic_abort.rs:12:11: 12:11
+    let _1: ();                          // in scope 0 at $DIR/asm_unwind_panic_abort.rs:14:9: 14:49
+    scope 1 {
+    }
+
+    bb0: {
+        StorageLive(_1);                 // scope 1 at $DIR/asm_unwind_panic_abort.rs:14:9: 14:49
+        _1 = const ();                   // scope 1 at $DIR/asm_unwind_panic_abort.rs:14:9: 14:49
+        asm!("", options(MAY_UNWIND)) -> [return: bb1, unwind: bb2]; // scope 1 at $DIR/asm_unwind_panic_abort.rs:14:9: 14:49
+    }
+
+    bb1: {
+        StorageDead(_1);                 // scope 1 at $DIR/asm_unwind_panic_abort.rs:14:48: 14:49
+        _0 = const ();                   // scope 1 at $DIR/asm_unwind_panic_abort.rs:13:5: 15:6
+        return;                          // scope 0 at $DIR/asm_unwind_panic_abort.rs:16:2: 16:2
+    }
+
+    bb2 (cleanup): {
+        abort;                           // scope 0 at $DIR/asm_unwind_panic_abort.rs:12:1: 16:2
+    }
+}

@@ -4,10 +4,10 @@ error: expected identifier, found keyword `const`
 LL |     let const = "foo";
    |         ^^^^^ expected identifier, found keyword
    |
-help: you can escape reserved keywords to use them as identifiers
+help: escape `const` to use it as an identifier
    |
 LL |     let r#const = "foo";
-   |         ~~~~~~~
+   |         ++
 
 error: aborting due to previous error
 

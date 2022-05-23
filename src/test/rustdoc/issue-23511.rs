@@ -1,13 +1,13 @@
-#![feature(lang_items)]
+#![feature(rustc_attrs)]
 #![feature(rustdoc_internals)]
 #![no_std]
 
 pub mod str {
     #![doc(primitive = "str")]
 
-    #[lang = "str_alloc"]
     impl str {
         // @has search-index.js foo
+        #[rustc_allow_incoherent_impl]
         pub fn foo(&self) {}
     }
 }

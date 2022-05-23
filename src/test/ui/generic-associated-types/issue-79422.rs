@@ -1,4 +1,8 @@
+// revisions: base extended
+
 #![feature(generic_associated_types)]
+#![cfg_attr(extended, feature(generic_associated_types_extended))]
+#![cfg_attr(extended, allow(incomplete_features))]
 
 trait RefCont<'a, T> {
     fn t(&'a self) -> &'a T;
@@ -22,7 +26,7 @@ trait MapLike<K, V> {
 }
 
 impl<K: Ord, V: 'static> MapLike<K, V> for std::collections::BTreeMap<K, V> {
-    type VRefCont<'a> where Self: 'a = &'a V;
+    type VRefCont<'a> = &'a V where Self: 'a;
     fn get<'a>(&'a self, key: &K) -> Option<&'a V> {
         std::collections::BTreeMap::get(self, key)
     }
@@ -39,8 +43,9 @@ impl<K, V: Default> MapLike<K, V> for Source {
 
 fn main() {
     let m = Box::new(std::collections::BTreeMap::<u8, u8>::new())
+    //[base]~^ ERROR the trait
+    //[extended]~^^ type mismatch
         as Box<dyn MapLike<u8, u8, VRefCont = dyn RefCont<'_, u8>>>;
       //~^ ERROR missing generics for associated type
-      //~^^ ERROR the trait
-      //~^^^^ ERROR the trait
+      //[base]~^^ ERROR the trait
 }

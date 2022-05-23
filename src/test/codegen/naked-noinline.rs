@@ -7,7 +7,6 @@
 
 use std::arch::asm;
 
-#[inline(always)]
 #[naked]
 #[no_mangle]
 pub unsafe extern "C" fn f() {

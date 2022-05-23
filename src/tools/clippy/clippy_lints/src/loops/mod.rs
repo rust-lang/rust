@@ -7,6 +7,7 @@ mod for_loops_over_fallibles;
 mod iter_next_loop;
 mod manual_flatten;
 mod manual_memcpy;
+mod missing_spin_loop;
 mod mut_range_bound;
 mod needless_collect;
 mod needless_range_loop;
@@ -560,6 +561,42 @@ declare_clippy_lint! {
     "for loops over `Option`s or `Result`s with a single expression can be simplified"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Check for empty spin loops
+    ///
+    /// ### Why is this bad?
+    /// The loop body should have something like `thread::park()` or at least
+    /// `std::hint::spin_loop()` to avoid needlessly burning cycles and conserve
+    /// energy. Perhaps even better use an actual lock, if possible.
+    ///
+    /// ### Known problems
+    /// This lint doesn't currently trigger on `while let` or
+    /// `loop { match .. { .. } }` loops, which would be considered idiomatic in
+    /// combination with e.g. `AtomicBool::compare_exchange_weak`.
+    ///
+    /// ### Example
+    ///
+    /// ```ignore
+    /// use core::sync::atomic::{AtomicBool, Ordering};
+    /// let b = AtomicBool::new(true);
+    /// // give a ref to `b` to another thread,wait for it to become false
+    /// while b.load(Ordering::Acquire) {};
+    /// ```
+    /// Use instead:
+    /// ```rust,no_run
+    ///# use core::sync::atomic::{AtomicBool, Ordering};
+    ///# let b = AtomicBool::new(true);
+    /// while b.load(Ordering::Acquire) {
+    ///     std::hint::spin_loop()
+    /// }
+    /// ```
+    #[clippy::version = "1.59.0"]
+    pub MISSING_SPIN_LOOP,
+    perf,
+    "An empty busy waiting loop"
+}
+
 declare_lint_pass!(Loops => [
     MANUAL_MEMCPY,
     MANUAL_FLATTEN,
@@ -579,10 +616,10 @@ declare_lint_pass!(Loops => [
     WHILE_IMMUTABLE_CONDITION,
     SAME_ITEM_PUSH,
     SINGLE_ELEMENT_LOOP,
+    MISSING_SPIN_LOOP,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Loops {
-    #[allow(clippy::too_many_lines)]
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         let for_loop = higher::ForLoop::hir(expr);
         if let Some(higher::ForLoop {
@@ -628,6 +665,7 @@ impl<'tcx> LateLintPass<'tcx> for Loops {
 
         if let Some(higher::While { condition, body }) = higher::While::hir(expr) {
             while_immutable_condition::check(cx, condition, body);
+            missing_spin_loop::check(cx, condition, body);
         }
 
         needless_collect::check(expr, cx);
@@ -658,7 +696,7 @@ fn check_for_loop<'tcx>(
 fn check_for_loop_arg(cx: &LateContext<'_>, pat: &Pat<'_>, arg: &Expr<'_>) {
     let mut next_loop_linted = false; // whether or not ITER_NEXT_LOOP lint was used
 
-    if let ExprKind::MethodCall(method, _, [self_arg], _) = arg.kind {
+    if let ExprKind::MethodCall(method, [self_arg], _) = arg.kind {
         let method_name = method.ident.as_str();
         // check for looping over x.iter() or x.iter_mut(), could use &x or &mut x
         match method_name {

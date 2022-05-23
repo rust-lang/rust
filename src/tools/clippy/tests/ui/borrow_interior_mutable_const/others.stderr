@@ -1,5 +1,5 @@
 error: a `const` item with interior mutability should not be borrowed
-  --> $DIR/others.rs:58:5
+  --> $DIR/others.rs:54:5
    |
 LL |     ATOMIC.store(1, Ordering::SeqCst); //~ ERROR interior mutability
    |     ^^^^^^
@@ -8,7 +8,7 @@ LL |     ATOMIC.store(1, Ordering::SeqCst); //~ ERROR interior mutability
    = help: assign this const to a local or static variable, and use the variable here
 
 error: a `const` item with interior mutability should not be borrowed
-  --> $DIR/others.rs:59:16
+  --> $DIR/others.rs:55:16
    |
 LL |     assert_eq!(ATOMIC.load(Ordering::SeqCst), 5); //~ ERROR interior mutability
    |                ^^^^^^
@@ -16,7 +16,7 @@ LL |     assert_eq!(ATOMIC.load(Ordering::SeqCst), 5); //~ ERROR interior mutabi
    = help: assign this const to a local or static variable, and use the variable here
 
 error: a `const` item with interior mutability should not be borrowed
-  --> $DIR/others.rs:62:22
+  --> $DIR/others.rs:58:22
    |
 LL |     let _once_ref = &ONCE_INIT; //~ ERROR interior mutability
    |                      ^^^^^^^^^
@@ -24,7 +24,7 @@ LL |     let _once_ref = &ONCE_INIT; //~ ERROR interior mutability
    = help: assign this const to a local or static variable, and use the variable here
 
 error: a `const` item with interior mutability should not be borrowed
-  --> $DIR/others.rs:63:25
+  --> $DIR/others.rs:59:25
    |
 LL |     let _once_ref_2 = &&ONCE_INIT; //~ ERROR interior mutability
    |                         ^^^^^^^^^
@@ -32,7 +32,7 @@ LL |     let _once_ref_2 = &&ONCE_INIT; //~ ERROR interior mutability
    = help: assign this const to a local or static variable, and use the variable here
 
 error: a `const` item with interior mutability should not be borrowed
-  --> $DIR/others.rs:64:27
+  --> $DIR/others.rs:60:27
    |
 LL |     let _once_ref_4 = &&&&ONCE_INIT; //~ ERROR interior mutability
    |                           ^^^^^^^^^
@@ -40,7 +40,7 @@ LL |     let _once_ref_4 = &&&&ONCE_INIT; //~ ERROR interior mutability
    = help: assign this const to a local or static variable, and use the variable here
 
 error: a `const` item with interior mutability should not be borrowed
-  --> $DIR/others.rs:65:26
+  --> $DIR/others.rs:61:26
    |
 LL |     let _once_mut = &mut ONCE_INIT; //~ ERROR interior mutability
    |                          ^^^^^^^^^
@@ -48,7 +48,7 @@ LL |     let _once_mut = &mut ONCE_INIT; //~ ERROR interior mutability
    = help: assign this const to a local or static variable, and use the variable here
 
 error: a `const` item with interior mutability should not be borrowed
-  --> $DIR/others.rs:76:14
+  --> $DIR/others.rs:72:14
    |
 LL |     let _ = &ATOMIC_TUPLE; //~ ERROR interior mutability
    |              ^^^^^^^^^^^^
@@ -56,7 +56,7 @@ LL |     let _ = &ATOMIC_TUPLE; //~ ERROR interior mutability
    = help: assign this const to a local or static variable, and use the variable here
 
 error: a `const` item with interior mutability should not be borrowed
-  --> $DIR/others.rs:77:14
+  --> $DIR/others.rs:73:14
    |
 LL |     let _ = &ATOMIC_TUPLE.0; //~ ERROR interior mutability
    |              ^^^^^^^^^^^^
@@ -64,7 +64,7 @@ LL |     let _ = &ATOMIC_TUPLE.0; //~ ERROR interior mutability
    = help: assign this const to a local or static variable, and use the variable here
 
 error: a `const` item with interior mutability should not be borrowed
-  --> $DIR/others.rs:78:19
+  --> $DIR/others.rs:74:19
    |
 LL |     let _ = &(&&&&ATOMIC_TUPLE).0; //~ ERROR interior mutability
    |                   ^^^^^^^^^^^^
@@ -72,7 +72,7 @@ LL |     let _ = &(&&&&ATOMIC_TUPLE).0; //~ ERROR interior mutability
    = help: assign this const to a local or static variable, and use the variable here
 
 error: a `const` item with interior mutability should not be borrowed
-  --> $DIR/others.rs:79:14
+  --> $DIR/others.rs:75:14
    |
 LL |     let _ = &ATOMIC_TUPLE.0[0]; //~ ERROR interior mutability
    |              ^^^^^^^^^^^^
@@ -80,7 +80,7 @@ LL |     let _ = &ATOMIC_TUPLE.0[0]; //~ ERROR interior mutability
    = help: assign this const to a local or static variable, and use the variable here
 
 error: a `const` item with interior mutability should not be borrowed
-  --> $DIR/others.rs:80:13
+  --> $DIR/others.rs:76:13
    |
 LL |     let _ = ATOMIC_TUPLE.0[0].load(Ordering::SeqCst); //~ ERROR interior mutability
    |             ^^^^^^^^^^^^
@@ -88,7 +88,7 @@ LL |     let _ = ATOMIC_TUPLE.0[0].load(Ordering::SeqCst); //~ ERROR interior mu
    = help: assign this const to a local or static variable, and use the variable here
 
 error: a `const` item with interior mutability should not be borrowed
-  --> $DIR/others.rs:86:13
+  --> $DIR/others.rs:82:13
    |
 LL |     let _ = ATOMIC_TUPLE.0[0]; //~ ERROR interior mutability
    |             ^^^^^^^^^^^^
@@ -96,7 +96,7 @@ LL |     let _ = ATOMIC_TUPLE.0[0]; //~ ERROR interior mutability
    = help: assign this const to a local or static variable, and use the variable here
 
 error: a `const` item with interior mutability should not be borrowed
-  --> $DIR/others.rs:91:5
+  --> $DIR/others.rs:87:5
    |
 LL |     CELL.set(2); //~ ERROR interior mutability
    |     ^^^^
@@ -104,7 +104,7 @@ LL |     CELL.set(2); //~ ERROR interior mutability
    = help: assign this const to a local or static variable, and use the variable here
 
 error: a `const` item with interior mutability should not be borrowed
-  --> $DIR/others.rs:92:16
+  --> $DIR/others.rs:88:16
    |
 LL |     assert_eq!(CELL.get(), 6); //~ ERROR interior mutability
    |                ^^^^

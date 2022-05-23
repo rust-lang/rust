@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/regions-infer-contravariance-due-to-decl.rs:25:12
+  --> $DIR/regions-infer-contravariance-due-to-decl.rs:29:12
    |
 LL | fn use_<'short,'long>(c: Contravariant<'short>,
    |         ------ ----- lifetime `'long` defined here

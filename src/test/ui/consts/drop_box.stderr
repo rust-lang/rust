@@ -1,0 +1,11 @@
+error[E0493]: destructors cannot be evaluated at compile-time
+  --> $DIR/drop_box.rs:1:15
+   |
+LL | const fn f<T>(_: Box<T>) {}
+   |               ^           - value is dropped here
+   |               |
+   |               constant functions cannot evaluate destructors
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0493`.

@@ -148,6 +148,7 @@ fn main() {
 
     // #7077
     let s = &String::new();
+    #[allow(clippy::needless_match)]
     let _: Option<&str> = match Some(s) {
         Some(s) => Some(s),
         None => None,

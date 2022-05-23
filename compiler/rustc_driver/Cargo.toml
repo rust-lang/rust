@@ -39,3 +39,5 @@ winapi = { version = "0.3", features = ["consoleapi", "debugapi", "processenv"] 
 [features]
 llvm = ['rustc_interface/llvm']
 max_level_info = ['rustc_log/max_level_info']
+rustc_use_parallel_compiler = ['rustc_data_structures/rustc_use_parallel_compiler', 'rustc_interface/rustc_use_parallel_compiler',
+    'rustc_middle/rustc_use_parallel_compiler']

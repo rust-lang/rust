@@ -13,6 +13,7 @@
 pub trait Sized {}
 #[lang = "copy"]
 pub trait Copy {}
+impl Copy for f32 {}
 
 #[repr(C)]
 pub struct Franta {

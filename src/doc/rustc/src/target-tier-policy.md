@@ -62,12 +62,21 @@ not preclude an existing target's maintainers using issues (on the Rust
 repository or otherwise) to track requirements that have not yet been met, as
 appropriate; however, before officially proposing the introduction or promotion
 of a target, it should meet all of the necessary requirements. A target
-proposal is encouraged to quote the corresponding requirements verbatim as part
-of explaining how the target meets those requirements.
+proposal must quote the corresponding requirements verbatim and respond to them
+as part of explaining how the target meets those requirements. (For the
+requirements that simply state that the target or the target developers must
+not do something, it suffices to acknowledge the requirement.)
 
 For a list of all supported targets and their corresponding tiers ("tier 3",
 "tier 2", "tier 2 with host tools", "tier 1", or "tier 1 with host tools"), see
 [platform support](platform-support.md).
+
+Several parts of this policy require providing target-specific documentation.
+Such documentation should typically appear in a subdirectory of the
+platform-support section of this rustc manual, with a link from the target's
+entry in [platform support](platform-support.md). Use
+[TEMPLATE.md](platform-support/TEMPLATE.md) as a base, and see other
+documentation in that directory for examples.
 
 Note that a target must have already received approval for the next lower tier,
 and spent a reasonable amount of time at that tier, before making a proposal
@@ -139,17 +148,19 @@ approved by the appropriate team for that shared code before acceptance.
     or binary. In other words, the introduction of the target must not cause a
     user installing or running a version of Rust or the Rust tools to be
     subject to any new license requirements.
-  - If the target supports building host tools (such as `rustc` or `cargo`),
-    those host tools must not depend on proprietary (non-FOSS) libraries, other
-    than ordinary runtime libraries supplied by the platform and commonly used
-    by other binaries built for the target. For instance, `rustc` built for the
-    target may depend on a common proprietary C runtime library or console
-    output library, but must not depend on a proprietary code generation
-    library or code optimization library. Rust's license permits such
-    combinations, but the Rust project has no interest in maintaining such
-    combinations within the scope of Rust itself, even at tier 3.
-  - Targets should not require proprietary (non-FOSS) components to link a
-    functional binary or library.
+  - Compiling, linking, and emitting functional binaries, libraries, or other
+    code for the target (whether hosted on the target itself or cross-compiling
+    from another target) must not depend on proprietary (non-FOSS) libraries.
+    Host tools built for the target itself may depend on the ordinary runtime
+    libraries supplied by the platform and commonly used by other applications
+    built for the target, but those libraries must not be required for code
+    generation for the target; cross-compilation to the target must not require
+    such libraries at all. For instance, `rustc` built for the target may
+    depend on a common proprietary C runtime library or console output library,
+    but must not depend on a proprietary code generation library or code
+    optimization library. Rust's license permits such combinations, but the
+    Rust project has no interest in maintaining such combinations within the
+    scope of Rust itself, even at tier 3.
   - "onerous" here is an intentionally subjective term. At a minimum, "onerous"
     legal/licensing terms include but are *not* limited to: non-disclosure
     requirements, non-compete requirements, contributor license agreements
@@ -184,9 +195,9 @@ approved by the appropriate team for that shared code before acceptance.
   target not implementing those portions.
 - The target must provide documentation for the Rust community explaining how
   to build for the target, using cross-compilation if possible. If the target
-  supports running tests (even if they do not pass), the documentation must
-  explain how to run tests for the target, using emulation if possible or
-  dedicated hardware if necessary.
+  supports running binaries, or running tests (even if they do not pass), the
+  documentation must explain how to run such binaries or tests for the target,
+  using emulation if possible or dedicated hardware if necessary.
 - Tier 3 targets must not impose burden on the authors of pull requests, or
   other developers in the community, to maintain the target. In particular,
   do not post comments (automated or manual) on a PR that derail or suggest a

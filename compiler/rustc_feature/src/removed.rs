@@ -48,6 +48,8 @@ declare_features! (
     (removed, advanced_slice_patterns, "1.0.0", Some(62254), None,
      Some("merged into `#![feature(slice_patterns)]`")),
     (removed, allocator, "1.0.0", None, None, None),
+    /// Allows a test to fail without failing the whole suite.
+    (removed, allow_fail, "1.19.0", Some(46488), None, Some("removed due to no clear use cases")),
     (removed, await_macro, "1.38.0", Some(50547), None,
      Some("subsumed by `.await` syntax")),
     /// Allows comparing raw pointers during const eval.
@@ -102,6 +104,9 @@ declare_features! (
     (removed, impl_trait_in_bindings, "1.55.0", Some(63065), None,
      Some("the implementation was not maintainable, the feature may get reintroduced once the current refactorings are done")),
     (removed, import_shadowing, "1.0.0", None, None, None),
+    /// Allows in-band quantification of lifetime bindings (e.g., `fn foo(x: &'a u8) -> &'a u8`).
+    (removed, in_band_lifetimes, "1.23.0", Some(44524), None,
+     Some("removed due to unsolved ergonomic questions and added lifetime resolution complexity")),
     /// Lazily evaluate constants. This allows constants to depend on type parameters.
     (removed, lazy_normalization_consts, "1.46.0", Some(72219), None, Some("superseded by `generic_const_exprs`")),
     /// Allows using the `#[link_args]` attribute.

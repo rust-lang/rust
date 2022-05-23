@@ -152,6 +152,3 @@ impl<I: Idx, K, V> std::ops::Index<I> for SortedIndexMultiMap<I, K, V> {
         &self.items[idx].1
     }
 }
-
-#[cfg(tests)]
-mod tests;

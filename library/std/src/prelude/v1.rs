@@ -40,9 +40,8 @@ pub use crate::result::Result::{self, Err, Ok};
 #[doc(no_inline)]
 pub use core::prelude::v1::{
     assert, cfg, column, compile_error, concat, concat_idents, env, file, format_args,
-    format_args_nl, include, include_bytes, include_str, line, llvm_asm, log_syntax, module_path,
-    option_env, stringify, trace_macros, Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq,
-    PartialOrd,
+    format_args_nl, include, include_bytes, include_str, line, log_syntax, module_path, option_env,
+    stringify, trace_macros, Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd,
 };
 
 #[unstable(
@@ -50,7 +49,6 @@ pub use core::prelude::v1::{
     issue = "87555",
     reason = "`concat_bytes` is not stable enough for use and is subject to change"
 )]
-#[cfg(not(bootstrap))]
 #[doc(no_inline)]
 pub use core::prelude::v1::concat_bytes;
 
@@ -97,3 +95,7 @@ pub use crate::string::{String, ToString};
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)]
 pub use crate::vec::Vec;
+
+#[cfg(bootstrap)]
+#[unstable(feature = "cstr_internals", issue = "none")]
+pub use alloc::ffi::CStrExt;

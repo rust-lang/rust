@@ -1,31 +1,27 @@
 error: this file contains an unclosed delimiter
-  --> $DIR/issue-84148-2.rs:4:16
+  --> $DIR/issue-84148-2.rs:3:16
    |
 LL | fn f(t:for<>t?
    |     -          ^
    |     |
    |     unclosed delimiter
 
-error: expected parameter name, found `?`
-  --> $DIR/issue-84148-2.rs:4:14
+error: invalid `?` in type
+  --> $DIR/issue-84148-2.rs:3:14
    |
 LL | fn f(t:for<>t?
-   |              ^ expected parameter name
-
-error: expected one of `(`, `)`, `+`, `,`, `::`, or `<`, found `?`
-  --> $DIR/issue-84148-2.rs:4:14
+   |              ^ `?` is only allowed on expressions, not types
    |
-LL | fn f(t:for<>t?
-   |              ^
-   |              |
-   |              expected one of `(`, `)`, `+`, `,`, `::`, or `<`
-   |              help: missing `,`
+help: if you meant to express that the type might not contain a value, use the `Option` wrapper type
+   |
+LL | fn f(t:Option<for<>t>
+   |        +++++++      ~
 
 error: expected one of `->`, `where`, or `{`, found `<eof>`
-  --> $DIR/issue-84148-2.rs:4:16
+  --> $DIR/issue-84148-2.rs:3:16
    |
 LL | fn f(t:for<>t?
    |                ^ expected one of `->`, `where`, or `{`
 
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors
 

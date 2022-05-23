@@ -5,7 +5,7 @@ LL |     { $+ } => {
    |        ^
 
 error: expected one of: `*`, `+`, or `?`
-  --> $DIR/issue-33569.rs:4:13
+  --> $DIR/issue-33569.rs:6:13
    |
 LL |         $(x)(y)
    |             ^^^
@@ -16,5 +16,15 @@ error: missing fragment specifier
 LL |     { $+ } => {
    |        ^
 
-error: aborting due to 3 previous errors
+error: missing fragment specifier
+  --> $DIR/issue-33569.rs:2:8
+   |
+LL |     { $+ } => {
+   |        ^
+   |
+   = note: `#[deny(missing_fragment_specifier)]` on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #40107 <https://github.com/rust-lang/rust/issues/40107>
+
+error: aborting due to 4 previous errors
 

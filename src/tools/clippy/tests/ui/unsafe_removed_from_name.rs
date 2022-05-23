@@ -14,8 +14,8 @@ use std::cell::UnsafeCell as Dangerunsafe;
 use std::cell::UnsafeCell as Bombsawayunsafe;
 
 mod mod_with_some_unsafe_things {
-    pub struct Safe {}
-    pub struct Unsafe {}
+    pub struct Safe;
+    pub struct Unsafe;
 }
 
 use mod_with_some_unsafe_things::Unsafe as LieAboutModSafety;

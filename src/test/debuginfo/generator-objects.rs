@@ -11,31 +11,62 @@
 
 // gdb-command:run
 // gdb-command:print b
-// gdb-check:$1 = generator_objects::main::{generator#0}::Unresumed{_ref__a: 0x[...]}
+// gdb-check:$1 = generator_objects::main::{generator_env#0}::Unresumed{_ref__a: 0x[...]}
 // gdb-command:continue
 // gdb-command:print b
-// gdb-check:$2 = generator_objects::main::{generator#0}::Suspend0{c: 6, d: 7, _ref__a: 0x[...]}
+// gdb-check:$2 = generator_objects::main::{generator_env#0}::Suspend0{c: 6, d: 7, _ref__a: 0x[...]}
 // gdb-command:continue
 // gdb-command:print b
-// gdb-check:$3 = generator_objects::main::{generator#0}::Suspend1{c: 7, d: 8, _ref__a: 0x[...]}
+// gdb-check:$3 = generator_objects::main::{generator_env#0}::Suspend1{c: 7, d: 8, _ref__a: 0x[...]}
 // gdb-command:continue
 // gdb-command:print b
-// gdb-check:$4 = generator_objects::main::{generator#0}::Returned{_ref__a: 0x[...]}
+// gdb-check:$4 = generator_objects::main::{generator_env#0}::Returned{_ref__a: 0x[...]}
 
 // === LLDB TESTS ==================================================================================
 
 // lldb-command:run
 // lldb-command:print b
-// lldbg-check:(generator_objects::main::{generator#0}) $0 =
+// lldbg-check:(generator_objects::main::{generator_env#0}) $0 =
 // lldb-command:continue
 // lldb-command:print b
-// lldbg-check:(generator_objects::main::{generator#0}) $1 =
+// lldbg-check:(generator_objects::main::{generator_env#0}) $1 =
 // lldb-command:continue
 // lldb-command:print b
-// lldbg-check:(generator_objects::main::{generator#0}) $2 =
+// lldbg-check:(generator_objects::main::{generator_env#0}) $2 =
 // lldb-command:continue
 // lldb-command:print b
-// lldbg-check:(generator_objects::main::{generator#0}) $3 =
+// lldbg-check:(generator_objects::main::{generator_env#0}) $3 =
+
+// === CDB TESTS ===================================================================================
+
+// cdb-command: g
+// cdb-command: dx b
+// cdb-check: b                : Unresumed [Type: enum$<generator_objects::main::generator_env$0>]
+// cdb-check:    [variant]        : Unresumed
+// cdb-check:    [+0x[...]] _ref__a          : 0x[...] : 5 [Type: int *]
+
+// cdb-command: g
+// cdb-command: dx b
+// cdb-check: b                : Suspend0 [Type: enum$<generator_objects::main::generator_env$0>]
+// cdb-check:    [variant]        : Suspend0
+// cdb-check:    [+0x[...]] c                : 6 [Type: int]
+// cdb-check:    [+0x[...]] d                : 7 [Type: int]
+// cdb-check:    [+0x[...]] _ref__a          : 0x[...] : 5 [Type: int *]
+
+// cdb-command: g
+// cdb-command: dx b
+// cdb-check: b                : Suspend1 [Type: enum$<generator_objects::main::generator_env$0>]
+// cdb-check:    [variant]        : Suspend1
+// cdb-check:    [+0x[...]] c                : 7 [Type: int]
+// cdb-check:    [+0x[...]] d                : 8 [Type: int]
+// cdb-check:    [+0x[...]] _ref__a          : 0x[...] : 6 [Type: int *]
+
+// cdb-command: g
+// cdb-command: dx b
+// cdb-check: b                : Returned [Type: enum$<generator_objects::main::generator_env$0>]
+// cdb-check:    [<Raw View>]     [Type: enum$<generator_objects::main::generator_env$0>]
+// cdb-check:    [variant]        : Returned
+// cdb-check:    [+0x[...]] _ref__a          : 0x[...] : 6 [Type: int *]
 
 #![feature(omit_gdb_pretty_printer_section, generators, generator_trait)]
 #![omit_gdb_pretty_printer_section]
@@ -66,4 +97,7 @@ fn main() {
     _zzz(); // #break
 }
 
-fn _zzz() {()}
+#[inline(never)]
+fn _zzz() {
+    ()
+}

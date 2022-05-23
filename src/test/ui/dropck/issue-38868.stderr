@@ -8,7 +8,8 @@ LL | |     }
 LL | | }
    | |_^
    |
-note: use the same sequence of generic type, lifetime and const parameters as the struct definition
+   = note: `i32` is not a generic parameter
+note: use the same sequence of generic lifetime, type and const parameters as the struct definition
   --> $DIR/issue-38868.rs:1:1
    |
 LL | / pub struct List<T> {

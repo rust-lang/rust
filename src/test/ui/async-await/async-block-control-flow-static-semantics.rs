@@ -24,7 +24,7 @@ async fn return_targets_async_block_not_async_fn() -> u8 {
         return 0u8;
     };
     let _: &dyn Future<Output = ()> = &block;
-    //~^ ERROR type mismatch resolving `<impl Future<Output = [async output]> as Future>::Output == ()`
+    //~^ ERROR type mismatch resolving `<impl Future<Output = u8> as Future>::Output == ()`
 }
 
 fn no_break_in_async_block() {

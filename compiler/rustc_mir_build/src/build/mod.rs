@@ -1,8 +1,10 @@
 use crate::build;
 use crate::build::expr::as_place::PlaceBuilder;
 use crate::build::scope::DropKind;
+use crate::thir::constant::parse_float;
 use crate::thir::pattern::pat_from_hir;
-use rustc_errors::ErrorReported;
+use rustc_ast as ast;
+use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
@@ -11,17 +13,20 @@ use rustc_index::vec::{Idx, IndexVec};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_middle::hir::place::PlaceBase as HirPlaceBase;
 use rustc_middle::middle::region;
+use rustc_middle::mir::interpret::Allocation;
+use rustc_middle::mir::interpret::{ConstValue, LitToConstError, LitToConstInput, Scalar};
 use rustc_middle::mir::*;
 use rustc_middle::thir::{BindingMode, Expr, ExprId, LintLevel, PatKind, Thir};
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeckResults};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
+use rustc_target::abi::Size;
 use rustc_target::spec::abi::Abi;
 
 use super::lints;
 
-crate fn mir_built<'tcx>(
+pub(crate) fn mir_built<'tcx>(
     tcx: TyCtxt<'tcx>,
     def: ty::WithOptConstParam<LocalDefId>,
 ) -> &'tcx rustc_data_structures::steal::Steal<Body<'tcx>> {
@@ -41,7 +46,7 @@ crate fn mir_built<'tcx>(
 /// Construct the MIR for a given `DefId`.
 fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_> {
     let id = tcx.hir().local_def_id_to_hir_id(def.did);
-    let body_owner_kind = tcx.hir().body_owner_kind(id);
+    let body_owner_kind = tcx.hir().body_owner_kind(def.did);
     let typeck_results = tcx.typeck_opt_const_arg(def);
 
     // Ensure unsafeck and abstract const building is ran before we steal the THIR.
@@ -104,8 +109,8 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
     let span_with_body = span_with_body.unwrap_or_else(|| tcx.hir().span(id));
 
     tcx.infer_ctxt().enter(|infcx| {
-        let body = if let Some(ErrorReported) = typeck_results.tainted_by_errors {
-            build::construct_error(&infcx, def, id, body_id, body_owner_kind)
+        let body = if let Some(error_reported) = typeck_results.tainted_by_errors {
+            build::construct_error(&infcx, def, id, body_id, body_owner_kind, error_reported)
         } else if body_owner_kind.is_fn_or_closure() {
             // fetch the fully liberated fn signature (that is, all bound
             // types/lifetimes replaced)
@@ -118,7 +123,9 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
             };
 
             let body = tcx.hir().body(body_id);
-            let (thir, expr) = tcx.thir_body(def);
+            let (thir, expr) = tcx
+                .thir_body(def)
+                .unwrap_or_else(|_| (tcx.alloc_steal_thir(Thir::new()), ExprId::from_u32(0)));
             // We ran all queries that depended on THIR at the beginning
             // of `mir_build`, so now we can steal it
             let thir = thir.steal();
@@ -175,7 +182,7 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
                 let ty = if fn_sig.c_variadic && index == fn_sig.inputs().len() {
                     let va_list_did = tcx.require_lang_item(LangItem::VaList, Some(arg.span));
 
-                    tcx.type_of(va_list_did).subst(tcx, &[tcx.lifetimes.re_erased.into()])
+                    tcx.bound_type_of(va_list_did).subst(tcx, &[tcx.lifetimes.re_erased.into()])
                 } else {
                     fn_sig.inputs()[index]
                 };
@@ -229,7 +236,9 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
 
             let return_ty = typeck_results.node_type(id);
 
-            let (thir, expr) = tcx.thir_body(def);
+            let (thir, expr) = tcx
+                .thir_body(def)
+                .unwrap_or_else(|_| (tcx.alloc_steal_thir(Thir::new()), ExprId::from_u32(0)));
             // We ran all queries that depended on THIR at the beginning
             // of `mir_build`, so now we can steal it
             let thir = thir.steal();
@@ -244,16 +253,67 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
         // The exception is `body.user_type_annotations`, which is used unmodified
         // by borrow checking.
         debug_assert!(
-            !(body.local_decls.has_free_regions(tcx)
-                || body.basic_blocks().has_free_regions(tcx)
-                || body.var_debug_info.has_free_regions(tcx)
-                || body.yield_ty().has_free_regions(tcx)),
+            !(body.local_decls.has_free_regions()
+                || body.basic_blocks().has_free_regions()
+                || body.var_debug_info.has_free_regions()
+                || body.yield_ty().has_free_regions()),
             "Unexpected free regions in MIR: {:?}",
             body,
         );
 
         body
     })
+}
+
+#[instrument(skip(tcx, lit_input))]
+pub(crate) fn lit_to_mir_constant<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    lit_input: LitToConstInput<'tcx>,
+) -> Result<ConstantKind<'tcx>, LitToConstError> {
+    let LitToConstInput { lit, ty, neg } = lit_input;
+    let trunc = |n| {
+        let param_ty = ty::ParamEnv::reveal_all().and(ty);
+        let width = tcx.layout_of(param_ty).map_err(|_| LitToConstError::Reported)?.size;
+        trace!("trunc {} with size {} and shift {}", n, width.bits(), 128 - width.bits());
+        let result = width.truncate(n);
+        trace!("trunc result: {}", result);
+        Ok(ConstValue::Scalar(Scalar::from_uint(result, width)))
+    };
+
+    let value = match (lit, &ty.kind()) {
+        (ast::LitKind::Str(s, _), ty::Ref(_, inner_ty, _)) if inner_ty.is_str() => {
+            let s = s.as_str();
+            let allocation = Allocation::from_bytes_byte_aligned_immutable(s.as_bytes());
+            let allocation = tcx.intern_const_alloc(allocation);
+            ConstValue::Slice { data: allocation, start: 0, end: s.len() }
+        }
+        (ast::LitKind::ByteStr(data), ty::Ref(_, inner_ty, _))
+            if matches!(inner_ty.kind(), ty::Slice(_)) =>
+        {
+            let allocation = Allocation::from_bytes_byte_aligned_immutable(data as &[u8]);
+            let allocation = tcx.intern_const_alloc(allocation);
+            ConstValue::Slice { data: allocation, start: 0, end: data.len() }
+        }
+        (ast::LitKind::ByteStr(data), ty::Ref(_, inner_ty, _)) if inner_ty.is_array() => {
+            let id = tcx.allocate_bytes(data);
+            ConstValue::Scalar(Scalar::from_pointer(id.into(), &tcx))
+        }
+        (ast::LitKind::Byte(n), ty::Uint(ty::UintTy::U8)) => {
+            ConstValue::Scalar(Scalar::from_uint(*n, Size::from_bytes(1)))
+        }
+        (ast::LitKind::Int(n, _), ty::Uint(_)) | (ast::LitKind::Int(n, _), ty::Int(_)) => {
+            trunc(if neg { (*n as i128).overflowing_neg().0 as u128 } else { *n })?
+        }
+        (ast::LitKind::Float(n, _), ty::Float(fty)) => {
+            parse_float(*n, *fty, neg).ok_or(LitToConstError::Reported)?
+        }
+        (ast::LitKind::Bool(b), ty::Bool) => ConstValue::Scalar(Scalar::from_bool(*b)),
+        (ast::LitKind::Char(c), ty::Char) => ConstValue::Scalar(Scalar::from_char(*c)),
+        (ast::LitKind::Err(_), _) => return Err(LitToConstError::Reported),
+        _ => return Err(LitToConstError::TypeError),
+    };
+
+    Ok(ConstantKind::Val(value, ty))
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -266,9 +326,8 @@ fn liberated_closure_env_ty(
 ) -> Ty<'_> {
     let closure_ty = tcx.typeck_body(body_id).node_type(closure_expr_id);
 
-    let (closure_def_id, closure_substs) = match *closure_ty.kind() {
-        ty::Closure(closure_def_id, closure_substs) => (closure_def_id, closure_substs),
-        _ => bug!("closure expr does not have closure type: {:?}", closure_ty),
+    let ty::Closure(closure_def_id, closure_substs) = *closure_ty.kind() else {
+        bug!("closure expr does not have closure type: {:?}", closure_ty);
     };
 
     let bound_vars =
@@ -339,7 +398,6 @@ struct Builder<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     infcx: &'a InferCtxt<'a, 'tcx>,
     typeck_results: &'tcx TypeckResults<'tcx>,
-    region_scope_tree: &'tcx region::ScopeTree,
     param_env: ty::ParamEnv<'tcx>,
 
     thir: &'a Thir<'tcx>,
@@ -347,6 +405,7 @@ struct Builder<'a, 'tcx> {
 
     def_id: DefId,
     hir_id: hir::HirId,
+    parent_module: DefId,
     check_overflow: bool,
     fn_span: Span,
     arg_count: usize,
@@ -545,6 +604,18 @@ rustc_index::newtype_index! {
     struct ScopeId { .. }
 }
 
+#[derive(Debug)]
+enum NeedsTemporary {
+    /// Use this variant when whatever you are converting with `as_operand`
+    /// is the last thing you are converting. This means that if we introduced
+    /// an intermediate temporary, we'd only read it immediately after, so we can
+    /// also avoid it.
+    No,
+    /// For all cases where you aren't sure or that are too expensive to compute
+    /// for now. It is always safe to fall back to this.
+    Maybe,
+}
+
 ///////////////////////////////////////////////////////////////////////////
 /// The `BlockAnd` "monad" packages up the new basic block along with a
 /// produced value (sometimes just unit, of course). The `unpack!`
@@ -663,7 +734,6 @@ where
     } else {
         None
     };
-    debug!("fn_id {:?} has attrs {:?}", fn_def, tcx.get_attrs(fn_def.did.to_def_id()));
 
     let mut body = builder.finish();
     body.spread_arg = spread_arg;
@@ -715,6 +785,7 @@ fn construct_error<'a, 'tcx>(
     hir_id: hir::HirId,
     body_id: hir::BodyId,
     body_owner_kind: hir::BodyOwnerKind,
+    err: ErrorGuaranteed,
 ) -> Body<'tcx> {
     let tcx = infcx.tcx;
     let span = tcx.hir().span(hir_id);
@@ -760,7 +831,6 @@ fn construct_error<'a, 'tcx>(
     cfg.terminate(START_BLOCK, source_info, TerminatorKind::Unreachable);
 
     let mut body = Body::new(
-        tcx,
         MirSource::item(def.did.to_def_id()),
         cfg.basic_blocks,
         source_scopes,
@@ -770,6 +840,7 @@ fn construct_error<'a, 'tcx>(
         vec![],
         span,
         generator_kind,
+        Some(err),
     );
     body.generator.as_mut().map(|gen| gen.yield_ty = Some(ty));
     body
@@ -798,20 +869,21 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         check_overflow |= tcx.sess.overflow_checks();
         // Constants always need overflow checks.
         check_overflow |= matches!(
-            tcx.hir().body_owner_kind(hir_id),
+            tcx.hir().body_owner_kind(def.did),
             hir::BodyOwnerKind::Const | hir::BodyOwnerKind::Static(_)
         );
 
         let lint_level = LintLevel::Explicit(hir_id);
+        let param_env = tcx.param_env(def.did);
         let mut builder = Builder {
             thir,
             tcx,
             infcx,
             typeck_results: tcx.typeck_opt_const_arg(def),
-            region_scope_tree: tcx.region_scope_tree(def.did),
-            param_env: tcx.param_env(def.did),
+            param_env,
             def_id: def.did.to_def_id(),
             hir_id,
+            parent_module: tcx.parent_module(hir_id).to_def_id(),
             check_overflow,
             cfg: CFG { basic_blocks: IndexVec::new() },
             fn_span: span,
@@ -849,7 +921,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
 
         Body::new(
-            self.tcx,
             MirSource::item(self.def_id),
             self.cfg.basic_blocks,
             self.source_scopes,
@@ -859,6 +930,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             self.var_debug_info,
             self.fn_span,
             self.generator_kind,
+            self.typeck_results.tainted_by_errors,
         )
     }
 
@@ -877,14 +949,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let arg_local = self.local_decls.push(LocalDecl::with_source_info(ty, source_info));
 
             // If this is a simple binding pattern, give debuginfo a nice name.
-            if let Some(arg) = arg_opt {
-                if let Some(ident) = arg.pat.simple_ident() {
-                    self.var_debug_info.push(VarDebugInfo {
-                        name: ident.name,
-                        source_info,
-                        value: VarDebugInfoContents::Place(arg_local.into()),
-                    });
-                }
+            if let Some(arg) = arg_opt && let Some(ident) = arg.pat.simple_ident() {
+                self.var_debug_info.push(VarDebugInfo {
+                    name: ident.name,
+                    source_info,
+                    value: VarDebugInfoContents::Place(arg_local.into()),
+                });
             }
         }
 
@@ -902,7 +972,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let mut closure_ty = self.local_decls[ty::CAPTURE_STRUCT_LOCAL].ty;
             if let ty::Ref(_, ty, _) = closure_ty.kind() {
                 closure_env_projs.push(ProjectionElem::Deref);
-                closure_ty = ty;
+                closure_ty = *ty;
             }
             let upvar_substs = match closure_ty.kind() {
                 ty::Closure(_, substs) => ty::UpvarSubsts::Closure(substs),
@@ -937,7 +1007,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     };
 
                     self.var_debug_info.push(VarDebugInfo {
-                        name: sym,
+                        name: *sym,
                         source_info: SourceInfo::outermost(tcx_hir.span(var_id)),
                         value: VarDebugInfoContents::Place(Place {
                             local: ty::CAPTURE_STRUCT_LOCAL,

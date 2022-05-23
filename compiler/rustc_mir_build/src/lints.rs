@@ -9,11 +9,10 @@ use rustc_session::lint::builtin::UNCONDITIONAL_RECURSION;
 use rustc_span::Span;
 use std::ops::ControlFlow;
 
-crate fn check<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
+pub(crate) fn check<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
     let def_id = body.source.def_id().expect_local();
-    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
 
-    if let Some(fn_kind) = tcx.hir().get(hir_id).fn_kind() {
+    if let Some(fn_kind) = tcx.hir().get_by_def_id(def_id).fn_kind() {
         if let FnKind::Closure = fn_kind {
             // closures can't recur, so they don't matter.
             return;
@@ -32,6 +31,9 @@ crate fn check<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
 
         let mut vis = Search { tcx, body, reachable_recursive_calls: vec![], trait_substs };
         if let Some(NonRecursive) = TriColorDepthFirstSearch::new(&body).run_from_start(&mut vis) {
+            return;
+        }
+        if vis.reachable_recursive_calls.is_empty() {
             return;
         }
 
@@ -64,8 +66,14 @@ struct Search<'mir, 'tcx> {
 
 impl<'mir, 'tcx> Search<'mir, 'tcx> {
     /// Returns `true` if `func` refers to the function we are searching in.
-    fn is_recursive_call(&self, func: &Operand<'tcx>) -> bool {
+    fn is_recursive_call(&self, func: &Operand<'tcx>, args: &[Operand<'tcx>]) -> bool {
         let Search { tcx, body, trait_substs, .. } = *self;
+        // Resolving function type to a specific instance that is being called is expensive.  To
+        // avoid the cost we check the number of arguments first, which is sufficient to reject
+        // most of calls as non-recursive.
+        if args.len() != body.arg_count {
+            return false;
+        }
         let caller = body.source.def_id();
         let param_env = tcx.param_env(caller);
 
@@ -139,8 +147,8 @@ impl<'mir, 'tcx> TriColorVisitor<&'mir Body<'tcx>> for Search<'mir, 'tcx> {
     fn node_settled(&mut self, bb: BasicBlock) -> ControlFlow<Self::BreakVal> {
         // When we examine a node for the last time, remember it if it is a recursive call.
         let terminator = self.body[bb].terminator();
-        if let TerminatorKind::Call { func, .. } = &terminator.kind {
-            if self.is_recursive_call(func) {
+        if let TerminatorKind::Call { func, args, .. } = &terminator.kind {
+            if self.is_recursive_call(func, args) {
                 self.reachable_recursive_calls.push(terminator.source_info.span);
             }
         }
@@ -149,13 +157,14 @@ impl<'mir, 'tcx> TriColorVisitor<&'mir Body<'tcx>> for Search<'mir, 'tcx> {
     }
 
     fn ignore_edge(&mut self, bb: BasicBlock, target: BasicBlock) -> bool {
+        let terminator = self.body[bb].terminator();
+        if terminator.unwind() == Some(&Some(target)) && terminator.successors().count() > 1 {
+            return true;
+        }
         // Don't traverse successors of recursive calls or false CFG edges.
         match self.body[bb].terminator().kind {
-            TerminatorKind::Call { ref func, .. } => self.is_recursive_call(func),
-
-            TerminatorKind::FalseUnwind { unwind: Some(imaginary_target), .. }
-            | TerminatorKind::FalseEdge { imaginary_target, .. } => imaginary_target == target,
-
+            TerminatorKind::Call { ref func, ref args, .. } => self.is_recursive_call(func, args),
+            TerminatorKind::FalseEdge { imaginary_target, .. } => imaginary_target == target,
             _ => false,
         }
     }

@@ -4,7 +4,7 @@
 
 set -e
 
-if [ -f ./gcc_path ]; then 
+if [ -f ./gcc_path ]; then
     export GCC_PATH=$(cat gcc_path)
 else
     echo 'Please put the path to your custom build of libgccjit in the file `gcc_path`, see Readme.md for details'
@@ -14,14 +14,26 @@ fi
 export LD_LIBRARY_PATH="$GCC_PATH"
 export LIBRARY_PATH="$GCC_PATH"
 
+features=
+
+if [[ "$1" == "--features" ]]; then
+    shift
+    features="--features $1"
+    shift
+fi
+
 if [[ "$1" == "--release" ]]; then
     export CHANNEL='release'
-    CARGO_INCREMENTAL=1 cargo rustc --release
+    CARGO_INCREMENTAL=1 cargo rustc --release $features
     shift
 else
     echo $LD_LIBRARY_PATH
     export CHANNEL='debug'
-    cargo rustc
+    cargo rustc $features
+fi
+
+if [[ "$1" == "--build" ]]; then
+    exit
 fi
 
 source config.sh
@@ -145,13 +157,31 @@ function test_rustc() {
     echo
     echo "[TEST] rust-lang/rust"
 
-    rust_toolchain=$(cat rust-toolchain)
+    rust_toolchain=$(cat rust-toolchain | grep channel | sed 's/channel = "\(.*\)"/\1/')
 
     git clone https://github.com/rust-lang/rust.git || true
     cd rust
     git fetch
     git checkout $(rustc -V | cut -d' ' -f3 | tr -d '(')
     export RUSTFLAGS=
+
+    git apply - <<EOF
+diff --git a/src/tools/compiletest/src/header.rs b/src/tools/compiletest/src/header.rs
+index 887d27fd6dca4..2c2239f2b83d1 100644
+--- a/src/tools/compiletest/src/header.rs
++++ b/src/tools/compiletest/src/header.rs
+@@ -806,8 +806,8 @@ pub fn make_test_description<R: Read>(
+     cfg: Option<&str>,
+ ) -> test::TestDesc {
+     let mut ignore = false;
+     #[cfg(not(bootstrap))]
+-    let ignore_message: Option<String> = None;
++    let ignore_message: Option<&str> = None;
+     let mut should_fail = false;
+
+     let rustc_has_profiler_support = env::var_os("RUSTC_PROFILER_SUPPORT").is_some();
+
+EOF
 
     rm config.toml || true
 
@@ -175,13 +205,12 @@ EOF
 
     git checkout -- src/test/ui/issues/auxiliary/issue-3136-a.rs # contains //~ERROR, but shouldn't be removed
 
-    rm -r src/test/ui/{abi*,extern/,llvm-asm/,panic-runtime/,panics/,unsized-locals/,proc-macro/,threads-sendsync/,thinlto/,simd*,borrowck/,test*,*lto*.rs} || true
+    rm -r src/test/ui/{abi*,extern/,panic-runtime/,panics/,unsized-locals/,proc-macro/,threads-sendsync/,thinlto/,simd*,borrowck/,test*,*lto*.rs} || true
     for test in $(rg --files-with-matches "catch_unwind|should_panic|thread|lto" src/test/ui); do
       rm $test
     done
     git checkout src/test/ui/type-alias-impl-trait/auxiliary/cross_crate_ice.rs
     git checkout src/test/ui/type-alias-impl-trait/auxiliary/cross_crate_ice2.rs
-    rm src/test/ui/llvm-asm/llvm-asm-in-out-operand.rs || true # TODO(antoyo): Enable back this test if I ever implement the llvm_asm! macro.
 
     RUSTC_ARGS="-Zpanic-abort-tests -Csymbol-mangling-version=v0 -Zcodegen-backend="$(pwd)"/../target/"$CHANNEL"/librustc_codegen_gcc."$dylib_ext" --sysroot "$(pwd)"/../build_sysroot/sysroot -Cpanic=abort"
 
@@ -204,6 +233,14 @@ case $1 in
 
     "--clean-ui-tests")
         clean_ui_tests
+        ;;
+
+    "--std-tests")
+        std_tests
+        ;;
+
+    "--build-sysroot")
+        build_sysroot
         ;;
 
     *)

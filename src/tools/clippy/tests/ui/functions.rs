@@ -78,6 +78,14 @@ pub fn public(p: *const u8) {
     unsafe { std::ptr::read(p) };
 }
 
+type Alias = *const u8;
+
+pub fn type_alias(p: Alias) {
+    println!("{}", unsafe { *p });
+    println!("{:?}", unsafe { p.as_ref() });
+    unsafe { std::ptr::read(p) };
+}
+
 impl Bar {
     fn private(self, p: *const u8) {
         println!("{}", unsafe { *p });

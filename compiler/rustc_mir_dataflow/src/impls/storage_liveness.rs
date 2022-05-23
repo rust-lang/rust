@@ -131,13 +131,9 @@ impl<'mir, 'tcx> crate::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'mir, 'tc
 
             // If a place is assigned to in a statement, it needs storage for that statement.
             StatementKind::Assign(box (place, _))
-            | StatementKind::SetDiscriminant { box place, .. } => {
+            | StatementKind::SetDiscriminant { box place, .. }
+            | StatementKind::Deinit(box place) => {
                 trans.gen(place.local);
-            }
-            StatementKind::LlvmInlineAsm(asm) => {
-                for place in &*asm.outputs {
-                    trans.gen(place.local);
-                }
             }
 
             // Nothing to do for these. Match exhaustively so this fails to compile when new

@@ -1,12 +1,32 @@
 #![feature(staged_api)]
+#![feature(const_trait_impl)]
+#![stable(feature = "stable", since = "1.0.0")]
 
-#![stable(feature = "rust1", since = "1.0.0")]
+#[stable(feature = "stable", since = "1.0.0")]
+pub const fn foo() {} //~ ERROR function has missing const stability attribute
 
-#[stable(feature = "foo", since = "1.0.0")]
-pub const fn foo() {}
-//~^ ERROR rustc_const_stable
+#[unstable(feature = "unstable", issue = "none")]
+pub const fn bar() {} // ok because function is unstable
 
-#[unstable(feature = "bar", issue = "none")]
-pub const fn bar() {} // ok
+#[stable(feature = "stable", since = "1.0.0")]
+pub struct Foo;
+impl Foo {
+    #[stable(feature = "stable", since = "1.0.0")]
+    pub const fn foo() {} //~ ERROR associated function has missing const stability attribute
+
+    #[unstable(feature = "unstable", issue = "none")]
+    pub const fn bar() {} // ok because function is unstable
+}
+
+#[stable(feature = "stable", since = "1.0.0")]
+pub trait Bar {
+    #[stable(feature = "stable", since = "1.0.0")]
+    fn fun();
+}
+#[stable(feature = "stable", since = "1.0.0")]
+impl const Bar for Foo {
+    //~^ ERROR implementation has missing const stability attribute
+    fn fun() {}
+}
 
 fn main() {}

@@ -53,7 +53,7 @@ if_chain! {
     }
 }
 if_chain! {
-    if let ExprKind::MethodCall(method_name, _, args, _) = expr.kind;
+    if let ExprKind::MethodCall(method_name, args, _) = expr.kind;
     if method_name.ident.as_str() == "test";
     if args.len() == 1;
     if let ExprKind::Path(ref qpath) = args[0].kind;

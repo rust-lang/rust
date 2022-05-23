@@ -1,0 +1,10 @@
+error: invalid argument
+  --> $DIR/invalid-debugger-visualizer-option.rs:2:1
+   |
+LL | #![debugger_visualizer(random_file = "../foo.random")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected: `natvis_file = "..."`
+
+error: aborting due to previous error
+

@@ -1,8 +1,0 @@
-error: fatal error triggered by #[rustc_error]
-  --> $DIR/higher-ranked-projection.rs:24:1
-   |
-LL | fn main() {
-   | ^^^^^^^^^
-
-error: aborting due to previous error
-

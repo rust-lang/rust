@@ -1,3 +1,7 @@
+// revisions: base nll
+// ignore-compare-mode-nll
+//[nll] compile-flags: -Z borrowck=mir
+
 // Test that an impl with only one bound region `'a` cannot be used to
 // satisfy a constraint where there are two bound regions.
 
@@ -24,6 +28,9 @@ impl<'a> Foo<(&'a isize, &'a isize)> for SomeStruct
 }
 
 fn a() { want_foo1::<SomeStruct>(); } // OK -- foo wants just one region
-fn b() { want_foo2::<SomeStruct>(); } //~ ERROR
+fn b() { want_foo2::<SomeStruct>(); }
+//[base]~^ ERROR
+//[nll]~^^ ERROR implementation of
+//[nll]~| ERROR implementation of
 
 fn main() { }

@@ -8,7 +8,6 @@ use rustc_mir_dataflow::ResultsVisitable;
 use rustc_mir_dataflow::{self, fmt::DebugWithContext, CallReturnPlaces, GenKill};
 use rustc_mir_dataflow::{Analysis, Direction, Results};
 use std::fmt;
-use std::iter;
 
 use crate::{
     places_conflict, BorrowSet, PlaceConflictBias, PlaceExt, RegionInferenceContext, ToRegionVid,
@@ -200,7 +199,7 @@ impl<'tcx> OutOfScopePrecomputer<'_, 'tcx> {
                 // Add successor BBs to the work list, if necessary.
                 let bb_data = &self.body[bb];
                 debug_assert!(hi == bb_data.statements.len());
-                for &succ_bb in bb_data.terminator().successors() {
+                for succ_bb in bb_data.terminator().successors() {
                     if !self.visited.insert(succ_bb) {
                         if succ_bb == location.block && first_lo > 0 {
                             // `succ_bb` has been seen before. If it wasn't
@@ -234,7 +233,7 @@ impl<'tcx> OutOfScopePrecomputer<'_, 'tcx> {
 }
 
 impl<'a, 'tcx> Borrows<'a, 'tcx> {
-    crate fn new(
+    pub(crate) fn new(
         tcx: TyCtxt<'tcx>,
         body: &'a Body<'tcx>,
         nonlexical_regioncx: &'a RegionInferenceContext<'tcx>,
@@ -385,16 +384,9 @@ impl<'tcx> rustc_mir_dataflow::GenKillAnalysis<'tcx> for Borrows<'_, 'tcx> {
                 self.kill_borrows_on_place(trans, Place::from(local));
             }
 
-            mir::StatementKind::LlvmInlineAsm(ref asm) => {
-                for (output, kind) in iter::zip(&*asm.outputs, &asm.asm.outputs) {
-                    if !kind.is_indirect && !kind.is_rw {
-                        self.kill_borrows_on_place(trans, *output);
-                    }
-                }
-            }
-
             mir::StatementKind::FakeRead(..)
             | mir::StatementKind::SetDiscriminant { .. }
+            | mir::StatementKind::Deinit(..)
             | mir::StatementKind::StorageLive(..)
             | mir::StatementKind::Retag { .. }
             | mir::StatementKind::AscribeUserType(..)
@@ -416,10 +408,10 @@ impl<'tcx> rustc_mir_dataflow::GenKillAnalysis<'tcx> for Borrows<'_, 'tcx> {
     fn terminator_effect(
         &self,
         trans: &mut impl GenKill<Self::Idx>,
-        teminator: &mir::Terminator<'tcx>,
+        terminator: &mir::Terminator<'tcx>,
         _location: Location,
     ) {
-        if let mir::TerminatorKind::InlineAsm { operands, .. } = &teminator.kind {
+        if let mir::TerminatorKind::InlineAsm { operands, .. } = &terminator.kind {
             for op in operands {
                 if let mir::InlineAsmOperand::Out { place: Some(place), .. }
                 | mir::InlineAsmOperand::InOut { out_place: Some(place), .. } = *op

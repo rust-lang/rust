@@ -114,7 +114,7 @@ impl<'tcx> DebugContext<'tcx> {
     }
 
     fn dwarf_ty(&mut self, ty: Ty<'tcx>) -> UnitEntryId {
-        if let Some(type_id) = self.types.get(ty) {
+        if let Some(type_id) = self.types.get(&ty) {
             return *type_id;
         }
 
@@ -143,7 +143,7 @@ impl<'tcx> DebugContext<'tcx> {
                 // Ensure that type is inserted before recursing to avoid duplicates
                 self.types.insert(ty, type_id);
 
-                let pointee = self.dwarf_ty(pointee_ty);
+                let pointee = self.dwarf_ty(*pointee_ty);
 
                 let type_entry = self.dwarf.unit.get_mut(type_id);
 

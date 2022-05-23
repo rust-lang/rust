@@ -3,6 +3,10 @@ enum Hey<A, B> {
     B(B),
 }
 
+struct Foo {
+    bar: Option<i32>,
+}
+
 fn f() {}
 
 fn a() -> Option<()> {
@@ -16,6 +20,21 @@ fn a() -> Option<()> {
 fn b() -> Result<(), ()> {
     f()
     //~^ ERROR mismatched types
+    //~| HELP try adding an expression
+}
+
+fn c() -> Option<()> {
+    for _ in [1, 2] {
+        //~^ ERROR mismatched types
+        f();
+    }
+    //~^ HELP try adding an expression
+}
+
+fn d() -> Option<()> {
+    c()?
+    //~^ ERROR incompatible types
+    //~| HELP try removing this `?`
     //~| HELP try adding an expression
 }
 
@@ -38,6 +57,34 @@ fn main() {
     //~^ ERROR mismatched types
     //~| HELP try wrapping
     let _: Hey<i32, bool> = false;
+    //~^ ERROR mismatched types
+    //~| HELP try wrapping
+    let bar = 1i32;
+    let _ = Foo { bar };
+    //~^ ERROR mismatched types
+    //~| HELP try wrapping
+}
+
+enum A {
+    B { b: B},
+}
+
+struct A2(B);
+
+enum B {
+    Fst,
+    Snd,
+}
+
+fn foo() {
+    // We don't want to suggest `A::B(B::Fst)` here.
+    let a: A = B::Fst;
+    //~^ ERROR mismatched types
+}
+
+fn bar() {
+    // But we _do_ want to suggest `A2(B::Fst)` here!
+    let a: A2 = B::Fst;
     //~^ ERROR mismatched types
     //~| HELP try wrapping
 }

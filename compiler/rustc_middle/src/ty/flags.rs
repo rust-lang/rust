@@ -1,12 +1,12 @@
 use crate::ty::subst::{GenericArg, GenericArgKind};
-use crate::ty::{self, InferConst, Ty, TypeFlags};
+use crate::ty::{self, InferConst, Term, Ty, TypeFlags};
 use std::slice;
 
 #[derive(Debug)]
 pub struct FlagComputation {
     pub flags: TypeFlags,
 
-    // see `TyS::outer_exclusive_binder` for details
+    // see `Ty::outer_exclusive_binder` for details
     pub outer_exclusive_binder: ty::DebruijnIndex,
 }
 
@@ -28,7 +28,7 @@ impl FlagComputation {
         result
     }
 
-    pub fn for_const(c: &ty::Const<'_>) -> TypeFlags {
+    pub fn for_const(c: ty::Const<'_>) -> TypeFlags {
         let mut result = FlagComputation::new();
         result.add_const(c);
         result.flags
@@ -97,7 +97,7 @@ impl FlagComputation {
             &ty::Error(_) => self.add_flags(TypeFlags::HAS_ERROR),
 
             &ty::Param(_) => {
-                self.add_flags(TypeFlags::HAS_KNOWN_TY_PARAM);
+                self.add_flags(TypeFlags::HAS_TY_PARAM);
                 self.add_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
             }
 
@@ -201,8 +201,8 @@ impl FlagComputation {
                 self.add_ty(ty);
             }
 
-            &ty::Tuple(ref substs) => {
-                self.add_substs(substs);
+            &ty::Tuple(types) => {
+                self.add_tys(types);
             }
 
             &ty::FnDef(_, substs) => {
@@ -241,9 +241,12 @@ impl FlagComputation {
                 self.add_ty(a);
                 self.add_ty(b);
             }
-            ty::PredicateKind::Projection(ty::ProjectionPredicate { projection_ty, ty }) => {
+            ty::PredicateKind::Projection(ty::ProjectionPredicate { projection_ty, term }) => {
                 self.add_projection_ty(projection_ty);
-                self.add_ty(ty);
+                match term {
+                    Term::Ty(ty) => self.add_ty(ty),
+                    Term::Const(c) => self.add_const(c),
+                }
             }
             ty::PredicateKind::WellFormed(arg) => {
                 self.add_substs(slice::from_ref(&arg));
@@ -267,7 +270,7 @@ impl FlagComputation {
 
     fn add_ty(&mut self, ty: Ty<'_>) {
         self.add_flags(ty.flags());
-        self.add_exclusive_binder(ty.outer_exclusive_binder);
+        self.add_exclusive_binder(ty.outer_exclusive_binder());
     }
 
     fn add_tys(&mut self, tys: &[Ty<'_>]) {
@@ -283,9 +286,9 @@ impl FlagComputation {
         }
     }
 
-    fn add_const(&mut self, c: &ty::Const<'_>) {
-        self.add_ty(c.ty);
-        match c.val {
+    fn add_const(&mut self, c: ty::Const<'_>) {
+        self.add_ty(c.ty());
+        match c.val() {
             ty::ConstKind::Unevaluated(unevaluated) => self.add_unevaluated_const(unevaluated),
             ty::ConstKind::Infer(infer) => {
                 self.add_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
@@ -298,7 +301,7 @@ impl FlagComputation {
                 self.add_bound_var(debruijn);
             }
             ty::ConstKind::Param(_) => {
-                self.add_flags(TypeFlags::HAS_KNOWN_CT_PARAM);
+                self.add_flags(TypeFlags::HAS_CT_PARAM);
                 self.add_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
             }
             ty::ConstKind::Placeholder(_) => {
@@ -311,29 +314,16 @@ impl FlagComputation {
     }
 
     fn add_unevaluated_const<P>(&mut self, ct: ty::Unevaluated<'_, P>) {
-        // The generic arguments of unevaluated consts are a bit special,
-        // see the `rustc-dev-guide` for more information.
-        //
-        // FIXME(@lcnr): Actually add a link here.
-        if let Some(substs) = ct.substs_ {
-            // If they are available, we treat them as ordinary generic arguments.
-            self.add_substs(substs);
-        } else {
-            // Otherwise, we add `HAS_UNKNOWN_DEFAULT_CONST_SUBSTS` to signify
-            // that our const may potentially refer to generic parameters.
-            //
-            // Note that depending on which generic parameters are actually
-            // used in this constant, we may not actually refer to any generic
-            // parameters at all.
-            self.add_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
-            self.add_flags(TypeFlags::HAS_UNKNOWN_DEFAULT_CONST_SUBSTS);
-        }
+        self.add_substs(ct.substs);
         self.add_flags(TypeFlags::HAS_CT_PROJECTION);
     }
 
     fn add_existential_projection(&mut self, projection: &ty::ExistentialProjection<'_>) {
         self.add_substs(projection.substs);
-        self.add_ty(projection.ty);
+        match projection.term {
+            ty::Term::Ty(ty) => self.add_ty(ty),
+            ty::Term::Const(ct) => self.add_const(ct),
+        }
     }
 
     fn add_projection_ty(&mut self, projection_ty: ty::ProjectionTy<'_>) {

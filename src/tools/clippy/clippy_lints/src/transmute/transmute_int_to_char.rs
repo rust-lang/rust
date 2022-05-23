@@ -14,17 +14,18 @@ pub(super) fn check<'tcx>(
     e: &'tcx Expr<'_>,
     from_ty: Ty<'tcx>,
     to_ty: Ty<'tcx>,
-    args: &'tcx [Expr<'_>],
+    arg: &'tcx Expr<'_>,
+    const_context: bool,
 ) -> bool {
     match (&from_ty.kind(), &to_ty.kind()) {
-        (ty::Int(ty::IntTy::I32) | ty::Uint(ty::UintTy::U32), &ty::Char) => {
+        (ty::Int(ty::IntTy::I32) | ty::Uint(ty::UintTy::U32), &ty::Char) if !const_context => {
             span_lint_and_then(
                 cx,
                 TRANSMUTE_INT_TO_CHAR,
                 e.span,
                 &format!("transmute from a `{}` to a `char`", from_ty),
                 |diag| {
-                    let arg = sugg::Sugg::hir(cx, &args[0], "..");
+                    let arg = sugg::Sugg::hir(cx, arg, "..");
                     let arg = if let ty::Int(_) = from_ty.kind() {
                         arg.as_ty(ast::UintTy::U32.name_str())
                     } else {

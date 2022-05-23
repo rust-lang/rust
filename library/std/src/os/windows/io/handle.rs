@@ -3,12 +3,14 @@
 #![unstable(feature = "io_safety", issue = "87074")]
 
 use super::raw::{AsRawHandle, FromRawHandle, IntoRawHandle, RawHandle};
-use crate::convert::TryFrom;
 use crate::fmt;
 use crate::fs;
+use crate::io;
 use crate::marker::PhantomData;
 use crate::mem::forget;
+use crate::ptr;
 use crate::sys::c;
+use crate::sys::cvt;
 use crate::sys_common::{AsInner, FromInner, IntoInner};
 
 /// A borrowed handle.
@@ -20,13 +22,20 @@ use crate::sys_common::{AsInner, FromInner, IntoInner};
 /// so it can be used in FFI in places where a handle is passed as an argument,
 /// it is not captured or consumed.
 ///
-/// Note that it *may* have the value `INVALID_HANDLE_VALUE` (-1), which is
-/// sometimes a valid handle value. See [here] for the full story.
+/// Note that it *may* have the value `-1`, which in `BorrowedHandle` always
+/// represents a valid handle value, such as [the current process handle], and
+/// not `INVALID_HANDLE_VALUE`, despite the two having the same value. See
+/// [here] for the full story.
 ///
 /// And, it *may* have the value `NULL` (0), which can occur when consoles are
 /// detached from processes, or when `windows_subsystem` is used.
 ///
+/// This type's `.to_owned()` implementation returns another `BorrowedHandle`
+/// rather than an `OwnedHandle`. It just makes a trivial copy of the raw
+/// handle, which is then borrowed under the same lifetime.
+///
 /// [here]: https://devblogs.microsoft.com/oldnewthing/20040302-00/?p=40443
+/// [the current process handle]: https://docs.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-getcurrentprocess#remarks
 #[derive(Copy, Clone)]
 #[repr(transparent)]
 #[unstable(feature = "io_safety", issue = "87074")]
@@ -39,8 +48,10 @@ pub struct BorrowedHandle<'handle> {
 ///
 /// This closes the handle on drop.
 ///
-/// Note that it *may* have the value `INVALID_HANDLE_VALUE` (-1), which is
-/// sometimes a valid handle value. See [here] for the full story.
+/// Note that it *may* have the value `-1`, which in `OwnedHandle` always
+/// represents a valid handle value, such as [the current process handle], and
+/// not `INVALID_HANDLE_VALUE`, despite the two having the same value. See
+/// [here] for the full story.
 ///
 /// And, it *may* have the value `NULL` (0), which can occur when consoles are
 /// detached from processes, or when `windows_subsystem` is used.
@@ -53,6 +64,8 @@ pub struct BorrowedHandle<'handle> {
 /// [`RegCloseKey`]: https://docs.microsoft.com/en-us/windows/win32/api/winreg/nf-winreg-regclosekey
 ///
 /// [here]: https://devblogs.microsoft.com/oldnewthing/20040302-00/?p=40443
+/// [the current process handle]: https://docs.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-getcurrentprocess#remarks
+#[repr(transparent)]
 #[unstable(feature = "io_safety", issue = "87074")]
 pub struct OwnedHandle {
     handle: RawHandle,
@@ -68,11 +81,13 @@ pub struct OwnedHandle {
 /// `NULL`. This ensures that such FFI calls cannot start using the handle without
 /// checking for `NULL` first.
 ///
-/// This type concerns any value other than `NULL` to be valid, including `INVALID_HANDLE_VALUE`.
-/// This is because APIs that use `NULL` as their sentry value don't treat `INVALID_HANDLE_VALUE`
-/// as special.
+/// This type may hold any handle value that [`OwnedHandle`] may hold. As with `OwnedHandle`, when
+/// it holds `-1`, that value is interpreted as a valid handle value, such as
+/// [the current process handle], and not `INVALID_HANDLE_VALUE`.
 ///
-/// If this holds a valid handle, it will close the handle on drop.
+/// If this holds a non-null handle, it will close the handle on drop.
+///
+/// [the current process handle]: https://docs.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-getcurrentprocess#remarks
 #[repr(transparent)]
 #[unstable(feature = "io_safety", issue = "87074")]
 #[derive(Debug)]
@@ -88,11 +103,10 @@ pub struct HandleOrNull(OwnedHandle);
 /// `INVALID_HANDLE_VALUE`. This ensures that such FFI calls cannot start using the handle without
 /// checking for `INVALID_HANDLE_VALUE` first.
 ///
-/// This type concerns any value other than `INVALID_HANDLE_VALUE` to be valid, including `NULL`.
-/// This is because APIs that use `INVALID_HANDLE_VALUE` as their sentry value may return `NULL`
-/// under `windows_subsystem = "windows"` or other situations where I/O devices are detached.
+/// This type may hold any handle value that [`OwnedHandle`] may hold, except that when it holds
+/// `-1`, that value is interpreted to mean `INVALID_HANDLE_VALUE`.
 ///
-/// If this holds a valid handle, it will close the handle on drop.
+/// If holds a handle other than `INVALID_HANDLE_VALUE`, it will close the handle on drop.
 #[repr(transparent)]
 #[unstable(feature = "io_safety", issue = "87074")]
 #[derive(Debug)]
@@ -129,30 +143,122 @@ impl BorrowedHandle<'_> {
     /// [here]: https://devblogs.microsoft.com/oldnewthing/20040302-00/?p=40443
     #[inline]
     #[unstable(feature = "io_safety", issue = "87074")]
-    pub unsafe fn borrow_raw_handle(handle: RawHandle) -> Self {
+    pub const unsafe fn borrow_raw(handle: RawHandle) -> Self {
         Self { handle, _phantom: PhantomData }
     }
 }
 
 impl TryFrom<HandleOrNull> for OwnedHandle {
-    type Error = ();
+    type Error = NullHandleError;
 
     #[inline]
-    fn try_from(handle_or_null: HandleOrNull) -> Result<Self, ()> {
+    fn try_from(handle_or_null: HandleOrNull) -> Result<Self, NullHandleError> {
         let owned_handle = handle_or_null.0;
-        if owned_handle.handle.is_null() { Err(()) } else { Ok(owned_handle) }
+        if owned_handle.handle.is_null() {
+            // Don't call `CloseHandle`; it'd be harmless, except that it could
+            // overwrite the `GetLastError` error.
+            forget(owned_handle);
+
+            Err(NullHandleError(()))
+        } else {
+            Ok(owned_handle)
+        }
+    }
+}
+
+impl OwnedHandle {
+    /// Creates a new `OwnedHandle` instance that shares the same underlying file handle
+    /// as the existing `OwnedHandle` instance.
+    pub fn try_clone(&self) -> crate::io::Result<Self> {
+        self.duplicate(0, false, c::DUPLICATE_SAME_ACCESS)
+    }
+
+    pub(crate) fn duplicate(
+        &self,
+        access: c::DWORD,
+        inherit: bool,
+        options: c::DWORD,
+    ) -> io::Result<Self> {
+        let handle = self.as_raw_handle();
+
+        // `Stdin`, `Stdout`, and `Stderr` can all hold null handles, such as
+        // in a process with a detached console. `DuplicateHandle` would fail
+        // if we passed it a null handle, but we can treat null as a valid
+        // handle which doesn't do any I/O, and allow it to be duplicated.
+        if handle.is_null() {
+            return unsafe { Ok(Self::from_raw_handle(handle)) };
+        }
+
+        let mut ret = ptr::null_mut();
+        cvt(unsafe {
+            let cur_proc = c::GetCurrentProcess();
+            c::DuplicateHandle(
+                cur_proc,
+                handle,
+                cur_proc,
+                &mut ret,
+                access,
+                inherit as c::BOOL,
+                options,
+            )
+        })?;
+        unsafe { Ok(Self::from_raw_handle(ret)) }
     }
 }
 
 impl TryFrom<HandleOrInvalid> for OwnedHandle {
-    type Error = ();
+    type Error = InvalidHandleError;
 
     #[inline]
-    fn try_from(handle_or_invalid: HandleOrInvalid) -> Result<Self, ()> {
+    fn try_from(handle_or_invalid: HandleOrInvalid) -> Result<Self, InvalidHandleError> {
         let owned_handle = handle_or_invalid.0;
-        if owned_handle.handle == c::INVALID_HANDLE_VALUE { Err(()) } else { Ok(owned_handle) }
+        if owned_handle.handle == c::INVALID_HANDLE_VALUE {
+            // Don't call `CloseHandle`; it'd be harmless, except that it could
+            // overwrite the `GetLastError` error.
+            forget(owned_handle);
+
+            Err(InvalidHandleError(()))
+        } else {
+            Ok(owned_handle)
+        }
     }
 }
+
+/// This is the error type used by [`HandleOrNull`] when attempting to convert
+/// into a handle, to indicate that the value is null.
+// The empty field prevents constructing this, and allows extending it in the future.
+#[unstable(feature = "io_safety", issue = "87074")]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NullHandleError(());
+
+#[unstable(feature = "io_safety", issue = "87074")]
+impl fmt::Display for NullHandleError {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        "A HandleOrNull could not be converted to a handle because it was null".fmt(fmt)
+    }
+}
+
+#[unstable(feature = "io_safety", issue = "87074")]
+impl crate::error::Error for NullHandleError {}
+
+/// This is the error type used by [`HandleOrInvalid`] when attempting to
+/// convert into a handle, to indicate that the value is
+/// `INVALID_HANDLE_VALUE`.
+// The empty field prevents constructing this, and allows extending it in the future.
+#[unstable(feature = "io_safety", issue = "87074")]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct InvalidHandleError(());
+
+#[unstable(feature = "io_safety", issue = "87074")]
+impl fmt::Display for InvalidHandleError {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        "A HandleOrInvalid could not be converted to a handle because it was INVALID_HANDLE_VALUE"
+            .fmt(fmt)
+    }
+}
+
+#[unstable(feature = "io_safety", issue = "87074")]
+impl crate::error::Error for InvalidHandleError {}
 
 impl AsRawHandle for BorrowedHandle<'_> {
     #[inline]
@@ -178,29 +284,13 @@ impl IntoRawHandle for OwnedHandle {
 }
 
 impl FromRawHandle for OwnedHandle {
-    /// Constructs a new instance of `Self` from the given raw handle.
-    ///
-    /// # Safety
-    ///
-    /// The resource pointed to by `handle` must be open and suitable for
-    /// assuming ownership. The resource must not require any cleanup other
-    /// than `CloseHandle`.
-    ///
-    /// In particular, it must not be used with handles to open registry
-    /// keys which need to be closed with [`RegCloseKey`] instead.
-    ///
-    /// Note that it *may* have the value `INVALID_HANDLE_VALUE` (-1), which is
-    /// sometimes a valid handle value. See [here] for the full story.
-    ///
-    /// [`RegCloseKey`]: https://docs.microsoft.com/en-us/windows/win32/api/winreg/nf-winreg-regclosekey
-    /// [here]: https://devblogs.microsoft.com/oldnewthing/20040302-00/?p=40443
     #[inline]
     unsafe fn from_raw_handle(handle: RawHandle) -> Self {
         Self { handle }
     }
 }
 
-impl FromRawHandle for HandleOrNull {
+impl HandleOrNull {
     /// Constructs a new instance of `Self` from the given `RawHandle` returned
     /// from a Windows API that uses null to indicate failure, such as
     /// `CreateThread`.
@@ -210,18 +300,18 @@ impl FromRawHandle for HandleOrNull {
     ///
     /// # Safety
     ///
-    /// The resource pointed to by `handle` must be either open and otherwise
-    /// unowned, or null. Note that not all Windows APIs use null for errors;
-    /// see [here] for the full story.
+    /// The passed `handle` value must either satisfy the safety requirements
+    /// of [`FromRawHandle::from_raw_handle`], or be null. Note that not all
+    /// Windows APIs use null for errors; see [here] for the full story.
     ///
     /// [here]: https://devblogs.microsoft.com/oldnewthing/20040302-00/?p=40443
     #[inline]
-    unsafe fn from_raw_handle(handle: RawHandle) -> Self {
+    pub unsafe fn from_raw_handle(handle: RawHandle) -> Self {
         Self(OwnedHandle::from_raw_handle(handle))
     }
 }
 
-impl FromRawHandle for HandleOrInvalid {
+impl HandleOrInvalid {
     /// Constructs a new instance of `Self` from the given `RawHandle` returned
     /// from a Windows API that uses `INVALID_HANDLE_VALUE` to indicate
     /// failure, such as `CreateFileW`.
@@ -231,14 +321,14 @@ impl FromRawHandle for HandleOrInvalid {
     ///
     /// # Safety
     ///
-    /// The resource pointed to by `handle` must be either open and otherwise
-    /// unowned, null, or equal to `INVALID_HANDLE_VALUE` (-1). Note that not
-    /// all Windows APIs use `INVALID_HANDLE_VALUE` for errors; see [here] for
-    /// the full story.
+    /// The passed `handle` value must either satisfy the safety requirements
+    /// of [`FromRawHandle::from_raw_handle`], or be
+    /// `INVALID_HANDLE_VALUE` (-1). Note that not all Windows APIs use
+    /// `INVALID_HANDLE_VALUE` for errors; see [here] for the full story.
     ///
     /// [here]: https://devblogs.microsoft.com/oldnewthing/20040302-00/?p=40443
     #[inline]
-    unsafe fn from_raw_handle(handle: RawHandle) -> Self {
+    pub unsafe fn from_raw_handle(handle: RawHandle) -> Self {
         Self(OwnedHandle::from_raw_handle(handle))
     }
 }
@@ -284,6 +374,22 @@ pub trait AsHandle {
     fn as_handle(&self) -> BorrowedHandle<'_>;
 }
 
+#[unstable(feature = "io_safety", issue = "87074")]
+impl<T: AsHandle> AsHandle for &T {
+    #[inline]
+    fn as_handle(&self) -> BorrowedHandle<'_> {
+        T::as_handle(self)
+    }
+}
+
+#[unstable(feature = "io_safety", issue = "87074")]
+impl<T: AsHandle> AsHandle for &mut T {
+    #[inline]
+    fn as_handle(&self) -> BorrowedHandle<'_> {
+        T::as_handle(self)
+    }
+}
+
 impl AsHandle for BorrowedHandle<'_> {
     #[inline]
     fn as_handle(&self) -> BorrowedHandle<'_> {
@@ -297,7 +403,7 @@ impl AsHandle for OwnedHandle {
         // Safety: `OwnedHandle` and `BorrowedHandle` have the same validity
         // invariants, and the `BorrowdHandle` is bounded by the lifetime
         // of `&self`.
-        unsafe { BorrowedHandle::borrow_raw_handle(self.as_raw_handle()) }
+        unsafe { BorrowedHandle::borrow_raw(self.as_raw_handle()) }
     }
 }
 
@@ -325,49 +431,49 @@ impl From<OwnedHandle> for fs::File {
 impl AsHandle for crate::io::Stdin {
     #[inline]
     fn as_handle(&self) -> BorrowedHandle<'_> {
-        unsafe { BorrowedHandle::borrow_raw_handle(self.as_raw_handle()) }
+        unsafe { BorrowedHandle::borrow_raw(self.as_raw_handle()) }
     }
 }
 
 impl<'a> AsHandle for crate::io::StdinLock<'a> {
     #[inline]
     fn as_handle(&self) -> BorrowedHandle<'_> {
-        unsafe { BorrowedHandle::borrow_raw_handle(self.as_raw_handle()) }
+        unsafe { BorrowedHandle::borrow_raw(self.as_raw_handle()) }
     }
 }
 
 impl AsHandle for crate::io::Stdout {
     #[inline]
     fn as_handle(&self) -> BorrowedHandle<'_> {
-        unsafe { BorrowedHandle::borrow_raw_handle(self.as_raw_handle()) }
+        unsafe { BorrowedHandle::borrow_raw(self.as_raw_handle()) }
     }
 }
 
 impl<'a> AsHandle for crate::io::StdoutLock<'a> {
     #[inline]
     fn as_handle(&self) -> BorrowedHandle<'_> {
-        unsafe { BorrowedHandle::borrow_raw_handle(self.as_raw_handle()) }
+        unsafe { BorrowedHandle::borrow_raw(self.as_raw_handle()) }
     }
 }
 
 impl AsHandle for crate::io::Stderr {
     #[inline]
     fn as_handle(&self) -> BorrowedHandle<'_> {
-        unsafe { BorrowedHandle::borrow_raw_handle(self.as_raw_handle()) }
+        unsafe { BorrowedHandle::borrow_raw(self.as_raw_handle()) }
     }
 }
 
 impl<'a> AsHandle for crate::io::StderrLock<'a> {
     #[inline]
     fn as_handle(&self) -> BorrowedHandle<'_> {
-        unsafe { BorrowedHandle::borrow_raw_handle(self.as_raw_handle()) }
+        unsafe { BorrowedHandle::borrow_raw(self.as_raw_handle()) }
     }
 }
 
 impl AsHandle for crate::process::ChildStdin {
     #[inline]
     fn as_handle(&self) -> BorrowedHandle<'_> {
-        unsafe { BorrowedHandle::borrow_raw_handle(self.as_raw_handle()) }
+        unsafe { BorrowedHandle::borrow_raw(self.as_raw_handle()) }
     }
 }
 
@@ -381,7 +487,7 @@ impl From<crate::process::ChildStdin> for OwnedHandle {
 impl AsHandle for crate::process::ChildStdout {
     #[inline]
     fn as_handle(&self) -> BorrowedHandle<'_> {
-        unsafe { BorrowedHandle::borrow_raw_handle(self.as_raw_handle()) }
+        unsafe { BorrowedHandle::borrow_raw(self.as_raw_handle()) }
     }
 }
 
@@ -395,7 +501,7 @@ impl From<crate::process::ChildStdout> for OwnedHandle {
 impl AsHandle for crate::process::ChildStderr {
     #[inline]
     fn as_handle(&self) -> BorrowedHandle<'_> {
-        unsafe { BorrowedHandle::borrow_raw_handle(self.as_raw_handle()) }
+        unsafe { BorrowedHandle::borrow_raw(self.as_raw_handle()) }
     }
 }
 
@@ -409,7 +515,7 @@ impl From<crate::process::ChildStderr> for OwnedHandle {
 impl<T> AsHandle for crate::thread::JoinHandle<T> {
     #[inline]
     fn as_handle(&self) -> BorrowedHandle<'_> {
-        unsafe { BorrowedHandle::borrow_raw_handle(self.as_raw_handle()) }
+        unsafe { BorrowedHandle::borrow_raw(self.as_raw_handle()) }
     }
 }
 

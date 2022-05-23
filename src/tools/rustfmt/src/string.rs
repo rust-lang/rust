@@ -278,6 +278,9 @@ fn break_string(max_width: usize, trim_end: bool, line_end: &str, input: &[&str]
         }
         cur_index
     };
+    if max_width_index_in_input == 0 {
+        return SnippetState::EndOfInput(input.concat());
+    }
 
     // Find the position in input for breaking the string
     if line_end.is_empty()
@@ -301,7 +304,7 @@ fn break_string(max_width: usize, trim_end: bool, line_end: &str, input: &[&str]
         return if trim_end {
             SnippetState::LineEnd(input[..=url_index_end].concat(), index_plus_ws + 1)
         } else {
-            return SnippetState::LineEnd(input[..=index_plus_ws].concat(), index_plus_ws + 1);
+            SnippetState::LineEnd(input[..=index_plus_ws].concat(), index_plus_ws + 1)
         };
     }
 

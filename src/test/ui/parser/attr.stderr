@@ -3,7 +3,6 @@ error: an inner attribute is not permitted in this context
    |
 LL | #![lang = "foo"]
    | ^^^^^^^^^^^^^^^^
-LL |
 LL | fn foo() {}
    | ----------- the inner attribute doesn't annotate this function
    |
@@ -14,12 +13,5 @@ LL - #![lang = "foo"]
 LL + #[lang = "foo"]
    | 
 
-error[E0522]: definition of an unknown language item: `foo`
-  --> $DIR/attr.rs:5:1
-   |
-LL | #![lang = "foo"]
-   | ^^^^^^^^^^^^^^^^ definition of unknown language item `foo`
+error: aborting due to previous error
 
-error: aborting due to 2 previous errors
-
-For more information about this error, try `rustc --explain E0522`.

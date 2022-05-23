@@ -138,8 +138,7 @@ async function main(argv) {
     try {
         // This is more convenient that setting fields one by one.
         let args = [
-            "--no-screenshot",
-            "--variable", "DOC_PATH", opts["doc_folder"],
+            "--variable", "DOC_PATH", opts["doc_folder"], "--enable-fail-on-js-error",
         ];
         if (opts["debug"]) {
             debug = true;

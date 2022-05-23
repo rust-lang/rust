@@ -140,8 +140,16 @@ trait NotInReturn {
 // We obviously error for `Iterator`, but we should also error for `Item`
 trait IterableTwo {
     type Item<'a>;
+    //~^ missing required
     type Iterator<'a>: Iterator<Item = Self::Item<'a>>;
     //~^ missing required
+    fn iter<'a>(&'a self) -> Self::Iterator<'a>;
+}
+
+trait IterableTwoWhere {
+    type Item<'a>;
+    //~^ missing required
+    type Iterator<'a>: Iterator<Item = Self::Item<'a>> where Self: 'a;
     fn iter<'a>(&'a self) -> Self::Iterator<'a>;
 }
 
@@ -187,6 +195,19 @@ trait MultipleMethods {
 trait Trait: 'static {
     type Assoc<'a>;
     fn make_assoc(_: &u32) -> Self::Assoc<'_>;
+}
+
+// We ignore `'static` lifetimes for any lints
+trait StaticReturn<'a> {
+    type Y<'b>;
+    fn foo(&self) -> Self::Y<'static>;
+}
+
+// Same as above, but with extra method that takes GAT - just make sure this works
+trait StaticReturnAndTakes<'a> {
+    type Y<'b>;
+    fn foo(&self) -> Self::Y<'static>;
+    fn bar<'b>(&self, arg: Self::Y<'b>);
 }
 
 fn main() {}

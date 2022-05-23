@@ -74,7 +74,8 @@ fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
 
     debug!("visit_implementation_of_copy: self_type={:?} (free)", self_type);
 
-    match can_type_implement_copy(tcx, param_env, self_type) {
+    let cause = traits::ObligationCause::misc(span, impl_hir_id);
+    match can_type_implement_copy(tcx, param_env, self_type, cause) {
         Ok(()) => {}
         Err(CopyImplementationError::InfrigingFields(fields)) => {
             let item = tcx.hir().expect_item(impl_did);
@@ -90,10 +91,42 @@ fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
                 E0204,
                 "the trait `Copy` may not be implemented for this type"
             );
-            for span in fields.iter().map(|f| tcx.def_span(f.did)) {
-                err.span_label(span, "this field does not implement `Copy`");
+            for (field, ty) in fields {
+                let field_span = tcx.def_span(field.did);
+                err.span_label(field_span, "this field does not implement `Copy`");
+                // Spin up a new FulfillmentContext, so we can get the _precise_ reason
+                // why this field does not implement Copy. This is useful because sometimes
+                // it is not immediately clear why Copy is not implemented for a field, since
+                // all we point at is the field itself.
+                tcx.infer_ctxt().enter(|infcx| {
+                    let mut fulfill_cx = traits::FulfillmentContext::new_ignoring_regions();
+                    fulfill_cx.register_bound(
+                        &infcx,
+                        param_env,
+                        ty,
+                        tcx.lang_items().copy_trait().unwrap(),
+                        traits::ObligationCause::dummy_with_span(field_span),
+                    );
+                    for error in fulfill_cx.select_all_or_error(&infcx) {
+                        let error_predicate = error.obligation.predicate;
+                        // Only note if it's not the root obligation, otherwise it's trivial and
+                        // should be self-explanatory (i.e. a field literally doesn't implement Copy).
+
+                        // FIXME: This error could be more descriptive, especially if the error_predicate
+                        // contains a foreign type or if it's a deeply nested type...
+                        if error_predicate != error.root_obligation.predicate {
+                            err.span_note(
+                                error.obligation.cause.span,
+                                &format!(
+                                    "the `Copy` impl for `{}` requires that `{}`",
+                                    ty, error_predicate
+                                ),
+                            );
+                        }
+                    }
+                });
             }
-            err.emit()
+            err.emit();
         }
         Err(CopyImplementationError::NotAnAdt) => {
             let item = tcx.hir().expect_item(impl_did);
@@ -147,14 +180,14 @@ fn visit_implementation_of_dispatch_from_dyn<'tcx>(tcx: TyCtxt<'tcx>, impl_did: 
         use ty::TyKind::*;
         match (source.kind(), target.kind()) {
             (&Ref(r_a, _, mutbl_a), Ref(r_b, _, mutbl_b))
-                if infcx.at(&cause, param_env).eq(r_a, r_b).is_ok() && mutbl_a == *mutbl_b => {}
+                if infcx.at(&cause, param_env).eq(r_a, *r_b).is_ok() && mutbl_a == *mutbl_b => {}
             (&RawPtr(tm_a), &RawPtr(tm_b)) if tm_a.mutbl == tm_b.mutbl => (),
             (&Adt(def_a, substs_a), &Adt(def_b, substs_b))
                 if def_a.is_struct() && def_b.is_struct() =>
             {
                 if def_a != def_b {
-                    let source_path = tcx.def_path_str(def_a.did);
-                    let target_path = tcx.def_path_str(def_b.did);
+                    let source_path = tcx.def_path_str(def_a.did());
+                    let target_path = tcx.def_path_str(def_b.did());
 
                     create_err(&format!(
                         "the trait `DispatchFromDyn` may only be implemented \
@@ -167,7 +200,7 @@ fn visit_implementation_of_dispatch_from_dyn<'tcx>(tcx: TyCtxt<'tcx>, impl_did: 
                     return;
                 }
 
-                if def_a.repr.c() || def_a.repr.packed() {
+                if def_a.repr().c() || def_a.repr().packed() {
                     create_err(
                         "structs implementing `DispatchFromDyn` may not have \
                              `#[repr(packed)]` or `#[repr(C)]`",
@@ -352,8 +385,8 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUn
                 if def_a.is_struct() && def_b.is_struct() =>
             {
                 if def_a != def_b {
-                    let source_path = tcx.def_path_str(def_a.did);
-                    let target_path = tcx.def_path_str(def_b.did);
+                    let source_path = tcx.def_path_str(def_a.did());
+                    let target_path = tcx.def_path_str(def_b.did());
                     struct_span_err!(
                         tcx.sess,
                         span,

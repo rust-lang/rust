@@ -1,6 +1,8 @@
 // run-pass
 
 #![feature(const_ptr_offset_from)]
+#![feature(const_ptr_sub_ptr)]
+#![feature(ptr_sub_ptr)]
 
 struct Struct {
     field: (),
@@ -43,9 +45,16 @@ pub const OFFSET_EQUAL_INTS: isize = {
     unsafe { ptr.offset_from(ptr) }
 };
 
+pub const OFFSET_UNSIGNED: usize = {
+    let a = ['a', 'b', 'c'];
+    let ptr = a.as_ptr();
+    unsafe { ptr.add(2).sub_ptr(ptr) }
+};
+
 fn main() {
     assert_eq!(OFFSET, 0);
     assert_eq!(OFFSET_2, 1);
     assert_eq!(OVERFLOW, -1);
     assert_eq!(OFFSET_EQUAL_INTS, 0);
+    assert_eq!(OFFSET_UNSIGNED, 2);
 }

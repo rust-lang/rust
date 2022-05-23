@@ -8,11 +8,11 @@ use rustc_hir::{
     self as hir,
     def::{CtorOf, DefKind, Res},
     def_id::LocalDefId,
-    intravisit::{walk_inf, walk_ty, NestedVisitorMap, Visitor},
-    Expr, ExprKind, FnRetTy, FnSig, GenericArg, HirId, Impl, ImplItemKind, Item, ItemKind, Path, QPath, TyKind,
+    intravisit::{walk_inf, walk_ty, Visitor},
+    Expr, ExprKind, FnRetTy, FnSig, GenericArg, HirId, Impl, ImplItemKind, Item, ItemKind, Pat, PatKind, Path, QPath,
+    TyKind,
 };
-use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::hir::map::Map;
+use rustc_lint::{LateContext, LateLintPass};
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::Span;
@@ -30,11 +30,11 @@ declare_clippy_lint! {
     ///
     /// ### Known problems
     /// - Unaddressed false negative in fn bodies of trait implementations
-    /// - False positive with assotiated types in traits (#4140)
+    /// - False positive with associated types in traits (#4140)
     ///
     /// ### Example
     /// ```rust
-    /// struct Foo {}
+    /// struct Foo;
     /// impl Foo {
     ///     fn new() -> Foo {
     ///         Foo {}
@@ -43,7 +43,7 @@ declare_clippy_lint! {
     /// ```
     /// could be
     /// ```rust
-    /// struct Foo {}
+    /// struct Foo;
     /// impl Foo {
     ///     fn new() -> Self {
     ///         Self {}
@@ -170,7 +170,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
                 //
                 // See also https://github.com/rust-lang/rust-clippy/issues/2894.
                 for (impl_hir_ty, trait_sem_ty) in impl_inputs_outputs.zip(trait_method_sig.inputs_and_output) {
-                    if trait_sem_ty.walk(cx.tcx).any(|inner| inner == self_ty.into()) {
+                    if trait_sem_ty.walk().any(|inner| inner == self_ty.into()) {
                         let mut visitor = SkipTyCollector::default();
                         visitor.visit_ty(impl_hir_ty);
                         types_to_skip.extend(visitor.types_to_skip);
@@ -198,14 +198,14 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
     fn check_ty(&mut self, cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>) {
         if_chain! {
             if !hir_ty.span.from_expansion();
-            if meets_msrv(self.msrv.as_ref(), &msrvs::TYPE_ALIAS_ENUM_VARIANTS);
+            if meets_msrv(self.msrv, msrvs::TYPE_ALIAS_ENUM_VARIANTS);
             if let Some(&StackItem::Check {
                 impl_id,
                 in_body,
                 ref types_to_skip,
             }) = self.stack.last();
             if let TyKind::Path(QPath::Resolved(_, path)) = hir_ty.kind;
-            if !matches!(path.res, Res::SelfTy(..) | Res::Def(DefKind::TyParam, _));
+            if !matches!(path.res, Res::SelfTy { .. } | Res::Def(DefKind::TyParam, _));
             if !types_to_skip.contains(&hir_ty.hir_id);
             let ty = if in_body > 0 {
                 cx.typeck_results().node_type(hir_ty.hir_id)
@@ -225,14 +225,14 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
         if_chain! {
             if !expr.span.from_expansion();
-            if meets_msrv(self.msrv.as_ref(), &msrvs::TYPE_ALIAS_ENUM_VARIANTS);
+            if meets_msrv(self.msrv, msrvs::TYPE_ALIAS_ENUM_VARIANTS);
             if let Some(&StackItem::Check { impl_id, .. }) = self.stack.last();
             if cx.typeck_results().expr_ty(expr) == cx.tcx.type_of(impl_id);
             then {} else { return; }
         }
         match expr.kind {
             ExprKind::Struct(QPath::Resolved(_, path), ..) => match path.res {
-                Res::SelfTy(..) => (),
+                Res::SelfTy { .. } => (),
                 Res::Def(DefKind::Variant, _) => lint_path_to_variant(cx, path),
                 _ => span_lint(cx, path.span),
             },
@@ -253,6 +253,22 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
         }
     }
 
+    fn check_pat(&mut self, cx: &LateContext<'_>, pat: &Pat<'_>) {
+        if_chain! {
+            if !pat.span.from_expansion();
+            if meets_msrv(self.msrv, msrvs::TYPE_ALIAS_ENUM_VARIANTS);
+            if let Some(&StackItem::Check { impl_id, .. }) = self.stack.last();
+            if let PatKind::Path(QPath::Resolved(_, path)) = pat.kind;
+            if !matches!(path.res, Res::SelfTy { .. } | Res::Def(DefKind::TyParam, _));
+            if cx.typeck_results().pat_ty(pat) == cx.tcx.type_of(impl_id);
+            if let [first, ..] = path.segments;
+            if let Some(hir_id) = first.hir_id;
+            then {
+                span_lint(cx, cx.tcx.hir().span(hir_id));
+            }
+        }
+    }
+
     extract_msrv_attr!(LateContext);
 }
 
@@ -262,8 +278,6 @@ struct SkipTyCollector {
 }
 
 impl<'tcx> Visitor<'tcx> for SkipTyCollector {
-    type Map = Map<'tcx>;
-
     fn visit_infer(&mut self, inf: &hir::InferArg) {
         self.types_to_skip.push(inf.hir_id);
 
@@ -273,10 +287,6 @@ impl<'tcx> Visitor<'tcx> for SkipTyCollector {
         self.types_to_skip.push(hir_ty.hir_id);
 
         walk_ty(self, hir_ty);
-    }
-
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::None
     }
 }
 

@@ -1,6 +1,8 @@
 use crate::cmp::{self, Ordering};
 use crate::ops::{ChangeOutputType, ControlFlow, FromResidual, Residual, Try};
 
+use super::super::try_process;
+use super::super::ByRefSized;
 use super::super::TrustedRandomAccessNoCoerce;
 use super::super::{Chain, Cloned, Copied, Cycle, Enumerate, Filter, FilterMap, Fuse};
 use super::super::{FlatMap, Flatten};
@@ -33,6 +35,11 @@ fn _assert_is_object_safe(_: &dyn Iterator<Item = ()>) {}
         note = "`..=end` is a `RangeToInclusive`, which cannot be iterated on; you might have meant \
               to have a bounded `RangeInclusive`: `0..=end`"
     ),
+    on(
+        _Self = "[]",
+        label = "`{Self}` is not an iterator; try calling `.into_iter()` or `.iter()`"
+    ),
+    on(_Self = "&[]", label = "`{Self}` is not an iterator; try calling `.iter()`"),
     on(
         _Self = "&str",
         label = "`{Self}` is not an iterator; try calling `.chars()` or `.bytes()`"
@@ -463,6 +470,10 @@ pub trait Iterator {
     /// it will first try to advance the first iterator at most one time and if it still yielded an item
     /// try to advance the second iterator at most one time.
     ///
+    /// To 'undo' the result of zipping up two iterators, see [`unzip`].
+    ///
+    /// [`unzip`]: Iterator::unzip
+    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -515,8 +526,44 @@ pub trait Iterator {
     /// assert_eq!((2, 'o'), zipper[2]);
     /// ```
     ///
+    /// If both iterators have roughly equivalent syntax, it may be more readable to use [`zip`]:
+    ///
+    /// ```
+    /// use std::iter::zip;
+    ///
+    /// let a = [1, 2, 3];
+    /// let b = [2, 3, 4];
+    ///
+    /// let mut zipped = zip(
+    ///     a.into_iter().map(|x| x * 2).skip(1),
+    ///     b.into_iter().map(|x| x * 2).skip(1),
+    /// );
+    ///
+    /// assert_eq!(zipped.next(), Some((4, 6)));
+    /// assert_eq!(zipped.next(), Some((6, 8)));
+    /// assert_eq!(zipped.next(), None);
+    /// ```
+    ///
+    /// compared to:
+    ///
+    /// ```
+    /// # let a = [1, 2, 3];
+    /// # let b = [2, 3, 4];
+    /// #
+    /// let mut zipped = a
+    ///     .into_iter()
+    ///     .map(|x| x * 2)
+    ///     .skip(1)
+    ///     .zip(b.into_iter().map(|x| x * 2).skip(1));
+    /// #
+    /// # assert_eq!(zipped.next(), Some((4, 6)));
+    /// # assert_eq!(zipped.next(), Some((6, 8)));
+    /// # assert_eq!(zipped.next(), None);
+    /// ```
+    ///
     /// [`enumerate`]: Iterator::enumerate
     /// [`next`]: Iterator::next
+    /// [`zip`]: crate::iter::zip
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn zip<U>(self, other: U) -> Zip<Self, U::IntoIter>
@@ -667,13 +714,13 @@ pub trait Iterator {
     /// ```
     /// # #![allow(unused_must_use)]
     /// // don't do this:
-    /// (0..5).map(|x| println!("{}", x));
+    /// (0..5).map(|x| println!("{x}"));
     ///
     /// // it won't even execute, as it is lazy. Rust will warn you about this.
     ///
     /// // Instead, use for:
     /// for x in 0..5 {
-    ///     println!("{}", x);
+    ///     println!("{x}");
     /// }
     /// ```
     #[inline]
@@ -719,7 +766,7 @@ pub trait Iterator {
     /// (0..5).flat_map(|x| x * 100 .. x * 110)
     ///       .enumerate()
     ///       .filter(|&(i, x)| (i + x) % 3 == 0)
-    ///       .for_each(|(i, x)| println!("{}:{}", i, x));
+    ///       .for_each(|(i, x)| println!("{i}:{x}"));
     /// ```
     #[inline]
     #[stable(feature = "iterator_for_each", since = "1.21.0")]
@@ -1533,17 +1580,17 @@ pub trait Iterator {
     ///     .filter(|x| x % 2 == 0)
     ///     .fold(0, |sum, i| sum + i);
     ///
-    /// println!("{}", sum);
+    /// println!("{sum}");
     ///
     /// // let's add some inspect() calls to investigate what's happening
     /// let sum = a.iter()
     ///     .cloned()
-    ///     .inspect(|x| println!("about to filter: {}", x))
+    ///     .inspect(|x| println!("about to filter: {x}"))
     ///     .filter(|x| x % 2 == 0)
-    ///     .inspect(|x| println!("made it through filter: {}", x))
+    ///     .inspect(|x| println!("made it through filter: {x}"))
     ///     .fold(0, |sum, i| sum + i);
     ///
-    /// println!("{}", sum);
+    /// println!("{sum}");
     /// ```
     ///
     /// This will print:
@@ -1569,13 +1616,13 @@ pub trait Iterator {
     ///     .map(|line| line.parse::<i32>())
     ///     .inspect(|num| {
     ///         if let Err(ref e) = *num {
-    ///             println!("Parsing error: {}", e);
+    ///             println!("Parsing error: {e}");
     ///         }
     ///     })
     ///     .filter_map(Result::ok)
     ///     .sum();
     ///
-    /// println!("Sum: {}", sum);
+    /// println!("Sum: {sum}");
     /// ```
     ///
     /// This will print:
@@ -1741,6 +1788,158 @@ pub trait Iterator {
         FromIterator::from_iter(self)
     }
 
+    /// Fallibly transforms an iterator into a collection, short circuiting if
+    /// a failure is encountered.
+    ///
+    /// `try_collect()` is a variation of [`collect()`][`collect`] that allows fallible
+    /// conversions during collection. Its main use case is simplifying conversions from
+    /// iterators yielding [`Option<T>`][`Option`] into `Option<Collection<T>>`, or similarly for other [`Try`]
+    /// types (e.g. [`Result`]).
+    ///
+    /// Importantly, `try_collect()` doesn't require that the outer [`Try`] type also implements [`FromIterator`];
+    /// only the inner type produced on `Try::Output` must implement it. Concretely,
+    /// this means that collecting into `ControlFlow<_, Vec<i32>>` is valid because `Vec<i32>` implements
+    /// [`FromIterator`], even though [`ControlFlow`] doesn't.
+    ///
+    /// Also, if a failure is encountered during `try_collect()`, the iterator is still valid and
+    /// may continue to be used, in which case it will continue iterating starting after the element that
+    /// triggered the failure. See the last example below for an example of how this works.
+    ///
+    /// # Examples
+    /// Successfully collecting an iterator of `Option<i32>` into `Option<Vec<i32>>`:
+    /// ```
+    /// #![feature(iterator_try_collect)]
+    ///
+    /// let u = vec![Some(1), Some(2), Some(3)];
+    /// let v = u.into_iter().try_collect::<Vec<i32>>();
+    /// assert_eq!(v, Some(vec![1, 2, 3]));
+    /// ```
+    ///
+    /// Failing to collect in the same way:
+    /// ```
+    /// #![feature(iterator_try_collect)]
+    ///
+    /// let u = vec![Some(1), Some(2), None, Some(3)];
+    /// let v = u.into_iter().try_collect::<Vec<i32>>();
+    /// assert_eq!(v, None);
+    /// ```
+    ///
+    /// A similar example, but with `Result`:
+    /// ```
+    /// #![feature(iterator_try_collect)]
+    ///
+    /// let u: Vec<Result<i32, ()>> = vec![Ok(1), Ok(2), Ok(3)];
+    /// let v = u.into_iter().try_collect::<Vec<i32>>();
+    /// assert_eq!(v, Ok(vec![1, 2, 3]));
+    ///
+    /// let u = vec![Ok(1), Ok(2), Err(()), Ok(3)];
+    /// let v = u.into_iter().try_collect::<Vec<i32>>();
+    /// assert_eq!(v, Err(()));
+    /// ```
+    ///
+    /// Finally, even [`ControlFlow`] works, despite the fact that it
+    /// doesn't implement [`FromIterator`]. Note also that the iterator can
+    /// continue to be used, even if a failure is encountered:
+    ///
+    /// ```
+    /// #![feature(iterator_try_collect)]
+    ///
+    /// use core::ops::ControlFlow::{Break, Continue};
+    ///
+    /// let u = [Continue(1), Continue(2), Break(3), Continue(4), Continue(5)];
+    /// let mut it = u.into_iter();
+    ///
+    /// let v = it.try_collect::<Vec<_>>();
+    /// assert_eq!(v, Break(3));
+    ///
+    /// let v = it.try_collect::<Vec<_>>();
+    /// assert_eq!(v, Continue(vec![4, 5]));
+    /// ```
+    ///
+    /// [`collect`]: Iterator::collect
+    #[inline]
+    #[unstable(feature = "iterator_try_collect", issue = "94047")]
+    fn try_collect<B>(&mut self) -> ChangeOutputType<Self::Item, B>
+    where
+        Self: Sized,
+        <Self as Iterator>::Item: Try,
+        <<Self as Iterator>::Item as Try>::Residual: Residual<B>,
+        B: FromIterator<<Self::Item as Try>::Output>,
+    {
+        try_process(ByRefSized(self), |i| i.collect())
+    }
+
+    /// Collects all the items from an iterator into a collection.
+    ///
+    /// This method consumes the iterator and adds all its items to the
+    /// passed collection. The collection is then returned, so the call chain
+    /// can be continued.
+    ///
+    /// This is useful when you already have a collection and wants to add
+    /// the iterator items to it.
+    ///
+    /// This method is a convenience method to call [Extend::extend](trait.Extend.html),
+    /// but instead of being called on a collection, it's called on an iterator.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(iter_collect_into)]
+    ///
+    /// let a = [1, 2, 3];
+    /// let mut vec: Vec::<i32> = vec![0, 1];
+    ///
+    /// a.iter().map(|&x| x * 2).collect_into(&mut vec);
+    /// a.iter().map(|&x| x * 10).collect_into(&mut vec);
+    ///
+    /// assert_eq!(vec![0, 1, 2, 4, 6, 10, 20, 30], vec);
+    /// ```
+    ///
+    /// `Vec` can have a manual set capacity to avoid reallocating it:
+    ///
+    /// ```
+    /// #![feature(iter_collect_into)]
+    ///
+    /// let a = [1, 2, 3];
+    /// let mut vec: Vec::<i32> = Vec::with_capacity(6);
+    ///
+    /// a.iter().map(|&x| x * 2).collect_into(&mut vec);
+    /// a.iter().map(|&x| x * 10).collect_into(&mut vec);
+    ///
+    /// assert_eq!(6, vec.capacity());
+    /// println!("{:?}", vec);
+    /// ```
+    ///
+    /// The returned mutable reference can be used to continue the call chain:
+    ///
+    /// ```
+    /// #![feature(iter_collect_into)]
+    ///
+    /// let a = [1, 2, 3];
+    /// let mut vec: Vec::<i32> = Vec::with_capacity(6);
+    ///
+    /// let count = a.iter().collect_into(&mut vec).iter().count();
+    ///
+    /// assert_eq!(count, vec.len());
+    /// println!("Vec len is {}", count);
+    ///
+    /// let count = a.iter().collect_into(&mut vec).iter().count();
+    ///
+    /// assert_eq!(count, vec.len());
+    /// println!("Vec len now is {}", count);
+    /// ```
+    #[inline]
+    #[unstable(feature = "iter_collect_into", reason = "new API", issue = "94780")]
+    fn collect_into<E: Extend<Self::Item>>(self, collection: &mut E) -> &mut E
+    where
+        Self: Sized,
+    {
+        collection.extend(self);
+        collection
+    }
+
     /// Consumes an iterator, creating two collections from it.
     ///
     /// The predicate passed to `partition()` can return `true`, or `false`.
@@ -1759,9 +1958,9 @@ pub trait Iterator {
     /// ```
     /// let a = [1, 2, 3];
     ///
-    /// let (even, odd): (Vec<i32>, Vec<i32>) = a
-    ///     .iter()
-    ///     .partition(|&n| n % 2 == 0);
+    /// let (even, odd): (Vec<_>, Vec<_>) = a
+    ///     .into_iter()
+    ///     .partition(|n| n % 2 == 0);
     ///
     /// assert_eq!(even, vec![2]);
     /// assert_eq!(odd, vec![1, 3]);
@@ -2011,7 +2210,7 @@ pub trait Iterator {
     ///
     /// let data = ["no_tea.txt", "stale_bread.json", "torrential_rain.png"];
     ///
-    /// let res = data.iter().try_for_each(|x| writeln!(stdout(), "{}", x));
+    /// let res = data.iter().try_for_each(|x| writeln!(stdout(), "{x}"));
     /// assert!(res.is_ok());
     ///
     /// let mut it = data.iter().cloned();
@@ -2125,7 +2324,7 @@ pub trait Iterator {
     /// let zero = "0".to_string();
     ///
     /// let result = numbers.iter().fold(zero, |acc, &x| {
-    ///     format!("({} + {})", acc, x)
+    ///     format!("({acc} + {x})")
     /// });
     ///
     /// assert_eq!(result, "(((((0 + 1) + 2) + 3) + 4) + 5)");
@@ -2994,6 +3193,10 @@ pub trait Iterator {
     /// This is useful when you have an iterator over `&T`, but you need an
     /// iterator over `T`.
     ///
+    /// There is no guarantee whatsoever about the `clone` method actually
+    /// being called *or* optimized away. So code should not depend on
+    /// either.
+    ///
     /// [`clone`]: Clone::clone
     ///
     /// # Examples
@@ -3010,6 +3213,18 @@ pub trait Iterator {
     ///
     /// assert_eq!(v_cloned, vec![1, 2, 3]);
     /// assert_eq!(v_map, vec![1, 2, 3]);
+    /// ```
+    ///
+    /// To get the best performance, try to clone late:
+    ///
+    /// ```
+    /// let a = [vec![0_u8, 1, 2], vec![3, 4], vec![23]];
+    /// // don't do this:
+    /// let slower: Vec<_> = a.iter().cloned().filter(|s| s.len() == 1).collect();
+    /// assert_eq!(&[vec![23]], &slower[..]);
+    /// // instead call `cloned` late
+    /// let faster: Vec<_> = a.iter().filter(|s| s.len() == 1).cloned().collect();
+    /// assert_eq!(&[vec![23]], &faster[..]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn cloned<'a, T: 'a>(self) -> Cloned<Self>

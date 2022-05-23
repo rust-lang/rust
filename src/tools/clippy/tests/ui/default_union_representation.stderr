@@ -1,0 +1,48 @@
+error: this union has the default representation
+  --> $DIR/default_union_representation.rs:4:1
+   |
+LL | / union NoAttribute {
+LL | |     a: i32,
+LL | |     b: u32,
+LL | | }
+   | |_^
+   |
+   = note: `-D clippy::default-union-representation` implied by `-D warnings`
+   = help: consider annotating `NoAttribute` with `#[repr(C)]` to explicitly specify memory layout
+
+error: this union has the default representation
+  --> $DIR/default_union_representation.rs:16:1
+   |
+LL | / union ReprPacked {
+LL | |     a: i32,
+LL | |     b: u32,
+LL | | }
+   | |_^
+   |
+   = help: consider annotating `ReprPacked` with `#[repr(C)]` to explicitly specify memory layout
+
+error: this union has the default representation
+  --> $DIR/default_union_representation.rs:34:1
+   |
+LL | / union ReprAlign {
+LL | |     a: i32,
+LL | |     b: u32,
+LL | | }
+   | |_^
+   |
+   = help: consider annotating `ReprAlign` with `#[repr(C)]` to explicitly specify memory layout
+
+error: this union has the default representation
+  --> $DIR/default_union_representation.rs:54:1
+   |
+LL | / union ZSTAndTwoFields {
+LL | |     f0: u32,
+LL | |     f1: u64,
+LL | |     f2: (),
+LL | | }
+   | |_^
+   |
+   = help: consider annotating `ZSTAndTwoFields` with `#[repr(C)]` to explicitly specify memory layout
+
+error: aborting due to 4 previous errors
+

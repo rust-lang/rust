@@ -30,9 +30,8 @@ macro_rules! impl_test_unsigned_leb128 {
 
             let mut position = 0;
             for &expected in &values {
-                let (actual, bytes_read) = $read_fn_name(&stream[position..]);
+                let actual = $read_fn_name(&stream, &mut position);
                 assert_eq!(expected, actual);
-                position += bytes_read;
             }
             assert_eq!(stream.len(), position);
         }
@@ -77,9 +76,8 @@ macro_rules! impl_test_signed_leb128 {
 
             let mut position = 0;
             for &expected in &values {
-                let (actual, bytes_read) = $read_fn_name(&stream[position..]);
+                let actual = $read_fn_name(&stream, &mut position);
                 assert_eq!(expected, actual);
-                position += bytes_read;
             }
             assert_eq!(stream.len(), position);
         }

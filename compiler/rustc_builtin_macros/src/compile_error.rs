@@ -9,12 +9,11 @@ pub fn expand_compile_error<'cx>(
     sp: Span,
     tts: TokenStream,
 ) -> Box<dyn base::MacResult + 'cx> {
-    let var = match get_single_str_from_tts(cx, sp, tts, "compile_error!") {
-        None => return DummyResult::any(sp),
-        Some(v) => v,
+    let Some(var) = get_single_str_from_tts(cx, sp, tts, "compile_error!") else {
+        return DummyResult::any(sp);
     };
 
-    cx.span_err(sp, &var);
+    cx.span_err(sp, var.as_str());
 
     DummyResult::any(sp)
 }

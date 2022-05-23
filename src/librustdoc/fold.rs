@@ -1,13 +1,13 @@
 use crate::clean::*;
 
-crate fn strip_item(mut item: Item) -> Item {
+pub(crate) fn strip_item(mut item: Item) -> Item {
     if !matches!(*item.kind, StrippedItem(..)) {
         item.kind = box StrippedItem(item.kind);
     }
     item
 }
 
-crate trait DocFolder: Sized {
+pub(crate) trait DocFolder: Sized {
     fn fold_item(&mut self, item: Item) -> Option<Item> {
         Some(self.fold_item_recur(item))
     }
@@ -71,7 +71,7 @@ crate trait DocFolder: Sized {
             ExternCrateItem { src: _ }
             | ImportItem(_)
             | FunctionItem(_)
-            | TypedefItem(_, _)
+            | TypedefItem(_)
             | OpaqueTyItem(_)
             | StaticItem(_)
             | ConstantItem(_)
@@ -85,8 +85,10 @@ crate trait DocFolder: Sized {
             | MacroItem(_)
             | ProcMacroItem(_)
             | PrimitiveItem(_)
-            | AssocConstItem(_, _)
-            | AssocTypeItem(_, _)
+            | TyAssocConstItem(..)
+            | AssocConstItem(..)
+            | TyAssocTypeItem(..)
+            | AssocTypeItem(..)
             | KeywordItem(_) => kind,
         }
     }

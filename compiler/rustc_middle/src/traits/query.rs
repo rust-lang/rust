@@ -11,7 +11,6 @@ use crate::ty::subst::GenericArg;
 use crate::ty::{self, Ty, TyCtxt};
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_data_structures::sync::Lrc;
 use rustc_errors::struct_span_err;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_span::source_map::Span;
@@ -97,7 +96,7 @@ pub type CanonicalTypeOpProvePredicateGoal<'tcx> =
 pub type CanonicalTypeOpNormalizeGoal<'tcx, T> =
     Canonical<'tcx, ty::ParamEnvAnd<'tcx, type_op::Normalize<T>>>;
 
-#[derive(Clone, Debug, HashStable)]
+#[derive(Copy, Clone, Debug, HashStable)]
 pub struct NoSolution;
 
 pub type Fallible<T> = Result<T, NoSolution>;
@@ -144,7 +143,7 @@ impl<'tcx> DropckOutlivesResult<'tcx> {
 /// A set of constraints that need to be satisfied in order for
 /// a type to be valid for destruction.
 #[derive(Clone, Debug, HashStable)]
-pub struct DtorckConstraint<'tcx> {
+pub struct DropckConstraint<'tcx> {
     /// Types that are required to be alive in order for this
     /// type to be valid for destruction.
     pub outlives: Vec<ty::subst::GenericArg<'tcx>>,
@@ -158,17 +157,17 @@ pub struct DtorckConstraint<'tcx> {
     pub overflows: Vec<Ty<'tcx>>,
 }
 
-impl<'tcx> DtorckConstraint<'tcx> {
-    pub fn empty() -> DtorckConstraint<'tcx> {
-        DtorckConstraint { outlives: vec![], dtorck_types: vec![], overflows: vec![] }
+impl<'tcx> DropckConstraint<'tcx> {
+    pub fn empty() -> DropckConstraint<'tcx> {
+        DropckConstraint { outlives: vec![], dtorck_types: vec![], overflows: vec![] }
     }
 }
 
-impl<'tcx> FromIterator<DtorckConstraint<'tcx>> for DtorckConstraint<'tcx> {
-    fn from_iter<I: IntoIterator<Item = DtorckConstraint<'tcx>>>(iter: I) -> Self {
+impl<'tcx> FromIterator<DropckConstraint<'tcx>> for DropckConstraint<'tcx> {
+    fn from_iter<I: IntoIterator<Item = DropckConstraint<'tcx>>>(iter: I) -> Self {
         let mut result = Self::empty();
 
-        for DtorckConstraint { outlives, dtorck_types, overflows } in iter {
+        for DropckConstraint { outlives, dtorck_types, overflows } in iter {
             result.outlives.extend(outlives);
             result.dtorck_types.extend(dtorck_types);
             result.overflows.extend(overflows);
@@ -191,12 +190,12 @@ pub struct CandidateStep<'tcx> {
     pub unsize: bool,
 }
 
-#[derive(Clone, Debug, HashStable)]
+#[derive(Copy, Clone, Debug, HashStable)]
 pub struct MethodAutoderefStepsResult<'tcx> {
     /// The valid autoderef steps that could be find.
-    pub steps: Lrc<Vec<CandidateStep<'tcx>>>,
+    pub steps: &'tcx [CandidateStep<'tcx>],
     /// If Some(T), a type autoderef reported an error on.
-    pub opt_bad_ty: Option<Lrc<MethodAutoderefBadTy<'tcx>>>,
+    pub opt_bad_ty: Option<&'tcx MethodAutoderefBadTy<'tcx>>,
     /// If `true`, `steps` has been truncated due to reaching the
     /// recursion limit.
     pub reached_recursion_limit: bool,

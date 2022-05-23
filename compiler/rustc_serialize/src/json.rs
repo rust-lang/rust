@@ -45,12 +45,9 @@
 //!
 //! # Rust Type-based Encoding and Decoding
 //!
-//! Rust provides a mechanism for low boilerplate encoding & decoding of values to and from JSON via
-//! the serialization API.
-//! To be able to encode a piece of data, it must implement the `serialize::Encodable` trait.
-//! To be able to decode a piece of data, it must implement the `serialize::Decodable` trait.
-//! The Rust compiler provides an annotation to automatically generate the code for these traits:
-//! `#[derive(Decodable, Encodable)]`
+//! To be able to encode a piece of data, it must implement the
+//! `serialize::Encodable` trait.  The `rustc_macros` crate provides an
+//! annotation to automatically generate the code for this trait: `#[derive(Encodable)]`.
 //!
 //! The JSON API provides an enum `json::Json` and a trait `ToJson` to encode objects.
 //! The `ToJson` trait provides a `to_json` method to convert an object into a `json::Json` value.
@@ -68,11 +65,11 @@
 //!
 //! ```rust
 //! # #![feature(rustc_private)]
-//! use rustc_macros::{Decodable, Encodable};
+//! use rustc_macros::{Encodable};
 //! use rustc_serialize::json;
 //!
-//! // Automatically generate `Decodable` and `Encodable` trait implementations
-//! #[derive(Decodable, Encodable)]
+//! // Automatically generate `Encodable` trait implementations
+//! #[derive(Encodable)]
 //! pub struct TestStruct  {
 //!     data_int: u8,
 //!     data_str: String,
@@ -87,9 +84,6 @@
 //!
 //! // Serialize using `json::encode`
 //! let encoded = json::encode(&object).unwrap();
-//!
-//! // Deserialize using `json::decode`
-//! let decoded: TestStruct = json::decode(&encoded[..]).unwrap();
 //! ```
 //!
 //! ## Using the `ToJson` trait
@@ -139,12 +133,9 @@
 //!
 //! ```rust
 //! # #![feature(rustc_private)]
-//! use rustc_macros::Decodable;
 //! use std::collections::BTreeMap;
-//! use rustc_serialize::json::{self, Json, ToJson};
+//! use rustc_serialize::json::{Json, ToJson};
 //!
-//! // Only generate `Decodable` trait implementation
-//! #[derive(Decodable)]
 //! pub struct TestStruct {
 //!     data_int: u8,
 //!     data_str: String,
@@ -171,12 +162,8 @@
 //! };
 //! let json_obj: Json = input_data.to_json();
 //! let json_str: String = json_obj.to_string();
-//!
-//! // Deserialize like before
-//! let decoded: TestStruct = json::decode(&json_str).unwrap();
 //! ```
 
-use self::DecoderError::*;
 use self::ErrorCode::*;
 use self::InternalStackElement::*;
 use self::JsonEvent::*;
@@ -185,8 +172,6 @@ use self::ParserState::*;
 
 use std::borrow::Cow;
 use std::collections::{BTreeMap, HashMap};
-use std::io;
-use std::io::prelude::*;
 use std::mem::swap;
 use std::num::FpCategory as Fp;
 use std::ops::Index;
@@ -250,20 +235,10 @@ pub enum ErrorCode {
 pub enum ParserError {
     /// msg, line, col
     SyntaxError(ErrorCode, usize, usize),
-    IoError(io::ErrorKind, String),
 }
 
 // Builder and Parser have the same errors.
 pub type BuilderError = ParserError;
-
-#[derive(Clone, PartialEq, Debug)]
-pub enum DecoderError {
-    ParseError(ParserError),
-    ExpectedError(string::String, string::String),
-    MissingFieldError(string::String),
-    UnknownVariantError(string::String),
-    ApplicationError(string::String),
-}
 
 #[derive(Copy, Clone, Debug)]
 pub enum EncoderError {
@@ -294,17 +269,6 @@ pub fn error_str(error: ErrorCode) -> &'static str {
     }
 }
 
-/// Shortcut function to decode a JSON `&str` into an object
-pub fn decode<T: crate::Decodable<Decoder>>(s: &str) -> DecodeResult<T> {
-    let json = match from_str(s) {
-        Ok(x) => x,
-        Err(e) => return Err(ParseError(e)),
-    };
-
-    let mut decoder = Decoder::new(json);
-    crate::Decodable::decode(&mut decoder)
-}
-
 /// Shortcut function to encode a `T` into a JSON `String`
 pub fn encode<T: for<'r> crate::Encodable<Encoder<'r>>>(
     object: &T,
@@ -323,25 +287,12 @@ impl fmt::Display for ErrorCode {
     }
 }
 
-fn io_error_to_error(io: io::Error) -> ParserError {
-    IoError(io.kind(), io.to_string())
-}
-
 impl fmt::Display for ParserError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // FIXME this should be a nicer error
         fmt::Debug::fmt(self, f)
     }
 }
-
-impl fmt::Display for DecoderError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // FIXME this should be a nicer error
-        fmt::Debug::fmt(self, f)
-    }
-}
-
-impl std::error::Error for DecoderError {}
 
 impl fmt::Display for EncoderError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -362,7 +313,6 @@ impl From<fmt::Error> for EncoderError {
 }
 
 pub type EncodeResult = Result<(), EncoderError>;
-pub type DecodeResult<T> = Result<T, DecoderError>;
 
 fn escape_str(wr: &mut dyn fmt::Write, v: &str) -> EncodeResult {
     wr.write_str("\"")?;
@@ -2166,304 +2116,10 @@ impl<T: Iterator<Item = char>> Builder<T> {
     }
 }
 
-/// Decodes a json value from an `&mut io::Read`
-pub fn from_reader(rdr: &mut dyn Read) -> Result<Json, BuilderError> {
-    let mut contents = Vec::new();
-    match rdr.read_to_end(&mut contents) {
-        Ok(c) => c,
-        Err(e) => return Err(io_error_to_error(e)),
-    };
-    let s = match str::from_utf8(&contents).ok() {
-        Some(s) => s,
-        _ => return Err(SyntaxError(NotUtf8, 0, 0)),
-    };
-    let mut builder = Builder::new(s.chars());
-    builder.build()
-}
-
 /// Decodes a json value from a string
 pub fn from_str(s: &str) -> Result<Json, BuilderError> {
     let mut builder = Builder::new(s.chars());
     builder.build()
-}
-
-/// A structure to decode JSON to values in rust.
-pub struct Decoder {
-    stack: Vec<Json>,
-}
-
-impl Decoder {
-    /// Creates a new decoder instance for decoding the specified JSON value.
-    pub fn new(json: Json) -> Decoder {
-        Decoder { stack: vec![json] }
-    }
-
-    fn pop(&mut self) -> Json {
-        self.stack.pop().unwrap()
-    }
-}
-
-macro_rules! expect {
-    ($e:expr, Null) => {{
-        match $e {
-            Json::Null => Ok(()),
-            other => Err(ExpectedError("Null".to_owned(), other.to_string())),
-        }
-    }};
-    ($e:expr, $t:ident) => {{
-        match $e {
-            Json::$t(v) => Ok(v),
-            other => Err(ExpectedError(stringify!($t).to_owned(), other.to_string())),
-        }
-    }};
-}
-
-macro_rules! read_primitive {
-    ($name:ident, $ty:ty) => {
-        fn $name(&mut self) -> DecodeResult<$ty> {
-            match self.pop() {
-                Json::I64(f) => Ok(f as $ty),
-                Json::U64(f) => Ok(f as $ty),
-                Json::F64(f) => Err(ExpectedError("Integer".to_owned(), f.to_string())),
-                // re: #12967.. a type w/ numeric keys (ie HashMap<usize, V> etc)
-                // is going to have a string here, as per JSON spec.
-                Json::String(s) => match s.parse().ok() {
-                    Some(f) => Ok(f),
-                    None => Err(ExpectedError("Number".to_owned(), s)),
-                },
-                value => Err(ExpectedError("Number".to_owned(), value.to_string())),
-            }
-        }
-    };
-}
-
-impl crate::Decoder for Decoder {
-    type Error = DecoderError;
-
-    fn read_nil(&mut self) -> DecodeResult<()> {
-        expect!(self.pop(), Null)
-    }
-
-    read_primitive! { read_usize, usize }
-    read_primitive! { read_u8, u8 }
-    read_primitive! { read_u16, u16 }
-    read_primitive! { read_u32, u32 }
-    read_primitive! { read_u64, u64 }
-    read_primitive! { read_u128, u128 }
-    read_primitive! { read_isize, isize }
-    read_primitive! { read_i8, i8 }
-    read_primitive! { read_i16, i16 }
-    read_primitive! { read_i32, i32 }
-    read_primitive! { read_i64, i64 }
-    read_primitive! { read_i128, i128 }
-
-    fn read_f32(&mut self) -> DecodeResult<f32> {
-        self.read_f64().map(|x| x as f32)
-    }
-
-    fn read_f64(&mut self) -> DecodeResult<f64> {
-        match self.pop() {
-            Json::I64(f) => Ok(f as f64),
-            Json::U64(f) => Ok(f as f64),
-            Json::F64(f) => Ok(f),
-            Json::String(s) => {
-                // re: #12967.. a type w/ numeric keys (ie HashMap<usize, V> etc)
-                // is going to have a string here, as per JSON spec.
-                match s.parse().ok() {
-                    Some(f) => Ok(f),
-                    None => Err(ExpectedError("Number".to_owned(), s)),
-                }
-            }
-            Json::Null => Ok(f64::NAN),
-            value => Err(ExpectedError("Number".to_owned(), value.to_string())),
-        }
-    }
-
-    fn read_bool(&mut self) -> DecodeResult<bool> {
-        expect!(self.pop(), Boolean)
-    }
-
-    fn read_char(&mut self) -> DecodeResult<char> {
-        let s = self.read_str()?;
-        {
-            let mut it = s.chars();
-            if let (Some(c), None) = (it.next(), it.next()) {
-                // exactly one character
-                return Ok(c);
-            }
-        }
-        Err(ExpectedError("single character string".to_owned(), s.to_string()))
-    }
-
-    fn read_str(&mut self) -> DecodeResult<Cow<'_, str>> {
-        expect!(self.pop(), String).map(Cow::Owned)
-    }
-
-    fn read_raw_bytes_into(&mut self, s: &mut [u8]) -> Result<(), Self::Error> {
-        for c in s.iter_mut() {
-            *c = self.read_u8()?;
-        }
-        Ok(())
-    }
-
-    fn read_enum<T, F>(&mut self, f: F) -> DecodeResult<T>
-    where
-        F: FnOnce(&mut Decoder) -> DecodeResult<T>,
-    {
-        f(self)
-    }
-
-    fn read_enum_variant<T, F>(&mut self, names: &[&str], mut f: F) -> DecodeResult<T>
-    where
-        F: FnMut(&mut Decoder, usize) -> DecodeResult<T>,
-    {
-        let name = match self.pop() {
-            Json::String(s) => s,
-            Json::Object(mut o) => {
-                let n = match o.remove("variant") {
-                    Some(Json::String(s)) => s,
-                    Some(val) => return Err(ExpectedError("String".to_owned(), val.to_string())),
-                    None => return Err(MissingFieldError("variant".to_owned())),
-                };
-                match o.remove("fields") {
-                    Some(Json::Array(l)) => {
-                        self.stack.extend(l.into_iter().rev());
-                    }
-                    Some(val) => return Err(ExpectedError("Array".to_owned(), val.to_string())),
-                    None => return Err(MissingFieldError("fields".to_owned())),
-                }
-                n
-            }
-            json => return Err(ExpectedError("String or Object".to_owned(), json.to_string())),
-        };
-        let idx = match names.iter().position(|n| *n == &name[..]) {
-            Some(idx) => idx,
-            None => return Err(UnknownVariantError(name)),
-        };
-        f(self, idx)
-    }
-
-    fn read_enum_variant_arg<T, F>(&mut self, f: F) -> DecodeResult<T>
-    where
-        F: FnOnce(&mut Decoder) -> DecodeResult<T>,
-    {
-        f(self)
-    }
-
-    fn read_struct<T, F>(&mut self, f: F) -> DecodeResult<T>
-    where
-        F: FnOnce(&mut Decoder) -> DecodeResult<T>,
-    {
-        let value = f(self)?;
-        self.pop();
-        Ok(value)
-    }
-
-    fn read_struct_field<T, F>(&mut self, name: &str, f: F) -> DecodeResult<T>
-    where
-        F: FnOnce(&mut Decoder) -> DecodeResult<T>,
-    {
-        let mut obj = expect!(self.pop(), Object)?;
-
-        let value = match obj.remove(name) {
-            None => {
-                // Add a Null and try to parse it as an Option<_>
-                // to get None as a default value.
-                self.stack.push(Json::Null);
-                match f(self) {
-                    Ok(x) => x,
-                    Err(_) => return Err(MissingFieldError(name.to_string())),
-                }
-            }
-            Some(json) => {
-                self.stack.push(json);
-                f(self)?
-            }
-        };
-        self.stack.push(Json::Object(obj));
-        Ok(value)
-    }
-
-    fn read_tuple<T, F>(&mut self, tuple_len: usize, f: F) -> DecodeResult<T>
-    where
-        F: FnOnce(&mut Decoder) -> DecodeResult<T>,
-    {
-        self.read_seq(move |d, len| {
-            if len == tuple_len {
-                f(d)
-            } else {
-                Err(ExpectedError(format!("Tuple{}", tuple_len), format!("Tuple{}", len)))
-            }
-        })
-    }
-
-    fn read_tuple_arg<T, F>(&mut self, f: F) -> DecodeResult<T>
-    where
-        F: FnOnce(&mut Decoder) -> DecodeResult<T>,
-    {
-        self.read_seq_elt(f)
-    }
-
-    fn read_option<T, F>(&mut self, mut f: F) -> DecodeResult<T>
-    where
-        F: FnMut(&mut Decoder, bool) -> DecodeResult<T>,
-    {
-        match self.pop() {
-            Json::Null => f(self, false),
-            value => {
-                self.stack.push(value);
-                f(self, true)
-            }
-        }
-    }
-
-    fn read_seq<T, F>(&mut self, f: F) -> DecodeResult<T>
-    where
-        F: FnOnce(&mut Decoder, usize) -> DecodeResult<T>,
-    {
-        let array = expect!(self.pop(), Array)?;
-        let len = array.len();
-        self.stack.extend(array.into_iter().rev());
-        f(self, len)
-    }
-
-    fn read_seq_elt<T, F>(&mut self, f: F) -> DecodeResult<T>
-    where
-        F: FnOnce(&mut Decoder) -> DecodeResult<T>,
-    {
-        f(self)
-    }
-
-    fn read_map<T, F>(&mut self, f: F) -> DecodeResult<T>
-    where
-        F: FnOnce(&mut Decoder, usize) -> DecodeResult<T>,
-    {
-        let obj = expect!(self.pop(), Object)?;
-        let len = obj.len();
-        for (key, value) in obj {
-            self.stack.push(value);
-            self.stack.push(Json::String(key));
-        }
-        f(self, len)
-    }
-
-    fn read_map_elt_key<T, F>(&mut self, f: F) -> DecodeResult<T>
-    where
-        F: FnOnce(&mut Decoder) -> DecodeResult<T>,
-    {
-        f(self)
-    }
-
-    fn read_map_elt_val<T, F>(&mut self, f: F) -> DecodeResult<T>
-    where
-        F: FnOnce(&mut Decoder) -> DecodeResult<T>,
-    {
-        f(self)
-    }
-
-    fn error(&mut self, err: &str) -> DecoderError {
-        ApplicationError(err.to_string())
-    }
 }
 
 /// A trait for converting values to JSON
@@ -2541,6 +2197,12 @@ impl ToJson for string::String {
     }
 }
 
+impl<'a> ToJson for Cow<'a, str> {
+    fn to_json(&self) -> Json {
+        Json::String(self.to_string())
+    }
+}
+
 macro_rules! tuple_impl {
     // use variables to indicate the arity of the tuple
     ($($tyvar:ident),* ) => {
@@ -2580,6 +2242,15 @@ impl<A: ToJson> ToJson for [A] {
 }
 
 impl<A: ToJson> ToJson for Vec<A> {
+    fn to_json(&self) -> Json {
+        Json::Array(self.iter().map(|elt| elt.to_json()).collect())
+    }
+}
+
+impl<'a, A: ToJson> ToJson for Cow<'a, [A]>
+where
+    [A]: ToOwned,
+{
     fn to_json(&self) -> Json {
         Json::Array(self.iter().map(|elt| elt.to_json()).collect())
     }

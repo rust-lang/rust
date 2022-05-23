@@ -5,7 +5,7 @@ LL |     foo(());
    |     ^^^ lifetime mismatch
    |
    = note: expected reference `&'a ()`
-                   found type `&()`
+              found reference `&()`
 note: the lifetime requirement is introduced here
   --> $DIR/higher-ranked-projection.rs:15:33
    |

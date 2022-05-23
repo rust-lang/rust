@@ -23,7 +23,12 @@ impl Unrelated {
     clippy::iter_next_loop,
     clippy::for_kv_map
 )]
-#[allow(clippy::linkedlist, clippy::unnecessary_mut_passed, clippy::similar_names)]
+#[allow(
+    clippy::linkedlist,
+    clippy::unnecessary_mut_passed,
+    clippy::similar_names,
+    clippy::needless_borrow
+)]
 #[allow(unused_variables)]
 fn main() {
     let mut vec = vec![1, 2, 3, 4];

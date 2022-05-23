@@ -1,0 +1,25 @@
+error: generator cannot be sent between threads safely
+  --> $DIR/drop-yield-twice.rs:7:5
+   |
+LL |     assert_send(|| {
+   |     ^^^^^^^^^^^ generator is not `Send`
+   |
+   = help: within `[generator@$DIR/drop-yield-twice.rs:7:17: 12:6]`, the trait `Send` is not implemented for `Foo`
+note: generator is not `Send` as this value is used across a yield
+  --> $DIR/drop-yield-twice.rs:9:9
+   |
+LL |         let guard = Foo(42);
+   |             ----- has type `Foo` which is not `Send`
+LL |         yield;
+   |         ^^^^^ yield occurs here, with `guard` maybe used later
+...
+LL |     })
+   |     - `guard` is later dropped here
+note: required by a bound in `assert_send`
+  --> $DIR/drop-yield-twice.rs:15:19
+   |
+LL | fn assert_send<T: Send>(_: T) {}
+   |                   ^^^^ required by this bound in `assert_send`
+
+error: aborting due to previous error
+

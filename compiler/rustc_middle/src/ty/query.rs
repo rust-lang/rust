@@ -3,18 +3,19 @@ use crate::infer::canonical::{self, Canonical};
 use crate::lint::LintLevelMap;
 use crate::metadata::ModChild;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrs;
-use crate::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
+use crate::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
 use crate::middle::lib_features::LibFeatures;
 use crate::middle::privacy::AccessLevels;
-use crate::middle::region;
 use crate::middle::resolve_lifetime::{
     LifetimeScopeForPath, ObjectLifetimeDefault, Region, ResolveLifetimes,
 };
 use crate::middle::stability::{self, DeprecationEntry};
 use crate::mir;
 use crate::mir::interpret::GlobalId;
-use crate::mir::interpret::{ConstAlloc, LitToConstError, LitToConstInput};
-use crate::mir::interpret::{ConstValue, EvalToAllocationRawResult, EvalToConstValueResult};
+use crate::mir::interpret::{
+    ConstValue, EvalToAllocationRawResult, EvalToConstValueResult, EvalToValTreeResult,
+};
+use crate::mir::interpret::{LitToConstError, LitToConstInput};
 use crate::mir::mono::CodegenUnit;
 use crate::thir;
 use crate::traits::query::{
@@ -23,7 +24,7 @@ use crate::traits::query::{
     CanonicalTypeOpProvePredicateGoal, CanonicalTypeOpSubtypeGoal, NoSolution,
 };
 use crate::traits::query::{
-    DropckOutlivesResult, DtorckConstraint, MethodAutoderefStepsResult, NormalizationResult,
+    DropckConstraint, DropckOutlivesResult, MethodAutoderefStepsResult, NormalizationResult,
     OutlivesBound,
 };
 use crate::traits::specialization_graph;
@@ -31,13 +32,16 @@ use crate::traits::{self, ImplSource};
 use crate::ty::fast_reject::SimplifiedType;
 use crate::ty::subst::{GenericArg, SubstsRef};
 use crate::ty::util::AlwaysRequiresDrop;
+use crate::ty::GeneratorDiagnosticData;
 use crate::ty::{self, AdtSizedConstraint, CrateInherentImpls, ParamEnvAnd, Ty, TyCtxt};
+use rustc_ast as ast;
 use rustc_ast::expand::allocator::AllocatorKind;
+use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::ErrorReported;
+use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet, LocalDefId};
@@ -49,14 +53,10 @@ use rustc_session::cstore::{CrateDepKind, CrateSource};
 use rustc_session::cstore::{ExternCrate, ForeignModule, LinkagePreference, NativeLib};
 use rustc_session::utils::NativeLibKind;
 use rustc_session::Limits;
-use rustc_target::abi;
-use rustc_target::spec::PanicStrategy;
-
-use rustc_ast as ast;
-use rustc_attr as attr;
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
-use std::collections::BTreeMap;
+use rustc_target::abi;
+use rustc_target::spec::PanicStrategy;
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -106,6 +106,12 @@ impl<'tcx> TyCtxt<'tcx> {
 /// Helper for `TyCtxtEnsure` to avoid a closure.
 #[inline(always)]
 fn noop<T>(_: &T) {}
+
+/// Helper to ensure that queries only return `Copy` types.
+#[inline(always)]
+fn copy<T: Copy>(x: &T) -> T {
+    *x
+}
 
 macro_rules! query_helper_param_ty {
     (DefId) => { impl IntoQueryParam<DefId> };
@@ -205,7 +211,7 @@ macro_rules! define_callbacks {
 
         #[derive(Default)]
         pub struct QueryCaches<$tcx> {
-            $($(#[$attr])* pub $name: QueryCacheStore<query_storage::$name<$tcx>>,)*
+            $($(#[$attr])* pub $name: query_storage::$name<$tcx>,)*
         }
 
         impl<$tcx> TyCtxtEnsure<$tcx> {
@@ -217,12 +223,12 @@ macro_rules! define_callbacks {
 
                 let cached = try_get_cached(self.tcx, &self.tcx.query_caches.$name, &key, noop);
 
-                let lookup = match cached {
+                match cached {
                     Ok(()) => return,
-                    Err(lookup) => lookup,
-                };
+                    Err(()) => (),
+                }
 
-                self.tcx.queries.$name(self.tcx, DUMMY_SP, key, lookup, QueryMode::Ensure);
+                self.tcx.queries.$name(self.tcx, DUMMY_SP, key, QueryMode::Ensure);
             })*
         }
 
@@ -244,14 +250,14 @@ macro_rules! define_callbacks {
                 let key = key.into_query_param();
                 opt_remap_env_constness!([$($modifiers)*][key]);
 
-                let cached = try_get_cached(self.tcx, &self.tcx.query_caches.$name, &key, Clone::clone);
+                let cached = try_get_cached(self.tcx, &self.tcx.query_caches.$name, &key, copy);
 
-                let lookup = match cached {
+                match cached {
                     Ok(value) => return value,
-                    Err(lookup) => lookup,
-                };
+                    Err(()) => (),
+                }
 
-                self.tcx.queries.$name(self.tcx, self.span, key, lookup, QueryMode::Get).unwrap()
+                self.tcx.queries.$name(self.tcx, self.span, key, QueryMode::Get).unwrap()
             })*
         }
 
@@ -309,7 +315,6 @@ macro_rules! define_callbacks {
                 tcx: TyCtxt<$tcx>,
                 span: Span,
                 key: query_keys::$name<$tcx>,
-                lookup: QueryLookup,
                 mode: QueryMode,
             ) -> Option<query_stored::$name<$tcx>>;)*
         }
@@ -333,7 +338,7 @@ rustc_query_append! { [define_callbacks!][<'tcx>] }
 mod sealed {
     use super::{DefId, LocalDefId};
 
-    /// An analogue of the `Into` trait that's intended only for query paramaters.
+    /// An analogue of the `Into` trait that's intended only for query parameters.
     ///
     /// This exists to allow queries to accept either `DefId` or `LocalDefId` while requiring that the
     /// user call `to_def_id` to convert between them everywhere else.
@@ -345,6 +350,13 @@ mod sealed {
         #[inline(always)]
         fn into_query_param(self) -> P {
             self
+        }
+    }
+
+    impl<'a, P: Copy> IntoQueryParam<P> for &'a P {
+        #[inline(always)]
+        fn into_query_param(self) -> P {
+            *self
         }
     }
 

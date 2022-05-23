@@ -30,23 +30,19 @@
 //! solving a set of constraints. In contrast, the type inferencer assigns a value to each type
 //! variable only once, and it does so as soon as it can, so it is reasonable to ask what the type
 //! inferencer knows "so far".
-
+use super::InferCtxt;
+use rustc_data_structures::fx::FxHashMap;
+use rustc_middle::infer::unify_key::ToType;
 use rustc_middle::ty::fold::TypeFolder;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
-
-use rustc_data_structures::fx::FxHashMap;
-
 use std::collections::hash_map::Entry;
-
-use super::unify_key::ToType;
-use super::InferCtxt;
 
 pub struct TypeFreshener<'a, 'tcx> {
     infcx: &'a InferCtxt<'a, 'tcx>,
     ty_freshen_count: u32,
     const_freshen_count: u32,
     ty_freshen_map: FxHashMap<ty::InferTy, Ty<'tcx>>,
-    const_freshen_map: FxHashMap<ty::InferConst<'tcx>, &'tcx ty::Const<'tcx>>,
+    const_freshen_map: FxHashMap<ty::InferConst<'tcx>, ty::Const<'tcx>>,
     keep_static: bool,
 }
 
@@ -89,11 +85,11 @@ impl<'a, 'tcx> TypeFreshener<'a, 'tcx> {
 
     fn freshen_const<F>(
         &mut self,
-        opt_ct: Option<&'tcx ty::Const<'tcx>>,
+        opt_ct: Option<ty::Const<'tcx>>,
         key: ty::InferConst<'tcx>,
         freshener: F,
         ty: Ty<'tcx>,
-    ) -> &'tcx ty::Const<'tcx>
+    ) -> ty::Const<'tcx>
     where
         F: FnOnce(u32) -> ty::InferConst<'tcx>,
     {
@@ -146,7 +142,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
     }
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-        if !t.needs_infer() && !t.has_erasable_regions(self.tcx()) {
+        if !t.needs_infer() && !t.has_erasable_regions() {
             return t;
         }
 
@@ -221,8 +217,8 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
         }
     }
 
-    fn fold_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
-        match ct.val {
+    fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
+        match ct.val() {
             ty::ConstKind::Infer(ty::InferConst::Var(v)) => {
                 let opt_ct = self
                     .infcx
@@ -236,7 +232,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
                     opt_ct,
                     ty::InferConst::Var(v),
                     ty::InferConst::Fresh,
-                    ct.ty,
+                    ct.ty(),
                 );
             }
             ty::ConstKind::Infer(ty::InferConst::Fresh(i)) => {

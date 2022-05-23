@@ -3,5 +3,5 @@
 #![feature(raw_dylib)]
 //~^ WARNING: the feature `raw_dylib` is incomplete
 #[link(name = "foo", kind = "raw-dylib")]
-//~^ ERROR: `#[link(...)]` with `kind = "raw-dylib"` only supported on Windows
+//~^ ERROR: link kind `raw-dylib` is only supported on Windows targets
 extern "C" {}

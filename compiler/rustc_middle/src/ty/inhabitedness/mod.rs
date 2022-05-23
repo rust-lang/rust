@@ -3,7 +3,7 @@ pub use self::def_id_forest::DefIdForest;
 use crate::ty;
 use crate::ty::context::TyCtxt;
 use crate::ty::TyKind::*;
-use crate::ty::{AdtDef, FieldDef, Ty, TyS, VariantDef};
+use crate::ty::{AdtDef, FieldDef, Ty, VariantDef};
 use crate::ty::{AdtKind, Visibility};
 use crate::ty::{DefId, SubstsRef};
 
@@ -56,7 +56,9 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Checks whether a type is visibly uninhabited from a particular module.
     ///
     /// # Example
-    /// ```rust
+    /// ```
+    /// #![feature(never_type)]
+    /// # fn main() {}
     /// enum Void {}
     /// mod a {
     ///     pub mod b {
@@ -67,6 +69,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// }
     ///
     /// mod c {
+    ///     use super::Void;
     ///     pub struct AlsoSecretlyUninhabited {
     ///         _priv: Void,
     ///     }
@@ -84,7 +87,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// contain `Foo`.
     ///
     /// # Example
-    /// ```rust
+    /// ```ignore (illustrative)
     /// let foo_result: Result<T, Foo> = ... ;
     /// let Ok(t) = foo_result;
     /// ```
@@ -105,21 +108,21 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 }
 
-impl<'tcx> AdtDef {
+impl<'tcx> AdtDef<'tcx> {
     /// Calculates the forest of `DefId`s from which this ADT is visibly uninhabited.
     fn uninhabited_from(
-        &self,
+        self,
         tcx: TyCtxt<'tcx>,
         substs: SubstsRef<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-    ) -> DefIdForest {
+    ) -> DefIdForest<'tcx> {
         // Non-exhaustive ADTs from other crates are always considered inhabited.
-        if self.is_variant_list_non_exhaustive() && !self.did.is_local() {
+        if self.is_variant_list_non_exhaustive() && !self.did().is_local() {
             DefIdForest::empty()
         } else {
             DefIdForest::intersection(
                 tcx,
-                self.variants
+                self.variants()
                     .iter()
                     .map(|v| v.uninhabited_from(tcx, substs, self.adt_kind(), param_env)),
             )
@@ -135,7 +138,7 @@ impl<'tcx> VariantDef {
         substs: SubstsRef<'tcx>,
         adt_kind: AdtKind,
         param_env: ty::ParamEnv<'tcx>,
-    ) -> DefIdForest {
+    ) -> DefIdForest<'tcx> {
         let is_enum = match adt_kind {
             // For now, `union`s are never considered uninhabited.
             // The precise semantics of inhabitedness with respect to unions is currently undecided.
@@ -163,7 +166,7 @@ impl<'tcx> FieldDef {
         substs: SubstsRef<'tcx>,
         is_enum: bool,
         param_env: ty::ParamEnv<'tcx>,
-    ) -> DefIdForest {
+    ) -> DefIdForest<'tcx> {
         let data_uninhabitedness = move || self.ty(tcx, substs).uninhabited_from(tcx, param_env);
         // FIXME(canndrew): Currently enum fields are (incorrectly) stored with
         // `Visibility::Invisible` so we need to override `self.vis` if we're
@@ -184,13 +187,13 @@ impl<'tcx> FieldDef {
     }
 }
 
-impl<'tcx> TyS<'tcx> {
+impl<'tcx> Ty<'tcx> {
     /// Calculates the forest of `DefId`s from which this type is visibly uninhabited.
     fn uninhabited_from(
-        &'tcx self,
+        self,
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-    ) -> DefIdForest {
+    ) -> DefIdForest<'tcx> {
         tcx.type_uninhabited_from(param_env.and(self))
     }
 }
@@ -199,18 +202,17 @@ impl<'tcx> TyS<'tcx> {
 pub(crate) fn type_uninhabited_from<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,
-) -> DefIdForest {
+) -> DefIdForest<'tcx> {
     let ty = key.value;
     let param_env = key.param_env;
     match *ty.kind() {
         Adt(def, substs) => def.uninhabited_from(tcx, substs, param_env),
 
-        Never => DefIdForest::full(tcx),
+        Never => DefIdForest::full(),
 
-        Tuple(ref tys) => DefIdForest::union(
-            tcx,
-            tys.iter().map(|ty| ty.expect_ty().uninhabited_from(tcx, param_env)),
-        ),
+        Tuple(ref tys) => {
+            DefIdForest::union(tcx, tys.iter().map(|ty| ty.uninhabited_from(tcx, param_env)))
+        }
 
         Array(ty, len) => match len.try_eval_usize(tcx, param_env) {
             Some(0) | None => DefIdForest::empty(),

@@ -7,6 +7,5 @@ edition = "2021"
 doctest = false
 
 [dependencies]
-tracing = "0.1"
 rustc_span = { path = "../rustc_span" }
 rustc_ast = { path = "../rustc_ast" }

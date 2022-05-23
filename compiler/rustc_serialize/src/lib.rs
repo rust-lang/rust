@@ -15,6 +15,7 @@ Core encoding and decoding interfaces.
 #![feature(min_specialization)]
 #![feature(core_intrinsics)]
 #![feature(maybe_uninit_slice)]
+#![feature(let_else)]
 #![feature(new_uninit)]
 #![cfg_attr(test, feature(test))]
 #![allow(rustc::internal)]

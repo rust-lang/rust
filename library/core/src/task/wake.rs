@@ -43,6 +43,22 @@ impl RawWaker {
     pub const fn new(data: *const (), vtable: &'static RawWakerVTable) -> RawWaker {
         RawWaker { data, vtable }
     }
+
+    /// Get the `data` pointer used to create this `RawWaker`.
+    #[inline]
+    #[must_use]
+    #[unstable(feature = "waker_getters", issue = "87021")]
+    pub fn data(&self) -> *const () {
+        self.data
+    }
+
+    /// Get the `vtable` pointer used to create this `RawWaker`.
+    #[inline]
+    #[must_use]
+    #[unstable(feature = "waker_getters", issue = "87021")]
+    pub fn vtable(&self) -> &'static RawWakerVTable {
+        self.vtable
+    }
 }
 
 /// A virtual function pointer table (vtable) that specifies the behavior
@@ -131,7 +147,6 @@ impl RawWakerVTable {
     #[rustc_promotable]
     #[stable(feature = "futures_api", since = "1.36.0")]
     #[rustc_const_stable(feature = "futures_api", since = "1.36.0")]
-    #[rustc_allow_const_fn_unstable(const_fn_fn_ptr_basics)]
     pub const fn new(
         clone: unsafe fn(*const ()) -> RawWaker,
         wake: unsafe fn(*const ()),
@@ -259,6 +274,14 @@ impl Waker {
     #[stable(feature = "futures_api", since = "1.36.0")]
     pub unsafe fn from_raw(waker: RawWaker) -> Waker {
         Waker { waker }
+    }
+
+    /// Get a reference to the underlying [`RawWaker`].
+    #[inline]
+    #[must_use]
+    #[unstable(feature = "waker_getters", issue = "87021")]
+    pub fn as_raw(&self) -> &RawWaker {
+        &self.waker
     }
 }
 

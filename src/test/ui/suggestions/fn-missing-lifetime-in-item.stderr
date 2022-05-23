@@ -5,14 +5,14 @@ LL | struct S1<F: Fn(&i32, &i32) -> &'a i32>(F);
    |                                 ^^ undeclared lifetime
    |
    = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
-help: consider introducing lifetime `'a` here
-   |
-LL | struct S1<'a, F: Fn(&i32, &i32) -> &'a i32>(F);
-   |           +++
 help: consider making the bound lifetime-generic with a new `'a` lifetime
    |
 LL | struct S1<F: for<'a> Fn(&i32, &i32) -> &'a i32>(F);
    |              +++++++
+help: consider introducing lifetime `'a` here
+   |
+LL | struct S1<'a, F: Fn(&i32, &i32) -> &'a i32>(F);
+   |           +++
 
 error[E0106]: missing lifetime specifier
   --> $DIR/fn-missing-lifetime-in-item.rs:2:32

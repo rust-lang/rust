@@ -1,8 +1,11 @@
-error[E0015]: calls in constants are limited to constant functions, tuple structs and tuple variants
+error[E0015]: cannot call non-const closure in constants
   --> $DIR/issue-28113.rs:4:5
    |
 LL |     || -> u8 { 5 }()
    |     ^^^^^^^^^^^^^^^^
+   |
+   = note: closures need an RFC before allowed to be called in constants
+   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
 
 error: aborting due to previous error
 

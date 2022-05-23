@@ -4,10 +4,10 @@ error: expected identifier, found reserved keyword `typeof`
 LL |     let typeof = ();
    |         ^^^^^^ expected identifier, found reserved keyword
    |
-help: you can escape reserved keywords to use them as identifiers
+help: escape `typeof` to use it as an identifier
    |
 LL |     let r#typeof = ();
-   |         ~~~~~~~~
+   |         ++
 
 error: aborting due to previous error
 

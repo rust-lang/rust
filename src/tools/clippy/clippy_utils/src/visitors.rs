@@ -1,12 +1,15 @@
-use crate::path_to_local_id;
+use crate::{get_enclosing_block, path_to_local_id};
+use core::ops::ControlFlow;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::intravisit::{self, walk_block, walk_expr, NestedVisitorMap, Visitor};
+use rustc_hir::intravisit::{self, walk_block, walk_expr, Visitor};
 use rustc_hir::{
-    Arm, Block, BlockCheckMode, Body, BodyId, Expr, ExprKind, HirId, ItemId, ItemKind, Stmt, UnOp, Unsafety,
+    Arm, Block, BlockCheckMode, Body, BodyId, Expr, ExprKind, HirId, ItemId, ItemKind, Stmt, UnOp, UnsafeSource,
+    Unsafety,
 };
 use rustc_lint::LateContext;
 use rustc_middle::hir::map::Map;
+use rustc_middle::hir::nested_filter;
 use rustc_middle::ty;
 
 /// Convenience method for creating a `Visitor` with just `visit_expr` overridden and nested
@@ -19,9 +22,9 @@ pub fn expr_visitor<'tcx>(cx: &LateContext<'tcx>, f: impl FnMut(&'tcx Expr<'tcx>
         f: F,
     }
     impl<'tcx, F: FnMut(&'tcx Expr<'tcx>) -> bool> Visitor<'tcx> for V<'tcx, F> {
-        type Map = Map<'tcx>;
-        fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-            NestedVisitorMap::OnlyBodies(self.hir)
+        type NestedFilter = nested_filter::OnlyBodies;
+        fn nested_visit_map(&mut self) -> Self::Map {
+            self.hir
         }
 
         fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
@@ -40,11 +43,6 @@ pub fn expr_visitor<'tcx>(cx: &LateContext<'tcx>, f: impl FnMut(&'tcx Expr<'tcx>
 pub fn expr_visitor_no_bodies<'tcx>(f: impl FnMut(&'tcx Expr<'tcx>) -> bool) -> impl Visitor<'tcx> {
     struct V<F>(F);
     impl<'tcx, F: FnMut(&'tcx Expr<'tcx>) -> bool> Visitor<'tcx> for V<F> {
-        type Map = intravisit::ErasedMap<'tcx>;
-        fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-            NestedVisitorMap::None
-        }
-
         fn visit_expr(&mut self, e: &'tcx Expr<'_>) {
             if (self.0)(e) {
                 walk_expr(self, e);
@@ -113,12 +111,6 @@ where
     }
 
     impl<'hir, F: FnMut(&'hir hir::Expr<'hir>) -> bool> intravisit::Visitor<'hir> for RetFinder<F> {
-        type Map = Map<'hir>;
-
-        fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
-            intravisit::NestedVisitorMap::None
-        }
-
         fn visit_stmt(&mut self, stmt: &'hir hir::Stmt<'_>) {
             intravisit::walk_stmt(&mut *self.inside_stmt(true), stmt);
         }
@@ -237,9 +229,9 @@ pub fn is_const_evaluatable<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> 
         is_const: bool,
     }
     impl<'tcx> Visitor<'tcx> for V<'_, 'tcx> {
-        type Map = Map<'tcx>;
-        fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-            NestedVisitorMap::OnlyBodies(self.cx.tcx.hir())
+        type NestedFilter = nested_filter::OnlyBodies;
+        fn nested_visit_map(&mut self) -> Self::Map {
+            self.cx.tcx.hir()
         }
 
         fn visit_expr(&mut self, e: &'tcx Expr<'_>) {
@@ -327,9 +319,9 @@ pub fn is_expr_unsafe<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> bool {
         is_unsafe: bool,
     }
     impl<'tcx> Visitor<'tcx> for V<'_, 'tcx> {
-        type Map = Map<'tcx>;
-        fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-            NestedVisitorMap::OnlyBodies(self.cx.tcx.hir())
+        type NestedFilter = nested_filter::OnlyBodies;
+        fn nested_visit_map(&mut self) -> Self::Map {
+            self.cx.tcx.hir()
         }
         fn visit_expr(&mut self, e: &'tcx Expr<'_>) {
             if self.is_unsafe {
@@ -379,4 +371,126 @@ pub fn is_expr_unsafe<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> bool {
     let mut v = V { cx, is_unsafe: false };
     v.visit_expr(e);
     v.is_unsafe
+}
+
+/// Checks if the given expression contains an unsafe block
+pub fn contains_unsafe_block<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'tcx>) -> bool {
+    struct V<'cx, 'tcx> {
+        cx: &'cx LateContext<'tcx>,
+        found_unsafe: bool,
+    }
+    impl<'tcx> Visitor<'tcx> for V<'_, 'tcx> {
+        type NestedFilter = nested_filter::OnlyBodies;
+        fn nested_visit_map(&mut self) -> Self::Map {
+            self.cx.tcx.hir()
+        }
+
+        fn visit_block(&mut self, b: &'tcx Block<'_>) {
+            if self.found_unsafe {
+                return;
+            }
+            if b.rules == BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided) {
+                self.found_unsafe = true;
+                return;
+            }
+            walk_block(self, b);
+        }
+    }
+    let mut v = V {
+        cx,
+        found_unsafe: false,
+    };
+    v.visit_expr(e);
+    v.found_unsafe
+}
+
+/// Runs the given function for each sub-expression producing the final value consumed by the parent
+/// of the give expression.
+///
+/// e.g. for the following expression
+/// ```rust,ignore
+/// if foo {
+///     f(0)
+/// } else {
+///     1 + 1
+/// }
+/// ```
+/// this will pass both `f(0)` and `1+1` to the given function.
+pub fn for_each_value_source<'tcx, B>(
+    e: &'tcx Expr<'tcx>,
+    f: &mut impl FnMut(&'tcx Expr<'tcx>) -> ControlFlow<B>,
+) -> ControlFlow<B> {
+    match e.kind {
+        ExprKind::Block(Block { expr: Some(e), .. }, _) => for_each_value_source(e, f),
+        ExprKind::Match(_, arms, _) => {
+            for arm in arms {
+                for_each_value_source(arm.body, f)?;
+            }
+            ControlFlow::Continue(())
+        },
+        ExprKind::If(_, if_expr, Some(else_expr)) => {
+            for_each_value_source(if_expr, f)?;
+            for_each_value_source(else_expr, f)
+        },
+        ExprKind::DropTemps(e) => for_each_value_source(e, f),
+        _ => f(e),
+    }
+}
+
+/// Runs the given function for each path expression referencing the given local which occur after
+/// the given expression.
+pub fn for_each_local_use_after_expr<'tcx, B>(
+    cx: &LateContext<'tcx>,
+    local_id: HirId,
+    expr_id: HirId,
+    f: impl FnMut(&'tcx Expr<'tcx>) -> ControlFlow<B>,
+) -> ControlFlow<B> {
+    struct V<'cx, 'tcx, F, B> {
+        cx: &'cx LateContext<'tcx>,
+        local_id: HirId,
+        expr_id: HirId,
+        found: bool,
+        res: ControlFlow<B>,
+        f: F,
+    }
+    impl<'cx, 'tcx, F: FnMut(&'tcx Expr<'tcx>) -> ControlFlow<B>, B> Visitor<'tcx> for V<'cx, 'tcx, F, B> {
+        type NestedFilter = nested_filter::OnlyBodies;
+        fn nested_visit_map(&mut self) -> Self::Map {
+            self.cx.tcx.hir()
+        }
+
+        fn visit_expr(&mut self, e: &'tcx Expr<'tcx>) {
+            if !self.found {
+                if e.hir_id == self.expr_id {
+                    self.found = true;
+                } else {
+                    walk_expr(self, e);
+                }
+                return;
+            }
+            if self.res.is_break() {
+                return;
+            }
+            if path_to_local_id(e, self.local_id) {
+                self.res = (self.f)(e);
+            } else {
+                walk_expr(self, e);
+            }
+        }
+    }
+
+    if let Some(b) = get_enclosing_block(cx, local_id) {
+        let mut v = V {
+            cx,
+            local_id,
+            expr_id,
+            found: false,
+            res: ControlFlow::Continue(()),
+            f,
+        };
+        v.visit_block(b);
+        v.res
+    } else {
+        ControlFlow::Continue(())
+    }
 }

@@ -12,7 +12,7 @@ declare_clippy_lint! {
     ///
     /// ### Why is this bad?
     /// Apart from special setups (which we could detect following attributes like #![no_std]),
-    /// recursing into main() seems like an unintuitive antipattern we should be able to detect.
+    /// recursing into main() seems like an unintuitive anti-pattern we should be able to detect.
     ///
     /// ### Example
     /// ```no_run

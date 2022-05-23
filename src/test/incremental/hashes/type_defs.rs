@@ -24,7 +24,7 @@
 type ChangePrimitiveType = i32;
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="hir_owner")]
+#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes")]
 #[rustc_clean(cfg="cfail3")]
 type ChangePrimitiveType = i64;
 
@@ -35,7 +35,7 @@ type ChangePrimitiveType = i64;
 type ChangeMutability = &'static i32;
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="hir_owner")]
+#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes")]
 #[rustc_clean(cfg="cfail3")]
 type ChangeMutability = &'static mut i32;
 
@@ -60,7 +60,7 @@ struct Struct2;
 type ChangeTypeStruct = Struct1;
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="hir_owner")]
+#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes")]
 #[rustc_clean(cfg="cfail3")]
 type ChangeTypeStruct = Struct2;
 
@@ -71,7 +71,7 @@ type ChangeTypeStruct = Struct2;
 type ChangeTypeTuple = (u32, u64);
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="hir_owner")]
+#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes")]
 #[rustc_clean(cfg="cfail3")]
 type ChangeTypeTuple = (u32, i64);
 
@@ -91,7 +91,7 @@ enum Enum2 {
 type ChangeTypeEnum = Enum1;
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="hir_owner")]
+#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes")]
 #[rustc_clean(cfg="cfail3")]
 type ChangeTypeEnum = Enum2;
 
@@ -102,7 +102,7 @@ type ChangeTypeEnum = Enum2;
 type AddTupleField = (i32, i64);
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="hir_owner")]
+#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes")]
 #[rustc_clean(cfg="cfail3")]
 type AddTupleField = (i32, i64, i16);
 
@@ -113,7 +113,7 @@ type AddTupleField = (i32, i64, i16);
 type ChangeNestedTupleField = (i32, (i64, i16));
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="hir_owner")]
+#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes")]
 #[rustc_clean(cfg="cfail3")]
 type ChangeNestedTupleField = (i32, (i64, i8));
 

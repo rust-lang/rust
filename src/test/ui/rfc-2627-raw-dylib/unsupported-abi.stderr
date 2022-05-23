@@ -1,5 +1,5 @@
 error: ABI not supported by `#[link(kind = "raw-dylib")]` on this architecture
-  --> $DIR/unsupported-abi.rs:7:5
+  --> $DIR/unsupported-abi.rs:8:5
    |
 LL |     fn f(x: i32);
    |     ^^^^^^^^^^^^^

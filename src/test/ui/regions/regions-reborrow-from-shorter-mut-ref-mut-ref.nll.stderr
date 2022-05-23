@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/regions-reborrow-from-shorter-mut-ref-mut-ref.rs:4:5
+  --> $DIR/regions-reborrow-from-shorter-mut-ref-mut-ref.rs:8:5
    |
 LL | fn copy_borrowed_ptr<'a, 'b, 'c>(p: &'a mut &'b mut &'c mut isize) -> &'b mut isize {
    |                      --  -- lifetime `'b` defined here

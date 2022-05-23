@@ -73,4 +73,9 @@ trait T {}
 //~^ ERROR incompatible link kind for `f`
 //~| NOTE this link resolved
 //~| HELP add parentheses
+
+/// Link to [fn@std]
+//~^ ERROR unresolved link to `std`
+//~| NOTE this link resolves to the crate `std`
+//~| HELP to link to the crate, prefix with `mod@`
 pub fn f() {}

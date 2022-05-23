@@ -1,8 +1,5 @@
-#![allow(incomplete_features)]
-#![feature(native_link_modifiers)]
-
-#[link(name = "foo", modifiers = "+bundle")]
-//~^ ERROR: `#[link(modifiers="bundle")]` is unstable
+#[link(name = "foo", kind = "static", modifiers = "+bundle")]
+//~^ ERROR: linking modifier `bundle` is unstable
 extern "C" {}
 
 fn main() {}

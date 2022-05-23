@@ -5,7 +5,7 @@ edition = "2021"
 autobins = false
 
 [dependencies]
-cargo_metadata = "0.12"
+cargo_metadata = "0.14"
 regex = "1"
 lazy_static = "1"
 walkdir = "2"

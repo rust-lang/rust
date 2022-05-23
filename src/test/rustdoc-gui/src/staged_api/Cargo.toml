@@ -1,0 +1,11 @@
+[package]
+name = "staged_api"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+path = "lib.rs"
+
+[features]
+default = ["some_feature"]
+some_feature = []

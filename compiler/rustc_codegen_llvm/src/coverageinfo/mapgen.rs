@@ -9,6 +9,7 @@ use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefIdSet;
 use rustc_llvm::RustString;
+use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::coverage::CodeRegion;
 use rustc_middle::ty::TyCtxt;
@@ -38,7 +39,7 @@ pub fn finalize<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) {
     // LLVM 12.
     let version = coverageinfo::mapping_version();
     if version < 4 {
-        tcx.sess.fatal("rustc option `-Z instrument-coverage` requires LLVM 12 or higher.");
+        tcx.sess.fatal("rustc option `-C instrument-coverage` requires LLVM 12 or higher.");
     }
 
     debug!("Generating coverage map for CodegenUnit: `{}`", cx.codegen_unit.name());
@@ -76,10 +77,18 @@ pub fn finalize<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) {
         let coverage_mapping_buffer = llvm::build_byte_buffer(|coverage_mapping_buffer| {
             mapgen.write_coverage_mapping(expressions, counter_regions, coverage_mapping_buffer);
         });
-        debug_assert!(
-            !coverage_mapping_buffer.is_empty(),
-            "Every `FunctionCoverage` should have at least one counter"
-        );
+
+        if coverage_mapping_buffer.is_empty() {
+            if function_coverage.is_used() {
+                bug!(
+                    "A used function should have had coverage mapping data but did not: {}",
+                    mangled_function_name
+                );
+            } else {
+                debug!("unused function had no coverage mapping data: {}", mangled_function_name);
+                continue;
+            }
+        }
 
         function_data.push((mangled_function_name, source_hash, is_used, coverage_mapping_buffer));
     }
@@ -265,7 +274,7 @@ fn save_function_record(
 /// (functions referenced by other "used" or public items). Any other functions considered unused,
 /// or "Unreachable", were still parsed and processed through the MIR stage, but were not
 /// codegenned. (Note that `-Clink-dead-code` can force some unused code to be codegenned, but
-/// that flag is known to cause other errors, when combined with `-Z instrument-coverage`; and
+/// that flag is known to cause other errors, when combined with `-C instrument-coverage`; and
 /// `-Clink-dead-code` will not generate code for unused generic functions.)
 ///
 /// We can find the unused functions (including generic functions) by the set difference of all MIR

@@ -151,4 +151,11 @@ enum North {
     NoRight,
 }
 
+// #8324
+enum Phase {
+    PreLookup,
+    Lookup,
+    PostLookup,
+}
+
 fn main() {}

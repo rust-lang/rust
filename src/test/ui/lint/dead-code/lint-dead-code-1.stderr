@@ -1,20 +1,14 @@
-error: struct is never constructed: `Bar`
-  --> $DIR/lint-dead-code-1.rs:12:16
+error: static is never used: `priv_static`
+  --> $DIR/lint-dead-code-1.rs:20:1
    |
-LL |     pub struct Bar;
-   |                ^^^
+LL | static priv_static: isize = 0;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: the lint level is defined here
   --> $DIR/lint-dead-code-1.rs:5:9
    |
 LL | #![deny(dead_code)]
    |         ^^^^^^^^^
-
-error: static is never used: `priv_static`
-  --> $DIR/lint-dead-code-1.rs:20:1
-   |
-LL | static priv_static: isize = 0;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: constant is never used: `priv_const`
   --> $DIR/lint-dead-code-1.rs:27:1
@@ -63,6 +57,12 @@ error: function is never used: `baz`
    |
 LL | fn baz() -> impl Copy {
    |    ^^^
+
+error: struct is never constructed: `Bar`
+  --> $DIR/lint-dead-code-1.rs:12:16
+   |
+LL |     pub struct Bar;
+   |                ^^^
 
 error: aborting due to 10 previous errors
 

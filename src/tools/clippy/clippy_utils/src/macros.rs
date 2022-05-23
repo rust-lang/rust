@@ -9,9 +9,36 @@ use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, Expr, ExprKind, HirId, Node, QPath};
 use rustc_lint::LateContext;
 use rustc_span::def_id::DefId;
-use rustc_span::hygiene::{MacroKind, SyntaxContext};
+use rustc_span::hygiene::{self, MacroKind, SyntaxContext};
 use rustc_span::{sym, ExpnData, ExpnId, ExpnKind, Span, Symbol};
 use std::ops::ControlFlow;
+
+const FORMAT_MACRO_DIAG_ITEMS: &[Symbol] = &[
+    sym::assert_eq_macro,
+    sym::assert_macro,
+    sym::assert_ne_macro,
+    sym::debug_assert_eq_macro,
+    sym::debug_assert_macro,
+    sym::debug_assert_ne_macro,
+    sym::eprint_macro,
+    sym::eprintln_macro,
+    sym::format_args_macro,
+    sym::format_macro,
+    sym::print_macro,
+    sym::println_macro,
+    sym::std_panic_macro,
+    sym::write_macro,
+    sym::writeln_macro,
+];
+
+/// Returns true if a given Macro `DefId` is a format macro (e.g. `println!`)
+pub fn is_format_macro(cx: &LateContext<'_>, macro_def_id: DefId) -> bool {
+    if let Some(name) = cx.tcx.get_diagnostic_name(macro_def_id) {
+        FORMAT_MACRO_DIAG_ITEMS.contains(&name)
+    } else {
+        false
+    }
+}
 
 /// A macro call, like `vec![1, 2, 3]`.
 ///
@@ -306,6 +333,7 @@ fn is_assert_arg(cx: &LateContext<'_>, expr: &Expr<'_>, assert_expn: ExpnId) -> 
 }
 
 /// A parsed `format_args!` expansion
+#[derive(Debug)]
 pub struct FormatArgsExpn<'tcx> {
     /// Span of the first argument, the format string
     pub format_string_span: Span,
@@ -339,15 +367,13 @@ impl<'tcx> FormatArgsExpn<'tcx> {
         expr_visitor_no_bodies(|e| {
             // if we're still inside of the macro definition...
             if e.span.ctxt() == expr.span.ctxt() {
-                // ArgumnetV1::new(<value>, <format_trait>::fmt)
+                // ArgumentV1::new_<format_trait>(<value>)
                 if_chain! {
-                    if let ExprKind::Call(callee, [val, fmt_path]) = e.kind;
+                    if let ExprKind::Call(callee, [val]) = e.kind;
                     if let ExprKind::Path(QPath::TypeRelative(ty, seg)) = callee.kind;
-                    if seg.ident.name == sym::new;
                     if let hir::TyKind::Path(QPath::Resolved(_, path)) = ty.kind;
                     if path.segments.last().unwrap().ident.name == sym::ArgumentV1;
-                    if let ExprKind::Path(QPath::Resolved(_, path)) = fmt_path.kind;
-                    if let [.., fmt_trait, _fmt] = path.segments;
+                    if seg.ident.name.as_str().starts_with("new_");
                     then {
                         let val_idx = if_chain! {
                             if val.span.ctxt() == expr.span.ctxt();
@@ -361,7 +387,19 @@ impl<'tcx> FormatArgsExpn<'tcx> {
                                 formatters.len()
                             }
                         };
-                        formatters.push((val_idx, fmt_trait.ident.name));
+                        let fmt_trait = match seg.ident.name.as_str() {
+                            "new_display" => "Display",
+                            "new_debug" => "Debug",
+                            "new_lower_exp" => "LowerExp",
+                            "new_upper_exp" => "UpperExp",
+                            "new_octal" => "Octal",
+                            "new_pointer" => "Pointer",
+                            "new_binary" => "Binary",
+                            "new_lower_hex" => "LowerHex",
+                            "new_upper_hex" => "UpperHex",
+                            _ => unreachable!(),
+                        };
+                        formatters.push((val_idx, Symbol::intern(fmt_trait)));
                     }
                 }
                 if let ExprKind::Struct(QPath::Resolved(_, path), ..) = e.kind {
@@ -452,7 +490,11 @@ impl<'tcx> FormatArgsExpn<'tcx> {
                     if let Ok(i) = usize::try_from(position);
                     if let Some(&(j, format_trait)) = self.formatters.get(i);
                     then {
-                        Some(FormatArgsArg { value: self.value_args[j], format_trait, spec: Some(spec) })
+                        Some(FormatArgsArg {
+                            value: self.value_args[j],
+                            format_trait,
+                            spec: Some(spec),
+                        })
                     } else {
                         None
                     }
@@ -461,11 +503,13 @@ impl<'tcx> FormatArgsExpn<'tcx> {
             .collect()
     }
 
-    /// Span of all inputs
+    /// Source callsite span of all inputs
     pub fn inputs_span(&self) -> Span {
         match *self.value_args {
             [] => self.format_string_span,
-            [.., last] => self.format_string_span.to(last.span),
+            [.., last] => self
+                .format_string_span
+                .to(hygiene::walk_chain(last.span, self.format_string_span.ctxt())),
         }
     }
 }

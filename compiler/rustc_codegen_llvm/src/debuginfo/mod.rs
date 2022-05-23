@@ -2,7 +2,7 @@
 
 use rustc_codegen_ssa::mir::debuginfo::VariableKind::*;
 
-use self::metadata::{file_metadata, type_metadata, TypeMap};
+use self::metadata::{file_metadata, type_di_node};
 use self::metadata::{UNKNOWN_COLUMN_NUMBER, UNKNOWN_LINE_NUMBER};
 use self::namespace::mangled_name_of_instance;
 use self::utils::{create_DIArray, is_node_local_to_unit, DIB};
@@ -20,24 +20,25 @@ use crate::value::Value;
 use rustc_codegen_ssa::debuginfo::type_names;
 use rustc_codegen_ssa::mir::debuginfo::{DebugScope, FunctionDebugContext, VariableKind};
 use rustc_codegen_ssa::traits::*;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
 use rustc_hir::def_id::{DefId, DefIdMap};
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir;
-use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
+use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
 use rustc_middle::ty::{self, Instance, ParamEnv, Ty, TypeFoldable};
 use rustc_session::config::{self, DebugInfo};
 use rustc_session::Session;
 use rustc_span::symbol::Symbol;
-use rustc_span::{self, BytePos, Pos, SourceFile, SourceFileAndLine, Span};
-use rustc_target::abi::{Primitive, Size};
+use rustc_span::{self, BytePos, Pos, SourceFile, SourceFileAndLine, SourceFileHash, Span};
+use rustc_target::abi::Size;
 
 use libc::c_uint;
 use smallvec::SmallVec;
 use std::cell::RefCell;
 use std::iter;
+use std::lazy::OnceCell;
 use tracing::debug;
 
 mod create_scope_map;
@@ -47,7 +48,7 @@ mod namespace;
 mod utils;
 
 pub use self::create_scope_map::compute_mir_scopes;
-pub use self::metadata::create_global_var_metadata;
+pub use self::metadata::build_global_var_di_node;
 pub use self::metadata::extend_scope_to_file;
 
 #[allow(non_upper_case_globals)]
@@ -56,22 +57,18 @@ const DW_TAG_auto_variable: c_uint = 0x100;
 const DW_TAG_arg_variable: c_uint = 0x101;
 
 /// A context object for maintaining all state needed by the debuginfo module.
-pub struct CrateDebugContext<'a, 'tcx> {
-    llcontext: &'a llvm::Context,
-    llmod: &'a llvm::Module,
-    builder: &'a mut DIBuilder<'a>,
-    created_files: RefCell<FxHashMap<(Option<String>, Option<String>), &'a DIFile>>,
-    created_enum_disr_types: RefCell<FxHashMap<(DefId, Primitive), &'a DIType>>,
+pub struct CodegenUnitDebugContext<'ll, 'tcx> {
+    llcontext: &'ll llvm::Context,
+    llmod: &'ll llvm::Module,
+    builder: &'ll mut DIBuilder<'ll>,
+    created_files: RefCell<FxHashMap<Option<(u128, SourceFileHash)>, &'ll DIFile>>,
 
-    type_map: RefCell<TypeMap<'a, 'tcx>>,
-    namespace_map: RefCell<DefIdMap<&'a DIScope>>,
-
-    // This collection is used to assert that composite types (structs, enums,
-    // ...) have their members only set once:
-    composite_types_completed: RefCell<FxHashSet<&'a DIType>>,
+    type_map: metadata::TypeMap<'ll, 'tcx>,
+    namespace_map: RefCell<DefIdMap<&'ll DIScope>>,
+    recursion_marker_type: OnceCell<&'ll DIType>,
 }
 
-impl Drop for CrateDebugContext<'_, '_> {
+impl Drop for CodegenUnitDebugContext<'_, '_> {
     fn drop(&mut self) {
         unsafe {
             llvm::LLVMRustDIBuilderDispose(&mut *(self.builder as *mut _));
@@ -79,21 +76,20 @@ impl Drop for CrateDebugContext<'_, '_> {
     }
 }
 
-impl<'a, 'tcx> CrateDebugContext<'a, 'tcx> {
-    pub fn new(llmod: &'a llvm::Module) -> Self {
-        debug!("CrateDebugContext::new");
+impl<'ll, 'tcx> CodegenUnitDebugContext<'ll, 'tcx> {
+    pub fn new(llmod: &'ll llvm::Module) -> Self {
+        debug!("CodegenUnitDebugContext::new");
         let builder = unsafe { llvm::LLVMRustDIBuilderCreate(llmod) };
         // DIBuilder inherits context from the module, so we'd better use the same one
         let llcontext = unsafe { llvm::LLVMGetModuleContext(llmod) };
-        CrateDebugContext {
+        CodegenUnitDebugContext {
             llcontext,
             llmod,
             builder,
             created_files: Default::default(),
-            created_enum_disr_types: Default::default(),
             type_map: Default::default(),
             namespace_map: RefCell::new(Default::default()),
-            composite_types_completed: Default::default(),
+            recursion_marker_type: OnceCell::new(),
         }
     }
 
@@ -108,18 +104,29 @@ impl<'a, 'tcx> CrateDebugContext<'a, 'tcx> {
             // This can be overridden using --llvm-opts -dwarf-version,N.
             // Android has the same issue (#22398)
             if let Some(version) = sess.target.dwarf_version {
-                llvm::LLVMRustAddModuleFlag(self.llmod, "Dwarf Version\0".as_ptr().cast(), version)
+                llvm::LLVMRustAddModuleFlag(
+                    self.llmod,
+                    llvm::LLVMModFlagBehavior::Warning,
+                    "Dwarf Version\0".as_ptr().cast(),
+                    version,
+                )
             }
 
             // Indicate that we want CodeView debug information on MSVC
             if sess.target.is_like_msvc {
-                llvm::LLVMRustAddModuleFlag(self.llmod, "CodeView\0".as_ptr().cast(), 1)
+                llvm::LLVMRustAddModuleFlag(
+                    self.llmod,
+                    llvm::LLVMModFlagBehavior::Warning,
+                    "CodeView\0".as_ptr().cast(),
+                    1,
+                )
             }
 
             // Prevent bitcode readers from deleting the debug info.
             let ptr = "Debug Info Version\0".as_ptr();
             llvm::LLVMRustAddModuleFlag(
                 self.llmod,
+                llvm::LLVMModFlagBehavior::Warning,
                 ptr.cast(),
                 llvm::LLVMRustDebugMetadataVersion(),
             );
@@ -279,9 +286,8 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         }
 
         // Initialize fn debug context (including scopes).
-        // FIXME(eddyb) figure out a way to not need `Option` for `dbg_scope`.
         let empty_scope = DebugScope {
-            dbg_scope: None,
+            dbg_scope: self.dbg_scope_fn(instance, fn_abi, Some(llfn)),
             inlined_at: None,
             file_start_pos: BytePos(0),
             file_end_pos: BytePos(0),
@@ -290,13 +296,7 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             FunctionDebugContext { scopes: IndexVec::from_elem(empty_scope, &mir.source_scopes) };
 
         // Fill in all the scopes, with the information from the MIR body.
-        compute_mir_scopes(
-            self,
-            instance,
-            mir,
-            self.dbg_scope_fn(instance, fn_abi, Some(llfn)),
-            &mut fn_debug_context,
-        );
+        compute_mir_scopes(self, instance, mir, &mut fn_debug_context);
 
         Some(fn_debug_context)
     }
@@ -307,9 +307,11 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
         maybe_definition_llfn: Option<&'ll Value>,
     ) -> &'ll DIScope {
+        let tcx = self.tcx;
+
         let def_id = instance.def_id();
         let containing_scope = get_containing_scope(self, instance);
-        let span = self.tcx.def_span(def_id);
+        let span = tcx.def_span(def_id);
         let loc = self.lookup_debug_loc(span.lo());
         let file_metadata = file_metadata(self, &loc.file);
 
@@ -319,16 +321,24 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         };
 
         let mut name = String::new();
-        type_names::push_item_name(self.tcx(), def_id, false, &mut name);
+        type_names::push_item_name(tcx, def_id, false, &mut name);
 
         // Find the enclosing function, in case this is a closure.
-        let enclosing_fn_def_id = self.tcx().typeck_root_def_id(def_id);
+        let enclosing_fn_def_id = tcx.typeck_root_def_id(def_id);
 
-        // Get_template_parameters() will append a `<...>` clause to the function
-        // name if necessary.
-        let generics = self.tcx().generics_of(enclosing_fn_def_id);
-        let substs = instance.substs.truncate_to(self.tcx(), generics);
-        let template_parameters = get_template_parameters(self, generics, substs, &mut name);
+        // We look up the generics of the enclosing function and truncate the substs
+        // to their length in order to cut off extra stuff that might be in there for
+        // closures or generators.
+        let generics = tcx.generics_of(enclosing_fn_def_id);
+        let substs = instance.substs.truncate_to(tcx, generics);
+
+        type_names::push_generic_params(
+            tcx,
+            tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), substs),
+            &mut name,
+        );
+
+        let template_parameters = get_template_parameters(self, generics, substs);
 
         let linkage_name = &mangled_name_of_instance(self, instance).name;
         // Omit the linkage_name if it is the same as subprogram name.
@@ -350,7 +360,7 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         if self.sess().opts.optimize != config::OptLevel::No {
             spflags |= DISPFlags::SPFlagOptimized;
         }
-        if let Some((id, _)) = self.tcx.entry_fn(()) {
+        if let Some((id, _)) = tcx.entry_fn(()) {
             if id == def_id {
                 spflags |= DISPFlags::SPFlagMainSubprogram;
             }
@@ -390,7 +400,7 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             signature.push(if fn_abi.ret.is_ignore() {
                 None
             } else {
-                Some(type_metadata(cx, fn_abi.ret.layout.ty, rustc_span::DUMMY_SP))
+                Some(type_di_node(cx, fn_abi.ret.layout.ty))
             });
 
             // Arguments types
@@ -409,21 +419,17 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                     let t = arg.layout.ty;
                     let t = match t.kind() {
                         ty::Array(ct, _)
-                            if (*ct == cx.tcx.types.u8) || cx.layout_of(ct).is_zst() =>
+                            if (*ct == cx.tcx.types.u8) || cx.layout_of(*ct).is_zst() =>
                         {
-                            cx.tcx.mk_imm_ptr(ct)
+                            cx.tcx.mk_imm_ptr(*ct)
                         }
                         _ => t,
                     };
-                    Some(type_metadata(cx, t, rustc_span::DUMMY_SP))
+                    Some(type_di_node(cx, t))
                 }));
             } else {
-                signature.extend(
-                    fn_abi
-                        .args
-                        .iter()
-                        .map(|arg| Some(type_metadata(cx, arg.layout.ty, rustc_span::DUMMY_SP))),
-                );
+                signature
+                    .extend(fn_abi.args.iter().map(|arg| Some(type_di_node(cx, arg.layout.ty))));
             }
 
             create_DIArray(DIB(cx), &signature[..])
@@ -433,14 +439,7 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             cx: &CodegenCx<'ll, 'tcx>,
             generics: &ty::Generics,
             substs: SubstsRef<'tcx>,
-            name_to_append_suffix_to: &mut String,
         ) -> &'ll DIArray {
-            type_names::push_generic_params(
-                cx.tcx,
-                cx.tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), substs),
-                name_to_append_suffix_to,
-            );
-
             if substs.types().next().is_none() {
                 return create_DIArray(DIB(cx), &[]);
             }
@@ -453,8 +452,7 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                         if let GenericArgKind::Type(ty) = kind.unpack() {
                             let actual_type =
                                 cx.tcx.normalize_erasing_regions(ParamEnv::reveal_all(), ty);
-                            let actual_type_metadata =
-                                type_metadata(cx, actual_type, rustc_span::DUMMY_SP);
+                            let actual_type_metadata = type_di_node(cx, actual_type);
                             let name = name.as_str();
                             Some(unsafe {
                                 Some(llvm::LLVMRustDIBuilderCreateTemplateTypeParameter(
@@ -507,11 +505,11 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                         ty::Adt(def, ..) if !def.is_box() => {
                             // Again, only create type information if full debuginfo is enabled
                             if cx.sess().opts.debuginfo == DebugInfo::Full
-                                && !impl_self_ty.definitely_needs_subst(cx.tcx)
+                                && !impl_self_ty.needs_subst()
                             {
-                                Some(type_metadata(cx, impl_self_ty, rustc_span::DUMMY_SP))
+                                Some(type_di_node(cx, impl_self_ty))
                             } else {
-                                Some(namespace::item_namespace(cx, def.did))
+                                Some(namespace::item_namespace(cx, def.did()))
                             }
                         }
                         _ => None,
@@ -550,13 +548,13 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         unsafe { llvm::LLVMRustDIBuilderCreateDebugLocation(line, col, scope, inlined_at) }
     }
 
-    fn create_vtable_metadata(
+    fn create_vtable_debuginfo(
         &self,
         ty: Ty<'tcx>,
         trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
         vtable: Self::Value,
     ) {
-        metadata::create_vtable_metadata(self, ty, trait_ref, vtable)
+        metadata::create_vtable_di_node(self, ty, trait_ref, vtable)
     }
 
     fn extend_scope_to_file(
@@ -584,7 +582,7 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         let loc = self.lookup_debug_loc(span.lo());
         let file_metadata = file_metadata(self, &loc.file);
 
-        let type_metadata = type_metadata(self, variable_type, span);
+        let type_metadata = type_di_node(self, variable_type);
 
         let (argument_index, dwarf_tag) = match variable_kind {
             ArgumentVariable(index) => (index as c_uint, DW_TAG_arg_variable),

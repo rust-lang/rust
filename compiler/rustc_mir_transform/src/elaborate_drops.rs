@@ -20,7 +20,7 @@ pub struct ElaborateDrops;
 
 impl<'tcx> MirPass<'tcx> for ElaborateDrops {
     fn phase_change(&self) -> Option<MirPhase> {
-        Some(MirPhase::DropLowering)
+        Some(MirPhase::DropsLowered)
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -98,12 +98,9 @@ fn find_dead_unwinds<'tcx>(
 
         debug!("find_dead_unwinds @ {:?}: {:?}", bb, bb_data);
 
-        let path = match env.move_data.rev_lookup.find(place.as_ref()) {
-            LookupResult::Exact(e) => e,
-            LookupResult::Parent(..) => {
-                debug!("find_dead_unwinds: has parent; skipping");
-                continue;
-            }
+        let LookupResult::Exact(path) = env.move_data.rev_lookup.find(place.as_ref()) else {
+            debug!("find_dead_unwinds: has parent; skipping");
+            continue;
         };
 
         flow_inits.seek_before_primary_effect(body.terminator_loc(bb));

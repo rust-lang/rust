@@ -4,10 +4,10 @@ error: expected identifier, found keyword `true`
 LL | fn true() { }
    |    ^^^^ expected identifier, found keyword
    |
-help: you can escape reserved keywords to use them as identifiers
+help: escape `true` to use it as an identifier
    |
 LL | fn r#true() { }
-   |    ~~~~~~
+   |    ++
 
 error: aborting due to previous error
 

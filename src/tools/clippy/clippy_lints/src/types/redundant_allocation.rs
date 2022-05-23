@@ -1,10 +1,11 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::{snippet, snippet_with_applicability};
-use clippy_utils::{get_qpath_generic_tys, is_ty_param_diagnostic_item, is_ty_param_lang_item};
+use clippy_utils::{path_def_id, qpath_generic_tys};
 use rustc_errors::Applicability;
-use rustc_hir::{self as hir, def_id::DefId, LangItem, QPath, TyKind};
+use rustc_hir::{self as hir, def_id::DefId, QPath, TyKind};
 use rustc_lint::LateContext;
 use rustc_span::symbol::sym;
+use rustc_typeck::hir_ty_to_ty;
 
 use super::{utils, REDUNDANT_ALLOCATION};
 
@@ -39,24 +40,25 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
         return true;
     }
 
-    let (inner_sym, ty) = if let Some(ty) = is_ty_param_lang_item(cx, qpath, LangItem::OwnedBox) {
-        ("Box", ty)
-    } else if let Some(ty) = is_ty_param_diagnostic_item(cx, qpath, sym::Rc) {
-        ("Rc", ty)
-    } else if let Some(ty) = is_ty_param_diagnostic_item(cx, qpath, sym::Arc) {
-        ("Arc", ty)
-    } else {
-        return false;
+    let Some(ty) = qpath_generic_tys(qpath).next() else { return false };
+    let Some(id) = path_def_id(cx, ty) else { return false };
+    let (inner_sym, ty) = match cx.tcx.get_diagnostic_name(id) {
+        Some(sym::Arc) => ("Arc", ty),
+        Some(sym::Rc) => ("Rc", ty),
+        _ if Some(id) == cx.tcx.lang_items().owned_box() => ("Box", ty),
+        _ => return false,
     };
 
     let inner_qpath = match &ty.kind {
         TyKind::Path(inner_qpath) => inner_qpath,
         _ => return false,
     };
-    let inner_span = match get_qpath_generic_tys(inner_qpath).next() {
+    let inner_span = match qpath_generic_tys(inner_qpath).next() {
         Some(ty) => {
-            // Box<Box<dyn T>> is smaller than Box<dyn T> because of wide pointers
-            if matches!(ty.kind, TyKind::TraitObject(..)) {
+            // Reallocation of a fat pointer causes it to become thin. `hir_ty_to_ty` is safe to use
+            // here because `mod.rs` guarantees this lint is only run on types outside of bodies and
+            // is not run on locals.
+            if !hir_ty_to_ty(cx.tcx, ty).is_sized(cx.tcx.at(ty.span), cx.param_env) {
                 return false;
             }
             ty.span

@@ -1,38 +1,26 @@
-error: expected `{`, found `'b`
-  --> $DIR/label_break_value_illegal_uses.rs:6:12
+error: block label not supported here
+  --> $DIR/label_break_value_illegal_uses.rs:8:12
    |
 LL |     unsafe 'b: {}
-   |            ^^----
-   |            |
-   |            expected `{`
-   |            help: try placing this code inside a block: `{ 'b: {} }`
+   |            ^^^ not supported here
 
-error: expected `{`, found `'b`
-  --> $DIR/label_break_value_illegal_uses.rs:10:13
+error: block label not supported here
+  --> $DIR/label_break_value_illegal_uses.rs:12:13
    |
 LL |     if true 'b: {}
-   |     --      ^^----
-   |     |       |
-   |     |       expected `{`
-   |     |       help: try placing this code inside a block: `{ 'b: {} }`
-   |     this `if` expression has a condition, but no block
+   |             ^^^ not supported here
 
-error: expected `{`, found `'b`
-  --> $DIR/label_break_value_illegal_uses.rs:14:21
+error: block label not supported here
+  --> $DIR/label_break_value_illegal_uses.rs:16:21
    |
 LL |     if true {} else 'b: {}
-   |                     ^^----
-   |                     |
-   |                     expected `{`
-   |                     help: try placing this code inside a block: `{ 'b: {} }`
+   |                     ^^^ not supported here
 
-error: expected one of `.`, `?`, `{`, or an operator, found `'b`
-  --> $DIR/label_break_value_illegal_uses.rs:18:17
+error: block label not supported here
+  --> $DIR/label_break_value_illegal_uses.rs:20:17
    |
-LL |     match false 'b: {}
-   |     -----       ^^ expected one of `.`, `?`, `{`, or an operator
-   |     |
-   |     while parsing this match expression
+LL |     match false 'b: {
+   |                 ^^^ not supported here
 
 error: aborting due to 4 previous errors
 

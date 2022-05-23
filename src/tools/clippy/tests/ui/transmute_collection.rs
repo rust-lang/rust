@@ -1,7 +1,7 @@
 #![warn(clippy::unsound_collection_transmute)]
 
 use std::collections::{BTreeMap, BTreeSet, BinaryHeap, HashMap, HashSet, VecDeque};
-use std::mem::transmute;
+use std::mem::{transmute, MaybeUninit};
 
 fn main() {
     unsafe {
@@ -43,5 +43,8 @@ fn main() {
         // wrong layout
         let _ = transmute::<_, HashMap<u8, u32>>(HashMap::<u8, [u8; 4]>::new());
         let _ = transmute::<_, HashMap<u32, u32>>(HashMap::<[u8; 4], u32>::new());
+
+        let _ = transmute::<_, Vec<u8>>(Vec::<MaybeUninit<u8>>::new());
+        let _ = transmute::<_, Vec<*mut u32>>(Vec::<Box<u32>>::new());
     }
 }

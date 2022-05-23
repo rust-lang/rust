@@ -1,7 +1,7 @@
 #![allow(unused_variables, clippy::blacklisted_name)]
 #![warn(clippy::op_ref)]
 use std::collections::HashSet;
-use std::ops::BitAnd;
+use std::ops::{BitAnd, Mul};
 
 fn main() {
     let tracked_fds: HashSet<i32> = HashSet::new();
@@ -54,4 +54,41 @@ fn main() {
     let x = Y(1);
     let y = Y(2);
     let z = x & &y;
+}
+
+#[derive(Clone, Copy)]
+struct A(i32);
+#[derive(Clone, Copy)]
+struct B(i32);
+
+impl Mul<&A> for B {
+    type Output = i32;
+    fn mul(self, rhs: &A) -> Self::Output {
+        self.0 * rhs.0
+    }
+}
+impl Mul<A> for B {
+    type Output = i32;
+    fn mul(self, rhs: A) -> Self::Output {
+        // Should not lint because removing the reference would lead to unconditional recursion
+        self * &rhs
+    }
+}
+impl Mul<&A> for A {
+    type Output = i32;
+    fn mul(self, rhs: &A) -> Self::Output {
+        self.0 * rhs.0
+    }
+}
+impl Mul<A> for A {
+    type Output = i32;
+    fn mul(self, rhs: A) -> Self::Output {
+        let one = B(1);
+        let two = 2;
+        let three = 3;
+        let _ = one * &self;
+        let _ = two + &three;
+        // Removing the reference would lead to unconditional recursion
+        self * &rhs
+    }
 }

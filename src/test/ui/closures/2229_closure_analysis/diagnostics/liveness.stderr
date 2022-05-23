@@ -18,11 +18,6 @@ warning: unused variable: `a`
 LL |         a += 1;
    |         ^
    |
-note: the lint level is defined here
-  --> $DIR/liveness.rs:5:9
-   |
-LL | #![warn(unused)]
-   |         ^^^^^^
    = note: `#[warn(unused_variables)]` implied by `#[warn(unused)]`
    = help: did you mean to capture by reference instead?
 

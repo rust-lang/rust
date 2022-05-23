@@ -20,13 +20,13 @@ macro_rules! len {
         if size == 0 {
             // This _cannot_ use `unchecked_sub` because we depend on wrapping
             // to represent the length of long ZST slice iterators.
-            ($self.end as usize).wrapping_sub(start.as_ptr() as usize)
+            $self.end.addr().wrapping_sub(start.as_ptr().addr())
         } else {
             // We know that `start <= end`, so can do better than `offset_from`,
             // which needs to deal in signed.  By setting appropriate flags here
             // we can tell LLVM this, which helps it remove bounds checks.
             // SAFETY: By the type invariant, `start <= end`
-            let diff = unsafe { unchecked_sub($self.end as usize, start.as_ptr() as usize) };
+            let diff = unsafe { unchecked_sub($self.end.addr(), start.as_ptr().addr()) };
             // By also telling LLVM that the pointers are apart by an exact
             // multiple of the type size, it can optimize `len() == 0` down to
             // `start == end` instead of `(end - start) < size`.
@@ -325,7 +325,7 @@ macro_rules! iterator {
                 None
             }
 
-            #[doc(hidden)]
+            #[inline]
             unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item {
                 // SAFETY: the caller must guarantee that `i` is in bounds of
                 // the underlying slice, so `i` cannot overflow an `isize`, and

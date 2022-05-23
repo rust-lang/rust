@@ -39,10 +39,16 @@ impl Trait for Foo {
     const Y: u32 = 0;
 }
 
-
 impl implementors::Whatever for Foo {
     type Foo = u32;
 }
+
+#[doc(inline)]
+pub use implementors::TraitToReexport;
+
+pub struct StructToImplOnReexport;
+
+impl TraitToReexport for StructToImplOnReexport {}
 
 pub mod sub_mod {
     /// ```txt
@@ -58,8 +64,10 @@ pub mod sub_mod {
 pub mod long_trait {
     use std::ops::DerefMut;
 
-    pub trait ALongNameBecauseItHelpsTestingTheCurrentProblem: DerefMut<Target = u32>
-        + From<u128> + Send + Sync + AsRef<str> + 'static {}
+    pub trait ALongNameBecauseItHelpsTestingTheCurrentProblem:
+        DerefMut<Target = u32> + From<u128> + Send + Sync + AsRef<str> + 'static
+    {
+    }
 }
 
 pub mod long_table {
@@ -88,18 +96,44 @@ pub mod summary_table {
 }
 
 pub mod too_long {
-pub type ReallyLongTypeNameLongLongLong = Option<unsafe extern "C" fn(a: *const u8, b: *const u8) -> *const u8>;
+    pub type ReallyLongTypeNameLongLongLong =
+        Option<unsafe extern "C" fn(a: *const u8, b: *const u8) -> *const u8>;
 
-pub const ReallyLongTypeNameLongLongLongConstBecauseWhyNotAConstRightGigaGigaSupraLong: u32 = 0;
+    pub const ReallyLongTypeNameLongLongLongConstBecauseWhyNotAConstRightGigaGigaSupraLong: u32 = 0;
 
-pub struct SuperIncrediblyLongLongLongLongLongLongLongGigaGigaGigaMegaLongLongLongStructName {
-    pub a: u32,
-}
+    /// This also has a really long doccomment. Lorem ipsum dolor sit amet,
+    /// consectetur adipiscing elit. Suspendisse id nibh malesuada, hendrerit
+    /// massa vel, tincidunt est. Nulla interdum, sem ac efficitur ornare, arcu
+    /// nunc dignissim nibh, at rutrum diam augue ac mauris. Fusce tincidunt et
+    /// ligula sed viverra. Aenean sed facilisis dui, non volutpat felis. In
+    /// vitae est dui. Donec felis nibh, blandit at nibh eu, tempor suscipit
+    /// nisl. Vestibulum ornare porta libero, eu faucibus purus iaculis ut. Ut
+    /// quis tincidunt nunc, in mollis purus. Nulla sed interdum quam. Nunc
+    /// vitae cursus ex.
+    pub struct SuperIncrediblyLongLongLongLongLongLongLongGigaGigaGigaMegaLongLongLongStructName {
+        pub a: u32,
+    }
 
-impl SuperIncrediblyLongLongLongLongLongLongLongGigaGigaGigaMegaLongLongLongStructName {
-    /// ```
-    /// let x = SuperIncrediblyLongLongLongLongLongLongLongGigaGigaGigaMegaLongLongLongStructName { a: 0 };
-    /// ```
+    impl SuperIncrediblyLongLongLongLongLongLongLongGigaGigaGigaMegaLongLongLongStructName {
+        /// ```
+        /// let x = SuperIncrediblyLongLongLongLongLongLongLongGigaGigaGigaMegaLongLongLongStructName { a: 0 };
+        /// ```
         pub fn foo(&self) {}
     }
 }
+
+pub struct HasALongTraitWithParams {}
+
+pub trait LongTraitWithParamsBananaBananaBanana<T> {}
+
+impl LongTraitWithParamsBananaBananaBanana<usize> for HasALongTraitWithParams {}
+
+#[doc(cfg(any(target_os = "android", target_os = "linux", target_os = "emscripten", target_os = "dragonfly", target_os = "freebsd", target_os = "netbsd", target_os = "openbsd")))]
+pub struct LongItemInfo;
+
+pub trait SimpleTrait {}
+pub struct LongItemInfo2;
+
+/// Some docs.
+#[doc(cfg(any(target_os = "android", target_os = "linux", target_os = "emscripten", target_os = "dragonfly", target_os = "freebsd", target_os = "netbsd", target_os = "openbsd")))]
+impl SimpleTrait for LongItemInfo2 {}

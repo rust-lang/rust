@@ -15,7 +15,7 @@ pub fn f32_to_bits(x: f32) -> u32 {
     unsafe { std::mem::transmute(x) }
 }
 
-// CHECK-LABEL: define{{.*}}i8 @bool_to_byte(i1 zeroext %b)
+// CHECK-LABEL: define{{.*}}i8 @bool_to_byte(i1 noundef zeroext %b)
 // CHECK: %1 = zext i1 %b to i8
 // CHECK-NEXT: store i8 %1, i8* %0
 // CHECK-NEXT: %2 = load i8, i8* %0
@@ -25,7 +25,7 @@ pub fn bool_to_byte(b: bool) -> u8 {
     unsafe { std::mem::transmute(b) }
 }
 
-// CHECK-LABEL: define{{.*}}zeroext i1 @byte_to_bool(i8 %byte)
+// CHECK-LABEL: define{{.*}}noundef zeroext i1 @byte_to_bool(i8 %byte)
 // CHECK: %1 = trunc i8 %byte to i1
 // CHECK-NEXT: %2 = zext i1 %1 to i8
 // CHECK-NEXT: store i8 %2, i8* %0

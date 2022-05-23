@@ -303,7 +303,7 @@ impl Condvar {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_deprecated(since = "1.6.0", reason = "replaced by `std::sync::Condvar::wait_timeout`")]
+    #[deprecated(since = "1.6.0", note = "replaced by `std::sync::Condvar::wait_timeout`")]
     pub fn wait_timeout_ms<'a, T>(
         &self,
         guard: MutexGuard<'a, T>,

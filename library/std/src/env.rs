@@ -23,6 +23,13 @@ use crate::sys::os as os_imp;
 
 /// Returns the current working directory as a [`PathBuf`].
 ///
+/// # Platform-specific behavior
+///
+/// This function [currently] corresponds to the `getcwd` function on Unix
+/// and the `GetCurrentDirectoryW` function on Windows.
+///
+/// [currently]: crate::io#platform-specific-behavior
+///
 /// # Errors
 ///
 /// Returns an [`Err`] if the current working directory value is invalid.
@@ -49,7 +56,14 @@ pub fn current_dir() -> io::Result<PathBuf> {
 
 /// Changes the current working directory to the specified path.
 ///
+/// # Platform-specific behavior
+///
+/// This function [currently] corresponds to the `chdir` function on Unix
+/// and the `SetCurrentDirectoryW` function on Windows.
+///
 /// Returns an [`Err`] if the operation fails.
+///
+/// [currently]: crate::io#platform-specific-behavior
 ///
 /// # Examples
 ///
@@ -108,7 +122,7 @@ pub struct VarsOs {
 /// // We will iterate through the references to the element returned by
 /// // env::vars();
 /// for (key, value) in env::vars() {
-///     println!("{}: {}", key, value);
+///     println!("{key}: {value}");
 /// }
 /// ```
 ///
@@ -138,7 +152,7 @@ pub fn vars() -> Vars {
 /// // We will iterate through the references to the element returned by
 /// // env::vars_os();
 /// for (key, value) in env::vars_os() {
-///     println!("{:?}: {:?}", key, value);
+///     println!("{key:?}: {value:?}");
 /// }
 /// ```
 #[must_use]
@@ -202,8 +216,8 @@ impl fmt::Debug for VarsOs {
 ///
 /// let key = "HOME";
 /// match env::var(key) {
-///     Ok(val) => println!("{}: {:?}", key, val),
-///     Err(e) => println!("couldn't interpret {}: {}", key, e),
+///     Ok(val) => println!("{key}: {val:?}"),
+///     Err(e) => println!("couldn't interpret {key}: {e}"),
 /// }
 /// ```
 #[stable(feature = "env", since = "1.0.0")]
@@ -242,8 +256,8 @@ fn _var(key: &OsStr) -> Result<String, VarError> {
 ///
 /// let key = "HOME";
 /// match env::var_os(key) {
-///     Some(val) => println!("{}: {:?}", key, val),
-///     None => println!("{} is not defined in the environment.", key)
+///     Some(val) => println!("{key}: {val:?}"),
+///     None => println!("{key} is not defined in the environment.")
 /// }
 /// ```
 #[must_use]
@@ -333,7 +347,7 @@ pub fn set_var<K: AsRef<OsStr>, V: AsRef<OsStr>>(key: K, value: V) {
 
 fn _set_var(key: &OsStr, value: &OsStr) {
     os_imp::setenv(key, value).unwrap_or_else(|e| {
-        panic!("failed to set environment variable `{:?}` to `{:?}`: {}", key, value, e)
+        panic!("failed to set environment variable `{key:?}` to `{value:?}`: {e}")
     })
 }
 
@@ -375,7 +389,7 @@ pub fn remove_var<K: AsRef<OsStr>>(key: K) {
 
 fn _remove_var(key: &OsStr) {
     os_imp::unsetenv(key)
-        .unwrap_or_else(|e| panic!("failed to remove environment variable `{:?}`: {}", key, e))
+        .unwrap_or_else(|e| panic!("failed to remove environment variable `{key:?}`: {e}"))
 }
 
 /// An iterator that splits an environment variable into paths according to
@@ -411,7 +425,7 @@ pub struct SplitPaths<'a> {
 ///             println!("'{}'", path.display());
 ///         }
 ///     }
-///     None => println!("{} is not defined in the environment.", key)
+///     None => println!("{key} is not defined in the environment.")
 /// }
 /// ```
 #[stable(feature = "env", since = "1.0.0")]
@@ -563,10 +577,10 @@ impl Error for JoinPathsError {
 ///     None => println!("Impossible to get your home dir!"),
 /// }
 /// ```
-#[rustc_deprecated(
+#[deprecated(
     since = "1.29.0",
-    reason = "This function's behavior is unexpected and probably not what you want. \
-              Consider using a crate from crates.io instead."
+    note = "This function's behavior is unexpected and probably not what you want. \
+            Consider using a crate from crates.io instead."
 )]
 #[must_use]
 #[stable(feature = "env", since = "1.0.0")]
@@ -630,36 +644,23 @@ pub fn temp_dir() -> PathBuf {
 ///
 /// # Security
 ///
-/// The output of this function should not be used in anything that might have
-/// security implications. For example:
+/// The output of this function should not be trusted for anything
+/// that might have security implications. Basically, if users can run
+/// the executable, they can change the output arbitrarily.
 ///
-/// ```
-/// fn main() {
-///     println!("{:?}", std::env::current_exe());
-/// }
-/// ```
+/// As an example, you can easily introduce a race condition. It goes
+/// like this:
 ///
-/// On Linux systems, if this is compiled as `foo`:
+/// 1. You get the path to the current executable using `current_exe()`, and
+///    store it in a variable.
+/// 2. Time passes. A malicious actor removes the current executable, and
+///    replaces it with a malicious one.
+/// 3. You then use the stored path to re-execute the current
+///    executable.
 ///
-/// ```bash
-/// $ rustc foo.rs
-/// $ ./foo
-/// Ok("/home/alex/foo")
-/// ```
-///
-/// And you make a hard link of the program:
-///
-/// ```bash
-/// $ ln foo bar
-/// ```
-///
-/// When you run it, you won’t get the path of the original executable, you’ll
-/// get the path of the hard link:
-///
-/// ```bash
-/// $ ./bar
-/// Ok("/home/alex/bar")
-/// ```
+/// You expected to safely execute the current executable, but you're
+/// instead executing something completely different. The code you
+/// just executed run with your privileges.
 ///
 /// This sort of behavior has been known to [lead to privilege escalation] when
 /// used incorrectly.
@@ -674,7 +675,7 @@ pub fn temp_dir() -> PathBuf {
 /// match env::current_exe() {
 ///     Ok(exe_path) => println!("Path of this executable is: {}",
 ///                              exe_path.display()),
-///     Err(e) => println!("failed to get current exe path: {}", e),
+///     Err(e) => println!("failed to get current exe path: {e}"),
 /// };
 /// ```
 #[stable(feature = "env", since = "1.0.0")]
@@ -745,7 +746,7 @@ pub struct ArgsOs {
 ///
 /// // Prints each argument on a separate line
 /// for argument in env::args() {
-///     println!("{}", argument);
+///     println!("{argument}");
 /// }
 /// ```
 #[stable(feature = "env", since = "1.0.0")]
@@ -780,7 +781,7 @@ pub fn args() -> Args {
 ///
 /// // Prints each argument on a separate line
 /// for argument in env::args_os() {
-///     println!("{:?}", argument);
+///     println!("{argument:?}");
 /// }
 /// ```
 #[stable(feature = "env", since = "1.0.0")]

@@ -10,9 +10,10 @@
 #![feature(const_intrinsic_copy)]
 #![feature(const_mut_refs)]
 #![feature(const_nonnull_slice_from_raw_parts)]
-#![feature(const_ptr_offset)]
 #![feature(const_ptr_write)]
 #![feature(const_try)]
+#![feature(core_c_str)]
+#![feature(core_ffi_c)]
 #![feature(core_intrinsics)]
 #![feature(drain_filter)]
 #![feature(exact_size_is_empty)]
@@ -29,24 +30,27 @@
 #![feature(binary_heap_as_slice)]
 #![feature(inplace_iteration)]
 #![feature(iter_advance_by)]
+#![feature(round_char_boundary)]
 #![feature(slice_group_by)]
 #![feature(slice_partition_dedup)]
-#![feature(vec_spare_capacity)]
 #![feature(string_remove_matches)]
 #![feature(const_btree_new)]
 #![feature(const_default_impls)]
 #![feature(const_trait_impl)]
 #![feature(const_str_from_utf8)]
 #![feature(nonnull_slice_from_raw_parts)]
+#![feature(panic_update_hook)]
+#![feature(slice_flatten)]
+#![feature(thin_box)]
 
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
 mod arc;
-mod binary_heap;
 mod borrow;
 mod boxed;
 mod btree_set_hash;
+mod c_str;
 mod const_fns;
 mod cow_str;
 mod fmt;
@@ -56,6 +60,7 @@ mod rc;
 mod slice;
 mod str;
 mod string;
+mod thin_box;
 mod vec;
 mod vec_deque;
 

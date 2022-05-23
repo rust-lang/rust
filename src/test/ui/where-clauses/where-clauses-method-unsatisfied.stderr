@@ -11,6 +11,10 @@ note: required by a bound in `Foo::<T>::equals`
    |
 LL |     fn equals(&self, u: &Foo<T>) -> bool where T : Eq {
    |                                                    ^^ required by this bound in `Foo::<T>::equals`
+help: consider annotating `Bar` with `#[derive(Eq)]`
+   |
+LL | #[derive(Eq)]
+   |
 
 error: aborting due to previous error
 

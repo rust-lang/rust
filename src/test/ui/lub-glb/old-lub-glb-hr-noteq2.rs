@@ -2,15 +2,22 @@
 // one is more general than the other. Test the case where the more general type
 // (`x`) is the second match arm specifically.
 //
-// FIXME(#73154) Skip for compare-mode because the pure NLL checker accepts this
-// test. (Note that it still errors in old-lub-glb-hr-noteq1.rs). What happens
+// FIXME(#73154) Pure NLL checker without leak check accepts this test.
+// (Note that it still errors in old-lub-glb-hr-noteq1.rs). What happens
 // is that, due to the ordering of the match arms, we pick the correct "more
 // general" fn type, and we ignore the errors from the non-NLL type checker that
 // requires equality. The NLL type checker only requires a subtyping
-// relationship, and that holds.
-//
+// relationship, and that holds. To unblock landing NLL - and ensure that we can
+// choose to make this always in error in the future - we perform the leak check
+// after coercing a function pointer.
+
+// revisions: baseleak basenoleak nllleak nllnoleak
 // ignore-compare-mode-nll
-// ignore-compare-mode-polonius
+//[nllleak] compile-flags: -Zborrowck=mir
+//[nllnoleak] compile-flags: -Zborrowck=mir -Zno-leak-check
+//[basenoleak] compile-flags:-Zno-leak-check
+
+//[nllnoleak] check-pass
 
 fn foo(x: for<'a, 'b> fn(&'a u8, &'b u8) -> &'a u8, y: for<'a> fn(&'a u8, &'a u8) -> &'a u8) {
     // The two types above are not equivalent. With the older LUB/GLB
@@ -18,7 +25,10 @@ fn foo(x: for<'a, 'b> fn(&'a u8, &'b u8) -> &'a u8, y: for<'a> fn(&'a u8, &'a u8
     // doesn't because we require equality.
     let z = match 22 {
         0 => y,
-        _ => x, //~ ERROR `match` arms have incompatible types
+        _ => x,
+        //[baseleak]~^ ERROR `match` arms have incompatible types
+        //[nllleak]~^^ ERROR `match` arms have incompatible types
+        //[basenoleak]~^^^ ERROR `match` arms have incompatible types
     };
 }
 

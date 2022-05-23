@@ -11,6 +11,21 @@ use crate::sys_common::{AsInner, FromInner, IntoInner};
 
 use libc::{c_int, c_void};
 
+#[cfg(any(
+    target_os = "android",
+    target_os = "linux",
+    target_os = "emscripten",
+    target_os = "l4re"
+))]
+use libc::off64_t;
+#[cfg(not(any(
+    target_os = "linux",
+    target_os = "emscripten",
+    target_os = "l4re",
+    target_os = "android"
+)))]
+use libc::off_t as off64_t;
+
 #[derive(Debug)]
 pub struct FileDesc(OwnedFd);
 
@@ -109,7 +124,7 @@ impl FileDesc {
                 self.as_raw_fd(),
                 buf.as_mut_ptr() as *mut c_void,
                 cmp::min(buf.len(), READ_LIMIT),
-                offset as i64,
+                offset as off64_t,
             ))
             .map(|n| n as usize)
         }
@@ -176,7 +191,7 @@ impl FileDesc {
                 self.as_raw_fd(),
                 buf.as_ptr() as *const c_void,
                 cmp::min(buf.len(), READ_LIMIT),
-                offset as i64,
+                offset as off64_t,
             ))
             .map(|n| n as usize)
         }
@@ -259,22 +274,9 @@ impl FileDesc {
         }
     }
 
+    #[inline]
     pub fn duplicate(&self) -> io::Result<FileDesc> {
-        // We want to atomically duplicate this file descriptor and set the
-        // CLOEXEC flag, and currently that's done via F_DUPFD_CLOEXEC. This
-        // is a POSIX flag that was added to Linux in 2.6.24.
-        #[cfg(not(target_os = "espidf"))]
-        let cmd = libc::F_DUPFD_CLOEXEC;
-
-        // For ESP-IDF, F_DUPFD is used instead, because the CLOEXEC semantics
-        // will never be supported, as this is a bare metal framework with
-        // no capabilities for multi-process execution.  While F_DUPFD is also
-        // not supported yet, it might be (currently it returns ENOSYS).
-        #[cfg(target_os = "espidf")]
-        let cmd = libc::F_DUPFD;
-
-        let fd = cvt(unsafe { libc::fcntl(self.as_raw_fd(), cmd, 0) })?;
-        Ok(unsafe { FileDesc::from_raw_fd(fd) })
+        Ok(Self(self.0.try_clone()?))
     }
 }
 

@@ -1,8 +1,8 @@
 error[E0277]: the trait bound `T: Clone` is not satisfied
-  --> $DIR/bounds-are-checked-2.rs:6:13
+  --> $DIR/bounds-are-checked-2.rs:9:5
    |
-LL | type X<T> = impl Clone;
-   |             ^^^^^^^^^^ the trait `Clone` is not implemented for `T`
+LL |     t
+   |     ^ the trait `Clone` is not implemented for `T`
    |
 help: consider restricting type parameter `T`
    |

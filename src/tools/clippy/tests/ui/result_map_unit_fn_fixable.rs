@@ -75,6 +75,8 @@ fn result_map_unit_fn() {
 
 
     x.field.map(|ref value| { do_nothing(value + captured) });
+
+    x.field.map(|value| println!("{:?}", value));
 }
 
 fn main() {}

@@ -36,7 +36,7 @@ impl RemoveNoopLandingPads {
                 | StatementKind::AscribeUserType(..)
                 | StatementKind::Coverage(..)
                 | StatementKind::Nop => {
-                    // These are all nops in a landing pad
+                    // These are all noops in a landing pad
                 }
 
                 StatementKind::Assign(box (place, Rvalue::Use(_) | Rvalue::Discriminant(_))) => {
@@ -50,7 +50,7 @@ impl RemoveNoopLandingPads {
 
                 StatementKind::Assign { .. }
                 | StatementKind::SetDiscriminant { .. }
-                | StatementKind::LlvmInlineAsm { .. }
+                | StatementKind::Deinit(..)
                 | StatementKind::CopyNonOverlapping(..)
                 | StatementKind::Retag { .. } => {
                     return false;
@@ -65,7 +65,7 @@ impl RemoveNoopLandingPads {
             | TerminatorKind::SwitchInt { .. }
             | TerminatorKind::FalseEdge { .. }
             | TerminatorKind::FalseUnwind { .. } => {
-                terminator.successors().all(|&succ| nop_landing_pads.contains(succ))
+                terminator.successors().all(|succ| nop_landing_pads.contains(succ))
             }
             TerminatorKind::GeneratorDrop
             | TerminatorKind::Yield { .. }

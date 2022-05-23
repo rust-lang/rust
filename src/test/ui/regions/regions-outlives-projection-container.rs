@@ -2,6 +2,10 @@
 // type of a bound that appears in the where clause on a struct must
 // outlive the location in which the type appears. Issue #22246.
 
+// revisions: base nll
+// ignore-compare-mode-nll
+//[nll] compile-flags: -Z borrowck=mir
+
 #![allow(dead_code)]
 #![feature(rustc_attrs)]
 
@@ -34,7 +38,8 @@ fn with_assoc<'a,'b>() {
     // FIXME (#54943) NLL doesn't enforce WF condition in unreachable code if
     // `_x` is changed to `_`
     let _x: &'a WithAssoc<TheType<'b>> = loop { };
-    //~^ ERROR reference has a longer lifetime
+    //[base]~^ ERROR reference has a longer lifetime
+    //[nll]~^^ ERROR lifetime may not live long enough
 }
 
 fn with_assoc1<'a,'b>() where 'b : 'a {
@@ -52,7 +57,8 @@ fn without_assoc<'a,'b>() {
     // that `'b:'a` holds because the `'b` appears in `TheType<'b>`.
 
     let _x: &'a WithoutAssoc<TheType<'b>> = loop { };
-    //~^ ERROR reference has a longer lifetime
+    //[base]~^ ERROR reference has a longer lifetime
+    //[nll]~^^ ERROR lifetime may not live long enough
 }
 
 fn call_with_assoc<'a,'b>() {
@@ -61,13 +67,16 @@ fn call_with_assoc<'a,'b>() {
     // no data.
 
     call::<&'a WithAssoc<TheType<'b>>>();
-    //~^ ERROR reference has a longer lifetime
+    //[base]~^ ERROR reference has a longer lifetime
+    //[nll]~^^ ERROR lifetime may not live long enough
 }
 
 fn call_without_assoc<'a,'b>() {
     // As `without_assoc`, but in a distinct scenario.
 
-    call::<&'a WithoutAssoc<TheType<'b>>>(); //~ ERROR reference has a longer lifetime
+    call::<&'a WithoutAssoc<TheType<'b>>>();
+    //[base]~^ ERROR reference has a longer lifetime
+    //[nll]~^^ ERROR lifetime may not live long enough
 }
 
 fn call<T>() { }

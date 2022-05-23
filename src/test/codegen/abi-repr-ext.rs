@@ -1,3 +1,5 @@
+// compile-flags: -O
+
 #![crate_type="lib"]
 
 #[repr(i8)]
@@ -6,7 +8,7 @@ pub enum Type {
     Type2 = 1
 }
 
-// CHECK: define{{( dso_local)?}} signext i8 @test()
+// CHECK: define{{( dso_local)?}} noundef signext i8 @test()
 #[no_mangle]
 pub extern "C" fn test() -> Type {
     Type::Type1

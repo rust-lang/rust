@@ -3,6 +3,7 @@
 // completely accurate (some things might be counted twice, others missed).
 
 use rustc_ast::visit as ast_visit;
+use rustc_ast::visit::BoundKind;
 use rustc_ast::{self as ast, AttrId, NodeId};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
@@ -93,12 +94,6 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
     fn visit_param(&mut self, param: &'v hir::Param<'v>) {
         self.record("Param", Id::Node(param.hir_id), param);
         hir_visit::walk_param(self, param)
-    }
-
-    type Map = Map<'v>;
-
-    fn nested_visit_map(&mut self) -> hir_visit::NestedVisitorMap<Self::Map> {
-        panic!("visit_nested_xxx must be manually implemented in this visitor")
     }
 
     fn visit_nested_item(&mut self, id: hir::ItemId) {
@@ -308,7 +303,7 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
         ast_visit::walk_assoc_item(self, item, ctxt);
     }
 
-    fn visit_param_bound(&mut self, bounds: &'v ast::GenericBound) {
+    fn visit_param_bound(&mut self, bounds: &'v ast::GenericBound, _ctxt: BoundKind) {
         self.record("GenericBound", Id::None, bounds);
         ast_visit::walk_param_bound(self, bounds)
     }
@@ -323,7 +318,7 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
         ast_visit::walk_variant(self, v)
     }
 
-    fn visit_lifetime(&mut self, lifetime: &'v ast::Lifetime) {
+    fn visit_lifetime(&mut self, lifetime: &'v ast::Lifetime, _: ast_visit::LifetimeCtxt) {
         self.record("Lifetime", Id::None, lifetime);
         ast_visit::walk_lifetime(self, lifetime)
     }
@@ -338,9 +333,9 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
         ast_visit::walk_path_segment(self, path_span, path_segment)
     }
 
-    fn visit_assoc_ty_constraint(&mut self, constraint: &'v ast::AssocTyConstraint) {
-        self.record("AssocTyConstraint", Id::None, constraint);
-        ast_visit::walk_assoc_ty_constraint(self, constraint)
+    fn visit_assoc_constraint(&mut self, constraint: &'v ast::AssocConstraint) {
+        self.record("AssocConstraint", Id::None, constraint);
+        ast_visit::walk_assoc_constraint(self, constraint)
     }
 
     fn visit_attribute(&mut self, attr: &'v ast::Attribute) {

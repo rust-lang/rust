@@ -4,17 +4,16 @@ use clippy_utils::higher::IfLet;
 use clippy_utils::ty::is_copy;
 use clippy_utils::{is_expn_of, is_lint_allowed, meets_msrv, msrvs, path_to_local};
 use if_chain::if_chain;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
-use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::hir::map::Map;
+use rustc_hir::intravisit::{self, Visitor};
+use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::hir::nested_filter;
 use rustc_middle::ty;
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::{symbol::Ident, Span};
-use std::convert::TryInto;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -75,7 +74,7 @@ impl<'tcx> LateLintPass<'tcx> for IndexRefutableSlice {
             if !expr.span.from_expansion() || is_expn_of(expr.span, "if_chain").is_some();
             if let Some(IfLet {let_pat, if_then, ..}) = IfLet::hir(cx, expr);
             if !is_lint_allowed(cx, INDEX_REFUTABLE_SLICE, expr.hir_id);
-            if meets_msrv(self.msrv.as_ref(), &msrvs::SLICE_PATTERNS);
+            if meets_msrv(self.msrv, msrvs::SLICE_PATTERNS);
 
             let found_slices = find_slice_values(cx, let_pat);
             if !found_slices.is_empty();
@@ -92,9 +91,9 @@ impl<'tcx> LateLintPass<'tcx> for IndexRefutableSlice {
     extract_msrv_attr!(LateContext);
 }
 
-fn find_slice_values(cx: &LateContext<'_>, pat: &hir::Pat<'_>) -> FxHashMap<hir::HirId, SliceLintInformation> {
+fn find_slice_values(cx: &LateContext<'_>, pat: &hir::Pat<'_>) -> FxIndexMap<hir::HirId, SliceLintInformation> {
     let mut removed_pat: FxHashSet<hir::HirId> = FxHashSet::default();
-    let mut slices: FxHashMap<hir::HirId, SliceLintInformation> = FxHashMap::default();
+    let mut slices: FxIndexMap<hir::HirId, SliceLintInformation> = FxIndexMap::default();
     pat.walk_always(|pat| {
         if let hir::PatKind::Binding(binding, value_hir_id, ident, sub_pat) = pat.kind {
             // We'll just ignore mut and ref mut for simplicity sake right now
@@ -116,9 +115,9 @@ fn find_slice_values(cx: &LateContext<'_>, pat: &hir::Pat<'_>) -> FxHashMap<hir:
             let bound_ty = cx.typeck_results().node_type(pat.hir_id);
             if let ty::Slice(inner_ty) | ty::Array(inner_ty, _) = bound_ty.peel_refs().kind() {
                 // The values need to use the `ref` keyword if they can't be copied.
-                // This will need to be adjusted if the lint want to support multable access in the future
+                // This will need to be adjusted if the lint want to support mutable access in the future
                 let src_is_ref = bound_ty.is_ref() && binding != hir::BindingAnnotation::Ref;
-                let needs_ref = !(src_is_ref || is_copy(cx, inner_ty));
+                let needs_ref = !(src_is_ref || is_copy(cx, *inner_ty));
 
                 let slice_info = slices
                     .entry(value_hir_id)
@@ -208,10 +207,10 @@ impl SliceLintInformation {
 
 fn filter_lintable_slices<'a, 'tcx>(
     cx: &'a LateContext<'tcx>,
-    slice_lint_info: FxHashMap<hir::HirId, SliceLintInformation>,
+    slice_lint_info: FxIndexMap<hir::HirId, SliceLintInformation>,
     max_suggested_slice: u64,
     scope: &'tcx hir::Expr<'tcx>,
-) -> FxHashMap<hir::HirId, SliceLintInformation> {
+) -> FxIndexMap<hir::HirId, SliceLintInformation> {
     let mut visitor = SliceIndexLintingVisitor {
         cx,
         slice_lint_info,
@@ -225,15 +224,15 @@ fn filter_lintable_slices<'a, 'tcx>(
 
 struct SliceIndexLintingVisitor<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
-    slice_lint_info: FxHashMap<hir::HirId, SliceLintInformation>,
+    slice_lint_info: FxIndexMap<hir::HirId, SliceLintInformation>,
     max_suggested_slice: u64,
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for SliceIndexLintingVisitor<'a, 'tcx> {
-    type Map = Map<'tcx>;
+    type NestedFilter = nested_filter::OnlyBodies;
 
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::OnlyBodies(self.cx.tcx.hir())
+    fn nested_visit_map(&mut self) -> Self::Map {
+        self.cx.tcx.hir()
     }
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {

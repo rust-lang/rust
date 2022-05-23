@@ -10,7 +10,6 @@ use crate::io::{self, ErrorKind, IoSlice, IoSliceMut};
     target_os = "netbsd",
     target_os = "openbsd",
 ))]
-use crate::iter::FromIterator;
 #[cfg(any(
     target_os = "android",
     target_os = "dragonfly",
@@ -29,7 +28,7 @@ macro_rules! or_panic {
     ($e:expr) => {
         match $e {
             Ok(e) => e,
-            Err(e) => panic!("{}", e),
+            Err(e) => panic!("{e}"),
         }
     };
 }
@@ -161,19 +160,19 @@ fn long_path() {
     );
     match UnixStream::connect(&socket_path) {
         Err(ref e) if e.kind() == io::ErrorKind::InvalidInput => {}
-        Err(e) => panic!("unexpected error {}", e),
+        Err(e) => panic!("unexpected error {e}"),
         Ok(_) => panic!("unexpected success"),
     }
 
     match UnixListener::bind(&socket_path) {
         Err(ref e) if e.kind() == io::ErrorKind::InvalidInput => {}
-        Err(e) => panic!("unexpected error {}", e),
+        Err(e) => panic!("unexpected error {e}"),
         Ok(_) => panic!("unexpected success"),
     }
 
     match UnixDatagram::bind(&socket_path) {
         Err(ref e) if e.kind() == io::ErrorKind::InvalidInput => {}
-        Err(e) => panic!("unexpected error {}", e),
+        Err(e) => panic!("unexpected error {e}"),
         Ok(_) => panic!("unexpected success"),
     }
 }
@@ -524,7 +523,7 @@ fn test_abstract_namespace_too_long() {
         jklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz",
     ) {
         Err(ref e) if e.kind() == io::ErrorKind::InvalidInput => {}
-        Err(e) => panic!("unexpected error {}", e),
+        Err(e) => panic!("unexpected error {e}"),
         Ok(_) => panic!("unexpected success"),
     }
 }
@@ -564,7 +563,7 @@ fn test_unix_stream_peek() {
     match stream.peek(&mut buf) {
         Ok(_) => panic!("expected error"),
         Err(ref e) if e.kind() == ErrorKind::WouldBlock => {}
-        Err(e) => panic!("unexpected error: {}", e),
+        Err(e) => panic!("unexpected error: {e}"),
     }
 
     or_panic!(txdone.send(()));

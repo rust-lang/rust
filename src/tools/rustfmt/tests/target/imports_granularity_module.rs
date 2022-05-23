@@ -10,6 +10,8 @@ use a::n::o::p;
 use a::n::q;
 pub use a::r::s;
 pub use a::t;
+use b::c::d;
+use b::{self};
 
 use foo::e;
 #[cfg(test)]

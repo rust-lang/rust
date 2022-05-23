@@ -1,12 +1,19 @@
 #![warn(clippy::unnecessary_cast)]
 #![allow(clippy::no_effect)]
 
+#[rustfmt::skip]
 fn main() {
     // Test cast_unnecessary
     1i32 as i32;
     1f32 as f32;
     false as bool;
     &1i32 as &i32;
+
+    -1_i32 as i32;
+    - 1_i32 as i32;
+    -1f32 as f32;
+    1_i32 as i32;
+    1_f32 as f32;
 
     // macro version
     macro_rules! foo {
@@ -23,4 +30,10 @@ fn main() {
 
     // do not lint cast to cfg-dependant type
     1 as std::os::raw::c_char;
+
+    // do not lint cast to alias type
+    1 as I32Alias;
+    &1 as &I32Alias;
 }
+
+type I32Alias = i32;

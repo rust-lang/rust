@@ -1,34 +1,33 @@
-error: non-defining opaque type use in defining scope
-  --> $DIR/not_a_defining_use.rs:10:27
-   |
-LL | fn two<T: Debug>(t: T) -> Two<T, u32> {
-   |                           ^^^^^^^^^^^
-   |
-note: used non-generic type `u32` for generic parameter
-  --> $DIR/not_a_defining_use.rs:7:13
-   |
-LL | type Two<T, U> = impl Debug;
-   |             ^
-
-error: concrete type differs from previous defining opaque type use
-  --> $DIR/not_a_defining_use.rs:29:1
-   |
-LL | fn four<T: Debug, U: Bar>(t: T) -> Two<T, U> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `(T, i8)`, got `(T, <U as Bar>::Blub)`
-   |
-note: previous use here
-  --> $DIR/not_a_defining_use.rs:15:1
-   |
-LL | fn three<T: Debug, U>(t: T) -> Two<T, U> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
 error[E0277]: `T` doesn't implement `Debug`
-  --> $DIR/not_a_defining_use.rs:7:18
+  --> $DIR/not_a_defining_use.rs:10:5
    |
-LL | type Two<T, U> = impl Debug;
-   |                  ^^^^^^^^^^ `T` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+LL |     (t, 5i8)
+   |     ^^^^^^^^ `T` cannot be formatted using `{:?}` because it doesn't implement `Debug`
    |
    = note: required because of the requirements on the impl of `Debug` for `(T, i8)`
+help: consider restricting type parameter `T`
+   |
+LL | type Two<T: std::fmt::Debug, U> = impl Debug;
+   |           +++++++++++++++++
+
+error[E0277]: the trait bound `U: Bar` is not satisfied
+  --> $DIR/not_a_defining_use.rs:25:5
+   |
+LL |     (t, <U as Bar>::FOO)
+   |     ^^^^^^^^^^^^^^^^^^^^ the trait `Bar` is not implemented for `U`
+   |
+help: consider restricting type parameter `U`
+   |
+LL | type Two<T, U: Bar> = impl Debug;
+   |              +++++
+
+error[E0277]: `T` doesn't implement `Debug`
+  --> $DIR/not_a_defining_use.rs:25:5
+   |
+LL |     (t, <U as Bar>::FOO)
+   |     ^^^^^^^^^^^^^^^^^^^^ `T` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |
+   = note: required because of the requirements on the impl of `Debug` for `(T, _)`
 help: consider restricting type parameter `T`
    |
 LL | type Two<T: std::fmt::Debug, U> = impl Debug;

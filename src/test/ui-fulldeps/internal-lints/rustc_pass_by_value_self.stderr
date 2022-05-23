@@ -1,0 +1,38 @@
+error: passing `TyCtxt<'tcx>` by reference
+  --> $DIR/rustc_pass_by_value_self.rs:18:15
+   |
+LL |     fn by_ref(&self) {}
+   |               ^^^^^ help: try passing by value: `TyCtxt<'tcx>`
+   |
+note: the lint level is defined here
+  --> $DIR/rustc_pass_by_value_self.rs:8:9
+   |
+LL | #![deny(rustc::pass_by_value)]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: passing `Ty<'tcx>` by reference
+  --> $DIR/rustc_pass_by_value_self.rs:30:21
+   |
+LL |     fn by_ref(self: &Ty<'tcx>) {}
+   |                     ^^^^^^^^^ help: try passing by value: `Ty<'tcx>`
+
+error: passing `Foo` by reference
+  --> $DIR/rustc_pass_by_value_self.rs:37:17
+   |
+LL |     fn with_ref(&self) {}
+   |                 ^^^^^ help: try passing by value: `Foo`
+
+error: passing `WithParameters<T, 1_usize>` by reference
+  --> $DIR/rustc_pass_by_value_self.rs:47:17
+   |
+LL |     fn with_ref(&self) {}
+   |                 ^^^^^ help: try passing by value: `WithParameters<T, 1_usize>`
+
+error: passing `WithParameters<T, 1_usize, u8>` by reference
+  --> $DIR/rustc_pass_by_value_self.rs:51:17
+   |
+LL |     fn with_ref(&self) {}
+   |                 ^^^^^ help: try passing by value: `WithParameters<T, 1_usize, u8>`
+
+error: aborting due to 5 previous errors
+

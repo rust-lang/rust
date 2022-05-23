@@ -5,6 +5,7 @@
 use crate::any::Any;
 use crate::collections;
 use crate::panicking;
+use crate::sync::atomic::{AtomicUsize, Ordering};
 use crate::sync::{Mutex, RwLock};
 use crate::thread::Result;
 
@@ -35,6 +36,9 @@ pub use core::panic::panic_2021;
 
 #[stable(feature = "panic_hooks", since = "1.10.0")]
 pub use crate::panicking::{set_hook, take_hook};
+
+#[unstable(feature = "panic_update_hook", issue = "92649")]
+pub use crate::panicking::update_hook;
 
 #[stable(feature = "panic_hooks", since = "1.10.0")]
 pub use core::panic::{Location, PanicInfo};
@@ -197,6 +201,119 @@ pub fn resume_unwind(payload: Box<dyn Any + Send>) -> ! {
 #[unstable(feature = "panic_always_abort", issue = "84438")]
 pub fn always_abort() {
     crate::panicking::panic_count::set_always_abort();
+}
+
+/// The configuration for whether and how the default panic hook will capture
+/// and display the backtrace.
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[unstable(feature = "panic_backtrace_config", issue = "93346")]
+#[non_exhaustive]
+pub enum BacktraceStyle {
+    /// Prints a terser backtrace which ideally only contains relevant
+    /// information.
+    Short,
+    /// Prints a backtrace with all possible information.
+    Full,
+    /// Disable collecting and displaying backtraces.
+    Off,
+}
+
+impl BacktraceStyle {
+    pub(crate) fn full() -> Option<Self> {
+        if cfg!(feature = "backtrace") { Some(BacktraceStyle::Full) } else { None }
+    }
+
+    fn as_usize(self) -> usize {
+        match self {
+            BacktraceStyle::Short => 1,
+            BacktraceStyle::Full => 2,
+            BacktraceStyle::Off => 3,
+        }
+    }
+
+    fn from_usize(s: usize) -> Option<Self> {
+        Some(match s {
+            0 => return None,
+            1 => BacktraceStyle::Short,
+            2 => BacktraceStyle::Full,
+            3 => BacktraceStyle::Off,
+            _ => unreachable!(),
+        })
+    }
+}
+
+// Tracks whether we should/can capture a backtrace, and how we should display
+// that backtrace.
+//
+// Internally stores equivalent of an Option<BacktraceStyle>.
+static SHOULD_CAPTURE: AtomicUsize = AtomicUsize::new(0);
+
+/// Configure whether the default panic hook will capture and display a
+/// backtrace.
+///
+/// The default value for this setting may be set by the `RUST_BACKTRACE`
+/// environment variable; see the details in [`get_backtrace_style`].
+#[unstable(feature = "panic_backtrace_config", issue = "93346")]
+pub fn set_backtrace_style(style: BacktraceStyle) {
+    if !cfg!(feature = "backtrace") {
+        // If the `backtrace` feature of this crate isn't enabled, skip setting.
+        return;
+    }
+    SHOULD_CAPTURE.store(style.as_usize(), Ordering::Release);
+}
+
+/// Checks whether the standard library's panic hook will capture and print a
+/// backtrace.
+///
+/// This function will, if a backtrace style has not been set via
+/// [`set_backtrace_style`], read the environment variable `RUST_BACKTRACE` to
+/// determine a default value for the backtrace formatting:
+///
+/// The first call to `get_backtrace_style` may read the `RUST_BACKTRACE`
+/// environment variable if `set_backtrace_style` has not been called to
+/// override the default value. After a call to `set_backtrace_style` or
+/// `get_backtrace_style`, any changes to `RUST_BACKTRACE` will have no effect.
+///
+/// `RUST_BACKTRACE` is read according to these rules:
+///
+/// * `0` for `BacktraceStyle::Off`
+/// * `full` for `BacktraceStyle::Full`
+/// * `1` for `BacktraceStyle::Short`
+/// * Other values are currently `BacktraceStyle::Short`, but this may change in
+///   the future
+///
+/// Returns `None` if backtraces aren't currently supported.
+#[unstable(feature = "panic_backtrace_config", issue = "93346")]
+pub fn get_backtrace_style() -> Option<BacktraceStyle> {
+    if !cfg!(feature = "backtrace") {
+        // If the `backtrace` feature of this crate isn't enabled quickly return
+        // `Unsupported` so this can be constant propagated all over the place
+        // to optimize away callers.
+        return None;
+    }
+    if let Some(style) = BacktraceStyle::from_usize(SHOULD_CAPTURE.load(Ordering::Acquire)) {
+        return Some(style);
+    }
+
+    // Setting environment variables for Fuchsia components isn't a standard
+    // or easily supported workflow. For now, display backtraces by default.
+    let format = if cfg!(target_os = "fuchsia") {
+        BacktraceStyle::Full
+    } else {
+        crate::env::var_os("RUST_BACKTRACE")
+            .map(|x| {
+                if &x == "0" {
+                    BacktraceStyle::Off
+                } else if &x == "full" {
+                    BacktraceStyle::Full
+                } else {
+                    BacktraceStyle::Short
+                }
+            })
+            .unwrap_or(BacktraceStyle::Off)
+    };
+    set_backtrace_style(format);
+    Some(format)
 }
 
 #[cfg(test)]
