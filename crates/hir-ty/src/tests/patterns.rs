@@ -969,3 +969,23 @@ fn main() {
     "#,
     );
 }
+
+#[test]
+fn tuple_wildcard() {
+    check_types(
+        r#"
+fn main() {
+    enum Option<T> {Some(T), None}
+    use Option::*;
+
+    let mut x = None;
+    x;
+  //^ Option<(i32, i32)>
+
+    if let Some((_, _a)) = x {}
+
+    x = Some((1, 2));
+}
+        "#,
+    );
+}
