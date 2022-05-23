@@ -7,6 +7,7 @@ use crate::io::prelude::*;
 
 use crate::fmt;
 use crate::io::{self, IoSlice, IoSliceMut};
+use crate::iter::FusedIterator;
 use crate::net::{Shutdown, SocketAddr, ToSocketAddrs};
 use crate::sys_common::net as net_imp;
 use crate::sys_common::{AsInner, FromInner, IntoInner};
@@ -1009,6 +1010,9 @@ impl<'a> Iterator for Incoming<'a> {
     }
 }
 
+#[stable(feature = "tcp_listener_incoming_fused_iterator", since = "1.63.0")]
+impl FusedIterator for Incoming<'_> {}
+
 #[unstable(feature = "tcplistener_into_incoming", issue = "88339")]
 impl Iterator for IntoIncoming {
     type Item = io::Result<TcpStream>;
@@ -1016,6 +1020,9 @@ impl Iterator for IntoIncoming {
         Some(self.listener.accept().map(|p| p.0))
     }
 }
+
+#[unstable(feature = "tcplistener_into_incoming", issue = "88339")]
+impl FusedIterator for IntoIncoming {}
 
 impl AsInner<net_imp::TcpListener> for TcpListener {
     fn as_inner(&self) -> &net_imp::TcpListener {
