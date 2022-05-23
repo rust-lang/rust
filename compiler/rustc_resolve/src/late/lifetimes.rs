@@ -29,8 +29,6 @@ use std::cell::Cell;
 use std::fmt;
 use std::mem::take;
 
-use tracing::{debug, span, Level};
-
 trait RegionExt {
     fn early(hir_map: Map<'_>, index: &mut u32, param: &GenericParam<'_>) -> (LocalDefId, Region);
 
@@ -572,41 +570,38 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
         });
     }
 
-    fn visit_fn(
-        &mut self,
-        fk: intravisit::FnKind<'tcx>,
-        fd: &'tcx hir::FnDecl<'tcx>,
-        b: hir::BodyId,
-        s: rustc_span::Span,
-        hir_id: hir::HirId,
-    ) {
-        let name = match fk {
-            intravisit::FnKind::ItemFn(id, _, _) => id.name,
-            intravisit::FnKind::Method(id, _) => id.name,
-            intravisit::FnKind::Closure => sym::closure,
-        };
-        let name = name.as_str();
-        let span = span!(Level::DEBUG, "visit_fn", name);
-        let _enter = span.enter();
-        match fk {
-            // Any `Binders` are handled elsewhere
-            intravisit::FnKind::ItemFn(..) | intravisit::FnKind::Method(..) => {
-                intravisit::walk_fn(self, fk, fd, b, s, hir_id)
-            }
-            intravisit::FnKind::Closure => {
-                self.map.late_bound_vars.insert(hir_id, vec![]);
-                let scope = Scope::Binder {
-                    hir_id,
-                    lifetimes: FxIndexMap::default(),
-                    next_early_index: self.next_early_index(),
-                    s: self.scope,
-                    opaque_type_parent: false,
-                    scope_type: BinderScopeType::Normal,
-                    allow_late_bound: true,
-                    where_bound_origin: None,
-                };
-                self.with(scope, move |this| intravisit::walk_fn(this, fk, fd, b, s, hir_id));
-            }
+    fn visit_expr(&mut self, e: &'tcx hir::Expr<'tcx>) {
+        if let hir::ExprKind::Closure { bound_generic_params, .. } = e.kind {
+            let next_early_index = self.next_early_index();
+            let (lifetimes, binders): (FxIndexMap<LocalDefId, Region>, Vec<_>) =
+                bound_generic_params
+                    .iter()
+                    .filter(|param| matches!(param.kind, GenericParamKind::Lifetime { .. }))
+                    .enumerate()
+                    .map(|(late_bound_idx, param)| {
+                        let pair = Region::late(late_bound_idx as u32, self.tcx.hir(), param);
+                        let r = late_region_as_bound_region(self.tcx, &pair.1);
+                        (pair, r)
+                    })
+                    .unzip();
+            self.map.late_bound_vars.insert(e.hir_id, binders);
+            let scope = Scope::Binder {
+                hir_id: e.hir_id,
+                lifetimes,
+                s: self.scope,
+                next_early_index,
+                opaque_type_parent: false,
+                scope_type: BinderScopeType::Normal,
+                allow_late_bound: true,
+                where_bound_origin: None,
+            };
+            self.with(scope, |this| {
+                // a closure has no bounds, so everything
+                // contained within is scoped within its binder.
+                intravisit::walk_expr(this, e)
+            });
+        } else {
+            intravisit::walk_expr(self, e)
         }
     }
 

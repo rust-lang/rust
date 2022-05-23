@@ -1459,11 +1459,13 @@ impl<'a> State<'a> {
             }
             hir::ExprKind::Closure {
                 capture_clause,
+                bound_generic_params,
                 ref fn_decl,
                 body,
                 fn_decl_span: _,
                 movability: _,
             } => {
+                self.print_formal_generic_params(bound_generic_params);
                 self.print_capture_clause(capture_clause);
 
                 self.print_closure_params(&fn_decl, body);

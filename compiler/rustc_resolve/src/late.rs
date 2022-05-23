@@ -845,11 +845,13 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                         }
                     }
                     FnKind::Closure(declaration, body) => {
-                        // Do not attempt to create generic lifetime parameters.
-                        // FIXME: Revisit this decision once `for<>` bounds on closures become a
-                        // thing.
+                        // We do not have any explicit generic lifetime parameter.
+                        // FIXME(rfc3216): Change when implementing `for<>` bounds on closures.
                         this.with_lifetime_rib(
-                            LifetimeRibKind::AnonymousPassThrough(fn_id, false),
+                            LifetimeRibKind::AnonymousCreateParameter {
+                                binder: fn_id,
+                                report_in_path: false,
+                            },
                             // Add each argument to the rib.
                             |this| this.resolve_params(&declaration.inputs),
                         );
@@ -1582,7 +1584,10 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                             }
                             break;
                         }
-                        _ => {}
+                        LifetimeRibKind::AnonymousCreateParameter { .. }
+                        | LifetimeRibKind::Generics { .. }
+                        | LifetimeRibKind::ConstGeneric
+                        | LifetimeRibKind::AnonConst => {}
                     }
                 }
                 continue;

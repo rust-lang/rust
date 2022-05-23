@@ -165,6 +165,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     if let Async::Yes { closure_id, .. } = asyncness {
                         self.lower_expr_async_closure(
                             capture_clause,
+                            e.id,
                             closure_id,
                             decl,
                             body,
@@ -173,6 +174,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     } else {
                         self.lower_expr_closure(
                             capture_clause,
+                            e.id,
                             movability,
                             decl,
                             body,
@@ -604,6 +606,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // `static |_task_context| -> <ret_ty> { body }`:
         let generator_kind = hir::ExprKind::Closure {
             capture_clause,
+            bound_generic_params: &[],
             fn_decl,
             body,
             fn_decl_span: self.lower_span(span),
@@ -828,6 +831,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_expr_closure(
         &mut self,
         capture_clause: CaptureBy,
+        closure_id: NodeId,
         movability: Movability,
         decl: &FnDecl,
         body: &Expr,
@@ -848,16 +852,19 @@ impl<'hir> LoweringContext<'_, 'hir> {
             (body_id, generator_option)
         });
 
-        // Lower outside new scope to preserve `is_in_loop_condition`.
-        let fn_decl = self.lower_fn_decl(decl, None, FnDeclKind::Closure, None);
+        self.with_lifetime_binder(closure_id, &[], |this, bound_generic_params| {
+            // Lower outside new scope to preserve `is_in_loop_condition`.
+            let fn_decl = this.lower_fn_decl(decl, None, FnDeclKind::Closure, None);
 
-        hir::ExprKind::Closure {
-            capture_clause,
-            fn_decl,
-            body,
-            fn_decl_span: self.lower_span(fn_decl_span),
-            movability: generator_option,
-        }
+            hir::ExprKind::Closure {
+                capture_clause,
+                bound_generic_params,
+                fn_decl,
+                body,
+                fn_decl_span: this.lower_span(fn_decl_span),
+                movability: generator_option,
+            }
+        })
     }
 
     fn generator_movability_for_fn(
@@ -897,6 +904,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &mut self,
         capture_clause: CaptureBy,
         closure_id: NodeId,
+        inner_closure_id: NodeId,
         decl: &FnDecl,
         body: &Expr,
         fn_decl_span: Span,
@@ -927,7 +935,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     if let FnRetTy::Ty(ty) = &decl.output { Some(ty.clone()) } else { None };
                 let async_body = this.make_async_expr(
                     capture_clause,
-                    closure_id,
+                    inner_closure_id,
                     async_ret_ty,
                     body.span,
                     hir::AsyncGeneratorKind::Closure,
@@ -938,18 +946,21 @@ impl<'hir> LoweringContext<'_, 'hir> {
             body_id
         });
 
-        // We need to lower the declaration outside the new scope, because we
-        // have to conserve the state of being inside a loop condition for the
-        // closure argument types.
-        let fn_decl = self.lower_fn_decl(&outer_decl, None, FnDeclKind::Closure, None);
+        self.with_lifetime_binder(closure_id, &[], |this, bound_generic_params| {
+            // We need to lower the declaration outside the new scope, because we
+            // have to conserve the state of being inside a loop condition for the
+            // closure argument types.
+            let fn_decl = this.lower_fn_decl(&outer_decl, None, FnDeclKind::Closure, None);
 
-        hir::ExprKind::Closure {
-            capture_clause,
-            fn_decl,
-            body,
-            fn_decl_span: self.lower_span(fn_decl_span),
-            movability: None,
-        }
+            hir::ExprKind::Closure {
+                capture_clause,
+                bound_generic_params,
+                fn_decl,
+                body,
+                fn_decl_span: this.lower_span(fn_decl_span),
+                movability: None,
+            }
+        })
     }
 
     /// Destructure the LHS of complex assignments.
