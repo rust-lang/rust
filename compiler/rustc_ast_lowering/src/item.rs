@@ -262,13 +262,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let itctx = ImplTraitContext::Universal;
                     let (generics, decl) = this.lower_generics(generics, id, itctx, |this| {
                         let ret_id = asyncness.opt_return_id();
-                        this.lower_fn_decl(
-                            &decl,
-                            Some(id),
-                            FnDeclKind::Fn,
-                            &generics.params,
-                            ret_id,
-                        )
+                        this.lower_fn_decl(&decl, Some(id), FnDeclKind::Fn, generics, ret_id)
                     });
                     let sig = hir::FnSig {
                         decl,
@@ -662,7 +656,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                                     fdec,
                                     None,
                                     FnDeclKind::ExternFn,
-                                    &generics.params,
+                                    generics,
                                     None,
                                 ),
                                 this.lower_fn_params_to_names(fdec),
@@ -1242,7 +1236,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let header = self.lower_fn_header(sig.header);
         let itctx = ImplTraitContext::Universal;
         let (generics, decl) = self.lower_generics(generics, id, itctx, |this| {
-            this.lower_fn_decl(&sig.decl, Some(id), kind, &generics.params, is_async)
+            this.lower_fn_decl(&sig.decl, Some(id), kind, generics, is_async)
         });
         (generics, hir::FnSig { header, decl, span: self.lower_span(sig.span) })
     }

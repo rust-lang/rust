@@ -270,8 +270,8 @@ enum ImplTraitContext<'a> {
     ReturnPositionOpaqueTy {
         /// Origin: Either OpaqueTyOrigin::FnReturn or OpaqueTyOrigin::AsyncFn,
         origin: hir::OpaqueTyOrigin,
-        /// In scope generic types and consts from AST
-        generic_params: &'a [GenericParam],
+        /// In scope generics
+        generics: &'a Generics,
     },
     /// Impl trait in type aliases.
     TypeAliasesOpaqueTy,
@@ -308,8 +308,8 @@ impl ImplTraitContext<'_> {
         use self::ImplTraitContext::*;
         match self {
             Universal => Universal,
-            ReturnPositionOpaqueTy { origin, generic_params } => {
-                ReturnPositionOpaqueTy { origin: *origin, generic_params: *generic_params }
+            ReturnPositionOpaqueTy { origin, generics } => {
+                ReturnPositionOpaqueTy { origin: *origin, generics: *generics }
             }
             TypeAliasesOpaqueTy => TypeAliasesOpaqueTy,
             Disallowed(pos) => Disallowed(*pos),
@@ -1368,7 +1368,15 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         &f.decl,
                         None,
                         FnDeclKind::Pointer,
-                        &f.generic_params,
+                        &Generics {
+                            params: f.generic_params.clone(),
+                            where_clause: WhereClause {
+                                has_where_token: false,
+                                predicates: Vec::new(),
+                                span: DUMMY_SP,
+                            },
+                            span: DUMMY_SP,
+                        },
                         None,
                     ),
                     param_names: self.lower_fn_params_to_names(&f.decl),
@@ -1437,13 +1445,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             TyKind::ImplTrait(def_node_id, ref bounds) => {
                 let span = t.span;
                 match itctx {
-                    ImplTraitContext::ReturnPositionOpaqueTy { origin, generic_params } => {
+                    ImplTraitContext::ReturnPositionOpaqueTy { origin, generics } => {
                         if self.tcx.sess.features_untracked().return_position_impl_trait_v2 {
                             self.lower_opaque_impl_trait_v2(
                                 span,
                                 origin,
                                 def_node_id,
-                                generic_params,
+                                generics,
                                 bounds,
                                 itctx,
                             )
@@ -1682,7 +1690,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         span: Span,
         origin: hir::OpaqueTyOrigin,
         opaque_ty_node_id: NodeId,
-        ast_generic_params: &[GenericParam],
+        ast_generics: &Generics,
         bounds: &GenericBounds,
         itctx: ImplTraitContext<'_>,
     ) -> hir::TyKind<'hir> {
@@ -1726,7 +1734,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             debug!(?collected_lifetimes);
             debug!(?new_remapping);
 
-            lctx.create_generic_defs(opaque_ty_def_id, ast_generic_params, &mut new_remapping);
+            lctx.create_generic_defs(opaque_ty_def_id, &ast_generics.params, &mut new_remapping);
             debug!(?new_remapping);
 
             // Install the remapping from old to new (if any):
@@ -1761,7 +1769,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     .collect();
                 debug!(?lifetime_defs);
 
-                let type_const_defs: Vec<_> = ast_generic_params
+                let type_const_defs: Vec<_> = ast_generics
+                    .params
                     .iter()
                     .filter(|param| {
                         matches!(
@@ -1817,7 +1826,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             .collect();
         debug!(?lifetimes);
 
-        let type_const_args = self.collect_type_const_args(ast_generic_params);
+        let type_const_args = self.collect_type_const_args(&ast_generics.params);
 
         let generic_args =
             self.arena.alloc_from_iter(lifetimes.into_iter().chain(type_const_args.into_iter()));
@@ -1944,7 +1953,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         decl: &FnDecl,
         fn_node_id: Option<NodeId>,
         kind: FnDeclKind,
-        generics: &[GenericParam],
+        generics: &Generics,
         make_ret_async: Option<NodeId>,
     ) -> &'hir hir::FnDecl<'hir> {
         let c_variadic = decl.c_variadic();
@@ -1990,7 +1999,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             let fn_def_id = self.local_def_id(fn_node_id);
                             ImplTraitContext::ReturnPositionOpaqueTy {
                                 origin: hir::OpaqueTyOrigin::FnReturn(fn_def_id),
-                                generic_params: generics,
+                                generics,
                             }
                         }
                         _ => ImplTraitContext::Disallowed(match kind {
@@ -2286,7 +2295,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 // generates.
                 let context = ImplTraitContext::ReturnPositionOpaqueTy {
                     origin: hir::OpaqueTyOrigin::FnReturn(fn_def_id),
-                    generic_params: &[],
+                    generics: &Generics::default(),
                 };
                 self.lower_ty(ty, context)
             }
