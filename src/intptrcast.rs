@@ -105,6 +105,8 @@ impl<'mir, 'tcx> GlobalStateInner {
         trace!("Exposing allocation id {:?}", alloc_id);
 
         let mut global_state = ecx.machine.intptrcast.borrow_mut();
+        // In legacy and strict mode, we don't need this, so we can save some cycles
+        // by not tracking it.
         if global_state.provenance_mode == ProvenanceMode::Permissive {
             global_state.exposed.insert(alloc_id);
         }
@@ -118,12 +120,17 @@ impl<'mir, 'tcx> GlobalStateInner {
 
         let global_state = ecx.machine.intptrcast.borrow();
 
-        // In legacy mode, we have to support int2ptr transmutes,
-        // so just pretend they do the same thing as a cast.
-        if global_state.provenance_mode == ProvenanceMode::Legacy {
-            Self::ptr_from_addr_cast(ecx, addr)
-        } else {
-            Pointer::new(None, Size::from_bytes(addr))
+        match global_state.provenance_mode {
+            ProvenanceMode::Legacy => {
+                // In legacy mode, we have to support int2ptr transmutes,
+                // so just pretend they do the same thing as a cast.
+                Self::ptr_from_addr_cast(ecx, addr)
+            }
+            ProvenanceMode::Permissive | ProvenanceMode::Strict => {
+                // Both of these modes consider transmuted pointers to be "invalid" (`None`
+                // provenance).
+                Pointer::new(None, Size::from_bytes(addr))
+            }
         }
     }
 
@@ -135,18 +142,26 @@ impl<'mir, 'tcx> GlobalStateInner {
 
         let global_state = ecx.machine.intptrcast.borrow();
 
-        if global_state.provenance_mode == ProvenanceMode::Strict {
-            Pointer::new(None, Size::from_bytes(addr))
-        } else if global_state.provenance_mode == ProvenanceMode::Legacy {
-            let alloc_id = Self::alloc_id_from_addr(ecx, addr);
-
-            Pointer::new(
-                alloc_id
-                    .map(|alloc_id| Tag::Concrete(ConcreteTag { alloc_id, sb: SbTag::Untagged })),
-                Size::from_bytes(addr),
-            )
-        } else {
-            Pointer::new(Some(Tag::Wildcard), Size::from_bytes(addr))
+        match global_state.provenance_mode {
+            ProvenanceMode::Legacy => {
+                // Determine the allocation this points to at cast time.
+                let alloc_id = Self::alloc_id_from_addr(ecx, addr);
+                Pointer::new(
+                    alloc_id.map(|alloc_id| {
+                        Tag::Concrete(ConcreteTag { alloc_id, sb: SbTag::Untagged })
+                    }),
+                    Size::from_bytes(addr),
+                )
+            }
+            ProvenanceMode::Strict => {
+                // We don't support int2ptr casts in this mode (i.e., we treat them like
+                // transmutes).
+                Pointer::new(None, Size::from_bytes(addr))
+            }
+            ProvenanceMode::Permissive => {
+                // This is how wildcard pointers are born.
+                Pointer::new(Some(Tag::Wildcard), Size::from_bytes(addr))
+            }
         }
     }
 
@@ -215,6 +230,8 @@ impl<'mir, 'tcx> GlobalStateInner {
         let alloc_id = if let Tag::Concrete(concrete) = tag {
             concrete.alloc_id
         } else {
+            // A wildcard pointer.
+            assert_eq!(ecx.machine.intptrcast.borrow().provenance_mode, ProvenanceMode::Permissive);
             GlobalStateInner::alloc_id_from_addr(ecx, addr.bytes())?
         };
 
