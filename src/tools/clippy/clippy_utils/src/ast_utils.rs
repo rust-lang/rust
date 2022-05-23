@@ -545,7 +545,7 @@ pub fn eq_defaultness(l: Defaultness, r: Defaultness) -> bool {
 pub fn eq_vis(l: &Visibility, r: &Visibility) -> bool {
     use VisibilityKind::*;
     match (&l.kind, &r.kind) {
-        (Public, Public) | (Inherited, Inherited) | (Crate(_), Crate(_)) => true,
+        (Public, Public) | (Inherited, Inherited) => true,
         (Restricted { path: l, .. }, Restricted { path: r, .. }) => eq_path(l, r),
         _ => false,
     }

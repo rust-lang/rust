@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use rustc_ast::ast::{
-    self, Attribute, CrateSugar, MetaItem, MetaItemKind, NestedMetaItem, NodeId, Path, Visibility,
+    self, Attribute, MetaItem, MetaItemKind, NestedMetaItem, NodeId, Path, Visibility,
     VisibilityKind,
 };
 use rustc_ast::ptr;
@@ -44,15 +44,7 @@ pub(crate) fn is_same_visibility(a: &Visibility, b: &Visibility) -> bool {
             VisibilityKind::Restricted { path: q, .. },
         ) => pprust::path_to_string(p) == pprust::path_to_string(q),
         (VisibilityKind::Public, VisibilityKind::Public)
-        | (VisibilityKind::Inherited, VisibilityKind::Inherited)
-        | (
-            VisibilityKind::Crate(CrateSugar::PubCrate),
-            VisibilityKind::Crate(CrateSugar::PubCrate),
-        )
-        | (
-            VisibilityKind::Crate(CrateSugar::JustCrate),
-            VisibilityKind::Crate(CrateSugar::JustCrate),
-        ) => true,
+        | (VisibilityKind::Inherited, VisibilityKind::Inherited) => true,
         _ => false,
     }
 }
@@ -65,8 +57,6 @@ pub(crate) fn format_visibility(
     match vis.kind {
         VisibilityKind::Public => Cow::from("pub "),
         VisibilityKind::Inherited => Cow::from(""),
-        VisibilityKind::Crate(CrateSugar::PubCrate) => Cow::from("pub(crate) "),
-        VisibilityKind::Crate(CrateSugar::JustCrate) => Cow::from("crate "),
         VisibilityKind::Restricted { ref path, .. } => {
             let Path { ref segments, .. } = **path;
             let mut segments_iter = segments.iter().map(|seg| rewrite_ident(context, seg.ident));
@@ -75,7 +65,7 @@ pub(crate) fn format_visibility(
                     .next()
                     .expect("Non-global path in pub(restricted)?");
             }
-            let is_keyword = |s: &str| s == "self" || s == "super";
+            let is_keyword = |s: &str| s == "crate" || s == "self" || s == "super";
             let path = segments_iter.collect::<Vec<_>>().join("::");
             let in_str = if is_keyword(&path) { "" } else { "in " };
 

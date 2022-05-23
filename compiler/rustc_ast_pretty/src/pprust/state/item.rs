@@ -403,13 +403,9 @@ impl<'a> State<'a> {
     pub(crate) fn print_visibility(&mut self, vis: &ast::Visibility) {
         match vis.kind {
             ast::VisibilityKind::Public => self.word_nbsp("pub"),
-            ast::VisibilityKind::Crate(sugar) => match sugar {
-                ast::CrateSugar::PubCrate => self.word_nbsp("pub(crate)"),
-                ast::CrateSugar::JustCrate => self.word_nbsp("crate"),
-            },
             ast::VisibilityKind::Restricted { ref path, .. } => {
                 let path = Self::to_string(|s| s.print_path(path, false, 0));
-                if path == "self" || path == "super" {
+                if path == "crate" || path == "self" || path == "super" {
                     self.word_nbsp(format!("pub({})", path))
                 } else {
                     self.word_nbsp(format!("pub(in {})", path))
