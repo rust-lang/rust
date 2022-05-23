@@ -1,17 +1,14 @@
 use smallvec::SmallVec;
-use std::rc::Rc;
 
 use rustc_middle::mir::interpret::{AllocId, AllocRange};
-use rustc_span::def_id::CrateNum;
 use rustc_span::{Span, SpanData};
 use rustc_target::abi::Size;
 
-use crate::helpers::HexRange;
+use crate::helpers::{CurrentSpan, HexRange};
 use crate::stacked_borrows::{err_sb_ub, AccessKind, Permission};
 use crate::Item;
 use crate::SbTag;
 use crate::Stack;
-use crate::ThreadManager;
 
 use rustc_middle::mir::interpret::InterpError;
 
@@ -23,8 +20,6 @@ pub struct AllocHistory {
     creations: smallvec::SmallVec<[Event; 2]>,
     invalidations: smallvec::SmallVec<[Event; 1]>,
     protectors: smallvec::SmallVec<[Protection; 1]>,
-    /// This field is a clone of the `local_crates` field on `Evaluator`.
-    local_crates: Rc<[CrateNum]>,
 }
 
 #[derive(Clone, Debug)]
@@ -59,27 +54,13 @@ pub enum TagHistory {
 }
 
 impl AllocHistory {
-    pub fn new(local_crates: Rc<[CrateNum]>) -> Self {
+    pub fn new() -> Self {
         Self {
             current_time: 0,
             creations: SmallVec::new(),
             invalidations: SmallVec::new(),
             protectors: SmallVec::new(),
-            local_crates,
         }
-    }
-
-    fn current_span(&self, threads: &ThreadManager<'_, '_>) -> Span {
-        threads
-            .active_thread_stack()
-            .into_iter()
-            .rev()
-            .find(|frame| {
-                let def_id = frame.instance.def_id();
-                def_id.is_local() || self.local_crates.contains(&def_id.krate)
-            })
-            .map(|frame| frame.current_span())
-            .unwrap_or(rustc_span::DUMMY_SP)
     }
 
     pub fn log_creation(
@@ -87,9 +68,9 @@ impl AllocHistory {
         parent: Option<SbTag>,
         tag: SbTag,
         range: AllocRange,
-        threads: &ThreadManager<'_, '_>,
+        current_span: &mut CurrentSpan<'_, '_, '_>,
     ) {
-        let span = self.current_span(threads);
+        let span = current_span.get();
         self.creations.push(Event { parent, tag, range, span, time: self.current_time });
         self.current_time += 1;
     }
@@ -98,15 +79,20 @@ impl AllocHistory {
         &mut self,
         tag: SbTag,
         range: AllocRange,
-        threads: &ThreadManager<'_, '_>,
+        current_span: &mut CurrentSpan<'_, '_, '_>,
     ) {
-        let span = self.current_span(threads);
+        let span = current_span.get();
         self.invalidations.push(Event { parent: None, tag, range, span, time: self.current_time });
         self.current_time += 1;
     }
 
-    pub fn log_protector(&mut self, orig_tag: SbTag, tag: SbTag, threads: &ThreadManager<'_, '_>) {
-        let span = self.current_span(threads);
+    pub fn log_protector(
+        &mut self,
+        orig_tag: SbTag,
+        tag: SbTag,
+        current_span: &mut CurrentSpan<'_, '_, '_>,
+    ) {
+        let span = current_span.get();
         self.protectors.push(Protection { orig_tag, tag, span });
         self.current_time += 1;
     }

@@ -2,7 +2,6 @@ pub mod convert;
 
 use std::mem;
 use std::num::NonZeroUsize;
-use std::rc::Rc;
 use std::time::Duration;
 
 use log::trace;
@@ -14,7 +13,7 @@ use rustc_middle::ty::{
     layout::{LayoutOf, TyAndLayout},
     List, TyCtxt,
 };
-use rustc_span::{def_id::CrateNum, sym, Symbol};
+use rustc_span::{def_id::CrateNum, sym, Span, Symbol};
 use rustc_target::abi::{Align, FieldsShape, Size, Variants};
 use rustc_target::spec::abi::Abi;
 
@@ -800,6 +799,43 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     }
 }
 
+impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
+    pub fn current_span(&self) -> CurrentSpan<'_, 'mir, 'tcx> {
+        CurrentSpan { span: None, machine: self }
+    }
+}
+
+/// A `CurrentSpan` should be created infrequently (ideally once) per interpreter step. It does
+/// nothing on creation, but when `CurrentSpan::get` is called, searches the current stack for the
+/// topmost frame which corresponds to a local crate, and returns the current span in that frame.
+/// The result of that search is cached so that later calls are approximately free.
+#[derive(Clone)]
+pub struct CurrentSpan<'a, 'tcx, 'mir> {
+    span: Option<Span>,
+    machine: &'a Evaluator<'tcx, 'mir>,
+}
+
+impl<'a, 'tcx, 'mir> CurrentSpan<'a, 'tcx, 'mir> {
+    pub fn get(&mut self) -> Span {
+        *self.span.get_or_insert_with(|| Self::current_span(&self.machine))
+    }
+
+    #[inline(never)]
+    fn current_span(machine: &Evaluator<'_, '_>) -> Span {
+        machine
+            .threads
+            .active_thread_stack()
+            .into_iter()
+            .rev()
+            .find(|frame| {
+                let def_id = frame.instance.def_id();
+                def_id.is_local() || machine.local_crates.contains(&def_id.krate)
+            })
+            .map(|frame| frame.current_span())
+            .unwrap_or(rustc_span::DUMMY_SP)
+    }
+}
+
 /// Check that the number of args is what we expect.
 pub fn check_arg_count<'a, 'tcx, const N: usize>(
     args: &'a [OpTy<'tcx, Tag>],
@@ -822,7 +858,7 @@ pub fn isolation_abort_error(name: &str) -> InterpResult<'static> {
 
 /// Retrieve the list of local crates that should have been passed by cargo-miri in
 /// MIRI_LOCAL_CRATES and turn them into `CrateNum`s.
-pub fn get_local_crates(tcx: &TyCtxt<'_>) -> Rc<[CrateNum]> {
+pub fn get_local_crates(tcx: &TyCtxt<'_>) -> Vec<CrateNum> {
     // Convert the local crate names from the passed-in config into CrateNums so that they can
     // be looked up quickly during execution
     let local_crate_names = std::env::var("MIRI_LOCAL_CRATES")
@@ -836,7 +872,7 @@ pub fn get_local_crates(tcx: &TyCtxt<'_>) -> Rc<[CrateNum]> {
             local_crates.push(crate_num);
         }
     }
-    Rc::from(local_crates.as_slice())
+    local_crates
 }
 
 /// Formats an AllocRange like [0x1..0x3], for use in diagnostics.
