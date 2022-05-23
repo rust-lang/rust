@@ -2454,7 +2454,7 @@ fn trait_explicit_predicates_and_bounds(
     gather_explicit_predicates_of(tcx, def_id.to_def_id())
 }
 
-fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicates<'_> {
+fn explicit_predicates_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> ty::GenericPredicates<'tcx> {
     let def_kind = tcx.def_kind(def_id);
     if let DefKind::Trait = def_kind {
         // Remove bounds on associated types from the predicates, they will be
@@ -2462,7 +2462,7 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
         let predicates_and_bounds = tcx.trait_explicit_predicates_and_bounds(def_id.expect_local());
         let trait_identity_substs = InternalSubsts::identity_for_item(tcx, def_id);
 
-        let is_assoc_item_ty = |ty: Ty<'_>| {
+        let is_assoc_item_ty = |ty: Ty<'tcx>| {
             // For a predicate from a where clause to become a bound on an
             // associated type:
             // * It must use the identity substs of the item.

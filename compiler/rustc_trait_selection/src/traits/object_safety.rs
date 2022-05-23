@@ -98,7 +98,7 @@ fn object_safety_violations_for_trait(
                 span,
             ) = violation
             {
-                lint_object_unsafe_trait(tcx, *span, trait_def_id, violation);
+                lint_object_unsafe_trait(tcx, *span, trait_def_id, &violation);
                 false
             } else {
                 true
@@ -278,7 +278,7 @@ fn predicate_references_self<'tcx>(
     (predicate, sp): (ty::Predicate<'tcx>, Span),
 ) -> Option<Span> {
     let self_ty = tcx.types.self_param;
-    let has_self_ty = |arg: &GenericArg<'_>| arg.walk().any(|arg| arg == self_ty.into());
+    let has_self_ty = |arg: &GenericArg<'tcx>| arg.walk().any(|arg| arg == self_ty.into());
     match predicate.kind().skip_binder() {
         ty::PredicateKind::Trait(ref data) => {
             // In the case of a trait predicate, we can skip the "self" type.

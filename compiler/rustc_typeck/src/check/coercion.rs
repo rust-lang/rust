@@ -1036,7 +1036,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Special-case that coercion alone cannot handle:
         // Function items or non-capturing closures of differing IDs or InternalSubsts.
         let (a_sig, b_sig) = {
-            let is_capturing_closure = |ty| {
+            #[allow(rustc::usage_of_ty_tykind)]
+            let is_capturing_closure = |ty: &ty::TyKind<'tcx>| {
                 if let &ty::Closure(closure_def_id, _substs) = ty {
                     self.tcx.upvars_mentioned(closure_def_id.expect_local()).is_some()
                 } else {

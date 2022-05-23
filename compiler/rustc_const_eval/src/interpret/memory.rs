@@ -197,7 +197,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         size: Size,
         align: Align,
         kind: MemoryKind<M::MemoryKind>,
-    ) -> InterpResult<'static, Pointer<M::PointerTag>> {
+    ) -> InterpResult<'tcx, Pointer<M::PointerTag>> {
         let alloc = Allocation::uninit(size, align, M::PANIC_ON_ALLOC_FAIL)?;
         Ok(self.allocate_raw_ptr(alloc, kind))
     }
@@ -402,7 +402,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         msg: CheckInAllocMsg,
         alloc_size: impl FnOnce(AllocId, Size, M::TagExtra) -> InterpResult<'tcx, (Size, Align, T)>,
     ) -> InterpResult<'tcx, Option<T>> {
-        fn check_offset_align(offset: u64, align: Align) -> InterpResult<'static> {
+        fn check_offset_align<'tcx>(offset: u64, align: Align) -> InterpResult<'tcx> {
             if offset % align.bytes() == 0 {
                 Ok(())
             } else {
@@ -654,7 +654,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &self,
         id: AllocId,
         liveness: AllocCheck,
-    ) -> InterpResult<'static, (Size, Align)> {
+    ) -> InterpResult<'tcx, (Size, Align)> {
         // # Regular allocations
         // Don't use `self.get_raw` here as that will
         // a) cause cycles in case `id` refers to a static

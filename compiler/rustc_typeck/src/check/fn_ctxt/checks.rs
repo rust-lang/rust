@@ -959,7 +959,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Ideally this would be folded into the above, for uniform style
             // but c-variadic is already a corner case
             if c_variadic {
-                fn variadic_error<'tcx>(sess: &Session, span: Span, ty: Ty<'tcx>, cast_ty: &str) {
+                fn variadic_error<'tcx>(
+                    sess: &'tcx Session,
+                    span: Span,
+                    ty: Ty<'tcx>,
+                    cast_ty: &str,
+                ) {
                     use crate::structured_errors::MissingCastForVariadicArg;
 
                     MissingCastForVariadicArg { sess, span, ty, cast_ty }.diagnostic().emit();
