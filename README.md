@@ -278,10 +278,10 @@ environment variable. We first document the most relevant and most commonly used
   cannot be accessed by the program. Can be used multiple times to exclude several variables. The
   `TERM` environment variable is excluded by default to [speed up the test
   harness](https://github.com/rust-lang/miri/issues/1702). This has no effect unless
-  `-Zmiri-disable-validation` is also set.
+  `-Zmiri-disable-isolation` is also set.
 * `-Zmiri-env-forward=<var>` forwards the `var` environment variable to the interpreted program. Can
   be used multiple times to forward several variables. This has no effect if
-  `-Zmiri-disable-validation` is set.
+  `-Zmiri-disable-isolation` is set.
 * `-Zmiri-ignore-leaks` disables the memory leak checker, and also allows some
   remaining threads to exist when the main thread exits.
 * `-Zmiri-seed=<hex>` configures the seed of the RNG that Miri uses to resolve
