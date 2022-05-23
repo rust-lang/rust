@@ -460,7 +460,6 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                         } else {
                             err.span_label(span, "a field by this name exists in `Self`");
                         }
-                        self.r.add_typo_suggestion(&mut err, typo_sugg, ident_span);
                     }
                     AssocSuggestion::MethodWithSelf if self_is_available => {
                         err.span_suggestion(
@@ -482,6 +481,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                         );
                     }
                 }
+                self.r.add_typo_suggestion(&mut err, typo_sugg, ident_span);
                 return (err, candidates);
             }
 

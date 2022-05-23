@@ -1,8 +1,8 @@
-struct Foo {
+struct A {
     config: String,
 }
 
-impl Foo {
+impl A {
     fn new(cofig: String) -> Self {
         Self { config } //~ Error cannot find value `config` in this scope
     }
@@ -15,5 +15,32 @@ impl Foo {
         println!("{config}"); //~ Error cannot find value `config` in this scope
     }
 }
+
+trait B {
+    const BAR: u32 = 3;
+    type Baz;
+    fn bar(&self);
+    fn baz(&self) {}
+    fn bah() {}
+}
+
+impl B for Box<isize> {
+    type Baz = String;
+    fn bar(&self) {
+        // let baz = 3;
+        baz();
+        //~^ ERROR cannot find function `baz`
+        bah;
+        //~^ ERROR cannot find value `bah`
+        BAR;
+        //~^ ERROR cannot find value `BAR` in this scope
+        let foo: Baz = "".to_string();
+        //~^ ERROR cannot find type `Baz` in this scope
+    }
+}
+
+fn ba() {}
+const BARR: u32 = 3;
+type Bar = String;
 
 fn main() {}
