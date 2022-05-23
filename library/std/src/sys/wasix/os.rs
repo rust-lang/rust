@@ -49,17 +49,19 @@ pub fn getcwd() -> io::Result<PathBuf> {
     let mut buf = Vec::<u8>::with_capacity(1024);
     for _ in 0..2 {
         unsafe {
-            let mut len = buf.capacity() as wasi::Size;
+            let mut len = buf.capacity() as super::WasiInt;
             let ptr_buf = buf.as_mut_ptr() as *mut u8;
-            let ptr_len = (&mut len).as_mut_ptr() as *mut wasi::Size;
+            let ptr_len = &mut len as *mut super::WasiInt;
             match wasi::getcwd(ptr_buf, ptr_len) {
                 Ok(()) => {
-                    buf.set_len(len);
+                    drop(ptr_len);
+                    drop(ptr_buf);
+                    buf.set_len(len as usize);
                     buf.shrink_to_fit();
                     return Ok(PathBuf::from(OsString::from_vec(buf)));
                 },
                 Err(wasi::ERRNO_OVERFLOW) => {
-                    buf = Vec::with_capacity(len);
+                    buf = Vec::with_capacity(len as usize);
                     continue;
                 },
                 Err(err) => {
@@ -73,7 +75,7 @@ pub fn getcwd() -> io::Result<PathBuf> {
 
 pub fn chdir(p: &path::Path) -> io::Result<()> {
     let p = p.to_str()
-        .ok_or(|| err2io(wasi::ERRNO_INVAL))?;
+        .ok_or_else(|| err2io(wasi::ERRNO_INVAL))?;
     unsafe {
         wasi::chdir(p).map_err(err2io)
     }

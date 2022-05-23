@@ -33,7 +33,7 @@ impl Socket
         sock.addr = addr.clone();
         unsafe {
             let addr = to_wasi_addr_port(addr.clone());
-            wasi::sock_bind(sock.fd(), addr).map_err(err2io)?;
+            wasi::sock_bind(sock.fd(), &addr).map_err(err2io)?;
         }
         Ok(sock)
     }
@@ -71,16 +71,16 @@ impl Socket
             AF_INET => IpAddr::V4(Ipv4Addr::UNSPECIFIED),
             _ => { return Err(io::const_io_error!(io::ErrorKind::Uncategorized, "invalid address family")); }
         };
-        let fds = unsafe {
+        let (fd1, fd2) = unsafe {
             wasi::pipe().map_err(err2io)?
         };
         let socket1 = Socket {
-            fd: Some(unsafe { WasiFd::from_raw_fd(fds.pipe as RawFd) }),
+            fd: Some(unsafe { WasiFd::from_raw_fd(fd1 as RawFd) }),
             addr: SocketAddr::new(ip, 0),
             peer: Arc::new(Mutex::new(None)),
         };
         let socket2 = Socket {
-            fd: Some(unsafe { WasiFd::from_raw_fd(fds.other as RawFd) }),
+            fd: Some(unsafe { WasiFd::from_raw_fd(fd2 as RawFd) }),
             addr: SocketAddr::new(ip, 0),
             peer: Arc::new(Mutex::new(None)),
         };
@@ -96,7 +96,7 @@ impl Socket
     pub fn connect_timeout(&self, addr: &SocketAddr, timeout: Duration) -> io::Result<()> {
         let r = unsafe {
             let addr = to_wasi_addr_port(*addr);
-            wasi::sock_connect(self.fd(), addr).map_err(err2io)
+            wasi::sock_connect(self.fd(), &addr).map_err(err2io)
         };
 
         match r {
@@ -200,9 +200,10 @@ impl Socket
         ri_data: &mut [IoSliceMut<'_>],
         ri_flags: wasi::Riflags,
     ) -> io::Result<(usize, wasi::Roflags)> {
-        unsafe {
-            wasi::sock_recv(self.fd(), super::fd::iovec(ri_data), ri_flags).map_err(err2io)
-        }
+        let (amt, flags) = unsafe {
+            wasi::sock_recv(self.fd(), super::fd::iovec(ri_data), ri_flags).map_err(err2io)?
+        };
+        Ok((amt as usize, flags))
     }
 
     pub fn recv(&self, buf: &mut [u8]) -> io::Result<usize> {
@@ -260,7 +261,7 @@ impl Socket
         si_flags: wasi::Siflags
     ) -> io::Result<usize> {
         unsafe {
-            wasi::sock_send(self.fd(), super::fd::ciovec(si_data), si_flags).map_err(err2io)
+            wasi::sock_send(self.fd(), super::fd::ciovec(si_data), si_flags).map(|a| a as usize).map_err(err2io)
         }
     }
 
@@ -286,7 +287,7 @@ impl Socket
     ) -> io::Result<usize> {
         let addr = to_wasi_addr_port(addr);
         unsafe {
-            wasi::sock_send_to(self.fd(), super::fd::ciovec(si_data), si_flags, addr).map_err(err2io)
+            wasi::sock_send_to(self.fd(), super::fd::ciovec(si_data), si_flags, &addr).map(|a| a as usize).map_err(err2io)
         }
     }
 
@@ -334,7 +335,7 @@ impl Socket
             }
         };
         unsafe {
-            wasi::sock_set_timeout(self.fd(), ty, dur).map_err(err2io)
+            wasi::sock_set_timeout(self.fd(), ty, &dur).map_err(err2io)
         }
     }
 
@@ -482,7 +483,7 @@ impl Socket
             }
         };
         unsafe {
-            wasi::sock_set_linger(self.fd(), val).map_err(err2io)
+            wasi::sock_set_linger(self.fd(), &val).map_err(err2io)
         }
     }
 
@@ -568,14 +569,14 @@ impl Socket
         let multiaddr = to_wasi_addr_v4(*multiaddr);
         let interface = to_wasi_addr_v4(*interface);
         unsafe {
-            wasi::sock_join_multicast_v4(self.fd(), multiaddr, interface).map_err(err2io)
+            wasi::sock_join_multicast_v4(self.fd(), &multiaddr, &interface).map_err(err2io)
         }
     }
 
     pub fn join_multicast_v6(&self, multiaddr: &Ipv6Addr, interface: u32) -> io::Result<()> {
         let multiaddr = to_wasi_addr_v6(*multiaddr);
         unsafe {
-            wasi::sock_join_multicast_v6(self.fd(), multiaddr, interface).map_err(err2io)
+            wasi::sock_join_multicast_v6(self.fd(), &multiaddr, interface).map_err(err2io)
         }
     }
 
@@ -583,14 +584,14 @@ impl Socket
         let multiaddr = to_wasi_addr_v4(*multiaddr);
         let interface = to_wasi_addr_v4(*interface);
         unsafe {
-            wasi::sock_leave_multicast_v4(self.fd(), multiaddr, interface).map_err(err2io)
+            wasi::sock_leave_multicast_v4(self.fd(), &multiaddr, &interface).map_err(err2io)
         }
     }
 
     pub fn leave_multicast_v6(&self, multiaddr: &Ipv6Addr, interface: u32) -> io::Result<()> {
         let multiaddr = to_wasi_addr_v6(*multiaddr);
         unsafe {
-            wasi::sock_leave_multicast_v6(self.fd(), multiaddr, interface).map_err(err2io)
+            wasi::sock_leave_multicast_v6(self.fd(), &multiaddr, interface).map_err(err2io)
         }
     }
 
@@ -624,14 +625,14 @@ fn conv_addr_port(addr: wasi::AddrPort) -> SocketAddr {
     unsafe {
         match addr.tag {
             a if a == wasi::ADDRESS_FAMILY_INET6.raw() => {
-                let u = &addr.u.ip6.addr;
+                let u = &addr.u.inet6.addr;
                 let ip = IpAddr::V6(Ipv6Addr::new(u.n0, u.n1, u.n2, u.n3, u.h0, u.h1, u.h2, u.h3));
-                SocketAddr::new(ip, addr.u.ip6.port)
+                SocketAddr::new(ip, addr.u.inet6.port)
             }
             _ => {
-                let u = &addr.u.ip4.addr;
+                let u = &addr.u.inet4.addr;
                 let ip = IpAddr::V4(Ipv4Addr::new(u.n0, u.n1, u.h0, u.h1));
-                SocketAddr::new(ip, addr.u.ip4.port)
+                SocketAddr::new(ip, addr.u.inet4.port)
             },
         }
     }
@@ -649,10 +650,10 @@ fn conv_addr(addr: wasi::AddrIp) -> IpAddr {
     unsafe {
         match addr.tag {
             a if a == wasi::ADDRESS_FAMILY_INET6.raw() => {
-                IpAddr::V6(conv_addr_v6(addr.u.ip6))
+                IpAddr::V6(conv_addr_v6(addr.u.inet6))
             },
             _ => {
-                IpAddr::V4(conv_addr_v4(addr.u.ip4))
+                IpAddr::V4(conv_addr_v4(addr.u.inet4))
             }
         }
     }
@@ -666,16 +667,16 @@ fn to_wasi_addr_port(addr: SocketAddr) -> wasi::AddrPort {
             u: match ip.tag {
                 a if a == wasi::ADDRESS_FAMILY_INET6.raw() => {
                     wasi::AddrPortU {
-                        ip6: wasi::AddrIp6Port {
-                            addr: ip.u.ip6,
+                        inet6: wasi::AddrIp6Port {
+                            addr: ip.u.inet6,
                             port: addr.port()
                         }
                     }
                 },
                 _ => {
                     wasi::AddrPortU {
-                        ip4: wasi::AddrIp4Port {
-                            addr: ip.u.ip4,
+                        inet4: wasi::AddrIp4Port {
+                            addr: ip.u.inet4,
                             port: addr.port()
                         }
                     }
@@ -715,7 +716,7 @@ fn to_wasi_addr(addr: IpAddr) -> wasi::AddrIp {
             wasi::AddrIp {
                 tag: wasi::ADDRESS_FAMILY_INET4.raw(),
                 u: wasi::AddrIpU {
-                    ip4: to_wasi_addr_v4(ip)
+                    inet4: to_wasi_addr_v4(ip)
                 }
             }
         },
@@ -723,7 +724,7 @@ fn to_wasi_addr(addr: IpAddr) -> wasi::AddrIp {
             wasi::AddrIp {
                 tag: wasi::ADDRESS_FAMILY_INET6.raw(),
                 u: wasi::AddrIpU {
-                    ip6: to_wasi_addr_v6(ip)
+                    inet6: to_wasi_addr_v6(ip)
                 }
             }
         }

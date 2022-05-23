@@ -44,6 +44,7 @@ pub fn target() -> Target {
     // Any engine that implements wasm64 will surely implement the rest of these
     // features since they were all merged into the official spec by the time
     // wasm64 was designed.
+    //options.features = "+bulk-memory,+mutable-globals,+atomics,+simd128,+sign-ext,+nontrapping-fptoint".into();
     options.features = "+bulk-memory,+mutable-globals,+sign-ext,+nontrapping-fptoint".into();
 
     Target {

@@ -139,14 +139,14 @@ impl WasiFd {
 
     pub fn readdir(&self, buf: &mut [u8], cookie: wasi::Dircookie) -> io::Result<usize> {
         unsafe {
-            wasi::fd_readdir(self.as_raw_fd() as wasi::Fd, buf.as_mut_ptr(), buf.len(), cookie)
+            wasi::fd_readdir(self.as_raw_fd() as wasi::Fd, buf.as_mut_ptr(), buf.len() as u64, cookie)
                 .map_err(err2io)
         }
     }
 
     pub fn readlink(&self, path: &str, buf: &mut [u8]) -> io::Result<usize> {
         unsafe {
-            wasi::path_readlink(self.as_raw_fd() as wasi::Fd, path, buf.as_mut_ptr(), buf.len())
+            wasi::path_readlink(self.as_raw_fd() as wasi::Fd, path, buf.as_mut_ptr(), buf.len() as u64)
                 .map_err(err2io)
         }
     }
@@ -240,14 +240,15 @@ impl WasiFd {
         ri_data: &mut [IoSliceMut<'_>],
         ri_flags: wasi::Riflags,
     ) -> io::Result<(usize, wasi::Roflags)> {
-        unsafe {
-            wasi::sock_recv(self.as_raw_fd() as wasi::Fd, iovec(ri_data), ri_flags).map_err(err2io)
-        }
+        let (amt, flags) = unsafe {
+            wasi::sock_recv(self.as_raw_fd() as wasi::Fd, iovec(ri_data), ri_flags).map_err(err2io)?
+        };
+        Ok((amt as usize, flags))
     }
 
     pub fn sock_send(&self, si_data: &[IoSlice<'_>], si_flags: wasi::Siflags) -> io::Result<usize> {
         unsafe {
-            wasi::sock_send(self.as_raw_fd() as wasi::Fd, ciovec(si_data), si_flags).map_err(err2io)
+            wasi::sock_send(self.as_raw_fd() as wasi::Fd, ciovec(si_data), si_flags).map(|a| a as usize).map_err(err2io)
         }
     }
 
