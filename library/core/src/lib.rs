@@ -114,7 +114,6 @@
 #![feature(const_convert)]
 #![feature(const_inherent_unchecked_arith)]
 #![feature(const_int_unchecked_arith)]
-#![feature(const_intrinsic_copy)]
 #![feature(const_intrinsic_forget)]
 #![feature(const_likely)]
 #![feature(const_maybe_uninit_uninit_array)]
