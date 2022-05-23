@@ -78,7 +78,10 @@ fn in_item_list_after_attr() {
     check(
         r#"#[attr] $0"#,
         expect![[r#"
+            ma makro!(…)           macro_rules! makro
+            md module
             kw const
+            kw crate::
             kw enum
             kw extern
             kw fn
@@ -87,8 +90,10 @@ fn in_item_list_after_attr() {
             kw pub
             kw pub(crate)
             kw pub(super)
+            kw self::
             kw static
             kw struct
+            kw super::
             kw trait
             kw type
             kw union
@@ -184,11 +189,16 @@ fn in_impl_assoc_item_list_after_attr() {
     check(
         r#"impl Struct { #[attr] $0 }"#,
         expect![[r#"
+            ma makro!(…)  macro_rules! makro
+            md module
             kw const
+            kw crate::
             kw fn
             kw pub
             kw pub(crate)
             kw pub(super)
+            kw self::
+            kw super::
             kw type
             kw unsafe
         "#]],
