@@ -91,7 +91,7 @@ fn check_conditional_variables_timed_wait_timeout() {
     let (_guard, timeout) = cvar.wait_timeout(guard, Duration::from_millis(100)).unwrap();
     assert!(timeout.timed_out());
     let elapsed_time = now.elapsed().as_millis();
-    assert!(100 <= elapsed_time && elapsed_time <= 800);
+    assert!(100 <= elapsed_time && elapsed_time <= 1000);
 }
 
 /// Test that signaling a conditional variable when waiting with a timeout works
