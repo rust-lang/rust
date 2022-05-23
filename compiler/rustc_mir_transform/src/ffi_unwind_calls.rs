@@ -1,4 +1,3 @@
-use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{LocalDefId, LOCAL_CRATE};
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout;
@@ -44,11 +43,7 @@ fn has_ffi_unwind_calls(tcx: TyCtxt<'_>, local_def_id: LocalDefId) -> bool {
     // Only perform check on functions because constants cannot call FFI functions.
     let def_id = local_def_id.to_def_id();
     let kind = tcx.def_kind(def_id);
-    let is_function = match kind {
-        DefKind::Fn | DefKind::AssocFn | DefKind::Ctor(..) => true,
-        _ => tcx.is_closure(def_id),
-    };
-    if !is_function {
+    if !kind.is_fn_like() {
         return false;
     }
 
