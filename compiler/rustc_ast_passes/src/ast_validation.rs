@@ -1726,6 +1726,8 @@ fn deny_equality_constraints(
                                             term: predicate.rhs_ty.clone().into(),
                                         },
                                         span: ident.span,
+
+                                        impl_trait_id: rustc_ast::node_id::DUMMY_NODE_ID,
                                     });
                                     // Add `<Bar = RhsTy>` to `Foo`.
                                     match &mut assoc_path.segments[len].args {

@@ -1911,6 +1911,8 @@ pub struct AssocConstraint {
     pub gen_args: Option<GenericArgs>,
     pub kind: AssocConstraintKind,
     pub span: Span,
+
+    pub impl_trait_id: NodeId,
 }
 
 /// The kinds of an `AssocConstraint`.

@@ -165,6 +165,7 @@ impl<'a> ParentScope<'a> {
 enum ImplTraitContext {
     Existential,
     Universal(LocalDefId),
+    UniversalInDyn(LocalDefId),
 }
 
 #[derive(Eq)]
@@ -1042,6 +1043,8 @@ pub struct Resolver<'a> {
     confused_type_with_std_module: FxHashMap<Span, Span>,
 
     access_levels: AccessLevels,
+
+    impl_trait_context: FxHashMap<LocalDefId, ImplTraitContext>,
 }
 
 /// Nothing really interesting here; it just provides memory for the rest of the crate.
@@ -1398,6 +1401,8 @@ impl<'a> Resolver<'a> {
             proc_macros: Default::default(),
             confused_type_with_std_module: Default::default(),
             access_levels: Default::default(),
+
+            impl_trait_context: FxHashMap::default(),
         };
 
         let root_parent_scope = ParentScope::module(graph_root, &resolver);
