@@ -248,9 +248,9 @@ jobs:
         if: github.ref == 'refs/heads/release' && (github.repository == 'rust-analyzer/rust-analyzer' || github.repository == 'rust-lang/rust-analyzer')
         working-directory: ./editors/code
         # token from https://dev.azure.com/rust-analyzer/
-        run: npx vsce publish --pat ${{ secrets.MARKETPLACE_TOKEN }} --packagePath ../../dist/rust-analyzer-no-server.vsix ../../dist/rust-analyzer-alpine-x64.vsix ../../dist/rust-analyzer-darwin-arm64.vsix ../../dist/rust-analyzer-darwin-x64.vsix ../../dist/rust-analyzer-linux-arm64.vsix ../../dist/rust-analyzer-linux-x64.vsix ../../dist/rust-analyzer-win32-arm64.vsix ../../dist/rust-analyzer-win32-x64.vsix
+        run: npx vsce publish --pat ${{ secrets.MARKETPLACE_TOKEN }} --packagePath ../../dist/rust-analyzer-*.vsix
 
       - name: Publish Extension (nightly)
         if: github.ref != 'refs/heads/release' && (github.repository == 'rust-analyzer/rust-analyzer' || github.repository == 'rust-lang/rust-analyzer')
         working-directory: ./editors/code
-        run: npx vsce publish --pat ${{ secrets.MARKETPLACE_TOKEN }} --pre-release --packagePath ../../dist/rust-analyzer-no-server.vsix ../../dist/rust-analyzer-alpine-x64.vsix ../../dist/rust-analyzer-darwin-arm64.vsix ../../dist/rust-analyzer-darwin-x64.vsix ../../dist/rust-analyzer-linux-arm64.vsix ../../dist/rust-analyzer-linux-x64.vsix ../../dist/rust-analyzer-win32-arm64.vsix ../../dist/rust-analyzer-win32-x64.vsix
+        run: npx vsce publish --pat ${{ secrets.MARKETPLACE_TOKEN }} --packagePath ../../dist/rust-analyzer-*.vsix --pre-release
