@@ -489,6 +489,8 @@ pub fn check_must_not_suspend_ty<'tcx>(
 
     let plural_suffix = pluralize!(data.plural_len);
 
+    debug!("Checking must_not_suspend for {}", ty);
+
     match *ty.kind() {
         ty::Adt(..) if ty.is_box() => {
             let boxed_ty = ty.boxed_ty();
@@ -579,6 +581,10 @@ pub fn check_must_not_suspend_ty<'tcx>(
                     ..data
                 },
             )
+        }
+        ty::Ref(_region, ty, _mutability) => {
+            let descr_pre = &format!("{}reference{} to ", data.descr_pre, plural_suffix);
+            check_must_not_suspend_ty(fcx, ty, hir_id, SuspendCheckData { descr_pre, ..data })
         }
         _ => false,
     }
