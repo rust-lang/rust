@@ -652,19 +652,18 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         intptrcast::GlobalStateInner::ptr_from_addr_transmute(ecx, addr)
     }
 
-    #[inline(always)]
     fn expose_ptr(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         ptr: Pointer<Self::PointerTag>,
     ) -> InterpResult<'tcx> {
-        let tag = ptr.provenance;
-
-        if let Tag::Concrete(concrete) = tag {
-            intptrcast::GlobalStateInner::expose_addr(ecx, concrete.alloc_id);
+        match ptr.provenance {
+            Tag::Concrete(concrete) =>
+                intptrcast::GlobalStateInner::expose_addr(ecx, concrete.alloc_id),
+            Tag::Wildcard => {
+                // No need to do anything for wildcard pointers as
+                // their provenances have already been previously exposed.
+            }
         }
-
-        // No need to do anything for wildcard pointers as
-        // their provenances have already been previously exposed.
         Ok(())
     }
 
@@ -676,12 +675,13 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
     ) -> Option<(AllocId, Size, Self::TagExtra)> {
         let rel = intptrcast::GlobalStateInner::abs_ptr_to_rel(ecx, ptr);
 
-        let sb = match ptr.provenance {
-            Tag::Concrete(ConcreteTag { sb, .. }) => sb,
-            Tag::Wildcard => SbTag::Untagged,
-        };
-
-        rel.map(|(alloc_id, size)| (alloc_id, size, sb))
+        rel.map(|(alloc_id, size)| {
+            let sb = match ptr.provenance {
+                Tag::Concrete(ConcreteTag { sb, .. }) => sb,
+                Tag::Wildcard => SbTag::Untagged,
+            };
+            (alloc_id, size, sb)
+        })
     }
 
     #[inline(always)]
