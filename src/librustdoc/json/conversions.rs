@@ -119,11 +119,11 @@ impl FromWithTcx<clean::GenericArgs> for GenericArgs {
         use clean::GenericArgs::*;
         match args {
             AngleBracketed { args, bindings } => GenericArgs::AngleBracketed {
-                args: args.into_iter().map(|a| a.into_tcx(tcx)).collect(),
+                args: args.into_vec().into_iter().map(|a| a.into_tcx(tcx)).collect(),
                 bindings: bindings.into_iter().map(|a| a.into_tcx(tcx)).collect(),
             },
             Parenthesized { inputs, output } => GenericArgs::Parenthesized {
-                inputs: inputs.into_iter().map(|a| a.into_tcx(tcx)).collect(),
+                inputs: inputs.into_vec().into_iter().map(|a| a.into_tcx(tcx)).collect(),
                 output: output.map(|a| (*a).into_tcx(tcx)),
             },
         }

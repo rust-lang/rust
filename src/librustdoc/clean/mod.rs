@@ -420,7 +420,7 @@ fn projection_to_path_segment(ty: ty::ProjectionTy<'_>, cx: &mut DocContext<'_>)
     PathSegment {
         name: item.name,
         args: GenericArgs::AngleBracketed {
-            args: substs_to_args(cx, &ty.substs[generics.parent_count..], false),
+            args: substs_to_args(cx, &ty.substs[generics.parent_count..], false).into(),
             bindings: Default::default(),
         },
     }
@@ -1205,7 +1205,7 @@ impl Clean<Item> for ty::AssocItem {
                                             || generics
                                                 .params
                                                 .iter()
-                                                .zip(args)
+                                                .zip(args.iter())
                                                 .any(|(param, arg)| !param_eq_arg(param, arg))
                                         {
                                             return false;
@@ -1837,7 +1837,7 @@ impl Clean<GenericArgs> for hir::GenericArgs<'_> {
             let output = self.bindings[0].ty().clean(cx);
             let output =
                 if output != Type::Tuple(Vec::new()) { Some(Box::new(output)) } else { None };
-            let inputs = self.inputs().iter().map(|x| x.clean(cx)).collect();
+            let inputs = self.inputs().iter().map(|x| x.clean(cx)).collect::<Vec<_>>().into();
             GenericArgs::Parenthesized { inputs, output }
         } else {
             let args = self
@@ -1852,8 +1852,9 @@ impl Clean<GenericArgs> for hir::GenericArgs<'_> {
                     hir::GenericArg::Const(ct) => GenericArg::Const(Box::new(ct.clean(cx))),
                     hir::GenericArg::Infer(_inf) => GenericArg::Infer,
                 })
-                .collect();
-            let bindings = self.bindings.iter().map(|x| x.clean(cx)).collect();
+                .collect::<Vec<_>>()
+                .into();
+            let bindings = self.bindings.iter().map(|x| x.clean(cx)).collect::<Vec<_>>().into();
             GenericArgs::AngleBracketed { args, bindings }
         }
     }

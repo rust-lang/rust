@@ -544,7 +544,7 @@ fn build_module(
                                 segments: vec![clean::PathSegment {
                                     name: prim_ty.as_sym(),
                                     args: clean::GenericArgs::AngleBracketed {
-                                        args: Vec::new(),
+                                        args: Default::default(),
                                         bindings: ThinVec::new(),
                                     },
                                 }],

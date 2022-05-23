@@ -994,7 +994,7 @@ pub(crate) struct DocFragment {
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 rustc_data_structures::static_assert_size!(DocFragment, 32);
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub(crate) enum DocFragmentKind {
     /// A doc fragment created from a `///` or `//!` doc comment.
     SugaredDoc,
@@ -2182,14 +2182,14 @@ rustc_data_structures::static_assert_size!(GenericArg, 80);
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub(crate) enum GenericArgs {
-    AngleBracketed { args: Vec<GenericArg>, bindings: ThinVec<TypeBinding> },
-    Parenthesized { inputs: Vec<Type>, output: Option<Box<Type>> },
+    AngleBracketed { args: Box<[GenericArg]>, bindings: ThinVec<TypeBinding> },
+    Parenthesized { inputs: Box<[Type]>, output: Option<Box<Type>> },
 }
 
 // `GenericArgs` is in every `PathSegment`, so its size can significantly
 // affect rustdoc's memory usage.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(GenericArgs, 40);
+rustc_data_structures::static_assert_size!(GenericArgs, 32);
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub(crate) struct PathSegment {
@@ -2200,7 +2200,7 @@ pub(crate) struct PathSegment {
 // `PathSegment` usually occurs multiple times in every `Path`, so its size can
 // significantly affect rustdoc's memory usage.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(PathSegment, 48);
+rustc_data_structures::static_assert_size!(PathSegment, 40);
 
 #[derive(Clone, Debug)]
 pub(crate) struct Typedef {
