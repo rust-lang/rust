@@ -193,14 +193,16 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
 
     fn visit_pat(&mut self, pat: &'hir Pat<'hir>) {
         self.insert(pat.span, pat.hir_id, Node::Pat(pat));
-        if let PatKind::Struct(_, fields, _) = pat.kind {
-            for field in fields {
-                self.insert(field.span, field.hir_id, Node::PatField(field));
-            }
-        }
 
         self.with_parent(pat.hir_id, |this| {
             intravisit::walk_pat(this, pat);
+        });
+    }
+
+    fn visit_pat_field(&mut self, field: &'hir PatField<'hir>) {
+        self.insert(field.span, field.hir_id, Node::PatField(field));
+        self.with_parent(field.hir_id, |this| {
+            intravisit::walk_pat_field(this, field);
         });
     }
 

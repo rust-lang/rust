@@ -2065,12 +2065,12 @@ impl<'tcx> Visitor<'tcx> for CheckAttrVisitor<'tcx> {
         };
 
         self.check_attributes(expr.hir_id, expr.span, target, None);
-        if let hir::ExprKind::Struct(_, fields, _) = expr.kind {
-            for field in fields {
-                self.check_attributes(field.hir_id, field.span, Target::PatField, None);
-            }
-        }
         intravisit::walk_expr(self, expr)
+    }
+
+    fn visit_expr_field(&mut self, field: &'tcx hir::ExprField<'tcx>) {
+        self.check_attributes(field.hir_id, field.span, Target::ExprField, None);
+        intravisit::walk_expr_field(self, field)
     }
 
     fn visit_variant(&mut self, variant: &'tcx hir::Variant<'tcx>) {
@@ -2084,13 +2084,9 @@ impl<'tcx> Visitor<'tcx> for CheckAttrVisitor<'tcx> {
         intravisit::walk_param(self, param);
     }
 
-    fn visit_pat(&mut self, p: &'tcx hir::Pat<'tcx>) {
-        if let hir::PatKind::Struct(_, fields, _) = p.kind {
-            for field in fields {
-                self.check_attributes(field.hir_id, field.span, Target::PatField, None);
-            }
-        }
-        intravisit::walk_pat(self, p);
+    fn visit_pat_field(&mut self, field: &'tcx hir::PatField<'tcx>) {
+        self.check_attributes(field.hir_id, field.span, Target::PatField, None);
+        intravisit::walk_pat_field(self, field);
     }
 }
 

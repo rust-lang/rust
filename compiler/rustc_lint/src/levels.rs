@@ -761,26 +761,15 @@ impl<'tcx> intravisit::Visitor<'tcx> for LintLevelMapBuilder<'tcx> {
     }
 
     fn visit_expr(&mut self, e: &'tcx hir::Expr<'tcx>) {
-        match e.kind {
-            hir::ExprKind::Struct(qpath, fields, base_expr) => {
-                self.with_lint_attrs(e.hir_id, |builder| {
-                    builder.visit_qpath(qpath, e.hir_id, e.span);
-                    for field in fields {
-                        builder.with_lint_attrs(field.hir_id, |field_builder| {
-                            field_builder.visit_id(field.hir_id);
-                            field_builder.visit_ident(field.ident);
-                            field_builder.visit_expr(field.expr);
-                        });
-                    }
-                    if let Some(base_expr) = base_expr {
-                        builder.visit_expr(base_expr);
-                    }
-                });
-            }
-            _ => self.with_lint_attrs(e.hir_id, |builder| {
-                intravisit::walk_expr(builder, e);
-            }),
-        }
+        self.with_lint_attrs(e.hir_id, |builder| {
+            intravisit::walk_expr(builder, e);
+        })
+    }
+
+    fn visit_expr_field(&mut self, field: &'tcx hir::ExprField<'tcx>) {
+        self.with_lint_attrs(field.hir_id, |builder| {
+            intravisit::walk_expr_field(builder, field);
+        })
     }
 
     fn visit_field_def(&mut self, s: &'tcx hir::FieldDef<'tcx>) {
@@ -819,20 +808,10 @@ impl<'tcx> intravisit::Visitor<'tcx> for LintLevelMapBuilder<'tcx> {
         });
     }
 
-    fn visit_pat(&mut self, p: &'tcx hir::Pat<'tcx>) {
-        match &p.kind {
-            hir::PatKind::Struct(qpath, fields, _) => {
-                self.visit_qpath(&qpath, p.hir_id, p.span);
-                for field in *fields {
-                    self.with_lint_attrs(field.hir_id, |builder| {
-                        builder.visit_id(field.hir_id);
-                        builder.visit_ident(field.ident);
-                        builder.visit_pat(field.pat);
-                    })
-                }
-            }
-            _ => intravisit::walk_pat(self, p),
-        }
+    fn visit_pat_field(&mut self, field: &'tcx hir::PatField<'tcx>) {
+        self.with_lint_attrs(field.hir_id, |builder| {
+            intravisit::walk_pat_field(builder, field);
+        })
     }
 
     fn visit_generic_param(&mut self, p: &'tcx hir::GenericParam<'tcx>) {

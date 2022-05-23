@@ -105,7 +105,7 @@ error: `#[must_use]` has no effect when applied to an match arm
 LL |         #[must_use]
    |         ^^^^^^^^^^^
 
-error: `#[must_use]` has no effect when applied to a pattern field
+error: `#[must_use]` has no effect when applied to a struct field
   --> $DIR/unused_attributes-must_use.rs:129:28
    |
 LL |     let s = PatternField { #[must_use]  foo: 123 };
