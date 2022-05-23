@@ -435,7 +435,6 @@ pub fn noop_visit_constraint<T: MutVisitor>(
 ) {
     vis.visit_id(id);
     vis.visit_ident(ident);
-    
     vis.visit_id(impl_trait_id);
 
     if let Some(ref mut gen_args) = gen_args {
