@@ -80,7 +80,7 @@ pub fn walk_expr<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, expr: &Exp
             visitor.visit_expr(&visitor.thir()[lhs]);
             visitor.visit_expr(&visitor.thir()[rhs]);
         }
-        Field { lhs, name: _ } => visitor.visit_expr(&visitor.thir()[lhs]),
+        Field { lhs, variant_index: _, name: _ } => visitor.visit_expr(&visitor.thir()[lhs]),
         Index { lhs, index } => {
             visitor.visit_expr(&visitor.thir()[lhs]);
             visitor.visit_expr(&visitor.thir()[index]);

@@ -591,6 +591,7 @@ impl<'tcx> Cx<'tcx> {
             }
             hir::ExprKind::Field(ref source, ..) => ExprKind::Field {
                 lhs: self.mirror_expr(source),
+                variant_index: VariantIdx::new(0),
                 name: Field::new(tcx.field_index(expr.hir_id, self.typeck_results)),
             },
             hir::ExprKind::Cast(ref source, ref cast_ty) => {
@@ -994,14 +995,11 @@ impl<'tcx> Cx<'tcx> {
                 HirProjectionKind::Deref => {
                     ExprKind::Deref { arg: self.thir.exprs.push(captured_place_expr) }
                 }
-                HirProjectionKind::Field(field, ..) => {
-                    // Variant index will always be 0, because for multi-variant
-                    // enums, we capture the enum entirely.
-                    ExprKind::Field {
-                        lhs: self.thir.exprs.push(captured_place_expr),
-                        name: Field::new(field as usize),
-                    }
-                }
+                HirProjectionKind::Field(field, variant_index) => ExprKind::Field {
+                    lhs: self.thir.exprs.push(captured_place_expr),
+                    variant_index,
+                    name: Field::new(field as usize),
+                },
                 HirProjectionKind::Index | HirProjectionKind::Subslice => {
                     // We don't capture these projections, so we can ignore them here
                     continue;
