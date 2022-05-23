@@ -293,7 +293,7 @@ error[E0061]: this function takes 5 arguments but 2 arguments were supplied
   --> $DIR/missing_arguments.rs:39:3
    |
 LL |   complex(   1,                     ""   );
-   |   ^^^^^^^--------------------------------- three arguments of type `f32`, `i32`, and `i32` are missing
+   |   ^^^^^^^--------------------------------- three arguments of type `f32`, `i32`, and `f32` are missing
    |
 note: function defined here
   --> $DIR/missing_arguments.rs:7:4
