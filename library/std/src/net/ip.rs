@@ -138,7 +138,8 @@ pub struct Ipv4Addr {
 ///
 /// To convert from an IPv4 address to an IPv4-mapped IPv6 address, use [`Ipv4Addr::to_ipv6_mapped`].
 /// Use [`Ipv6Addr::to_ipv4`] to convert an IPv4-mapped IPv6 address to the canonical IPv4 address.
-/// Note that this will also convert the IPv6 loopback address `::1` to `0.0.0.1`.
+/// Note that this will also convert the IPv6 loopback address `::1` to `0.0.0.1`. Use
+/// [`Ipv6Addr::to_ipv4_mapped`] to avoid this.
 ///
 /// [IETF RFC 4291 Section 2.5.5.2]: https://datatracker.ietf.org/doc/html/rfc4291#section-2.5.5.2
 ///
@@ -1646,8 +1647,6 @@ impl Ipv6Addr {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ip)]
-    ///
     /// use std::net::{Ipv4Addr, Ipv6Addr};
     ///
     /// assert_eq!(Ipv6Addr::new(0xff00, 0, 0, 0, 0, 0, 0, 0).to_ipv4_mapped(), None);
@@ -1656,7 +1655,7 @@ impl Ipv6Addr {
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1).to_ipv4_mapped(), None);
     /// ```
     #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
-    #[unstable(feature = "ip", issue = "27709")]
+    #[stable(feature = "ipv6_to_ipv4_mapped", since = "1.62.0")]
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[inline]
@@ -1674,7 +1673,8 @@ impl Ipv6Addr {
     /// or an [IPv4-mapped] address as defined in [IETF RFC 4291 section 2.5.5.2],
     /// otherwise returns [`None`].
     ///
-    /// Note that this will return an [`IPv4` address] for the IPv6 loopback address `::1`.
+    /// Note that this will return an [`IPv4` address] for the IPv6 loopback address `::1`. Use
+    /// [`Ipv6Addr::to_ipv4_mapped`] to avoid this.
     ///
     /// `::a.b.c.d` and `::ffff:a.b.c.d` become `a.b.c.d`. `::1` becomes `0.0.0.1`.
     /// All addresses *not* starting with either all zeroes or `::ffff` will return `None`.
