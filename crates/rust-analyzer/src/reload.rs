@@ -7,7 +7,7 @@
 //! not instantaneous -- it takes time to run `cargo metadata` and (for proc
 //! macros) `cargo check`.
 //!
-//! The main guiding principle here is, as elsewhere in rust-analyzer, is
+//! The main guiding principle here is, as elsewhere in rust-analyzer,
 //! robustness. We try not to assume that the project model exists or is
 //! correct. Instead, we try to provide a best-effort service. Even if the
 //! project is currently loading and we don't have a full project model, we
