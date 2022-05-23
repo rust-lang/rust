@@ -1784,7 +1784,6 @@ impl Clean<VariantStruct> for rustc_hir::VariantData<'_> {
         VariantStruct {
             struct_type: CtorKind::from_hir(self),
             fields: self.fields().iter().map(|x| x.clean(cx)).collect(),
-            fields_stripped: false,
         }
     }
 }
@@ -1804,7 +1803,6 @@ impl Clean<Item> for ty::VariantDef {
             }
             CtorKind::Fictive => Variant::Struct(VariantStruct {
                 struct_type: CtorKind::Fictive,
-                fields_stripped: false,
                 fields: self.fields.iter().map(|field| field.clean(cx)).collect(),
             }),
         };
@@ -1914,7 +1912,6 @@ fn clean_maybe_renamed_item(
             ItemKind::Enum(ref def, ref generics) => EnumItem(Enum {
                 variants: def.variants.iter().map(|v| v.clean(cx)).collect(),
                 generics: generics.clean(cx),
-                variants_stripped: false,
             }),
             ItemKind::TraitAlias(ref generics, bounds) => TraitAliasItem(TraitAlias {
                 generics: generics.clean(cx),
@@ -1923,13 +1920,11 @@ fn clean_maybe_renamed_item(
             ItemKind::Union(ref variant_data, ref generics) => UnionItem(Union {
                 generics: generics.clean(cx),
                 fields: variant_data.fields().iter().map(|x| x.clean(cx)).collect(),
-                fields_stripped: false,
             }),
             ItemKind::Struct(ref variant_data, ref generics) => StructItem(Struct {
                 struct_type: CtorKind::from_hir(variant_data),
                 generics: generics.clean(cx),
                 fields: variant_data.fields().iter().map(|x| x.clean(cx)).collect(),
-                fields_stripped: false,
             }),
             ItemKind::Impl(ref impl_) => return clean_impl(impl_, item.hir_id(), cx),
             // proc macros can have a name set by attributes

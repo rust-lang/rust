@@ -2363,8 +2363,7 @@ fn sidebar_enum(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item, e: &clean:
     let mut sidebar = Buffer::new();
 
     let mut variants = e
-        .variants
-        .iter()
+        .variants()
         .filter_map(|v| {
             v.name
                 .as_ref()

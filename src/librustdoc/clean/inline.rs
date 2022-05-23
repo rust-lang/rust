@@ -236,7 +236,6 @@ fn build_enum(cx: &mut DocContext<'_>, did: DefId) -> clean::Enum {
 
     clean::Enum {
         generics: clean_ty_generics(cx, cx.tcx.generics_of(did), predicates),
-        variants_stripped: false,
         variants: cx.tcx.adt_def(did).variants().iter().map(|v| v.clean(cx)).collect(),
     }
 }
@@ -249,7 +248,6 @@ fn build_struct(cx: &mut DocContext<'_>, did: DefId) -> clean::Struct {
         struct_type: variant.ctor_kind,
         generics: clean_ty_generics(cx, cx.tcx.generics_of(did), predicates),
         fields: variant.fields.iter().map(|x| x.clean(cx)).collect(),
-        fields_stripped: false,
     }
 }
 
@@ -259,7 +257,7 @@ fn build_union(cx: &mut DocContext<'_>, did: DefId) -> clean::Union {
 
     let generics = clean_ty_generics(cx, cx.tcx.generics_of(did), predicates);
     let fields = variant.fields.iter().map(|x| x.clean(cx)).collect();
-    clean::Union { generics, fields, fields_stripped: false }
+    clean::Union { generics, fields }
 }
 
 fn build_type_alias(cx: &mut DocContext<'_>, did: DefId) -> clean::Typedef {

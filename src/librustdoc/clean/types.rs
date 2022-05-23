@@ -619,11 +619,12 @@ impl Item {
             _ => false,
         }
     }
-    pub(crate) fn has_stripped_fields(&self) -> Option<bool> {
+    pub(crate) fn has_stripped_entries(&self) -> Option<bool> {
         match *self.kind {
-            StructItem(ref _struct) => Some(_struct.fields_stripped),
-            UnionItem(ref union) => Some(union.fields_stripped),
-            VariantItem(Variant::Struct(ref vstruct)) => Some(vstruct.fields_stripped),
+            StructItem(ref struct_) => Some(struct_.has_stripped_entries()),
+            UnionItem(ref union_) => Some(union_.has_stripped_entries()),
+            EnumItem(ref enum_) => Some(enum_.has_stripped_entries()),
+            VariantItem(ref v) => v.has_stripped_entries(),
             _ => None,
         }
     }
@@ -2028,14 +2029,24 @@ pub(crate) struct Struct {
     pub(crate) struct_type: CtorKind,
     pub(crate) generics: Generics,
     pub(crate) fields: Vec<Item>,
-    pub(crate) fields_stripped: bool,
+}
+
+impl Struct {
+    pub(crate) fn has_stripped_entries(&self) -> bool {
+        self.fields.iter().any(|f| f.is_stripped())
+    }
 }
 
 #[derive(Clone, Debug)]
 pub(crate) struct Union {
     pub(crate) generics: Generics,
     pub(crate) fields: Vec<Item>,
-    pub(crate) fields_stripped: bool,
+}
+
+impl Union {
+    pub(crate) fn has_stripped_entries(&self) -> bool {
+        self.fields.iter().any(|f| f.is_stripped())
+    }
 }
 
 /// This is a more limited form of the standard Struct, different in that
@@ -2045,14 +2056,28 @@ pub(crate) struct Union {
 pub(crate) struct VariantStruct {
     pub(crate) struct_type: CtorKind,
     pub(crate) fields: Vec<Item>,
-    pub(crate) fields_stripped: bool,
+}
+
+impl VariantStruct {
+    pub(crate) fn has_stripped_entries(&self) -> bool {
+        self.fields.iter().any(|f| f.is_stripped())
+    }
 }
 
 #[derive(Clone, Debug)]
 pub(crate) struct Enum {
     pub(crate) variants: IndexVec<VariantIdx, Item>,
     pub(crate) generics: Generics,
-    pub(crate) variants_stripped: bool,
+}
+
+impl Enum {
+    pub(crate) fn has_stripped_entries(&self) -> bool {
+        self.variants.iter().any(|f| f.is_stripped())
+    }
+
+    pub(crate) fn variants(&self) -> impl Iterator<Item = &Item> {
+        self.variants.iter().filter(|v| !v.is_stripped())
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -2060,6 +2085,15 @@ pub(crate) enum Variant {
     CLike,
     Tuple(Vec<Item>),
     Struct(VariantStruct),
+}
+
+impl Variant {
+    pub(crate) fn has_stripped_entries(&self) -> Option<bool> {
+        match *self {
+            Self::Struct(ref struct_) => Some(struct_.has_stripped_entries()),
+            Self::CLike | Self::Tuple(_) => None,
+        }
+    }
 }
 
 /// Small wrapper around [`rustc_span::Span`] that adds helper methods
