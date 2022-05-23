@@ -465,12 +465,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         };
 
         // sort the errors by span, for better error message stability.
-        errors.sort_by_key(|u| match *u {
-            RegionResolutionError::ConcreteFailure(ref sro, _, _) => sro.span(),
-            RegionResolutionError::GenericBoundFailure(ref sro, _, _) => sro.span(),
-            RegionResolutionError::SubSupConflict(_, ref rvo, _, _, _, _, _) => rvo.span(),
-            RegionResolutionError::UpperBoundUniverseConflict(_, ref rvo, _, _, _) => rvo.span(),
-        });
+        errors.sort_by_key(|u| u.span());
         errors
     }
 

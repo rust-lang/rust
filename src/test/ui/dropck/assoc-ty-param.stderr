@@ -1,0 +1,57 @@
+error[E0367]: `Drop` impl requires `<T as Iterator>::Item == I` but the struct it is implemented for does not
+  --> $DIR/assoc-ty-param.rs:12:17
+   |
+LL |     T: Iterator<Item = I>,
+   |                 ^^^^^^^^
+   |
+note: the implementor must specify the same requirement
+  --> $DIR/assoc-ty-param.rs:1:1
+   |
+LL | / struct Foo<T>
+LL | | where
+LL | |     T: Iterator,
+LL | |     T::Item: Send,
+LL | | {
+LL | |     t: T,
+LL | | }
+   | |_^
+
+error[E0367]: `Drop` impl requires `I: Sized` but the struct it is implemented for does not
+  --> $DIR/assoc-ty-param.rs:9:9
+   |
+LL | impl<T, I> Drop for Foo<T>
+   |         ^
+   |
+note: the implementor must specify the same requirement
+  --> $DIR/assoc-ty-param.rs:1:1
+   |
+LL | / struct Foo<T>
+LL | | where
+LL | |     T: Iterator,
+LL | |     T::Item: Send,
+LL | | {
+LL | |     t: T,
+LL | | }
+   | |_^
+
+error[E0367]: `Drop` impl requires `I: Send` but the struct it is implemented for does not
+  --> $DIR/assoc-ty-param.rs:14:8
+   |
+LL |     I: Send,
+   |        ^^^^
+   |
+note: the implementor must specify the same requirement
+  --> $DIR/assoc-ty-param.rs:1:1
+   |
+LL | / struct Foo<T>
+LL | | where
+LL | |     T: Iterator,
+LL | |     T::Item: Send,
+LL | | {
+LL | |     t: T,
+LL | | }
+   | |_^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0367`.

@@ -650,6 +650,10 @@ impl<'tcx> TyCtxt<'tcx> {
         ty::EarlyBinder(self.type_of(def_id))
     }
 
+    pub fn bound_param_env(self, def_id: DefId) -> ty::EarlyBinder<ty::ParamEnv<'tcx>> {
+        ty::EarlyBinder(self.param_env(def_id))
+    }
+
     pub fn bound_fn_sig(self, def_id: DefId) -> ty::EarlyBinder<ty::PolyFnSig<'tcx>> {
         ty::EarlyBinder(self.fn_sig(def_id))
     }

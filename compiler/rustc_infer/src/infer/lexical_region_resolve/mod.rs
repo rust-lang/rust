@@ -81,7 +81,7 @@ pub enum RegionResolutionError<'tcx> {
     /// `o` requires that `a <= b`, but this does not hold
     ConcreteFailure(SubregionOrigin<'tcx>, Region<'tcx>, Region<'tcx>),
 
-    /// `GenericBoundFailure(p, s, a)
+    /// `GenericBoundFailure(p, s, a)`:
     ///
     /// The parameter/associated-type `p` must be known to outlive the lifetime
     /// `a` (but none of the known bounds are sufficient).
@@ -111,6 +111,30 @@ pub enum RegionResolutionError<'tcx> {
         SubregionOrigin<'tcx>, // cause of the constraint
         Region<'tcx>,          // the placeholder `'b`
     ),
+}
+
+impl<'tcx> RegionResolutionError<'tcx> {
+    pub fn span(&self) -> Span {
+        match self {
+            RegionResolutionError::ConcreteFailure(sro, _, _) => sro.span(),
+            RegionResolutionError::GenericBoundFailure(sro, _, _) => sro.span(),
+            RegionResolutionError::SubSupConflict(_, rvo, _, _, _, _, _) => rvo.span(),
+            RegionResolutionError::UpperBoundUniverseConflict(_, rvo, _, _, _) => rvo.span(),
+        }
+    }
+}
+
+impl<'tcx> RegionResolutionError<'tcx> {
+    pub fn as_bound(&self) -> String {
+        match self {
+            RegionResolutionError::ConcreteFailure(_, a, b) => format!("{}: {}", b, a),
+            RegionResolutionError::GenericBoundFailure(_, a, b) => format!("{}: {}", b, a),
+            RegionResolutionError::SubSupConflict(_, _, _, sub_r, _, sup_r, _) => {
+                format!("{}: {}", sup_r, sub_r)
+            }
+            RegionResolutionError::UpperBoundUniverseConflict(_, _, _, _, _) => unimplemented!(),
+        }
+    }
 }
 
 struct RegionAndOrigin<'tcx> {

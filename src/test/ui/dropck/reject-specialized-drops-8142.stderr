@@ -60,18 +60,6 @@ note: the implementor must specify the same requirement
 LL | struct Q<Tq> { x: *const Tq }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0367]: `Drop` impl requires `AddsRBnd: 'rbnd` but the struct it is implemented for does not
-  --> $DIR/reject-specialized-drops-8142.rs:45:21
-   |
-LL | impl<'rbnd,AddsRBnd:'rbnd> Drop for R<AddsRBnd> { fn drop(&mut self) { } } // REJECT
-   |                     ^^^^^
-   |
-note: the implementor must specify the same requirement
-  --> $DIR/reject-specialized-drops-8142.rs:11:1
-   |
-LL | struct R<Tr> { x: *const Tr }
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
 error[E0366]: `Drop` impls cannot be specialized
   --> $DIR/reject-specialized-drops-8142.rs:54:1
    |
@@ -160,7 +148,7 @@ note: the implementor must specify the same requirement
 LL | union Union<T: Copy> { f: T }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 13 previous errors
+error: aborting due to 12 previous errors
 
 Some errors have detailed explanations: E0366, E0367.
 For more information about an error, try `rustc --explain E0366`.
