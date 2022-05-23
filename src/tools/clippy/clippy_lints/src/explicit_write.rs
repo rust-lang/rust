@@ -4,7 +4,8 @@ use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::{is_expn_of, match_function_call, paths};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind};
+use rustc_hir::def::Res;
+use rustc_hir::{BindingAnnotation, Block, BlockCheckMode, Expr, ExprKind, Node, PatKind, QPath, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::sym;
@@ -39,7 +40,7 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitWrite {
             if let ExprKind::MethodCall(unwrap_fun, [write_call], _) = expr.kind;
             if unwrap_fun.ident.name == sym::unwrap;
             // match call to write_fmt
-            if let ExprKind::MethodCall(write_fun, [write_recv, write_arg], _) = write_call.kind;
+            if let ExprKind::MethodCall(write_fun, [write_recv, write_arg], _) = look_in_block(cx, &write_call.kind);
             if write_fun.ident.name == sym!(write_fmt);
             // match calls to std::io::stdout() / std::io::stderr ()
             if let Some(dest_name) = if match_function_call(cx, write_recv, &paths::STDOUT).is_some() {
@@ -99,4 +100,35 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitWrite {
             }
         }
     }
+}
+
+/// If `kind` is a block that looks like `{ let result = $expr; result }` then
+/// returns $expr. Otherwise returns `kind`.
+fn look_in_block<'tcx, 'hir>(cx: &LateContext<'tcx>, kind: &'tcx ExprKind<'hir>) -> &'tcx ExprKind<'hir> {
+    if_chain! {
+        if let ExprKind::Block(block, _label @ None) = kind;
+        if let Block {
+            stmts: [Stmt { kind: StmtKind::Local(local), .. }],
+            expr: Some(expr_end_of_block),
+            rules: BlockCheckMode::DefaultBlock,
+            ..
+        } = block;
+
+        // Find id of the local that expr_end_of_block resolves to
+        if let ExprKind::Path(QPath::Resolved(None, expr_path)) = expr_end_of_block.kind;
+        if let Res::Local(expr_res) = expr_path.res;
+        if let Some(Node::Binding(res_pat)) = cx.tcx.hir().find(expr_res);
+
+        // Find id of the local we found in the block
+        if let PatKind::Binding(BindingAnnotation::Unannotated, local_hir_id, _ident, None) = local.pat.kind;
+
+        // If those two are the same hir id
+        if res_pat.hir_id == local_hir_id;
+
+        if let Some(init) = local.init;
+        then {
+            return &init.kind;
+        }
+    }
+    kind
 }
