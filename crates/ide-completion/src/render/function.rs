@@ -7,7 +7,9 @@ use stdx::{format_to, to_lower_snake_case};
 use syntax::SmolStr;
 
 use crate::{
-    context::{CompletionContext, DotAccess, NameRefContext, PathCompletionCtx, PathKind},
+    context::{
+        CompletionContext, DotAccess, DotAccessKind, NameRefContext, PathCompletionCtx, PathKind,
+    },
     item::{Builder, CompletionItem, CompletionItemKind, CompletionRelevance},
     render::{compute_exact_name_match, compute_ref_match, compute_type_match, RenderContext},
     CallableSnippets,
@@ -209,7 +211,10 @@ fn should_add_parens(ctx: &CompletionContext) -> bool {
 
     if matches!(
         ctx.nameref_ctx(),
-        Some(NameRefContext { dot_access: Some(DotAccess::Method { has_parens: true, .. }), .. })
+        Some(NameRefContext {
+            dot_access: Some(DotAccess { kind: DotAccessKind::Method { has_parens: true }, .. }),
+            ..
+        })
     ) {
         return false;
     }
