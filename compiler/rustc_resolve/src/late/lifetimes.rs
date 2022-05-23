@@ -11,7 +11,7 @@ use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{DefIdMap, LocalDefId};
+use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{GenericArg, GenericParam, GenericParamKind, HirIdMap, LifetimeName, Node};
 use rustc_middle::bug;
@@ -24,7 +24,6 @@ use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
 use std::borrow::Cow;
 use std::fmt;
-use std::mem::take;
 
 trait RegionExt {
     fn early(hir_map: Map<'_>, index: &mut u32, param: &GenericParam<'_>) -> (LocalDefId, Region);
@@ -131,9 +130,6 @@ pub(crate) struct LifetimeContext<'a, 'tcx> {
     /// be false if the `Item` we are resolving lifetimes for is not a trait or
     /// we eventually need lifetimes resolve for trait items.
     trait_definition_only: bool,
-
-    /// Cache for cross-crate per-definition object lifetime defaults.
-    xcrate_object_lifetime_defaults: DefIdMap<Vec<ObjectLifetimeDefault>>,
 }
 
 #[derive(Debug)]
@@ -294,9 +290,23 @@ pub fn provide(providers: &mut ty::query::Providers) {
 
         named_region_map: |tcx, id| resolve_lifetimes_for(tcx, id).defs.get(&id),
         is_late_bound_map,
-        object_lifetime_defaults: |tcx, id| match tcx.hir().find_by_def_id(id) {
-            Some(Node::Item(item)) => compute_object_lifetime_defaults(tcx, item),
-            _ => None,
+        object_lifetime_defaults: |tcx, def_id| {
+            if let Some(def_id) = def_id.as_local() {
+                match tcx.hir().get_by_def_id(def_id) {
+                    Node::Item(item) => compute_object_lifetime_defaults(tcx, item),
+                    _ => None,
+                }
+            } else {
+                Some(tcx.arena.alloc_from_iter(tcx.generics_of(def_id).params.iter().filter_map(
+                    |param| match param.kind {
+                        GenericParamDefKind::Type { object_lifetime_default, .. } => {
+                            Some(object_lifetime_default)
+                        }
+                        GenericParamDefKind::Const { .. } => Some(Set1::Empty),
+                        GenericParamDefKind::Lifetime => None,
+                    },
+                )))
+            }
         },
         late_bound_vars_map: |tcx, id| resolve_lifetimes_for(tcx, id).late_bound_vars.get(&id),
 
@@ -363,7 +373,6 @@ fn do_resolve(
         map: &mut named_region_map,
         scope: ROOT_SCOPE,
         trait_definition_only,
-        xcrate_object_lifetime_defaults: Default::default(),
     };
     visitor.visit_item(item);
 
@@ -1413,20 +1422,17 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         F: for<'b> FnOnce(&mut LifetimeContext<'b, 'tcx>),
     {
         let LifetimeContext { tcx, map, .. } = self;
-        let xcrate_object_lifetime_defaults = take(&mut self.xcrate_object_lifetime_defaults);
         let mut this = LifetimeContext {
             tcx: *tcx,
             map,
             scope: &wrap_scope,
             trait_definition_only: self.trait_definition_only,
-            xcrate_object_lifetime_defaults,
         };
         let span = tracing::debug_span!("scope", scope = ?TruncatedScopeDebug(&this.scope));
         {
             let _enter = span.enter();
             f(&mut this);
         }
-        self.xcrate_object_lifetime_defaults = this.xcrate_object_lifetime_defaults;
     }
 
     /// Visits self by adding a scope and handling recursive walk over the contents with `walk`.
@@ -1780,35 +1786,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 }
                 Set1::Many => None,
             };
-            if let Some(def_id) = def_id.as_local() {
-                let id = self.tcx.hir().local_def_id_to_hir_id(def_id);
-                self.tcx
-                    .object_lifetime_defaults(id.owner)
-                    .unwrap()
-                    .iter()
-                    .map(set_to_region)
-                    .collect()
-            } else {
-                let tcx = self.tcx;
-                self.xcrate_object_lifetime_defaults
-                    .entry(def_id)
-                    .or_insert_with(|| {
-                        tcx.generics_of(def_id)
-                            .params
-                            .iter()
-                            .filter_map(|param| match param.kind {
-                                GenericParamDefKind::Type { object_lifetime_default, .. } => {
-                                    Some(object_lifetime_default)
-                                }
-                                GenericParamDefKind::Const { .. } => Some(Set1::Empty),
-                                GenericParamDefKind::Lifetime => None,
-                            })
-                            .collect()
-                    })
-                    .iter()
-                    .map(set_to_region)
-                    .collect()
-            }
+            self.tcx.object_lifetime_defaults(def_id).unwrap().iter().map(set_to_region).collect()
         });
 
         debug!("visit_segment_args: object_lifetime_defaults={:?}", object_lifetime_defaults);
