@@ -93,6 +93,7 @@ pub mod simplify;
 mod simplify_branches;
 mod simplify_comparison_integral;
 mod simplify_try;
+mod sroa;
 mod uninhabited_enum_branching;
 mod unreachable_prop;
 
@@ -563,6 +564,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &remove_zsts::RemoveZsts,
             &const_goto::ConstGoto,
             &remove_unneeded_drops::RemoveUnneededDrops,
+            &sroa::ScalarReplacementOfAggregates,
             &match_branches::MatchBranchSimplification,
             // inst combine is after MatchBranchSimplification to clean up Ne(_1, false)
             &multiple_return_terminators::MultipleReturnTerminators,
