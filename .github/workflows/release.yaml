@@ -241,6 +241,8 @@ jobs:
           name: ${{ env.TAG }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - run: rm dist/rust-analyzer-no-server.vsix
+
       - run: npm ci
         working-directory: ./editors/code
 
