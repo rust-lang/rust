@@ -375,7 +375,7 @@ impl<'a, 'b> visit::Visitor<'a> for DefCollector<'a, 'b> {
                 constraint.span,
             );
         }
-        
+
         visit::walk_assoc_constraint(self, constraint);
     }
 }
