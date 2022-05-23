@@ -768,7 +768,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 let second_input_ty =
                                     self.resolve_vars_if_possible(expected_input_tys[second_idx]);
                                 let third_input_ty =
-                                    self.resolve_vars_if_possible(expected_input_tys[second_idx]);
+                                    self.resolve_vars_if_possible(expected_input_tys[third_idx]);
                                 let span = if third_idx < provided_arg_count {
                                     let first_arg_span = provided_args[first_idx].span;
                                     let third_arg_span = provided_args[third_idx].span;
@@ -809,16 +809,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             }
                             missing_idxs => {
                                 let first_idx = *missing_idxs.first().unwrap();
-                                let second_idx = *missing_idxs.last().unwrap();
+                                let last_idx = *missing_idxs.last().unwrap();
                                 // NOTE: Because we might be re-arranging arguments, might have extra arguments, etc.
                                 // It's hard to *really* know where we should provide this error label, so this is a
                                 // decent heuristic
-                                let span = if first_idx < provided_arg_count {
+                                let span = if last_idx < provided_arg_count {
                                     let first_arg_span = provided_args[first_idx].span;
-                                    let second_arg_span = provided_args[second_idx].span;
+                                    let last_arg_span = provided_args[last_idx].span;
                                     Span::new(
                                         first_arg_span.lo(),
-                                        second_arg_span.hi(),
+                                        last_arg_span.hi(),
                                         first_arg_span.ctxt(),
                                         None,
                                     )
