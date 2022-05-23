@@ -1,4 +1,5 @@
 #!/bin/bash
+# ignore-tidy-linelength
 
 set -euxo pipefail
 
@@ -87,7 +88,7 @@ python3 ../x.py build --target=$PGO_HOST --host=$PGO_HOST \
 # That's why we override the profile path to include the PID. This will produce many more profiling
 # files, but the resulting profile will produce a slightly faster rustc binary.
 LLVM_PROFILE_FILE=/tmp/rustc-pgo/default_%m_%p.profraw gather_profiles "Check,Debug,Opt" "All" \
-  "externs,ctfe-stress-4,cargo-0.60.0,token-stream-stress,match-stress,tuple-stress"
+"externs,ctfe-stress-5,cargo-0.60.0,token-stream-stress,match-stress,tuple-stress,diesel-1.4.8,bitmaps-3.1.0"
 
 # Merge the profile data we gathered
 ./build/$PGO_HOST/llvm/bin/llvm-profdata \
