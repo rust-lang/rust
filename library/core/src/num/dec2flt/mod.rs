@@ -143,8 +143,10 @@ macro_rules! from_str_float_impl {
             /// # Return value
             ///
             /// `Err(ParseFloatError)` if the string did not represent a valid
-            /// number. Otherwise, `Ok(n)` where `n` is the floating-point
-            /// number represented by `src`.
+            /// number. Otherwise, `Ok(n)` where `n` is the closest
+            /// representable floating-point number to the number represented
+            /// by `src` (following the same rules for rounding as for the
+            /// results of primitive operations).
             #[inline]
             fn from_str(src: &str) -> Result<Self, ParseFloatError> {
                 dec2flt(src)

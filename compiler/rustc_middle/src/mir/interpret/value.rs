@@ -397,38 +397,38 @@ impl<'tcx, Tag: Provenance> Scalar<Tag> {
     /// Converts the scalar to produce an unsigned integer of the given size.
     /// Fails if the scalar is a pointer.
     #[inline]
-    pub fn to_uint(self, size: Size) -> InterpResult<'static, u128> {
+    pub fn to_uint(self, size: Size) -> InterpResult<'tcx, u128> {
         self.to_bits(size)
     }
 
     /// Converts the scalar to produce a `u8`. Fails if the scalar is a pointer.
-    pub fn to_u8(self) -> InterpResult<'static, u8> {
+    pub fn to_u8(self) -> InterpResult<'tcx, u8> {
         self.to_uint(Size::from_bits(8)).map(|v| u8::try_from(v).unwrap())
     }
 
     /// Converts the scalar to produce a `u16`. Fails if the scalar is a pointer.
-    pub fn to_u16(self) -> InterpResult<'static, u16> {
+    pub fn to_u16(self) -> InterpResult<'tcx, u16> {
         self.to_uint(Size::from_bits(16)).map(|v| u16::try_from(v).unwrap())
     }
 
     /// Converts the scalar to produce a `u32`. Fails if the scalar is a pointer.
-    pub fn to_u32(self) -> InterpResult<'static, u32> {
+    pub fn to_u32(self) -> InterpResult<'tcx, u32> {
         self.to_uint(Size::from_bits(32)).map(|v| u32::try_from(v).unwrap())
     }
 
     /// Converts the scalar to produce a `u64`. Fails if the scalar is a pointer.
-    pub fn to_u64(self) -> InterpResult<'static, u64> {
+    pub fn to_u64(self) -> InterpResult<'tcx, u64> {
         self.to_uint(Size::from_bits(64)).map(|v| u64::try_from(v).unwrap())
     }
 
     /// Converts the scalar to produce a `u128`. Fails if the scalar is a pointer.
-    pub fn to_u128(self) -> InterpResult<'static, u128> {
+    pub fn to_u128(self) -> InterpResult<'tcx, u128> {
         self.to_uint(Size::from_bits(128))
     }
 
     /// Converts the scalar to produce a machine-pointer-sized unsigned integer.
     /// Fails if the scalar is a pointer.
-    pub fn to_machine_usize(self, cx: &impl HasDataLayout) -> InterpResult<'static, u64> {
+    pub fn to_machine_usize(self, cx: &impl HasDataLayout) -> InterpResult<'tcx, u64> {
         let b = self.to_uint(cx.data_layout().pointer_size)?;
         Ok(u64::try_from(b).unwrap())
     }
@@ -436,51 +436,51 @@ impl<'tcx, Tag: Provenance> Scalar<Tag> {
     /// Converts the scalar to produce a signed integer of the given size.
     /// Fails if the scalar is a pointer.
     #[inline]
-    pub fn to_int(self, size: Size) -> InterpResult<'static, i128> {
+    pub fn to_int(self, size: Size) -> InterpResult<'tcx, i128> {
         let b = self.to_bits(size)?;
         Ok(size.sign_extend(b) as i128)
     }
 
     /// Converts the scalar to produce an `i8`. Fails if the scalar is a pointer.
-    pub fn to_i8(self) -> InterpResult<'static, i8> {
+    pub fn to_i8(self) -> InterpResult<'tcx, i8> {
         self.to_int(Size::from_bits(8)).map(|v| i8::try_from(v).unwrap())
     }
 
     /// Converts the scalar to produce an `i16`. Fails if the scalar is a pointer.
-    pub fn to_i16(self) -> InterpResult<'static, i16> {
+    pub fn to_i16(self) -> InterpResult<'tcx, i16> {
         self.to_int(Size::from_bits(16)).map(|v| i16::try_from(v).unwrap())
     }
 
     /// Converts the scalar to produce an `i32`. Fails if the scalar is a pointer.
-    pub fn to_i32(self) -> InterpResult<'static, i32> {
+    pub fn to_i32(self) -> InterpResult<'tcx, i32> {
         self.to_int(Size::from_bits(32)).map(|v| i32::try_from(v).unwrap())
     }
 
     /// Converts the scalar to produce an `i64`. Fails if the scalar is a pointer.
-    pub fn to_i64(self) -> InterpResult<'static, i64> {
+    pub fn to_i64(self) -> InterpResult<'tcx, i64> {
         self.to_int(Size::from_bits(64)).map(|v| i64::try_from(v).unwrap())
     }
 
     /// Converts the scalar to produce an `i128`. Fails if the scalar is a pointer.
-    pub fn to_i128(self) -> InterpResult<'static, i128> {
+    pub fn to_i128(self) -> InterpResult<'tcx, i128> {
         self.to_int(Size::from_bits(128))
     }
 
     /// Converts the scalar to produce a machine-pointer-sized signed integer.
     /// Fails if the scalar is a pointer.
-    pub fn to_machine_isize(self, cx: &impl HasDataLayout) -> InterpResult<'static, i64> {
+    pub fn to_machine_isize(self, cx: &impl HasDataLayout) -> InterpResult<'tcx, i64> {
         let b = self.to_int(cx.data_layout().pointer_size)?;
         Ok(i64::try_from(b).unwrap())
     }
 
     #[inline]
-    pub fn to_f32(self) -> InterpResult<'static, Single> {
+    pub fn to_f32(self) -> InterpResult<'tcx, Single> {
         // Going through `u32` to check size and truncation.
         Ok(Single::from_bits(self.to_u32()?.into()))
     }
 
     #[inline]
-    pub fn to_f64(self) -> InterpResult<'static, Double> {
+    pub fn to_f64(self) -> InterpResult<'tcx, Double> {
         // Going through `u64` to check size and truncation.
         Ok(Double::from_bits(self.to_u64()?.into()))
     }
@@ -534,7 +534,7 @@ impl<Tag> ScalarMaybeUninit<Tag> {
     }
 
     #[inline]
-    pub fn check_init(self) -> InterpResult<'static, Scalar<Tag>> {
+    pub fn check_init<'tcx>(self) -> InterpResult<'tcx, Scalar<Tag>> {
         match self {
             ScalarMaybeUninit::Scalar(scalar) => Ok(scalar),
             ScalarMaybeUninit::Uninit => throw_ub!(InvalidUninitBytes(None)),

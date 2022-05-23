@@ -46,5 +46,6 @@ module.exports = {
             "error",
             { "beforeColon": false, "afterColon": true, "mode": "strict" }
         ],
+        "func-call-spacing": ["error", "never"],
     }
 };

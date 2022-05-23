@@ -98,7 +98,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         &self,
         anon_region: Region<'tcx>,
         replace_region: Region<'tcx>,
-    ) -> Option<AnonymousParamInfo<'_>> {
+    ) -> Option<AnonymousParamInfo<'tcx>> {
         find_param_with_region(self.tcx(), anon_region, replace_region)
     }
 
