@@ -2118,6 +2118,20 @@ where
     A: Default + Allocator + Clone,
 {
     /// Creates an empty `HashMap<K, V, S, A>`, with the `Default` value for the hasher and allocator.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    /// use std::collections::hash_map::RandomState;
+    ///
+    /// // You can specify all types of HashMap, including hasher and allocator.
+    /// // Created map is empty and don't allocate memory
+    /// let map: HashMap<u32, String> = Default::default();
+    /// assert_eq!(map.capacity(), 0);
+    /// let map: HashMap<u32, String, RandomState> = HashMap::default();
+    /// assert_eq!(map.capacity(), 0);
+    /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     fn default() -> Self {
         Self::with_hasher_in(Default::default(), Default::default())
@@ -2138,6 +2152,17 @@ where
     /// # Panics
     ///
     /// Panics if the key is not present in the `HashMap`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    ///
+    /// let map: HashMap<_, _> = [("a", "One"), ("b", "Two")].into();
+    ///
+    /// assert_eq!(map[&"a"], "One");
+    /// assert_eq!(map[&"b"], "Two");
+    /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     fn index(&self, key: &Q) -> &V {
         self.get(key).expect("no entry found for key")
@@ -2165,13 +2190,34 @@ where
     }
 }
 
-/// An iterator over the entries of a `HashMap`.
+/// An iterator over the entries of a `HashMap` in arbitrary order.
+/// The iterator element type is `(&'a K, &'a V)`.
 ///
 /// This `struct` is created by the [`iter`] method on [`HashMap`]. See its
 /// documentation for more.
 ///
 /// [`iter`]: struct.HashMap.html#method.iter
 /// [`HashMap`]: struct.HashMap.html
+///
+/// # Examples
+///
+/// ```
+/// use hashbrown::HashMap;
+///
+/// let map: HashMap<_, _> = [(1, "a"), (2, "b"), (3, "c")].into();
+///
+/// let mut iter = map.iter();
+/// let mut vec = vec![iter.next(), iter.next(), iter.next()];
+///
+/// // The `Iter` iterator produces items in arbitrary order, so the
+/// // items must be sorted to test them against a sorted array.
+/// vec.sort_unstable();
+/// assert_eq!(vec, [Some((&1, &"a")), Some((&2, &"b")), Some((&3, &"c"))]);
+///
+/// // It is fused iterator
+/// assert_eq!(iter.next(), None);
+/// assert_eq!(iter.next(), None);
+/// ```
 pub struct Iter<'a, K, V> {
     inner: RawIter<(K, V)>,
     marker: PhantomData<(&'a K, &'a V)>,
@@ -2194,13 +2240,33 @@ impl<K: Debug, V: Debug> fmt::Debug for Iter<'_, K, V> {
     }
 }
 
-/// A mutable iterator over the entries of a `HashMap`.
+/// A mutable iterator over the entries of a `HashMap` in arbitrary order.
+/// The iterator element type is `(&'a K, &'a mut V)`.
 ///
 /// This `struct` is created by the [`iter_mut`] method on [`HashMap`]. See its
 /// documentation for more.
 ///
 /// [`iter_mut`]: struct.HashMap.html#method.iter_mut
 /// [`HashMap`]: struct.HashMap.html
+///
+/// # Examples
+///
+/// ```
+/// use hashbrown::HashMap;
+///
+/// let mut map: HashMap<_, _> = [(1, "One".to_owned()), (2, "Two".into())].into();
+///
+/// let mut iter = map.iter_mut();
+/// iter.next().map(|(_, v)| v.push_str(" Mississippi"));
+/// iter.next().map(|(_, v)| v.push_str(" Mississippi"));
+///
+/// // It is fused iterator
+/// assert_eq!(iter.next(), None);
+/// assert_eq!(iter.next(), None);
+///
+/// assert_eq!(map.get(&1).unwrap(), &"One Mississippi".to_owned());
+/// assert_eq!(map.get(&2).unwrap(), &"Two Mississippi".to_owned());
+/// ```
 pub struct IterMut<'a, K, V> {
     inner: RawIter<(K, V)>,
     // To ensure invariance with respect to V
@@ -2223,13 +2289,36 @@ impl<K, V> IterMut<'_, K, V> {
     }
 }
 
-/// An owning iterator over the entries of a `HashMap`.
+/// An owning iterator over the entries of a `HashMap` in arbitrary order.
+/// The iterator element type is `(K, V)`.
 ///
 /// This `struct` is created by the [`into_iter`] method on [`HashMap`]
-/// (provided by the `IntoIterator` trait). See its documentation for more.
+/// (provided by the [`IntoIterator`] trait). See its documentation for more.
+/// The map cannot be used after calling that method.
 ///
 /// [`into_iter`]: struct.HashMap.html#method.into_iter
 /// [`HashMap`]: struct.HashMap.html
+/// [`IntoIterator`]: https://doc.rust-lang.org/core/iter/trait.IntoIterator.html
+///
+/// # Examples
+///
+/// ```
+/// use hashbrown::HashMap;
+///
+/// let map: HashMap<_, _> = [(1, "a"), (2, "b"), (3, "c")].into();
+///
+/// let mut iter = map.into_iter();
+/// let mut vec = vec![iter.next(), iter.next(), iter.next()];
+///
+/// // The `IntoIter` iterator produces items in arbitrary order, so the
+/// // items must be sorted to test them against a sorted array.
+/// vec.sort_unstable();
+/// assert_eq!(vec, [Some((1, "a")), Some((2, "b")), Some((3, "c"))]);
+///
+/// // It is fused iterator
+/// assert_eq!(iter.next(), None);
+/// assert_eq!(iter.next(), None);
+/// ```
 pub struct IntoIter<K, V, A: Allocator + Clone = Global> {
     inner: RawIntoIter<(K, V), A>,
 }
@@ -2245,13 +2334,35 @@ impl<K, V, A: Allocator + Clone> IntoIter<K, V, A> {
     }
 }
 
-/// An owning iterator over the keys of a `HashMap`.
+/// An owning iterator over the keys of a `HashMap` in arbitrary order.
+/// The iterator element type is `K`.
 ///
 /// This `struct` is created by the [`into_keys`] method on [`HashMap`].
 /// See its documentation for more.
+/// The map cannot be used after calling that method.
 ///
 /// [`into_keys`]: struct.HashMap.html#method.into_keys
 /// [`HashMap`]: struct.HashMap.html
+///
+/// # Examples
+///
+/// ```
+/// use hashbrown::HashMap;
+///
+/// let map: HashMap<_, _> = [(1, "a"), (2, "b"), (3, "c")].into();
+///
+/// let mut keys = map.into_keys();
+/// let mut vec = vec![keys.next(), keys.next(), keys.next()];
+///
+/// // The `IntoKeys` iterator produces keys in arbitrary order, so the
+/// // keys must be sorted to test them against a sorted array.
+/// vec.sort_unstable();
+/// assert_eq!(vec, [Some(1), Some(2), Some(3)]);
+///
+/// // It is fused iterator
+/// assert_eq!(keys.next(), None);
+/// assert_eq!(keys.next(), None);
+/// ```
 pub struct IntoKeys<K, V, A: Allocator + Clone = Global> {
     inner: IntoIter<K, V, A>,
 }
@@ -2286,13 +2397,34 @@ impl<K: Debug, V: Debug, A: Allocator + Clone> fmt::Debug for IntoKeys<K, V, A> 
     }
 }
 
-/// An owning iterator over the values of a `HashMap`.
+/// An owning iterator over the values of a `HashMap` in arbitrary order.
+/// The iterator element type is `V`.
 ///
 /// This `struct` is created by the [`into_values`] method on [`HashMap`].
-/// See its documentation for more.
+/// See its documentation for more. The map cannot be used after calling that method.
 ///
 /// [`into_values`]: struct.HashMap.html#method.into_values
 /// [`HashMap`]: struct.HashMap.html
+///
+/// # Examples
+///
+/// ```
+/// use hashbrown::HashMap;
+///
+/// let map: HashMap<_, _> = [(1, "a"), (2, "b"), (3, "c")].into();
+///
+/// let mut values = map.into_values();
+/// let mut vec = vec![values.next(), values.next(), values.next()];
+///
+/// // The `IntoValues` iterator produces values in arbitrary order, so
+/// // the values must be sorted to test them against a sorted array.
+/// vec.sort_unstable();
+/// assert_eq!(vec, [Some("a"), Some("b"), Some("c")]);
+///
+/// // It is fused iterator
+/// assert_eq!(values.next(), None);
+/// assert_eq!(values.next(), None);
+/// ```
 pub struct IntoValues<K, V, A: Allocator + Clone = Global> {
     inner: IntoIter<K, V, A>,
 }
@@ -2327,13 +2459,34 @@ impl<K, V: Debug, A: Allocator + Clone> fmt::Debug for IntoValues<K, V, A> {
     }
 }
 
-/// An iterator over the keys of a `HashMap`.
+/// An iterator over the keys of a `HashMap` in arbitrary order.
+/// The iterator element type is `&'a K`.
 ///
 /// This `struct` is created by the [`keys`] method on [`HashMap`]. See its
 /// documentation for more.
 ///
 /// [`keys`]: struct.HashMap.html#method.keys
 /// [`HashMap`]: struct.HashMap.html
+///
+/// # Examples
+///
+/// ```
+/// use hashbrown::HashMap;
+///
+/// let map: HashMap<_, _> = [(1, "a"), (2, "b"), (3, "c")].into();
+///
+/// let mut keys = map.keys();
+/// let mut vec = vec![keys.next(), keys.next(), keys.next()];
+///
+/// // The `Keys` iterator produces keys in arbitrary order, so the
+/// // keys must be sorted to test them against a sorted array.
+/// vec.sort_unstable();
+/// assert_eq!(vec, [Some(&1), Some(&2), Some(&3)]);
+///
+/// // It is fused iterator
+/// assert_eq!(keys.next(), None);
+/// assert_eq!(keys.next(), None);
+/// ```
 pub struct Keys<'a, K, V> {
     inner: Iter<'a, K, V>,
 }
@@ -2354,13 +2507,34 @@ impl<K: Debug, V> fmt::Debug for Keys<'_, K, V> {
     }
 }
 
-/// An iterator over the values of a `HashMap`.
+/// An iterator over the values of a `HashMap` in arbitrary order.
+/// The iterator element type is `&'a V`.
 ///
 /// This `struct` is created by the [`values`] method on [`HashMap`]. See its
 /// documentation for more.
 ///
 /// [`values`]: struct.HashMap.html#method.values
 /// [`HashMap`]: struct.HashMap.html
+///
+/// # Examples
+///
+/// ```
+/// use hashbrown::HashMap;
+///
+/// let map: HashMap<_, _> = [(1, "a"), (2, "b"), (3, "c")].into();
+///
+/// let mut values = map.values();
+/// let mut vec = vec![values.next(), values.next(), values.next()];
+///
+/// // The `Values` iterator produces values in arbitrary order, so the
+/// // values must be sorted to test them against a sorted array.
+/// vec.sort_unstable();
+/// assert_eq!(vec, [Some(&"a"), Some(&"b"), Some(&"c")]);
+///
+/// // It is fused iterator
+/// assert_eq!(values.next(), None);
+/// assert_eq!(values.next(), None);
+/// ```
 pub struct Values<'a, K, V> {
     inner: Iter<'a, K, V>,
 }
@@ -2381,13 +2555,34 @@ impl<K, V: Debug> fmt::Debug for Values<'_, K, V> {
     }
 }
 
-/// A draining iterator over the entries of a `HashMap`.
+/// A draining iterator over the entries of a `HashMap` in arbitrary
+/// order. The iterator element type is `(K, V)`.
 ///
 /// This `struct` is created by the [`drain`] method on [`HashMap`]. See its
 /// documentation for more.
 ///
 /// [`drain`]: struct.HashMap.html#method.drain
 /// [`HashMap`]: struct.HashMap.html
+///
+/// # Examples
+///
+/// ```
+/// use hashbrown::HashMap;
+///
+/// let mut map: HashMap<_, _> = [(1, "a"), (2, "b"), (3, "c")].into();
+///
+/// let mut drain_iter = map.drain();
+/// let mut vec = vec![drain_iter.next(), drain_iter.next(), drain_iter.next()];
+///
+/// // The `Drain` iterator produces items in arbitrary order, so the
+/// // items must be sorted to test them against a sorted array.
+/// vec.sort_unstable();
+/// assert_eq!(vec, [Some((1, "a")), Some((2, "b")), Some((3, "c"))]);
+///
+/// // It is fused iterator
+/// assert_eq!(drain_iter.next(), None);
+/// assert_eq!(drain_iter.next(), None);
+/// ```
 pub struct Drain<'a, K, V, A: Allocator + Clone = Global> {
     inner: RawDrain<'a, (K, V), A>,
 }
@@ -2403,13 +2598,37 @@ impl<K, V, A: Allocator + Clone> Drain<'_, K, V, A> {
     }
 }
 
-/// A draining iterator over entries of a `HashMap` which don't satisfy the predicate `f`.
+/// A draining iterator over entries of a `HashMap` which don't satisfy the predicate
+/// `f(&k, &mut v)` in arbitrary order. The iterator element type is `(K, V)`.
 ///
 /// This `struct` is created by the [`drain_filter`] method on [`HashMap`]. See its
 /// documentation for more.
 ///
 /// [`drain_filter`]: struct.HashMap.html#method.drain_filter
 /// [`HashMap`]: struct.HashMap.html
+///
+/// # Examples
+///
+/// ```
+/// use hashbrown::HashMap;
+///
+/// let mut map: HashMap<i32, &str> = [(1, "a"), (2, "b"), (3, "c")].into();
+///
+/// let mut drain_filter = map.drain_filter(|k, _v| k % 2 != 0);
+/// let mut vec = vec![drain_filter.next(), drain_filter.next()];
+///
+/// // The `DrainFilter` iterator produces items in arbitrary order, so the
+/// // items must be sorted to test them against a sorted array.
+/// vec.sort_unstable();
+/// assert_eq!(vec, [Some((1, "a")),Some((3, "c"))]);
+///
+/// // It is fused iterator
+/// assert_eq!(drain_filter.next(), None);
+/// assert_eq!(drain_filter.next(), None);
+/// drop(drain_filter);
+///
+/// assert_eq!(map.len(), 1);
+/// ```
 pub struct DrainFilter<'a, K, V, F, A: Allocator + Clone = Global>
 where
     F: FnMut(&K, &mut V) -> bool,
@@ -2486,13 +2705,33 @@ impl<K, V, A: Allocator + Clone> DrainFilterInner<'_, K, V, A> {
     }
 }
 
-/// A mutable iterator over the values of a `HashMap`.
+/// A mutable iterator over the values of a `HashMap` in arbitrary order.
+/// The iterator element type is `&'a mut V`.
 ///
 /// This `struct` is created by the [`values_mut`] method on [`HashMap`]. See its
 /// documentation for more.
 ///
 /// [`values_mut`]: struct.HashMap.html#method.values_mut
 /// [`HashMap`]: struct.HashMap.html
+///
+/// # Examples
+///
+/// ```
+/// use hashbrown::HashMap;
+///
+/// let mut map: HashMap<_, _> = [(1, "One".to_owned()), (2, "Two".into())].into();
+///
+/// let mut values = map.values_mut();
+/// values.next().map(|v| v.push_str(" Mississippi"));
+/// values.next().map(|v| v.push_str(" Mississippi"));
+///
+/// // It is fused iterator
+/// assert_eq!(values.next(), None);
+/// assert_eq!(values.next(), None);
+///
+/// assert_eq!(map.get(&1).unwrap(), &"One Mississippi".to_owned());
+/// assert_eq!(map.get(&2).unwrap(), &"Two Mississippi".to_owned());
+/// ```
 pub struct ValuesMut<'a, K, V> {
     inner: IterMut<'a, K, V>,
 }
@@ -2502,6 +2741,56 @@ pub struct ValuesMut<'a, K, V> {
 /// See the [`HashMap::raw_entry_mut`] docs for usage examples.
 ///
 /// [`HashMap::raw_entry_mut`]: struct.HashMap.html#method.raw_entry_mut
+///
+/// # Examples
+///
+/// ```
+/// use hashbrown::hash_map::{RawEntryBuilderMut, RawEntryMut::Vacant, RawEntryMut::Occupied};
+/// use hashbrown::HashMap;
+/// use core::hash::{BuildHasher, Hash};
+///
+/// let mut map = HashMap::new();
+/// map.extend([(1, 11), (2, 12), (3, 13), (4, 14), (5, 15), (6, 16)]);
+/// assert_eq!(map.len(), 6);
+///
+/// fn compute_hash<K: Hash + ?Sized, S: BuildHasher>(hash_builder: &S, key: &K) -> u64 {
+///     use core::hash::Hasher;
+///     let mut state = hash_builder.build_hasher();
+///     key.hash(&mut state);
+///     state.finish()
+/// }
+///
+/// let builder: RawEntryBuilderMut<_, _, _> = map.raw_entry_mut();
+///
+/// // Existing key
+/// match builder.from_key(&6) {
+///     Vacant(_) => unreachable!(),
+///     Occupied(view) => assert_eq!(view.get(), &16),
+/// }
+///
+/// for key in 0..12 {
+///     let hash = compute_hash(map.hasher(), &key);
+///     let value = map.get(&key).cloned();
+///     let key_value = value.as_ref().map(|v| (&key, v));
+///
+///     println!("Key: {} and value: {:?}", key, value);
+///
+///     match map.raw_entry_mut().from_key(&key) {
+///         Occupied(mut o) => assert_eq!(Some(o.get_key_value()), key_value),
+///         Vacant(_) => assert_eq!(value, None),
+///     }
+///     match map.raw_entry_mut().from_key_hashed_nocheck(hash, &key) {
+///         Occupied(mut o) => assert_eq!(Some(o.get_key_value()), key_value),
+///         Vacant(_) => assert_eq!(value, None),
+///     }
+///     match map.raw_entry_mut().from_hash(hash, |q| *q == key) {
+///         Occupied(mut o) => assert_eq!(Some(o.get_key_value()), key_value),
+///         Vacant(_) => assert_eq!(value, None),
+///     }
+/// }
+///
+/// assert_eq!(map.len(), 6);
+/// ```
 pub struct RawEntryBuilderMut<'a, K, V, S, A: Allocator + Clone = Global> {
     map: &'a mut HashMap<K, V, S, A>,
 }
@@ -2517,10 +2806,107 @@ pub struct RawEntryBuilderMut<'a, K, V, S, A: Allocator + Clone = Global> {
 /// [`Entry`]: enum.Entry.html
 /// [`raw_entry_mut`]: struct.HashMap.html#method.raw_entry_mut
 /// [`RawEntryBuilderMut`]: struct.RawEntryBuilderMut.html
+///
+/// # Examples
+///
+/// ```
+/// use core::hash::{BuildHasher, Hash};
+/// use hashbrown::hash_map::{HashMap, RawEntryMut, RawOccupiedEntryMut};
+///
+/// let mut map = HashMap::new();
+/// map.extend([('a', 1), ('b', 2), ('c', 3)]);
+/// assert_eq!(map.len(), 3);
+///
+/// fn compute_hash<K: Hash + ?Sized, S: BuildHasher>(hash_builder: &S, key: &K) -> u64 {
+///     use core::hash::Hasher;
+///     let mut state = hash_builder.build_hasher();
+///     key.hash(&mut state);
+///     state.finish()
+/// }
+///
+/// // Existing key (insert)
+/// let raw: RawEntryMut<_, _, _> = map.raw_entry_mut().from_key(&'a');
+/// let _raw_o: RawOccupiedEntryMut<_, _, _> = raw.insert('a', 10);
+/// assert_eq!(map.len(), 3);
+///
+/// // Nonexistent key (insert)
+/// map.raw_entry_mut().from_key(&'d').insert('d', 40);
+/// assert_eq!(map.len(), 4);
+///
+/// // Existing key (or_insert)
+/// let hash = compute_hash(map.hasher(), &'b');
+/// let kv = map
+///     .raw_entry_mut()
+///     .from_key_hashed_nocheck(hash, &'b')
+///     .or_insert('b', 20);
+/// assert_eq!(kv, (&mut 'b', &mut 2));
+/// *kv.1 = 20;
+/// assert_eq!(map.len(), 4);
+///
+/// // Nonexistent key (or_insert)
+/// let hash = compute_hash(map.hasher(), &'e');
+/// let kv = map
+///     .raw_entry_mut()
+///     .from_key_hashed_nocheck(hash, &'e')
+///     .or_insert('e', 50);
+/// assert_eq!(kv, (&mut 'e', &mut 50));
+/// assert_eq!(map.len(), 5);
+///
+/// // Existing key (or_insert_with)
+/// let hash = compute_hash(map.hasher(), &'c');
+/// let kv = map
+///     .raw_entry_mut()
+///     .from_hash(hash, |q| q == &'c')
+///     .or_insert_with(|| ('c', 30));
+/// assert_eq!(kv, (&mut 'c', &mut 3));
+/// *kv.1 = 30;
+/// assert_eq!(map.len(), 5);
+///
+/// // Nonexistent key (or_insert_with)
+/// let hash = compute_hash(map.hasher(), &'f');
+/// let kv = map
+///     .raw_entry_mut()
+///     .from_hash(hash, |q| q == &'f')
+///     .or_insert_with(|| ('f', 60));
+/// assert_eq!(kv, (&mut 'f', &mut 60));
+/// assert_eq!(map.len(), 6);
+///
+/// println!("Our HashMap: {:?}", map);
+///
+/// let mut vec: Vec<_> = map.iter().map(|(&k, &v)| (k, v)).collect();
+/// // The `Iter` iterator produces items in arbitrary order, so the
+/// // items must be sorted to test them against a sorted array.
+/// vec.sort_unstable();
+/// assert_eq!(vec, [('a', 10), ('b', 20), ('c', 30), ('d', 40), ('e', 50), ('f', 60)]);
+/// ```
 pub enum RawEntryMut<'a, K, V, S, A: Allocator + Clone = Global> {
     /// An occupied entry.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::{hash_map::RawEntryMut, HashMap};
+    /// let mut map: HashMap<_, _> = [("a", 100), ("b", 200)].into();
+    ///
+    /// match map.raw_entry_mut().from_key(&"a") {
+    ///     RawEntryMut::Vacant(_) => unreachable!(),
+    ///     RawEntryMut::Occupied(_) => { }
+    /// }
+    /// ```
     Occupied(RawOccupiedEntryMut<'a, K, V, S, A>),
     /// A vacant entry.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::{hash_map::RawEntryMut, HashMap};
+    /// let mut map: HashMap<&str, i32> = HashMap::new();
+    ///
+    /// match map.raw_entry_mut().from_key("a") {
+    ///     RawEntryMut::Occupied(_) => unreachable!(),
+    ///     RawEntryMut::Vacant(_) => { }
+    /// }
+    /// ```
     Vacant(RawVacantEntryMut<'a, K, V, S, A>),
 }
 
@@ -2528,6 +2914,62 @@ pub enum RawEntryMut<'a, K, V, S, A: Allocator + Clone = Global> {
 /// It is part of the [`RawEntryMut`] enum.
 ///
 /// [`RawEntryMut`]: enum.RawEntryMut.html
+///
+/// # Examples
+///
+/// ```
+/// use core::hash::{BuildHasher, Hash};
+/// use hashbrown::hash_map::{HashMap, RawEntryMut, RawOccupiedEntryMut};
+///
+/// let mut map = HashMap::new();
+/// map.extend([("a", 10), ("b", 20), ("c", 30)]);
+///
+/// fn compute_hash<K: Hash + ?Sized, S: BuildHasher>(hash_builder: &S, key: &K) -> u64 {
+///     use core::hash::Hasher;
+///     let mut state = hash_builder.build_hasher();
+///     key.hash(&mut state);
+///     state.finish()
+/// }
+///
+/// let _raw_o: RawOccupiedEntryMut<_, _, _> = map.raw_entry_mut().from_key(&"a").insert("a", 100);
+/// assert_eq!(map.len(), 3);
+///
+/// // Existing key (insert and update)
+/// match map.raw_entry_mut().from_key(&"a") {
+///     RawEntryMut::Vacant(_) => unreachable!(),
+///     RawEntryMut::Occupied(mut view) => {
+///         assert_eq!(view.get(), &100);
+///         let v = view.get_mut();
+///         let new_v = (*v) * 10;
+///         *v = new_v;
+///         assert_eq!(view.insert(1111), 1000);
+///     }
+/// }
+///
+/// assert_eq!(map[&"a"], 1111);
+/// assert_eq!(map.len(), 3);
+///
+/// // Existing key (take)
+/// let hash = compute_hash(map.hasher(), &"c");
+/// match map.raw_entry_mut().from_key_hashed_nocheck(hash, &"c") {
+///     RawEntryMut::Vacant(_) => unreachable!(),
+///     RawEntryMut::Occupied(view) => {
+///         assert_eq!(view.remove_entry(), ("c", 30));
+///     }
+/// }
+/// assert_eq!(map.raw_entry().from_key(&"c"), None);
+/// assert_eq!(map.len(), 2);
+///
+/// let hash = compute_hash(map.hasher(), &"b");
+/// match map.raw_entry_mut().from_hash(hash, |q| *q == "b") {
+///     RawEntryMut::Vacant(_) => unreachable!(),
+///     RawEntryMut::Occupied(view) => {
+///         assert_eq!(view.remove_entry(), ("b", 20));
+///     }
+/// }
+/// assert_eq!(map.get(&"b"), None);
+/// assert_eq!(map.len(), 1);
+/// ```
 pub struct RawOccupiedEntryMut<'a, K, V, S, A: Allocator + Clone = Global> {
     elem: Bucket<(K, V)>,
     table: &'a mut RawTable<(K, V), A>,
@@ -2555,6 +2997,50 @@ where
 /// It is part of the [`RawEntryMut`] enum.
 ///
 /// [`RawEntryMut`]: enum.RawEntryMut.html
+///
+/// # Examples
+///
+/// ```
+/// use core::hash::{BuildHasher, Hash};
+/// use hashbrown::hash_map::{HashMap, RawEntryMut, RawVacantEntryMut};
+///
+/// let mut map = HashMap::<&str, i32>::new();
+///
+/// fn compute_hash<K: Hash + ?Sized, S: BuildHasher>(hash_builder: &S, key: &K) -> u64 {
+///     use core::hash::Hasher;
+///     let mut state = hash_builder.build_hasher();
+///     key.hash(&mut state);
+///     state.finish()
+/// }
+///
+/// let raw_v: RawVacantEntryMut<_, _, _> = match map.raw_entry_mut().from_key(&"a") {
+///     RawEntryMut::Vacant(view) => view,
+///     RawEntryMut::Occupied(_) => unreachable!(),
+/// };
+/// raw_v.insert("a", 10);
+/// assert!(map[&"a"] == 10 && map.len() == 1);
+///
+/// // Nonexistent key (insert and update)
+/// let hash = compute_hash(map.hasher(), &"b");
+/// match map.raw_entry_mut().from_key_hashed_nocheck(hash, &"b") {
+///     RawEntryMut::Occupied(_) => unreachable!(),
+///     RawEntryMut::Vacant(view) => {
+///         let (k, value) = view.insert("b", 2);
+///         assert_eq!((*k, *value), ("b", 2));
+///         *value = 20;
+///     }
+/// }
+/// assert!(map[&"b"] == 20 && map.len() == 2);
+///
+/// let hash = compute_hash(map.hasher(), &"c");
+/// match map.raw_entry_mut().from_hash(hash, |q| *q == "c") {
+///     RawEntryMut::Occupied(_) => unreachable!(),
+///     RawEntryMut::Vacant(view) => {
+///         assert_eq!(view.insert("c", 30), (&mut "c", &mut 30));
+///     }
+/// }
+/// assert!(map[&"c"] == 30 && map.len() == 3);
+/// ```
 pub struct RawVacantEntryMut<'a, K, V, S, A: Allocator + Clone = Global> {
     table: &'a mut RawTable<(K, V), A>,
     hash_builder: &'a S,
@@ -2565,12 +3051,53 @@ pub struct RawVacantEntryMut<'a, K, V, S, A: Allocator + Clone = Global> {
 /// See the [`HashMap::raw_entry`] docs for usage examples.
 ///
 /// [`HashMap::raw_entry`]: struct.HashMap.html#method.raw_entry
+///
+/// # Examples
+///
+/// ```
+/// use hashbrown::hash_map::{HashMap, RawEntryBuilder};
+/// use core::hash::{BuildHasher, Hash};
+///
+/// let mut map = HashMap::new();
+/// map.extend([(1, 10), (2, 20), (3, 30)]);
+///
+/// fn compute_hash<K: Hash + ?Sized, S: BuildHasher>(hash_builder: &S, key: &K) -> u64 {
+///     use core::hash::Hasher;
+///     let mut state = hash_builder.build_hasher();
+///     key.hash(&mut state);
+///     state.finish()
+/// }
+///
+/// for k in 0..6 {
+///     let hash = compute_hash(map.hasher(), &k);
+///     let v = map.get(&k).cloned();
+///     let kv = v.as_ref().map(|v| (&k, v));
+///
+///     println!("Key: {} and value: {:?}", k, v);
+///     let builder: RawEntryBuilder<_, _, _> = map.raw_entry();
+///     assert_eq!(builder.from_key(&k), kv);
+///     assert_eq!(map.raw_entry().from_hash(hash, |q| *q == k), kv);
+///     assert_eq!(map.raw_entry().from_key_hashed_nocheck(hash, &k), kv);
+/// }
+/// ```
 pub struct RawEntryBuilder<'a, K, V, S, A: Allocator + Clone = Global> {
     map: &'a HashMap<K, V, S, A>,
 }
 
 impl<'a, K, V, S, A: Allocator + Clone> RawEntryBuilderMut<'a, K, V, S, A> {
     /// Creates a `RawEntryMut` from the given key.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::hash_map::{HashMap, RawEntryMut};
+    ///
+    /// let mut map: HashMap<&str, u32> = HashMap::new();
+    /// let key = "a";
+    /// let entry: RawEntryMut<&str, u32, _> = map.raw_entry_mut().from_key(&key);
+    /// entry.insert(key, 100);
+    /// assert_eq!(map[&"a"], 100);
+    /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     #[allow(clippy::wrong_self_convention)]
     pub fn from_key<Q: ?Sized>(self, k: &Q) -> RawEntryMut<'a, K, V, S, A>
@@ -2584,6 +3111,27 @@ impl<'a, K, V, S, A: Allocator + Clone> RawEntryBuilderMut<'a, K, V, S, A> {
     }
 
     /// Creates a `RawEntryMut` from the given key and its hash.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use core::hash::{BuildHasher, Hash};
+    /// use hashbrown::hash_map::{HashMap, RawEntryMut};
+    ///
+    /// fn compute_hash<K: Hash + ?Sized, S: BuildHasher>(hash_builder: &S, key: &K) -> u64 {
+    ///     use core::hash::Hasher;
+    ///     let mut state = hash_builder.build_hasher();
+    ///     key.hash(&mut state);
+    ///     state.finish()
+    /// }
+    ///
+    /// let mut map: HashMap<&str, u32> = HashMap::new();
+    /// let key = "a";
+    /// let hash = compute_hash(map.hasher(), &key);
+    /// let entry: RawEntryMut<&str, u32, _> = map.raw_entry_mut().from_key_hashed_nocheck(hash, &key);
+    /// entry.insert(key, 100);
+    /// assert_eq!(map[&"a"], 100);
+    /// ```
     #[inline]
     #[allow(clippy::wrong_self_convention)]
     pub fn from_key_hashed_nocheck<Q: ?Sized>(self, hash: u64, k: &Q) -> RawEntryMut<'a, K, V, S, A>
@@ -2596,7 +3144,28 @@ impl<'a, K, V, S, A: Allocator + Clone> RawEntryBuilderMut<'a, K, V, S, A> {
 }
 
 impl<'a, K, V, S, A: Allocator + Clone> RawEntryBuilderMut<'a, K, V, S, A> {
-    /// Creates a `RawEntryMut` from the given hash.
+    /// Creates a `RawEntryMut` from the given hash and matching function.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use core::hash::{BuildHasher, Hash};
+    /// use hashbrown::hash_map::{HashMap, RawEntryMut};
+    ///
+    /// fn compute_hash<K: Hash + ?Sized, S: BuildHasher>(hash_builder: &S, key: &K) -> u64 {
+    ///     use core::hash::Hasher;
+    ///     let mut state = hash_builder.build_hasher();
+    ///     key.hash(&mut state);
+    ///     state.finish()
+    /// }
+    ///
+    /// let mut map: HashMap<&str, u32> = HashMap::new();
+    /// let key = "a";
+    /// let hash = compute_hash(map.hasher(), &key);
+    /// let entry: RawEntryMut<&str, u32, _> = map.raw_entry_mut().from_hash(hash, |k| k == &key);
+    /// entry.insert(key, 100);
+    /// assert_eq!(map[&"a"], 100);
+    /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     #[allow(clippy::wrong_self_convention)]
     pub fn from_hash<F>(self, hash: u64, is_match: F) -> RawEntryMut<'a, K, V, S, A>
@@ -2626,7 +3195,17 @@ impl<'a, K, V, S, A: Allocator + Clone> RawEntryBuilderMut<'a, K, V, S, A> {
 }
 
 impl<'a, K, V, S, A: Allocator + Clone> RawEntryBuilder<'a, K, V, S, A> {
-    /// Access an entry by key.
+    /// Access an immutable entry by key.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    ///
+    /// let map: HashMap<&str, u32> = [("a", 100), ("b", 200)].into();
+    /// let key = "a";
+    /// assert_eq!(map.raw_entry().from_key(&key), Some((&"a", &100)));
+    /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     #[allow(clippy::wrong_self_convention)]
     pub fn from_key<Q: ?Sized>(self, k: &Q) -> Option<(&'a K, &'a V)>
@@ -2639,7 +3218,26 @@ impl<'a, K, V, S, A: Allocator + Clone> RawEntryBuilder<'a, K, V, S, A> {
         self.from_key_hashed_nocheck(hash, k)
     }
 
-    /// Access an entry by a key and its hash.
+    /// Access an immutable entry by a key and its hash.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use core::hash::{BuildHasher, Hash};
+    /// use hashbrown::HashMap;
+    ///
+    /// fn compute_hash<K: Hash + ?Sized, S: BuildHasher>(hash_builder: &S, key: &K) -> u64 {
+    ///     use core::hash::Hasher;
+    ///     let mut state = hash_builder.build_hasher();
+    ///     key.hash(&mut state);
+    ///     state.finish()
+    /// }
+    ///
+    /// let map: HashMap<&str, u32> = [("a", 100), ("b", 200)].into();
+    /// let key = "a";
+    /// let hash = compute_hash(map.hasher(), &key);
+    /// assert_eq!(map.raw_entry().from_key_hashed_nocheck(hash, &key), Some((&"a", &100)));
+    /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     #[allow(clippy::wrong_self_convention)]
     pub fn from_key_hashed_nocheck<Q: ?Sized>(self, hash: u64, k: &Q) -> Option<(&'a K, &'a V)>
@@ -2661,7 +3259,26 @@ impl<'a, K, V, S, A: Allocator + Clone> RawEntryBuilder<'a, K, V, S, A> {
         }
     }
 
-    /// Access an entry by hash.
+    /// Access an immutable entry by hash and matching function.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use core::hash::{BuildHasher, Hash};
+    /// use hashbrown::HashMap;
+    ///
+    /// fn compute_hash<K: Hash + ?Sized, S: BuildHasher>(hash_builder: &S, key: &K) -> u64 {
+    ///     use core::hash::Hasher;
+    ///     let mut state = hash_builder.build_hasher();
+    ///     key.hash(&mut state);
+    ///     state.finish()
+    /// }
+    ///
+    /// let map: HashMap<&str, u32> = [("a", 100), ("b", 200)].into();
+    /// let key = "a";
+    /// let hash = compute_hash(map.hasher(), &key);
+    /// assert_eq!(map.raw_entry().from_hash(hash, |k| k == &key), Some((&"a", &100)));
+    /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     #[allow(clippy::wrong_self_convention)]
     pub fn from_hash<F>(self, hash: u64, is_match: F) -> Option<(&'a K, &'a V)>
@@ -2868,12 +3485,50 @@ impl<'a, K, V, S, A: Allocator + Clone> RawEntryMut<'a, K, V, S, A> {
 
 impl<'a, K, V, S, A: Allocator + Clone> RawOccupiedEntryMut<'a, K, V, S, A> {
     /// Gets a reference to the key in the entry.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::hash_map::{HashMap, RawEntryMut};
+    ///
+    /// let mut map: HashMap<&str, u32> = [("a", 100), ("b", 200)].into();
+    ///
+    /// match map.raw_entry_mut().from_key(&"a") {
+    ///     RawEntryMut::Vacant(_) => panic!(),
+    ///     RawEntryMut::Occupied(o) => assert_eq!(o.key(), &"a")
+    /// }
+    /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn key(&self) -> &K {
         unsafe { &self.elem.as_ref().0 }
     }
 
     /// Gets a mutable reference to the key in the entry.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::hash_map::{HashMap, RawEntryMut};
+    /// use std::rc::Rc;
+    ///
+    /// let key_one = Rc::new("a");
+    /// let key_two = Rc::new("a");
+    ///
+    /// let mut map: HashMap<Rc<&str>, u32> = HashMap::new();
+    /// map.insert(key_one.clone(), 10);
+    ///
+    /// assert_eq!(map[&key_one], 10);
+    /// assert!(Rc::strong_count(&key_one) == 2 && Rc::strong_count(&key_two) == 1);
+    ///
+    /// match map.raw_entry_mut().from_key(&key_one) {
+    ///     RawEntryMut::Vacant(_) => panic!(),
+    ///     RawEntryMut::Occupied(mut o) => {
+    ///         *o.key_mut() = key_two.clone();
+    ///     }
+    /// }
+    /// assert_eq!(map[&key_two], 10);
+    /// assert!(Rc::strong_count(&key_one) == 1 && Rc::strong_count(&key_two) == 2);
+    /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn key_mut(&mut self) -> &mut K {
         unsafe { &mut self.elem.as_mut().0 }
@@ -2881,12 +3536,52 @@ impl<'a, K, V, S, A: Allocator + Clone> RawOccupiedEntryMut<'a, K, V, S, A> {
 
     /// Converts the entry into a mutable reference to the key in the entry
     /// with a lifetime bound to the map itself.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::hash_map::{HashMap, RawEntryMut};
+    /// use std::rc::Rc;
+    ///
+    /// let key_one = Rc::new("a");
+    /// let key_two = Rc::new("a");
+    ///
+    /// let mut map: HashMap<Rc<&str>, u32> = HashMap::new();
+    /// map.insert(key_one.clone(), 10);
+    ///
+    /// assert_eq!(map[&key_one], 10);
+    /// assert!(Rc::strong_count(&key_one) == 2 && Rc::strong_count(&key_two) == 1);
+    ///
+    /// let inside_key: &mut Rc<&str>;
+    ///
+    /// match map.raw_entry_mut().from_key(&key_one) {
+    ///     RawEntryMut::Vacant(_) => panic!(),
+    ///     RawEntryMut::Occupied(o) => inside_key = o.into_key(),
+    /// }
+    /// *inside_key = key_two.clone();
+    ///
+    /// assert_eq!(map[&key_two], 10);
+    /// assert!(Rc::strong_count(&key_one) == 1 && Rc::strong_count(&key_two) == 2);
+    /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn into_key(self) -> &'a mut K {
         unsafe { &mut self.elem.as_mut().0 }
     }
 
     /// Gets a reference to the value in the entry.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::hash_map::{HashMap, RawEntryMut};
+    ///
+    /// let mut map: HashMap<&str, u32> = [("a", 100), ("b", 200)].into();
+    ///
+    /// match map.raw_entry_mut().from_key(&"a") {
+    ///     RawEntryMut::Vacant(_) => panic!(),
+    ///     RawEntryMut::Occupied(o) => assert_eq!(o.get(), &100),
+    /// }
+    /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn get(&self) -> &V {
         unsafe { &self.elem.as_ref().1 }
@@ -2894,20 +3589,66 @@ impl<'a, K, V, S, A: Allocator + Clone> RawOccupiedEntryMut<'a, K, V, S, A> {
 
     /// Converts the OccupiedEntry into a mutable reference to the value in the entry
     /// with a lifetime bound to the map itself.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::hash_map::{HashMap, RawEntryMut};
+    ///
+    /// let mut map: HashMap<&str, u32> = [("a", 100), ("b", 200)].into();
+    ///
+    /// let value: &mut u32;
+    ///
+    /// match map.raw_entry_mut().from_key(&"a") {
+    ///     RawEntryMut::Vacant(_) => panic!(),
+    ///     RawEntryMut::Occupied(o) => value = o.into_mut(),
+    /// }
+    /// *value += 900;
+    ///
+    /// assert_eq!(map[&"a"], 1000);
+    /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn into_mut(self) -> &'a mut V {
         unsafe { &mut self.elem.as_mut().1 }
     }
 
     /// Gets a mutable reference to the value in the entry.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::hash_map::{HashMap, RawEntryMut};
+    ///
+    /// let mut map: HashMap<&str, u32> = [("a", 100), ("b", 200)].into();
+    ///
+    /// match map.raw_entry_mut().from_key(&"a") {
+    ///     RawEntryMut::Vacant(_) => panic!(),
+    ///     RawEntryMut::Occupied(mut o) => *o.get_mut() += 900,
+    /// }
+    ///
+    /// assert_eq!(map[&"a"], 1000);
+    /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn get_mut(&mut self) -> &mut V {
         unsafe { &mut self.elem.as_mut().1 }
     }
 
     /// Gets a reference to the key and value in the entry.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::hash_map::{HashMap, RawEntryMut};
+    ///
+    /// let mut map: HashMap<&str, u32> = [("a", 100), ("b", 200)].into();
+    ///
+    /// match map.raw_entry_mut().from_key(&"a") {
+    ///     RawEntryMut::Vacant(_) => panic!(),
+    ///     RawEntryMut::Occupied(o) => assert_eq!(o.get_key_value(), (&"a", &100)),
+    /// }
+    /// ```
     #[cfg_attr(feature = "inline-more", inline)]
-    pub fn get_key_value(&mut self) -> (&K, &V) {
+    pub fn get_key_value(&self) -> (&K, &V) {
         unsafe {
             let &(ref key, ref value) = self.elem.as_ref();
             (key, value)
@@ -2915,6 +3656,33 @@ impl<'a, K, V, S, A: Allocator + Clone> RawOccupiedEntryMut<'a, K, V, S, A> {
     }
 
     /// Gets a mutable reference to the key and value in the entry.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::hash_map::{HashMap, RawEntryMut};
+    /// use std::rc::Rc;
+    ///
+    /// let key_one = Rc::new("a");
+    /// let key_two = Rc::new("a");
+    ///
+    /// let mut map: HashMap<Rc<&str>, u32> = HashMap::new();
+    /// map.insert(key_one.clone(), 10);
+    ///
+    /// assert_eq!(map[&key_one], 10);
+    /// assert!(Rc::strong_count(&key_one) == 2 && Rc::strong_count(&key_two) == 1);
+    ///
+    /// match map.raw_entry_mut().from_key(&key_one) {
+    ///     RawEntryMut::Vacant(_) => panic!(),
+    ///     RawEntryMut::Occupied(mut o) => {
+    ///         let (inside_key, inside_value) = o.get_key_value_mut();
+    ///         *inside_key = key_two.clone();
+    ///         *inside_value = 100;
+    ///     }
+    /// }
+    /// assert_eq!(map[&key_two], 100);
+    /// assert!(Rc::strong_count(&key_one) == 1 && Rc::strong_count(&key_two) == 2);
+    /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn get_key_value_mut(&mut self) -> (&mut K, &mut V) {
         unsafe {
@@ -2925,6 +3693,37 @@ impl<'a, K, V, S, A: Allocator + Clone> RawOccupiedEntryMut<'a, K, V, S, A> {
 
     /// Converts the OccupiedEntry into a mutable reference to the key and value in the entry
     /// with a lifetime bound to the map itself.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::hash_map::{HashMap, RawEntryMut};
+    /// use std::rc::Rc;
+    ///
+    /// let key_one = Rc::new("a");
+    /// let key_two = Rc::new("a");
+    ///
+    /// let mut map: HashMap<Rc<&str>, u32> = HashMap::new();
+    /// map.insert(key_one.clone(), 10);
+    ///
+    /// assert_eq!(map[&key_one], 10);
+    /// assert!(Rc::strong_count(&key_one) == 2 && Rc::strong_count(&key_two) == 1);
+    ///
+    /// let inside_key: &mut Rc<&str>;
+    /// let inside_value: &mut u32;
+    /// match map.raw_entry_mut().from_key(&key_one) {
+    ///     RawEntryMut::Vacant(_) => panic!(),
+    ///     RawEntryMut::Occupied(o) => {
+    ///         let tuple = o.into_key_value();
+    ///         inside_key = tuple.0;
+    ///         inside_value = tuple.1;
+    ///     }
+    /// }
+    /// *inside_key = key_two.clone();
+    /// *inside_value = 100;
+    /// assert_eq!(map[&key_two], 100);
+    /// assert!(Rc::strong_count(&key_one) == 1 && Rc::strong_count(&key_two) == 2);
+    /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn into_key_value(self) -> (&'a mut K, &'a mut V) {
         unsafe {
@@ -2934,24 +3733,93 @@ impl<'a, K, V, S, A: Allocator + Clone> RawOccupiedEntryMut<'a, K, V, S, A> {
     }
 
     /// Sets the value of the entry, and returns the entry's old value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::hash_map::{HashMap, RawEntryMut};
+    ///
+    /// let mut map: HashMap<&str, u32> = [("a", 100), ("b", 200)].into();
+    ///
+    /// match map.raw_entry_mut().from_key(&"a") {
+    ///     RawEntryMut::Vacant(_) => panic!(),
+    ///     RawEntryMut::Occupied(mut o) => assert_eq!(o.insert(1000), 100),
+    /// }
+    ///
+    /// assert_eq!(map[&"a"], 1000);
+    /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn insert(&mut self, value: V) -> V {
         mem::replace(self.get_mut(), value)
     }
 
     /// Sets the value of the entry, and returns the entry's old value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::hash_map::{HashMap, RawEntryMut};
+    /// use std::rc::Rc;
+    ///
+    /// let key_one = Rc::new("a");
+    /// let key_two = Rc::new("a");
+    ///
+    /// let mut map: HashMap<Rc<&str>, u32> = HashMap::new();
+    /// map.insert(key_one.clone(), 10);
+    ///
+    /// assert_eq!(map[&key_one], 10);
+    /// assert!(Rc::strong_count(&key_one) == 2 && Rc::strong_count(&key_two) == 1);
+    ///
+    /// match map.raw_entry_mut().from_key(&key_one) {
+    ///     RawEntryMut::Vacant(_) => panic!(),
+    ///     RawEntryMut::Occupied(mut o) => {
+    ///         let old_key = o.insert_key(key_two.clone());
+    ///         assert!(Rc::ptr_eq(&old_key, &key_one));
+    ///     }
+    /// }
+    /// assert_eq!(map[&key_two], 10);
+    /// assert!(Rc::strong_count(&key_one) == 1 && Rc::strong_count(&key_two) == 2);
+    /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn insert_key(&mut self, key: K) -> K {
         mem::replace(self.key_mut(), key)
     }
 
     /// Takes the value out of the entry, and returns it.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::hash_map::{HashMap, RawEntryMut};
+    ///
+    /// let mut map: HashMap<&str, u32> = [("a", 100), ("b", 200)].into();
+    ///
+    /// match map.raw_entry_mut().from_key(&"a") {
+    ///     RawEntryMut::Vacant(_) => panic!(),
+    ///     RawEntryMut::Occupied(o) => assert_eq!(o.remove(), 100),
+    /// }
+    /// assert_eq!(map.get(&"a"), None);
+    /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn remove(self) -> V {
         self.remove_entry().1
     }
 
     /// Take the ownership of the key and value from the map.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::hash_map::{HashMap, RawEntryMut};
+    ///
+    /// let mut map: HashMap<&str, u32> = [("a", 100), ("b", 200)].into();
+    ///
+    /// match map.raw_entry_mut().from_key(&"a") {
+    ///     RawEntryMut::Vacant(_) => panic!(),
+    ///     RawEntryMut::Occupied(o) => assert_eq!(o.remove_entry(), ("a", 100)),
+    /// }
+    /// assert_eq!(map.get(&"a"), None);
+    /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn remove_entry(self) -> (K, V) {
         unsafe { self.table.remove(self.elem) }
@@ -2960,6 +3828,36 @@ impl<'a, K, V, S, A: Allocator + Clone> RawOccupiedEntryMut<'a, K, V, S, A> {
     /// Provides shared access to the key and owned access to the value of
     /// the entry and allows to replace or remove it based on the
     /// value of the returned option.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::hash_map::{HashMap, RawEntryMut};
+    ///
+    /// let mut map: HashMap<&str, u32> = [("a", 100), ("b", 200)].into();
+    ///
+    /// let raw_entry = match map.raw_entry_mut().from_key(&"a") {
+    ///     RawEntryMut::Vacant(_) => panic!(),
+    ///     RawEntryMut::Occupied(o) => o.replace_entry_with(|k, v| {
+    ///         assert_eq!(k, &"a");
+    ///         assert_eq!(v, 100);
+    ///         Some(v + 900)
+    ///     }),
+    /// };
+    /// let raw_entry = match raw_entry {
+    ///     RawEntryMut::Vacant(_) => panic!(),
+    ///     RawEntryMut::Occupied(o) => o.replace_entry_with(|k, v| {
+    ///         assert_eq!(k, &"a");
+    ///         assert_eq!(v, 1000);
+    ///         None
+    ///     }),
+    /// };
+    /// match raw_entry {
+    ///     RawEntryMut::Vacant(_) => { },
+    ///     RawEntryMut::Occupied(_) => panic!(),
+    /// };
+    /// assert_eq!(map.get(&"a"), None);
+    /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn replace_entry_with<F>(self, f: F) -> RawEntryMut<'a, K, V, S, A>
     where
@@ -2987,6 +3885,21 @@ impl<'a, K, V, S, A: Allocator + Clone> RawOccupiedEntryMut<'a, K, V, S, A> {
 impl<'a, K, V, S, A: Allocator + Clone> RawVacantEntryMut<'a, K, V, S, A> {
     /// Sets the value of the entry with the VacantEntry's key,
     /// and returns a mutable reference to it.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::hash_map::{HashMap, RawEntryMut};
+    ///
+    /// let mut map: HashMap<&str, u32> = [("a", 100), ("b", 200)].into();
+    ///
+    /// match map.raw_entry_mut().from_key(&"c") {
+    ///     RawEntryMut::Occupied(_) => panic!(),
+    ///     RawEntryMut::Vacant(v) => assert_eq!(v.insert("c", 300), (&mut "c", &mut 300)),
+    /// }
+    ///
+    /// assert_eq!(map[&"c"], 300);
+    /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn insert(self, key: K, value: V) -> (&'a mut K, &'a mut V)
     where
@@ -2999,6 +3912,34 @@ impl<'a, K, V, S, A: Allocator + Clone> RawVacantEntryMut<'a, K, V, S, A> {
 
     /// Sets the value of the entry with the VacantEntry's key,
     /// and returns a mutable reference to it.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use core::hash::{BuildHasher, Hash};
+    /// use hashbrown::hash_map::{HashMap, RawEntryMut};
+    ///
+    /// fn compute_hash<K: Hash + ?Sized, S: BuildHasher>(hash_builder: &S, key: &K) -> u64 {
+    ///     use core::hash::Hasher;
+    ///     let mut state = hash_builder.build_hasher();
+    ///     key.hash(&mut state);
+    ///     state.finish()
+    /// }
+    ///
+    /// let mut map: HashMap<&str, u32> = [("a", 100), ("b", 200)].into();
+    /// let key = "c";
+    /// let hash = compute_hash(map.hasher(), &key);
+    ///
+    /// match map.raw_entry_mut().from_key_hashed_nocheck(hash, &key) {
+    ///     RawEntryMut::Occupied(_) => panic!(),
+    ///     RawEntryMut::Vacant(v) => assert_eq!(
+    ///         v.insert_hashed_nocheck(hash, key, 300),
+    ///         (&mut "c", &mut 300)
+    ///     ),
+    /// }
+    ///
+    /// assert_eq!(map[&"c"], 300);
+    /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     #[allow(clippy::shadow_unrelated)]
     pub fn insert_hashed_nocheck(self, hash: u64, key: K, value: V) -> (&'a mut K, &'a mut V)
@@ -3015,6 +3956,41 @@ impl<'a, K, V, S, A: Allocator + Clone> RawVacantEntryMut<'a, K, V, S, A> {
     }
 
     /// Set the value of an entry with a custom hasher function.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use core::hash::{BuildHasher, Hash};
+    /// use hashbrown::hash_map::{HashMap, RawEntryMut};
+    ///
+    /// fn compute_hash<K, S>(hash_builder: &S) -> impl Fn(&K) -> u64 + '_
+    /// where
+    ///     K: Hash + ?Sized,
+    ///     S: BuildHasher,
+    /// {
+    ///     move |key: &K| {
+    ///         use core::hash::Hasher;
+    ///         let mut state = hash_builder.build_hasher();
+    ///         key.hash(&mut state);
+    ///         state.finish()
+    ///     }
+    /// }
+    ///
+    /// let mut map: HashMap<&str, u32> = HashMap::new();
+    /// let key = "a";
+    /// let hash_builder = map.hasher().clone();
+    /// let hash = compute_hash(&hash_builder)(&key);
+    ///
+    /// match map.raw_entry_mut().from_hash(hash, |q| q == &key) {
+    ///     RawEntryMut::Occupied(_) => panic!(),
+    ///     RawEntryMut::Vacant(v) => assert_eq!(
+    ///         v.insert_with_hasher(hash, key, 100, compute_hash(&hash_builder)),
+    ///         (&mut "a", &mut 100)
+    ///     ),
+    /// }
+    /// map.extend([("b", 200), ("c", 300), ("d", 400), ("e", 500), ("f", 600)]);
+    /// assert_eq!(map[&"a"], 100);
+    /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn insert_with_hasher<H>(
         self,
@@ -6592,15 +7568,15 @@ mod test_map {
             assert_eq!(map.raw_entry().from_key_hashed_nocheck(hash, &k), kv);
 
             match map.raw_entry_mut().from_key(&k) {
-                Occupied(mut o) => assert_eq!(Some(o.get_key_value()), kv),
+                Occupied(o) => assert_eq!(Some(o.get_key_value()), kv),
                 Vacant(_) => assert_eq!(v, None),
             }
             match map.raw_entry_mut().from_key_hashed_nocheck(hash, &k) {
-                Occupied(mut o) => assert_eq!(Some(o.get_key_value()), kv),
+                Occupied(o) => assert_eq!(Some(o.get_key_value()), kv),
                 Vacant(_) => assert_eq!(v, None),
             }
             match map.raw_entry_mut().from_hash(hash, |q| *q == k) {
-                Occupied(mut o) => assert_eq!(Some(o.get_key_value()), kv),
+                Occupied(o) => assert_eq!(Some(o.get_key_value()), kv),
                 Vacant(_) => assert_eq!(v, None),
             }
         }
