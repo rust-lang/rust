@@ -208,14 +208,14 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.descend_into_macros(token)
     }
 
-    /// Descend the token into macrocalls to all its mapped counterparts.
+    /// Descend the token into macrocalls to all its mapped counterparts that have the same text as the input token.
     ///
-    /// Returns the original non descended token if none of the mapped counterparts have the same syntax kind.
-    pub fn descend_into_macros_with_same_kind(
+    /// Returns the original non descended token if none of the mapped counterparts have the same text.
+    pub fn descend_into_macros_with_same_text(
         &self,
         token: SyntaxToken,
     ) -> SmallVec<[SyntaxToken; 1]> {
-        self.imp.descend_into_macros_with_same_kind(token)
+        self.imp.descend_into_macros_with_same_text(token)
     }
 
     /// Maps a node down by mapping its first and last token down.
@@ -666,11 +666,11 @@ impl<'db> SemanticsImpl<'db> {
         res
     }
 
-    fn descend_into_macros_with_same_kind(&self, token: SyntaxToken) -> SmallVec<[SyntaxToken; 1]> {
-        let kind = token.kind();
+    fn descend_into_macros_with_same_text(&self, token: SyntaxToken) -> SmallVec<[SyntaxToken; 1]> {
+        let text = token.text();
         let mut res = smallvec![];
         self.descend_into_macros_impl(token.clone(), &mut |InFile { value, .. }| {
-            if value.kind() == kind {
+            if value.text() == text {
                 res.push(value);
             }
             false
