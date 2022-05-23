@@ -81,7 +81,7 @@ cfg_if::cfg_if! {
             //                                       /memory/aligned_memory.cc
             libc::memalign(layout.align(), layout.size()) as *mut u8
         }
-    } else if #[cfg(any(target_os = "wasi", target_os = "wasix"))] {
+    } else if #[cfg(target_os = "wasi")] {
         #[inline]
         unsafe fn aligned_malloc(layout: &Layout) -> *mut u8 {
             libc::aligned_alloc(layout.align(), layout.size()) as *mut u8

@@ -1169,11 +1169,6 @@ impl Build {
         self.config.target_config.get(&target).and_then(|t| t.wasi_root.as_ref()).map(|p| &**p)
     }
 
-    /// Returns the sysroot for the wasix target, if defined
-    fn wasix_root(&self, target: TargetSelection) -> Option<&Path> {
-        self.config.target_config.get(&target).and_then(|t| t.wasix_root.as_ref()).map(|p| &**p)
-    }
-
     /// Returns `true` if this is a no-std `target`, if defined
     fn no_std(&self, target: TargetSelection) -> Option<bool> {
         self.config.target_config.get(&target).map(|t| t.no_std)
@@ -1433,7 +1428,8 @@ impl Build {
             return;
         }
         let _ = fs::remove_file(&dst);
-        let metadata = t!(src.symlink_metadata());
+        let metadata = t!(src.symlink_metadata()
+            .map_err(|err| format!("{}: {}", src.as_os_str().to_string_lossy(), err)));
         if metadata.file_type().is_symlink() {
             let link = t!(fs::read_link(src));
             t!(symlink_file(link, dst));

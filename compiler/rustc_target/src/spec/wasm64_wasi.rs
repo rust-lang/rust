@@ -1,19 +1,22 @@
-//! The `wasm32-wasix` implements a full operating system for Web Assembly
-//! including multithreading and networking support.
+//! 64-bit WebAssembly target with a full operating system based on WASI
+//!
 
 use super::wasm_base;
 use super::{crt_objects, LinkerFlavor, LldFlavor, Target};
 
 pub fn target() -> Target {
     let mut options = wasm_base::options();
-
-    options.os = "wasix".into();
+    options.os = "wasi".into();
     options.linker_flavor = LinkerFlavor::Lld(LldFlavor::Wasm);
-    options
+    let clang_args = options
         .pre_link_args
         .entry(LinkerFlavor::Gcc)
-        .or_insert(Vec::new())
-        .push("--target=wasm32-wasix".into());
+        .or_insert(Vec::new());
+
+    // Make sure clang uses LLD as its linker and is configured appropriately
+    // otherwise
+    clang_args.push("--target=wasm64-wasi".into());
+    
 
     options.pre_link_objects_fallback = crt_objects::pre_wasi_fallback();
     options.post_link_objects_fallback = crt_objects::post_wasi_fallback();
@@ -35,11 +38,19 @@ pub fn target() -> Target {
     // `args::args()` makes the WASIX API calls itself.
     options.main_needs_argc_argv = false;
 
+    let lld_args = options.pre_link_args.get_mut(&LinkerFlavor::Lld(LldFlavor::Wasm)).unwrap();
+    lld_args.push("-mwasm64".into());
+
+    // Any engine that implements wasm64 will surely implement the rest of these
+    // features since they were all merged into the official spec by the time
+    // wasm64 was designed.
+    options.features = "+bulk-memory,+mutable-globals,+sign-ext,+nontrapping-fptoint".into();
+
     Target {
-        llvm_target: "wasm32-wasix".into(),
-        pointer_width: 32,
-        data_layout: "e-m:e-p:32:32-p10:8:8-p20:8:8-i64:64-n32:64-S128-ni:1:10:20".into(),
-        arch: "wasm32".into(),
+        llvm_target: "wasm64-wasi".into(),
+        pointer_width: 64,
+        data_layout: "e-m:e-p:64:64-p10:8:8-p20:8:8-i64:64-n32:64-S128-ni:1:10:20".into(),
+        arch: "wasm64".into(),
         options,
     }
 }

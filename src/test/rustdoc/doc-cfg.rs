@@ -44,7 +44,7 @@ pub mod unix_only {
 //  'Available on WASI only.'
 // @matches - '//*[@class="item-left module-item"]//*[@class="stab portability"]' '\AWebAssembly\Z'
 // @count - '//*[@class="stab portability"]' 2
-#[doc(cfg(any(target_os = "wasi", target_os = "wasix")))]
+#[doc(cfg(target_os = "wasi"))]
 pub mod wasi_only {
     // @has doc_cfg/wasi_only/fn.wasi_only_function.html \
     //  '//*[@id="main-content"]/*[@class="item-info"]/*[@class="stab portability"]' \

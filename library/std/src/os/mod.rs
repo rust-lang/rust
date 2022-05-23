@@ -19,7 +19,7 @@ pub mod raw;
     doc,
     any(
         all(target_arch = "wasm32", not(target_os = "wasi")),
-        all(target_arch = "wasm64", not(target_os = "wasix")),
+        all(target_arch = "wasm64", not(target_os = "wasi")),
         all(target_vendor = "fortanix", target_env = "sgx")
     )
 ))]
@@ -29,7 +29,7 @@ pub mod unix {}
     doc,
     any(
         all(target_arch = "wasm32", not(target_os = "wasi")),
-        all(target_arch = "wasm64", not(target_os = "wasix")),
+        all(target_arch = "wasm64", not(target_os = "wasi")),
         all(target_vendor = "fortanix", target_env = "sgx")
     )
 ))]
@@ -39,7 +39,7 @@ pub mod linux {}
     doc,
     any(
         all(target_arch = "wasm32", not(target_os = "wasi")),
-        all(target_arch = "wasm64", not(target_os = "wasix")),
+        all(target_arch = "wasm64", not(target_os = "wasi")),
         all(target_vendor = "fortanix", target_env = "sgx")
     )
 ))]
@@ -49,7 +49,7 @@ pub mod wasi {}
     doc,
     any(
         all(target_arch = "wasm32", not(target_os = "wasi")),
-        all(target_arch = "wasm64", not(target_os = "wasix")),
+        all(target_arch = "wasm64", not(target_os = "wasi")),
         all(target_vendor = "fortanix", target_env = "sgx")
     )
 ))]
@@ -61,7 +61,7 @@ pub mod windows {}
     doc,
     any(
         all(target_arch = "wasm32", not(target_os = "wasi")),
-        all(target_arch = "wasm64", not(target_os = "wasix")),
+        all(target_arch = "wasm64", not(target_os = "wasi")),
         all(target_vendor = "fortanix", target_env = "sgx")
     )
 )))]
@@ -72,7 +72,7 @@ pub mod unix;
     doc,
     any(
         all(target_arch = "wasm32", not(target_os = "wasi")),
-        all(target_arch = "wasm64", not(target_os = "wasix")),
+        all(target_arch = "wasm64", not(target_os = "wasi")),
         all(target_vendor = "fortanix", target_env = "sgx")
     )
 )))]
@@ -84,7 +84,7 @@ pub mod unix;
     doc,
     any(
         all(target_arch = "wasm32", not(target_os = "wasi")),
-        all(target_arch = "wasm64", not(target_os = "wasix")),
+        all(target_arch = "wasm64", not(target_os = "wasi")),
         all(target_vendor = "fortanix", target_env = "sgx")
     )
 )))]
@@ -96,11 +96,11 @@ pub mod linux;
     doc,
     any(
         all(target_arch = "wasm32", not(target_os = "wasi")),
-        all(target_arch = "wasm64", not(target_os = "wasix")),
+        all(target_arch = "wasm64", not(target_os = "wasi")),
         all(target_vendor = "fortanix", target_env = "sgx")
     )
 )))]
-#[cfg(any(target_os = "wasi", target_os = "wasix", doc))]
+#[cfg(any(target_os = "wasi", doc))]
 pub mod wasi;
 
 // windows
@@ -108,7 +108,7 @@ pub mod wasi;
     doc,
     any(
         all(target_arch = "wasm32", not(target_os = "wasi")),
-        all(target_arch = "wasm64", not(target_os = "wasix")),
+        all(target_arch = "wasm64", not(target_os = "wasi")),
         all(target_vendor = "fortanix", target_env = "sgx")
     )
 )))]
@@ -154,5 +154,5 @@ pub mod solid;
 #[cfg(target_os = "vxworks")]
 pub mod vxworks;
 
-#[cfg(any(unix, target_os = "wasi", target_os = "wasix", doc))]
+#[cfg(any(unix, target_os = "wasi", doc))]
 mod fd;

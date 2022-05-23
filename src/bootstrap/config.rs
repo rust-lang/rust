@@ -356,7 +356,6 @@ pub struct Target {
     pub musl_root: Option<PathBuf>,
     pub musl_libdir: Option<PathBuf>,
     pub wasi_root: Option<PathBuf>,
-    pub wasix_root: Option<PathBuf>,
     pub qemu_rootfs: Option<PathBuf>,
     pub no_std: bool,
 }
@@ -690,7 +689,6 @@ define_config! {
         musl_root: Option<String> = "musl-root",
         musl_libdir: Option<String> = "musl-libdir",
         wasi_root: Option<String> = "wasi-root",
-        wasix_root: Option<String> = "wasix-root",
         qemu_rootfs: Option<String> = "qemu-rootfs",
         no_std: Option<bool> = "no-std",
     }
@@ -1116,7 +1114,6 @@ impl Config {
                 target.musl_root = cfg.musl_root.map(PathBuf::from);
                 target.musl_libdir = cfg.musl_libdir.map(PathBuf::from);
                 target.wasi_root = cfg.wasi_root.map(PathBuf::from);
-                target.wasix_root = cfg.wasix_root.map(PathBuf::from);
                 target.qemu_rootfs = cfg.qemu_rootfs.map(PathBuf::from);
                 target.sanitizers = cfg.sanitizers;
                 target.profiler = cfg.profiler;

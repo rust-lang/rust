@@ -1,9 +1,9 @@
-#[cfg(any(unix, target_os = "wasi", target_os = "wasix"))]
+#[cfg(any(unix, target_os = "wasi"))]
 #[test]
 fn test_raw_fd() {
     #[cfg(unix)]
     use crate::os::unix::io::{AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, RawFd};
-    #[cfg(any(target_os = "wasi", target_os = "wasix"))]
+    #[cfg(target_os = "wasi")]
     use crate::os::wasi::io::{AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, RawFd};
 
     let raw_fd: RawFd = crate::io::stdin().as_raw_fd();
@@ -14,12 +14,12 @@ fn test_raw_fd() {
     assert_eq!(stdin_as_file.into_raw_fd(), 0);
 }
 
-#[cfg(any(unix, target_os = "wasi", target_os = "wasix"))]
+#[cfg(any(unix, target_os = "wasi"))]
 #[test]
 fn test_fd() {
     #[cfg(unix)]
     use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
-    #[cfg(any(target_os = "wasi", target_os = "wasix"))]
+    #[cfg(target_os = "wasi")]
     use crate::os::wasi::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
 
     let stdin = crate::io::stdin();
@@ -33,13 +33,13 @@ fn test_fd() {
     assert_eq!(Into::<OwnedFd>::into(stdin_as_file).into_raw_fd(), raw_fd);
 }
 
-#[cfg(any(unix, target_os = "wasi", target_os = "wasix"))]
+#[cfg(any(unix, target_os = "wasi"))]
 #[test]
 fn test_niche_optimizations() {
     use crate::mem::size_of;
     #[cfg(unix)]
     use crate::os::unix::io::{BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
-    #[cfg(any(target_os = "wasi", target_os = "wasix"))]
+    #[cfg(target_os = "wasi")]
     use crate::os::wasi::io::{BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
 
     assert_eq!(size_of::<Option<OwnedFd>>(), size_of::<RawFd>());

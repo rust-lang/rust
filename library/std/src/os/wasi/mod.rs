@@ -30,7 +30,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 #![deny(unsafe_op_in_unsafe_fn)]
-#![doc(cfg(any(target_os = "wasi", target_os = "wasix")))]
+#![doc(cfg(target_os = "wasi"))]
 
 pub mod ffi;
 pub mod fs;
