@@ -24,7 +24,6 @@ pub(crate) enum ImmediatePrevSibling {
     TraitDefName,
     ImplDefType,
     Visibility,
-    Attribute,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -124,7 +123,6 @@ pub(crate) fn determine_prev_sibling(name_like: &ast::NameLike) -> Option<Immedi
                 } else {
                     return None
             },
-            ast::Attr(_) => ImmediatePrevSibling::Attribute,
             _ => return None,
         }
     };
@@ -483,10 +481,5 @@ mod tests {
     #[test]
     fn test_vis_prev_sibling() {
         check_prev_sibling(r"pub w$0", ImmediatePrevSibling::Visibility);
-    }
-
-    #[test]
-    fn test_attr_prev_sibling() {
-        check_prev_sibling(r"#[attr] w$0", ImmediatePrevSibling::Attribute);
     }
 }

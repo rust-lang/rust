@@ -371,10 +371,7 @@ impl<'a> CompletionContext<'a> {
     // FIXME: This shouldn't exist
     pub(crate) fn is_path_disallowed(&self) -> bool {
         self.previous_token_is(T![unsafe])
-            || matches!(
-                self.prev_sibling,
-                Some(ImmediatePrevSibling::Attribute | ImmediatePrevSibling::Visibility)
-            )
+            || matches!(self.prev_sibling, Some(ImmediatePrevSibling::Visibility))
             || matches!(
                 self.completion_location,
                 Some(ImmediateLocation::RecordPat(_) | ImmediateLocation::RecordExpr(_))
