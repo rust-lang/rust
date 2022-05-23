@@ -1468,7 +1468,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    fn lower_where_predicate(&mut self, pred: &WherePredicate) -> hir::WherePredicate<'hir> {
+    pub(super) fn lower_where_predicate(
+        &mut self,
+        pred: &WherePredicate,
+    ) -> hir::WherePredicate<'hir> {
         match *pred {
             WherePredicate::BoundPredicate(WhereBoundPredicate {
                 ref bound_generic_params,

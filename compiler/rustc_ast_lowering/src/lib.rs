@@ -1692,7 +1692,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         opaque_ty_node_id: NodeId,
         ast_generics: &Generics,
         bounds: &GenericBounds,
-        itctx: ImplTraitContext<'_>,
+        mut itctx: ImplTraitContext<'_>,
     ) -> hir::TyKind<'hir> {
         // Make sure we know that some funky desugaring has been going on here.
         // This is a first: there is code in other places like for loop
@@ -1784,16 +1784,41 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
                 // Then when we lower the param bounds, references to 'a are remapped to 'a1, so we
                 // get back Debug + 'a1, which is suitable for use on the TAIT.
-                let hir_bounds = lctx.lower_param_bounds(bounds, itctx);
+                let hir_bounds = lctx.lower_param_bounds(bounds, itctx.reborrow());
                 debug!(?hir_bounds);
 
                 let generic_defs = lifetime_defs.into_iter().chain(type_const_defs.into_iter());
 
+                let mut predicates: Vec<_> = ast_generics
+                    .params
+                    .iter()
+                    .filter_map(|param| {
+                        lctx.lower_generic_bound_predicate(
+                            param.ident,
+                            param.id,
+                            &param.kind,
+                            &param.bounds,
+                            itctx.reborrow(),
+                            hir::PredicateOrigin::GenericParam,
+                        )
+                    })
+                    .collect();
+
+                predicates.extend(
+                    ast_generics
+                        .where_clause
+                        .predicates
+                        .iter()
+                        .map(|predicate| lctx.lower_where_predicate(predicate)),
+                );
+
+                let has_where_clause_predicates = !predicates.is_empty();
+
                 let opaque_ty_item = hir::OpaqueTy {
                     generics: self.arena.alloc(hir::Generics {
                         params: self.arena.alloc_from_iter(generic_defs),
-                        predicates: &[],
-                        has_where_clause_predicates: false,
+                        predicates: self.arena.alloc_from_iter(predicates),
+                        has_where_clause_predicates,
                         where_clause_span: lctx.lower_span(span),
                         span: lctx.lower_span(span),
                     }),
