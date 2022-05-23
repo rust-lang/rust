@@ -335,7 +335,16 @@ fn main() {
                     miri_config.check_alignment = miri::AlignmentCheck::Symbolic;
                 }
                 "-Zmiri-check-number-validity" => {
-                    miri_config.check_number_validity = true;
+                    eprintln!(
+                        "WARNING: the flag `-Zmiri-check-number-validity` no longer has any effect \
+                        since it is now enabled by default"
+                    );
+                }
+                "-Zmiri-allow-uninit-numbers" => {
+                    miri_config.allow_uninit_numbers = true;
+                }
+                "-Zmiri-allow-ptr-int-transmute" => {
+                    miri_config.allow_ptr_int_transmute = true;
                 }
                 "-Zmiri-disable-abi-check" => {
                     miri_config.check_abi = false;
@@ -386,7 +395,6 @@ fn main() {
                 "-Zmiri-strict-provenance" => {
                     miri_config.provenance_mode = ProvenanceMode::Strict;
                     miri_config.tag_raw = true;
-                    miri_config.check_number_validity = true;
                 }
                 "-Zmiri-permissive-provenance" => {
                     miri_config.provenance_mode = ProvenanceMode::Permissive;

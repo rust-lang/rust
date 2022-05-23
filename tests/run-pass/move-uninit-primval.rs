@@ -1,3 +1,4 @@
+// compile-flags: -Zmiri-allow-uninit-numbers
 #![allow(deprecated)]
 
 struct Foo {

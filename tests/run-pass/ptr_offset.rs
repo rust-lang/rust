@@ -61,7 +61,9 @@ fn ptr_offset() {
     unsafe {
         let p = f as fn() -> i32 as usize;
         let x = (p as *mut u32).offset(0) as usize;
-        let f: fn() -> i32 = mem::transmute(x);
+        // *cast* to ptr, then transmute to fn ptr.
+        // (transmuting int to [fn]ptr causes trouble.)
+        let f: fn() -> i32 = mem::transmute(x as *const ());
         assert_eq!(f(), 42);
     }
 }

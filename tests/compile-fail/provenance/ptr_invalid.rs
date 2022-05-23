@@ -1,4 +1,3 @@
-// compile-flags: -Zmiri-permissive-provenance
 #![feature(strict_provenance)]
 
 // Ensure that a `ptr::invalid` ptr is truly invalid.

@@ -1,3 +1,4 @@
+// compile-flags: -Zmiri-allow-uninit-numbers
 #![allow(unused, deprecated, invalid_value)]
 
 #[derive(Copy, Clone)]

@@ -118,19 +118,12 @@ impl<'mir, 'tcx> GlobalStateInner {
     ) -> Pointer<Option<Tag>> {
         trace!("Transmuting 0x{:x} to a pointer", addr);
 
-        let global_state = ecx.machine.intptrcast.borrow();
-
-        match global_state.provenance_mode {
-            ProvenanceMode::Legacy => {
-                // In legacy mode, we have to support int2ptr transmutes,
-                // so just pretend they do the same thing as a cast.
-                Self::ptr_from_addr_cast(ecx, addr)
-            }
-            ProvenanceMode::Permissive | ProvenanceMode::Strict => {
-                // Both of these modes consider transmuted pointers to be "invalid" (`None`
-                // provenance).
-                Pointer::new(None, Size::from_bytes(addr))
-            }
+        if ecx.machine.allow_ptr_int_transmute {
+            // When we allow transmutes, treat them like casts.
+            Self::ptr_from_addr_cast(ecx, addr)
+        } else {
+            // We consider transmuted pointers to be "invalid" (`None` provenance).
+            Pointer::new(None, Size::from_bytes(addr))
         }
     }
 

@@ -255,13 +255,19 @@ pub struct Evaluator<'mir, 'tcx> {
     /// Whether to enforce the validity invariant.
     pub(crate) validate: bool,
 
-    /// Whether to enforce validity (e.g., initialization) of integers and floats.
-    pub(crate) enforce_number_validity: bool,
+    /// Whether to allow uninitialized numbers (integers and floats).
+    pub(crate) allow_uninit_numbers: bool,
+
+    /// Whether to allow ptr2int transmutes, and whether to allow *dereferencing* the result of an
+    /// int2ptr transmute.
+    pub(crate) allow_ptr_int_transmute: bool,
 
     /// Whether to enforce [ABI](Abi) of function calls.
     pub(crate) enforce_abi: bool,
 
+    /// The table of file descriptors.
     pub(crate) file_handler: shims::posix::FileHandler,
+    /// The table of directory descriptors.
     pub(crate) dir_handler: shims::posix::DirHandler,
 
     /// The "time anchor" for this machine's monotone clock (for `Instant` simulation).
@@ -351,7 +357,8 @@ impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
             tls: TlsData::default(),
             isolated_op: config.isolated_op,
             validate: config.validate,
-            enforce_number_validity: config.check_number_validity,
+            allow_uninit_numbers: config.allow_uninit_numbers,
+            allow_ptr_int_transmute: config.allow_ptr_int_transmute,
             enforce_abi: config.check_abi,
             file_handler: FileHandler::new(config.mute_stdout_stderr),
             dir_handler: Default::default(),
@@ -493,12 +500,12 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
 
     #[inline(always)]
     fn enforce_number_init(ecx: &MiriEvalContext<'mir, 'tcx>) -> bool {
-        ecx.machine.enforce_number_validity
+        !ecx.machine.allow_uninit_numbers
     }
 
     #[inline(always)]
     fn enforce_number_no_provenance(ecx: &MiriEvalContext<'mir, 'tcx>) -> bool {
-        ecx.machine.enforce_number_validity
+        !ecx.machine.allow_ptr_int_transmute
     }
 
     #[inline(always)]
