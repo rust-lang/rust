@@ -539,8 +539,16 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             obligation.predicate.def_id(),
             obligation.predicate.skip_binder().trait_ref.self_ty(),
             |impl_def_id| {
+                // Before we create the substitutions and everything, first
+                // consider a "quick reject". This avoids creating more types
+                // and so forth that we need to.
+                let impl_trait_ref = self.tcx().bound_impl_trait_ref(impl_def_id).unwrap();
+                if self.fast_reject_trait_refs(obligation, &impl_trait_ref.0) {
+                    return;
+                }
+
                 self.infcx.probe(|_| {
-                    if let Ok(_substs) = self.match_impl(impl_def_id, obligation) {
+                    if let Ok(_substs) = self.match_impl(impl_def_id, impl_trait_ref, obligation) {
                         candidates.vec.push(ImplCandidate(impl_def_id));
                     }
                 });
