@@ -432,6 +432,13 @@ impl NameLike {
             _ => None,
         }
     }
+    pub fn text(&self) -> TokenText {
+        match self {
+            NameLike::NameRef(name_ref) => name_ref.text(),
+            NameLike::Name(name) => name.text(),
+            NameLike::Lifetime(lifetime) => lifetime.text(),
+        }
+    }
 }
 
 impl ast::AstNode for NameLike {
