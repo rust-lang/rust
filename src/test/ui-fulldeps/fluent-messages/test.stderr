@@ -1,0 +1,45 @@
+error: could not open Fluent resource
+  --> $DIR/test.rs:19:29
+   |
+LL |         missing_absolute => "/definitely_does_not_exist.ftl",
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: os-specific message
+
+error: could not open Fluent resource
+  --> $DIR/test.rs:28:29
+   |
+LL |         missing_relative => "../definitely_does_not_exist.ftl",
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: os-specific message
+
+error: could not parse Fluent resource
+  --> $DIR/test.rs:37:28
+   |
+LL |         missing_message => "./missing-message.ftl",
+   |                            ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: see additional errors emitted
+
+error: expected a message field for "missing-message"
+ --> ./missing-message.ftl:1:1
+  |
+1 | missing-message = 
+  | ^^^^^^^^^^^^^^^^^^
+  |
+
+error: overrides existing message: `key`
+  --> $DIR/test.rs:47:9
+   |
+LL |         b => "./duplicate-b.ftl",
+   |         ^
+   |
+help: previously defined in this resource
+  --> $DIR/test.rs:46:9
+   |
+LL |         a => "./duplicate-a.ftl",
+   |         ^
+
+error: aborting due to 4 previous errors
+

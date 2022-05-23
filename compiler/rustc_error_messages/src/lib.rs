@@ -6,7 +6,7 @@
 use fluent_bundle::FluentResource;
 use fluent_syntax::parser::ParserError;
 use rustc_data_structures::sync::Lrc;
-use rustc_macros::{Decodable, Encodable};
+use rustc_macros::{fluent_messages, Decodable, Encodable};
 use rustc_span::Span;
 use std::borrow::Cow;
 use std::error::Error;
@@ -29,8 +29,13 @@ use intl_memoizer::IntlLangMemoizer;
 pub use fluent_bundle::{FluentArgs, FluentError, FluentValue};
 pub use unic_langid::{langid, LanguageIdentifier};
 
-pub static DEFAULT_LOCALE_RESOURCES: &'static [&'static str] =
-    &[include_str!("../locales/en-US/typeck.ftl"), include_str!("../locales/en-US/parser.ftl")];
+// Generates `DEFAULT_LOCALE_RESOURCES` static and `fluent_generated` module.
+fluent_messages! {
+    parser => "../locales/en-US/parser.ftl",
+    typeck => "../locales/en-US/typeck.ftl",
+}
+
+pub use fluent_generated::{self as fluent, DEFAULT_LOCALE_RESOURCES};
 
 pub type FluentBundle = fluent_bundle::bundle::FluentBundle<FluentResource, IntlLangMemoizer>;
 
