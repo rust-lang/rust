@@ -125,7 +125,13 @@ impl fmt::Display for MiriMemoryKind {
 
 /// Pointer provenance (tag).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Tag {
+pub enum Tag {
+    Concrete(ConcreteTag),
+    Wildcard,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct ConcreteTag {
     pub alloc_id: AllocId,
     /// Stacked Borrows tag.
     pub sb: SbTag,
@@ -133,8 +139,8 @@ pub struct Tag {
 
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 static_assert_size!(Pointer<Tag>, 24);
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(Pointer<Option<Tag>>, 24);
+// #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+// static_assert_size!(Pointer<Option<Tag>>, 24);
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 static_assert_size!(ScalarMaybeUninit<Tag>, 32);
 
@@ -148,18 +154,31 @@ impl Provenance for Tag {
     fn fmt(ptr: &Pointer<Self>, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let (tag, addr) = ptr.into_parts(); // address is absolute
         write!(f, "0x{:x}", addr.bytes())?;
-        // Forward `alternate` flag to `alloc_id` printing.
-        if f.alternate() {
-            write!(f, "[{:#?}]", tag.alloc_id)?;
-        } else {
-            write!(f, "[{:?}]", tag.alloc_id)?;
+
+        match tag {
+            Tag::Concrete(tag) => {
+                // Forward `alternate` flag to `alloc_id` printing.
+                if f.alternate() {
+                    write!(f, "[{:#?}]", tag.alloc_id)?;
+                } else {
+                    write!(f, "[{:?}]", tag.alloc_id)?;
+                }
+                // Print Stacked Borrows tag.
+                write!(f, "{:?}", tag.sb)?;
+            }
+            Tag::Wildcard => {
+                write!(f, "[Wildcard]")?;
+            }
         }
-        // Print Stacked Borrows tag.
-        write!(f, "{:?}", tag.sb)
+
+        Ok(())
     }
 
     fn get_alloc_id(self) -> Option<AllocId> {
-        Some(self.alloc_id)
+        match self {
+            Tag::Concrete(concrete) => Some(concrete.alloc_id),
+            Tag::Wildcard => None,
+        }
     }
 }
 
@@ -611,7 +630,10 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         } else {
             SbTag::Untagged
         };
-        Pointer::new(Tag { alloc_id: ptr.provenance, sb: sb_tag }, Size::from_bytes(absolute_addr))
+        Pointer::new(
+            Tag::Concrete(ConcreteTag { alloc_id: ptr.provenance, sb: sb_tag }),
+            Size::from_bytes(absolute_addr),
+        )
     }
 
     #[inline(always)]
@@ -619,7 +641,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         ecx: &MiriEvalContext<'mir, 'tcx>,
         addr: u64,
     ) -> Pointer<Option<Self::PointerTag>> {
-        intptrcast::GlobalStateInner::ptr_from_addr(addr, ecx)
+        intptrcast::GlobalStateInner::ptr_from_addr_cast(ecx, addr)
     }
 
     #[inline(always)]
@@ -627,14 +649,22 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         ecx: &MiriEvalContext<'mir, 'tcx>,
         addr: u64,
     ) -> Pointer<Option<Self::PointerTag>> {
-        Self::ptr_from_addr_cast(ecx, addr)
+        intptrcast::GlobalStateInner::ptr_from_addr_transmute(ecx, addr)
     }
 
     #[inline(always)]
     fn expose_ptr(
-        _ecx: &mut InterpCx<'mir, 'tcx, Self>,
-        _ptr: Pointer<Self::PointerTag>,
+        ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        ptr: Pointer<Self::PointerTag>,
     ) -> InterpResult<'tcx> {
+        let tag = ptr.provenance;
+
+        if let Tag::Concrete(concrete) = tag {
+            intptrcast::GlobalStateInner::expose_addr(ecx, concrete.alloc_id);
+        }
+
+        // No need to do anything for wildcard pointers as
+        // their provenances have already been previously exposed.
         Ok(())
     }
 
@@ -645,7 +675,13 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         ptr: Pointer<Self::PointerTag>,
     ) -> Option<(AllocId, Size, Self::TagExtra)> {
         let rel = intptrcast::GlobalStateInner::abs_ptr_to_rel(ecx, ptr);
-        Some((ptr.provenance.alloc_id, rel, ptr.provenance.sb))
+
+        let sb = match ptr.provenance {
+            Tag::Concrete(ConcreteTag { sb, .. }) => sb,
+            Tag::Wildcard => SbTag::Untagged,
+        };
+
+        rel.map(|(alloc_id, size)| (alloc_id, size, sb))
     }
 
     #[inline(always)]

@@ -318,6 +318,17 @@ to Miri failing to detect cases of undefined behavior in a program.
   application instead of raising an error within the context of Miri (and halting
   execution). Note that code might not expect these operations to ever panic, so
   this flag can lead to strange (mis)behavior.
+* `-Zmiri-permissive-provenance` is **experimental**. This will make Miri do a
+  best-effort attempt to implement the semantics of
+  [`expose_addr`](https://doc.rust-lang.org/nightly/std/primitive.pointer.html#method.expose_addr)
+  and
+  [`ptr::from_exposed_addr`](https://doc.rust-lang.org/nightly/std/ptr/fn.from_exposed_addr.html)
+  for pointer-to-int and int-to-pointer casts, respectively. This will
+  necessarily miss some bugs as those semantics are not efficiently
+  implementable in a sanitizer, but it will only miss bugs that concerns
+  memory/pointers which is subject to these operations. Also note that this flag
+  is currently incompatible with Stacked Borrows, so you will have to also pass
+  `-Zmiri-disable-stacked-borrows` to use this.
 * `-Zmiri-seed=<hex>` configures the seed of the RNG that Miri uses to resolve
   non-determinism.  This RNG is used to pick base addresses for allocations.
   When isolation is enabled (the default), this is also used to emulate system
