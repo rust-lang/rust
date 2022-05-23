@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/project-fn-ret-invariant-nll.rs:56:5
+  --> $DIR/project-fn-ret-invariant-nll.rs:57:5
    |
 LL | fn baz<'a, 'b>(x: Type<'a>) -> Type<'static> {
    |        -- lifetime `'a` defined here
