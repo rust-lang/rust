@@ -61,6 +61,35 @@ macro_rules! public_test_dep {
 macro_rules! intrinsics {
     () => ();
 
+    // Support cfg_attr:
+    (
+        #[cfg_attr($e:meta, $($attr:tt)*)]
+        $(#[$($attrs:tt)*])*
+        pub extern $abi:tt fn $name:ident( $($argname:ident: $ty:ty),* ) $(-> $ret:ty)? {
+            $($body:tt)*
+        }
+        $($rest:tt)*
+    ) => (
+        #[cfg($e)]
+        intrinsics! {
+            #[$($attr)*]
+            $(#[$($attrs)*])*
+            pub extern $abi fn $name($($argname: $ty),*) $(-> $ret)? {
+                $($body)*
+            }
+        }
+
+        #[cfg(not($e))]
+        intrinsics! {
+            $(#[$($attrs)*])*
+            pub extern $abi fn $name($($argname: $ty),*) $(-> $ret)? {
+                $($body)*
+            }
+        }
+
+        intrinsics!($($rest)*);
+    );
+
     // Right now there's a bunch of architecture-optimized intrinsics in the
     // stock compiler-rt implementation. Not all of these have been ported over
     // to Rust yet so when the `c` feature of this crate is enabled we fall back
