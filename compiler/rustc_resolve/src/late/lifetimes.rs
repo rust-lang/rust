@@ -808,7 +808,6 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                         // resolved the same as the `'_` in `&'_ Foo`.
                         //
                         // cc #48468
-                        self.resolve_elided_lifetimes(&[lifetime])
                     }
                     LifetimeName::Param(..) | LifetimeName::Static => {
                         // If the user wrote an explicit name, use that.
@@ -1082,15 +1081,14 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
     #[tracing::instrument(level = "debug", skip(self))]
     fn visit_lifetime(&mut self, lifetime_ref: &'tcx hir::Lifetime) {
         match lifetime_ref.name {
-            hir::LifetimeName::ImplicitObjectLifetimeDefault | hir::LifetimeName::Infer => {
-                self.resolve_elided_lifetimes(&[lifetime_ref])
-            }
             hir::LifetimeName::Static => self.insert_lifetime(lifetime_ref, Region::Static),
             hir::LifetimeName::Param(param_def_id, _) => {
                 self.resolve_lifetime_ref(param_def_id, lifetime_ref)
             }
             // If we've already reported an error, just ignore `lifetime_ref`.
             hir::LifetimeName::Error => {}
+            // Those will be resolved by typechecking.
+            hir::LifetimeName::ImplicitObjectLifetimeDefault | hir::LifetimeName::Infer => {}
         }
     }
 
@@ -1737,26 +1735,10 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             return;
         }
 
-        let mut elide_lifetimes = true;
-        let lifetimes: Vec<_> = generic_args
-            .args
-            .iter()
-            .filter_map(|arg| match arg {
-                hir::GenericArg::Lifetime(lt) => {
-                    if !lt.is_elided() {
-                        elide_lifetimes = false;
-                    }
-                    Some(lt)
-                }
-                _ => None,
-            })
-            .collect();
-        // We short-circuit here if all are elided in order to pluralize
-        // possible errors
-        if elide_lifetimes {
-            self.resolve_elided_lifetimes(&lifetimes);
-        } else {
-            lifetimes.iter().for_each(|lt| self.visit_lifetime(lt));
+        for arg in generic_args.args {
+            if let hir::GenericArg::Lifetime(lt) = arg {
+                self.visit_lifetime(lt);
+            }
         }
 
         // Figure out if this is a type/trait segment,
@@ -2024,35 +2006,6 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         });
         if in_closure && let Some(output) = output {
             self.visit_ty(output);
-        }
-    }
-
-    fn resolve_elided_lifetimes(&mut self, lifetime_refs: &[&'tcx hir::Lifetime]) {
-        debug!("resolve_elided_lifetimes(lifetime_refs={:?})", lifetime_refs);
-
-        if lifetime_refs.is_empty() {
-            return;
-        }
-
-        let mut scope = self.scope;
-        loop {
-            match *scope {
-                // Do not assign any resolution, it will be inferred.
-                Scope::Body { .. } => return,
-
-                Scope::Root | Scope::Elision { .. } => break,
-
-                Scope::Binder { s, .. }
-                | Scope::ObjectLifetimeDefault { s, .. }
-                | Scope::Supertrait { s, .. }
-                | Scope::TraitRefBoundary { s, .. } => {
-                    scope = s;
-                }
-            }
-        }
-
-        for lt in lifetime_refs {
-            self.tcx.sess.delay_span_bug(lt.span, "Missing lifetime specifier");
         }
     }
 
