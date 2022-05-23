@@ -258,17 +258,54 @@ up the sysroot.  If you are using `miri` (the Miri driver) directly, see the
 [miri-flags]: #miri--z-flags-and-environment-variables
 
 Miri adds its own set of `-Z` flags, which are usually set via the `MIRIFLAGS`
-environment variable. Some of these are **unsound**, which means they can lead
+environment variable. We first document the most relevant and most commonly used flags:
+
+* `-Zmiri-compare-exchange-weak-failure-rate=<rate>` changes the failure rate of
+  `compare_exchange_weak` operations. The default is `0.8` (so 4 out of 5 weak ops will fail).
+  You can change it to any value between `0.0` and `1.0`, where `1.0` means it
+  will always fail and `0.0` means it will never fail.
+* `-Zmiri-disable-isolation` disables host isolation.  As a consequence,
+  the program has access to host resources such as environment variables, file
+  systems, and randomness.
+* `-Zmiri-isolation-error=<action>` configures Miri's response to operations
+  requiring host access while isolation is enabled. `abort`, `hide`, `warn`,
+  and `warn-nobacktrace` are the supported actions. The default is to `abort`,
+  which halts the machine. Some (but not all) operations also support continuing
+  execution with a "permission denied" error being returned to the program.
+  `warn` prints a full backtrace when that happen; `warn-nobacktrace` is less
+  verbose. `hide` hides the warning entirely.
+* `-Zmiri-env-exclude=<var>` keeps the `var` environment variable isolated from the host so that it
+  cannot be accessed by the program. Can be used multiple times to exclude several variables. The
+  `TERM` environment variable is excluded by default to [speed up the test
+  harness](https://github.com/rust-lang/miri/issues/1702). This has no effect unless
+  `-Zmiri-disable-isolation` is also set.
+* `-Zmiri-env-forward=<var>` forwards the `var` environment variable to the interpreted program. Can
+  be used multiple times to forward several variables. This has no effect if
+  `-Zmiri-disable-isolation` is set.
+* `-Zmiri-ignore-leaks` disables the memory leak checker, and also allows some
+  remaining threads to exist when the main thread exits.
+* `-Zmiri-seed=<hex>` configures the seed of the RNG that Miri uses to resolve
+  non-determinism. This RNG is used to pick base addresses for allocations. When
+  isolation is enabled (the default), this is also used to emulate system
+  entropy. The default seed is 0. You can increase test coverage by running Miri
+  multiple times with different seeds.
+  **NOTE**: This entropy is not good enough for cryptographic use! Do not
+  generate secret keys in Miri or perform other kinds of cryptographic
+  operations that rely on proper random numbers.
+* `-Zmiri-strict-provenance` enables [strict
+  provenance](https://github.com/rust-lang/rust/issues/95228) checking in Miri. This means that
+  casting an integer to a pointer yields a result with 'invalid' provenance, i.e., with provenance
+  that cannot be used for any memory access. Also implies `-Zmiri-tag-raw-pointers` and
+  `-Zmiri-check-number-validity`.
+
+The remaining flags are for advanced use only, and more likely to change or be removed.
+Some of these are **unsound**, which means they can lead
 to Miri failing to detect cases of undefined behavior in a program.
 
 * `-Zmiri-check-number-validity` enables checking of integer and float validity
   (e.g., they must be initialized and not carry pointer provenance) as part of
   enforcing validity invariants. This has no effect when
   `-Zmiri-disable-validation` is present.
-* `-Zmiri-compare-exchange-weak-failure-rate=<rate>` changes the failure rate of
-  `compare_exchange_weak` operations. The default is `0.8` (so 4 out of 5 weak ops will fail).
-  You can change it to any value between `0.0` and `1.0`, where `1.0` means it
-  will always fail and `0.0` means it will never fail.
 * `-Zmiri-disable-abi-check` disables checking [function ABI]. Using this flag
   is **unsound**.
 * `-Zmiri-disable-alignment-check` disables checking pointer alignment, so you
@@ -285,26 +322,6 @@ to Miri failing to detect cases of undefined behavior in a program.
   as out-of-bounds accesses) first.  Setting this flag means Miri can miss bugs
   in your program.  However, this can also help to make Miri run faster.  Using
   this flag is **unsound**.
-* `-Zmiri-disable-isolation` disables host isolation.  As a consequence,
-  the program has access to host resources such as environment variables, file
-  systems, and randomness.
-* `-Zmiri-isolation-error=<action>` configures Miri's response to operations
-  requiring host access while isolation is enabled. `abort`, `hide`, `warn`,
-  and `warn-nobacktrace` are the supported actions. The default is to `abort`,
-  which halts the machine. Some (but not all) operations also support continuing
-  execution with a "permission denied" error being returned to the program.
-  `warn` prints a full backtrace when that happen; `warn-nobacktrace` is less
-  verbose. `hide` hides the warning entirely.
-* `-Zmiri-env-exclude=<var>` keeps the `var` environment variable isolated from the host so that it
-  cannot be accessed by the program. Can be used multiple times to exclude several variables. The
-  `TERM` environment variable is excluded by default to [speed up the test
-  harness](https://github.com/rust-lang/miri/issues/1702). This has no effect unless
-  `-Zmiri-disable-validation` is also set.
-* `-Zmiri-env-forward=<var>` forwards the `var` environment variable to the interpreted program. Can
-  be used multiple times to forward several variables. This has no effect if
-  `-Zmiri-disable-validation` is set.
-* `-Zmiri-ignore-leaks` disables the memory leak checker, and also allows some
-  remaining threads to exist when the main thread exits.
 * `-Zmiri-measureme=<name>` enables `measureme` profiling for the interpreted program.
    This can be used to find which parts of your program are executing slowly under Miri.
    The profile is written out to a file with the prefix `<name>`, and can be processed
@@ -329,17 +346,6 @@ to Miri failing to detect cases of undefined behavior in a program.
   memory/pointers which is subject to these operations. Also note that this flag
   is currently incompatible with Stacked Borrows, so you will have to also pass
   `-Zmiri-disable-stacked-borrows` to use this.
-* `-Zmiri-seed=<hex>` configures the seed of the RNG that Miri uses to resolve
-  non-determinism.  This RNG is used to pick base addresses for allocations.
-  When isolation is enabled (the default), this is also used to emulate system
-  entropy.  The default seed is 0.  **NOTE**: This entropy is not good enough
-  for cryptographic use!  Do not generate secret keys in Miri or perform other
-  kinds of cryptographic operations that rely on proper random numbers.
-* `-Zmiri-strict-provenance` enables [strict
-  provenance](https://github.com/rust-lang/rust/issues/95228) checking in Miri. This means that
-  casting an integer to a pointer yields a result with 'invalid' provenance, i.e., with provenance
-  that cannot be used for any memory access. Also implies `-Zmiri-tag-raw-pointers` and
-  `-Zmiri-check-number-validity`.
 * `-Zmiri-symbolic-alignment-check` makes the alignment check more strict.  By
   default, alignment is checked by casting the pointer to an integer, and making
   sure that is a multiple of the alignment.  This can lead to cases where a
