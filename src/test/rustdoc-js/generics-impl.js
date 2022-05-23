@@ -49,8 +49,8 @@ const EXPECTED = [
         ],
     },
     {
-        // -> "Ddddddd"
-        'returned': [
+        // -> Ddddddd
+        'others': [
             { 'path': 'generics_impl::Ddddddd', 'name': 'hhhhhhh' },
         ],
     },
