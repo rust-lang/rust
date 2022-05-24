@@ -269,9 +269,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 // (*) -- not late-bound, won't change
             }
         };
-
         debug!("ast_region_to_region(lifetime={:?}) yields {:?}", lifetime, r);
-
         r
     }
 

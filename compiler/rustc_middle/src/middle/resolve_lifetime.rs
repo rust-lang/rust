@@ -36,7 +36,13 @@ impl<T: PartialEq> Set1<T> {
     }
 }
 
-pub type ObjectLifetimeDefault = Set1<Region>;
+#[derive(Copy, Clone, Debug, HashStable, Encodable, Decodable)]
+pub enum ObjectLifetimeDefault {
+    Empty,
+    Static,
+    Ambiguous,
+    Param(DefId),
+}
 
 /// Maps the id of each lifetime reference to the lifetime decl
 /// that it corresponds to.
