@@ -1034,7 +1034,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     );
 
                     self.with_dyn_type_scope(false, |this| {
-                        let node_id = this.resolver.next_node_id();
+                        //let node_id = this.resolver.next_node_id();
+                        let node_id = constraint.impl_trait_id;
                         let ty = this.lower_ty(
                             &Ty {
                                 id: node_id,

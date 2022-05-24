@@ -1,5 +1,5 @@
 use crate::{ImplTraitContext, Resolver};
-use rustc_ast::visit::{self, FnKind, BoundKind};
+use rustc_ast::visit::{self, BoundKind, FnKind};
 use rustc_ast::walk_list;
 use rustc_ast::*;
 use rustc_ast_lowering::ResolverAstLowering;
@@ -285,7 +285,8 @@ impl<'a, 'b> visit::Visitor<'a> for DefCollector<'a, 'b> {
             TyKind::MacCall(..) => self.visit_macro_invoc(ty.id),
             TyKind::ImplTrait(node_id, _) => {
                 let parent_def = match self.impl_trait_context {
-                    ImplTraitContext::Universal(item_def) | ImplTraitContext::UniversalInDyn(item_def) => {
+                    ImplTraitContext::Universal(item_def)
+                    | ImplTraitContext::UniversalInDyn(item_def) => {
                         let def_id = self.resolver.create_def(
                             item_def,
                             node_id,
@@ -293,12 +294,16 @@ impl<'a, 'b> visit::Visitor<'a> for DefCollector<'a, 'b> {
                             self.expansion.to_expn_id(),
                             ty.span,
                         );
-                        self.resolver.impl_trait_context.insert(def_id, ImplTraitContext::Universal(item_def));
+                        self.resolver
+                            .impl_trait_context
+                            .insert(def_id, ImplTraitContext::Universal(item_def));
                         def_id
                     }
                     ImplTraitContext::Existential => {
                         let def_id = self.create_def(node_id, DefPathData::ImplTrait, ty.span);
-                        self.resolver.impl_trait_context.insert(def_id, ImplTraitContext::Existential);
+                        self.resolver
+                            .impl_trait_context
+                            .insert(def_id, ImplTraitContext::Existential);
                         def_id
                     }
                 };

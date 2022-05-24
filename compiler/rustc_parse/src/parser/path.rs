@@ -549,14 +549,14 @@ impl<'a> Parser<'a> {
                     if let AssocConstraintKind::Bound { .. } = kind {
                         self.sess.gated_spans.gate(sym::associated_type_bounds, span);
                     }
-                    let constraint =
-                        AssocConstraint {
-                            id: ast::DUMMY_NODE_ID,
-                            ident, gen_args,
-                            kind,
-                            span,
-                            impl_trait_id: ast::DUMMY_NODE_ID,
-                        };
+                    let constraint = AssocConstraint {
+                        id: ast::DUMMY_NODE_ID,
+                        ident,
+                        gen_args,
+                        kind,
+                        span,
+                        impl_trait_id: ast::DUMMY_NODE_ID,
+                    };
                     Ok(Some(AngleBracketedArg::Constraint(constraint)))
                 } else {
                     Ok(Some(AngleBracketedArg::Arg(arg)))
