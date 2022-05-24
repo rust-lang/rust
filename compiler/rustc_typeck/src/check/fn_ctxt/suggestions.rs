@@ -50,7 +50,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // adding a semicolon, because there's nowhere to put it.
         // See issue #81943.
         if expr.can_have_side_effects() && !in_external_macro(self.tcx.sess, expr.span) {
-            self.suggest_missing_semicolon(err, expr, expected);
+            self.suggest_missing_semicolon(err, expr, expected, false);
         }
         let mut pointing_at_return_type = false;
         if let Some((fn_decl, can_suggest)) = self.get_fn_decl(blk_id) {
@@ -473,11 +473,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// This routine checks if the return expression in a block would make sense on its own as a
     /// statement and the return type has been left as default or has been specified as `()`. If so,
     /// it suggests adding a semicolon.
-    fn suggest_missing_semicolon(
+    ///
+    /// If the expression is the expression of a closure without block (`|| expr`), a
+    /// block is needed to be added too (`|| { expr; }`). This is denoted by `needs_block`.
+    pub fn suggest_missing_semicolon(
         &self,
         err: &mut Diagnostic,
         expression: &'tcx hir::Expr<'tcx>,
         expected: Ty<'tcx>,
+        needs_block: bool,
     ) {
         if expected.is_unit() {
             // `BlockTailExpression` only relevant if the tail expr would be
@@ -491,12 +495,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 | ExprKind::Block(..)
                     if expression.can_have_side_effects() =>
                 {
-                    err.span_suggestion(
-                        expression.span.shrink_to_hi(),
-                        "consider using a semicolon here",
-                        ";".to_string(),
-                        Applicability::MachineApplicable,
-                    );
+                    if needs_block {
+                        err.multipart_suggestion(
+                            "consider using a semicolon here",
+                            vec![
+                                (expression.span.shrink_to_lo(), "{ ".to_owned()),
+                                (expression.span.shrink_to_hi(), "; }".to_owned()),
+                            ],
+                            Applicability::MachineApplicable,
+                        );
+                    } else {
+                        err.span_suggestion(
+                            expression.span.shrink_to_hi(),
+                            "consider using a semicolon here",
+                            ";".to_string(),
+                            Applicability::MachineApplicable,
+                        );
+                    }
                 }
                 _ => (),
             }
