@@ -322,10 +322,6 @@ impl<'a> CompletionContext<'a> {
         matches!(self.completion_location, Some(ImmediateLocation::Trait | ImmediateLocation::Impl))
     }
 
-    pub(crate) fn expects_variant(&self) -> bool {
-        matches!(self.name_ctx(), Some(NameContext { kind: NameKind::Variant, .. }))
-    }
-
     pub(crate) fn expects_non_trait_assoc_item(&self) -> bool {
         matches!(self.completion_location, Some(ImmediateLocation::Impl))
     }
@@ -379,10 +375,7 @@ impl<'a> CompletionContext<'a> {
     pub(crate) fn is_path_disallowed(&self) -> bool {
         self.previous_token_is(T![unsafe])
             || matches!(self.prev_sibling, Some(ImmediatePrevSibling::Visibility))
-            || matches!(
-                self.name_ctx(),
-                Some(NameContext { kind: NameKind::Module(_) | NameKind::Rename, .. })
-            )
+            || (matches!(self.name_ctx(), Some(NameContext { .. })) && self.pattern_ctx.is_none())
             || matches!(self.pattern_ctx, Some(PatternContext { record_pat: Some(_), .. }))
             || matches!(
                 self.nameref_ctx(),
