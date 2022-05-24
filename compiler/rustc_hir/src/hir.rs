@@ -343,12 +343,12 @@ pub struct GenericArgs<'hir> {
     pub span_ext: Span,
 }
 
-impl GenericArgs<'_> {
+impl<'hir> GenericArgs<'hir> {
     pub const fn none() -> Self {
         Self { args: &[], bindings: &[], parenthesized: false, span_ext: DUMMY_SP }
     }
 
-    pub fn inputs(&self) -> &[Ty<'_>] {
+    pub fn inputs(&self) -> &[Ty<'hir>] {
         if self.parenthesized {
             for arg in self.args {
                 match arg {
@@ -549,7 +549,7 @@ impl<'hir> Generics<'hir> {
         &NOPE
     }
 
-    pub fn get_named(&self, name: Symbol) -> Option<&GenericParam<'_>> {
+    pub fn get_named(&self, name: Symbol) -> Option<&GenericParam<'hir>> {
         for param in self.params {
             if name == param.name.ident().name {
                 return Some(param);
@@ -608,7 +608,7 @@ impl<'hir> Generics<'hir> {
     pub fn bounds_for_param(
         &self,
         param_def_id: LocalDefId,
-    ) -> impl Iterator<Item = &WhereBoundPredicate<'_>> {
+    ) -> impl Iterator<Item = &WhereBoundPredicate<'hir>> {
         self.predicates.iter().filter_map(move |pred| match pred {
             WherePredicate::BoundPredicate(bp) if bp.is_param_bound(param_def_id.to_def_id()) => {
                 Some(bp)
