@@ -308,6 +308,12 @@
                         "null",
                         "object"
                     ],
+                    "additionalProperties": {
+                        "type": [
+                            "string",
+                            "number"
+                        ]
+                    },
                     "default": null,
                     "markdownDescription": "Extra environment variables that will be passed to the rust-analyzer executable. Useful for passing e.g. `RA_LOG` for debugging."
                 },
