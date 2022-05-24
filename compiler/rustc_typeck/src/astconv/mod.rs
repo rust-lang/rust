@@ -1552,8 +1552,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             self.ast_region_to_region(lifetime, None)
         } else {
             self.compute_object_lifetime_bound(span, existential_predicates).unwrap_or_else(|| {
-                if tcx.named_region(lifetime.hir_id).is_some() {
-                    self.ast_region_to_region(lifetime, None)
+                if let Some(rl) = tcx.named_region(lifetime.hir_id) {
+                    self.ast_region_to_region_inner(rl)
+                } else if let Some(&rl) =
+                    tcx.object_lifetime_map(lifetime.hir_id.owner).get(&lifetime.hir_id.local_id)
+                {
+                    self.ast_region_to_region_inner(rl)
                 } else {
                     self.re_infer(None, span).unwrap_or_else(|| {
                         let mut err = struct_span_err!(

@@ -50,6 +50,7 @@ use rustc_trait_selection::traits::error_reporting::suggestions::NextTypeParamNa
 use std::iter;
 
 mod item_bounds;
+mod object_lifetime_defaults;
 mod type_of;
 
 #[derive(Debug)]
@@ -68,6 +69,8 @@ pub fn provide(providers: &mut Providers) {
         type_of: type_of::type_of,
         item_bounds: item_bounds::item_bounds,
         explicit_item_bounds: item_bounds::explicit_item_bounds,
+        object_lifetime_defaults: object_lifetime_defaults::object_lifetime_defaults,
+        object_lifetime_map: object_lifetime_defaults::object_lifetime_map,
         generics_of,
         predicates_of,
         predicates_defined_on,
@@ -1304,6 +1307,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: DefId) -> ty::TraitDef {
     )
 }
 
+#[tracing::instrument(level = "debug", skip(tcx))]
 fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<Span> {
     struct LateBoundRegionsDetector<'tcx> {
         tcx: TyCtxt<'tcx>,
@@ -1343,8 +1347,13 @@ fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<S
             if self.has_late_bound_regions.is_some() {
                 return;
             }
+            if let hir::LifetimeName::ImplicitObjectLifetimeDefault = lt.name {
+                return;
+            }
 
-            match self.tcx.named_region(lt.hir_id) {
+            let r = self.tcx.named_region(lt.hir_id);
+            debug!(?lt, ?r, ?self.outer_index);
+            match r {
                 Some(rl::Region::Static | rl::Region::EarlyBound(..)) => {}
                 Some(
                     rl::Region::LateBound(debruijn, _, _)
@@ -1380,6 +1389,7 @@ fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<S
             }
         }
         visitor.visit_fn_decl(decl);
+        debug!(?visitor.has_late_bound_regions);
         visitor.has_late_bound_regions
     }
 

@@ -1,4 +1,3 @@
-// ignore-tidy-filelength
 //! Name resolution for lifetimes.
 //!
 //! Name resolution for lifetimes follows *much* simpler rules than the
@@ -19,12 +18,11 @@ use rustc_hir::{GenericParamKind, HirIdMap};
 use rustc_middle::hir::map::Map;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::resolve_lifetime::*;
-use rustc_middle::ty::{self, GenericParamDefKind, TyCtxt};
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::DefId;
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Span;
-use std::borrow::Cow;
 use std::cell::Cell;
 use std::fmt;
 use std::mem::take;
@@ -43,10 +41,6 @@ trait RegionExt {
     fn shifted(self, amount: u32) -> Region;
 
     fn shifted_out_to_binder(self, binder: ty::DebruijnIndex) -> Region;
-
-    fn subst<'a, L>(self, params: L, map: &NamedRegionMap) -> Option<Region>
-    where
-        L: Iterator<Item = &'a hir::Lifetime>;
 }
 
 impl RegionExt for Region {
@@ -106,17 +100,6 @@ impl RegionExt for Region {
                 Region::LateBoundAnon(debruijn.shifted_out_to_binder(binder), index, anon_index)
             }
             _ => self,
-        }
-    }
-
-    fn subst<'a, L>(self, mut params: L, map: &NamedRegionMap) -> Option<Region>
-    where
-        L: Iterator<Item = &'a hir::Lifetime>,
-    {
-        if let Region::EarlyBound(index, _) = self {
-            params.nth(index as usize).and_then(|lifetime| map.defs.get(&lifetime.hir_id).cloned())
-        } else {
-            Some(self)
         }
     }
 }
@@ -225,14 +208,6 @@ enum Scope<'a> {
         s: ScopeRef<'a>,
     },
 
-    /// Use a specific lifetime (if `Some`) or leave it unset (to be
-    /// inferred in a function body or potentially error outside one),
-    /// for the default choice of lifetime in a trait object type.
-    ObjectLifetimeDefault {
-        lifetime: Option<Region>,
-        s: ScopeRef<'a>,
-    },
-
     /// When we have nested trait refs, we concatenate late bound vars for inner
     /// trait refs from outer ones. But we also need to include any HRTB
     /// lifetimes encountered when identifying the trait that an associated type
@@ -297,11 +272,6 @@ impl<'a> fmt::Debug for TruncatedScopeDebug<'a> {
             Scope::Elision { elide, s: _ } => {
                 f.debug_struct("Elision").field("elide", elide).field("s", &"..").finish()
             }
-            Scope::ObjectLifetimeDefault { lifetime, s: _ } => f
-                .debug_struct("ObjectLifetimeDefault")
-                .field("lifetime", lifetime)
-                .field("s", &"..")
-                .finish(),
             Scope::Supertrait { lifetimes, s: _ } => f
                 .debug_struct("Supertrait")
                 .field("lifetimes", lifetimes)
@@ -350,24 +320,6 @@ pub fn provide(providers: &mut ty::query::Providers) {
 
         named_region_map: |tcx, id| resolve_lifetimes_for(tcx, id).defs.get(&id),
         is_late_bound_map,
-        object_lifetime_defaults: |tcx, def_id| {
-            if let Some(def_id) = def_id.as_local() {
-                match tcx.hir().get_by_def_id(def_id) {
-                    Node::Item(item) => compute_object_lifetime_defaults(tcx, item),
-                    _ => None,
-                }
-            } else {
-                Some(tcx.arena.alloc_from_iter(tcx.generics_of(def_id).params.iter().filter_map(
-                    |param| match param.kind {
-                        GenericParamDefKind::Type { object_lifetime_default, .. } => {
-                            Some(object_lifetime_default)
-                        }
-                        GenericParamDefKind::Const { .. } => Some(Set1::Empty),
-                        GenericParamDefKind::Lifetime => None,
-                    },
-                )))
-            }
-        },
         late_bound_vars_map: |tcx, id| resolve_lifetimes_for(tcx, id).late_bound_vars.get(&id),
 
         ..*providers
@@ -533,7 +485,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                     break (vec![], BinderScopeType::Normal);
                 }
 
-                Scope::Elision { s, .. } | Scope::ObjectLifetimeDefault { s, .. } => {
+                Scope::Elision { s, .. } => {
                     scope = s;
                 }
 
@@ -819,11 +771,8 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                         span_bug!(ty.span, "object-lifetime-default expected, not implicit",);
                     }
                     LifetimeName::ImplicitObjectLifetimeDefault => {
-                        // If the user does not write *anything*, we
-                        // use the object lifetime defaulting
-                        // rules. So e.g., `Box<dyn Debug>` becomes
-                        // `Box<dyn Debug + 'static>`.
-                        self.resolve_object_lifetime_default(lifetime)
+                        // ObjectLifetimeDefault will be resolved in a separate pass during
+                        // astconv.
                     }
                     LifetimeName::Underscore => {
                         // If the user writes `'_`, we use the *ordinary* elision
@@ -842,11 +791,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
             }
             hir::TyKind::Rptr(ref lifetime_ref, ref mt) => {
                 self.visit_lifetime(lifetime_ref);
-                let scope = Scope::ObjectLifetimeDefault {
-                    lifetime: self.map.defs.get(&lifetime_ref.hir_id).cloned(),
-                    s: self.scope,
-                };
-                self.with(scope, |this| this.visit_ty(&mt.ty));
+                self.visit_ty(&mt.ty);
             }
             hir::TyKind::OpaqueDef(item_id, lifetimes) => {
                 // Resolve the lifetimes in the bounds to the lifetime defs in the generics.
@@ -1380,141 +1325,6 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
     }
 }
 
-fn compute_object_lifetime_defaults<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    item: &hir::Item<'_>,
-) -> Option<&'tcx [ObjectLifetimeDefault]> {
-    match item.kind {
-        hir::ItemKind::Struct(_, ref generics)
-        | hir::ItemKind::Union(_, ref generics)
-        | hir::ItemKind::Enum(_, ref generics)
-        | hir::ItemKind::OpaqueTy(hir::OpaqueTy {
-            ref generics,
-            origin: hir::OpaqueTyOrigin::TyAlias,
-            ..
-        })
-        | hir::ItemKind::TyAlias(_, ref generics)
-        | hir::ItemKind::Trait(_, _, ref generics, ..) => {
-            let result = object_lifetime_defaults_for_item(tcx, generics);
-
-            // Debugging aid.
-            let attrs = tcx.hir().attrs(item.hir_id());
-            if tcx.sess.contains_name(attrs, sym::rustc_object_lifetime_default) {
-                let object_lifetime_default_reprs: String = result
-                    .iter()
-                    .map(|set| match *set {
-                        Set1::Empty => "BaseDefault".into(),
-                        Set1::One(Region::Static) => "'static".into(),
-                        Set1::One(Region::EarlyBound(mut i, _)) => generics
-                            .params
-                            .iter()
-                            .find_map(|param| match param.kind {
-                                GenericParamKind::Lifetime { .. } => {
-                                    if i == 0 {
-                                        return Some(param.name.ident().to_string().into());
-                                    }
-                                    i -= 1;
-                                    None
-                                }
-                                _ => None,
-                            })
-                            .unwrap(),
-                        Set1::One(_) => bug!(),
-                        Set1::Many => "Ambiguous".into(),
-                    })
-                    .collect::<Vec<Cow<'static, str>>>()
-                    .join(",");
-                tcx.sess.span_err(item.span, &object_lifetime_default_reprs);
-            }
-
-            Some(result)
-        }
-        _ => None,
-    }
-}
-
-/// Scan the bounds and where-clauses on parameters to extract bounds
-/// of the form `T:'a` so as to determine the `ObjectLifetimeDefault`
-/// for each type parameter.
-fn object_lifetime_defaults_for_item<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    generics: &hir::Generics<'_>,
-) -> &'tcx [ObjectLifetimeDefault] {
-    fn add_bounds(set: &mut Set1<hir::LifetimeName>, bounds: &[hir::GenericBound<'_>]) {
-        for bound in bounds {
-            if let hir::GenericBound::Outlives(ref lifetime) = *bound {
-                set.insert(lifetime.name.normalize_to_macros_2_0());
-            }
-        }
-    }
-
-    let process_param = |param: &hir::GenericParam<'_>| match param.kind {
-        GenericParamKind::Lifetime { .. } => None,
-        GenericParamKind::Type { .. } => {
-            let mut set = Set1::Empty;
-
-            let param_def_id = tcx.hir().local_def_id(param.hir_id);
-            for predicate in generics.predicates {
-                // Look for `type: ...` where clauses.
-                let hir::WherePredicate::BoundPredicate(ref data) = *predicate else { continue };
-
-                // Ignore `for<'a> type: ...` as they can change what
-                // lifetimes mean (although we could "just" handle it).
-                if !data.bound_generic_params.is_empty() {
-                    continue;
-                }
-
-                let res = match data.bounded_ty.kind {
-                    hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) => path.res,
-                    _ => continue,
-                };
-
-                if res == Res::Def(DefKind::TyParam, param_def_id.to_def_id()) {
-                    add_bounds(&mut set, &data.bounds);
-                }
-            }
-
-            Some(match set {
-                Set1::Empty => Set1::Empty,
-                Set1::One(name) => {
-                    if name == hir::LifetimeName::Static {
-                        Set1::One(Region::Static)
-                    } else {
-                        generics
-                            .params
-                            .iter()
-                            .filter_map(|param| match param.kind {
-                                GenericParamKind::Lifetime { .. } => {
-                                    let param_def_id = tcx.hir().local_def_id(param.hir_id);
-                                    Some((
-                                        param_def_id,
-                                        hir::LifetimeName::Param(param_def_id, param.name),
-                                    ))
-                                }
-                                _ => None,
-                            })
-                            .enumerate()
-                            .find(|&(_, (_, lt_name))| lt_name == name)
-                            .map_or(Set1::Many, |(i, (def_id, _))| {
-                                Set1::One(Region::EarlyBound(i as u32, def_id.to_def_id()))
-                            })
-                    }
-                }
-                Set1::Many => Set1::Many,
-            })
-        }
-        GenericParamKind::Const { .. } => {
-            // Generic consts don't impose any constraints.
-            //
-            // We still store a dummy value here to allow generic parameters
-            // in an arbitrary order.
-            Some(Set1::Empty)
-        }
-    };
-
-    tcx.arena.alloc_from_iter(generics.params.iter().filter_map(process_param))
-}
-
 impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
     fn with<F>(&mut self, wrap_scope: Scope<'_>, f: F)
     where
@@ -1645,7 +1455,6 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 Scope::Binder { s, .. }
                 | Scope::Body { s, .. }
                 | Scope::Elision { s, .. }
-                | Scope::ObjectLifetimeDefault { s, .. }
                 | Scope::Supertrait { s, .. }
                 | Scope::TraitRefBoundary { s, .. } => scope = s,
             }
@@ -1702,7 +1511,6 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 }
 
                 Scope::Elision { s, .. }
-                | Scope::ObjectLifetimeDefault { s, .. }
                 | Scope::Supertrait { s, .. }
                 | Scope::TraitRefBoundary { s, .. } => {
                     scope = s;
@@ -1759,7 +1567,6 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 Scope::Binder { s, .. }
                 | Scope::Body { s, .. }
                 | Scope::Elision { s, .. }
-                | Scope::ObjectLifetimeDefault { s, .. }
                 | Scope::Supertrait { s, .. }
                 | Scope::TraitRefBoundary { s, .. } => {
                     scope = s;
@@ -1832,138 +1639,29 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         };
 
         debug!("visit_segment_args: type_def_id={:?}", type_def_id);
-
-        // Compute a vector of defaults, one for each type parameter,
-        // per the rules given in RFCs 599 and 1156. Example:
-        //
-        // ```rust
-        // struct Foo<'a, T: 'a, U> { }
-        // ```
-        //
-        // If you have `Foo<'x, dyn Bar, dyn Baz>`, we want to default
-        // `dyn Bar` to `dyn Bar + 'x` (because of the `T: 'a` bound)
-        // and `dyn Baz` to `dyn Baz + 'static` (because there is no
-        // such bound).
-        //
-        // Therefore, we would compute `object_lifetime_defaults` to a
-        // vector like `['x, 'static]`. Note that the vector only
-        // includes type parameters.
-        let object_lifetime_defaults = type_def_id.map_or_else(Vec::new, |def_id| {
-            let in_body = {
-                let mut scope = self.scope;
-                loop {
-                    match *scope {
-                        Scope::Root => break false,
-
-                        Scope::Body { .. } => break true,
-
-                        Scope::Binder { s, .. }
-                        | Scope::Elision { s, .. }
-                        | Scope::ObjectLifetimeDefault { s, .. }
-                        | Scope::Supertrait { s, .. }
-                        | Scope::TraitRefBoundary { s, .. } => {
-                            scope = s;
-                        }
-                    }
-                }
-            };
-
-            let map = &self.map;
-            let set_to_region = |set: &ObjectLifetimeDefault| match *set {
-                Set1::Empty => {
-                    if in_body {
-                        None
-                    } else {
-                        Some(Region::Static)
-                    }
-                }
-                Set1::One(r) => {
-                    let lifetimes = generic_args.args.iter().filter_map(|arg| match arg {
-                        GenericArg::Lifetime(lt) => Some(lt),
-                        _ => None,
-                    });
-                    r.subst(lifetimes, map)
-                }
-                Set1::Many => None,
-            };
-            self.tcx.object_lifetime_defaults(def_id).unwrap().iter().map(set_to_region).collect()
-        });
-
-        debug!("visit_segment_args: object_lifetime_defaults={:?}", object_lifetime_defaults);
-
-        let mut i = 0;
         for arg in generic_args.args {
             match arg {
                 GenericArg::Lifetime(_) => {}
-                GenericArg::Type(ty) => {
-                    if let Some(&lt) = object_lifetime_defaults.get(i) {
-                        let scope = Scope::ObjectLifetimeDefault { lifetime: lt, s: self.scope };
-                        self.with(scope, |this| this.visit_ty(ty));
-                    } else {
-                        self.visit_ty(ty);
-                    }
-                    i += 1;
-                }
-                GenericArg::Const(ct) => {
-                    self.visit_anon_const(&ct.value);
-                    i += 1;
-                }
-                GenericArg::Infer(inf) => {
-                    self.visit_id(inf.hir_id);
-                    i += 1;
-                }
+                GenericArg::Type(ty) => self.visit_ty(ty),
+                GenericArg::Const(ct) => self.visit_anon_const(&ct.value),
+                GenericArg::Infer(inf) => self.visit_id(inf.hir_id),
             }
         }
-
-        // Hack: when resolving the type `XX` in binding like `dyn
-        // Foo<'b, Item = XX>`, the current object-lifetime default
-        // would be to examine the trait `Foo` to check whether it has
-        // a lifetime bound declared on `Item`. e.g., if `Foo` is
-        // declared like so, then the default object lifetime bound in
-        // `XX` should be `'b`:
-        //
-        // ```rust
-        // trait Foo<'a> {
-        //   type Item: 'a;
-        // }
-        // ```
-        //
-        // but if we just have `type Item;`, then it would be
-        // `'static`. However, we don't get all of this logic correct.
-        //
-        // Instead, we do something hacky: if there are no lifetime parameters
-        // to the trait, then we simply use a default object lifetime
-        // bound of `'static`, because there is no other possibility. On the other hand,
-        // if there ARE lifetime parameters, then we require the user to give an
-        // explicit bound for now.
-        //
-        // This is intended to leave room for us to implement the
-        // correct behavior in the future.
-        let has_lifetime_parameter =
-            generic_args.args.iter().any(|arg| matches!(arg, GenericArg::Lifetime(_)));
 
         // Resolve lifetimes found in the bindings, so either in the type `XX` in `Item = XX` or
         // in the trait ref `YY<...>` in `Item: YY<...>`.
         for binding in generic_args.bindings {
-            let scope = Scope::ObjectLifetimeDefault {
-                lifetime: if has_lifetime_parameter { None } else { Some(Region::Static) },
-                s: self.scope,
-            };
             if let Some(type_def_id) = type_def_id {
                 let lifetimes = LifetimeContext::supertrait_hrtb_lifetimes(
                     self.tcx,
                     type_def_id,
                     binding.ident,
                 );
-                self.with(scope, |this| {
-                    let scope = Scope::Supertrait {
-                        lifetimes: lifetimes.unwrap_or_default(),
-                        s: this.scope,
-                    };
-                    this.with(scope, |this| this.visit_assoc_type_binding(binding));
-                });
-            } else {
+                let scope =
+                    Scope::Supertrait { lifetimes: lifetimes.unwrap_or_default(), s: self.scope };
                 self.with(scope, |this| this.visit_assoc_type_binding(binding));
+            } else {
+                self.visit_assoc_type_binding(binding);
             }
         }
     }
@@ -2044,8 +1742,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 Scope::Binder { hir_id, allow_late_bound: true, .. } => {
                     break *hir_id;
                 }
-                Scope::ObjectLifetimeDefault { ref s, .. }
-                | Scope::Elision { ref s, .. }
+                Scope::Elision { ref s, .. }
                 | Scope::Supertrait { ref s, .. }
                 | Scope::TraitRefBoundary { ref s, .. } => {
                     scope = *s;
@@ -2427,8 +2124,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                                 in_scope_lifetimes.extend(lifetimes.keys().copied());
                                 scope = s;
                             }
-                            Scope::ObjectLifetimeDefault { ref s, .. }
-                            | Scope::Elision { ref s, .. }
+                            Scope::Elision { ref s, .. }
                             | Scope::TraitRefBoundary { ref s, .. } => {
                                 scope = s;
                             }
@@ -2440,9 +2136,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 
                 Scope::Elision { elide: Elide::Forbid, .. } => break None,
 
-                Scope::ObjectLifetimeDefault { s, .. }
-                | Scope::Supertrait { s, .. }
-                | Scope::TraitRefBoundary { s, .. } => {
+                Scope::Supertrait { s, .. } | Scope::TraitRefBoundary { s, .. } => {
                     scope = s;
                 }
             }
@@ -2466,34 +2160,6 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             error,
         );
         err.emit();
-    }
-
-    fn resolve_object_lifetime_default(&mut self, lifetime_ref: &'tcx hir::Lifetime) {
-        debug!("resolve_object_lifetime_default(lifetime_ref={:?})", lifetime_ref);
-        let mut late_depth = 0;
-        let mut scope = self.scope;
-        let lifetime = loop {
-            match *scope {
-                Scope::Binder { s, scope_type, .. } => {
-                    match scope_type {
-                        BinderScopeType::Normal => late_depth += 1,
-                        BinderScopeType::Concatenating => {}
-                    }
-                    scope = s;
-                }
-
-                Scope::Root | Scope::Elision { .. } => break Region::Static,
-
-                Scope::Body { .. } | Scope::ObjectLifetimeDefault { lifetime: None, .. } => return,
-
-                Scope::ObjectLifetimeDefault { lifetime: Some(l), .. } => break l,
-
-                Scope::Supertrait { s, .. } | Scope::TraitRefBoundary { s, .. } => {
-                    scope = s;
-                }
-            }
-        };
-        self.insert_lifetime(lifetime_ref, lifetime.shifted(late_depth));
     }
 
     #[tracing::instrument(level = "debug", skip(self))]

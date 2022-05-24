@@ -1594,6 +1594,11 @@ rustc_queries! {
     query object_lifetime_defaults(_: DefId) -> Option<&'tcx [ObjectLifetimeDefault]> {
         desc { "looking up lifetime defaults for a region on an item" }
     }
+    /// Fetch the lifetimes for all the trait objects in an item-like.
+    query object_lifetime_map(_: LocalDefId) -> FxHashMap<ItemLocalId, Region> {
+        storage(ArenaCacheSelector<'tcx>)
+        desc { "looking up lifetime defaults for a region on an item" }
+    }
     query late_bound_vars_map(_: LocalDefId)
         -> Option<&'tcx FxHashMap<ItemLocalId, Vec<ty::BoundVariableKind>>> {
         desc { "looking up late bound vars" }
