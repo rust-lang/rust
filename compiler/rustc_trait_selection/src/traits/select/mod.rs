@@ -2043,7 +2043,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         impl_def_id: DefId,
         obligation: &TraitObligation<'tcx>,
     ) -> Normalized<'tcx, SubstsRef<'tcx>> {
-        match self.match_impl(impl_def_id, obligation) {
+        let impl_trait_ref = self.tcx().bound_impl_trait_ref(impl_def_id).unwrap();
+        match self.match_impl(impl_def_id, impl_trait_ref, obligation) {
             Ok(substs) => substs,
             Err(()) => {
                 self.infcx.tcx.sess.delay_span_bug(
@@ -2070,17 +2071,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn match_impl(
         &mut self,
         impl_def_id: DefId,
+        impl_trait_ref: EarlyBinder<ty::TraitRef<'tcx>>,
         obligation: &TraitObligation<'tcx>,
     ) -> Result<Normalized<'tcx, SubstsRef<'tcx>>, ()> {
-        let impl_trait_ref = self.tcx().bound_impl_trait_ref(impl_def_id).unwrap();
-
-        // Before we create the substitutions and everything, first
-        // consider a "quick reject". This avoids creating more types
-        // and so forth that we need to.
-        if self.fast_reject_trait_refs(obligation, &impl_trait_ref.0) {
-            return Err(());
-        }
-
         let placeholder_obligation =
             self.infcx().replace_bound_vars_with_placeholders(obligation.predicate);
         let placeholder_obligation_trait_ref = placeholder_obligation.trait_ref;
