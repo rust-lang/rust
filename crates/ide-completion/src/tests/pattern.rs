@@ -338,7 +338,10 @@ struct Foo { bar: Bar }
 struct Bar(u32);
 fn outer(Foo { bar$0 }: Foo) {}
 "#,
-        expect![[r#""#]],
+        expect![[r#"
+            kw mut
+            kw ref
+        "#]],
     )
 }
 

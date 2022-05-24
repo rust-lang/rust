@@ -48,7 +48,6 @@ pub(super) enum PathKind {
     Expr {
         in_block_expr: bool,
         in_loop_body: bool,
-        in_functional_update: bool,
     },
     Type,
     Attr {
@@ -115,6 +114,8 @@ pub(super) struct PatternContext {
     pub(super) parent_pat: Option<ast::Pat>,
     pub(super) ref_token: Option<SyntaxToken>,
     pub(super) mut_token: Option<SyntaxToken>,
+    /// The record pattern this name or ref is a field of
+    pub(super) record_pat: Option<ast::RecordPat>,
 }
 
 #[derive(Debug)]
@@ -166,8 +167,11 @@ pub(super) enum NameKind {
 pub(super) struct NameRefContext {
     /// NameRef syntax in the original file
     pub(super) nameref: Option<ast::NameRef>,
+    // FIXME: these fields are actually disjoint -> enum
     pub(super) dot_access: Option<DotAccess>,
     pub(super) path_ctx: Option<PathCompletionCtx>,
+    /// The record expression this nameref is a field of
+    pub(super) record_expr: Option<(ast::RecordExpr, bool)>,
 }
 
 #[derive(Debug)]
@@ -376,12 +380,13 @@ impl<'a> CompletionContext<'a> {
         self.previous_token_is(T![unsafe])
             || matches!(self.prev_sibling, Some(ImmediatePrevSibling::Visibility))
             || matches!(
-                self.completion_location,
-                Some(ImmediateLocation::RecordPat(_) | ImmediateLocation::RecordExpr(_))
-            )
-            || matches!(
                 self.name_ctx(),
                 Some(NameContext { kind: NameKind::Module(_) | NameKind::Rename, .. })
+            )
+            || matches!(self.pattern_ctx, Some(PatternContext { record_pat: Some(_), .. }))
+            || matches!(
+                self.nameref_ctx(),
+                Some(NameRefContext { record_expr: Some((_, false)), .. })
             )
     }
 
@@ -1023,14 +1028,13 @@ impl<'a> CompletionContext<'a> {
                 ast::Enum(_) => NameKind::Enum,
                 ast::Fn(_) => NameKind::Function,
                 ast::IdentPat(bind_pat) => {
-                    let is_name_in_field_pat = bind_pat
-                        .syntax()
-                        .parent()
-                        .and_then(ast::RecordPatField::cast)
-                        .map_or(false, |pat_field| pat_field.name_ref().is_none());
-                    if !is_name_in_field_pat {
-                        pat_ctx = Some(pattern_context_for(original_file, bind_pat.into()));
-                    }
+                    pat_ctx = Some({
+                        let mut pat_ctx = pattern_context_for(original_file, bind_pat.into());
+                        if let Some(record_field) = ast::RecordPatField::for_field_name(&name) {
+                            pat_ctx.record_pat = find_node_in_file_compensated(original_file, &record_field.parent_record_pat());
+                        }
+                        pat_ctx
+                    });
 
                     NameKind::IdentPat
                 },
@@ -1062,7 +1066,33 @@ impl<'a> CompletionContext<'a> {
     ) -> (NameRefContext, Option<PatternContext>) {
         let nameref = find_node_at_offset(&original_file, name_ref.syntax().text_range().start());
 
-        let mut nameref_ctx = NameRefContext { dot_access: None, path_ctx: None, nameref };
+        let mut nameref_ctx =
+            NameRefContext { dot_access: None, path_ctx: None, nameref, record_expr: None };
+
+        if let Some(record_field) = ast::RecordExprField::for_field_name(&name_ref) {
+            nameref_ctx.record_expr =
+                find_node_in_file_compensated(original_file, &record_field.parent_record_lit())
+                    .zip(Some(false));
+            return (nameref_ctx, None);
+        }
+        if let Some(record_field) = ast::RecordPatField::for_field_name_ref(&name_ref) {
+            let pat_ctx =
+                pattern_context_for(original_file, record_field.parent_record_pat().clone().into());
+            return (
+                nameref_ctx,
+                Some(PatternContext {
+                    param_ctx: None,
+                    has_type_ascription: false,
+                    ref_token: None,
+                    mut_token: None,
+                    record_pat: find_node_in_file_compensated(
+                        original_file,
+                        &record_field.parent_record_pat(),
+                    ),
+                    ..pat_ctx
+                }),
+            );
+        }
 
         let segment = match_ast! {
             match parent {
@@ -1115,8 +1145,11 @@ impl<'a> CompletionContext<'a> {
                 })
                 .unwrap_or(false)
         };
-        let is_in_func_update = |it: &SyntaxNode| {
-            it.parent().map_or(false, |it| ast::RecordExprFieldList::can_cast(it.kind()))
+        let mut fill_record_expr = |syn: &SyntaxNode| {
+            if let Some(record_expr) = syn.ancestors().nth(2).and_then(ast::RecordExpr::cast) {
+                nameref_ctx.record_expr =
+                    find_node_in_file_compensated(original_file, &record_expr).zip(Some(true));
+            }
         };
 
         let kind = path.syntax().ancestors().find_map(|it| {
@@ -1125,11 +1158,12 @@ impl<'a> CompletionContext<'a> {
                 match it {
                     ast::PathType(_) => Some(PathKind::Type),
                     ast::PathExpr(it) => {
+                        fill_record_expr(it.syntax());
+
                         path_ctx.has_call_parens = it.syntax().parent().map_or(false, |it| ast::CallExpr::can_cast(it.kind()));
                         let in_block_expr = is_in_block(it.syntax());
                         let in_loop_body = is_in_loop_body(it.syntax());
-                        let in_functional_update = is_in_func_update(it.syntax());
-                        Some(PathKind::Expr { in_block_expr, in_loop_body, in_functional_update })
+                        Some(PathKind::Expr { in_block_expr, in_loop_body })
                     },
                     ast::TupleStructPat(it) => {
                         path_ctx.has_call_parens = true;
@@ -1163,8 +1197,8 @@ impl<'a> CompletionContext<'a> {
                                return Some(parent.and_then(ast::MacroExpr::cast).map(|it| {
                                     let in_loop_body = is_in_loop_body(it.syntax());
                                     let in_block_expr = is_in_block(it.syntax());
-                                    let in_functional_update = is_in_func_update(it.syntax());
-                                    PathKind::Expr { in_block_expr, in_loop_body, in_functional_update }
+                                    fill_record_expr(it.syntax());
+                                    PathKind::Expr { in_block_expr, in_loop_body }
                                 }));
                             },
                         }
@@ -1299,6 +1333,7 @@ fn pattern_context_for(original_file: &SyntaxNode, pat: ast::Pat) -> PatternCont
         parent_pat: pat.syntax().parent().and_then(ast::Pat::cast),
         mut_token,
         ref_token,
+        record_pat: None,
     }
 }
 
