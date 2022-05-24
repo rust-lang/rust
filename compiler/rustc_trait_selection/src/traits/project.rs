@@ -28,7 +28,6 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::resolve::OpportunisticRegionResolver;
-use rustc_infer::traits::ObligationCauseCode;
 use rustc_middle::traits::select::OverflowError;
 use rustc_middle::ty::fold::{MaxUniverse, TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::subst::Subst;
@@ -252,22 +251,10 @@ fn project_and_unify_type<'cx, 'tcx>(
         Err(InProgress) => return ProjectAndUnifyResult::Recursive,
     };
     debug!(?normalized, ?obligations, "project_and_unify_type result");
-    let actual = obligation.predicate.term;
-    // HACK: lazy TAIT would regress src/test/ui/impl-trait/nested-return-type2.rs, so we add
-    // a back-compat hack hat converts the RPITs into inference vars, just like they were before
-    // lazy TAIT.
-    // This does not affect TAITs in general, as tested in the nested-return-type-tait* tests.
-    let InferOk { value: actual, obligations: new } =
-        selcx.infcx().replace_opaque_types_with_inference_vars(
-            actual,
-            obligation.cause.body_id,
-            obligation.cause.span,
-            ObligationCauseCode::MiscObligation,
-            obligation.param_env,
-        );
-    obligations.extend(new);
-
-    match infcx.at(&obligation.cause, obligation.param_env).eq(normalized, actual) {
+    match infcx
+        .at(&obligation.cause, obligation.param_env)
+        .eq(normalized, obligation.predicate.term)
+    {
         Ok(InferOk { obligations: inferred_obligations, value: () }) => {
             obligations.extend(inferred_obligations);
             ProjectAndUnifyResult::Holds(obligations)
