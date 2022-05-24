@@ -301,6 +301,7 @@ fn check_terminator<'a, 'tcx>(
             args,
             from_hir_call: _,
             destination: _,
+            target: _,
             cleanup: _,
             fn_span: _,
         } => {

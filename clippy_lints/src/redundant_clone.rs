@@ -292,7 +292,7 @@ fn is_call_with_ref_arg<'tcx>(
         if let (inner_ty, 1) = walk_ptrs_ty_depth(args[0].ty(&*mir, cx.tcx));
         if !is_copy(cx, inner_ty);
         then {
-            Some((def_id, *local, inner_ty, destination.as_ref().map(|(dest, _)| dest)?.as_local()?))
+            Some((def_id, *local, inner_ty, destination.as_local()?))
         } else {
             None
         }
@@ -584,7 +584,7 @@ impl<'a, 'tcx> mir::visit::Visitor<'tcx> for PossibleBorrowerVisitor<'a, 'tcx> {
     fn visit_terminator(&mut self, terminator: &mir::Terminator<'_>, _loc: mir::Location) {
         if let mir::TerminatorKind::Call {
             args,
-            destination: Some((mir::Place { local: dest, .. }, _)),
+            destination: mir::Place { local: dest, .. },
             ..
         } = &terminator.kind
         {
