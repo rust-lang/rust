@@ -114,6 +114,10 @@ pub fn insert_ws_into(syn: SyntaxNode) -> SyntaxNode {
         ted::insert(pos, insert);
     }
 
+    if let Some(it) = syn.last_token().filter(|it| it.kind() == SyntaxKind::WHITESPACE) {
+        ted::remove(it);
+    }
+
     syn
 }
 
