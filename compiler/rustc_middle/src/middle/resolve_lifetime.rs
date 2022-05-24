@@ -10,7 +10,7 @@ use rustc_macros::HashStable;
 #[derive(Clone, Copy, PartialEq, Eq, Hash, TyEncodable, TyDecodable, Debug, HashStable)]
 pub enum Region {
     Static,
-    EarlyBound(/* index */ u32, /* lifetime decl */ DefId),
+    EarlyBound(/* lifetime decl */ DefId),
     LateBound(ty::DebruijnIndex, /* late-bound index */ u32, /* lifetime decl */ DefId),
     Free(DefId, /* lifetime decl */ DefId),
 }

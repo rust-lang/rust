@@ -25,7 +25,7 @@ use rustc_span::Span;
 use std::fmt;
 
 trait RegionExt {
-    fn early(hir_map: Map<'_>, index: &mut u32, param: &GenericParam<'_>) -> (LocalDefId, Region);
+    fn early(hir_map: Map<'_>, param: &GenericParam<'_>) -> (LocalDefId, Region);
 
     fn late(index: u32, hir_map: Map<'_>, param: &GenericParam<'_>) -> (LocalDefId, Region);
 
@@ -34,19 +34,13 @@ trait RegionExt {
     fn shifted(self, amount: u32) -> Region;
 
     fn shifted_out_to_binder(self, binder: ty::DebruijnIndex) -> Region;
-
-    fn subst<'a, L>(self, params: L, map: &NamedRegionMap) -> Option<Region>
-    where
-        L: Iterator<Item = &'a hir::Lifetime>;
 }
 
 impl RegionExt for Region {
-    fn early(hir_map: Map<'_>, index: &mut u32, param: &GenericParam<'_>) -> (LocalDefId, Region) {
-        let i = *index;
-        *index += 1;
+    fn early(hir_map: Map<'_>, param: &GenericParam<'_>) -> (LocalDefId, Region) {
         let def_id = hir_map.local_def_id(param.hir_id);
-        debug!("Region::early: index={} def_id={:?}", i, def_id);
-        (def_id, Region::EarlyBound(i, def_id.to_def_id()))
+        debug!("Region::early: def_id={:?}", def_id);
+        (def_id, Region::EarlyBound(def_id.to_def_id()))
     }
 
     fn late(idx: u32, hir_map: Map<'_>, param: &GenericParam<'_>) -> (LocalDefId, Region) {
@@ -63,9 +57,7 @@ impl RegionExt for Region {
         match *self {
             Region::Static => None,
 
-            Region::EarlyBound(_, id) | Region::LateBound(_, _, id) | Region::Free(_, id) => {
-                Some(id)
-            }
+            Region::EarlyBound(id) | Region::LateBound(_, _, id) | Region::Free(_, id) => Some(id),
         }
     }
 
@@ -84,17 +76,6 @@ impl RegionExt for Region {
                 Region::LateBound(debruijn.shifted_out_to_binder(binder), index, id)
             }
             _ => self,
-        }
-    }
-
-    fn subst<'a, L>(self, mut params: L, map: &NamedRegionMap) -> Option<Region>
-    where
-        L: Iterator<Item = &'a hir::Lifetime>,
-    {
-        if let Region::EarlyBound(index, _) = self {
-            params.nth(index as usize).and_then(|lifetime| map.defs.get(&lifetime.hir_id).cloned())
-        } else {
-            Some(self)
         }
     }
 }
@@ -141,25 +122,6 @@ enum Scope<'a> {
         /// We use an IndexMap here because we want these lifetimes in order
         /// for diagnostics.
         lifetimes: FxIndexMap<LocalDefId, Region>,
-
-        /// if we extend this scope with another scope, what is the next index
-        /// we should use for an early-bound region?
-        next_early_index: u32,
-
-        /// Whether or not this binder would serve as the parent
-        /// binder for opaque types introduced within. For example:
-        ///
-        /// ```text
-        ///     fn foo<'a>() -> impl for<'b> Trait<Item = impl Trait2<'a>>
-        /// ```
-        ///
-        /// Here, the opaque types we create for the `impl Trait`
-        /// and `impl Trait2` references will both have the `foo` item
-        /// as their parent. When we get to `impl Trait2`, we find
-        /// that it is nested within the `for<>` binder -- this flag
-        /// allows us to skip that when looking for the parent binder
-        /// of the resulting opaque type.
-        opaque_type_parent: bool,
 
         scope_type: BinderScopeType,
 
@@ -240,19 +202,9 @@ struct TruncatedScopeDebug<'a>(&'a Scope<'a>);
 impl<'a> fmt::Debug for TruncatedScopeDebug<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.0 {
-            Scope::Binder {
-                lifetimes,
-                next_early_index,
-                opaque_type_parent,
-                scope_type,
-                hir_id,
-                where_bound_origin,
-                s: _,
-            } => f
+            Scope::Binder { lifetimes, scope_type, hir_id, where_bound_origin, s: _ } => f
                 .debug_struct("Binder")
                 .field("lifetimes", lifetimes)
-                .field("next_early_index", next_early_index)
-                .field("opaque_type_parent", opaque_type_parent)
                 .field("scope_type", scope_type)
                 .field("hir_id", hir_id)
                 .field("where_bound_origin", where_bound_origin)
@@ -423,13 +375,6 @@ fn item_for(tcx: TyCtxt<'_>, local_def_id: LocalDefId) -> LocalDefId {
     item
 }
 
-/// In traits, there is an implicit `Self` type parameter which comes before the generics.
-/// We have to account for this when computing the index of the other generic parameters.
-/// This function returns whether there is such an implicit parameter defined on the given item.
-fn sub_items_have_self_param(node: &hir::ItemKind<'_>) -> bool {
-    matches!(*node, hir::ItemKind::Trait(..) | hir::ItemKind::TraitAlias(..))
-}
-
 fn late_region_as_bound_region<'tcx>(tcx: TyCtxt<'tcx>, region: &Region) -> ty::BoundVariableKind {
     match region {
         Region::LateBound(_, _, def_id) => {
@@ -549,7 +494,6 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 }
             }
 
-            let next_early_index = self.next_early_index();
             let (lifetimes, binders): (FxIndexMap<LocalDefId, Region>, Vec<_>) =
                 bound_generic_params
                     .iter()
@@ -567,8 +511,6 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 hir_id: e.hir_id,
                 lifetimes,
                 s: self.scope,
-                next_early_index,
-                opaque_type_parent: false,
                 scope_type: BinderScopeType::Normal,
                 where_bound_origin: None,
             };
@@ -594,7 +536,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
         }
         match item.kind {
             hir::ItemKind::Fn(_, ref generics, _) => {
-                self.visit_early_late(None, item.hir_id(), generics, |this| {
+                self.visit_early_late(item.hir_id(), generics, |this| {
                     intravisit::walk_item(this, item);
                 });
             }
@@ -661,31 +603,20 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
             | hir::ItemKind::TraitAlias(ref generics, ..)
             | hir::ItemKind::Impl(hir::Impl { ref generics, .. }) => {
                 // These kinds of items have only early-bound lifetime parameters.
-                let mut index = if sub_items_have_self_param(&item.kind) {
-                    1 // Self comes before lifetimes
-                } else {
-                    0
-                };
-                let mut non_lifetime_count = 0;
                 let lifetimes = generics
                     .params
                     .iter()
                     .filter_map(|param| match param.kind {
                         GenericParamKind::Lifetime { .. } => {
-                            Some(Region::early(self.tcx.hir(), &mut index, param))
+                            Some(Region::early(self.tcx.hir(), param))
                         }
-                        GenericParamKind::Type { .. } | GenericParamKind::Const { .. } => {
-                            non_lifetime_count += 1;
-                            None
-                        }
+                        GenericParamKind::Type { .. } | GenericParamKind::Const { .. } => None,
                     })
                     .collect();
                 self.map.late_bound_vars.insert(item.hir_id(), vec![]);
                 let scope = Scope::Binder {
                     hir_id: item.hir_id(),
                     lifetimes,
-                    next_early_index: index + non_lifetime_count,
-                    opaque_type_parent: true,
                     scope_type: BinderScopeType::Normal,
                     s: ROOT_SCOPE,
                     where_bound_origin: None,
@@ -703,7 +634,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
     fn visit_foreign_item(&mut self, item: &'tcx hir::ForeignItem<'tcx>) {
         match item.kind {
             hir::ForeignItemKind::Fn(_, _, ref generics) => {
-                self.visit_early_late(None, item.hir_id(), generics, |this| {
+                self.visit_early_late(item.hir_id(), generics, |this| {
                     intravisit::walk_foreign_item(this, item);
                 })
             }
@@ -720,7 +651,6 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
     fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx>) {
         match ty.kind {
             hir::TyKind::BareFn(ref c) => {
-                let next_early_index = self.next_early_index();
                 let (lifetimes, binders): (FxIndexMap<LocalDefId, Region>, Vec<_>) = c
                     .generic_params
                     .iter()
@@ -737,8 +667,6 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     hir_id: ty.hir_id,
                     lifetimes,
                     s: self.scope,
-                    next_early_index,
-                    opaque_type_parent: false,
                     scope_type: BinderScopeType::Normal,
                     where_bound_origin: None,
                 };
@@ -877,32 +805,23 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
 
                 // We want to start our early-bound indices at the end of the parent scope,
                 // not including any parent `impl Trait`s.
-                let mut index = self.next_early_index_for_opaque_type();
-                debug!(?index);
-
                 let mut lifetimes = FxIndexMap::default();
-                let mut non_lifetime_count = 0;
                 debug!(?generics.params);
                 for param in generics.params {
                     match param.kind {
                         GenericParamKind::Lifetime { .. } => {
-                            let (def_id, reg) = Region::early(self.tcx.hir(), &mut index, &param);
+                            let (def_id, reg) = Region::early(self.tcx.hir(), &param);
                             lifetimes.insert(def_id, reg);
                         }
-                        GenericParamKind::Type { .. } | GenericParamKind::Const { .. } => {
-                            non_lifetime_count += 1;
-                        }
+                        GenericParamKind::Type { .. } | GenericParamKind::Const { .. } => {}
                     }
                 }
-                let next_early_index = index + non_lifetime_count;
                 self.map.late_bound_vars.insert(ty.hir_id, vec![]);
 
                 let scope = Scope::Binder {
                     hir_id: ty.hir_id,
                     lifetimes,
-                    next_early_index,
                     s: self.scope,
-                    opaque_type_parent: false,
                     scope_type: BinderScopeType::Normal,
                     where_bound_origin: None,
                 };
@@ -924,39 +843,27 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
         use self::hir::TraitItemKind::*;
         match trait_item.kind {
             Fn(_, _) => {
-                let tcx = self.tcx;
-                self.visit_early_late(
-                    Some(tcx.hir().get_parent_item(trait_item.hir_id())),
-                    trait_item.hir_id(),
-                    &trait_item.generics,
-                    |this| intravisit::walk_trait_item(this, trait_item),
-                );
+                self.visit_early_late(trait_item.hir_id(), &trait_item.generics, |this| {
+                    intravisit::walk_trait_item(this, trait_item)
+                });
             }
             Type(bounds, ref ty) => {
                 let generics = &trait_item.generics;
-                let mut index = self.next_early_index();
-                debug!("visit_ty: index = {}", index);
-                let mut non_lifetime_count = 0;
                 let lifetimes = generics
                     .params
                     .iter()
                     .filter_map(|param| match param.kind {
                         GenericParamKind::Lifetime { .. } => {
-                            Some(Region::early(self.tcx.hir(), &mut index, param))
+                            Some(Region::early(self.tcx.hir(), param))
                         }
-                        GenericParamKind::Type { .. } | GenericParamKind::Const { .. } => {
-                            non_lifetime_count += 1;
-                            None
-                        }
+                        GenericParamKind::Type { .. } | GenericParamKind::Const { .. } => None,
                     })
                     .collect();
                 self.map.late_bound_vars.insert(trait_item.hir_id(), vec![]);
                 let scope = Scope::Binder {
                     hir_id: trait_item.hir_id(),
                     lifetimes,
-                    next_early_index: index + non_lifetime_count,
                     s: self.scope,
-                    opaque_type_parent: true,
                     scope_type: BinderScopeType::Normal,
                     where_bound_origin: None,
                 };
@@ -984,40 +891,26 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
     fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>) {
         use self::hir::ImplItemKind::*;
         match impl_item.kind {
-            Fn(..) => {
-                let tcx = self.tcx;
-                self.visit_early_late(
-                    Some(tcx.hir().get_parent_item(impl_item.hir_id())),
-                    impl_item.hir_id(),
-                    &impl_item.generics,
-                    |this| intravisit::walk_impl_item(this, impl_item),
-                );
-            }
+            Fn(..) => self.visit_early_late(impl_item.hir_id(), &impl_item.generics, |this| {
+                intravisit::walk_impl_item(this, impl_item)
+            }),
             TyAlias(ref ty) => {
                 let generics = &impl_item.generics;
-                let mut index = self.next_early_index();
-                let mut non_lifetime_count = 0;
-                debug!("visit_ty: index = {}", index);
                 let lifetimes: FxIndexMap<LocalDefId, Region> = generics
                     .params
                     .iter()
                     .filter_map(|param| match param.kind {
                         GenericParamKind::Lifetime { .. } => {
-                            Some(Region::early(self.tcx.hir(), &mut index, param))
+                            Some(Region::early(self.tcx.hir(), param))
                         }
-                        GenericParamKind::Const { .. } | GenericParamKind::Type { .. } => {
-                            non_lifetime_count += 1;
-                            None
-                        }
+                        GenericParamKind::Const { .. } | GenericParamKind::Type { .. } => None,
                     })
                     .collect();
                 self.map.late_bound_vars.insert(ty.hir_id, vec![]);
                 let scope = Scope::Binder {
                     hir_id: ty.hir_id,
                     lifetimes,
-                    next_early_index: index + non_lifetime_count,
                     s: self.scope,
-                    opaque_type_parent: true,
                     scope_type: BinderScopeType::Normal,
                     where_bound_origin: None,
                 };
@@ -1120,7 +1013,6 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                                 })
                                 .unzip();
                         this.map.late_bound_vars.insert(bounded_ty.hir_id, binders.clone());
-                        let next_early_index = this.next_early_index();
                         // Even if there are no lifetimes defined here, we still wrap it in a binder
                         // scope. If there happens to be a nested poly trait ref (an error), that
                         // will be `Concatenating` anyways, so we don't have to worry about the depth
@@ -1129,8 +1021,6 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                             hir_id: bounded_ty.hir_id,
                             lifetimes,
                             s: this.scope,
-                            next_early_index,
-                            opaque_type_parent: false,
                             scope_type: BinderScopeType::Normal,
                             where_bound_origin: Some(origin),
                         };
@@ -1201,8 +1091,6 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     hir_id: *hir_id,
                     lifetimes: FxIndexMap::default(),
                     s: self.scope,
-                    next_early_index: self.next_early_index(),
-                    opaque_type_parent: false,
                     scope_type,
                     where_bound_origin: None,
                 };
@@ -1221,7 +1109,6 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
     ) {
         debug!("visit_poly_trait_ref(trait_ref={:?})", trait_ref);
 
-        let next_early_index = self.next_early_index();
         let (mut binders, scope_type) = self.poly_trait_ref_binder_info();
 
         let initial_bound_vars = binders.len() as u32;
@@ -1251,8 +1138,6 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
             hir_id: trait_ref.trait_ref.hir_ref_id,
             lifetimes,
             s: self.scope,
-            next_early_index,
-            opaque_type_parent: false,
             scope_type,
             where_bound_origin: None,
         };
@@ -1354,30 +1239,12 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
     /// ordering is not important there.
     fn visit_early_late<F>(
         &mut self,
-        parent_id: Option<LocalDefId>,
         hir_id: hir::HirId,
         generics: &'tcx hir::Generics<'tcx>,
         walk: F,
     ) where
         F: for<'b, 'c> FnOnce(&'b mut LifetimeContext<'c, 'tcx>),
     {
-        // Find the start of nested early scopes, e.g., in methods.
-        let mut next_early_index = 0;
-        if let Some(parent_id) = parent_id {
-            let parent = self.tcx.hir().expect_item(parent_id);
-            if sub_items_have_self_param(&parent.kind) {
-                next_early_index += 1; // Self comes before lifetimes
-            }
-            match parent.kind {
-                hir::ItemKind::Trait(_, _, ref generics, ..)
-                | hir::ItemKind::Impl(hir::Impl { ref generics, .. }) => {
-                    next_early_index += generics.params.len() as u32;
-                }
-                _ => {}
-            }
-        }
-
-        let mut non_lifetime_count = 0;
         let mut named_late_bound_vars = 0;
         let lifetimes: FxIndexMap<LocalDefId, Region> = generics
             .params
@@ -1389,16 +1256,12 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                         named_late_bound_vars += 1;
                         Some(Region::late(late_bound_idx, self.tcx.hir(), param))
                     } else {
-                        Some(Region::early(self.tcx.hir(), &mut next_early_index, param))
+                        Some(Region::early(self.tcx.hir(), param))
                     }
                 }
-                GenericParamKind::Type { .. } | GenericParamKind::Const { .. } => {
-                    non_lifetime_count += 1;
-                    None
-                }
+                GenericParamKind::Type { .. } | GenericParamKind::Const { .. } => None,
             })
             .collect();
-        let next_early_index = next_early_index + non_lifetime_count;
 
         let binders: Vec<_> = generics
             .params
@@ -1417,49 +1280,11 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         let scope = Scope::Binder {
             hir_id,
             lifetimes,
-            next_early_index,
             s: self.scope,
-            opaque_type_parent: true,
             scope_type: BinderScopeType::Normal,
             where_bound_origin: None,
         };
         self.with(scope, walk);
-    }
-
-    fn next_early_index_helper(&self, only_opaque_type_parent: bool) -> u32 {
-        let mut scope = self.scope;
-        loop {
-            match *scope {
-                Scope::Root => return 0,
-
-                Scope::Binder { next_early_index, opaque_type_parent, .. }
-                    if (!only_opaque_type_parent || opaque_type_parent) =>
-                {
-                    return next_early_index;
-                }
-
-                Scope::Binder { s, .. }
-                | Scope::Body { s, .. }
-                | Scope::Elision { s, .. }
-                | Scope::ObjectLifetimeDefault { s, .. }
-                | Scope::Supertrait { s, .. }
-                | Scope::TraitRefBoundary { s, .. } => scope = s,
-            }
-        }
-    }
-
-    /// Returns the next index one would use for an early-bound-region
-    /// if extending the current scope.
-    fn next_early_index(&self) -> u32 {
-        self.next_early_index_helper(true)
-    }
-
-    /// Returns the next index one would use for an `impl Trait` that
-    /// is being converted into an opaque type alias `impl Trait`. This will be the
-    /// next early index from the enclosing item, for the most
-    /// part. See the `opaque_type_parent` field for more info.
-    fn next_early_index_for_opaque_type(&self) -> u32 {
-        self.next_early_index_helper(false)
     }
 
     #[tracing::instrument(level = "debug", skip(self))]

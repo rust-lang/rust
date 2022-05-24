@@ -221,7 +221,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 tcx.mk_region(ty::ReLateBound(debruijn, br))
             }
 
-            Some(rl::Region::EarlyBound(_, def_id)) => {
+            Some(rl::Region::EarlyBound(def_id)) => {
                 let name = tcx.hir().ty_param_name(def_id.expect_local());
                 let item_def_id = tcx.hir().ty_param_owner(def_id.expect_local());
                 let generics = tcx.generics_of(item_def_id);
@@ -2840,10 +2840,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             );
 
             if !infer_replacements.is_empty() {
-                diag.multipart_suggestion(&format!(
+                diag.multipart_suggestion(
+                    &format!(
                     "try replacing `_` with the type{} in the corresponding trait method signature",
                     rustc_errors::pluralize!(infer_replacements.len()),
-                ), infer_replacements, Applicability::MachineApplicable);
+                ),
+                    infer_replacements,
+                    Applicability::MachineApplicable,
+                );
             }
 
             diag.emit();
