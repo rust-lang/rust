@@ -120,7 +120,7 @@ impl<'tcx> Visitor<'tcx> for FindNestedTypeVisitor<'tcx> {
                     // Find the index of the named region that was part of the
                     // error. We will then search the function parameters for a bound
                     // region at the right depth with the same index
-                    (Some(rl::Region::EarlyBound(_, id)), ty::BrNamed(def_id, _)) => {
+                    (Some(rl::Region::EarlyBound(id)), ty::BrNamed(def_id, _)) => {
                         debug!("EarlyBound id={:?} def_id={:?}", id, def_id);
                         if id == def_id {
                             self.found_type = Some(arg);
@@ -150,7 +150,7 @@ impl<'tcx> Visitor<'tcx> for FindNestedTypeVisitor<'tcx> {
                         Some(
                             rl::Region::Static
                             | rl::Region::Free(_, _)
-                            | rl::Region::EarlyBound(_, _)
+                            | rl::Region::EarlyBound(_)
                             | rl::Region::LateBound(_, _, _)
                             | rl::Region::LateBoundAnon(_, _, _),
                         )
@@ -216,7 +216,7 @@ impl<'tcx> Visitor<'tcx> for TyPathVisitor<'tcx> {
                 }
             }
 
-            (Some(rl::Region::EarlyBound(_, id)), ty::BrNamed(def_id, _)) => {
+            (Some(rl::Region::EarlyBound(id)), ty::BrNamed(def_id, _)) => {
                 debug!("EarlyBound id={:?} def_id={:?}", id, def_id);
                 if id == def_id {
                     self.found_it = true;
@@ -237,7 +237,7 @@ impl<'tcx> Visitor<'tcx> for TyPathVisitor<'tcx> {
             (
                 Some(
                     rl::Region::Static
-                    | rl::Region::EarlyBound(_, _)
+                    | rl::Region::EarlyBound(_)
                     | rl::Region::LateBound(_, _, _)
                     | rl::Region::LateBoundAnon(_, _, _)
                     | rl::Region::Free(_, _),

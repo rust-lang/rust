@@ -251,7 +251,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 tcx.mk_region(ty::ReLateBound(debruijn, br))
             }
 
-            rl::Region::EarlyBound(_, def_id) => {
+            rl::Region::EarlyBound(def_id) => {
                 let name = tcx.hir().ty_param_name(def_id.expect_local());
                 let item_def_id = tcx.hir().ty_param_owner(def_id.expect_local());
                 let generics = tcx.generics_of(item_def_id);

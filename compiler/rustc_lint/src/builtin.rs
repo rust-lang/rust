@@ -2050,13 +2050,13 @@ declare_lint_pass!(ExplicitOutlivesRequirements => [EXPLICIT_OUTLIVES_REQUIREMEN
 impl ExplicitOutlivesRequirements {
     fn lifetimes_outliving_lifetime<'tcx>(
         inferred_outlives: &'tcx [(ty::Predicate<'tcx>, Span)],
-        index: u32,
+        def_id: DefId,
     ) -> Vec<ty::Region<'tcx>> {
         inferred_outlives
             .iter()
             .filter_map(|(pred, _)| match pred.kind().skip_binder() {
                 ty::PredicateKind::RegionOutlives(ty::OutlivesPredicate(a, b)) => match *a {
-                    ty::ReEarlyBound(ebr) if ebr.index == index => Some(b),
+                    ty::ReEarlyBound(ebr) if ebr.def_id == def_id => Some(b),
                     _ => None,
                 },
                 _ => None,
@@ -2097,8 +2097,12 @@ impl ExplicitOutlivesRequirements {
                         Some(Region::Static) if infer_static => {
                             inferred_outlives.iter().any(|r| matches!(**r, ty::ReStatic))
                         }
-                        Some(Region::EarlyBound(index, ..)) => inferred_outlives.iter().any(|r| {
-                            if let ty::ReEarlyBound(ebr) = **r { ebr.index == index } else { false }
+                        Some(Region::EarlyBound(def_id)) => inferred_outlives.iter().any(|r| {
+                            if let ty::ReEarlyBound(ebr) = **r {
+                                ebr.def_id == def_id
+                            } else {
+                                false
+                            }
                         }),
                         _ => false,
                     };
@@ -2193,11 +2197,14 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
             for (i, where_predicate) in hir_generics.predicates.iter().enumerate() {
                 let (relevant_lifetimes, bounds, span, in_where_clause) = match where_predicate {
                     hir::WherePredicate::RegionPredicate(predicate) => {
-                        if let Some(Region::EarlyBound(index, ..)) =
+                        if let Some(Region::EarlyBound(region_def_id)) =
                             cx.tcx.named_region(predicate.lifetime.hir_id)
                         {
                             (
-                                Self::lifetimes_outliving_lifetime(inferred_outlives, index),
+                                Self::lifetimes_outliving_lifetime(
+                                    inferred_outlives,
+                                    region_def_id,
+                                ),
                                 &predicate.bounds,
                                 predicate.span,
                                 predicate.in_where_clause,
