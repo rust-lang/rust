@@ -9,6 +9,7 @@ macro_rules! sdivmod {
         $($attr:tt),* // attributes
     ) => {
         intrinsics! {
+            #[avr_skip]
             $(
                 #[$attr]
             )*
@@ -50,6 +51,7 @@ macro_rules! sdiv {
         $($attr:tt),* // attributes
     ) => {
         intrinsics! {
+            #[avr_skip]
             $(
                 #[$attr]
             )*
@@ -85,6 +87,7 @@ macro_rules! smod {
         $($attr:tt),* // attributes
     ) => {
         intrinsics! {
+            #[avr_skip]
             $(
                 #[$attr]
             )*
