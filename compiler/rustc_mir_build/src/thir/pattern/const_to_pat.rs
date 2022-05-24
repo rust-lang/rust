@@ -121,27 +121,27 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
 
     fn search_for_structural_match_violation(&self, ty: Ty<'tcx>) -> Option<String> {
         traits::search_for_structural_match_violation(self.span, self.tcx(), ty).map(|non_sm_ty| {
-            with_no_trimmed_paths!(match non_sm_ty {
-                traits::NonStructuralMatchTy::Adt(adt) => self.adt_derive_msg(adt),
-                traits::NonStructuralMatchTy::Dynamic => {
+            with_no_trimmed_paths!(match non_sm_ty.kind {
+                traits::NonStructuralMatchTyKind::Adt(adt) => self.adt_derive_msg(adt),
+                traits::NonStructuralMatchTyKind::Dynamic => {
                     "trait objects cannot be used in patterns".to_string()
                 }
-                traits::NonStructuralMatchTy::Opaque => {
+                traits::NonStructuralMatchTyKind::Opaque => {
                     "opaque types cannot be used in patterns".to_string()
                 }
-                traits::NonStructuralMatchTy::Closure => {
+                traits::NonStructuralMatchTyKind::Closure => {
                     "closures cannot be used in patterns".to_string()
                 }
-                traits::NonStructuralMatchTy::Generator => {
+                traits::NonStructuralMatchTyKind::Generator => {
                     "generators cannot be used in patterns".to_string()
                 }
-                traits::NonStructuralMatchTy::Param => {
+                traits::NonStructuralMatchTyKind::Param => {
                     bug!("use of a constant whose type is a parameter inside a pattern")
                 }
-                traits::NonStructuralMatchTy::Projection => {
+                traits::NonStructuralMatchTyKind::Projection => {
                     bug!("use of a constant whose type is a projection inside a pattern")
                 }
-                traits::NonStructuralMatchTy::Foreign => {
+                traits::NonStructuralMatchTyKind::Foreign => {
                     bug!("use of a value of a foreign type inside a pattern")
                 }
             })
