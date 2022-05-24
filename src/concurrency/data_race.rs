@@ -445,14 +445,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
     #[inline]
     fn allow_data_races_ref<R>(&self, op: impl FnOnce(&MiriEvalContext<'mir, 'tcx>) -> R) -> R {
         let this = self.eval_context_ref();
-        let old = if let Some(data_race) = &this.machine.data_race {
-            data_race.multi_threaded.replace(false)
-        } else {
-            false
-        };
+        if let Some(data_race) = &this.machine.data_race {
+            data_race.ongoing_atomic_access.set(true);
+        }
         let result = op(this);
         if let Some(data_race) = &this.machine.data_race {
-            data_race.multi_threaded.set(old);
+            data_race.ongoing_atomic_access.set(false);
         }
         result
     }
@@ -466,14 +464,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         op: impl FnOnce(&mut MiriEvalContext<'mir, 'tcx>) -> R,
     ) -> R {
         let this = self.eval_context_mut();
-        let old = if let Some(data_race) = &this.machine.data_race {
-            data_race.multi_threaded.replace(false)
-        } else {
-            false
-        };
+        if let Some(data_race) = &this.machine.data_race {
+            data_race.ongoing_atomic_access.set(true);
+        }
         let result = op(this);
         if let Some(data_race) = &this.machine.data_race {
-            data_race.multi_threaded.set(old);
+            data_race.ongoing_atomic_access.set(false);
         }
         result
     }
@@ -923,7 +919,7 @@ impl VClockAlloc {
     }
 
     /// Detect data-races for an unsynchronized read operation, will not perform
-    /// data-race detection if `multi-threaded` is false, either due to no threads
+    /// data-race detection if `race_detecting()` is false, either due to no threads
     /// being created or if it is temporarily disabled during a racy read or write
     /// operation for which data-race detection is handled separately, for example
     /// atomic read operations.
@@ -933,7 +929,7 @@ impl VClockAlloc {
         range: AllocRange,
         global: &GlobalState,
     ) -> InterpResult<'tcx> {
-        if global.multi_threaded.get() {
+        if global.race_detecting() {
             let (index, clocks) = global.current_thread_state();
             let mut alloc_ranges = self.alloc_ranges.borrow_mut();
             for (offset, range) in alloc_ranges.iter_mut(range.start, range.size) {
@@ -962,7 +958,7 @@ impl VClockAlloc {
         write_type: WriteType,
         global: &mut GlobalState,
     ) -> InterpResult<'tcx> {
-        if global.multi_threaded.get() {
+        if global.race_detecting() {
             let (index, clocks) = global.current_thread_state();
             for (offset, range) in self.alloc_ranges.get_mut().iter_mut(range.start, range.size) {
                 if let Err(DataRace) = range.write_race_detect(&*clocks, index, write_type) {
@@ -983,7 +979,7 @@ impl VClockAlloc {
     }
 
     /// Detect data-races for an unsynchronized write operation, will not perform
-    /// data-race threads if `multi-threaded` is false, either due to no threads
+    /// data-race threads if `race_detecting()` is false, either due to no threads
     /// being created or if it is temporarily disabled during a racy read or write
     /// operation
     pub fn write<'tcx>(
@@ -996,7 +992,7 @@ impl VClockAlloc {
     }
 
     /// Detect data-races for an unsynchronized deallocate operation, will not perform
-    /// data-race threads if `multi-threaded` is false, either due to no threads
+    /// data-race threads if `race_detecting()` is false, either due to no threads
     /// being created or if it is temporarily disabled during a racy read or write
     /// operation
     pub fn deallocate<'tcx>(
@@ -1026,7 +1022,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_ref();
         if let Some(data_race) = &this.machine.data_race {
-            if data_race.multi_threaded.get() {
+            if data_race.race_detecting() {
                 let size = place.layout.size;
                 let (alloc_id, base_offset, _tag) = this.ptr_get_alloc_id(place.ptr)?;
                 // Load and log the atomic operation.
@@ -1116,6 +1112,10 @@ pub struct GlobalState {
     /// any data-races.
     multi_threaded: Cell<bool>,
 
+    /// A flag to mark we are currently performing
+    /// an atomic access to supress data race detection
+    ongoing_atomic_access: Cell<bool>,
+
     /// Mapping of a vector index to a known set of thread
     /// clocks, this is not directly mapping from a thread id
     /// since it may refer to multiple threads.
@@ -1167,6 +1167,7 @@ impl GlobalState {
     pub fn new() -> Self {
         let mut global_state = GlobalState {
             multi_threaded: Cell::new(false),
+            ongoing_atomic_access: Cell::new(false),
             vector_clocks: RefCell::new(IndexVec::new()),
             vector_info: RefCell::new(IndexVec::new()),
             thread_info: RefCell::new(IndexVec::new()),
@@ -1190,6 +1191,13 @@ impl GlobalState {
         });
 
         global_state
+    }
+
+    // We perform data race detection when there are more than 1 active thread
+    // and we are not currently in the middle of an atomic acces where data race
+    // is impossible
+    fn race_detecting(&self) -> bool {
+        self.multi_threaded.get() && !self.ongoing_atomic_access.get()
     }
 
     // Try to find vector index values that can potentially be re-used
