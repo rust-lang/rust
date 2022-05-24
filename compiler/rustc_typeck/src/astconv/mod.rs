@@ -252,9 +252,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 })
             }
         };
-
         debug!("ast_region_to_region(lifetime={:?}) yields {:?}", lifetime, r);
-
         r
     }
 
