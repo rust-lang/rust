@@ -277,7 +277,7 @@ impl<'a> SessionDiagnostic<'a> for MissingTypeParams {
                 .join(", "),
         );
 
-        err.span_label(self.def_span, rustc_errors::fluent::typeck::missing_type_params_label);
+        err.span_label(self.def_span, rustc_errors::fluent::typeck::label);
 
         let mut suggested = false;
         if let (Ok(snippet), true) = (
@@ -295,7 +295,7 @@ impl<'a> SessionDiagnostic<'a> for MissingTypeParams {
                 // least we can clue them to the correct syntax `Iterator<Type>`.
                 err.span_suggestion(
                     self.span,
-                    rustc_errors::fluent::typeck::missing_type_params_suggestion,
+                    rustc_errors::fluent::typeck::suggestion,
                     format!("{}<{}>", snippet, self.missing_type_params.join(", ")),
                     Applicability::HasPlaceholders,
                 );
@@ -303,13 +303,10 @@ impl<'a> SessionDiagnostic<'a> for MissingTypeParams {
             }
         }
         if !suggested {
-            err.span_label(
-                self.span,
-                rustc_errors::fluent::typeck::missing_type_params_no_suggestion_label,
-            );
+            err.span_label(self.span, rustc_errors::fluent::typeck::no_suggestion_label);
         }
 
-        err.note(rustc_errors::fluent::typeck::missing_type_params_note);
+        err.note(rustc_errors::fluent::typeck::note);
         err
     }
 }

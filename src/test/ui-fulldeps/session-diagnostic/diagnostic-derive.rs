@@ -404,7 +404,6 @@ struct ErrorWithHelpCustom {
 
 #[derive(SessionDiagnostic)]
 #[help]
-//~^ ERROR `#[help]` must come after `#[error(..)]` or `#[warn(..)]`
 #[error(code = "E0123", slug = "foo")]
 struct ErrorWithHelpWrongOrder {
     val: String,
@@ -412,7 +411,6 @@ struct ErrorWithHelpWrongOrder {
 
 #[derive(SessionDiagnostic)]
 #[help = "bar"]
-//~^ ERROR `#[help = ...]` must come after `#[error(..)]` or `#[warn(..)]`
 #[error(code = "E0123", slug = "foo")]
 struct ErrorWithHelpCustomWrongOrder {
     val: String,
@@ -420,7 +418,6 @@ struct ErrorWithHelpCustomWrongOrder {
 
 #[derive(SessionDiagnostic)]
 #[note]
-//~^ ERROR `#[note]` must come after `#[error(..)]` or `#[warn(..)]`
 #[error(code = "E0123", slug = "foo")]
 struct ErrorWithNoteWrongOrder {
     val: String,
@@ -428,7 +425,6 @@ struct ErrorWithNoteWrongOrder {
 
 #[derive(SessionDiagnostic)]
 #[note = "bar"]
-//~^ ERROR `#[note = ...]` must come after `#[error(..)]` or `#[warn(..)]`
 #[error(code = "E0123", slug = "foo")]
 struct ErrorWithNoteCustomWrongOrder {
     val: String,

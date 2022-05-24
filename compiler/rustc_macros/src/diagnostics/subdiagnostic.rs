@@ -397,7 +397,7 @@ impl<'a> SessionSubdiagnosticDeriveBuilder<'a> {
 
         let diag = &self.diag;
         let name = format_ident!("{}{}", if span_field.is_some() { "span_" } else { "" }, kind);
-        let message = quote! { rustc_errors::DiagnosticMessage::fluent(#slug) };
+        let message = quote! { rustc_errors::SubdiagnosticMessage::message(#slug) };
         let call = if matches!(kind, SubdiagnosticKind::Suggestion(..)) {
             if let Some(span) = span_field {
                 quote! { #diag.#name(#span, #message, #code, #applicability); }

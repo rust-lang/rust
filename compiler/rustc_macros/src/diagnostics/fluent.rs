@@ -11,7 +11,7 @@ use proc_macro::{Diagnostic, Level, Span};
 use proc_macro2::TokenStream;
 use quote::quote;
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     fs::File,
     io::Read,
     path::{Path, PathBuf},
@@ -99,6 +99,10 @@ pub(crate) fn fluent_messages(input: proc_macro::TokenStream) -> proc_macro::Tok
     for res in resources.0 {
         let ident_span = res.ident.span().unwrap();
         let path_span = res.resource.span().unwrap();
+
+        // Set of Fluent attribute names already output, to avoid duplicate type errors - any given
+        // constant created for a given attribute is the same.
+        let mut previous_attrs = HashSet::new();
 
         let relative_ftl_path = res.resource.value();
         let absolute_ftl_path =
@@ -199,13 +203,15 @@ pub(crate) fn fluent_messages(input: proc_macro::TokenStream) -> proc_macro::Tok
                 });
 
                 for Attribute { id: Identifier { name: attr_name }, .. } in attributes {
-                    let attr_snake_name = attr_name.replace("-", "_");
-                    let snake_name = Ident::new(&format!("{snake_name}_{attr_snake_name}"), span);
+                    let snake_name = Ident::new(&attr_name.replace("-", "_"), span);
+                    if !previous_attrs.insert(snake_name.clone()) {
+                        continue;
+                    }
+
                     constants.extend(quote! {
-                        pub const #snake_name: crate::DiagnosticMessage =
-                            crate::DiagnosticMessage::FluentIdentifier(
-                                std::borrow::Cow::Borrowed(#name),
-                                Some(std::borrow::Cow::Borrowed(#attr_name))
+                        pub const #snake_name: crate::SubdiagnosticMessage =
+                            crate::SubdiagnosticMessage::FluentAttr(
+                                std::borrow::Cow::Borrowed(#attr_name)
                             );
                     });
                 }
