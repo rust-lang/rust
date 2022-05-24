@@ -11,10 +11,10 @@
 //! This implementation is not fully correct under the revised C++20 model and may generate behaviours C++20
 //! disallows.
 //!
-//! Rust follows the full C++20 memory model (except for the Consume ordering). It is therefore
-//! possible for this implementation to generate behaviours never observable when the same program is compiled and
-//! run natively. Unfortunately, no literature exists at the time of writing which proposes an implementable and C++20-compatible
-//! relaxed memory model that supports all atomic operation existing in Rust. The closest one is
+//! Rust follows the C++20 memory model (except for the Consume ordering and some operations not performable through C++'s
+//! std::atomic<T> API). It is therefore possible for this implementation to generate behaviours never observable when the
+//! same program is compiled and run natively. Unfortunately, no literature exists at the time of writing which proposes
+//! an implementable and C++20-compatible relaxed memory model that supports all atomic operation existing in Rust. The closest one is
 //! A Promising Semantics for Relaxed-Memory Concurrency by Jeehoon Kang et al. (https://www.cs.tau.ac.il/~orilahav/papers/popl17.pdf)
 //! However, this model lacks SC accesses and is therefore unusable by Miri (SC accesses are everywhere in library code).
 //!
@@ -115,6 +115,26 @@ struct StoreElement {
 impl StoreBufferAlloc {
     pub fn new_allocation() -> Self {
         Self { store_buffers: RefCell::new(AllocationMap::new()) }
+    }
+
+    /// When a non-atomic access happens on a location that has been atomically accessed
+    /// before without data race, we can determine that the non-atomic access fully happens
+    /// before all the prior atomic accesses so the location no longer needs to exhibit
+    /// any weak memory behaviours until further atomic accesses.
+    pub fn destroy_atomicity<'tcx>(&self, range: AllocRange) {
+        let mut buffers = self.store_buffers.borrow_mut();
+        let access_type = buffers.access_type(range);
+        match access_type {
+            AccessType::PerfectlyOverlapping(pos) => {
+                buffers.remove_from_pos(pos);
+            }
+            AccessType::ImperfectlyOverlapping(pos_range) => {
+                buffers.remove_pos_range(pos_range);
+            }
+            AccessType::Empty(_) => {
+                // Do nothing
+            }
+        }
     }
 
     /// Gets a store buffer associated with an atomic object in this allocation

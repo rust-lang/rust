@@ -1200,6 +1200,10 @@ impl GlobalState {
         self.multi_threaded.get() && !self.ongoing_atomic_access.get()
     }
 
+    pub fn ongoing_atomic_access(&self) -> bool {
+        self.ongoing_atomic_access.get()
+    }
+
     // Try to find vector index values that can potentially be re-used
     // by a new thread instead of a new vector index being created.
     fn find_vector_index_reuse_candidate(&self) -> Option<VectorIdx> {

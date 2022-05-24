@@ -125,6 +125,14 @@ impl<T> AllocationMap<T> {
             debug_assert!(range.end() <= self.v[pos + 1].range.start);
         }
     }
+
+    pub fn remove_pos_range(&mut self, pos_range: Range<Position>) {
+        self.v.drain(pos_range);
+    }
+
+    pub fn remove_from_pos(&mut self, pos: Position) {
+        self.v.remove(pos);
+    }
 }
 
 impl<T> Index<Position> for AllocationMap<T> {

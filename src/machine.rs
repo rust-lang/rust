@@ -738,10 +738,17 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
                 range,
                 machine.stacked_borrows.as_ref().unwrap(),
                 machine.current_span(),
-            )
-        } else {
-            Ok(())
+            )?;
         }
+        if let Some(weak_memory) = &alloc_extra.weak_memory {
+            if !machine.data_race.as_ref().unwrap().ongoing_atomic_access() {
+                // This is a non-atomic access. And if we are accessing a previously atomically
+                // accessed location without racing with them, then the location no longer needs
+                // to exhibit weak-memory behaviours until a fresh atomic access happens
+                weak_memory.destroy_atomicity(range);
+            }
+        }
+        Ok(())
     }
 
     #[inline(always)]
@@ -762,10 +769,14 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
                 range,
                 machine.stacked_borrows.as_ref().unwrap(),
                 machine.current_span(),
-            )
-        } else {
-            Ok(())
+            )?;
         }
+        if let Some(weak_memory) = &alloc_extra.weak_memory {
+            if !machine.data_race.as_ref().unwrap().ongoing_atomic_access() {
+                weak_memory.destroy_atomicity(range);
+            }
+        }
+        Ok(())
     }
 
     #[inline(always)]
