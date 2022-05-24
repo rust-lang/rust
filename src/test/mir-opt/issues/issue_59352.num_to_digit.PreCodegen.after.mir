@@ -7,7 +7,7 @@ fn num_to_digit(_1: char) -> u32 {
     let mut _3: std::option::Option<u32>; // in scope 0 at $DIR/issue-59352.rs:14:26: 14:41
     let mut _4: char;                    // in scope 0 at $DIR/issue-59352.rs:14:26: 14:29
     let mut _5: u32;                     // in scope 0 at $DIR/issue-59352.rs:14:8: 14:23
-    let mut _11: isize;                  // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+    let mut _12: isize;                  // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
     scope 1 (inlined char::methods::<impl char>::is_digit) { // at $DIR/issue-59352.rs:14:8: 14:23
         debug self => _2;                // in scope 1 at $SRC_DIR/core/src/char/methods.rs:LL:COL
         debug radix => _5;               // in scope 1 at $SRC_DIR/core/src/char/methods.rs:LL:COL
@@ -22,6 +22,7 @@ fn num_to_digit(_1: char) -> u32 {
     scope 3 (inlined #[track_caller] Option::<u32>::unwrap) { // at $DIR/issue-59352.rs:14:26: 14:50
         debug self => _3;                // in scope 3 at $SRC_DIR/core/src/option.rs:LL:COL
         let mut _10: isize;              // in scope 3 at $SRC_DIR/core/src/option.rs:LL:COL
+        let mut _11: !;                  // in scope 3 at $SRC_DIR/core/src/option.rs:LL:COL
         scope 4 {
             debug val => _0;             // in scope 4 at $SRC_DIR/core/src/option.rs:LL:COL
         }
@@ -43,7 +44,7 @@ fn num_to_digit(_1: char) -> u32 {
     }
 
     bb1: {
-        StorageDead(_11);                // scope 0 at $DIR/issue-59352.rs:14:8: 14:23
+        StorageDead(_12);                // scope 0 at $DIR/issue-59352.rs:14:8: 14:23
         StorageLive(_3);                 // scope 0 at $DIR/issue-59352.rs:14:26: 14:41
         StorageLive(_4);                 // scope 0 at $DIR/issue-59352.rs:14:26: 14:29
         _4 = _1;                         // scope 0 at $DIR/issue-59352.rs:14:26: 14:29
@@ -61,7 +62,7 @@ fn num_to_digit(_1: char) -> u32 {
     }
 
     bb3: {
-        StorageDead(_11);                // scope 0 at $DIR/issue-59352.rs:14:8: 14:23
+        StorageDead(_12);                // scope 0 at $DIR/issue-59352.rs:14:8: 14:23
         _0 = const 0_u32;                // scope 0 at $DIR/issue-59352.rs:14:60: 14:61
         goto -> bb4;                     // scope 0 at $DIR/issue-59352.rs:14:5: 14:63
     }
@@ -75,18 +76,19 @@ fn num_to_digit(_1: char) -> u32 {
         StorageDead(_8);                 // scope 1 at $SRC_DIR/core/src/char/methods.rs:LL:COL
         StorageLive(_9);                 // scope 1 at $SRC_DIR/core/src/char/methods.rs:LL:COL
         _9 = discriminant((*_6));        // scope 2 at $SRC_DIR/core/src/option.rs:LL:COL
-        StorageLive(_11);                // scope 2 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        _11 = move _9;                   // scope 2 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+        StorageLive(_12);                // scope 2 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+        _12 = move _9;                   // scope 2 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         StorageDead(_9);                 // scope 1 at $SRC_DIR/core/src/char/methods.rs:LL:COL
         StorageDead(_6);                 // scope 1 at $SRC_DIR/core/src/char/methods.rs:LL:COL
         StorageDead(_7);                 // scope 1 at $SRC_DIR/core/src/char/methods.rs:LL:COL
         StorageDead(_5);                 // scope 0 at $DIR/issue-59352.rs:14:8: 14:23
         StorageDead(_2);                 // scope 0 at $DIR/issue-59352.rs:14:22: 14:23
-        switchInt(move _11) -> [1_isize: bb1, otherwise: bb3]; // scope 0 at $DIR/issue-59352.rs:14:8: 14:23
+        switchInt(move _12) -> [1_isize: bb1, otherwise: bb3]; // scope 0 at $DIR/issue-59352.rs:14:8: 14:23
     }
 
     bb6: {
-        core::panicking::panic(const "called `Option::unwrap()` on a `None` value"); // scope 3 at $SRC_DIR/core/src/option.rs:LL:COL
+        StorageLive(_11);                // scope 3 at $SRC_DIR/core/src/option.rs:LL:COL
+        _11 = core::panicking::panic(const "called `Option::unwrap()` on a `None` value"); // scope 3 at $SRC_DIR/core/src/option.rs:LL:COL
                                          // mir::Constant
                                          // + span: $SRC_DIR/core/src/option.rs:LL:COL
                                          // + literal: Const { ty: fn(&'static str) -> ! {core::panicking::panic}, val: Value(Scalar(<ZST>)) }

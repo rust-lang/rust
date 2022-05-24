@@ -105,7 +105,7 @@ pub struct Frame<'mir, 'tcx, Tag: Provenance = AllocId, Extra = ()> {
 
     /// The location where the result of the current stack frame should be written to,
     /// and its layout in the caller.
-    pub return_place: Option<PlaceTy<'tcx, Tag>>,
+    pub return_place: PlaceTy<'tcx, Tag>,
 
     /// The list of locals for this stack frame, stored in order as
     /// `[return_ptr, arguments..., variables..., temporaries...]`.
@@ -676,7 +676,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &mut self,
         instance: ty::Instance<'tcx>,
         body: &'mir mir::Body<'tcx>,
-        return_place: Option<&PlaceTy<'tcx, M::PointerTag>>,
+        return_place: &PlaceTy<'tcx, M::PointerTag>,
         return_to_block: StackPopCleanup,
     ) -> InterpResult<'tcx> {
         trace!("body: {:#?}", body);
@@ -685,7 +685,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             body,
             loc: Err(body.span), // Span used for errors caused during preamble.
             return_to_block,
-            return_place: return_place.copied(),
+            return_place: *return_place,
             // empty local array, we fill it in below, after we are inside the stack frame and
             // all methods actually know about the frame
             locals: IndexVec::new(),
@@ -807,14 +807,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             self.stack_mut().pop().expect("tried to pop a stack frame, but there were none");
 
         if !unwinding {
-            // Copy the return value to the caller's stack frame.
-            if let Some(ref return_place) = frame.return_place {
-                let op = self.access_local(&frame, mir::RETURN_PLACE, None)?;
-                self.copy_op_transmute(&op, return_place)?;
-                trace!("{:?}", self.dump_place(**return_place));
-            } else {
-                throw_ub!(Unreachable);
-            }
+            let op = self.access_local(&frame, mir::RETURN_PLACE, None)?;
+            self.copy_op_transmute(&op, &frame.return_place)?;
+            trace!("{:?}", self.dump_place(*frame.return_place));
         }
 
         let return_to_block = frame.return_to_block;
@@ -1055,7 +1050,7 @@ where
         body.hash_stable(hcx, hasher);
         instance.hash_stable(hcx, hasher);
         return_to_block.hash_stable(hcx, hasher);
-        return_place.as_ref().map(|r| &**r).hash_stable(hcx, hasher);
+        return_place.hash_stable(hcx, hasher);
         locals.hash_stable(hcx, hasher);
         loc.hash_stable(hcx, hasher);
         extra.hash_stable(hcx, hasher);

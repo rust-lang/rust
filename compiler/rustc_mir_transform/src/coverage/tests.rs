@@ -84,7 +84,7 @@ impl<'tcx> MockBlocks<'tcx> {
     fn link(&mut self, from_block: BasicBlock, to_block: BasicBlock) {
         match self.blocks[from_block].terminator_mut().kind {
             TerminatorKind::Assert { ref mut target, .. }
-            | TerminatorKind::Call { destination: Some((_, ref mut target)), .. }
+            | TerminatorKind::Call { target: Some(ref mut target), .. }
             | TerminatorKind::Drop { ref mut target, .. }
             | TerminatorKind::DropAndReplace { ref mut target, .. }
             | TerminatorKind::FalseEdge { real_target: ref mut target, .. }
@@ -139,7 +139,8 @@ impl<'tcx> MockBlocks<'tcx> {
             TerminatorKind::Call {
                 func: Operand::Copy(self.dummy_place.clone()),
                 args: vec![],
-                destination: Some((self.dummy_place.clone(), TEMP_BLOCK)),
+                destination: self.dummy_place.clone(),
+                target: Some(TEMP_BLOCK),
                 cleanup: None,
                 from_hir_call: false,
                 fn_span: DUMMY_SP,
@@ -182,7 +183,7 @@ fn debug_basic_blocks<'tcx>(mir_body: &Body<'tcx>) -> String {
                 let sp = format!("(span:{},{})", span.lo().to_u32(), span.hi().to_u32());
                 match kind {
                     TerminatorKind::Assert { target, .. }
-                    | TerminatorKind::Call { destination: Some((_, target)), .. }
+                    | TerminatorKind::Call { target: Some(target), .. }
                     | TerminatorKind::Drop { target, .. }
                     | TerminatorKind::DropAndReplace { target, .. }
                     | TerminatorKind::FalseEdge { real_target: target, .. }

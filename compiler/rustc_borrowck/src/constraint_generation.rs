@@ -140,9 +140,7 @@ impl<'cg, 'cx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'cx, 'tcx> {
         // A `Call` terminator's return value can be a local which has borrows,
         // so we need to record those as `killed` as well.
         if let TerminatorKind::Call { destination, .. } = terminator.kind {
-            if let Some((place, _)) = destination {
-                self.record_killed_borrows_for_place(place, location);
-            }
+            self.record_killed_borrows_for_place(destination, location);
         }
 
         self.super_terminator(terminator, location);

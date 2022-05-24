@@ -376,7 +376,8 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             TerminatorKind::Call {
                 ref func,
                 ref args,
-                ref destination,
+                destination,
+                target,
                 cleanup: _,
                 from_hir_call: _,
                 fn_span: _,
@@ -385,7 +386,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                 for arg in args {
                     self.gather_operand(arg);
                 }
-                if let Some((destination, _bb)) = *destination {
+                if let Some(_bb) = target {
                     self.create_move_path(destination);
                     self.gather_init(destination.as_ref(), InitKind::NonPanicPathOnly);
                 }

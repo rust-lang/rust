@@ -141,7 +141,7 @@ impl<'tcx> InstCombineContext<'tcx, '_> {
         terminator: &mut Terminator<'tcx>,
         statements: &mut Vec<Statement<'tcx>>,
     ) {
-        let TerminatorKind::Call { func, args, destination, .. } = &mut terminator.kind
+        let TerminatorKind::Call { func, args, destination, target, .. } = &mut terminator.kind
         else { return };
 
         // It's definitely not a clone if there are multiple arguments
@@ -149,7 +149,7 @@ impl<'tcx> InstCombineContext<'tcx, '_> {
             return;
         }
 
-        let Some((destination_place, destination_block)) = *destination
+        let Some(destination_block) = *target
         else { return };
 
         // Only bother looking more if it's easy to know what we're calling
@@ -193,7 +193,7 @@ impl<'tcx> InstCombineContext<'tcx, '_> {
         statements.push(Statement {
             source_info: terminator.source_info,
             kind: StatementKind::Assign(Box::new((
-                destination_place,
+                *destination,
                 Rvalue::Use(Operand::Copy(
                     arg_place.project_deeper(&[ProjectionElem::Deref], self.tcx),
                 )),

@@ -673,7 +673,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     self.check_edge(location, *unwind, EdgeKind::Unwind);
                 }
             }
-            TerminatorKind::Call { func, args, destination, cleanup, .. } => {
+            TerminatorKind::Call { func, args, destination, target, cleanup, .. } => {
                 let func_ty = func.ty(&self.body.local_decls, self.tcx);
                 match func_ty.kind() {
                     ty::FnPtr(..) | ty::FnDef(..) => {}
@@ -682,7 +682,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         format!("encountered non-callable type {} in `Call` terminator", func_ty),
                     ),
                 }
-                if let Some((_, target)) = destination {
+                if let Some(target) = target {
                     self.check_edge(location, *target, EdgeKind::Normal);
                 }
                 if let Some(cleanup) = cleanup {
@@ -693,9 +693,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 // passed by a reference to the callee. Consequently they must be non-overlapping.
                 // Currently this simply checks for duplicate places.
                 self.place_cache.clear();
-                if let Some((destination, _)) = destination {
-                    self.place_cache.push(destination.as_ref());
-                }
+                self.place_cache.push(destination.as_ref());
                 for arg in args {
                     if let Operand::Move(place) = arg {
                         self.place_cache.push(place.as_ref());

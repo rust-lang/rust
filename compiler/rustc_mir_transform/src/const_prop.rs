@@ -200,7 +200,8 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
         _instance: ty::Instance<'tcx>,
         _abi: Abi,
         _args: &[OpTy<'tcx>],
-        _ret: Option<(&PlaceTy<'tcx>, BasicBlock)>,
+        _destination: &PlaceTy<'tcx>,
+        _target: Option<BasicBlock>,
         _unwind: StackPopUnwind,
     ) -> InterpResult<'tcx, Option<(&'mir Body<'tcx>, ty::Instance<'tcx>)>> {
         Ok(None)
@@ -210,7 +211,8 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
         _instance: ty::Instance<'tcx>,
         _args: &[OpTy<'tcx>],
-        _ret: Option<(&PlaceTy<'tcx>, BasicBlock)>,
+        _destination: &PlaceTy<'tcx>,
+        _target: Option<BasicBlock>,
         _unwind: StackPopUnwind,
     ) -> InterpResult<'tcx> {
         throw_machine_stop_str!("calling intrinsics isn't supported in ConstProp")
@@ -384,24 +386,22 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             ConstPropMachine::new(only_propagate_inside_block_locals, can_const_prop),
         );
 
-        let ret = ecx
+        let ret_layout = ecx
             .layout_of(EarlyBinder(body.return_ty()).subst(tcx, substs))
             .ok()
-            // Don't bother allocating memory for ZST types which have no values
-            // or for large values.
-            .filter(|ret_layout| {
-                !ret_layout.is_zst() && ret_layout.size < Size::from_bytes(MAX_ALLOC_LIMIT)
-            })
-            .map(|ret_layout| {
-                ecx.allocate(ret_layout, MemoryKind::Stack)
-                    .expect("couldn't perform small allocation")
-                    .into()
-            });
+            // Don't bother allocating memory for large values.
+            .filter(|ret_layout| ret_layout.size < Size::from_bytes(MAX_ALLOC_LIMIT))
+            .unwrap_or_else(|| ecx.layout_of(tcx.types.unit).unwrap());
+
+        let ret = ecx
+            .allocate(ret_layout, MemoryKind::Stack)
+            .expect("couldn't perform small allocation")
+            .into();
 
         ecx.push_stack_frame(
             Instance::new(def_id, substs),
             dummy_body,
-            ret.as_ref(),
+            &ret,
             StackPopCleanup::Root { cleanup: false },
         )
         .expect("failed to push initial stack frame");

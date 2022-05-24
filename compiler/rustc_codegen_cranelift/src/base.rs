@@ -393,6 +393,7 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, '_>) {
                 func,
                 args,
                 destination,
+                target,
                 fn_span,
                 cleanup: _,
                 from_hir_call: _,
@@ -404,6 +405,7 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, '_>) {
                         func,
                         args,
                         *destination,
+                        *target,
                     )
                 });
             }

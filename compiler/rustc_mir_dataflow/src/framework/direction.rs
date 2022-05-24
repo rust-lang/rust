@@ -237,14 +237,12 @@ impl Direction for Backward {
                 // Apply terminator-specific edge effects.
                 //
                 // FIXME(ecstaticmorse): Avoid cloning the exit state unconditionally.
-                mir::TerminatorKind::Call { destination: Some((return_place, dest)), .. }
-                    if dest == bb =>
-                {
+                mir::TerminatorKind::Call { destination, target: Some(dest), .. } if dest == bb => {
                     let mut tmp = exit_state.clone();
                     analysis.apply_call_return_effect(
                         &mut tmp,
                         pred,
-                        CallReturnPlaces::Call(return_place),
+                        CallReturnPlaces::Call(destination),
                     );
                     propagate(pred, &tmp);
                 }
@@ -532,20 +530,28 @@ impl Direction for Forward {
                 propagate(target, exit_state);
             }
 
-            Call { cleanup, destination, func: _, args: _, from_hir_call: _, fn_span: _ } => {
+            Call {
+                cleanup,
+                destination,
+                target,
+                func: _,
+                args: _,
+                from_hir_call: _,
+                fn_span: _,
+            } => {
                 if let Some(unwind) = cleanup {
                     if dead_unwinds.map_or(true, |dead| !dead.contains(bb)) {
                         propagate(unwind, exit_state);
                     }
                 }
 
-                if let Some((dest_place, target)) = destination {
+                if let Some(target) = target {
                     // N.B.: This must be done *last*, otherwise the unwind path will see the call
                     // return effect.
                     analysis.apply_call_return_effect(
                         exit_state,
                         bb,
-                        CallReturnPlaces::Call(dest_place),
+                        CallReturnPlaces::Call(destination),
                     );
                     propagate(target, exit_state);
                 }

@@ -169,8 +169,8 @@ impl<'mir, 'tcx> crate::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'mir, 'tc
         self.borrowed_locals.borrow().analysis().terminator_effect(trans, terminator, loc);
 
         match &terminator.kind {
-            TerminatorKind::Call { destination: Some((place, _)), .. } => {
-                trans.gen(place.local);
+            TerminatorKind::Call { destination, .. } => {
+                trans.gen(destination.local);
             }
 
             // Note that we do *not* gen the `resume_arg` of `Yield` terminators. The reason for
@@ -198,8 +198,7 @@ impl<'mir, 'tcx> crate::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'mir, 'tc
 
             // Nothing to do for these. Match exhaustively so this fails to compile when new
             // variants are added.
-            TerminatorKind::Call { destination: None, .. }
-            | TerminatorKind::Abort
+            TerminatorKind::Abort
             | TerminatorKind::Assert { .. }
             | TerminatorKind::Drop { .. }
             | TerminatorKind::DropAndReplace { .. }
@@ -225,8 +224,8 @@ impl<'mir, 'tcx> crate::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'mir, 'tc
             // and after the call returns successfully, but not after a panic.
             // Since `propagate_call_unwind` doesn't exist, we have to kill the
             // destination here, and then gen it again in `call_return_effect`.
-            TerminatorKind::Call { destination: Some((place, _)), .. } => {
-                trans.kill(place.local);
+            TerminatorKind::Call { destination, .. } => {
+                trans.kill(destination.local);
             }
 
             // The same applies to InlineAsm outputs.
@@ -236,8 +235,7 @@ impl<'mir, 'tcx> crate::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'mir, 'tc
 
             // Nothing to do for these. Match exhaustively so this fails to compile when new
             // variants are added.
-            TerminatorKind::Call { destination: None, .. }
-            | TerminatorKind::Yield { .. }
+            TerminatorKind::Yield { .. }
             | TerminatorKind::Abort
             | TerminatorKind::Assert { .. }
             | TerminatorKind::Drop { .. }

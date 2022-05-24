@@ -37,6 +37,7 @@ impl<'tcx> Visitor<'tcx> for FunctionItemRefChecker<'_, 'tcx> {
             func,
             args,
             destination: _,
+            target: _,
             cleanup: _,
             from_hir_call: _,
             fn_span: _,
