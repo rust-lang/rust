@@ -1,3 +1,17 @@
+warning: `#[macro_escape]` is a deprecated synonym for `#[macro_use]`
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:401:17
+   |
+LL |     mod inner { #![macro_escape] }
+   |                 ^^^^^^^^^^^^^^^^
+   |
+   = help: try an outer attribute: `#[macro_use]`
+
+warning: `#[macro_escape]` is a deprecated synonym for `#[macro_use]`
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:398:1
+   |
+LL | #[macro_escape]
+   | ^^^^^^^^^^^^^^^
+
 warning: unknown lint: `x5400`
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:46:9
    |
@@ -171,20 +185,6 @@ warning: unknown lint: `x5100`
    |
 LL |     #[deny(x5100)] impl S { }
    |            ^^^^^
-
-warning: `#[macro_escape]` is a deprecated synonym for `#[macro_use]`
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:401:17
-   |
-LL |     mod inner { #![macro_escape] }
-   |                 ^^^^^^^^^^^^^^^^
-   |
-   = help: try an outer attribute: `#[macro_use]`
-
-warning: `#[macro_escape]` is a deprecated synonym for `#[macro_use]`
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:398:1
-   |
-LL | #[macro_escape]
-   | ^^^^^^^^^^^^^^^
 
 warning: use of deprecated attribute `crate_id`: no longer used.
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:85:1
