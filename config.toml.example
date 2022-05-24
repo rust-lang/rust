@@ -240,10 +240,6 @@ changelog-seen = 2
 # Indicate whether git submodules are managed and updated automatically.
 #submodules = true
 
-# Update git submodules only when the checked out commit in the submodules differs
-# from what is committed in the main rustc repo.
-#fast-submodules = true
-
 # The path to (or name of) the GDB executable to use. This is only used for
 # executing the debuginfo test suite.
 #gdb = "gdb"

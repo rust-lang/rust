@@ -926,23 +926,19 @@ class RustBuild(object):
             return config
         return default_build_triple(self.verbose)
 
-    def check_submodule(self, module, slow_submodules):
-        if not slow_submodules:
-            checked_out = subprocess.Popen(["git", "rev-parse", "HEAD"],
-                                           cwd=os.path.join(self.rust_root, module),
-                                           stdout=subprocess.PIPE)
-            return checked_out
-        else:
-            return None
+    def check_submodule(self, module):
+        checked_out = subprocess.Popen(["git", "rev-parse", "HEAD"],
+                                        cwd=os.path.join(self.rust_root, module),
+                                        stdout=subprocess.PIPE)
+        return checked_out
 
     def update_submodule(self, module, checked_out, recorded_submodules):
         module_path = os.path.join(self.rust_root, module)
 
-        if checked_out is not None:
-            default_encoding = sys.getdefaultencoding()
-            checked_out = checked_out.communicate()[0].decode(default_encoding).strip()
-            if recorded_submodules[module] == checked_out:
-                return
+        default_encoding = sys.getdefaultencoding()
+        checked_out = checked_out.communicate()[0].decode(default_encoding).strip()
+        if recorded_submodules[module] == checked_out:
+            return
 
         print("Updating submodule", module)
 
@@ -991,12 +987,8 @@ class RustBuild(object):
         git_version_str = require(['git', '--version']).split()[2].decode(default_encoding)
         self.git_version = distutils.version.LooseVersion(git_version_str)
 
-        slow_submodules = self.get_toml('fast-submodules') == "false"
         start_time = time()
-        if slow_submodules:
-            print('Unconditionally updating submodules')
-        else:
-            print('Updating only changed submodules')
+        print('Updating only changed submodules')
         default_encoding = sys.getdefaultencoding()
         # Only update submodules that are needed to build bootstrap.  These are needed because Cargo
         # currently requires everything in a workspace to be "locally present" when starting a
@@ -1022,7 +1014,7 @@ class RustBuild(object):
         filtered_submodules = []
         submodules_names = []
         for module in submodules:
-            check = self.check_submodule(module, slow_submodules)
+            check = self.check_submodule(module)
             filtered_submodules.append((module, check))
             submodules_names.append(module)
         recorded = subprocess.Popen(["git", "ls-tree", "HEAD"] + submodules_names,
