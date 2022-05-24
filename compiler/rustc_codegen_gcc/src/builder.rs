@@ -68,9 +68,8 @@ trait EnumClone {
 impl EnumClone for AtomicOrdering {
     fn clone(&self) -> Self {
         match *self {
-            AtomicOrdering::NotAtomic => AtomicOrdering::NotAtomic,
             AtomicOrdering::Unordered => AtomicOrdering::Unordered,
-            AtomicOrdering::Monotonic => AtomicOrdering::Monotonic,
+            AtomicOrdering::Relaxed => AtomicOrdering::Relaxed,
             AtomicOrdering::Acquire => AtomicOrdering::Acquire,
             AtomicOrdering::Release => AtomicOrdering::Release,
             AtomicOrdering::AcquireRelease => AtomicOrdering::AcquireRelease,
@@ -1384,9 +1383,8 @@ impl ToGccOrdering for AtomicOrdering {
 
         let ordering =
             match self {
-                AtomicOrdering::NotAtomic => __ATOMIC_RELAXED, // TODO(antoyo): check if that's the same.
                 AtomicOrdering::Unordered => __ATOMIC_RELAXED,
-                AtomicOrdering::Monotonic => __ATOMIC_RELAXED, // TODO(antoyo): check if that's the same.
+                AtomicOrdering::Relaxed => __ATOMIC_RELAXED, // TODO(antoyo): check if that's the same.
                 AtomicOrdering::Acquire => __ATOMIC_ACQUIRE,
                 AtomicOrdering::Release => __ATOMIC_RELEASE,
                 AtomicOrdering::AcquireRelease => __ATOMIC_ACQ_REL,

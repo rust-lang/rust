@@ -58,10 +58,8 @@ pub enum AtomicRmwBinOp {
 }
 
 pub enum AtomicOrdering {
-    NotAtomic,
     Unordered,
-    Monotonic,
-    // Consume,  // Not specified yet.
+    Relaxed,
     Acquire,
     Release,
     AcquireRelease,
