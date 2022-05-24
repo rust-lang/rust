@@ -1351,6 +1351,32 @@ mod prim_ref {}
 /// is a reference to the function-specific ZST. `&bar` is basically never what you
 /// want when `bar` is a function.
 ///
+/// ### Casting to and from integers
+///
+/// You cast function pointers directly to integers:
+///
+/// ```rust
+/// let fnptr: fn(i32) -> i32 = |x| x+2;
+/// let fnptr_addr = fnptr as usize;
+/// ```
+///
+/// However, a direct cast back is not possible. You need to use `transmute`:
+///
+/// ```rust
+/// # let fnptr: fn(i32) -> i32 = |x| x+2;
+/// # let fnptr_addr = fnptr as usize;
+/// let fnptr = fnptr_addr as *const ();
+/// let fnptr: fn(i32) -> i32 = unsafe { std::mem::transmute(fnptr) };
+/// assert_eq!(fnptr(40), 42);
+/// ```
+///
+/// Crucially, we `as`-cast to a raw pointer before `transmute`ing to a function pointer.
+/// This avoids an integer-to-pointer `transmute`, which can be problematic.
+/// Transmuting between raw pointers and function pointers (i.e., two pointer types) is fine.
+///
+/// Note that all of this is not portable to platforms where function pointers and data pointers
+/// have different sizes.
+///
 /// ### Traits
 ///
 /// Function pointers implement the following traits:
