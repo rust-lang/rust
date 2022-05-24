@@ -1655,7 +1655,7 @@ impl Ipv6Addr {
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1).to_ipv4_mapped(), None);
     /// ```
     #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
-    #[stable(feature = "ipv6_to_ipv4_mapped", since = "1.62.0")]
+    #[stable(feature = "ipv6_to_ipv4_mapped", since = "1.63.0")]
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[inline]
