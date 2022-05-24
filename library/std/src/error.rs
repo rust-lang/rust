@@ -42,10 +42,18 @@
 //! * `Result::unwrap`
 //! * `Result::expect`
 //!
-//! TODO: how do I bridge these two sections?
+//! These functions are equivalent, they either return the inner value if the
+//! `Result` is `Ok` or panic if the `Result` is `Err` printing the inner error
+//! as the source. The only difference between them is that with `expect` you
+//! provide a panic error message to be printed alongside the source, whereas
+//! `unwrap` has a default message indicating only that you unwraped an `Err`.
 //!
-//! * unwrap is used in prototyping
-//! * expect is used in !prototyping (????)
+//! Of the two, `expect` is generally preferred since its `msg` field allows you
+//! to convey your intent and assumptions which makes tracking down the source
+//! of a panic easier. `unwrap` on the other hand can still be a good fit in
+//! situations where you can trivially show that a piece of code will never
+//! panick, such as `"127.0.0.1".parse::<std::net::IpAddr>().unwrap()` or early
+//! prototyping.
 //!
 //! # Common Message Styles
 //!
@@ -109,14 +117,10 @@
 //! for why it should have been set, and we let the source error display as
 //! a clear contradiction to our expectation.
 //!
-//! For programs where panics may be user facing, either style works best
-//! when paired with a custom [panic hook] like the one provided by the CLI
-//! working group library, [`human-panic`]. This panic hook dumps the panic
-//! messages to a crash report file while showing users a more friendly
-//! "Oops, something went wrong!" message with a suggestion to send the
-//! crash report file back to the developers. Panic messages should be used
-//! to represent bugs, and the information provided back is context intended
-//! for the developer, not the user.
+//! **Hint**: If you're having trouble remembering how to phrase
+//! expect-as-precondition style error messages remember to focus on the word
+//! "should" as in "env variable should be set by blah" or "the given binary
+//! should be available and executable by the current user".
 //!
 //! [panic hook]: crate::panic::set_hook
 //! [`set_hook`]: crate::panic::set_hook
@@ -129,7 +133,6 @@
 //! [`Termination`]: crate::process::Termination
 //! [`Try`]: crate::ops::Try
 //! [`downcast`]: crate::error::Error
-//! [`human-panic`]: https://docs.rs/human-panic
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
