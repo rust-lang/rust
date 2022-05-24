@@ -28,4 +28,21 @@ fn main() {
 
     // mapping to Result on Result
     let _: Result<_, &str> = (Ok(Ok(1))).map(|x| x).flatten();
+
+    issue8878();
+}
+
+#[allow(clippy::bind_instead_of_map)] // map + flatten will be suggested to `and_then`, but afterwards `map` is suggested again
+#[rustfmt::skip] // whitespace is important for this one
+fn issue8878() {
+    std::collections::HashMap::<u32, u32>::new()
+        .get(&0)
+        .map(|_| {
+// we need some newlines
+// so that the span is big enough
+// for a splitted output of the diagnostic
+            Some("")
+ // whitespace beforehand is important as well
+        })
+        .flatten();
 }
