@@ -186,15 +186,20 @@ pub(super) enum IdentContext {
 }
 
 #[derive(Debug)]
-pub(super) enum DotAccess {
+pub(super) struct DotAccess {
+    pub(super) receiver: Option<ast::Expr>,
+    pub(super) receiver_ty: Option<TypeInfo>,
+    pub(super) kind: DotAccessKind,
+}
+
+#[derive(Debug)]
+pub(super) enum DotAccessKind {
     Field {
-        receiver: Option<ast::Expr>,
         /// True if the receiver is an integer and there is no ident in the original file after it yet
         /// like `0.$0`
         receiver_is_ambiguous_float_literal: bool,
     },
     Method {
-        receiver: Option<ast::Expr>,
         has_parens: bool,
     },
 }
@@ -298,11 +303,9 @@ impl<'a> CompletionContext<'a> {
 
     pub(crate) fn dot_receiver(&self) -> Option<&ast::Expr> {
         match self.nameref_ctx() {
-            Some(NameRefContext {
-                dot_access:
-                    Some(DotAccess::Method { receiver, .. } | DotAccess::Field { receiver, .. }),
-                ..
-            }) => receiver.as_ref(),
+            Some(NameRefContext { dot_access: Some(DotAccess { receiver, .. }), .. }) => {
+                receiver.as_ref()
+            }
             _ => None,
         }
     }
@@ -1073,16 +1076,20 @@ impl<'a> CompletionContext<'a> {
                         },
                         _ => false,
                     };
-                    nameref_ctx.dot_access = Some(DotAccess::Field { receiver, receiver_is_ambiguous_float_literal });
+                    nameref_ctx.dot_access = Some(DotAccess {
+                        receiver_ty: receiver.as_ref().and_then(|it| sema.type_of_expr(it)),
+                        kind: DotAccessKind::Field { receiver_is_ambiguous_float_literal },
+                        receiver
+                    });
                     return (nameref_ctx, None);
                 },
                 ast::MethodCallExpr(method) => {
-                    nameref_ctx.dot_access = Some(
-                        DotAccess::Method {
-                            receiver: find_in_original_file(method.receiver(), original_file),
-                            has_parens: method.arg_list().map_or(false, |it| it.l_paren_token().is_some())
-                        }
-                    );
+                    let receiver = find_in_original_file(method.receiver(), original_file);
+                    nameref_ctx.dot_access = Some(DotAccess {
+                        receiver_ty: receiver.as_ref().and_then(|it| sema.type_of_expr(it)),
+                        kind: DotAccessKind::Method { has_parens: method.arg_list().map_or(false, |it| it.l_paren_token().is_some()) },
+                        receiver
+                    });
                     return (nameref_ctx, None);
                 },
                 _ => return (nameref_ctx, None),

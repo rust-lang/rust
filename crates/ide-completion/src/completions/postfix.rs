@@ -13,7 +13,7 @@ use text_edit::TextEdit;
 
 use crate::{
     completions::postfix::format_like::add_format_like_completions,
-    context::{CompletionContext, DotAccess, NameRefContext},
+    context::{CompletionContext, DotAccess, DotAccessKind, NameRefContext},
     item::{Builder, CompletionRelevancePostfixMatch},
     CompletionItem, CompletionItemKind, CompletionRelevance, Completions, SnippetScope,
 };
@@ -23,33 +23,24 @@ pub(crate) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
         return;
     }
 
-    let (dot_receiver, receiver_is_ambiguous_float_literal) = match ctx.nameref_ctx() {
+    let (dot_receiver, receiver_ty, receiver_is_ambiguous_float_literal) = match ctx.nameref_ctx() {
         Some(NameRefContext {
-            dot_access: Some(DotAccess::Method { receiver: Some(it), .. }),
+            dot_access: Some(DotAccess { receiver_ty: Some(ty), receiver: Some(it), kind, .. }),
             ..
-        }) => (it, false),
-        Some(NameRefContext {
-            dot_access:
-                Some(DotAccess::Field { receiver: Some(it), receiver_is_ambiguous_float_literal }),
-            ..
-        }) => (it, *receiver_is_ambiguous_float_literal),
+        }) => (
+            it,
+            &ty.original,
+            match *kind {
+                DotAccessKind::Field { receiver_is_ambiguous_float_literal } => {
+                    receiver_is_ambiguous_float_literal
+                }
+                DotAccessKind::Method { .. } => false,
+            },
+        ),
         _ => return,
     };
 
     let receiver_text = get_receiver_text(dot_receiver, receiver_is_ambiguous_float_literal);
-
-    let receiver_ty = match ctx.sema.type_of_expr(dot_receiver) {
-        Some(it) => it.original,
-        None => return,
-    };
-
-    // Suggest .await syntax for types that implement Future trait
-    if receiver_ty.impls_future(ctx.db) {
-        let mut item =
-            CompletionItem::new(CompletionItemKind::Keyword, ctx.source_range(), "await");
-        item.detail("expr.await");
-        item.add_to(acc);
-    }
 
     let cap = match ctx.config.snippet_cap {
         Some(it) => it,

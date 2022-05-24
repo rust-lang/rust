@@ -3,30 +3,31 @@
 use ide_db::FxHashSet;
 
 use crate::{
-    context::{CompletionContext, DotAccess, NameRefContext, PathCompletionCtx, PathKind},
-    Completions,
+    context::{
+        CompletionContext, DotAccess, DotAccessKind, NameRefContext, PathCompletionCtx, PathKind,
+    },
+    CompletionItem, CompletionItemKind, Completions,
 };
 
 /// Complete dot accesses, i.e. fields or methods.
 pub(crate) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) {
-    let (dot_access, dot_receiver) = match ctx.nameref_ctx() {
+    let (dot_access, receiver_ty) = match ctx.nameref_ctx() {
         Some(NameRefContext {
-            dot_access:
-                Some(
-                    access @ (DotAccess::Method { receiver: Some(receiver), .. }
-                    | DotAccess::Field { receiver: Some(receiver), .. }),
-                ),
+            dot_access: Some(access @ DotAccess { receiver_ty: Some(receiver_ty), .. }),
             ..
-        }) => (access, receiver),
+        }) => (access, &receiver_ty.original),
         _ => return complete_undotted_self(acc, ctx),
     };
 
-    let receiver_ty = match ctx.sema.type_of_expr(dot_receiver) {
-        Some(ty) => ty.original,
-        _ => return,
-    };
+    // Suggest .await syntax for types that implement Future trait
+    if receiver_ty.impls_future(ctx.db) {
+        let mut item =
+            CompletionItem::new(CompletionItemKind::Keyword, ctx.source_range(), "await");
+        item.detail("expr.await");
+        item.add_to(acc);
+    }
 
-    if let DotAccess::Method { .. } = dot_access {
+    if let DotAccessKind::Method { .. } = dot_access.kind {
         cov_mark::hit!(test_no_struct_field_completion_for_method_call);
     } else {
         complete_fields(
