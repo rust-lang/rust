@@ -53,7 +53,7 @@ pub fn get_or_insert_gdb_debug_scripts_section_global<'ll>(cx: &CodegenCx<'ll, '
         let crate_name = cx.tcx.crate_name(LOCAL_CRATE);
         for (index, visualizer) in visualizers.iter().enumerate() {
             // The initial byte `4` instructs GDB that the following pretty printer
-            // is defined inline as opposed to in a file standalone file.
+            // is defined inline as opposed to in a standalone file.
             section_contents.extend_from_slice(b"\x04");
             let vis_name = format!("pretty-printer-{}-{}\n", crate_name.as_str(), index);
             section_contents.extend_from_slice(vis_name.as_bytes());
@@ -107,7 +107,7 @@ pub fn needs_gdb_debug_scripts_section(cx: &CodegenCx<'_, '_>) -> bool {
             false
         }
         CrateType::Rlib => {
-            // As per the above description, embedding visualizers for rlibs could
+            // As per the above description, embedding pretty printers for rlibs could
             // lead to ODR violations so we skip this crate type as well.
             false
         }
