@@ -61,23 +61,6 @@ enum ExtremumOperation {
     Min,
 }
 
-trait EnumClone {
-    fn clone(&self) -> Self;
-}
-
-impl EnumClone for AtomicOrdering {
-    fn clone(&self) -> Self {
-        match *self {
-            AtomicOrdering::Unordered => AtomicOrdering::Unordered,
-            AtomicOrdering::Relaxed => AtomicOrdering::Relaxed,
-            AtomicOrdering::Acquire => AtomicOrdering::Acquire,
-            AtomicOrdering::Release => AtomicOrdering::Release,
-            AtomicOrdering::AcquireRelease => AtomicOrdering::AcquireRelease,
-            AtomicOrdering::SequentiallyConsistent => AtomicOrdering::SequentiallyConsistent,
-        }
-    }
-}
-
 pub struct Builder<'a: 'gcc, 'gcc, 'tcx> {
     pub cx: &'a CodegenCx<'gcc, 'tcx>,
     pub block: Block<'gcc>,
@@ -102,9 +85,9 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             match order {
                 // TODO(antoyo): does this make sense?
                 AtomicOrdering::AcquireRelease | AtomicOrdering::Release => AtomicOrdering::Acquire,
-                _ => order.clone(),
+                _ => order,
             };
-        let previous_value = self.atomic_load(dst.get_type(), dst, load_ordering.clone(), Size::from_bytes(size));
+        let previous_value = self.atomic_load(dst.get_type(), dst, load_ordering, Size::from_bytes(size));
         let previous_var = func.new_local(None, previous_value.get_type(), "previous_value");
         let return_value = func.new_local(None, previous_value.get_type(), "return_value");
         self.llbb().add_assignment(None, previous_var, previous_value);
