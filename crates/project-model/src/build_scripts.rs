@@ -6,12 +6,7 @@
 //! This module implements this second part. We use "build script" terminology
 //! here, but it covers procedural macros as well.
 
-use std::{
-    cell::RefCell,
-    io,
-    path::PathBuf,
-    process::{Command, Stdio},
-};
+use std::{cell::RefCell, io, path::PathBuf, process::Command};
 
 use cargo_metadata::{camino::Utf8Path, Message};
 use la_arena::ArenaMap;
@@ -95,8 +90,6 @@ impl WorkspaceBuildScripts {
 
         cmd.current_dir(workspace.workspace_root());
 
-        cmd.stdout(Stdio::piped()).stderr(Stdio::piped()).stdin(Stdio::null());
-
         let mut res = WorkspaceBuildScripts::default();
         // NB: Cargo.toml could have been modified between `cargo metadata` and
         // `cargo check`. We shouldn't assume that package ids we see here are
@@ -114,6 +107,8 @@ impl WorkspaceBuildScripts {
             e.push_str(err);
             e.push('\n');
         };
+
+        tracing::info!("Running build scripts: {:?}", cmd);
         let output = stdx::process::streaming_output(
             cmd,
             &mut |line| {
