@@ -101,8 +101,11 @@ export class Config {
         return this.get<null | string>("server.path") ?? this.get<null | string>("serverPath");
     }
     get serverExtraEnv(): Env {
-        const extraEnv = this.get<{[key: string]: string | number} | null>("server.extraEnv") ?? {};
-        return Object.fromEntries(Object.entries(extraEnv).map(([k, v]) => [k, typeof v !== "string" ? v.toString(): v]));
+        const extraEnv =
+            this.get<{ [key: string]: string | number } | null>("server.extraEnv") ?? {};
+        return Object.fromEntries(
+            Object.entries(extraEnv).map(([k, v]) => [k, typeof v !== "string" ? v.toString() : v])
+        );
     }
     get traceExtension() {
         return this.get<boolean>("trace.extension");
