@@ -52,11 +52,11 @@ fn main() {
         asm!("{}", in(reg) |x: i32| x);
         //~^ ERROR cannot use value of type
         asm!("{}", in(reg) vec![0]);
-        //~^ ERROR cannot use value of type `Vec<{integer}>` for inline assembly
+        //~^ ERROR cannot use value of type `Vec<i32>` for inline assembly
         asm!("{}", in(reg) (1, 2, 3));
-        //~^ ERROR cannot use value of type `({integer}, {integer}, {integer})` for inline assembly
+        //~^ ERROR cannot use value of type `(i32, i32, i32)` for inline assembly
         asm!("{}", in(reg) [1, 2, 3]);
-        //~^ ERROR cannot use value of type `[{integer}; 3]` for inline assembly
+        //~^ ERROR cannot use value of type `[i32; 3]` for inline assembly
 
         // Register inputs (but not outputs) allow references and function types
 
@@ -67,7 +67,7 @@ fn main() {
         //~^ ERROR cannot use value of type `fn() {main}` for inline assembly
         asm!("{}", in(reg) r);
         asm!("{}", inout(reg) r);
-        //~^ ERROR cannot use value of type `&mut {integer}` for inline assembly
+        //~^ ERROR cannot use value of type `&mut i32` for inline assembly
         let _ = (f, r);
 
         // Type checks ignore never type
