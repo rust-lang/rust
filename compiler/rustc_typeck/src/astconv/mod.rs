@@ -251,9 +251,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 tcx.mk_region(ty::ReLateBound(debruijn, br))
             }
 
-            rl::Region::EarlyBound(index, id) => {
-                let name = lifetime_name(id.expect_local());
-                tcx.mk_region(ty::ReEarlyBound(ty::EarlyBoundRegion { def_id: id, index, name }))
+            rl::Region::EarlyBound(_, def_id) => {
+                let name = tcx.hir().ty_param_name(def_id.expect_local());
+                let item_def_id = tcx.hir().ty_param_owner(def_id.expect_local());
+                let generics = tcx.generics_of(item_def_id);
+                let index = generics.param_def_id_to_index[&def_id];
+                tcx.mk_region(ty::ReEarlyBound(ty::EarlyBoundRegion { def_id, index, name }))
             }
 
             rl::Region::Free(scope, id) => {
