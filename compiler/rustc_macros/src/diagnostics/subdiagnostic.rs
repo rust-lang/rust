@@ -303,7 +303,6 @@ impl<'a> SessionSubdiagnosticDeriveBuilder<'a> {
 
         let inner_ty = FieldInnerTy::from_type(&ast.ty);
         let info = FieldInfo {
-            vis: &ast.vis,
             binding: binding,
             ty: inner_ty.inner_type().unwrap_or(&ast.ty),
             span: &ast.span(),
