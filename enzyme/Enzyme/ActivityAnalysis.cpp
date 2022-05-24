@@ -242,7 +242,11 @@ const std::set<std::string> KnownInactiveFunctions = {
     "_msize",
     "ftnio_fmt_write64",
     "f90_strcmp_klen",
-    "__swift_instantiateConcreteTypeFromMangledName"};
+    "__swift_instantiateConcreteTypeFromMangledName",
+    "logb",
+    "logbf",
+    "logbl",
+};
 
 /// Is the use of value val as an argument of call CI known to be inactive
 /// This tool can only be used when in DOWN mode
