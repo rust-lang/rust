@@ -242,6 +242,7 @@ mod from_over_into;
 mod from_str_radix_10;
 mod functions;
 mod future_not_send;
+mod get_first;
 mod identity_op;
 mod if_let_mutex;
 mod if_not_else;
@@ -904,6 +905,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(strings::TrimSplitWhitespace));
     store.register_late_pass(|| Box::new(rc_clone_in_vec_init::RcCloneInVecInit));
     store.register_early_pass(|| Box::new(duplicate_mod::DuplicateMod::default()));
+    store.register_late_pass(|| Box::new(get_first::GetFirst));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 
