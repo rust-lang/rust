@@ -34,6 +34,7 @@ use rustc_hir::weak_lang_items;
 use rustc_hir::{GenericParamKind, HirId, Node};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
+use rustc_middle::middle::resolve_lifetime::ObjectLifetimeDefault;
 use rustc_middle::mir::mono::Linkage;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::subst::InternalSubsts;
@@ -1636,7 +1637,7 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
                         pure_wrt_drop: false,
                         kind: ty::GenericParamDefKind::Type {
                             has_default: false,
-                            object_lifetime_default: rl::Set1::Empty,
+                            object_lifetime_default: ObjectLifetimeDefault::Empty,
                             synthetic: false,
                         },
                     });
@@ -1714,7 +1715,7 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
                 has_default: default.is_some(),
                 object_lifetime_default: object_lifetime_defaults
                     .as_ref()
-                    .map_or(rl::Set1::Empty, |o| o[i]),
+                    .map_or(ObjectLifetimeDefault::Empty, |o| o[i]),
                 synthetic,
             };
 
@@ -1766,7 +1767,7 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
             pure_wrt_drop: false,
             kind: ty::GenericParamDefKind::Type {
                 has_default: false,
-                object_lifetime_default: rl::Set1::Empty,
+                object_lifetime_default: ObjectLifetimeDefault::Empty,
                 synthetic: false,
             },
         }));
@@ -1783,7 +1784,7 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
                 pure_wrt_drop: false,
                 kind: ty::GenericParamDefKind::Type {
                     has_default: false,
-                    object_lifetime_default: rl::Set1::Empty,
+                    object_lifetime_default: ObjectLifetimeDefault::Empty,
                     synthetic: false,
                 },
             });
