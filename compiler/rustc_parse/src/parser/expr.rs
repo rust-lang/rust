@@ -2291,15 +2291,8 @@ impl<'a> Parser<'a> {
                         .span_label(else_span, "expected an `if` or a block after this `else`")
                         .span_suggestion(
                             cond.span.shrink_to_lo(),
-                            "add an `if` if this is the condition to an chained `if` statement after the `else`",
+                            "add an `if` if this is the condition of a chained `else if` statement",
                             "if ".to_string(),
-                            Applicability::MaybeIncorrect,
-                        ).multipart_suggestion(
-                            "... otherwise, place this expression inside of a block if it is not an `if` condition",
-                            vec![
-                                (cond.span.shrink_to_lo(), "{ ".to_string()),
-                                (cond.span.shrink_to_hi(), " }".to_string()),
-                            ],
                             Applicability::MaybeIncorrect,
                         )
                         .emit();
