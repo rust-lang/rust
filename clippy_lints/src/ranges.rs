@@ -296,10 +296,15 @@ fn check_possible_range_contains(
     }
 
     // If the LHS is the same operator, we have to recurse to get the "real" RHS, since they have
-    // the same operator precedence.
-    if let ExprKind::Binary(ref lhs_op, _left, new_lhs) = left.kind {
-        if op == lhs_op.node {
-            let new_span = Span::new(new_lhs.span.lo(), right.span.hi(), expr.span.ctxt(), expr.span.parent());
+    // the same operator precedence
+    if_chain! {
+        if let ExprKind::Binary(ref lhs_op, _left, new_lhs) = left.kind;
+        if op == lhs_op.node;
+        let new_span = Span::new(new_lhs.span.lo(), right.span.hi(), expr.span.ctxt(), expr.span.parent());
+        if let Some(snip) = &snippet_opt(cx, new_span);
+        // Do not continue if we have mismatched number of parens, otherwise the suggestion is wrong
+        if snip.matches('(').count() == snip.matches(')').count();
+        then {
             check_possible_range_contains(cx, op, new_lhs, right, expr, new_span);
         }
     }

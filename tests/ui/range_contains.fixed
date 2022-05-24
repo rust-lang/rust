@@ -54,6 +54,8 @@ fn main() {
     let z = 42;
     (0..=10).contains(&x) && (0..=10).contains(&z);
     !(0..10).contains(&x) || !(0..10).contains(&z);
+    // Make sure operators in parens don't give a breaking suggestion
+    ((x % 2 == 0) || (x < 0)) || (x >= 10);
 }
 
 // Fix #6373

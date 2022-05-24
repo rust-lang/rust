@@ -54,6 +54,8 @@ fn main() {
     let z = 42;
     (x >= 0) && (x <= 10) && (z >= 0) && (z <= 10);
     (x < 0) || (x >= 10) || (z < 0) || (z >= 10);
+    // Make sure operators in parens don't give a breaking suggestion
+    ((x % 2 == 0) || (x < 0)) || (x >= 10);
 }
 
 // Fix #6373
