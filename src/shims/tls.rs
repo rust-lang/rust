@@ -258,7 +258,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             thread_callback,
             Abi::System { unwind: false },
             &[Scalar::null_ptr(this).into(), reason.into(), Scalar::null_ptr(this).into()],
-            Some(&ret_place),
+            &ret_place,
             StackPopCleanup::Root { cleanup: true },
         )?;
 
@@ -281,7 +281,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 instance,
                 Abi::C { unwind: false },
                 &[data.into()],
-                Some(&ret_place),
+                &ret_place,
                 StackPopCleanup::Root { cleanup: true },
             )?;
 
@@ -324,7 +324,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 instance,
                 Abi::C { unwind: false },
                 &[ptr.into()],
-                Some(&ret_place),
+                &ret_place,
                 StackPopCleanup::Root { cleanup: true },
             )?;
 

@@ -28,16 +28,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         instance: ty::Instance<'tcx>,
         abi: Abi,
         args: &[OpTy<'tcx, Tag>],
-        ret: Option<(&PlaceTy<'tcx, Tag>, mir::BasicBlock)>,
+        dest: &PlaceTy<'tcx, Tag>,
+        ret: Option<mir::BasicBlock>,
         unwind: StackPopUnwind,
     ) -> InterpResult<'tcx, Option<(&'mir mir::Body<'tcx>, ty::Instance<'tcx>)>> {
         let this = self.eval_context_mut();
-        trace!("eval_fn_call: {:#?}, {:?}", instance, ret.map(|p| p.0));
+        trace!("eval_fn_call: {:#?}, {:?}", instance, dest);
 
         // There are some more lang items we want to hook that CTFE does not hook (yet).
         if this.tcx.lang_items().align_offset_fn() == Some(instance.def.def_id()) {
             let [ptr, align] = check_arg_count(args)?;
-            if this.align_offset(ptr, align, ret, unwind)? {
+            if this.align_offset(ptr, align, dest, ret, unwind)? {
                 return Ok(None);
             }
         }
@@ -50,7 +51,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // to run extra MIR), and Ok(Some(body)) if we found MIR to run for the
             // foreign function
             // Any needed call to `goto_block` will be performed by `emulate_foreign_item`.
-            return this.emulate_foreign_item(instance.def_id(), abi, args, ret, unwind);
+            return this.emulate_foreign_item(instance.def_id(), abi, args, dest, ret, unwind);
         }
 
         // Otherwise, load the MIR.
@@ -63,11 +64,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         &mut self,
         ptr_op: &OpTy<'tcx, Tag>,
         align_op: &OpTy<'tcx, Tag>,
-        ret: Option<(&PlaceTy<'tcx, Tag>, mir::BasicBlock)>,
+        dest: &PlaceTy<'tcx, Tag>,
+        ret: Option<mir::BasicBlock>,
         unwind: StackPopUnwind,
     ) -> InterpResult<'tcx, bool> {
         let this = self.eval_context_mut();
-        let (dest, ret) = ret.unwrap();
+        let ret = ret.unwrap();
 
         if this.machine.check_alignment != AlignmentCheck::Symbolic {
             // Just use actual implementation.

@@ -96,7 +96,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             f_instance,
             Abi::Rust,
             &[data.into()],
-            Some(&ret_place),
+            &ret_place,
             // Directly return to caller.
             StackPopCleanup::Goto { ret: Some(ret), unwind: StackPopUnwind::Skip },
         )?;
@@ -153,7 +153,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 f_instance,
                 Abi::Rust,
                 &[catch_unwind.data.into(), payload.into()],
-                Some(&ret_place),
+                &ret_place,
                 // Directly return to caller of `try`.
                 StackPopCleanup::Goto { ret: Some(catch_unwind.ret), unwind: StackPopUnwind::Skip },
             )?;
@@ -179,7 +179,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             panic,
             Abi::Rust,
             &[msg.to_ref(this)],
-            None,
+            &MPlaceTy::dangling(this.machine.layouts.unit).into(),
             StackPopCleanup::Goto { ret: None, unwind },
         )
     }
@@ -208,7 +208,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     panic_bounds_check,
                     Abi::Rust,
                     &[index.into(), len.into()],
-                    None,
+                    &MPlaceTy::dangling(this.machine.layouts.unit).into(),
                     StackPopCleanup::Goto {
                         ret: None,
                         unwind: match unwind {
