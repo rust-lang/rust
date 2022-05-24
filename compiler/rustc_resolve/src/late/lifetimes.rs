@@ -24,7 +24,6 @@ use rustc_span::def_id::DefId;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
 use std::borrow::Cow;
-use std::cell::Cell;
 use std::fmt;
 use std::mem::take;
 
@@ -32,8 +31,6 @@ trait RegionExt {
     fn early(hir_map: Map<'_>, index: &mut u32, param: &GenericParam<'_>) -> (LocalDefId, Region);
 
     fn late(index: u32, hir_map: Map<'_>, param: &GenericParam<'_>) -> (LocalDefId, Region);
-
-    fn late_anon(named_late_bound_vars: u32, index: &Cell<u32>) -> Region;
 
     fn id(&self) -> Option<DefId>;
 
@@ -65,16 +62,9 @@ impl RegionExt for Region {
         (def_id, Region::LateBound(depth, idx, def_id.to_def_id()))
     }
 
-    fn late_anon(named_late_bound_vars: u32, index: &Cell<u32>) -> Region {
-        let i = index.get();
-        index.set(i + 1);
-        let depth = ty::INNERMOST;
-        Region::LateBoundAnon(depth, named_late_bound_vars + i, i)
-    }
-
     fn id(&self) -> Option<DefId> {
         match *self {
-            Region::Static | Region::LateBoundAnon(..) => None,
+            Region::Static => None,
 
             Region::EarlyBound(_, id) | Region::LateBound(_, _, id) | Region::Free(_, id) => {
                 Some(id)
@@ -87,9 +77,6 @@ impl RegionExt for Region {
             Region::LateBound(debruijn, idx, id) => {
                 Region::LateBound(debruijn.shifted_in(amount), idx, id)
             }
-            Region::LateBoundAnon(debruijn, index, anon_index) => {
-                Region::LateBoundAnon(debruijn.shifted_in(amount), index, anon_index)
-            }
             _ => self,
         }
     }
@@ -98,9 +85,6 @@ impl RegionExt for Region {
         match self {
             Region::LateBound(debruijn, index, id) => {
                 Region::LateBound(debruijn.shifted_out_to_binder(binder), index, id)
-            }
-            Region::LateBoundAnon(debruijn, index, anon_index) => {
-                Region::LateBoundAnon(debruijn.shifted_out_to_binder(binder), index, anon_index)
             }
             _ => self,
         }
@@ -193,10 +177,6 @@ enum Scope<'a> {
 
         s: ScopeRef<'a>,
 
-        /// In some cases not allowing late bounds allows us to avoid ICEs.
-        /// This is almost ways set to true.
-        allow_late_bound: bool,
-
         /// If this binder comes from a where clause, specify how it was created.
         /// This is used to diagnose inaccessible lifetimes in APIT:
         /// ```ignore (illustrative)
@@ -272,7 +252,6 @@ impl<'a> fmt::Debug for TruncatedScopeDebug<'a> {
                 opaque_type_parent,
                 scope_type,
                 hir_id,
-                allow_late_bound,
                 where_bound_origin,
                 s: _,
             } => f
@@ -282,7 +261,6 @@ impl<'a> fmt::Debug for TruncatedScopeDebug<'a> {
                 .field("opaque_type_parent", opaque_type_parent)
                 .field("scope_type", scope_type)
                 .field("hir_id", hir_id)
-                .field("allow_late_bound", allow_late_bound)
                 .field("where_bound_origin", where_bound_origin)
                 .field("s", &"..")
                 .finish(),
@@ -468,9 +446,6 @@ fn late_region_as_bound_region<'tcx>(tcx: TyCtxt<'tcx>, region: &Region) -> ty::
             let name = tcx.hir().name(tcx.hir().local_def_id_to_hir_id(def_id.expect_local()));
             ty::BoundVariableKind::Region(ty::BrNamed(*def_id, name))
         }
-        Region::LateBoundAnon(_, _, anon_idx) => {
-            ty::BoundVariableKind::Region(ty::BrAnon(*anon_idx))
-        }
         _ => bug!("{:?} is not a late region", region),
     }
 }
@@ -605,7 +580,6 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 next_early_index,
                 opaque_type_parent: false,
                 scope_type: BinderScopeType::Normal,
-                allow_late_bound: true,
                 where_bound_origin: None,
             };
 
@@ -724,7 +698,6 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     opaque_type_parent: true,
                     scope_type: BinderScopeType::Normal,
                     s: ROOT_SCOPE,
-                    allow_late_bound: false,
                     where_bound_origin: None,
                 };
                 self.with(scope, |this| {
@@ -777,7 +750,6 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     next_early_index,
                     opaque_type_parent: false,
                     scope_type: BinderScopeType::Normal,
-                    allow_late_bound: true,
                     where_bound_origin: None,
                 };
                 self.with(scope, |this| {
@@ -942,7 +914,6 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     s: self.scope,
                     opaque_type_parent: false,
                     scope_type: BinderScopeType::Normal,
-                    allow_late_bound: false,
                     where_bound_origin: None,
                 };
                 self.with(scope, |this| {
@@ -997,7 +968,6 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     s: self.scope,
                     opaque_type_parent: true,
                     scope_type: BinderScopeType::Normal,
-                    allow_late_bound: false,
                     where_bound_origin: None,
                 };
                 self.with(scope, |this| {
@@ -1059,7 +1029,6 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     s: self.scope,
                     opaque_type_parent: true,
                     scope_type: BinderScopeType::Normal,
-                    allow_late_bound: true,
                     where_bound_origin: None,
                 };
                 self.with(scope, |this| {
@@ -1173,7 +1142,6 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                             next_early_index,
                             opaque_type_parent: false,
                             scope_type: BinderScopeType::Normal,
-                            allow_late_bound: true,
                             where_bound_origin: Some(origin),
                         };
                         this.with(scope, |this| {
@@ -1246,7 +1214,6 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     next_early_index: self.next_early_index(),
                     opaque_type_parent: false,
                     scope_type,
-                    allow_late_bound: true,
                     where_bound_origin: None,
                 };
                 self.with(scope, |this| {
@@ -1297,7 +1264,6 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
             next_early_index,
             opaque_type_parent: false,
             scope_type,
-            allow_late_bound: true,
             where_bound_origin: None,
         };
         self.with(scope, |this| {
@@ -1551,7 +1517,6 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             s: self.scope,
             opaque_type_parent: true,
             scope_type: BinderScopeType::Normal,
-            allow_late_bound: true,
             where_bound_origin: None,
         };
         self.with(scope, walk);
