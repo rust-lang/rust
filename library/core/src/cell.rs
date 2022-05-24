@@ -196,7 +196,7 @@ use crate::cmp::Ordering;
 use crate::fmt::{self, Debug, Display};
 use crate::marker::{PhantomData, Unsize};
 use crate::mem;
-use crate::ops::{CoerceUnsized, Deref, DerefMut};
+use crate::ops::{CoerceUnsized, Deref, DerefMut, DispatchFromDyn};
 use crate::ptr::{self, NonNull};
 
 mod lazy;
@@ -570,6 +570,16 @@ impl<T: Default> Cell<T> {
 
 #[unstable(feature = "coerce_unsized", issue = "18598")]
 impl<T: CoerceUnsized<U>, U> CoerceUnsized<Cell<U>> for Cell<T> {}
+
+// Allow types that wrap `Cell` to also implement `DispatchFromDyn`
+// and become object safe method receivers.
+// Note that currently `Cell` itself cannot be a method receiver
+// because it does not implement Deref.
+// In other words:
+// `self: Cell<&Self>` won't work
+// `self: CellWrapper<Self>` becomes possible
+#[unstable(feature = "dispatch_from_dyn", issue = "none")]
+impl<T: DispatchFromDyn<U>, U> DispatchFromDyn<Cell<U>> for Cell<T> {}
 
 impl<T> Cell<[T]> {
     /// Returns a `&[Cell<T>]` from a `&Cell<[T]>`
@@ -2078,6 +2088,16 @@ impl<T> const From<T> for UnsafeCell<T> {
 #[unstable(feature = "coerce_unsized", issue = "18598")]
 impl<T: CoerceUnsized<U>, U> CoerceUnsized<UnsafeCell<U>> for UnsafeCell<T> {}
 
+// Allow types that wrap `UnsafeCell` to also implement `DispatchFromDyn`
+// and become object safe method receivers.
+// Note that currently `UnsafeCell` itself cannot be a method receiver
+// because it does not implement Deref.
+// In other words:
+// `self: UnsafeCell<&Self>` won't work
+// `self: UnsafeCellWrapper<Self>` becomes possible
+#[unstable(feature = "dispatch_from_dyn", issue = "none")]
+impl<T: DispatchFromDyn<U>, U> DispatchFromDyn<UnsafeCell<U>> for UnsafeCell<T> {}
+
 /// [`UnsafeCell`], but [`Sync`].
 ///
 /// This is just an `UnsafeCell`, except it implements `Sync`
@@ -2168,6 +2188,17 @@ impl<T> const From<T> for SyncUnsafeCell<T> {
 #[unstable(feature = "coerce_unsized", issue = "18598")]
 //#[unstable(feature = "sync_unsafe_cell", issue = "95439")]
 impl<T: CoerceUnsized<U>, U> CoerceUnsized<SyncUnsafeCell<U>> for SyncUnsafeCell<T> {}
+
+// Allow types that wrap `SyncUnsafeCell` to also implement `DispatchFromDyn`
+// and become object safe method receivers.
+// Note that currently `SyncUnsafeCell` itself cannot be a method receiver
+// because it does not implement Deref.
+// In other words:
+// `self: SyncUnsafeCell<&Self>` won't work
+// `self: SyncUnsafeCellWrapper<Self>` becomes possible
+#[unstable(feature = "dispatch_from_dyn", issue = "none")]
+//#[unstable(feature = "sync_unsafe_cell", issue = "95439")]
+impl<T: DispatchFromDyn<U>, U> DispatchFromDyn<SyncUnsafeCell<U>> for SyncUnsafeCell<T> {}
 
 #[allow(unused)]
 fn assert_coerce_unsized(
