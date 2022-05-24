@@ -201,15 +201,15 @@ impl FixedSizeEncoding for Option<()> {
 }
 
 // NOTE(eddyb) there could be an impl for `usize`, which would enable a more
-// generic `Lazy<T>` impl, but in the general case we might not need / want to
-// fit every `usize` in `u32`.
-impl<T> FixedSizeEncoding for Option<Lazy<T>> {
+// generic `LazyValue<T>` impl, but in the general case we might not need / want
+// to fit every `usize` in `u32`.
+impl<T> FixedSizeEncoding for Option<LazyValue<T>> {
     type ByteArray = [u8; 4];
 
     #[inline]
     fn from_bytes(b: &[u8; 4]) -> Self {
         let position = NonZeroUsize::new(u32::from_bytes(b) as usize)?;
-        Some(Lazy::from_position(position))
+        Some(LazyValue::from_position(position))
     }
 
     #[inline]
@@ -220,7 +220,7 @@ impl<T> FixedSizeEncoding for Option<Lazy<T>> {
     }
 }
 
-impl<T> FixedSizeEncoding for Option<Lazy<[T]>> {
+impl<T> FixedSizeEncoding for Option<LazyArray<T>> {
     type ByteArray = [u8; 8];
 
     #[inline]
@@ -228,7 +228,7 @@ impl<T> FixedSizeEncoding for Option<Lazy<[T]>> {
         let ([ref position_bytes, ref meta_bytes],[])= b.as_chunks::<4>() else { panic!() };
         let position = NonZeroUsize::new(u32::from_bytes(position_bytes) as usize)?;
         let len = u32::from_bytes(meta_bytes) as usize;
-        Some(Lazy::from_position_and_meta(position, len))
+        Some(LazyArray::from_position_and_num_elems(position, len))
     }
 
     #[inline]
@@ -239,26 +239,10 @@ impl<T> FixedSizeEncoding for Option<Lazy<[T]>> {
         let position: u32 = position.try_into().unwrap();
         position.write_to_bytes(position_bytes);
 
-        let len = self.map_or(0, |lazy| lazy.meta);
+        let len = self.map_or(0, |lazy| lazy.num_elems);
         let len: u32 = len.try_into().unwrap();
         len.write_to_bytes(meta_bytes);
     }
-}
-
-/// Random-access table (i.e. offering constant-time `get`/`set`), similar to
-/// `Vec<Option<T>>`, but without requiring encoding or decoding all the values
-/// eagerly and in-order.
-/// A total of `(max_idx + 1)` times `Option<T> as FixedSizeEncoding>::ByteArray`
-/// are used for a table, where `max_idx` is the largest index passed to
-/// `TableBuilder::set`.
-pub(super) struct Table<I: Idx, T>
-where
-    Option<T>: FixedSizeEncoding,
-{
-    _marker: PhantomData<(fn(&I), T)>,
-    // NOTE(eddyb) this makes `Table` not implement `Sized`, but no
-    // value of `Table` is ever created (it's always behind `Lazy`).
-    _bytes: [u8],
 }
 
 /// Helper for constructing a table's serialization (also see `Table`).
@@ -296,7 +280,7 @@ where
         Some(value).write_to_bytes(&mut self.blocks[i]);
     }
 
-    pub(crate) fn encode<const N: usize>(&self, buf: &mut Encoder) -> Lazy<Table<I, T>>
+    pub(crate) fn encode<const N: usize>(&self, buf: &mut Encoder) -> LazyTable<I, T>
     where
         Option<T>: FixedSizeEncoding<ByteArray = [u8; N]>,
     {
@@ -305,19 +289,14 @@ where
             buf.emit_raw_bytes(block).unwrap();
         }
         let num_bytes = self.blocks.len() * N;
-        Lazy::from_position_and_meta(NonZeroUsize::new(pos as usize).unwrap(), num_bytes)
+        LazyTable::from_position_and_encoded_size(
+            NonZeroUsize::new(pos as usize).unwrap(),
+            num_bytes,
+        )
     }
 }
 
-impl<I: Idx, T> LazyMeta for Table<I, T>
-where
-    Option<T>: FixedSizeEncoding,
-{
-    /// Number of bytes in the data stream.
-    type Meta = usize;
-}
-
-impl<I: Idx, T> Lazy<Table<I, T>>
+impl<I: Idx, T> LazyTable<I, T>
 where
     Option<T>: FixedSizeEncoding,
 {
@@ -331,10 +310,10 @@ where
     where
         Option<T>: FixedSizeEncoding<ByteArray = [u8; N]>,
     {
-        debug!("Table::lookup: index={:?} len={:?}", i, self.meta);
+        debug!("LazyTable::lookup: index={:?} len={:?}", i, self.encoded_size);
 
         let start = self.position.get();
-        let bytes = &metadata.blob()[start..start + self.meta];
+        let bytes = &metadata.blob()[start..start + self.encoded_size];
         let (bytes, []) = bytes.as_chunks::<N>() else { panic!() };
         let bytes = bytes.get(i.index())?;
         FixedSizeEncoding::from_bytes(bytes)
@@ -345,6 +324,6 @@ where
     where
         Option<T>: FixedSizeEncoding<ByteArray = [u8; N]>,
     {
-        self.meta / N
+        self.encoded_size / N
     }
 }

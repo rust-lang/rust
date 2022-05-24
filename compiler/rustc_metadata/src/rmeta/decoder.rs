@@ -1,12 +1,10 @@
 // Decoding metadata from a single crate's metadata
 
 use crate::creader::{CStore, CrateMetadataRef};
-use crate::rmeta::table::{FixedSizeEncoding, Table};
 use crate::rmeta::*;
 
 use rustc_ast as ast;
 use rustc_ast::ptr::P;
-use rustc_attr as attr;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::svh::Svh;
@@ -20,10 +18,8 @@ use rustc_hir::definitions::{DefKey, DefPath, DefPathData, DefPathHash};
 use rustc_hir::diagnostic_items::DiagnosticItems;
 use rustc_hir::lang_items;
 use rustc_index::vec::{Idx, IndexVec};
-use rustc_middle::arena::ArenaAllocatable;
 use rustc_middle::metadata::ModChild;
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
-use rustc_middle::middle::stability::DeprecationEntry;
 use rustc_middle::mir::interpret::{AllocDecodingSession, AllocDecodingState};
 use rustc_middle::thir;
 use rustc_middle::ty::codec::TyDecoder;
@@ -42,6 +38,7 @@ use rustc_span::{self, BytePos, ExpnId, Pos, Span, SyntaxContext, DUMMY_SP};
 
 use proc_macro::bridge::client::ProcMacro;
 use std::io;
+use std::iter::TrustedLen;
 use std::mem;
 use std::num::NonZeroUsize;
 use std::path::Path;
@@ -85,7 +82,6 @@ pub(crate) struct CrateMetadata {
     blob: MetadataBlob,
 
     // --- Some data pre-decoded from the metadata blob, usually for performance ---
-    /// Properties of the whole crate.
     /// NOTE(eddyb) we pass `'static` to a `'tcx` parameter because this
     /// lifetime is only used behind `Lazy`, and therefore acts like a
     /// universal (`for<'tcx>`), that is paired up with whichever `TyCtxt`
@@ -94,12 +90,12 @@ pub(crate) struct CrateMetadata {
     /// Trait impl data.
     /// FIXME: Used only from queries and can use query cache,
     /// so pre-decoding can probably be avoided.
-    trait_impls: FxHashMap<(u32, DefIndex), Lazy<[(DefIndex, Option<SimplifiedType>)]>>,
+    trait_impls: FxHashMap<(u32, DefIndex), LazyArray<(DefIndex, Option<SimplifiedType>)>>,
     /// Inherent impls which do not follow the normal coherence rules.
     ///
     /// These can be introduced using either `#![rustc_coherence_is_core]`
     /// or `#[rustc_allow_incoherent_impl]`.
-    incoherent_impls: FxHashMap<SimplifiedType, Lazy<[DefIndex]>>,
+    incoherent_impls: FxHashMap<SimplifiedType, LazyArray<DefIndex>>,
     /// Proc macro descriptions for this crate, if it's a proc macro crate.
     raw_proc_macros: Option<&'static [ProcMacro]>,
     /// Source maps for code from the crate.
@@ -265,7 +261,7 @@ impl<'a, 'tcx> Metadata<'a, 'tcx> for (CrateMetadataRef<'a>, TyCtxt<'tcx>) {
     }
 }
 
-impl<'a, 'tcx, T: Decodable<DecodeContext<'a, 'tcx>>> Lazy<T> {
+impl<'a, 'tcx, T: Decodable<DecodeContext<'a, 'tcx>>> LazyValue<T> {
     fn decode<M: Metadata<'a, 'tcx>>(self, metadata: M) -> T {
         let mut dcx = metadata.decoder(self.position.get());
         dcx.lazy_state = LazyState::NodeStart(self.position);
@@ -273,130 +269,41 @@ impl<'a, 'tcx, T: Decodable<DecodeContext<'a, 'tcx>>> Lazy<T> {
     }
 }
 
-impl<'a: 'x, 'tcx: 'x, 'x, T: Decodable<DecodeContext<'a, 'tcx>>> Lazy<[T]> {
-    fn decode<M: Metadata<'a, 'tcx>>(
-        self,
-        metadata: M,
-    ) -> impl ExactSizeIterator<Item = T> + Captures<'a> + Captures<'tcx> + 'x {
+struct DecodeIterator<'a, 'tcx, T> {
+    elem_counter: std::ops::Range<usize>,
+    dcx: DecodeContext<'a, 'tcx>,
+    _phantom: PhantomData<fn() -> T>,
+}
+
+impl<'a, 'tcx, T: Decodable<DecodeContext<'a, 'tcx>>> Iterator for DecodeIterator<'a, 'tcx, T> {
+    type Item = T;
+
+    #[inline(always)]
+    fn next(&mut self) -> Option<Self::Item> {
+        self.elem_counter.next().map(|_| T::decode(&mut self.dcx))
+    }
+
+    #[inline(always)]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.elem_counter.size_hint()
+    }
+}
+
+impl<'a, 'tcx, T: Decodable<DecodeContext<'a, 'tcx>>> ExactSizeIterator
+    for DecodeIterator<'a, 'tcx, T>
+{
+}
+
+unsafe impl<'a, 'tcx, T: Decodable<DecodeContext<'a, 'tcx>>> TrustedLen
+    for DecodeIterator<'a, 'tcx, T>
+{
+}
+
+impl<'a: 'x, 'tcx: 'x, 'x, T: Decodable<DecodeContext<'a, 'tcx>>> LazyArray<T> {
+    fn decode<M: Metadata<'a, 'tcx>>(self, metadata: M) -> DecodeIterator<'a, 'tcx, T> {
         let mut dcx = metadata.decoder(self.position.get());
         dcx.lazy_state = LazyState::NodeStart(self.position);
-        (0..self.meta).map(move |_| T::decode(&mut dcx))
-    }
-}
-
-trait LazyQueryDecodable<'a, 'tcx, T> {
-    fn decode_query(
-        self,
-        cdata: CrateMetadataRef<'a>,
-        tcx: TyCtxt<'tcx>,
-        err: impl FnOnce() -> !,
-    ) -> T;
-}
-
-impl<'a, 'tcx, T> LazyQueryDecodable<'a, 'tcx, T> for T {
-    fn decode_query(self, _: CrateMetadataRef<'a>, _: TyCtxt<'tcx>, _: impl FnOnce() -> !) -> T {
-        self
-    }
-}
-
-impl<'a, 'tcx, T> LazyQueryDecodable<'a, 'tcx, T> for Option<T> {
-    fn decode_query(self, _: CrateMetadataRef<'a>, _: TyCtxt<'tcx>, err: impl FnOnce() -> !) -> T {
-        if let Some(l) = self { l } else { err() }
-    }
-}
-
-impl<'a, 'tcx, T> LazyQueryDecodable<'a, 'tcx, T> for Option<Lazy<T>>
-where
-    T: Decodable<DecodeContext<'a, 'tcx>>,
-{
-    fn decode_query(
-        self,
-        cdata: CrateMetadataRef<'a>,
-        tcx: TyCtxt<'tcx>,
-        err: impl FnOnce() -> !,
-    ) -> T {
-        if let Some(l) = self { l.decode((cdata, tcx)) } else { err() }
-    }
-}
-
-impl<'a, 'tcx, T> LazyQueryDecodable<'a, 'tcx, &'tcx T> for Option<Lazy<T>>
-where
-    T: Decodable<DecodeContext<'a, 'tcx>>,
-    T: ArenaAllocatable<'tcx>,
-{
-    fn decode_query(
-        self,
-        cdata: CrateMetadataRef<'a>,
-        tcx: TyCtxt<'tcx>,
-        err: impl FnOnce() -> !,
-    ) -> &'tcx T {
-        if let Some(l) = self { tcx.arena.alloc(l.decode((cdata, tcx))) } else { err() }
-    }
-}
-
-impl<'a, 'tcx, T> LazyQueryDecodable<'a, 'tcx, Option<T>> for Option<Lazy<T>>
-where
-    T: Decodable<DecodeContext<'a, 'tcx>>,
-{
-    fn decode_query(
-        self,
-        cdata: CrateMetadataRef<'a>,
-        tcx: TyCtxt<'tcx>,
-        _err: impl FnOnce() -> !,
-    ) -> Option<T> {
-        self.map(|l| l.decode((cdata, tcx)))
-    }
-}
-
-impl<'a, 'tcx, T, E> LazyQueryDecodable<'a, 'tcx, Result<Option<T>, E>> for Option<Lazy<T>>
-where
-    T: Decodable<DecodeContext<'a, 'tcx>>,
-{
-    fn decode_query(
-        self,
-        cdata: CrateMetadataRef<'a>,
-        tcx: TyCtxt<'tcx>,
-        _err: impl FnOnce() -> !,
-    ) -> Result<Option<T>, E> {
-        Ok(self.map(|l| l.decode((cdata, tcx))))
-    }
-}
-
-impl<'a, 'tcx, T> LazyQueryDecodable<'a, 'tcx, &'tcx [T]> for Option<Lazy<[T], usize>>
-where
-    T: Decodable<DecodeContext<'a, 'tcx>> + Copy,
-{
-    fn decode_query(
-        self,
-        cdata: CrateMetadataRef<'a>,
-        tcx: TyCtxt<'tcx>,
-        _err: impl FnOnce() -> !,
-    ) -> &'tcx [T] {
-        if let Some(l) = self { tcx.arena.alloc_from_iter(l.decode((cdata, tcx))) } else { &[] }
-    }
-}
-
-impl<'a, 'tcx> LazyQueryDecodable<'a, 'tcx, Option<DeprecationEntry>>
-    for Option<Lazy<attr::Deprecation>>
-{
-    fn decode_query(
-        self,
-        cdata: CrateMetadataRef<'a>,
-        tcx: TyCtxt<'tcx>,
-        _err: impl FnOnce() -> !,
-    ) -> Option<DeprecationEntry> {
-        self.map(|l| l.decode((cdata, tcx))).map(DeprecationEntry::external)
-    }
-}
-
-impl<'a, 'tcx> LazyQueryDecodable<'a, 'tcx, Option<DefId>> for Option<RawDefId> {
-    fn decode_query(
-        self,
-        cdata: CrateMetadataRef<'a>,
-        _: TyCtxt<'tcx>,
-        _: impl FnOnce() -> !,
-    ) -> Option<DefId> {
-        self.map(|raw_def_id| raw_def_id.decode(cdata))
+        DecodeIterator { elem_counter: (0..self.num_elems), dcx, _phantom: PhantomData }
     }
 }
 
@@ -423,7 +330,8 @@ impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
         self.cdata().map_encoded_cnum_to_current(cnum)
     }
 
-    fn read_lazy_with_meta<T: ?Sized + LazyMeta>(&mut self, meta: T::Meta) -> Lazy<T> {
+    #[inline]
+    fn read_lazy_offset_then<T>(&mut self, f: impl Fn(NonZeroUsize) -> T) -> T {
         let distance = self.read_usize();
         let position = match self.lazy_state {
             LazyState::NoNode => bug!("read_lazy_with_meta: outside of a metadata node"),
@@ -434,8 +342,21 @@ impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
             }
             LazyState::Previous(last_pos) => last_pos.get() + distance,
         };
-        self.lazy_state = LazyState::Previous(NonZeroUsize::new(position).unwrap());
-        Lazy::from_position_and_meta(NonZeroUsize::new(position).unwrap(), meta)
+        let position = NonZeroUsize::new(position).unwrap();
+        self.lazy_state = LazyState::Previous(position);
+        f(position)
+    }
+
+    fn read_lazy<T>(&mut self) -> LazyValue<T> {
+        self.read_lazy_offset_then(|pos| LazyValue::from_position(pos))
+    }
+
+    fn read_lazy_array<T>(&mut self, len: usize) -> LazyArray<T> {
+        self.read_lazy_offset_then(|pos| LazyArray::from_position_and_num_elems(pos, len))
+    }
+
+    fn read_lazy_table<I, T>(&mut self, len: usize) -> LazyTable<I, T> {
+        self.read_lazy_offset_then(|pos| LazyTable::from_position_and_encoded_size(pos, len))
     }
 
     #[inline]
@@ -714,36 +635,29 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for &'tcx [(ty::Predicate<'tcx
     }
 }
 
-impl<'a, 'tcx, T: Decodable<DecodeContext<'a, 'tcx>>> Decodable<DecodeContext<'a, 'tcx>>
-    for Lazy<T>
-{
+impl<'a, 'tcx, T> Decodable<DecodeContext<'a, 'tcx>> for LazyValue<T> {
     fn decode(decoder: &mut DecodeContext<'a, 'tcx>) -> Self {
-        decoder.read_lazy_with_meta(())
+        decoder.read_lazy()
     }
 }
 
-impl<'a, 'tcx, T: Decodable<DecodeContext<'a, 'tcx>>> Decodable<DecodeContext<'a, 'tcx>>
-    for Lazy<[T]>
-{
+impl<'a, 'tcx, T> Decodable<DecodeContext<'a, 'tcx>> for LazyArray<T> {
     fn decode(decoder: &mut DecodeContext<'a, 'tcx>) -> Self {
         let len = decoder.read_usize();
-        if len == 0 { Lazy::empty() } else { decoder.read_lazy_with_meta(len) }
+        if len == 0 { LazyArray::empty() } else { decoder.read_lazy_array(len) }
     }
 }
 
-impl<'a, 'tcx, I: Idx, T> Decodable<DecodeContext<'a, 'tcx>> for Lazy<Table<I, T>>
-where
-    Option<T>: FixedSizeEncoding,
-{
+impl<'a, 'tcx, I: Idx, T> Decodable<DecodeContext<'a, 'tcx>> for LazyTable<I, T> {
     fn decode(decoder: &mut DecodeContext<'a, 'tcx>) -> Self {
         let len = decoder.read_usize();
-        decoder.read_lazy_with_meta(len)
+        decoder.read_lazy_table(len)
     }
 }
 
 implement_ty_decoder!(DecodeContext<'a, 'tcx>);
 
-impl<'tcx> MetadataBlob {
+impl MetadataBlob {
     pub(crate) fn new(metadata_ref: MetadataRef) -> MetadataBlob {
         MetadataBlob(Lrc::new(metadata_ref))
     }
@@ -753,18 +667,18 @@ impl<'tcx> MetadataBlob {
     }
 
     pub(crate) fn get_rustc_version(&self) -> String {
-        Lazy::<String>::from_position(NonZeroUsize::new(METADATA_HEADER.len() + 4).unwrap())
+        LazyValue::<String>::from_position(NonZeroUsize::new(METADATA_HEADER.len() + 4).unwrap())
             .decode(self)
     }
 
-    pub(crate) fn get_root(&self) -> CrateRoot<'tcx> {
+    pub(crate) fn get_root<'tcx>(&self) -> CrateRoot<'tcx> {
         let slice = &self.blob()[..];
         let offset = METADATA_HEADER.len();
         let pos = (((slice[offset + 0] as u32) << 24)
             | ((slice[offset + 1] as u32) << 16)
             | ((slice[offset + 2] as u32) << 8)
             | ((slice[offset + 3] as u32) << 0)) as usize;
-        Lazy::<CrateRoot<'tcx>>::from_position(NonZeroUsize::new(pos).unwrap()).decode(self)
+        LazyValue::<CrateRoot<'tcx>>::from_position(NonZeroUsize::new(pos).unwrap()).decode(self)
     }
 
     pub(crate) fn list_crate_metadata(&self, out: &mut dyn io::Write) -> io::Result<()> {
@@ -963,7 +877,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 .tables
                 .children
                 .get(self, index)
-                .unwrap_or_else(Lazy::empty)
+                .unwrap_or_else(LazyArray::empty)
                 .decode(self)
                 .map(|index| ty::FieldDef {
                     did: self.local_def_id(index),
@@ -996,7 +910,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 .tables
                 .children
                 .get(self, item_id)
-                .unwrap_or_else(Lazy::empty)
+                .unwrap_or_else(LazyArray::empty)
                 .decode(self)
                 .map(|index| self.get_variant(&self.kind(index), index, did))
                 .collect()
@@ -1016,7 +930,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     }
 
     fn get_trait_item_def_id(self, id: DefIndex) -> Option<DefId> {
-        self.root.tables.trait_item_def_id.get(self, id).map(|d| d.decode(self))
+        self.root.tables.trait_item_def_id.get(self, id).map(|d| d.decode_from_cdata(self))
     }
 
     fn get_expn_that_defined(self, id: DefIndex, sess: &Session) -> ExpnId {
@@ -1202,7 +1116,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             .tables
             .children
             .get(self, id)
-            .unwrap_or_else(Lazy::empty)
+            .unwrap_or_else(LazyArray::empty)
             .decode((self, sess))
             .map(move |child_index| self.local_def_id(child_index))
     }
@@ -1278,7 +1192,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             .tables
             .children
             .get(self, id)
-            .unwrap_or_else(Lazy::empty)
+            .unwrap_or_else(LazyArray::empty)
             .decode(self)
             .map(move |index| respan(self.get_span(index, sess), self.item_name(index)))
     }
@@ -1288,7 +1202,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             .tables
             .children
             .get(self, id)
-            .unwrap_or_else(Lazy::empty)
+            .unwrap_or_else(LazyArray::empty)
             .decode(self)
             .map(move |field_index| self.get_visibility(field_index))
     }
@@ -1303,7 +1217,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 .tables
                 .inherent_impls
                 .get(self, id)
-                .unwrap_or_else(Lazy::empty)
+                .unwrap_or_else(LazyArray::empty)
                 .decode(self)
                 .map(|index| self.local_def_id(index)),
         )
@@ -1318,7 +1232,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 .tables
                 .inherent_impls
                 .get(self, ty_index)
-                .unwrap_or_else(Lazy::empty)
+                .unwrap_or_else(LazyArray::empty)
                 .decode(self)
                 .map(move |impl_index| (ty_def_id, self.local_def_id(impl_index)))
         })

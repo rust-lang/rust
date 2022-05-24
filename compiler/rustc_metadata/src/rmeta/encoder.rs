@@ -1,5 +1,5 @@
 use crate::rmeta::def_path_hash_map::DefPathHashMapRef;
-use crate::rmeta::table::{FixedSizeEncoding, TableBuilder};
+use crate::rmeta::table::TableBuilder;
 use crate::rmeta::*;
 
 use rustc_data_structures::fingerprint::Fingerprint;
@@ -17,7 +17,6 @@ use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::lang_items;
 use rustc_hir::{AnonConst, GenericParamKind};
 use rustc_index::bit_set::GrowableBitSet;
-use rustc_index::vec::Idx;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::{
@@ -38,6 +37,7 @@ use rustc_span::{
     self, DebuggerVisualizerFile, ExternalSource, FileName, SourceFile, Span, SyntaxContext,
 };
 use rustc_target::abi::VariantIdx;
+use std::borrow::Borrow;
 use std::hash::Hash;
 use std::num::NonZeroUsize;
 use tracing::{debug, trace};
@@ -79,7 +79,7 @@ pub(super) struct EncodeContext<'a, 'tcx> {
 macro_rules! empty_proc_macro {
     ($self:ident) => {
         if $self.is_proc_macro {
-            return Lazy::empty();
+            return LazyArray::empty();
         }
     };
 }
@@ -124,33 +124,26 @@ impl<'a, 'tcx> Encoder for EncodeContext<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx, T: Encodable<EncodeContext<'a, 'tcx>>> Encodable<EncodeContext<'a, 'tcx>>
-    for Lazy<T>
-{
+impl<'a, 'tcx, T> Encodable<EncodeContext<'a, 'tcx>> for LazyValue<T> {
     fn encode(&self, e: &mut EncodeContext<'a, 'tcx>) -> opaque::EncodeResult {
-        e.emit_lazy_distance(*self)
+        e.emit_lazy_distance(self.position)
     }
 }
 
-impl<'a, 'tcx, T: Encodable<EncodeContext<'a, 'tcx>>> Encodable<EncodeContext<'a, 'tcx>>
-    for Lazy<[T]>
-{
+impl<'a, 'tcx, T> Encodable<EncodeContext<'a, 'tcx>> for LazyArray<T> {
     fn encode(&self, e: &mut EncodeContext<'a, 'tcx>) -> opaque::EncodeResult {
-        e.emit_usize(self.meta)?;
-        if self.meta == 0 {
+        e.emit_usize(self.num_elems)?;
+        if self.num_elems == 0 {
             return Ok(());
         }
-        e.emit_lazy_distance(*self)
+        e.emit_lazy_distance(self.position)
     }
 }
 
-impl<'a, 'tcx, I: Idx, T> Encodable<EncodeContext<'a, 'tcx>> for Lazy<Table<I, T>>
-where
-    Option<T>: FixedSizeEncoding,
-{
+impl<'a, 'tcx, I, T> Encodable<EncodeContext<'a, 'tcx>> for LazyTable<I, T> {
     fn encode(&self, e: &mut EncodeContext<'a, 'tcx>) -> opaque::EncodeResult {
-        e.emit_usize(self.meta)?;
-        e.emit_lazy_distance(*self)
+        e.emit_usize(self.encoded_size)?;
+        e.emit_lazy_distance(self.position)
     }
 }
 
@@ -345,34 +338,7 @@ impl<'a, 'tcx> TyEncoder<'tcx> for EncodeContext<'a, 'tcx> {
     }
 }
 
-/// Helper trait to allow overloading `EncodeContext::lazy` for iterators.
-trait EncodeContentsForLazy<'a, 'tcx, T: ?Sized + LazyMeta> {
-    fn encode_contents_for_lazy(self, ecx: &mut EncodeContext<'a, 'tcx>) -> T::Meta;
-}
-
-impl<'a, 'tcx, T: Encodable<EncodeContext<'a, 'tcx>>> EncodeContentsForLazy<'a, 'tcx, T> for &T {
-    fn encode_contents_for_lazy(self, ecx: &mut EncodeContext<'a, 'tcx>) {
-        self.encode(ecx).unwrap()
-    }
-}
-
-impl<'a, 'tcx, T: Encodable<EncodeContext<'a, 'tcx>>> EncodeContentsForLazy<'a, 'tcx, T> for T {
-    fn encode_contents_for_lazy(self, ecx: &mut EncodeContext<'a, 'tcx>) {
-        self.encode(ecx).unwrap()
-    }
-}
-
-impl<'a, 'tcx, I, T: Encodable<EncodeContext<'a, 'tcx>>> EncodeContentsForLazy<'a, 'tcx, [T]> for I
-where
-    I: IntoIterator,
-    I::Item: EncodeContentsForLazy<'a, 'tcx, T>,
-{
-    fn encode_contents_for_lazy(self, ecx: &mut EncodeContext<'a, 'tcx>) -> usize {
-        self.into_iter().map(|value| value.encode_contents_for_lazy(ecx)).count()
-    }
-}
-
-// Shorthand for `$self.$tables.$table.set($def_id.index, $self.lazy($value))`, which would
+// Shorthand for `$self.$tables.$table.set($def_id.index, $self.lazy_value($value))`, which would
 // normally need extra variables to avoid errors about multiple mutable borrows.
 macro_rules! record {
     ($self:ident.$tables:ident.$table:ident[$def_id:expr] <- $value:expr) => {{
@@ -384,12 +350,24 @@ macro_rules! record {
     }};
 }
 
+// Shorthand for `$self.$tables.$table.set($def_id.index, $self.lazy_value($value))`, which would
+// normally need extra variables to avoid errors about multiple mutable borrows.
+macro_rules! record_array {
+    ($self:ident.$tables:ident.$table:ident[$def_id:expr] <- $value:expr) => {{
+        {
+            let value = $value;
+            let lazy = $self.lazy_array(value);
+            $self.$tables.$table.set($def_id.index, lazy);
+        }
+    }};
+}
+
 impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
-    fn emit_lazy_distance<T: ?Sized + LazyMeta>(
+    fn emit_lazy_distance(
         &mut self,
-        lazy: Lazy<T>,
+        position: NonZeroUsize,
     ) -> Result<(), <Self as Encoder>::Error> {
-        let pos = lazy.position.get();
+        let pos = position.get();
         let distance = match self.lazy_state {
             LazyState::NoNode => bug!("emit_lazy_distance: outside of a metadata node"),
             LazyState::NodeStart(start) => {
@@ -399,31 +377,51 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
             LazyState::Previous(last_pos) => {
                 assert!(
-                    last_pos <= lazy.position,
+                    last_pos <= position,
                     "make sure that the calls to `lazy*` \
                      are in the same order as the metadata fields",
                 );
-                lazy.position.get() - last_pos.get()
+                position.get() - last_pos.get()
             }
         };
         self.lazy_state = LazyState::Previous(NonZeroUsize::new(pos).unwrap());
         self.emit_usize(distance)
     }
 
-    fn lazy<T: ?Sized + LazyMeta>(
+    fn lazy<T: Encodable<EncodeContext<'a, 'tcx>>, B: Borrow<T>>(
         &mut self,
-        value: impl EncodeContentsForLazy<'a, 'tcx, T>,
-    ) -> Lazy<T> {
+        value: B,
+    ) -> LazyValue<T> {
         let pos = NonZeroUsize::new(self.position()).unwrap();
 
         assert_eq!(self.lazy_state, LazyState::NoNode);
         self.lazy_state = LazyState::NodeStart(pos);
-        let meta = value.encode_contents_for_lazy(self);
+        value.borrow().encode(self).unwrap();
         self.lazy_state = LazyState::NoNode;
 
         assert!(pos.get() <= self.position());
 
-        Lazy::from_position_and_meta(pos, meta)
+        LazyValue::from_position(pos)
+    }
+
+    fn lazy_array<
+        T: Encodable<EncodeContext<'a, 'tcx>>,
+        I: IntoIterator<Item = B>,
+        B: Borrow<T>,
+    >(
+        &mut self,
+        values: I,
+    ) -> LazyArray<T> {
+        let pos = NonZeroUsize::new(self.position()).unwrap();
+
+        assert_eq!(self.lazy_state, LazyState::NoNode);
+        self.lazy_state = LazyState::NodeStart(pos);
+        let len = values.into_iter().map(|value| value.borrow().encode(self).unwrap()).count();
+        self.lazy_state = LazyState::NoNode;
+
+        assert!(pos.get() <= self.position());
+
+        LazyArray::from_position_and_num_elems(pos, len)
     }
 
     fn encode_info_for_items(&mut self) {
@@ -458,13 +456,13 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         }
     }
 
-    fn encode_def_path_hash_map(&mut self) -> Lazy<DefPathHashMapRef<'tcx>> {
+    fn encode_def_path_hash_map(&mut self) -> LazyValue<DefPathHashMapRef<'tcx>> {
         self.lazy(DefPathHashMapRef::BorrowedFromTcx(
             self.tcx.resolutions(()).definitions.def_path_hash_to_def_index_map(),
         ))
     }
 
-    fn encode_source_map(&mut self) -> Lazy<[rustc_span::SourceFile]> {
+    fn encode_source_map(&mut self) -> LazyArray<rustc_span::SourceFile> {
         let source_map = self.tcx.sess.source_map();
         let all_source_files = source_map.files();
 
@@ -534,10 +532,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             })
             .collect::<Vec<_>>();
 
-        self.lazy(adapted.iter().map(|rc| &**rc))
+        self.lazy_array(adapted.iter().map(|rc| &**rc))
     }
 
-    fn encode_crate_root(&mut self) -> Lazy<CrateRoot<'tcx>> {
+    fn encode_crate_root(&mut self) -> LazyValue<CrateRoot<'tcx>> {
         let tcx = self.tcx;
         let mut i = self.position();
 
@@ -619,7 +617,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 }
                 n = new_n;
             }
-            self.lazy(interpret_alloc_index)
+            self.lazy_array(interpret_alloc_index)
         };
 
         // Encode the proc macro data. This affects 'tables',
@@ -951,7 +949,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             .iter()
             .filter(|attr| !rustc_feature::is_builtin_only_local(attr.name_or_empty()));
 
-        record!(self.tables.attributes[def_id.to_def_id()] <- attrs.clone());
+        record_array!(self.tables.attributes[def_id.to_def_id()] <- attrs.clone());
         if attrs.any(|attr| attr.may_have_doc_links()) {
             self.tables.may_have_doc_links.set(def_id.local_def_index, ());
         }
@@ -984,7 +982,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
             if should_encode_variances(def_kind) {
                 let v = self.tcx.variances_of(def_id);
-                record!(self.tables.variances_of[def_id] <- v);
+                record_array!(self.tables.variances_of[def_id] <- v);
             }
             if should_encode_generics(def_kind) {
                 let g = tcx.generics_of(def_id);
@@ -992,7 +990,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 record!(self.tables.explicit_predicates_of[def_id] <- self.tcx.explicit_predicates_of(def_id));
                 let inferred_outlives = self.tcx.inferred_outlives_of(def_id);
                 if !inferred_outlives.is_empty() {
-                    record!(self.tables.inferred_outlives_of[def_id] <- inferred_outlives);
+                    record_array!(self.tables.inferred_outlives_of[def_id] <- inferred_outlives);
                 }
             }
             if let DefKind::Trait | DefKind::TraitAlias = def_kind {
@@ -1004,7 +1002,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             if implementations.is_empty() {
                 continue;
             }
-            record!(self.tables.inherent_impls[def_id.to_def_id()] <- implementations.iter().map(|&def_id| {
+            record_array!(self.tables.inherent_impls[def_id.to_def_id()] <- implementations.iter().map(|&def_id| {
                 assert!(def_id.is_local());
                 def_id.index
             }));
@@ -1031,7 +1029,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         record!(self.tables.kind[def_id] <- EntryKind::Variant(self.lazy(data)));
         self.tables.impl_constness.set(def_id.index, hir::Constness::Const);
-        record!(self.tables.children[def_id] <- variant.fields.iter().map(|f| {
+        record_array!(self.tables.children[def_id] <- variant.fields.iter().map(|f| {
             assert!(f.did.is_local());
             f.did.index
         }));
@@ -1079,11 +1077,11 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         // items - we encode information about proc-macros later on.
         let reexports = if !self.is_proc_macro {
             match tcx.module_reexports(local_def_id) {
-                Some(exports) => self.lazy(exports),
-                _ => Lazy::empty(),
+                Some(exports) => self.lazy_array(exports),
+                _ => LazyArray::empty(),
             }
         } else {
-            Lazy::empty()
+            LazyArray::empty()
         };
 
         record!(self.tables.kind[def_id] <- EntryKind::Mod(reexports));
@@ -1091,7 +1089,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             // Encode this here because we don't do it in encode_def_ids.
             record!(self.tables.expn_that_defined[def_id] <- tcx.expn_that_defined(local_def_id));
         } else {
-            record!(self.tables.children[def_id] <- iter_from_generator(|| {
+            record_array!(self.tables.children[def_id] <- iter_from_generator(|| {
                 for item_id in md.item_ids {
                     match tcx.hir().item(*item_id).kind {
                         // Foreign items are planted into their parent modules
@@ -1156,7 +1154,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         debug!("EncodeContext::encode_explicit_item_bounds({:?})", def_id);
         let bounds = self.tcx.explicit_item_bounds(def_id);
         if !bounds.is_empty() {
-            record!(self.tables.explicit_item_bounds[def_id] <- bounds);
+            record_array!(self.tables.explicit_item_bounds[def_id] <- bounds);
         }
     }
 
@@ -1188,10 +1186,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 let hir::TraitItemKind::Fn(m_sig, m) = &ast_item.kind else { bug!() };
                 match *m {
                     hir::TraitFn::Required(ref names) => {
-                        record!(self.tables.fn_arg_names[def_id] <- *names)
+                        record_array!(self.tables.fn_arg_names[def_id] <- *names)
                     }
                     hir::TraitFn::Provided(body) => {
-                        record!(self.tables.fn_arg_names[def_id] <- self.tcx.hir().body_param_names(body))
+                        record_array!(self.tables.fn_arg_names[def_id] <- self.tcx.hir().body_param_names(body))
                     }
                 };
                 self.tables.asyncness.set(def_id.index, m_sig.header.asyncness);
@@ -1253,7 +1251,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             ty::AssocKind::Fn => {
                 let hir::ImplItemKind::Fn(ref sig, body) = ast_item.kind else { bug!() };
                 self.tables.asyncness.set(def_id.index, sig.header.asyncness);
-                record!(self.tables.fn_arg_names[def_id] <- self.tcx.hir().body_param_names(body));
+                record_array!(self.tables.fn_arg_names[def_id] <- self.tcx.hir().body_param_names(body));
                 // Can be inside `impl const Trait`, so using sig.header.constness is not reliable
                 let constness = if self.tcx.is_const_fn_raw(def_id) {
                     hir::Constness::Const
@@ -1385,7 +1383,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
             hir::ItemKind::Fn(ref sig, .., body) => {
                 self.tables.asyncness.set(def_id.index, sig.header.asyncness);
-                record!(self.tables.fn_arg_names[def_id] <- self.tcx.hir().body_param_names(body));
+                record_array!(self.tables.fn_arg_names[def_id] <- self.tcx.hir().body_param_names(body));
                 self.tables.impl_constness.set(def_id.index, sig.header.constness);
                 EntryKind::Fn
             }
@@ -1485,14 +1483,14 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         record!(self.tables.kind[def_id] <- entry_kind);
         // FIXME(eddyb) there should be a nicer way to do this.
         match item.kind {
-            hir::ItemKind::Enum(..) => record!(self.tables.children[def_id] <-
+            hir::ItemKind::Enum(..) => record_array!(self.tables.children[def_id] <-
                 self.tcx.adt_def(def_id).variants().iter().map(|v| {
                     assert!(v.def_id.is_local());
                     v.def_id.index
                 })
             ),
             hir::ItemKind::Struct(..) | hir::ItemKind::Union(..) => {
-                record!(self.tables.children[def_id] <-
+                record_array!(self.tables.children[def_id] <-
                     self.tcx.adt_def(def_id).non_enum_variant().fields.iter().map(|f| {
                         assert!(f.did.is_local());
                         f.did.index
@@ -1501,7 +1499,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
             hir::ItemKind::Impl { .. } | hir::ItemKind::Trait(..) => {
                 let associated_item_def_ids = self.tcx.associated_item_def_ids(def_id);
-                record!(self.tables.children[def_id] <-
+                record_array!(self.tables.children[def_id] <-
                     associated_item_def_ids.iter().map(|&def_id| {
                         assert!(def_id.is_local());
                         def_id.index
@@ -1583,16 +1581,16 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         self.encode_item_type(def_id.to_def_id());
     }
 
-    fn encode_native_libraries(&mut self) -> Lazy<[NativeLib]> {
+    fn encode_native_libraries(&mut self) -> LazyArray<NativeLib> {
         empty_proc_macro!(self);
         let used_libraries = self.tcx.native_libraries(LOCAL_CRATE);
-        self.lazy(used_libraries.iter())
+        self.lazy_array(used_libraries.iter())
     }
 
-    fn encode_foreign_modules(&mut self) -> Lazy<[ForeignModule]> {
+    fn encode_foreign_modules(&mut self) -> LazyArray<ForeignModule> {
         empty_proc_macro!(self);
         let foreign_modules = self.tcx.foreign_modules(LOCAL_CRATE);
-        self.lazy(foreign_modules.iter().map(|(_, m)| m).cloned())
+        self.lazy_array(foreign_modules.iter().map(|(_, m)| m).cloned())
     }
 
     fn encode_hygiene(&mut self) -> (SyntaxContextTable, ExpnDataTable, ExpnHashTable) {
@@ -1631,7 +1629,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             let proc_macro_decls_static = tcx.proc_macro_decls_static(()).unwrap().local_def_index;
             let stability = tcx.lookup_stability(CRATE_DEF_ID);
             let macros =
-                self.lazy(tcx.resolutions(()).proc_macros.iter().map(|p| p.local_def_index));
+                self.lazy_array(tcx.resolutions(()).proc_macros.iter().map(|p| p.local_def_index));
             let spans = self.tcx.sess.parse_sess.proc_macro_quoted_spans();
             for (i, span) in spans.into_iter().enumerate() {
                 let span = self.lazy(span);
@@ -1697,12 +1695,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         }
     }
 
-    fn encode_debugger_visualizers(&mut self) -> Lazy<[DebuggerVisualizerFile]> {
+    fn encode_debugger_visualizers(&mut self) -> LazyArray<DebuggerVisualizerFile> {
         empty_proc_macro!(self);
-        self.lazy(self.tcx.debugger_visualizers(LOCAL_CRATE).iter())
+        self.lazy_array(self.tcx.debugger_visualizers(LOCAL_CRATE).iter())
     }
 
-    fn encode_crate_deps(&mut self) -> Lazy<[CrateDep]> {
+    fn encode_crate_deps(&mut self) -> LazyArray<CrateDep> {
         empty_proc_macro!(self);
 
         let deps = self
@@ -1734,29 +1732,29 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         // the assumption that they are numbered 1 to n.
         // FIXME (#2166): This is not nearly enough to support correct versioning
         // but is enough to get transitive crate dependencies working.
-        self.lazy(deps.iter().map(|&(_, ref dep)| dep))
+        self.lazy_array(deps.iter().map(|&(_, ref dep)| dep))
     }
 
-    fn encode_lib_features(&mut self) -> Lazy<[(Symbol, Option<Symbol>)]> {
+    fn encode_lib_features(&mut self) -> LazyArray<(Symbol, Option<Symbol>)> {
         empty_proc_macro!(self);
         let tcx = self.tcx;
         let lib_features = tcx.lib_features(());
-        self.lazy(lib_features.to_vec())
+        self.lazy_array(lib_features.to_vec())
     }
 
-    fn encode_diagnostic_items(&mut self) -> Lazy<[(Symbol, DefIndex)]> {
+    fn encode_diagnostic_items(&mut self) -> LazyArray<(Symbol, DefIndex)> {
         empty_proc_macro!(self);
         let tcx = self.tcx;
         let diagnostic_items = &tcx.diagnostic_items(LOCAL_CRATE).name_to_id;
-        self.lazy(diagnostic_items.iter().map(|(&name, def_id)| (name, def_id.index)))
+        self.lazy_array(diagnostic_items.iter().map(|(&name, def_id)| (name, def_id.index)))
     }
 
-    fn encode_lang_items(&mut self) -> Lazy<[(DefIndex, usize)]> {
+    fn encode_lang_items(&mut self) -> LazyArray<(DefIndex, usize)> {
         empty_proc_macro!(self);
         let tcx = self.tcx;
         let lang_items = tcx.lang_items();
         let lang_items = lang_items.items().iter();
-        self.lazy(lang_items.enumerate().filter_map(|(i, &opt_def_id)| {
+        self.lazy_array(lang_items.enumerate().filter_map(|(i, &opt_def_id)| {
             if let Some(def_id) = opt_def_id {
                 if def_id.is_local() {
                     return Some((def_id.index, i));
@@ -1766,19 +1764,19 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         }))
     }
 
-    fn encode_lang_items_missing(&mut self) -> Lazy<[lang_items::LangItem]> {
+    fn encode_lang_items_missing(&mut self) -> LazyArray<lang_items::LangItem> {
         empty_proc_macro!(self);
         let tcx = self.tcx;
-        self.lazy(&tcx.lang_items().missing)
+        self.lazy_array(&tcx.lang_items().missing)
     }
 
-    fn encode_traits(&mut self) -> Lazy<[DefIndex]> {
+    fn encode_traits(&mut self) -> LazyArray<DefIndex> {
         empty_proc_macro!(self);
-        self.lazy(self.tcx.traits_in_crate(LOCAL_CRATE).iter().map(|def_id| def_id.index))
+        self.lazy_array(self.tcx.traits_in_crate(LOCAL_CRATE).iter().map(|def_id| def_id.index))
     }
 
     /// Encodes an index, mapping each trait to its (local) implementations.
-    fn encode_impls(&mut self) -> Lazy<[TraitImpls]> {
+    fn encode_impls(&mut self) -> LazyArray<TraitImpls> {
         debug!("EncodeContext::encode_traits_and_impls()");
         empty_proc_macro!(self);
         let tcx = self.tcx;
@@ -1817,15 +1815,15 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
                 TraitImpls {
                     trait_id: (trait_def_id.krate.as_u32(), trait_def_id.index),
-                    impls: self.lazy(&impls),
+                    impls: self.lazy_array(&impls),
                 }
             })
             .collect();
 
-        self.lazy(&all_impls)
+        self.lazy_array(&all_impls)
     }
 
-    fn encode_incoherent_impls(&mut self) -> Lazy<[IncoherentImpls]> {
+    fn encode_incoherent_impls(&mut self) -> LazyArray<IncoherentImpls> {
         debug!("EncodeContext::encode_traits_and_impls()");
         empty_proc_macro!(self);
         let tcx = self.tcx;
@@ -1845,11 +1843,11 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     tcx.hir().def_path_hash(LocalDefId { local_def_index })
                 });
 
-                IncoherentImpls { self_ty: simp, impls: self.lazy(impls) }
+                IncoherentImpls { self_ty: simp, impls: self.lazy_array(impls) }
             })
             .collect();
 
-        self.lazy(&all_impls)
+        self.lazy_array(&all_impls)
     }
 
     // Encodes all symbols exported from this crate into the metadata.
@@ -1861,13 +1859,13 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn encode_exported_symbols(
         &mut self,
         exported_symbols: &[(ExportedSymbol<'tcx>, SymbolExportInfo)],
-    ) -> Lazy<[(ExportedSymbol<'tcx>, SymbolExportInfo)]> {
+    ) -> LazyArray<(ExportedSymbol<'tcx>, SymbolExportInfo)> {
         empty_proc_macro!(self);
         // The metadata symbol name is special. It should not show up in
         // downstream crates.
         let metadata_symbol_name = SymbolName::new(self.tcx, &metadata_symbol_name(self.tcx));
 
-        self.lazy(
+        self.lazy_array(
             exported_symbols
                 .iter()
                 .filter(|&&(ref exported_symbol, _)| match *exported_symbol {
@@ -1878,21 +1876,21 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         )
     }
 
-    fn encode_dylib_dependency_formats(&mut self) -> Lazy<[Option<LinkagePreference>]> {
+    fn encode_dylib_dependency_formats(&mut self) -> LazyArray<Option<LinkagePreference>> {
         empty_proc_macro!(self);
         let formats = self.tcx.dependency_formats(());
         for (ty, arr) in formats.iter() {
             if *ty != CrateType::Dylib {
                 continue;
             }
-            return self.lazy(arr.iter().map(|slot| match *slot {
+            return self.lazy_array(arr.iter().map(|slot| match *slot {
                 Linkage::NotLinked | Linkage::IncludedFromDylib => None,
 
                 Linkage::Dynamic => Some(LinkagePreference::RequireDynamic),
                 Linkage::Static => Some(LinkagePreference::RequireStatic),
             }));
         }
-        Lazy::empty()
+        LazyArray::empty()
     }
 
     fn encode_info_for_foreign_item(&mut self, def_id: DefId, nitem: &hir::ForeignItem<'_>) {
@@ -1903,7 +1901,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         match nitem.kind {
             hir::ForeignItemKind::Fn(_, ref names, _) => {
                 self.tables.asyncness.set(def_id.index, hir::IsAsync::NotAsync);
-                record!(self.tables.fn_arg_names[def_id] <- *names);
+                record_array!(self.tables.fn_arg_names[def_id] <- *names);
                 let constness = if self.tcx.is_const_fn_raw(def_id) {
                     hir::Constness::Const
                 } else {
