@@ -4,7 +4,8 @@
     clippy::boxed_local,
     clippy::needless_pass_by_value,
     clippy::unnecessary_wraps,
-    dyn_drop
+    dyn_drop,
+    clippy::get_first
 )]
 
 fn distinct_lifetimes<'a, 'b>(_x: &'a u8, _y: &'b u8, _z: u8) {}
