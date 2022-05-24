@@ -721,6 +721,7 @@ symbols! {
         fundamental,
         future,
         future_trait,
+        gdb_script_file,
         ge,
         gen_future,
         gen_kill,

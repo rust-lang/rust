@@ -1203,6 +1203,7 @@ impl SourceFileHash {
 #[derive(Copy, PartialEq, PartialOrd, Clone, Ord, Eq, Hash, Debug, Encodable, Decodable)]
 pub enum DebuggerVisualizerType {
     Natvis,
+    GdbPrettyPrinter,
 }
 
 /// A single debugger visualizer file.
