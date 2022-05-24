@@ -5,7 +5,7 @@ use ide_db::FxHashSet;
 use syntax::T;
 
 use crate::{
-    context::{PathCompletionCtx, PathKind, PathQualifierCtx},
+    context::{NameRefContext, PathCompletionCtx, PathKind, PathQualifierCtx},
     CompletionContext, Completions,
 };
 
@@ -15,14 +15,25 @@ pub(crate) fn complete_expr_path(acc: &mut Completions, ctx: &CompletionContext)
         return;
     }
 
-    let (is_absolute_path, qualifier, in_block_expr, in_loop_body, in_functional_update) =
-        match ctx.path_context() {
-            Some(&PathCompletionCtx {
-                kind: PathKind::Expr { in_block_expr, in_loop_body, in_functional_update },
-                is_absolute_path,
-                ref qualifier,
+    let (is_absolute_path, qualifier, in_block_expr, in_loop_body, is_func_update) =
+        match ctx.nameref_ctx() {
+            Some(NameRefContext {
+                path_ctx:
+                    Some(PathCompletionCtx {
+                        kind: PathKind::Expr { in_block_expr, in_loop_body },
+                        is_absolute_path,
+                        qualifier,
+                        ..
+                    }),
+                record_expr,
                 ..
-            }) => (is_absolute_path, qualifier, in_block_expr, in_loop_body, in_functional_update),
+            }) => (
+                *is_absolute_path,
+                qualifier,
+                *in_block_expr,
+                *in_loop_body,
+                record_expr.as_ref().map_or(false, |&(_, it)| it),
+            ),
             _ => return,
         };
 
@@ -165,7 +176,7 @@ pub(crate) fn complete_expr_path(acc: &mut Completions, ctx: &CompletionContext)
                 }
             });
 
-            if !in_functional_update {
+            if !is_func_update {
                 let mut add_keyword =
                     |kw, snippet| super::keyword::add_keyword(acc, ctx, kw, snippet);
 

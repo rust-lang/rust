@@ -510,6 +510,10 @@ impl ast::RecordPatField {
         }
     }
 
+    pub fn parent_record_pat(&self) -> ast::RecordPat {
+        self.syntax().ancestors().find_map(ast::RecordPat::cast).unwrap()
+    }
+
     /// Deals with field init shorthand
     pub fn field_name(&self) -> Option<NameOrNameRef> {
         if let Some(name_ref) = self.name_ref() {

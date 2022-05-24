@@ -53,19 +53,6 @@ pub(crate) enum ImmediateLocation {
     // Only set from a type arg
     /// Original file ast node
     GenericArgList(ast::GenericArgList),
-    /// The record expr of the field name we are completing
-    ///
-    /// Original file ast node
-    RecordExpr(ast::RecordExpr),
-    /// The record expr of the functional update syntax we are completing
-    ///
-    /// Original file ast node
-    RecordExprUpdate(ast::RecordExpr),
-    /// The record pat of the field name we are completing
-    ///
-    /// Original file ast node
-    // FIXME: This should be moved to pattern_ctx
-    RecordPat(ast::RecordPat),
 }
 
 pub(crate) fn determine_prev_sibling(name_like: &ast::NameLike) -> Option<ImmediatePrevSibling> {
@@ -136,27 +123,8 @@ pub(crate) fn determine_location(
     name_like: &ast::NameLike,
 ) -> Option<ImmediateLocation> {
     let node = match name_like {
-        ast::NameLike::NameRef(name_ref) => {
-            if ast::RecordExprField::for_field_name(name_ref).is_some() {
-                return sema
-                    .find_node_at_offset_with_macros(original_file, offset)
-                    .map(ImmediateLocation::RecordExpr);
-            }
-            if ast::RecordPatField::for_field_name_ref(name_ref).is_some() {
-                return sema
-                    .find_node_at_offset_with_macros(original_file, offset)
-                    .map(ImmediateLocation::RecordPat);
-            }
-            maximize_name_ref(name_ref)
-        }
-        ast::NameLike::Name(name) => {
-            if ast::RecordPatField::for_field_name(name).is_some() {
-                return sema
-                    .find_node_at_offset_with_macros(original_file, offset)
-                    .map(ImmediateLocation::RecordPat);
-            }
-            name.syntax().clone()
-        }
+        ast::NameLike::NameRef(name_ref) => maximize_name_ref(name_ref),
+        ast::NameLike::Name(name) => name.syntax().clone(),
         ast::NameLike::Lifetime(lt) => lt.syntax().clone(),
     };
 
@@ -199,9 +167,6 @@ pub(crate) fn determine_location(
             ast::SourceFile(_) => ImmediateLocation::ItemList,
             ast::ItemList(_) => ImmediateLocation::ItemList,
             ast::RefExpr(_) => ImmediateLocation::RefExpr,
-            ast::RecordExprFieldList(_) => sema
-                .find_node_at_offset_with_macros(original_file, offset)
-                .map(ImmediateLocation::RecordExprUpdate)?,
             ast::TupleField(_) => ImmediateLocation::TupleField,
             ast::TupleFieldList(_) => ImmediateLocation::TupleField,
             ast::TypeBound(_) => ImmediateLocation::TypeBound,

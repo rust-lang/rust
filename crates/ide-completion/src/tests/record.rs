@@ -41,6 +41,8 @@ fn foo(s: Struct) {
 "#,
         expect![[r#"
             fd bar u32
+            kw mut
+            kw ref
         "#]],
     );
 }
@@ -58,6 +60,8 @@ fn foo(e: Enum) {
 "#,
         expect![[r#"
             fd bar u32
+            kw mut
+            kw ref
         "#]],
     );
 }
@@ -93,6 +97,8 @@ fn foo(f: Struct) {
 ",
         expect![[r#"
             fd field u32
+            kw mut
+            kw ref
         "#]],
     );
 }

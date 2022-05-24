@@ -5,12 +5,12 @@
 use syntax::T;
 
 use crate::{
-    context::PathKind, patterns::ImmediateLocation, CompletionContext, CompletionItem,
-    CompletionItemKind, Completions,
+    context::{NameRefContext, PathKind},
+    CompletionContext, CompletionItem, CompletionItemKind, Completions,
 };
 
 pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionContext) {
-    if matches!(ctx.completion_location, Some(ImmediateLocation::RecordExpr(_))) {
+    if matches!(ctx.nameref_ctx(), Some(NameRefContext { record_expr: Some(_), .. })) {
         cov_mark::hit!(no_keyword_completion_in_record_lit);
         return;
     }

@@ -15,7 +15,6 @@ pub(crate) fn complete_pattern(acc: &mut Completions, ctx: &CompletionContext) {
         Some(ctx) => ctx,
         _ => return,
     };
-    let refutable = patctx.refutability == PatternRefutability::Refutable;
 
     if let Some(path_ctx) = ctx.path_context() {
         pattern_path_completion(acc, ctx, path_ctx);
@@ -47,6 +46,11 @@ pub(crate) fn complete_pattern(acc: &mut Completions, ctx: &CompletionContext) {
         }
     }
 
+    if patctx.record_pat.is_some() {
+        return;
+    }
+
+    let refutable = patctx.refutability == PatternRefutability::Refutable;
     let single_variant_enum = |enum_: hir::Enum| ctx.db.enum_data(enum_.into()).variants.len() == 1;
 
     if let Some(hir::Adt::Enum(e)) =
