@@ -636,7 +636,7 @@ fn test_item() {
                 () => {};
             }
         ),
-        "macro_rules! stringify { () => {} ; }", // FIXME
+        "macro_rules! stringify { () => {}; }", // FIXME
     );
     assert_eq!(
         stringify_item!(

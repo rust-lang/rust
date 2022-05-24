@@ -5,8 +5,8 @@ PRINT-BANG INPUT (DISPLAY): /**
 * DOC *
 *******
 */
- pub struct S ;
-PRINT-BANG RE-COLLECTED (DISPLAY): #[doc = "\n*******\n* DOC *\n* DOC *\n* DOC *\n*******\n"] pub struct S ;
+ pub struct S;
+PRINT-BANG RE-COLLECTED (DISPLAY): #[doc = "\n*******\n* DOC *\n* DOC *\n* DOC *\n*******\n"] pub struct S;
 PRINT-BANG INPUT (DEBUG): TokenStream [
     Punct {
         ch: '#',

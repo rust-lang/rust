@@ -146,7 +146,9 @@ pub fn print_crate<'a>(
 /// and also addresses some specific regressions described in #63896 and #73345.
 fn tt_prepend_space(tt: &TokenTree, prev: &TokenTree) -> bool {
     if let TokenTree::Token(token) = prev {
-        if matches!(token.kind, token::Dot | token::Dollar) {
+        // No space after these tokens, e.g. `x.y`, `$e`, `a::b`
+        // (The carets point to `prev`)        ^     ^      ^^
+        if matches!(token.kind, token::Dot | token::Dollar | token::ModSep) {
             return false;
         }
         if let token::DocComment(comment_kind, ..) = token.kind {
@@ -154,12 +156,19 @@ fn tt_prepend_space(tt: &TokenTree, prev: &TokenTree) -> bool {
         }
     }
     match tt {
-        TokenTree::Token(token) => !matches!(token.kind, token::Comma | token::Not | token::Dot),
+        // No space before these tokens, e.g. `x,`, `m!`, `x.y`, `a::b`, `s;`, `x:`
+        // (The carets point to `token`)        ^     ^     ^      ^^     ^     ^
+        TokenTree::Token(token) => !matches!(
+            token.kind,
+            token::Comma | token::Not | token::Dot | token::ModSep | token::Semi | token::Colon
+        ),
+        // No space before parentheses if preceded by these tokens, e.g. `foo(...)`, `foo!(...).
         TokenTree::Delimited(_, Delimiter::Parenthesis, _) => {
-            !matches!(prev, TokenTree::Token(Token { kind: token::Ident(..), .. }))
+            !matches!(prev, TokenTree::Token(Token { kind: token::Ident(..) | token::Not, .. }))
         }
+        // No space before brackets if preceded by these tokens, e.g. e.g. `#[...]`, `#![...]`.
         TokenTree::Delimited(_, Delimiter::Bracket, _) => {
-            !matches!(prev, TokenTree::Token(Token { kind: token::Pound, .. }))
+            !matches!(prev, TokenTree::Token(Token { kind: token::Pound | token::Not, .. }))
         }
         TokenTree::Delimited(..) => true,
     }

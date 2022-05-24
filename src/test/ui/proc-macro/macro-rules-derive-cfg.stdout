@@ -1,10 +1,10 @@
 PRINT-DERIVE INPUT (DISPLAY): struct Foo
 {
-    val :
-    [bool ;
+    val:
+    [bool;
     {
         let a = #[rustc_dummy(first)] #[rustc_dummy(second)]
-        { #! [allow(unused)] 30 } ; 0
+        { #![allow(unused)] 30 }; 0
     }]
 }
 PRINT-DERIVE INPUT (DEBUG): TokenStream [
