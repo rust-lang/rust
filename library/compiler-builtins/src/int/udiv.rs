@@ -57,6 +57,7 @@ intrinsics! {
     // Note: we use block configuration and not `if cfg!(...)`, because we need to entirely disable
     // the existence of `u128_div_rem` to get 32-bit SPARC to compile, see `u128_divide_sparc` docs.
 
+    #[avr_skip]
     #[win64_128bit_abi_hack]
     /// Returns `n / d`
     pub extern "C" fn __udivti3(n: u128, d: u128) -> u128 {
@@ -68,6 +69,7 @@ intrinsics! {
         }
     }
 
+    #[avr_skip]
     #[win64_128bit_abi_hack]
     /// Returns `n % d`
     pub extern "C" fn __umodti3(n: u128, d: u128) -> u128 {
