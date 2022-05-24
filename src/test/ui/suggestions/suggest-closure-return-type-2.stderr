@@ -2,7 +2,12 @@ error[E0282]: type annotations needed for `[_; 0]`
   --> $DIR/suggest-closure-return-type-2.rs:4:18
    |
 LL |     unbound_drop(|| { [] })
-   |                  ^^ - help: try giving this closure an explicit return type: `-> [_; 0]`
+   |                  ^^
+   |
+help: try giving this closure an explicit return type
+   |
+LL |     unbound_drop(|| -> [_; 0] { [] })
+   |                     +++++++++
 
 error: aborting due to previous error
 

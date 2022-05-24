@@ -422,7 +422,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     (receiver.span.shrink_to_lo(), format!("{def_path}({adjustment}")),
                     (receiver.span.shrink_to_hi().with_hi(successor.1), successor.0.to_string()),
                 ];
-                err.multipart_suggestion(
+                err.multipart_suggestion_verbose(
                     "try using a fully qualified path to specify the expected types",
                     suggestion,
                     Applicability::HasPlaceholders,
@@ -441,7 +441,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     ],
                     None => vec![(data.span(), format!("{}{}{}", arrow, ret, post))],
                 };
-                err.multipart_suggestion(
+                err.multipart_suggestion_verbose(
                     "try giving this closure an explicit return type",
                     suggestion,
                     Applicability::HasPlaceholders,

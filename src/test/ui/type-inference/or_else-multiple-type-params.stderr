@@ -2,7 +2,12 @@ error[E0282]: type annotations needed for `Result<Child, F>`
   --> $DIR/or_else-multiple-type-params.rs:7:18
    |
 LL |         .or_else(|err| {
-   |                  ^^^^^ - help: try giving this closure an explicit return type: `-> Result<Child, F>`
+   |                  ^^^^^
+   |
+help: try giving this closure an explicit return type
+   |
+LL |         .or_else(|err| -> Result<Child, F> {
+   |                        +++++++++++++++++++
 
 error: aborting due to previous error
 
