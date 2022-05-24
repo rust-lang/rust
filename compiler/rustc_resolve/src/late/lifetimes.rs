@@ -152,21 +152,6 @@ enum Scope<'a> {
         /// for diagnostics.
         lifetimes: FxIndexMap<LocalDefId, Region>,
 
-        /// Whether or not this binder would serve as the parent
-        /// binder for opaque types introduced within. For example:
-        ///
-        /// ```text
-        ///     fn foo<'a>() -> impl for<'b> Trait<Item = impl Trait2<'a>>
-        /// ```
-        ///
-        /// Here, the opaque types we create for the `impl Trait`
-        /// and `impl Trait2` references will both have the `foo` item
-        /// as their parent. When we get to `impl Trait2`, we find
-        /// that it is nested within the `for<>` binder -- this flag
-        /// allows us to skip that when looking for the parent binder
-        /// of the resulting opaque type.
-        opaque_type_parent: bool,
-
         scope_type: BinderScopeType,
 
         /// The late bound vars for a given item are stored by `HirId` to be
@@ -236,17 +221,9 @@ struct TruncatedScopeDebug<'a>(&'a Scope<'a>);
 impl<'a> fmt::Debug for TruncatedScopeDebug<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.0 {
-            Scope::Binder {
-                lifetimes,
-                opaque_type_parent,
-                scope_type,
-                hir_id,
-                s: _,
-                allow_late_bound,
-            } => f
+            Scope::Binder { lifetimes, scope_type, hir_id, s: _, allow_late_bound } => f
                 .debug_struct("Binder")
                 .field("lifetimes", lifetimes)
-                .field("opaque_type_parent", opaque_type_parent)
                 .field("scope_type", scope_type)
                 .field("hir_id", hir_id)
                 .field("s", &"..")
@@ -577,7 +554,6 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     hir_id,
                     lifetimes: FxIndexMap::default(),
                     s: self.scope,
-                    opaque_type_parent: false,
                     scope_type: BinderScopeType::Normal,
                     allow_late_bound: true,
                 };
@@ -681,7 +657,6 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 let scope = Scope::Binder {
                     hir_id: item.hir_id(),
                     lifetimes,
-                    opaque_type_parent: true,
                     scope_type: BinderScopeType::Normal,
                     s: ROOT_SCOPE,
                     allow_late_bound: false,
@@ -745,7 +720,6 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     hir_id: ty.hir_id,
                     lifetimes,
                     s: self.scope,
-                    opaque_type_parent: false,
                     scope_type: BinderScopeType::Normal,
                     allow_late_bound: true,
                 };
@@ -920,7 +894,6 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                             hir_id: ty.hir_id,
                             lifetimes,
                             s: this.scope,
-                            opaque_type_parent: false,
                             scope_type: BinderScopeType::Normal,
                             allow_late_bound: false,
                         };
@@ -939,7 +912,6 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                         hir_id: ty.hir_id,
                         lifetimes,
                         s: self.scope,
-                        opaque_type_parent: false,
                         scope_type: BinderScopeType::Normal,
                         allow_late_bound: false,
                     };
@@ -986,7 +958,6 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     hir_id: trait_item.hir_id(),
                     lifetimes,
                     s: self.scope,
-                    opaque_type_parent: true,
                     scope_type: BinderScopeType::Normal,
                     allow_late_bound: false,
                 };
@@ -1042,7 +1013,6 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     hir_id: ty.hir_id,
                     lifetimes,
                     s: self.scope,
-                    opaque_type_parent: true,
                     scope_type: BinderScopeType::Normal,
                     allow_late_bound: true,
                 };
@@ -1185,7 +1155,6 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                             hir_id: bounded_ty.hir_id,
                             lifetimes,
                             s: this.scope,
-                            opaque_type_parent: false,
                             scope_type: BinderScopeType::Normal,
                             allow_late_bound: true,
                         };
@@ -1256,7 +1225,6 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     hir_id: *hir_id,
                     lifetimes: FxIndexMap::default(),
                     s: self.scope,
-                    opaque_type_parent: false,
                     scope_type,
                     allow_late_bound: true,
                 };
@@ -1306,7 +1274,6 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
             hir_id: trait_ref.trait_ref.hir_ref_id,
             lifetimes,
             s: self.scope,
-            opaque_type_parent: false,
             scope_type,
             allow_late_bound: true,
         };
@@ -1405,7 +1372,6 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             hir_id,
             lifetimes,
             s: self.scope,
-            opaque_type_parent: true,
             scope_type: BinderScopeType::Normal,
             allow_late_bound: true,
         };
