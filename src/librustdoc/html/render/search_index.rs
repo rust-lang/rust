@@ -182,8 +182,8 @@ pub(crate) fn build_index<'tcx>(
         })
         .expect("failed serde conversion")
         // All these `replace` calls are because we have to go through JS string for JSON content.
-        .replace(r#"\"#, r"\\")
-        .replace(r#"'"#, r"\'")
+        .replace('\\', r"\\")
+        .replace('\'', r"\'")
         // We need to escape double quotes for the JSON.
         .replace("\\\"", "\\\\\"")
     )

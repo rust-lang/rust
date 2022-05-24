@@ -2537,6 +2537,8 @@ fn item_ty_to_section(ty: ItemType) -> ItemSection {
 }
 
 fn sidebar_module(buf: &mut Buffer, items: &[clean::Item]) {
+    use std::fmt::Write as _;
+
     let mut sidebar = String::new();
 
     let item_sections_in_use: FxHashSet<_> = items
@@ -2554,7 +2556,7 @@ fn sidebar_module(buf: &mut Buffer, items: &[clean::Item]) {
         .map(|it| item_ty_to_section(it.type_()))
         .collect();
     for &sec in ItemSection::ALL.iter().filter(|sec| item_sections_in_use.contains(sec)) {
-        sidebar.push_str(&format!("<li><a href=\"#{}\">{}</a></li>", sec.id(), sec.name()));
+        let _ = write!(sidebar, "<li><a href=\"#{}\">{}</a></li>", sec.id(), sec.name());
     }
 
     if !sidebar.is_empty() {
