@@ -2,7 +2,6 @@ use crate::{t, VERSION};
 use crate::{Config, TargetSelection};
 use std::env::consts::EXE_SUFFIX;
 use std::fmt::Write as _;
-use std::fs::File;
 use std::path::{Path, PathBuf, MAIN_SEPARATOR};
 use std::process::Command;
 use std::str::FromStr;
@@ -246,7 +245,7 @@ fn ensure_stage1_toolchain_placeholder_exists(stage_path: &str) -> bool {
     }
 
     // Take care not to overwrite the file
-    let result = File::options().append(true).create(true).open(&pathbuf);
+    let result = fs::OpenOptions::new().append(true).create(true).open(&pathbuf);
     if result.is_err() {
         return false;
     }

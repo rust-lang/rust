@@ -433,8 +433,8 @@ impl Step for Std {
         builder.info(&format!("Documenting stage{} std ({})", stage, target));
         if builder.no_std(target) == Some(true) {
             panic!(
-                "building std documentation for no_std target {target} is not supported\n\
-                 Set `docs = false` in the config to disable documentation."
+                "building std documentation for no_std target {} is not supported\n\
+                 Set `docs = false` in the config to disable documentation.", target
             );
         }
         let out = builder.doc_out(target);

@@ -1158,7 +1158,7 @@ impl<'a> Builder<'a> {
                             .collect::<String>(),
                         None => String::new(),
                     };
-                    rustflags.arg(&format!("--check-cfg=values({name}{values})"));
+                    rustflags.arg(&format!("--check-cfg=values({}{})", name, values));
                 }
             }
         }
