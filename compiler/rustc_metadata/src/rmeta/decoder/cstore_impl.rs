@@ -32,24 +32,28 @@ trait ProcessQueryValue<'tcx, T> {
 }
 
 impl<T> ProcessQueryValue<'_, Option<T>> for Option<T> {
+    #[inline(always)]
     fn process_decoded(self, _tcx: TyCtxt<'_>, _err: impl Fn() -> !) -> Option<T> {
         self
     }
 }
 
 impl<T> ProcessQueryValue<'_, T> for Option<T> {
+    #[inline(always)]
     fn process_decoded(self, _tcx: TyCtxt<'_>, err: impl Fn() -> !) -> T {
         if let Some(value) = self { value } else { err() }
     }
 }
 
 impl<'tcx, T: ArenaAllocatable<'tcx>> ProcessQueryValue<'tcx, &'tcx T> for Option<T> {
+    #[inline(always)]
     fn process_decoded(self, tcx: TyCtxt<'tcx>, err: impl Fn() -> !) -> &'tcx T {
         if let Some(value) = self { tcx.arena.alloc(value) } else { err() }
     }
 }
 
 impl<T, E> ProcessQueryValue<'_, Result<Option<T>, E>> for Option<T> {
+    #[inline(always)]
     fn process_decoded(self, _tcx: TyCtxt<'_>, _err: impl Fn() -> !) -> Result<Option<T>, E> {
         Ok(self)
     }
@@ -58,12 +62,14 @@ impl<T, E> ProcessQueryValue<'_, Result<Option<T>, E>> for Option<T> {
 impl<'a, 'tcx, T: Copy + Decodable<DecodeContext<'a, 'tcx>>> ProcessQueryValue<'tcx, &'tcx [T]>
     for Option<DecodeIterator<'a, 'tcx, T>>
 {
+    #[inline(always)]
     fn process_decoded(self, tcx: TyCtxt<'tcx>, _err: impl Fn() -> !) -> &'tcx [T] {
         if let Some(iter) = self { tcx.arena.alloc_from_iter(iter) } else { &[] }
     }
 }
 
 impl ProcessQueryValue<'_, Option<DeprecationEntry>> for Option<Deprecation> {
+    #[inline(always)]
     fn process_decoded(self, _tcx: TyCtxt<'_>, _err: impl Fn() -> !) -> Option<DeprecationEntry> {
         self.map(DeprecationEntry::external)
     }

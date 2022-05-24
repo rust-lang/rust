@@ -10,6 +10,7 @@
 #![feature(macro_metavar_expr)]
 #![feature(min_specialization)]
 #![feature(slice_as_chunks)]
+#![feature(trusted_len)]
 #![feature(try_blocks)]
 #![feature(never_type)]
 #![recursion_limit = "256"]

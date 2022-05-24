@@ -38,6 +38,7 @@ use rustc_span::{self, BytePos, ExpnId, Pos, Span, SyntaxContext, DUMMY_SP};
 
 use proc_macro::bridge::client::ProcMacro;
 use std::io;
+use std::iter::TrustedLen;
 use std::mem;
 use std::num::NonZeroUsize;
 use std::path::Path;
@@ -277,17 +278,25 @@ struct DecodeIterator<'a, 'tcx, T> {
 impl<'a, 'tcx, T: Decodable<DecodeContext<'a, 'tcx>>> Iterator for DecodeIterator<'a, 'tcx, T> {
     type Item = T;
 
+    #[inline(always)]
     fn next(&mut self) -> Option<Self::Item> {
         self.elem_counter.next().map(|_| T::decode(&mut self.dcx))
+    }
+
+    #[inline(always)]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.elem_counter.size_hint()
     }
 }
 
 impl<'a, 'tcx, T: Decodable<DecodeContext<'a, 'tcx>>> ExactSizeIterator
     for DecodeIterator<'a, 'tcx, T>
 {
-    fn len(&self) -> usize {
-        self.elem_counter.len()
-    }
+}
+
+unsafe impl<'a, 'tcx, T: Decodable<DecodeContext<'a, 'tcx>>> TrustedLen
+    for DecodeIterator<'a, 'tcx, T>
+{
 }
 
 impl<'a: 'x, 'tcx: 'x, 'x, T: Decodable<DecodeContext<'a, 'tcx>>> LazyArray<T> {
@@ -321,6 +330,7 @@ impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
         self.cdata().map_encoded_cnum_to_current(cnum)
     }
 
+    #[inline]
     fn read_lazy_offset_then<T>(&mut self, f: impl Fn(NonZeroUsize) -> T) -> T {
         let distance = self.read_usize();
         let position = match self.lazy_state {
