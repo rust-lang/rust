@@ -4,11 +4,11 @@ use core::mem;
 // Kernel-provided user-mode helper functions:
 // https://www.kernel.org/doc/Documentation/arm/kernel_user_helpers.txt
 unsafe fn __kuser_cmpxchg(oldval: u32, newval: u32, ptr: *mut u32) -> bool {
-    let f: extern "C" fn(u32, u32, *mut u32) -> u32 = mem::transmute(0xffff0fc0u32);
+    let f: extern "C" fn(u32, u32, *mut u32) -> u32 = mem::transmute(0xffff0fc0usize as *const ());
     f(oldval, newval, ptr) == 0
 }
 unsafe fn __kuser_memory_barrier() {
-    let f: extern "C" fn() = mem::transmute(0xffff0fa0u32);
+    let f: extern "C" fn() = mem::transmute(0xffff0fa0usize as *const ());
     f();
 }
 
