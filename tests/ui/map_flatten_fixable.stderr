@@ -77,7 +77,7 @@ LL |     let _: Result<_, &str> = (Ok(Ok(1))).and_then(|x| x);
    |                                          ~~~~~~~~~~~~~~~
 
 error: called `map(..).flatten()` on `Option`
-  --> $DIR/map_flatten_fixable.rs:40:10
+  --> $DIR/map_flatten_fixable.rs:59:10
    |
 LL |           .map(|_| {
    |  __________^
