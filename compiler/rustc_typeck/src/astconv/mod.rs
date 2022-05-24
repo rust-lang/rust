@@ -202,12 +202,39 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         def: Option<&ty::GenericParamDef>,
     ) -> ty::Region<'tcx> {
         let tcx = self.tcx();
+
+        let r = if let Some(rl) = tcx.named_region(lifetime.hir_id) {
+            self.ast_region_to_region_inner(rl)
+        } else {
+            self.re_infer(def, lifetime.span).unwrap_or_else(|| {
+                debug!(?lifetime, "unelided lifetime in signature");
+
+                // This indicates an illegal lifetime
+                // elision. `resolve_lifetime` should have
+                // reported an error in this case -- but if
+                // not, let's error out.
+                tcx.sess.delay_span_bug(lifetime.span, "unelided lifetime in signature");
+
+                // Supply some dummy value. We don't have an
+                // `re_error`, annoyingly, so use `'static`.
+                tcx.lifetimes.re_static
+            })
+        };
+
+        debug!("ast_region_to_region(lifetime={:?}) yields {:?}", lifetime, r);
+
+        r
+    }
+
+    #[tracing::instrument(level = "debug", skip(self))]
+    fn ast_region_to_region_inner(&self, lifetime: rl::Region) -> ty::Region<'tcx> {
+        let tcx = self.tcx();
         let lifetime_name = |def_id| tcx.hir().name(tcx.hir().local_def_id_to_hir_id(def_id));
 
-        let r = match tcx.named_region(lifetime.hir_id) {
-            Some(rl::Region::Static) => tcx.lifetimes.re_static,
+        let r = match lifetime {
+            rl::Region::Static => tcx.lifetimes.re_static,
 
-            Some(rl::Region::LateBound(debruijn, index, def_id)) => {
+            rl::Region::LateBound(debruijn, index, def_id) => {
                 let name = lifetime_name(def_id.expect_local());
                 let br = ty::BoundRegion {
                     var: ty::BoundVar::from_u32(index),
@@ -216,7 +243,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 tcx.mk_region(ty::ReLateBound(debruijn, br))
             }
 
-            Some(rl::Region::LateBoundAnon(debruijn, index, anon_index)) => {
+            rl::Region::LateBoundAnon(debruijn, index, anon_index) => {
                 let br = ty::BoundRegion {
                     var: ty::BoundVar::from_u32(index),
                     kind: ty::BrAnon(anon_index),
@@ -224,12 +251,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 tcx.mk_region(ty::ReLateBound(debruijn, br))
             }
 
-            Some(rl::Region::EarlyBound(index, id)) => {
+            rl::Region::EarlyBound(index, id) => {
                 let name = lifetime_name(id.expect_local());
                 tcx.mk_region(ty::ReEarlyBound(ty::EarlyBoundRegion { def_id: id, index, name }))
             }
 
-            Some(rl::Region::Free(scope, id)) => {
+            rl::Region::Free(scope, id) => {
                 let name = lifetime_name(id.expect_local());
                 tcx.mk_region(ty::ReFree(ty::FreeRegion {
                     scope,
@@ -237,22 +264,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 }))
 
                 // (*) -- not late-bound, won't change
-            }
-
-            None => {
-                self.re_infer(def, lifetime.span).unwrap_or_else(|| {
-                    debug!(?lifetime, "unelided lifetime in signature");
-
-                    // This indicates an illegal lifetime
-                    // elision. `resolve_lifetime` should have
-                    // reported an error in this case -- but if
-                    // not, let's error out.
-                    tcx.sess.delay_span_bug(lifetime.span, "unelided lifetime in signature");
-
-                    // Supply some dummy value. We don't have an
-                    // `re_error`, annoyingly, so use `'static`.
-                    tcx.lifetimes.re_static
-                })
             }
         };
 
@@ -1537,8 +1548,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             self.ast_region_to_region(lifetime, None)
         } else {
             self.compute_object_lifetime_bound(span, existential_predicates).unwrap_or_else(|| {
-                if tcx.named_region(lifetime.hir_id).is_some() {
-                    self.ast_region_to_region(lifetime, None)
+                if let Some(rl) = tcx.named_region(lifetime.hir_id) {
+                    self.ast_region_to_region_inner(rl)
+                } else if let Some(&rl) =
+                    tcx.object_lifetime_map(lifetime.hir_id.owner).get(&lifetime.hir_id.local_id)
+                {
+                    self.ast_region_to_region_inner(rl)
                 } else {
                     self.re_infer(None, span).unwrap_or_else(|| {
                         let mut err = struct_span_err!(
@@ -2840,10 +2855,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             );
 
             if !infer_replacements.is_empty() {
-                diag.multipart_suggestion(&format!(
+                diag.multipart_suggestion(
+                    &format!(
                     "try replacing `_` with the type{} in the corresponding trait method signature",
                     rustc_errors::pluralize!(infer_replacements.len()),
-                ), infer_replacements, Applicability::MachineApplicable);
+                ),
+                    infer_replacements,
+                    Applicability::MachineApplicable,
+                );
             }
 
             diag.emit();
