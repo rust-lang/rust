@@ -1,9 +1,11 @@
 mod diagnostic;
 mod error;
+mod fluent;
 mod subdiagnostic;
 mod utils;
 
 use diagnostic::SessionDiagnosticDerive;
+pub(crate) use fluent::fluent_messages;
 use proc_macro2::TokenStream;
 use quote::format_ident;
 use subdiagnostic::SessionSubdiagnosticDerive;
@@ -12,7 +14,7 @@ use synstructure::Structure;
 /// Implements `#[derive(SessionDiagnostic)]`, which allows for errors to be specified as a struct,
 /// independent from the actual diagnostics emitting code.
 ///
-/// ```ignore (pseudo-rust)
+/// ```ignore (rust)
 /// # extern crate rustc_errors;
 /// # use rustc_errors::Applicability;
 /// # extern crate rustc_span;
@@ -43,7 +45,7 @@ use synstructure::Structure;
 ///
 /// Then, later, to emit the error:
 ///
-/// ```ignore (pseudo-rust)
+/// ```ignore (rust)
 /// sess.emit_err(MoveOutOfBorrowError {
 ///     expected,
 ///     actual,
@@ -67,7 +69,7 @@ pub fn session_diagnostic_derive(s: Structure<'_>) -> TokenStream {
 /// suggestions to be specified as a structs or enums, independent from the actual diagnostics
 /// emitting code or diagnostic derives.
 ///
-/// ```ignore (pseudo-rust)
+/// ```ignore (rust)
 /// #[derive(SessionSubdiagnostic)]
 /// pub enum ExpectedIdentifierLabel<'tcx> {
 ///     #[label(slug = "parser-expected-identifier")]
@@ -104,7 +106,7 @@ pub fn session_diagnostic_derive(s: Structure<'_>) -> TokenStream {
 ///
 /// Then, later, to add the subdiagnostic:
 ///
-/// ```ignore (pseudo-rust)
+/// ```ignore (rust)
 /// diag.subdiagnostic(ExpectedIdentifierLabel::WithoutFound { span });
 ///
 /// diag.subdiagnostic(RawIdentifierSuggestion { span, applicability, ident });

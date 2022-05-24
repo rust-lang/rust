@@ -31,8 +31,8 @@ use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::sync::{self, Lock, Lrc};
 use rustc_data_structures::AtomicRef;
 pub use rustc_error_messages::{
-    fallback_fluent_bundle, fluent_bundle, DiagnosticMessage, FluentBundle, LanguageIdentifier,
-    LazyFallbackBundle, MultiSpan, SpanLabel, DEFAULT_LOCALE_RESOURCES,
+    fallback_fluent_bundle, fluent, fluent_bundle, DiagnosticMessage, FluentBundle,
+    LanguageIdentifier, LazyFallbackBundle, MultiSpan, SpanLabel, DEFAULT_LOCALE_RESOURCES,
 };
 pub use rustc_lint_defs::{pluralize, Applicability};
 use rustc_span::source_map::SourceMap;
