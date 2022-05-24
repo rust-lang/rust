@@ -1,6 +1,12 @@
 // run-rustfix
 #![feature(let_chains)]
-#![allow(unused, clippy::nonminimal_bool, clippy::let_unit_value, clippy::let_and_return)]
+#![allow(
+    unused,
+    clippy::assign_op_pattern,
+    clippy::let_and_return,
+    clippy::let_unit_value,
+    clippy::nonminimal_bool
+)]
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::rc::Rc;
@@ -229,4 +235,24 @@ fn does_not_lint() {
     let x;
     let y = SignificantDrop;
     x = SignificantDrop;
+}
+
+mod fixable {
+    #![allow(dead_code)]
+
+    fn main() {
+        let a;
+        a = "zero";
+
+        let b;
+        let c;
+        b = 1;
+        c = 2;
+
+        let d: usize;
+        d = 1;
+
+        let e;
+        e = format!("{}", d);
+    }
 }
