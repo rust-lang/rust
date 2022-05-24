@@ -49,6 +49,11 @@ fn main() {
     x >= 10 && x <= -10;
     (-3. ..=3.).contains(&y);
     y >= 3. && y <= -3.;
+
+    // Fix #8745
+    let z = 42;
+    (0..=10).contains(&x) && (0..=10).contains(&z);
+    !(0..10).contains(&x) || !(0..10).contains(&z);
 }
 
 // Fix #6373
