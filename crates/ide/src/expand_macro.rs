@@ -238,6 +238,24 @@ fn main() {
     }
 
     #[test]
+    fn macro_expand_underscore() {
+        check(
+            r#"
+macro_rules! bar {
+    ($i:tt) => { for _ in 0..$i {} }
+}
+fn main() {
+    ba$0r!(42);
+}
+"#,
+            expect![[r#"
+                bar
+                for _ in 0..42{}
+                "#]],
+        );
+    }
+
+    #[test]
     fn macro_expand_recursive_expansion() {
         check(
             r#"
@@ -385,7 +403,7 @@ fn main() {
 "#,
             expect![[r#"
                 foo
-                0 "#]],
+                0"#]],
         );
     }
 
