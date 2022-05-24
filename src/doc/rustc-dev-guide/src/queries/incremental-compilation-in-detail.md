@@ -58,7 +58,7 @@ The story is a bit different for `type_check_item(foo)`: We again walk the
 edges and already know that `type_of(foo)` is fine. Then we get to
 `type_of(bar)` which we have not checked yet, so we walk the edges of
 `type_of(bar)` and encounter `Hir(bar)` which *has* changed. Consequently
-the result of `type_of(bar)` might yield a different same result than what we
+the result of `type_of(bar)` might yield a different result than what we
 have in the cache and, transitively, the result of `type_check_item(foo)`
 might have changed too. We thus re-run `type_check_item(foo)`, which in
 turn will re-run `type_of(bar)`, which will yield an up-to-date result
@@ -329,7 +329,7 @@ up its dependencies (i.e. also dep-nodes in the previous graph) and continue wit
 the rest of the try-mark-green algorithm. The next interesting thing happens
 when we successfully marked the node as green. At that point we copy the node
 and the edges to its dependencies from the old graph into the new graph. We
-have to do this because the new dep-graph cannot not acquire the
+have to do this because the new dep-graph cannot acquire the
 node and edges via the regular dependency tracking. The tracking system can
 only record edges while actually running a query -- but running the query,
 although we have the result already cached, is exactly what we want to avoid.
