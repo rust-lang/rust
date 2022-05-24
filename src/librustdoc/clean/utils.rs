@@ -75,9 +75,9 @@ pub(crate) fn krate(cx: &mut DocContext<'_>) -> Crate {
     Crate { module, primitives, external_traits: cx.external_traits.clone() }
 }
 
-pub(crate) fn substs_to_args(
-    cx: &mut DocContext<'_>,
-    substs: &[ty::subst::GenericArg<'_>],
+pub(crate) fn substs_to_args<'tcx>(
+    cx: &mut DocContext<'tcx>,
+    substs: &[ty::subst::GenericArg<'tcx>],
     mut skip_first: bool,
 ) -> Vec<GenericArg> {
     let mut ret_val =
@@ -99,12 +99,12 @@ pub(crate) fn substs_to_args(
     ret_val
 }
 
-fn external_generic_args(
-    cx: &mut DocContext<'_>,
+fn external_generic_args<'tcx>(
+    cx: &mut DocContext<'tcx>,
     did: DefId,
     has_self: bool,
     bindings: Vec<TypeBinding>,
-    substs: SubstsRef<'_>,
+    substs: SubstsRef<'tcx>,
 ) -> GenericArgs {
     let args = substs_to_args(cx, &substs, has_self);
 
@@ -127,12 +127,12 @@ fn external_generic_args(
     }
 }
 
-pub(super) fn external_path(
-    cx: &mut DocContext<'_>,
+pub(super) fn external_path<'tcx>(
+    cx: &mut DocContext<'tcx>,
     did: DefId,
     has_self: bool,
     bindings: Vec<TypeBinding>,
-    substs: SubstsRef<'_>,
+    substs: SubstsRef<'tcx>,
 ) -> Path {
     let def_kind = cx.tcx.def_kind(did);
     let name = cx.tcx.item_name(did);
@@ -439,9 +439,9 @@ pub(crate) fn resolve_use_source(cx: &mut DocContext<'_>, path: Path) -> ImportS
     }
 }
 
-pub(crate) fn enter_impl_trait<F, R>(cx: &mut DocContext<'_>, f: F) -> R
+pub(crate) fn enter_impl_trait<'tcx, F, R>(cx: &mut DocContext<'tcx>, f: F) -> R
 where
-    F: FnOnce(&mut DocContext<'_>) -> R,
+    F: FnOnce(&mut DocContext<'tcx>) -> R,
 {
     let old_bounds = mem::take(&mut cx.impl_trait_bounds);
     let r = f(cx);
