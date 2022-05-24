@@ -33,7 +33,6 @@ mod token_text;
 #[cfg(test)]
 mod tests;
 
-pub mod display;
 pub mod algo;
 pub mod ast;
 #[doc(hidden)]

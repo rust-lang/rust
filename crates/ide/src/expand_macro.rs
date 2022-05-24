@@ -250,8 +250,7 @@ fn main() {
 "#,
             expect![[r#"
                 bar
-                for _ in 0..42{}
-                "#]],
+                for _ in 0..42{}"#]],
         );
     }
 
@@ -273,7 +272,6 @@ f$0oo!();
             expect![[r#"
                 foo
                 fn b(){}
-
             "#]],
         );
     }
@@ -297,8 +295,7 @@ f$0oo!();
                 fn some_thing() -> u32 {
                   let a = 0;
                   a+10
-                }
-            "#]],
+                }"#]],
         );
     }
 
@@ -359,8 +356,7 @@ fn main() {
 "#,
             expect![[r#"
                 match_ast
-                {}
-            "#]],
+                {}"#]],
         );
     }
 
@@ -421,8 +417,7 @@ fn main() {
 "#,
             expect![[r#"
                 foo
-                fn f<T>(_: &dyn ::std::marker::Copy){}
-            "#]],
+                fn f<T>(_: &dyn ::std::marker::Copy){}"#]],
         );
     }
 
@@ -440,7 +435,6 @@ struct Foo {}
             expect![[r#"
                 Clone
                 impl < >core::clone::Clone for Foo< >{}
-
             "#]],
         );
     }
@@ -458,7 +452,6 @@ struct Foo {}
             expect![[r#"
                 Copy
                 impl < >core::marker::Copy for Foo< >{}
-
             "#]],
         );
     }
@@ -475,7 +468,6 @@ struct Foo {}
             expect![[r#"
                 Copy
                 impl < >core::marker::Copy for Foo< >{}
-
             "#]],
         );
         check(
@@ -488,7 +480,6 @@ struct Foo {}
             expect![[r#"
                 Clone
                 impl < >core::clone::Clone for Foo< >{}
-
             "#]],
         );
     }

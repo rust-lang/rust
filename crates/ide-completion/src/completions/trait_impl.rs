@@ -32,10 +32,12 @@
 //! ```
 
 use hir::{self, HasAttrs};
-use ide_db::{path_transform::PathTransform, traits::get_missing_assoc_items, SymbolKind};
+use ide_db::{
+    path_transform::PathTransform, syntax_helpers::insert_whitespace_into_node,
+    traits::get_missing_assoc_items, SymbolKind,
+};
 use syntax::{
     ast::{self, edit_in_place::AttrsOwnerEdit},
-    display::function_declaration,
     AstNode, SyntaxElement, SyntaxKind, SyntaxNode, TextRange, T,
 };
 use text_edit::TextEdit;
@@ -179,7 +181,7 @@ fn add_function_impl(
                 _ => unreachable!(),
             };
 
-            let function_decl = function_declaration(&transformed_fn);
+            let function_decl = function_declaration(&transformed_fn, source.file_id.is_macro());
             match ctx.config.snippet_cap {
                 Some(cap) => {
                     let snippet = format!("{} {{\n    $0\n}}", function_decl);
@@ -260,7 +262,7 @@ fn add_const_impl(
                     _ => unreachable!(),
                 };
 
-                let label = make_const_compl_syntax(&transformed_const);
+                let label = make_const_compl_syntax(&transformed_const, source.file_id.is_macro());
                 let replacement = format!("{} ", label);
 
                 let mut item = CompletionItem::new(SymbolKind::Const, replacement_range, label);
@@ -283,17 +285,18 @@ fn add_const_impl(
     }
 }
 
-fn make_const_compl_syntax(const_: &ast::Const) -> String {
+fn make_const_compl_syntax(const_: &ast::Const, needs_whitespace: bool) -> String {
     const_.remove_attrs_and_docs();
+    let const_ = if needs_whitespace {
+        insert_whitespace_into_node::insert_ws_into(const_.syntax().clone())
+    } else {
+        const_.syntax().clone()
+    };
 
-    let const_start = const_.syntax().text_range().start();
-    let const_end = const_.syntax().text_range().end();
-
-    let start =
-        const_.syntax().first_child_or_token().map_or(const_start, |f| f.text_range().start());
+    let start = const_.text_range().start();
+    let const_end = const_.text_range().end();
 
     let end = const_
-        .syntax()
         .children_with_tokens()
         .find(|s| s.kind() == T![;] || s.kind() == T![=])
         .map_or(const_end, |f| f.text_range().start());
@@ -301,9 +304,34 @@ fn make_const_compl_syntax(const_: &ast::Const) -> String {
     let len = end - start;
     let range = TextRange::new(0.into(), len);
 
-    let syntax = const_.syntax().text().slice(range).to_string();
+    let syntax = const_.text().slice(range).to_string();
 
     format!("{} =", syntax.trim_end())
+}
+
+fn function_declaration(node: &ast::Fn, needs_whitespace: bool) -> String {
+    node.remove_attrs_and_docs();
+
+    let node = if needs_whitespace {
+        insert_whitespace_into_node::insert_ws_into(node.syntax().clone())
+    } else {
+        node.syntax().clone()
+    };
+
+    let start = node.text_range().start();
+    let end = node.text_range().end();
+
+    let end = node
+        .last_child_or_token()
+        .filter(|s| s.kind() == T![;] || s.kind() == SyntaxKind::BLOCK_EXPR)
+        .map_or(end, |f| f.text_range().start());
+
+    let len = end - start;
+    let range = TextRange::new(0.into(), len);
+
+    let syntax = node.text().slice(range).to_string();
+
+    syntax.trim_end().to_owned()
 }
 
 fn replacement_range(ctx: &CompletionContext, item: &SyntaxNode) -> TextRange {
@@ -655,8 +683,7 @@ trait Test {
 struct T;
 
 impl Test for T {
-    fn foo<T>()
-where T: Into<String> {
+    fn foo<T>() where T: Into<String> {
     $0
 }
 }
@@ -992,7 +1019,7 @@ trait SomeTrait<T> {}
 
 trait Foo<T> {
     fn function()
-    where Self: SomeTrait<T>;
+        where Self: SomeTrait<T>;
 }
 struct Bar;
 
@@ -1005,13 +1032,13 @@ trait SomeTrait<T> {}
 
 trait Foo<T> {
     fn function()
-    where Self: SomeTrait<T>;
+        where Self: SomeTrait<T>;
 }
 struct Bar;
 
 impl Foo<u32> for Bar {
     fn function()
-where Self: SomeTrait<u32> {
+        where Self: SomeTrait<u32> {
     $0
 }
 }
@@ -1050,6 +1077,53 @@ impl Tr for () {
             expect![[r#"
             fn fn required()
         "#]],
+        );
+    }
+
+    #[test]
+    fn fixes_up_macro_generated() {
+        check_edit(
+            "fn foo",
+            r#"
+macro_rules! noop {
+    ($($item: item)*) => {
+        $($item)*
+    }
+}
+
+noop! {
+    trait Foo {
+        fn foo(&mut self, bar: i64, baz: &mut u32) -> Result<(), u32>;
+    }
+}
+
+struct Test;
+
+impl Foo for Test {
+    $0
+}
+"#,
+            r#"
+macro_rules! noop {
+    ($($item: item)*) => {
+        $($item)*
+    }
+}
+
+noop! {
+    trait Foo {
+        fn foo(&mut self, bar: i64, baz: &mut u32) -> Result<(), u32>;
+    }
+}
+
+struct Test;
+
+impl Foo for Test {
+    fn foo(&mut self,bar:i64,baz: &mut u32) -> Result<(),u32> {
+    $0
+}
+}
+"#,
         );
     }
 }
