@@ -159,20 +159,10 @@ enum Foo {
 }
 ",
             r"
-//- /main.rs
-mod foo;
-use foo::Foo;
-
-fn main() {
-    Foo::Baz
-}
-
-//- /foo.rs
 enum Foo {
     Bar,
     Baz,
 }
-
 ",
         )
     }
