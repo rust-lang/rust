@@ -106,7 +106,7 @@ fn external_generic_args<'tcx>(
     bindings: Vec<TypeBinding>,
     substs: SubstsRef<'tcx>,
 ) -> GenericArgs {
-    let args = substs_to_args(cx, &substs, has_self);
+    let args = substs_to_args(cx, substs, has_self);
 
     if cx.tcx.fn_trait_kind_from_lang_item(did).is_some() {
         let inputs =

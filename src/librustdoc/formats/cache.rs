@@ -456,7 +456,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                         let ty::Adt(adt, _) = self.tcx.type_of(path.def_id()).kind() &&
                         adt.is_fundamental() {
                         for ty in generics {
-                            if let Some(did) = ty.def_id(&self.cache) {
+                            if let Some(did) = ty.def_id(self.cache) {
                                 dids.insert(did);
                             }
                         }

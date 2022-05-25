@@ -494,7 +494,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                     DefKind::AssocFn | DefKind::AssocConst | DefKind::AssocTy | DefKind::Variant,
                     def_id,
                 ) => (Res::from_def_id(self.cx.tcx, self.cx.tcx.parent(def_id)), Some(def_id)),
-                _ => ((res, None)),
+                _ => (res, None),
             });
         } else if ns == MacroNS {
             return Err(UnresolvedPath {
@@ -636,10 +636,9 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             Res::Primitive(prim) => {
                 self.resolve_primitive_associated_item(prim, ns, item_name).or_else(|| {
                     self.primitive_type_to_ty(prim)
-                        .map(|ty| {
+                        .and_then(|ty| {
                             resolve_associated_trait_item(ty, module_id, item_name, ns, self.cx)
                         })
-                        .flatten()
                         .map(|item| (root_res, item.def_id))
                 })
             }
@@ -903,7 +902,7 @@ impl<'a, 'tcx> DocVisitor for LinkCollector<'a, 'tcx> {
                 tmp_links.insert(doc.clone(), preprocessed_markdown_links(&doc));
             }
             for md_link in &tmp_links[&doc] {
-                let link = self.resolve_link(&item, &doc, parent_node, md_link);
+                let link = self.resolve_link(item, &doc, parent_node, md_link);
                 if let Some(link) = link {
                     self.cx.cache.intra_doc_links.entry(item.item_id).or_default().push(link);
                 }
@@ -1136,7 +1135,7 @@ impl LinkCollector<'_, '_> {
                     let kind = self.cx.tcx.def_kind(id);
                     self.verify_disambiguator(
                         path_str,
-                        &ori_link,
+                        ori_link,
                         kind,
                         id,
                         disambiguator,
@@ -1150,14 +1149,14 @@ impl LinkCollector<'_, '_> {
                         && item.item_id.is_local()
                         && !self.cx.tcx.features().intra_doc_pointers
                     {
-                        self.report_rawptr_assoc_feature_gate(dox, &ori_link, item);
+                        self.report_rawptr_assoc_feature_gate(dox, ori_link, item);
                     }
                 } else {
                     match disambiguator {
                         Some(Disambiguator::Primitive | Disambiguator::Namespace(_)) | None => {}
                         Some(other) => {
                             self.report_disambiguator_mismatch(
-                                path_str, &ori_link, other, res, &diag_info,
+                                path_str, ori_link, other, res, &diag_info,
                             );
                             return None;
                         }
@@ -1180,7 +1179,7 @@ impl LinkCollector<'_, '_> {
                     };
                 self.verify_disambiguator(
                     path_str,
-                    &ori_link,
+                    ori_link,
                     kind_for_dis,
                     id_for_dis,
                     disambiguator,
@@ -1274,7 +1273,7 @@ impl LinkCollector<'_, '_> {
             }
             suggest_disambiguator(resolved, diag, path_str, &ori_link.link, sp);
         };
-        report_diagnostic(self.cx.tcx, BROKEN_INTRA_DOC_LINKS, &msg, &diag_info, callback);
+        report_diagnostic(self.cx.tcx, BROKEN_INTRA_DOC_LINKS, &msg, diag_info, callback);
     }
 
     fn report_rawptr_assoc_feature_gate(&self, dox: &str, ori_link: &MarkdownLink, item: &Item) {
@@ -1930,7 +1929,7 @@ fn anchor_failure(
     msg: &str,
     anchor_idx: usize,
 ) {
-    report_diagnostic(cx.tcx, BROKEN_INTRA_DOC_LINKS, &msg, &diag_info, |diag, sp| {
+    report_diagnostic(cx.tcx, BROKEN_INTRA_DOC_LINKS, msg, &diag_info, |diag, sp| {
         if let Some(mut sp) = sp {
             if let Some((fragment_offset, _)) =
                 diag_info.ori_link.char_indices().filter(|(_, x)| *x == '#').nth(anchor_idx)

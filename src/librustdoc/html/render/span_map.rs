@@ -49,7 +49,7 @@ pub(crate) fn collect_spans_and_sources(
         if generate_link_to_definition {
             tcx.hir().walk_toplevel_module(&mut visitor);
         }
-        let sources = sources::collect_local_sources(tcx, src_root, &krate);
+        let sources = sources::collect_local_sources(tcx, src_root, krate);
         (sources, visitor.matches)
     } else {
         (Default::default(), Default::default())

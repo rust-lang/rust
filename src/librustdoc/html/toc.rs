@@ -163,15 +163,18 @@ impl TocBuilder {
 
 impl Toc {
     fn print_inner(&self, v: &mut String) {
+        use std::fmt::Write as _;
+
         v.push_str("<ul>");
         for entry in &self.entries {
             // recursively format this table of contents
-            v.push_str(&format!(
+            let _ = write!(
+                v,
                 "\n<li><a href=\"#{id}\">{num} {name}</a>",
                 id = entry.id,
                 num = entry.sec_number,
                 name = entry.name
-            ));
+            );
             entry.children.print_inner(&mut *v);
             v.push_str("</li>");
         }

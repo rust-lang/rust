@@ -1023,7 +1023,7 @@ impl Markdown<'_> {
         let Markdown {
             content: md,
             links,
-            mut ids,
+            ids,
             error_codes: codes,
             edition,
             playground,
@@ -1046,7 +1046,7 @@ impl Markdown<'_> {
 
         let mut s = String::with_capacity(md.len() * 3 / 2);
 
-        let p = HeadingLinks::new(p, None, &mut ids, heading_offset);
+        let p = HeadingLinks::new(p, None, ids, heading_offset);
         let p = Footnotes::new(p);
         let p = LinkReplacer::new(p.map(|(ev, _)| ev), links);
         let p = TableWrapper::new(p);
@@ -1059,7 +1059,7 @@ impl Markdown<'_> {
 
 impl MarkdownWithToc<'_> {
     pub(crate) fn into_string(self) -> String {
-        let MarkdownWithToc(md, mut ids, codes, edition, playground) = self;
+        let MarkdownWithToc(md, ids, codes, edition, playground) = self;
 
         let p = Parser::new_ext(md, main_body_opts()).into_offset_iter();
 
@@ -1068,7 +1068,7 @@ impl MarkdownWithToc<'_> {
         let mut toc = TocBuilder::new();
 
         {
-            let p = HeadingLinks::new(p, Some(&mut toc), &mut ids, HeadingOffset::H1);
+            let p = HeadingLinks::new(p, Some(&mut toc), ids, HeadingOffset::H1);
             let p = Footnotes::new(p);
             let p = TableWrapper::new(p.map(|(ev, _)| ev));
             let p = CodeBlocks::new(p, codes, edition, playground);
@@ -1081,7 +1081,7 @@ impl MarkdownWithToc<'_> {
 
 impl MarkdownHtml<'_> {
     pub(crate) fn into_string(self) -> String {
-        let MarkdownHtml(md, mut ids, codes, edition, playground) = self;
+        let MarkdownHtml(md, ids, codes, edition, playground) = self;
 
         // This is actually common enough to special-case
         if md.is_empty() {
@@ -1097,7 +1097,7 @@ impl MarkdownHtml<'_> {
 
         let mut s = String::with_capacity(md.len() * 3 / 2);
 
-        let p = HeadingLinks::new(p, None, &mut ids, HeadingOffset::H1);
+        let p = HeadingLinks::new(p, None, ids, HeadingOffset::H1);
         let p = Footnotes::new(p);
         let p = TableWrapper::new(p.map(|(ev, _)| ev));
         let p = CodeBlocks::new(p, codes, edition, playground);

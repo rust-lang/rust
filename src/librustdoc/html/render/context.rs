@@ -232,18 +232,18 @@ impl<'tcx> Context<'tcx> {
 
                     let mut path = String::new();
                     for name in &names[..names.len() - 1] {
-                        path.push_str(&name.as_str());
+                        path.push_str(name.as_str());
                         path.push('/');
                     }
-                    path.push_str(&item_path(ty, &names.last().unwrap().as_str()));
+                    path.push_str(&item_path(ty, names.last().unwrap().as_str()));
                     match self.shared.redirections {
                         Some(ref redirections) => {
                             let mut current_path = String::new();
                             for name in &self.current {
-                                current_path.push_str(&name.as_str());
+                                current_path.push_str(name.as_str());
                                 current_path.push('/');
                             }
-                            current_path.push_str(&item_path(ty, &names.last().unwrap().as_str()));
+                            current_path.push_str(&item_path(ty, names.last().unwrap().as_str()));
                             redirections.borrow_mut().insert(current_path, path);
                         }
                         None => return layout::redirect(&format!("{}{}", self.root_path(), path)),

@@ -667,7 +667,7 @@ impl Options {
             return Err(1);
         }
 
-        let scrape_examples_options = ScrapeExamplesOptions::new(&matches, &diag)?;
+        let scrape_examples_options = ScrapeExamplesOptions::new(matches, &diag)?;
         let with_examples = matches.opt_strs("with-examples");
         let call_locations = crate::scrape_examples::load_call_locations(with_examples, &diag)?;
 

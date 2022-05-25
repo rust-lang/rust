@@ -265,7 +265,7 @@ impl<'a, 'b> DocVisitor for CoverageCalculator<'a, 'b> {
                 self.items.entry(filename).or_default().count_item(
                     has_docs,
                     has_doc_example,
-                    should_have_doc_example(self.ctx, &i),
+                    should_have_doc_example(self.ctx, i),
                     should_have_docs,
                 );
             }
