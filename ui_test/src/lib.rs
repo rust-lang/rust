@@ -56,7 +56,7 @@ pub fn run_tests(config: Config) {
     // Some statistics and failure reports.
     let failures = Mutex::new(vec![]);
     let succeeded = AtomicUsize::default();
-    let skipped = AtomicUsize::default();
+    let ignored = AtomicUsize::default();
 
     crossbeam::scope(|s| {
         for _ in 0..std::thread::available_parallelism().unwrap().get() {
@@ -74,10 +74,10 @@ pub fn run_tests(config: Config) {
                         continue;
                     }
                     let comments = Comments::parse(&path);
-                    // Skip file if only/skip rules do (not) apply
+                    // Ignore file if only/ignore rules do (not) apply
                     if ignore_file(&comments, &target) {
-                        skipped.fetch_add(1, Ordering::Relaxed);
-                        eprintln!("{} .. {}", path.display(), "skipped".yellow());
+                        ignored.fetch_add(1, Ordering::Relaxed);
+                        eprintln!("{} .. {}", path.display(), "ignored".yellow());
                         continue;
                     }
                     // Run the test for all revisions
@@ -91,7 +91,7 @@ pub fn run_tests(config: Config) {
                         if !revision.is_empty() {
                             write!(msg, "(revision `{revision}`) ").unwrap();
                         }
-                        write!(msg, " .. ").unwrap();
+                        write!(msg, "... ").unwrap();
                         if errors.is_empty() {
                             eprintln!("{msg}{}", "ok".green());
                             succeeded.fetch_add(1, Ordering::Relaxed);
@@ -109,7 +109,7 @@ pub fn run_tests(config: Config) {
     // Print all errors in a single thread to show reliable output
     let failures = failures.into_inner().unwrap();
     let succeeded = succeeded.load(Ordering::Relaxed);
-    let skipped = skipped.load(Ordering::Relaxed);
+    let ignored = ignored.load(Ordering::Relaxed);
     if !failures.is_empty() {
         for (path, miri, revision, errors) in &failures {
             eprintln!();
@@ -117,7 +117,7 @@ pub fn run_tests(config: Config) {
             if !revision.is_empty() {
                 eprint!(" (revision `{}`)", revision);
             }
-            eprint!("{}", " FAILED".red());
+            eprint!(" {}", "FAILED".red());
             eprintln!();
             eprintln!("command: {:?}", miri);
             eprintln!();
@@ -153,19 +153,21 @@ pub fn run_tests(config: Config) {
             }
         }
         eprintln!(
-            "{} tests failed, {} tests passed, {} skipped",
+            "{} tests failed, {} tests passed, {} ignored",
             failures.len().to_string().red().bold(),
             succeeded.to_string().green(),
-            skipped.to_string().yellow()
+            ignored.to_string().yellow()
         );
         std::process::exit(1);
     }
     eprintln!();
     eprintln!(
-        "{} tests passed, {} skipped",
+        "test result: {}. {} tests passed, {} ignored",
+        "ok".green(),
         succeeded.to_string().green(),
-        skipped.to_string().yellow()
+        ignored.to_string().yellow()
     );
+    eprintln!();
 }
 
 #[derive(Debug)]
