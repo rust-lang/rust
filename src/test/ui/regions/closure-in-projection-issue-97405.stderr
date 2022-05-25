@@ -1,0 +1,45 @@
+error[E0310]: the associated type `<impl Iterator as Iterator>::Item` may not live long enough
+  --> $DIR/closure-in-projection-issue-97405.rs:24:5
+   |
+LL |     assert_static(opaque(async move { t; }).next());
+   |     ^^^^^^^^^^^^^
+   |
+   = help: consider adding an explicit lifetime bound `<impl Iterator as Iterator>::Item: 'static`...
+   = note: ...so that the type `Option<<impl Iterator as Iterator>::Item>` will meet its required lifetime bounds...
+note: ...that is required by this bound
+  --> $DIR/closure-in-projection-issue-97405.rs:11:21
+   |
+LL | fn assert_static<T: 'static>(_: T) {}
+   |                     ^^^^^^^
+
+error[E0310]: the associated type `<impl Iterator as Iterator>::Item` may not live long enough
+  --> $DIR/closure-in-projection-issue-97405.rs:26:5
+   |
+LL |     assert_static(opaque(move || { t; }).next());
+   |     ^^^^^^^^^^^^^
+   |
+   = help: consider adding an explicit lifetime bound `<impl Iterator as Iterator>::Item: 'static`...
+   = note: ...so that the type `Option<<impl Iterator as Iterator>::Item>` will meet its required lifetime bounds...
+note: ...that is required by this bound
+  --> $DIR/closure-in-projection-issue-97405.rs:11:21
+   |
+LL | fn assert_static<T: 'static>(_: T) {}
+   |                     ^^^^^^^
+
+error[E0310]: the associated type `<impl Iterator as Iterator>::Item` may not live long enough
+  --> $DIR/closure-in-projection-issue-97405.rs:28:5
+   |
+LL |     assert_static(opaque(opaque(async move { t; }).next()).next());
+   |     ^^^^^^^^^^^^^
+   |
+   = help: consider adding an explicit lifetime bound `<impl Iterator as Iterator>::Item: 'static`...
+   = note: ...so that the type `Option<<impl Iterator as Iterator>::Item>` will meet its required lifetime bounds...
+note: ...that is required by this bound
+  --> $DIR/closure-in-projection-issue-97405.rs:11:21
+   |
+LL | fn assert_static<T: 'static>(_: T) {}
+   |                     ^^^^^^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0310`.
