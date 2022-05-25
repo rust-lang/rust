@@ -201,6 +201,10 @@ impl GlobalState {
                     }
                 }
 
+                if !file.exists() {
+                    self.diagnostics.clear_native_for(file.file_id);
+                }
+
                 let text = if file.exists() {
                     let bytes = vfs.file_contents(file.file_id).to_vec();
                     String::from_utf8(bytes).ok().and_then(|text| {
