@@ -42,13 +42,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ExprKind::Tup(ref elts) => hir::ExprKind::Tup(self.lower_exprs(elts)),
                 ExprKind::Call(ref f, ref args) => {
                     if e.attrs.get(0).map_or(false, |a| a.has_name(sym::rustc_box)) {
-                        if let [inner] = &args[..] {
-                            hir::ExprKind::Box(self.lower_expr(&inner))
+                        if let [inner] = &args[..] && e.attrs.len() == 1 {
+                            let kind = hir::ExprKind::Box(self.lower_expr(&inner));
+                            let hir_id = self.lower_node_id(e.id);
+                            return hir::Expr { hir_id, kind, span: self.lower_span(e.span) };
                         } else {
                             self.sess
                                 .struct_span_err(
                                     e.span,
-                                    "rustc_box requires precisely one argument",
+                                    "#[rustc_box] requires precisely one argument \
+                                    and no other attributes are allowed",
                                 )
                                 .emit();
                             hir::ExprKind::Err
