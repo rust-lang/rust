@@ -157,17 +157,33 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         // Winnow, but record the exact outcome of evaluation, which
         // is needed for specialization. Propagate overflow if it occurs.
+        let mut eval_cand = |c| match self.evaluate_candidate(stack, &c) {
+            Ok(eval) if eval.may_apply() => {
+                Ok(Some(EvaluatedCandidate { candidate: c, evaluation: eval }))
+            }
+            Ok(_) => Ok(None),
+            Err(OverflowError::Canonical) => Err(Overflow(OverflowError::Canonical)),
+            Err(OverflowError::ErrorReporting) => Err(ErrorReporting),
+            Err(OverflowError::Error(e)) => Err(Overflow(OverflowError::Error(e))),
+        };
+
+        // this is very not perf and should be fixed xd
+        let drop_impl_candidates = candidates
+            .iter()
+            .filter(|c| matches!(c, SelectionCandidate::ParamCandidate(_)))
+            .cloned()
+            .map(&mut eval_cand)
+            .flat_map(Result::transpose)
+            .try_fold(false, |should_drop, param_candidate| {
+                let cand = &param_candidate?.candidate;
+                Ok::<_, SelectionError<'_>>(
+                    should_drop || !(cand.is_global() && !cand.has_late_bound_regions()),
+                )
+            })?;
         let mut candidates = candidates
             .into_iter()
-            .map(|c| match self.evaluate_candidate(stack, &c) {
-                Ok(eval) if eval.may_apply() => {
-                    Ok(Some(EvaluatedCandidate { candidate: c, evaluation: eval }))
-                }
-                Ok(_) => Ok(None),
-                Err(OverflowError::Canonical) => Err(Overflow(OverflowError::Canonical)),
-                Err(OverflowError::ErrorReporting) => Err(ErrorReporting),
-                Err(OverflowError::Error(e)) => Err(Overflow(OverflowError::Error(e))),
-            })
+            .filter(|c| !matches!(c, SelectionCandidate::ImplCandidate(_) if drop_impl_candidates))
+            .map(&mut eval_cand)
             .flat_map(Result::transpose)
             .collect::<Result<Vec<_>, _>>()?;
 
