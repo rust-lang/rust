@@ -5,7 +5,7 @@
 
 "use strict";
 
-(function () {
+(function() {
     const isSettingsPage = window.location.pathname.endsWith("/settings.html");
 
     function changeSetting(settingName, value) {
