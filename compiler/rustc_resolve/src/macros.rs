@@ -443,7 +443,9 @@ impl<'a> ResolverExpand for Resolver<'a> {
                 PathResult::NonModule(partial_res) if partial_res.unresolved_segments() == 0 => {
                     return Ok(true);
                 }
-                PathResult::NonModule(..) => {
+                PathResult::NonModule(..) |
+                // HACK(Urgau): This shouldn't be necessary
+                PathResult::Failed { is_error_from_last_segment: false, .. } => {
                     self.session
                         .struct_span_err(span, "not sure whether the path is accessible or not")
                         .note("the type may have associated items, but we are currently not checking them")

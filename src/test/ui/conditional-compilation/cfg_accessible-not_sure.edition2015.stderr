@@ -33,13 +33,29 @@ LL | #[cfg_accessible(Union::unresolved)]
 error: not sure whether the path is accessible or not
   --> $DIR/cfg_accessible-not_sure.rs:36:18
    |
+LL | #[cfg_accessible(Enum::Existing::existing)]
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the type may have associated items, but we are currently not checking them
+
+error: not sure whether the path is accessible or not
+  --> $DIR/cfg_accessible-not_sure.rs:38:18
+   |
+LL | #[cfg_accessible(Enum::Existing::unresolved)]
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the type may have associated items, but we are currently not checking them
+
+error: not sure whether the path is accessible or not
+  --> $DIR/cfg_accessible-not_sure.rs:40:18
+   |
 LL | #[cfg_accessible(Enum::unresolved)]
    |                  ^^^^^^^^^^^^^^^^
    |
    = note: the type may have associated items, but we are currently not checking them
 
 error: not sure whether the path is accessible or not
-  --> $DIR/cfg_accessible-not_sure.rs:46:18
+  --> $DIR/cfg_accessible-not_sure.rs:50:18
    |
 LL | #[cfg_accessible(Trait::existing)]
    |                  ^^^^^^^^^^^^^^^
@@ -47,7 +63,7 @@ LL | #[cfg_accessible(Trait::existing)]
    = note: the type may have associated items, but we are currently not checking them
 
 error: not sure whether the path is accessible or not
-  --> $DIR/cfg_accessible-not_sure.rs:48:18
+  --> $DIR/cfg_accessible-not_sure.rs:52:18
    |
 LL | #[cfg_accessible(Trait::unresolved)]
    |                  ^^^^^^^^^^^^^^^^^
@@ -55,7 +71,7 @@ LL | #[cfg_accessible(Trait::unresolved)]
    = note: the type may have associated items, but we are currently not checking them
 
 error: not sure whether the path is accessible or not
-  --> $DIR/cfg_accessible-not_sure.rs:55:18
+  --> $DIR/cfg_accessible-not_sure.rs:59:18
    |
 LL | #[cfg_accessible(TypeAlias::existing)]
    |                  ^^^^^^^^^^^^^^^^^^^
@@ -63,7 +79,7 @@ LL | #[cfg_accessible(TypeAlias::existing)]
    = note: the type may have associated items, but we are currently not checking them
 
 error: not sure whether the path is accessible or not
-  --> $DIR/cfg_accessible-not_sure.rs:57:18
+  --> $DIR/cfg_accessible-not_sure.rs:61:18
    |
 LL | #[cfg_accessible(TypeAlias::unresolved)]
    |                  ^^^^^^^^^^^^^^^^^^^^^
@@ -71,7 +87,7 @@ LL | #[cfg_accessible(TypeAlias::unresolved)]
    = note: the type may have associated items, but we are currently not checking them
 
 error: not sure whether the path is accessible or not
-  --> $DIR/cfg_accessible-not_sure.rs:66:18
+  --> $DIR/cfg_accessible-not_sure.rs:70:18
    |
 LL | #[cfg_accessible(ForeignType::unresolved)]
    |                  ^^^^^^^^^^^^^^^^^^^^^^^
@@ -79,7 +95,7 @@ LL | #[cfg_accessible(ForeignType::unresolved)]
    = note: the type may have associated items, but we are currently not checking them
 
 error: not sure whether the path is accessible or not
-  --> $DIR/cfg_accessible-not_sure.rs:75:18
+  --> $DIR/cfg_accessible-not_sure.rs:79:18
    |
 LL | #[cfg_accessible(AssocType::AssocType::unresolved)]
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -87,7 +103,7 @@ LL | #[cfg_accessible(AssocType::AssocType::unresolved)]
    = note: the type may have associated items, but we are currently not checking them
 
 error: not sure whether the path is accessible or not
-  --> $DIR/cfg_accessible-not_sure.rs:80:18
+  --> $DIR/cfg_accessible-not_sure.rs:84:18
    |
 LL | #[cfg_accessible(u8::unresolved)]
    |                  ^^^^^^^^^^^^^^
@@ -95,12 +111,12 @@ LL | #[cfg_accessible(u8::unresolved)]
    = note: the type may have associated items, but we are currently not checking them
 
 error: not sure whether the path is accessible or not
-  --> $DIR/cfg_accessible-not_sure.rs:82:18
+  --> $DIR/cfg_accessible-not_sure.rs:86:18
    |
 LL | #[cfg_accessible(u8::is_ascii)]
    |                  ^^^^^^^^^^^^
    |
    = note: the type may have associated items, but we are currently not checking them
 
-error: aborting due to 13 previous errors
+error: aborting due to 15 previous errors
 

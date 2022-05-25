@@ -33,6 +33,10 @@ enum Enum {
     Existing { existing: u8 },
 }
 
+#[cfg_accessible(Enum::Existing::existing)] //~ ERROR not sure
+const A: bool = true;
+#[cfg_accessible(Enum::Existing::unresolved)] //~ ERROR not sure
+const B: bool = true;
 #[cfg_accessible(Enum::unresolved)] //~ ERROR not sure
 const C: bool = true;
 
