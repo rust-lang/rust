@@ -47,7 +47,10 @@ impl<'gcc, 'tcx> StaticMethods for CodegenCx<'gcc, 'tcx> {
             }
         }
         let global_value = self.static_addr_of_mut(cv, align, kind);
-        // TODO(antoyo): set global constant.
+        #[cfg(feature = "master")]
+        self.global_lvalues.borrow().get(&global_value)
+            .expect("`static_addr_of_mut` did not add the global to `self.global_lvalues`")
+            .global_set_readonly();
         self.const_globals.borrow_mut().insert(cv, global_value);
         global_value
     }
@@ -88,7 +91,8 @@ impl<'gcc, 'tcx> StaticMethods for CodegenCx<'gcc, 'tcx> {
         // mutability are placed into read-only memory.
         if !is_mutable {
             if self.type_is_freeze(ty) {
-                // TODO(antoyo): set global constant.
+                #[cfg(feature = "master")]
+                global.global_set_readonly();
             }
         }
 
