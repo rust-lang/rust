@@ -977,7 +977,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             AssocConstraintKind::Bound { ref bounds } => {
                 let mut parent_def_id = self.current_hir_id_owner;
                 // Piggy-back on the `impl Trait` context to figure out the correct behavior.
-                let (desugar_to_impl_trait, itctx) = match itctx {
+                let (/*desugar_to_impl_trait*/_, itctx) = match itctx {
                     // We are in the return position:
                     //
                     //     fn foo() -> impl Iterator<Item: Debug>
@@ -1020,22 +1020,30 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     _ => (false, itctx),
                 };
 
-                if desugar_to_impl_trait {
+                //if desugar_to_impl_trait {
+                if self.resolver.opt_local_def_id(constraint.impl_trait_id).is_some() {
                     // Desugar `AssocTy: Bounds` into `AssocTy = impl Bounds`. We do this by
                     // constructing the HIR for `impl bounds...` and then lowering that.
+                    
+                    // temporary added to avoid error unused parent_def_id
+                    debug!("{:?}", parent_def_id);
 
+                    // impl_trait_node_id already exists! No need to create it, return it.
                     //let impl_trait_node_id = self.resolver.next_node_id();
                     let impl_trait_node_id = constraint.impl_trait_id;
-                    self.resolver.create_def(
+                    
+                    // definition has been already created in def_collector assoc constraint 
+                    /*self.resolver.create_def(
                         parent_def_id,
                         impl_trait_node_id,
                         DefPathData::ImplTrait,
                         ExpnId::root(),
                         constraint.span,
-                    );
-
+                    );*/
                     self.with_dyn_type_scope(false, |this| {
                         let node_id = this.resolver.next_node_id();
+                        // impl_trait_node_id gets lowered in lower_ty_direct here: 
+                        // hir_id: self.lower_node_id(def_node_id), (line 1300)
                         let ty = this.lower_ty(
                             &Ty {
                                 id: node_id,
