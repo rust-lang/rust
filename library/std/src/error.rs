@@ -18,7 +18,7 @@
 //!
 //! * [`panic!`] and [`panic_any`] (Constructing, Propagated automatically)
 //! * [`PanicInfo`] (Reporting)
-//! * [`set_hook`], [`take_hook`], and [`#[panic_handler]`] (Reporting)
+//! * [`set_hook`], [`take_hook`], and [`#[panic_handler]`][panic-handler] (Reporting)
 //! * [`catch_unwind`] and [`resume_unwind`] (Discarding, Propagating)
 //!
 //! The following are the primary interfaces of the error system and the
@@ -27,8 +27,8 @@
 //! * [`Result`] (Propagating, Reacting)
 //! * The [`Error`] trait (Reporting)
 //! * User defined types (Constructing / Representing)
-//! * `match` and [`downcast`] (Reacting)
-//! * The propagation operator (`?`) (Propagating)
+//! * [`match`] and [`downcast`] (Reacting)
+//! * The question mark operator ([`?`]) (Propagating)
 //! * The partially stable [`Try`] traits (Propagating, Constructing)
 //! * [`Termination`] (Reporting)
 //!
@@ -39,8 +39,8 @@
 //! to a caller. For these situations the standard library provides APIs for
 //! constructing panics with an `Error` as it's source.
 //!
-//! * `Result::unwrap`
-//! * `Result::expect`
+//! * [`Result::unwrap`]
+//! * [`Result::expect`]
 //!
 //! These functions are equivalent, they either return the inner value if the
 //! `Result` is `Ok` or panic if the `Result` is `Err` printing the inner error
@@ -122,17 +122,19 @@
 //! "should" as in "env variable should be set by blah" or "the given binary
 //! should be available and executable by the current user".
 //!
+//! [`panic_any`]: crate::panic::panic_any
+//! [`PanicInfo`]: crate::panic::PanicInfo
+//! [`catch_unwind`]: crate::panic::catch_unwind
+//! [`resume_unwind`]: crate::panic::resume_unwind
+//! [`downcast`]: crate::error::Error
+//! [`Termination`]: crate::process::Termination
+//! [`Try`]: crate::ops::Try
 //! [panic hook]: crate::panic::set_hook
 //! [`set_hook`]: crate::panic::set_hook
 //! [`take_hook`]: crate::panic::take_hook
-//! [`PanicInfo`]: crate::panic::PanicInfo
-//! [`panic_any`]: crate::panic::panic_any
-//! [`#[panic_handler]`]: https://doc.rust-lang.org/nomicon/panic-handler.html
-//! [`catch_unwind`]: crate::panic::catch_unwind
-//! [`resume_unwind`]: crate::panic::resume_unwind
-//! [`Termination`]: crate::process::Termination
-//! [`Try`]: crate::ops::Try
-//! [`downcast`]: crate::error::Error
+//! [panic-handler]: <https://doc.rust-lang.org/nomicon/panic-handler.html>
+//! [`match`]: ../../std/keyword.match.html
+//! [`?`]: ../../std/result/index.html#the-question-mark-operator-
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
