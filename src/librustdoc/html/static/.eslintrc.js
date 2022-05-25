@@ -50,5 +50,6 @@ module.exports = {
         "space-infix-ops": "error",
         "space-before-function-paren": ["error", "never"],
         "space-before-blocks": "error",
+        "comma-dangle": ["error", "always-multiline"],
     }
 };
