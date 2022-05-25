@@ -51,5 +51,6 @@ module.exports = {
         "space-before-function-paren": ["error", "never"],
         "space-before-blocks": "error",
         "comma-dangle": ["error", "always-multiline"],
+        "comma-style": ["error", "last"],
     }
 };
