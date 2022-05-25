@@ -58,6 +58,7 @@ pub(crate) use llvm::codegen_llvm_intrinsic_call;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_target::abi::InitKind;
 
 use crate::prelude::*;
 use cranelift_codegen::ir::AtomicRmwOp;
@@ -671,7 +672,12 @@ fn codegen_regular_intrinsic_call<'tcx>(
                 return;
             }
 
-            if intrinsic == sym::assert_zero_valid && !layout.might_permit_raw_init(fx, /*zero:*/ true) {
+            if intrinsic == sym::assert_zero_valid
+                && !layout.might_permit_raw_init(
+                    fx,
+                    InitKind::Zero,
+                    fx.tcx.sess.opts.debugging_opts.strict_init_checks) {
+
                 with_no_trimmed_paths!({
                     crate::base::codegen_panic(
                         fx,
@@ -682,7 +688,12 @@ fn codegen_regular_intrinsic_call<'tcx>(
                 return;
             }
 
-            if intrinsic == sym::assert_uninit_valid && !layout.might_permit_raw_init(fx, /*zero:*/ false) {
+            if intrinsic == sym::assert_uninit_valid
+                && !layout.might_permit_raw_init(
+                    fx,
+                    InitKind::Uninit,
+                    fx.tcx.sess.opts.debugging_opts.strict_init_checks) {
+
                 with_no_trimmed_paths!({
                     crate::base::codegen_panic(
                         fx,
