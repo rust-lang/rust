@@ -89,8 +89,8 @@ impl<'tcx> OnUnimplementedDirective {
                         None,
                     )
                 })?;
-            attr::eval_condition(cond, &tcx.sess.parse_sess, Some(tcx.features()), &mut |item| {
-                if let Some(symbol) = item.value_str() && let Err(guar) = parse_value(symbol) {
+            attr::eval_condition(cond, &tcx.sess.parse_sess, Some(tcx.features()), &mut |cfg| {
+                if let Some(value) = cfg.value && let Err(guar) = parse_value(value) {
                     errored = Some(guar);
                 }
                 true
@@ -226,14 +226,12 @@ impl<'tcx> OnUnimplementedDirective {
                 condition,
                 &tcx.sess.parse_sess,
                 Some(tcx.features()),
-                &mut |c| {
-                    c.ident().map_or(false, |ident| {
-                        let value = c.value_str().map(|s| {
-                            OnUnimplementedFormatString(s).format(tcx, trait_ref, &options_map)
-                        });
+                &mut |cfg| {
+                    let value = cfg.value.map(|v| {
+                        OnUnimplementedFormatString(v).format(tcx, trait_ref, &options_map)
+                    });
 
-                        options.contains(&(ident.name, value))
-                    })
+                    options.contains(&(cfg.name, value))
                 },
             ) {
                 debug!("evaluate: skipping {:?} due to condition", command);

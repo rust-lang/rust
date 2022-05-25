@@ -536,9 +536,11 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
     fn encode_crate_root(&mut self) -> LazyValue<CrateRoot> {
         let tcx = self.tcx;
-        let mut i = self.position();
+        let mut i = 0;
+        let preamble_bytes = self.position() - i;
 
         // Encode the crate deps
+        i = self.position();
         let crate_deps = self.encode_crate_deps();
         let dylib_dependency_formats = self.encode_dylib_dependency_formats();
         let dep_bytes = self.position() - i;
@@ -564,7 +566,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let native_libraries = self.encode_native_libraries();
         let native_lib_bytes = self.position() - i;
 
+        i = self.position();
         let foreign_modules = self.encode_foreign_modules();
+        let foreign_modules_bytes = self.position() - i;
 
         // Encode DefPathTable
         i = self.position();
@@ -584,6 +588,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         i = self.position();
         let incoherent_impls = self.encode_incoherent_impls();
         let incoherent_impls_bytes = self.position() - i;
+
         // Encode MIR.
         i = self.position();
         self.encode_mir();
@@ -596,6 +601,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let item_bytes = self.position() - i;
 
         // Encode the allocation index
+        i = self.position();
         let interpret_alloc_index = {
             let mut interpret_alloc_index = Vec::new();
             let mut n = 0;
@@ -618,6 +624,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
             self.lazy_array(interpret_alloc_index)
         };
+        let interpret_alloc_index_bytes = self.position() - i;
 
         // Encode the proc macro data. This affects 'tables',
         // so we need to do this before we encode the tables
@@ -662,9 +669,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let source_map = self.encode_source_map();
         let source_map_bytes = self.position() - i;
 
+        i = self.position();
         let attrs = tcx.hir().krate_attrs();
         let has_default_lib_allocator = tcx.sess.contains_name(&attrs, sym::default_lib_allocator);
-
         let root = self.lazy(CrateRoot {
             name: tcx.crate_name(LOCAL_CRATE),
             extra_filename: tcx.sess.opts.cg.extra_filename.clone(),
@@ -707,8 +714,33 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             expn_hashes,
             def_path_hash_map,
         });
+        let final_bytes = self.position() - i;
 
         let total_bytes = self.position();
+
+        let computed_total_bytes = preamble_bytes
+            + dep_bytes
+            + lib_feature_bytes
+            + lang_item_bytes
+            + diagnostic_item_bytes
+            + native_lib_bytes
+            + foreign_modules_bytes
+            + def_path_table_bytes
+            + traits_bytes
+            + impls_bytes
+            + incoherent_impls_bytes
+            + mir_bytes
+            + item_bytes
+            + interpret_alloc_index_bytes
+            + proc_macro_data_bytes
+            + tables_bytes
+            + debugger_visualizers_bytes
+            + exported_symbols_bytes
+            + hygiene_bytes
+            + def_path_hash_map_bytes
+            + source_map_bytes
+            + final_bytes;
+        assert_eq!(total_bytes, computed_total_bytes);
 
         if tcx.sess.meta_stats() {
             let mut zero_bytes = 0;
@@ -718,27 +750,41 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 }
             }
 
-            eprintln!("metadata stats:");
-            eprintln!("                  dep bytes: {}", dep_bytes);
-            eprintln!("          lib feature bytes: {}", lib_feature_bytes);
-            eprintln!("            lang item bytes: {}", lang_item_bytes);
-            eprintln!("      diagnostic item bytes: {}", diagnostic_item_bytes);
-            eprintln!("               native bytes: {}", native_lib_bytes);
-            eprintln!(" debugger visualizers bytes: {}", debugger_visualizers_bytes);
-            eprintln!("           source_map bytes: {}", source_map_bytes);
-            eprintln!("               traits bytes: {}", traits_bytes);
-            eprintln!("                impls bytes: {}", impls_bytes);
-            eprintln!("     incoherent_impls bytes: {}", incoherent_impls_bytes);
-            eprintln!("         exp. symbols bytes: {}", exported_symbols_bytes);
-            eprintln!("       def-path table bytes: {}", def_path_table_bytes);
-            eprintln!("      def-path hashes bytes: {}", def_path_hash_map_bytes);
-            eprintln!("      proc-macro-data-bytes: {}", proc_macro_data_bytes);
-            eprintln!("                  mir bytes: {}", mir_bytes);
-            eprintln!("                 item bytes: {}", item_bytes);
-            eprintln!("                table bytes: {}", tables_bytes);
-            eprintln!("              hygiene bytes: {}", hygiene_bytes);
-            eprintln!("                 zero bytes: {}", zero_bytes);
-            eprintln!("                total bytes: {}", total_bytes);
+            let perc = |bytes| (bytes * 100) as f64 / total_bytes as f64;
+            let p = |label, bytes| {
+                eprintln!("{:>21}: {:>8} bytes ({:4.1}%)", label, bytes, perc(bytes));
+            };
+
+            eprintln!("");
+            eprintln!(
+                "{} metadata bytes, of which {} bytes ({:.1}%) are zero",
+                total_bytes,
+                zero_bytes,
+                perc(zero_bytes)
+            );
+            p("preamble", preamble_bytes);
+            p("dep", dep_bytes);
+            p("lib feature", lib_feature_bytes);
+            p("lang item", lang_item_bytes);
+            p("diagnostic item", diagnostic_item_bytes);
+            p("native lib", native_lib_bytes);
+            p("foreign modules", foreign_modules_bytes);
+            p("def-path table", def_path_table_bytes);
+            p("traits", traits_bytes);
+            p("impls", impls_bytes);
+            p("incoherent_impls", incoherent_impls_bytes);
+            p("mir", mir_bytes);
+            p("item", item_bytes);
+            p("interpret_alloc_index", interpret_alloc_index_bytes);
+            p("proc-macro-data", proc_macro_data_bytes);
+            p("tables", tables_bytes);
+            p("debugger visualizers", debugger_visualizers_bytes);
+            p("exported symbols", exported_symbols_bytes);
+            p("hygiene", hygiene_bytes);
+            p("def-path hashes", def_path_hash_map_bytes);
+            p("source_map", source_map_bytes);
+            p("final", final_bytes);
+            eprintln!("");
         }
 
         root

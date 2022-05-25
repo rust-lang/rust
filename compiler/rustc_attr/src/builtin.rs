@@ -454,6 +454,15 @@ pub fn find_crate_name(sess: &Session, attrs: &[Attribute]) -> Option<Symbol> {
     sess.first_attr_value_str_by_name(attrs, sym::crate_name)
 }
 
+#[derive(Clone, Debug)]
+pub struct Condition {
+    pub name: Symbol,
+    pub name_span: Span,
+    pub value: Option<Symbol>,
+    pub value_span: Option<Span>,
+    pub span: Span,
+}
+
 /// Tests if a cfg-pattern matches the cfg set
 pub fn cfg_matches(
     cfg: &ast::MetaItem,
@@ -462,70 +471,42 @@ pub fn cfg_matches(
     features: Option<&Features>,
 ) -> bool {
     eval_condition(cfg, sess, features, &mut |cfg| {
-        try_gate_cfg(cfg, sess, features);
-        let error = |span, msg| {
-            sess.span_diagnostic.span_err(span, msg);
-            true
-        };
-        if cfg.path.segments.len() != 1 {
-            return error(cfg.path.span, "`cfg` predicate key must be an identifier");
-        }
-        match &cfg.kind {
-            MetaItemKind::List(..) => {
-                error(cfg.span, "unexpected parentheses after `cfg` predicate key")
-            }
-            MetaItemKind::NameValue(lit) if !lit.kind.is_str() => {
-                handle_errors(
-                    sess,
-                    lit.span,
-                    AttrError::UnsupportedLiteral(
-                        "literal in `cfg` predicate value must be a string",
-                        lit.kind.is_bytestr(),
-                    ),
+        try_gate_cfg(cfg.name, cfg.span, sess, features);
+        if let Some(names_valid) = &sess.check_config.names_valid {
+            if !names_valid.contains(&cfg.name) {
+                sess.buffer_lint_with_diagnostic(
+                    UNEXPECTED_CFGS,
+                    cfg.span,
+                    lint_node_id,
+                    "unexpected `cfg` condition name",
+                    BuiltinLintDiagnostics::UnexpectedCfg((cfg.name, cfg.name_span), None),
                 );
-                true
-            }
-            MetaItemKind::NameValue(..) | MetaItemKind::Word => {
-                let ident = cfg.ident().expect("multi-segment cfg predicate");
-                let name = ident.name;
-                let value = cfg.value_str();
-                if let Some(names_valid) = &sess.check_config.names_valid {
-                    if !names_valid.contains(&name) {
-                        sess.buffer_lint_with_diagnostic(
-                            UNEXPECTED_CFGS,
-                            cfg.span,
-                            lint_node_id,
-                            "unexpected `cfg` condition name",
-                            BuiltinLintDiagnostics::UnexpectedCfg((name, ident.span), None),
-                        );
-                    }
-                }
-                if let Some(value) = value {
-                    if let Some(values) = &sess.check_config.values_valid.get(&name) {
-                        if !values.contains(&value) {
-                            sess.buffer_lint_with_diagnostic(
-                                UNEXPECTED_CFGS,
-                                cfg.span,
-                                lint_node_id,
-                                "unexpected `cfg` condition value",
-                                BuiltinLintDiagnostics::UnexpectedCfg(
-                                    (name, ident.span),
-                                    Some((value, cfg.name_value_literal_span().unwrap())),
-                                ),
-                            );
-                        }
-                    }
-                }
-                sess.config.contains(&(name, value))
             }
         }
+        if let Some(value) = cfg.value {
+            if let Some(values) = &sess.check_config.values_valid.get(&cfg.name) {
+                if !values.contains(&value) {
+                    sess.buffer_lint_with_diagnostic(
+                        UNEXPECTED_CFGS,
+                        cfg.span,
+                        lint_node_id,
+                        "unexpected `cfg` condition value",
+                        BuiltinLintDiagnostics::UnexpectedCfg(
+                            (cfg.name, cfg.name_span),
+                            cfg.value_span.map(|vs| (value, vs)),
+                        ),
+                    );
+                }
+            }
+        }
+        sess.config.contains(&(cfg.name, cfg.value))
     })
 }
 
-fn try_gate_cfg(cfg: &ast::MetaItem, sess: &ParseSess, features: Option<&Features>) {
-    let gate = find_gated_cfg(|sym| cfg.has_name(sym));
+fn try_gate_cfg(name: Symbol, span: Span, sess: &ParseSess, features: Option<&Features>) {
+    let gate = find_gated_cfg(|sym| sym == name);
     if let (Some(feats), Some(gated_cfg)) = (features, gate) {
-        gate_cfg(&gated_cfg, cfg.span, sess, feats);
+        gate_cfg(&gated_cfg, span, sess, feats);
     }
 }
 
@@ -563,11 +544,11 @@ pub fn eval_condition(
     cfg: &ast::MetaItem,
     sess: &ParseSess,
     features: Option<&Features>,
-    eval: &mut impl FnMut(&ast::MetaItem) -> bool,
+    eval: &mut impl FnMut(Condition) -> bool,
 ) -> bool {
     match cfg.kind {
         ast::MetaItemKind::List(ref mis) if cfg.name_or_empty() == sym::version => {
-            try_gate_cfg(cfg, sess, features);
+            try_gate_cfg(sym::version, cfg.span, sess, features);
             let (min_version, span) = match &mis[..] {
                 [NestedMetaItem::Literal(Lit { kind: LitKind::Str(sym, ..), span, .. })] => {
                     (sym, span)
@@ -649,6 +630,25 @@ pub fn eval_condition(
 
                     !eval_condition(mis[0].meta_item().unwrap(), sess, features, eval)
                 }
+                sym::target => {
+                    if let Some(features) = features && !features.cfg_target_compact {
+                        feature_err(
+                            sess,
+                            sym::cfg_target_compact,
+                            cfg.span,
+                            &"compact `cfg(target(..))` is experimental and subject to change"
+                        ).emit();
+                    }
+
+                    mis.iter().fold(true, |res, mi| {
+                        let mut mi = mi.meta_item().unwrap().clone();
+                        if let [seg, ..] = &mut mi.path.segments[..] {
+                            seg.ident.name = Symbol::intern(&format!("target_{}", seg.ident.name));
+                        }
+
+                        res & eval_condition(&mi, sess, features, eval)
+                    })
+                }
                 _ => {
                     struct_span_err!(
                         sess.span_diagnostic,
@@ -662,7 +662,32 @@ pub fn eval_condition(
                 }
             }
         }
-        ast::MetaItemKind::Word | ast::MetaItemKind::NameValue(..) => eval(cfg),
+        ast::MetaItemKind::Word | MetaItemKind::NameValue(..) if cfg.path.segments.len() != 1 => {
+            sess.span_diagnostic
+                .span_err(cfg.path.span, "`cfg` predicate key must be an identifier");
+            true
+        }
+        MetaItemKind::NameValue(ref lit) if !lit.kind.is_str() => {
+            handle_errors(
+                sess,
+                lit.span,
+                AttrError::UnsupportedLiteral(
+                    "literal in `cfg` predicate value must be a string",
+                    lit.kind.is_bytestr(),
+                ),
+            );
+            true
+        }
+        ast::MetaItemKind::Word | ast::MetaItemKind::NameValue(..) => {
+            let ident = cfg.ident().expect("multi-segment cfg predicate");
+            eval(Condition {
+                name: ident.name,
+                name_span: ident.span,
+                value: cfg.value_str(),
+                value_span: cfg.name_value_literal_span(),
+                span: cfg.span,
+            })
+        }
     }
 }
 

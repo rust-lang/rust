@@ -52,11 +52,20 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 })
             }
             ExprKind::Repeat { value, count } => {
-                let value_operand = unpack!(
-                    block =
-                        this.as_operand(block, scope, &this.thir[value], None, NeedsTemporary::No)
-                );
-                block.and(Rvalue::Repeat(value_operand, count))
+                if Some(0) == count.try_eval_usize(this.tcx, this.param_env) {
+                    this.build_zero_repeat(block, value, scope, source_info)
+                } else {
+                    let value_operand = unpack!(
+                        block = this.as_operand(
+                            block,
+                            scope,
+                            &this.thir[value],
+                            None,
+                            NeedsTemporary::No
+                        )
+                    );
+                    block.and(Rvalue::Repeat(value_operand, count))
+                }
             }
             ExprKind::Binary { op, lhs, rhs } => {
                 let lhs = unpack!(
@@ -514,6 +523,37 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             block.and(Rvalue::BinaryOp(op, Box::new((lhs, rhs))))
         }
+    }
+
+    fn build_zero_repeat(
+        &mut self,
+        mut block: BasicBlock,
+        value: ExprId,
+        scope: Option<region::Scope>,
+        outer_source_info: SourceInfo,
+    ) -> BlockAnd<Rvalue<'tcx>> {
+        let this = self;
+        let value = &this.thir[value];
+        let elem_ty = value.ty;
+        if let Some(Category::Constant) = Category::of(&value.kind) {
+            // Repeating a const does nothing
+        } else {
+            // For a non-const, we may need to generate an appropriate `Drop`
+            let value_operand =
+                unpack!(block = this.as_operand(block, scope, value, None, NeedsTemporary::No));
+            if let Operand::Move(to_drop) = value_operand {
+                let success = this.cfg.start_new_block();
+                this.cfg.terminate(
+                    block,
+                    outer_source_info,
+                    TerminatorKind::Drop { place: to_drop, target: success, unwind: None },
+                );
+                this.diverge_from(block);
+                block = success;
+            }
+            this.record_operands_moved(&[value_operand]);
+        }
+        block.and(Rvalue::Aggregate(Box::new(AggregateKind::Array(elem_ty)), Vec::new()))
     }
 
     fn limit_capture_mutability(
