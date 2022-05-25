@@ -1348,9 +1348,6 @@ impl Duration {
     /// // subnormal float:
     /// let res = Duration::try_from_secs_f32(f32::from_bits(1));
     /// assert_eq!(res, Ok(Duration::new(0, 0)));
-    /// // conversion uses rounding
-    /// let res = Duration::try_from_secs_f32(0.999e-9);
-    /// assert_eq!(res, Ok(Duration::new(0, 1)));
     ///
     /// let res = Duration::try_from_secs_f32(-5.0);
     /// assert!(res.is_err());
@@ -1359,7 +1356,9 @@ impl Duration {
     /// let res = Duration::try_from_secs_f32(2e19);
     /// assert!(res.is_err());
     ///
-    /// // this method uses round to nearest, ties to even
+    /// // the conversion uses rounding with tie resolution to even
+    /// let res = Duration::try_from_secs_f32(0.999e-9);
+    /// assert_eq!(res, Ok(Duration::new(0, 1)));
     ///
     /// // this float represents exactly 976562.5e-9
     /// let val = f32::from_bits(0x3A80_0000);
@@ -1419,9 +1418,6 @@ impl Duration {
     /// // subnormal float
     /// let res = Duration::try_from_secs_f64(f64::from_bits(1));
     /// assert_eq!(res, Ok(Duration::new(0, 0)));
-    /// // conversion uses rounding
-    /// let res = Duration::try_from_secs_f32(0.999e-9);
-    /// assert_eq!(res, Ok(Duration::new(0, 1)));
     ///
     /// let res = Duration::try_from_secs_f64(-5.0);
     /// assert!(res.is_err());
@@ -1430,7 +1426,9 @@ impl Duration {
     /// let res = Duration::try_from_secs_f64(2e19);
     /// assert!(res.is_err());
     ///
-    /// // this method uses round to nearest, ties to even
+    /// // the conversion uses rounding with tie resolution to even
+    /// let res = Duration::try_from_secs_f64(0.999e-9);
+    /// assert_eq!(res, Ok(Duration::new(0, 1)));
     ///
     /// // this float represents exactly 976562.5e-9
     /// let val = f64::from_bits(0x3F50_0000_0000_0000);
