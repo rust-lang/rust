@@ -5,5 +5,10 @@
 
 pub use rustc_borrowck as borrowck;
 pub use rustc_driver as driver;
+pub use rustc_hir as hir;
 pub use rustc_interface as interface;
 pub use rustc_middle as middle;
+pub use rustc_mir_dataflow as dataflow;
+pub use rustc_mir_transform as transform;
+pub use rustc_serialize as serialize;
+pub use rustc_trait_selection as trait_selection;
