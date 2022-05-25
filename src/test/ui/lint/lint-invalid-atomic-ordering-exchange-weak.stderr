@@ -86,8 +86,7 @@ LL |     let _ = x.compare_exchange_weak(ptr2, ptr, Ordering::Release, Ordering:
    |                                                ^^^^^^^^^^^^^^^^^  ----------------- Acquire failure ordering
    |                                                |
    |                                                Release success ordering
-   |
-   = help: consider using AcqRel success ordering instead
+   |                                                help: consider using AcqRel success ordering instead
 
 error: compare_exchange_weak's success ordering must be at least as strong as its failure ordering
   --> $DIR/lint-invalid-atomic-ordering-exchange-weak.rs:48:48
@@ -96,8 +95,7 @@ LL |     let _ = x.compare_exchange_weak(ptr2, ptr, Ordering::Release, Ordering:
    |                                                ^^^^^^^^^^^^^^^^^  ---------------- SeqCst failure ordering
    |                                                |
    |                                                Release success ordering
-   |
-   = help: consider using SeqCst success ordering instead
+   |                                                help: consider using SeqCst success ordering instead
 
 error: compare_exchange_weak's success ordering must be at least as strong as its failure ordering
   --> $DIR/lint-invalid-atomic-ordering-exchange-weak.rs:52:48
@@ -106,8 +104,7 @@ LL |     let _ = x.compare_exchange_weak(ptr, ptr2, Ordering::Relaxed, Ordering:
    |                                                ^^^^^^^^^^^^^^^^^  ---------------- SeqCst failure ordering
    |                                                |
    |                                                Relaxed success ordering
-   |
-   = help: consider using SeqCst success ordering instead
+   |                                                help: consider using SeqCst success ordering instead
 
 error: compare_exchange_weak's success ordering must be at least as strong as its failure ordering
   --> $DIR/lint-invalid-atomic-ordering-exchange-weak.rs:54:48
@@ -116,8 +113,7 @@ LL |     let _ = x.compare_exchange_weak(ptr, ptr2, Ordering::Relaxed, Ordering:
    |                                                ^^^^^^^^^^^^^^^^^  ----------------- Acquire failure ordering
    |                                                |
    |                                                Relaxed success ordering
-   |
-   = help: consider using Acquire success ordering instead
+   |                                                help: consider using Acquire success ordering instead
 
 error: compare_exchange_weak's success ordering must be at least as strong as its failure ordering
   --> $DIR/lint-invalid-atomic-ordering-exchange-weak.rs:58:48
@@ -126,8 +122,7 @@ LL |     let _ = x.compare_exchange_weak(ptr2, ptr, Ordering::Acquire, Ordering:
    |                                                ^^^^^^^^^^^^^^^^^  ---------------- SeqCst failure ordering
    |                                                |
    |                                                Acquire success ordering
-   |
-   = help: consider using SeqCst success ordering instead
+   |                                                help: consider using SeqCst success ordering instead
 
 error: compare_exchange_weak's success ordering must be at least as strong as its failure ordering
   --> $DIR/lint-invalid-atomic-ordering-exchange-weak.rs:60:48
@@ -136,8 +131,7 @@ LL |     let _ = x.compare_exchange_weak(ptr2, ptr, Ordering::AcqRel, Ordering::
    |                                                ^^^^^^^^^^^^^^^^  ---------------- SeqCst failure ordering
    |                                                |
    |                                                AcqRel success ordering
-   |
-   = help: consider using SeqCst success ordering instead
+   |                                                help: consider using SeqCst success ordering instead
 
 error: aborting due to 16 previous errors
 

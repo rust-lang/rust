@@ -86,8 +86,7 @@ LL |     let _ = x.fetch_update(Ordering::Release, Ordering::Acquire, |old| Some
    |                            ^^^^^^^^^^^^^^^^^  ----------------- Acquire failure ordering
    |                            |
    |                            Release success ordering
-   |
-   = help: consider using AcqRel success ordering instead
+   |                            help: consider using AcqRel success ordering instead
 
 error: fetch_update's success ordering must be at least as strong as its failure ordering
   --> $DIR/lint-invalid-atomic-ordering-fetch-update.rs:46:28
@@ -96,8 +95,7 @@ LL |     let _ = x.fetch_update(Ordering::Release, Ordering::SeqCst, |old| Some(
    |                            ^^^^^^^^^^^^^^^^^  ---------------- SeqCst failure ordering
    |                            |
    |                            Release success ordering
-   |
-   = help: consider using SeqCst success ordering instead
+   |                            help: consider using SeqCst success ordering instead
 
 error: fetch_update's success ordering must be at least as strong as its failure ordering
   --> $DIR/lint-invalid-atomic-ordering-fetch-update.rs:50:28
@@ -106,8 +104,7 @@ LL |     let _ = x.fetch_update(Ordering::Relaxed, Ordering::SeqCst, |old| Some(
    |                            ^^^^^^^^^^^^^^^^^  ---------------- SeqCst failure ordering
    |                            |
    |                            Relaxed success ordering
-   |
-   = help: consider using SeqCst success ordering instead
+   |                            help: consider using SeqCst success ordering instead
 
 error: fetch_update's success ordering must be at least as strong as its failure ordering
   --> $DIR/lint-invalid-atomic-ordering-fetch-update.rs:52:28
@@ -116,8 +113,7 @@ LL |     let _ = x.fetch_update(Ordering::Relaxed, Ordering::Acquire, |old| Some
    |                            ^^^^^^^^^^^^^^^^^  ----------------- Acquire failure ordering
    |                            |
    |                            Relaxed success ordering
-   |
-   = help: consider using Acquire success ordering instead
+   |                            help: consider using Acquire success ordering instead
 
 error: fetch_update's success ordering must be at least as strong as its failure ordering
   --> $DIR/lint-invalid-atomic-ordering-fetch-update.rs:56:28
@@ -126,8 +122,7 @@ LL |     let _ = x.fetch_update(Ordering::Acquire, Ordering::SeqCst, |old| Some(
    |                            ^^^^^^^^^^^^^^^^^  ---------------- SeqCst failure ordering
    |                            |
    |                            Acquire success ordering
-   |
-   = help: consider using SeqCst success ordering instead
+   |                            help: consider using SeqCst success ordering instead
 
 error: fetch_update's success ordering must be at least as strong as its failure ordering
   --> $DIR/lint-invalid-atomic-ordering-fetch-update.rs:58:28
@@ -136,8 +131,7 @@ LL |     let _ = x.fetch_update(Ordering::AcqRel, Ordering::SeqCst, |old| Some(o
    |                            ^^^^^^^^^^^^^^^^  ---------------- SeqCst failure ordering
    |                            |
    |                            AcqRel success ordering
-   |
-   = help: consider using SeqCst success ordering instead
+   |                            help: consider using SeqCst success ordering instead
 
 error: aborting due to 16 previous errors
 

@@ -1582,7 +1582,12 @@ impl InvalidAtomicOrdering {
                 ))
                 .span_label(fail_order_arg.span, format!("{fail_ordering} failure ordering"))
                 .span_label(success_order_arg.span, format!("{success_ordering} success ordering"))
-                .help(format!("consider using {success_suggestion} success ordering instead"))
+                .span_suggestion_short(
+                    success_order_arg.span,
+                    format!("consider using {success_suggestion} success ordering instead"),
+                    success_suggestion.to_string(),
+                    Applicability::MaybeIncorrect,
+                )
                 .emit();
             });
         }
