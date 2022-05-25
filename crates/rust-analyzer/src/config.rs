@@ -386,6 +386,9 @@ config_data! {
         /// Show documentation.
         signatureInfo_documentation_enable: bool                       = "true",
 
+        /// Whether to insert closing angle brackets when typing an opening angle bracket of a generic argument list.
+        typing_autoClosingAngleBrackets_enable: bool = "false",
+
         /// Workspace symbol search kind.
         workspace_symbol_search_kind: WorkspaceSymbolSearchKindDef = "\"only_types\"",
         /// Limits the number of items returned from a workspace symbol search (Defaults to 128).
@@ -1219,6 +1222,10 @@ impl Config {
             0 => num_cpus::get_physical().try_into().unwrap_or(u8::MAX),
             n => n,
         }
+    }
+
+    pub fn typing_autoclose_angle(&self) -> bool {
+        self.data.typing_autoClosingAngleBrackets_enable
     }
 }
 // Deserialization definitions
