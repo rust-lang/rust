@@ -1,0 +1,23 @@
+warning: thread support is experimental: the scheduler is not preemptive, and can get stuck in spin loops.
+         (see https://github.com/rust-lang/miri/issues/1388)
+
+error: Undefined Behavior: type validation failed at .value: encountered uninitialized raw pointer
+  --> $DIR/cpp20_rwc_syncs.rs:LL:CC
+   |
+LL |         let _ = unsafe { std::mem::MaybeUninit::<*const u32>::uninit().assume_init() };
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed at .value: encountered uninitialized raw pointer
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+           
+   = note: inside `test_cpp20_rwc_syncs` at $DIR/cpp20_rwc_syncs.rs:LL:CC
+note: inside `main` at $DIR/cpp20_rwc_syncs.rs:LL:CC
+  --> $DIR/cpp20_rwc_syncs.rs:LL:CC
+   |
+LL |         test_cpp20_rwc_syncs();
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error; 1 warning emitted
+

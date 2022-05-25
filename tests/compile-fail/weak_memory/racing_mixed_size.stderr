@@ -1,16 +1,16 @@
 warning: thread support is experimental: the scheduler is not preemptive, and can get stuck in spin loops.
          (see https://github.com/rust-lang/miri/issues/1388)
 
-error: Undefined Behavior: trying to join a detached or already joined thread
-  --> $DIR/libc_pthread_join_main.rs:LL:CC
+error: Undefined Behavior: racy imperfectly overlapping atomic access
+  --> $DIR/racing_mixed_size.rs:LL:CC
    |
-LL | ...   assert_eq!(libc::pthread_join(thread_id, ptr::null_mut()), 0);
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ trying to join a detached or already joined thread
+LL |             std::intrinsics::atomic_load_relaxed(hi);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ racy imperfectly overlapping atomic access
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
            
-   = note: inside closure at $DIR/libc_pthread_join_main.rs:LL:CC
+   = note: inside closure at $DIR/racing_mixed_size.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

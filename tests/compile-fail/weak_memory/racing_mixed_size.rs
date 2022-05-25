@@ -1,3 +1,4 @@
+// ignore-windows: Concurrency on Windows is not supported yet.
 // compile-flags: -Zmiri-ignore-leaks
 
 #![feature(core_intrinsics)]
