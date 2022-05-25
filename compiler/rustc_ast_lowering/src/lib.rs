@@ -1024,14 +1024,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 if self.resolver.opt_local_def_id(constraint.impl_trait_id).is_some() {
                     // Desugar `AssocTy: Bounds` into `AssocTy = impl Bounds`. We do this by
                     // constructing the HIR for `impl bounds...` and then lowering that.
- 
                     // temporary added to avoid error unused parent_def_id
                     debug!("{:?}", parent_def_id);
-
                     // impl_trait_node_id already exists! No need to create it, return it.
                     //let impl_trait_node_id = self.resolver.next_node_id();
                     let impl_trait_node_id = constraint.impl_trait_id;
- 
                     // definition has been already created in def_collector assoc constraint 
                     /*self.resolver.create_def(
                         parent_def_id,
