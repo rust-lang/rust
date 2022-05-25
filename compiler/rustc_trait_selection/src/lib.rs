@@ -20,6 +20,7 @@
 #![feature(label_break_value)]
 #![feature(let_chains)]
 #![feature(let_else)]
+#![feature(if_let_guard)]
 #![feature(never_type)]
 #![recursion_limit = "512"] // For rustdoc
 
