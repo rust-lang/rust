@@ -605,16 +605,9 @@ changelog-seen = 2
 # development of NLL
 #test-compare-mode = false
 
-# Use LLVM libunwind as the implementation for Rust's unwinder.
-# Accepted values are 'in-tree' (formerly true), 'system' or 'no' (formerly false).
-# This option only applies for Linux and Fuchsia targets.
-# On Linux target, if crt-static is not enabled, 'no' means dynamic link to
-# `libgcc_s.so`, 'in-tree' means static link to the in-tree build of llvm libunwind
-# and 'system' means dynamic link to `libunwind.so`. If crt-static is enabled,
-# the behavior is depend on the libc. On musl target, 'no' and 'in-tree' both
-# means static link to the in-tree build of llvm libunwind, and 'system' means
-# static link to `libunwind.a` provided by system. Due to the limitation of glibc,
-# it must link to `libgcc_eh.a` to get a working output, and this option have no effect.
+# Global default for llvm-libunwind for all targets. See the target-specific
+# documentation for llvm-libunwind below. Note that the target-specific
+# option will override this if set.
 #llvm-libunwind = 'no'
 
 # Enable Windows Control Flow Guard checks in the standard library.
@@ -670,6 +663,18 @@ changelog-seen = 2
 # Normally the build system can find LLVM's FileCheck utility, but if
 # not, you can specify an explicit file name for it.
 #llvm-filecheck = "/path/to/llvm-version/bin/FileCheck"
+
+# Use LLVM libunwind as the implementation for Rust's unwinder.
+# Accepted values are 'in-tree' (formerly true), 'system' or 'no' (formerly false).
+# This option only applies for Linux and Fuchsia targets.
+# On Linux target, if crt-static is not enabled, 'no' means dynamic link to
+# `libgcc_s.so`, 'in-tree' means static link to the in-tree build of llvm libunwind
+# and 'system' means dynamic link to `libunwind.so`. If crt-static is enabled,
+# the behavior is depend on the libc. On musl target, 'no' and 'in-tree' both
+# means static link to the in-tree build of llvm libunwind, and 'system' means
+# static link to `libunwind.a` provided by system. Due to the limitation of glibc,
+# it must link to `libgcc_eh.a` to get a working output, and this option have no effect.
+#llvm-libunwind = 'no' if Linux, 'in-tree' if Fuchsia
 
 # If this target is for Android, this option will be required to specify where
 # the NDK for the target lives. This is used to find the C compiler to link and

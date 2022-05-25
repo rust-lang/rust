@@ -22,7 +22,7 @@ use rustc_span::source_map::Span;
 use rustc_span::{sym, Symbol};
 use rustc_symbol_mangling::typeid_for_fnabi;
 use rustc_target::abi::call::{ArgAbi, FnAbi, PassMode};
-use rustc_target::abi::{self, HasDataLayout, WrappingRange};
+use rustc_target::abi::{self, HasDataLayout, InitKind, WrappingRange};
 use rustc_target::spec::abi::Abi;
 
 /// Used by `FunctionCx::codegen_terminator` for emitting common patterns
@@ -521,6 +521,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         source_info: mir::SourceInfo,
         target: Option<mir::BasicBlock>,
         cleanup: Option<mir::BasicBlock>,
+        strict_validity: bool,
     ) -> bool {
         // Emit a panic or a no-op for `assert_*` intrinsics.
         // These are intrinsics that compile to panics so that we can get a message
@@ -543,8 +544,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             let layout = bx.layout_of(ty);
             let do_panic = match intrinsic {
                 Inhabited => layout.abi.is_uninhabited(),
-                ZeroValid => !layout.might_permit_raw_init(bx, /*zero:*/ true),
-                UninitValid => !layout.might_permit_raw_init(bx, /*zero:*/ false),
+                ZeroValid => !layout.might_permit_raw_init(bx, InitKind::Zero, strict_validity),
+                UninitValid => !layout.might_permit_raw_init(bx, InitKind::Uninit, strict_validity),
             };
             if do_panic {
                 let msg_str = with_no_visible_paths!({
@@ -678,6 +679,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             source_info,
             target,
             cleanup,
+            self.cx.tcx().sess.opts.debugging_opts.strict_init_checks,
         ) {
             return;
         }

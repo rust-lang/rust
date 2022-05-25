@@ -39,150 +39,148 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
     let tcx = infcx.tcx;
 
     if tcx.features().generic_const_exprs {
-        match AbstractConst::new(tcx, uv)? {
-            // We are looking at a generic abstract constant.
-            Some(ct) => {
-                if satisfied_from_param_env(tcx, ct, param_env)? {
-                    return Ok(());
-                }
-
-                // We were unable to unify the abstract constant with
-                // a constant found in the caller bounds, there are
-                // now three possible cases here.
-                #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
-                enum FailureKind {
-                    /// The abstract const still references an inference
-                    /// variable, in this case we return `TooGeneric`.
-                    MentionsInfer,
-                    /// The abstract const references a generic parameter,
-                    /// this means that we emit an error here.
-                    MentionsParam,
-                    /// The substs are concrete enough that we can simply
-                    /// try and evaluate the given constant.
-                    Concrete,
-                }
-                let mut failure_kind = FailureKind::Concrete;
-                walk_abstract_const::<!, _>(tcx, ct, |node| match node.root(tcx) {
-                    Node::Leaf(leaf) => {
-                        if leaf.has_infer_types_or_consts() {
-                            failure_kind = FailureKind::MentionsInfer;
-                        } else if leaf.has_param_types_or_consts() {
-                            failure_kind = cmp::min(failure_kind, FailureKind::MentionsParam);
-                        }
-
-                        ControlFlow::CONTINUE
-                    }
-                    Node::Cast(_, _, ty) => {
-                        if ty.has_infer_types_or_consts() {
-                            failure_kind = FailureKind::MentionsInfer;
-                        } else if ty.has_param_types_or_consts() {
-                            failure_kind = cmp::min(failure_kind, FailureKind::MentionsParam);
-                        }
-
-                        ControlFlow::CONTINUE
-                    }
-                    Node::Binop(_, _, _) | Node::UnaryOp(_, _) | Node::FunctionCall(_, _) => {
-                        ControlFlow::CONTINUE
-                    }
-                });
-
-                match failure_kind {
-                    FailureKind::MentionsInfer => {
-                        return Err(NotConstEvaluatable::MentionsInfer);
-                    }
-                    FailureKind::MentionsParam => {
-                        return Err(NotConstEvaluatable::MentionsParam);
-                    }
-                    FailureKind::Concrete => {
-                        // Dealt with below by the same code which handles this
-                        // without the feature gate.
-                    }
-                }
+        if let Some(ct) = AbstractConst::new(tcx, uv)? {
+            if satisfied_from_param_env(tcx, ct, param_env)? {
+                return Ok(());
             }
-            None => {
-                // If we are dealing with a concrete constant, we can
-                // reuse the old code path and try to evaluate
-                // the constant.
+
+            // We were unable to unify the abstract constant with
+            // a constant found in the caller bounds, there are
+            // now three possible cases here.
+            #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+            enum FailureKind {
+                /// The abstract const still references an inference
+                /// variable, in this case we return `TooGeneric`.
+                MentionsInfer,
+                /// The abstract const references a generic parameter,
+                /// this means that we emit an error here.
+                MentionsParam,
+                /// The substs are concrete enough that we can simply
+                /// try and evaluate the given constant.
+                Concrete,
+            }
+            let mut failure_kind = FailureKind::Concrete;
+            walk_abstract_const::<!, _>(tcx, ct, |node| match node.root(tcx) {
+                Node::Leaf(leaf) => {
+                    if leaf.has_infer_types_or_consts() {
+                        failure_kind = FailureKind::MentionsInfer;
+                    } else if leaf.has_param_types_or_consts() {
+                        failure_kind = cmp::min(failure_kind, FailureKind::MentionsParam);
+                    }
+
+                    ControlFlow::CONTINUE
+                }
+                Node::Cast(_, _, ty) => {
+                    if ty.has_infer_types_or_consts() {
+                        failure_kind = FailureKind::MentionsInfer;
+                    } else if ty.has_param_types_or_consts() {
+                        failure_kind = cmp::min(failure_kind, FailureKind::MentionsParam);
+                    }
+
+                    ControlFlow::CONTINUE
+                }
+                Node::Binop(_, _, _) | Node::UnaryOp(_, _) | Node::FunctionCall(_, _) => {
+                    ControlFlow::CONTINUE
+                }
+            });
+
+            match failure_kind {
+                FailureKind::MentionsInfer => {
+                    return Err(NotConstEvaluatable::MentionsInfer);
+                }
+                FailureKind::MentionsParam => {
+                    return Err(NotConstEvaluatable::MentionsParam);
+                }
+                // returned below
+                FailureKind::Concrete => {}
             }
         }
-    }
-
-    let future_compat_lint = || {
-        if let Some(local_def_id) = uv.def.did.as_local() {
-            infcx.tcx.struct_span_lint_hir(
-                lint::builtin::CONST_EVALUATABLE_UNCHECKED,
-                infcx.tcx.hir().local_def_id_to_hir_id(local_def_id),
-                span,
-                |err| {
-                    err.build("cannot use constants which depend on generic parameters in types")
-                        .emit();
-                },
-            );
-        }
-    };
-
-    // FIXME: We should only try to evaluate a given constant here if it is fully concrete
-    // as we don't want to allow things like `[u8; std::mem::size_of::<*mut T>()]`.
-    //
-    // We previously did not check this, so we only emit a future compat warning if
-    // const evaluation succeeds and the given constant is still polymorphic for now
-    // and hopefully soon change this to an error.
-    //
-    // See #74595 for more details about this.
-    let concrete = infcx.const_eval_resolve(param_env, uv.expand(), Some(span));
-
-    if concrete.is_ok() && uv.substs.has_param_types_or_consts() {
-        match infcx.tcx.def_kind(uv.def.did) {
-            DefKind::AnonConst | DefKind::InlineConst => {
-                let mir_body = infcx.tcx.mir_for_ctfe_opt_const_arg(uv.def);
-
-                if mir_body.is_polymorphic {
-                    future_compat_lint();
-                }
+        let concrete = infcx.const_eval_resolve(param_env, uv.expand(), Some(span));
+        match concrete {
+            Err(ErrorHandled::TooGeneric) => Err(if !uv.has_infer_types_or_consts() {
+                infcx
+                    .tcx
+                    .sess
+                    .delay_span_bug(span, &format!("unexpected `TooGeneric` for {:?}", uv));
+                NotConstEvaluatable::MentionsParam
+            } else {
+                NotConstEvaluatable::MentionsInfer
+            }),
+            Err(ErrorHandled::Linted) => {
+                let reported = infcx
+                    .tcx
+                    .sess
+                    .delay_span_bug(span, "constant in type had error reported as lint");
+                Err(NotConstEvaluatable::Error(reported))
             }
-            _ => future_compat_lint(),
+            Err(ErrorHandled::Reported(e)) => Err(NotConstEvaluatable::Error(e)),
+            Ok(_) => Ok(()),
         }
-    }
+    } else {
+        // FIXME: We should only try to evaluate a given constant here if it is fully concrete
+        // as we don't want to allow things like `[u8; std::mem::size_of::<*mut T>()]`.
+        //
+        // We previously did not check this, so we only emit a future compat warning if
+        // const evaluation succeeds and the given constant is still polymorphic for now
+        // and hopefully soon change this to an error.
+        //
+        // See #74595 for more details about this.
+        let concrete = infcx.const_eval_resolve(param_env, uv.expand(), Some(span));
 
-    // If we're evaluating a foreign constant, under a nightly compiler without generic
-    // const exprs, AND it would've passed if that expression had been evaluated with
-    // generic const exprs, then suggest using generic const exprs.
-    if concrete.is_err()
-        && tcx.sess.is_nightly_build()
-        && !uv.def.did.is_local()
-        && !tcx.features().generic_const_exprs
-        && let Ok(Some(ct)) = AbstractConst::new(tcx, uv)
-        && satisfied_from_param_env(tcx, ct, param_env) == Ok(true)
-    {
-        tcx.sess
-            .struct_span_fatal(
-                // Slightly better span than just using `span` alone
-                if span == rustc_span::DUMMY_SP { tcx.def_span(uv.def.did) } else { span },
-                "failed to evaluate generic const expression",
-            )
-            .note("the crate this constant originates from uses `#![feature(generic_const_exprs)]`")
-            .span_suggestion_verbose(
-                rustc_span::DUMMY_SP,
-                "consider enabling this feature",
-                "#![feature(generic_const_exprs)]\n".to_string(),
-                rustc_errors::Applicability::MaybeIncorrect,
-            )
-            .emit()
-    }
+        match concrete {
+          // If we're evaluating a foreign constant, under a nightly compiler without generic
+          // const exprs, AND it would've passed if that expression had been evaluated with
+          // generic const exprs, then suggest using generic const exprs.
+          Err(_) if tcx.sess.is_nightly_build()
+            && let Ok(Some(ct)) = AbstractConst::new(tcx, uv)
+            && satisfied_from_param_env(tcx, ct, param_env) == Ok(true) => {
+              tcx.sess
+                  .struct_span_fatal(
+                      // Slightly better span than just using `span` alone
+                      if span == rustc_span::DUMMY_SP { tcx.def_span(uv.def.did) } else { span },
+                      "failed to evaluate generic const expression",
+                  )
+                  .note("the crate this constant originates from uses `#![feature(generic_const_exprs)]`")
+                  .span_suggestion_verbose(
+                      rustc_span::DUMMY_SP,
+                      "consider enabling this feature",
+                      "#![feature(generic_const_exprs)]\n".to_string(),
+                      rustc_errors::Applicability::MaybeIncorrect,
+                  )
+                  .emit()
+            }
 
-    debug!(?concrete, "is_const_evaluatable");
-    match concrete {
-        Err(ErrorHandled::TooGeneric) => Err(match uv.has_infer_types_or_consts() {
-            true => NotConstEvaluatable::MentionsInfer,
-            false => NotConstEvaluatable::MentionsParam,
-        }),
-        Err(ErrorHandled::Linted) => {
-            let reported =
-                infcx.tcx.sess.delay_span_bug(span, "constant in type had error reported as lint");
-            Err(NotConstEvaluatable::Error(reported))
+            Err(ErrorHandled::TooGeneric) => Err(if uv.has_infer_types_or_consts() {
+                NotConstEvaluatable::MentionsInfer
+                } else {
+                NotConstEvaluatable::MentionsParam
+            }),
+            Err(ErrorHandled::Linted) => {
+                let reported =
+                    infcx.tcx.sess.delay_span_bug(span, "constant in type had error reported as lint");
+                Err(NotConstEvaluatable::Error(reported))
+            }
+            Err(ErrorHandled::Reported(e)) => Err(NotConstEvaluatable::Error(e)),
+            Ok(_) => {
+              if uv.substs.has_param_types_or_consts() {
+                  assert!(matches!(infcx.tcx.def_kind(uv.def.did), DefKind::AnonConst));
+                  let mir_body = infcx.tcx.mir_for_ctfe_opt_const_arg(uv.def);
+
+                  if mir_body.is_polymorphic {
+                      let Some(local_def_id) = uv.def.did.as_local() else { return Ok(()) };
+                      tcx.struct_span_lint_hir(
+                          lint::builtin::CONST_EVALUATABLE_UNCHECKED,
+                          tcx.hir().local_def_id_to_hir_id(local_def_id),
+                          span,
+                          |err| {
+                              err.build("cannot use constants which depend on generic parameters in types").emit();
+                        })
+                  }
+              }
+
+              Ok(())
+            },
         }
-        Err(ErrorHandled::Reported(e)) => Err(NotConstEvaluatable::Error(e)),
-        Ok(_) => Ok(()),
     }
 }
 

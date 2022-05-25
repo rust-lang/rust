@@ -176,7 +176,7 @@ fn copy_third_party_objects(
 
     if target == "x86_64-fortanix-unknown-sgx"
         || target.contains("pc-windows-gnullvm")
-        || builder.config.llvm_libunwind == LlvmLibunwind::InTree
+        || builder.config.llvm_libunwind(target) == LlvmLibunwind::InTree
             && (target.contains("linux") || target.contains("fuchsia"))
     {
         let libunwind_path =

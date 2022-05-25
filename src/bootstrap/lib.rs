@@ -720,7 +720,7 @@ impl Build {
     fn std_features(&self, target: TargetSelection) -> String {
         let mut features = "panic-unwind".to_string();
 
-        match self.config.llvm_libunwind {
+        match self.config.llvm_libunwind(target) {
             LlvmLibunwind::InTree => features.push_str(" llvm-libunwind"),
             LlvmLibunwind::System => features.push_str(" system-llvm-libunwind"),
             LlvmLibunwind::No => {}
