@@ -39,6 +39,11 @@ impl Module {
         }
     }
 
+    pub fn is_inline(self, db: &dyn HirDatabase) -> bool {
+        let def_map = self.id.def_map(db.upcast());
+        def_map[self.id.local_id].origin.is_inline()
+    }
+
     /// Returns a node which declares this module, either a `mod foo;` or a `mod foo {}`.
     /// `None` for the crate root.
     pub fn declaration_source(self, db: &dyn HirDatabase) -> Option<InFile<ast::Module>> {

@@ -180,15 +180,33 @@ fn rename_mod(
     let InFile { file_id, value: def_source } = module.definition_source(sema.db);
     if let ModuleSource::SourceFile(..) = def_source {
         let anchor = file_id.original_file(sema.db);
-        // not mod.rs and doesn't has children, rename file only
-        if !module.is_mod_rs(sema.db) && module.children(sema.db).next().is_none() {
+
+        let is_mod_rs = module.is_mod_rs(sema.db);
+        let has_detached_child = module.children(sema.db).any(|child| !child.is_inline(sema.db));
+
+        // Module exists in a named file
+        if !is_mod_rs {
             let path = format!("{}.rs", new_name);
             let dst = AnchoredPathBuf { anchor, path };
             source_change.push_file_system_edit(FileSystemEdit::MoveFile { src: anchor, dst })
-        } else if let Some(mod_name) = module.name(sema.db) {
-            // is mod.rs or has children, rename dir
-            let src = AnchoredPathBuf { anchor, path: mod_name.to_string() };
-            let dst = AnchoredPathBuf { anchor, path: new_name.to_string() };
+        }
+
+        // Rename the dir if:
+        //  - Module source is in mod.rs
+        //  - Module has submodules defined in separate files
+        let dir_paths = match (is_mod_rs, has_detached_child, module.name(sema.db)) {
+            // Go up one level since the anchor is inside the dir we're trying to rename
+            (true, _, Some(mod_name)) => {
+                Some((format!("../{}", mod_name), format!("../{}", new_name)))
+            }
+            // The anchor is on the same level as target dir
+            (false, true, Some(mod_name)) => Some((mod_name.to_string(), new_name.to_string())),
+            _ => None,
+        };
+
+        if let Some((src, dst)) = dir_paths {
+            let src = AnchoredPathBuf { anchor, path: src };
+            let dst = AnchoredPathBuf { anchor, path: dst };
             source_change.push_file_system_edit(FileSystemEdit::MoveDir {
                 src,
                 src_id: anchor,
