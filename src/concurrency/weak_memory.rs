@@ -29,6 +29,13 @@
 //! Additionally, writes in our implementation do not have globally unique timestamps attached. In the other two models this timestamp is
 //! used to make sure a value in a thread's view is not overwritten by a write that occured earlier than the one in the existing view.
 //! In our implementation, this is detected using read information attached to store elements, as there is no data strucutre representing reads.
+//!
+//! Safe/sound Rust allows for more operations on atomic locations than the C++20 atomic API was intended to allow, such as non-atomically accessing
+//! a previously atomically accessed location, or accessing previously atomically accessed locations with a differently sized operation
+//! (such as accessing the top 16 bits of an AtomicU32). These senarios are generally undiscussed in formalisations of C++ memory model.
+//! In Rust, these operations can only be done through a `&mut AtomicFoo` reference or one derived from it, therefore these operations
+//! can only happen after all previous accesses on the same locations. This implementation is adapted to allow these operations.
+//! A mixed size/atomicity read that races with writes, or a write that races with reads or writes will still cause UBs to be thrown.
 
 // Our and the author's own implementation (tsan11) of the paper have some deviations from the provided operational semantics in §5.3:
 // 1. In the operational semantics, store elements keep a copy of the atomic object's vector clock (AtomicCellClocks::sync_vector in miri),
@@ -117,6 +124,14 @@ impl StoreBufferAlloc {
         Self { store_buffers: RefCell::new(AllocationMap::new()) }
     }
 
+    /// Checks if the range imperfectly overlaps with existing buffers
+    /// Used to determine if mixed-size atomic accesses
+    fn is_overlapping(&self, range: AllocRange) -> bool {
+        let buffers = self.store_buffers.borrow();
+        let access_type = buffers.access_type(range);
+        matches!(access_type, AccessType::ImperfectlyOverlapping(_))
+    }
+
     /// When a non-atomic access happens on a location that has been atomically accessed
     /// before without data race, we can determine that the non-atomic access fully happens
     /// before all the prior atomic accesses so the location no longer needs to exhibit
@@ -148,21 +163,16 @@ impl StoreBufferAlloc {
         let pos = match access_type {
             AccessType::PerfectlyOverlapping(pos) => pos,
             AccessType::Empty(pos) => {
-                let new_buffer = StoreBuffer::new(init);
                 let mut buffers = self.store_buffers.borrow_mut();
-                buffers.insert_at_pos(pos, range, new_buffer);
+                buffers.insert_at_pos(pos, range, StoreBuffer::new(init));
                 pos
             }
             AccessType::ImperfectlyOverlapping(pos_range) => {
-                // Accesses that imperfectly overlaps with existing atomic objects
-                // do not have well-defined behaviours.
-                // FIXME: if this access happens before all previous accesses on every object it overlaps
-                // with, then we would like to tolerate it. However this is not easy to check.
-                if pos_range.start + 1 == pos_range.end {
-                    throw_ub_format!("mixed-size access on an existing atomic object");
-                } else {
-                    throw_ub_format!("access overlaps with multiple existing atomic objects");
-                }
+                // Once we reach here we would've already checked that this access is not racy
+                let mut buffers = self.store_buffers.borrow_mut();
+                buffers.remove_pos_range(pos_range.clone());
+                buffers.insert_at_pos(pos_range.start, range, StoreBuffer::new(init));
+                pos_range.start
             }
         };
         Ok(Ref::map(self.store_buffers.borrow(), |buffer| &buffer[pos]))
@@ -179,16 +189,13 @@ impl StoreBufferAlloc {
         let pos = match access_type {
             AccessType::PerfectlyOverlapping(pos) => pos,
             AccessType::Empty(pos) => {
-                let new_buffer = StoreBuffer::new(init);
-                buffers.insert_at_pos(pos, range, new_buffer);
+                buffers.insert_at_pos(pos, range, StoreBuffer::new(init));
                 pos
             }
             AccessType::ImperfectlyOverlapping(pos_range) => {
-                if pos_range.start + 1 == pos_range.end {
-                    throw_ub_format!("mixed-size access on an existing atomic object");
-                } else {
-                    throw_ub_format!("access overlaps with multiple existing atomic objects");
-                }
+                buffers.remove_pos_range(pos_range.clone());
+                buffers.insert_at_pos(pos_range.start, range, StoreBuffer::new(init));
+                pos_range.start
             }
         };
         Ok(&mut buffers[pos])
@@ -392,6 +399,55 @@ impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mi
 pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
     crate::MiriEvalContextExt<'mir, 'tcx>
 {
+    // If weak memory emulation is enabled, check if this atomic op imperfectly overlaps with a previous
+    // atomic write. If it does, then we require it to be ordered (non-racy) with all previous atomic
+    // writes on all the bytes in range
+    fn validate_overlapping_atomic_read(&self, place: &MPlaceTy<'tcx, Tag>) -> InterpResult<'tcx> {
+        let this = self.eval_context_ref();
+        let (alloc_id, base_offset, ..) = this.ptr_get_alloc_id(place.ptr)?;
+        if let crate::AllocExtra {
+            weak_memory: Some(alloc_buffers),
+            data_race: Some(alloc_clocks),
+            ..
+        } = this.get_alloc_extra(alloc_id)?
+        {
+            let range = alloc_range(base_offset, place.layout.size);
+            if alloc_buffers.is_overlapping(range)
+                && !alloc_clocks
+                    .read_race_free_with_atomic(range, this.machine.data_race.as_ref().unwrap())
+            {
+                throw_ub_format!("racy imperfectly overlapping atomic access");
+            }
+        }
+        Ok(())
+    }
+
+    // Same as above but needs to be ordered with all previous atomic read or writes
+    fn validate_overlapping_atomic_write(
+        &mut self,
+        place: &MPlaceTy<'tcx, Tag>,
+    ) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+        let (alloc_id, base_offset, ..) = this.ptr_get_alloc_id(place.ptr)?;
+        if let (
+            crate::AllocExtra {
+                weak_memory: Some(alloc_buffers),
+                data_race: Some(alloc_clocks),
+                ..
+            },
+            crate::Evaluator { data_race: Some(global), .. },
+        ) = this.get_alloc_extra_mut(alloc_id)?
+        {
+            let range = alloc_range(base_offset, place.layout.size);
+            if alloc_buffers.is_overlapping(range)
+                && !alloc_clocks.write_race_free_with_atomic(range, global)
+            {
+                throw_ub_format!("racy imperfectly overlapping atomic access");
+            }
+        }
+        Ok(())
+    }
+
     fn buffered_atomic_rmw(
         &mut self,
         new_val: ScalarMaybeUninit<Tag>,

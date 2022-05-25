@@ -9,8 +9,8 @@
 // so we have to stick to C++11 emulation from existing research.
 
 use std::sync::atomic::Ordering::*;
-use std::thread::spawn;
 use std::sync::atomic::{fence, AtomicUsize};
+use std::thread::spawn;
 
 // Spins until it reads the given value
 fn reads_value(loc: &AtomicUsize, val: usize) -> usize {
@@ -25,7 +25,7 @@ fn reads_value(loc: &AtomicUsize, val: usize) -> usize {
 fn static_atomic(val: usize) -> &'static AtomicUsize {
     let ret = Box::leak(Box::new(AtomicUsize::new(val)));
     // A workaround to put the initialization value in the store buffer.
-    ret.store(val, Relaxed);
+    ret.load(Relaxed);
     ret
 }
 
