@@ -1,3 +1,4 @@
+// compile-flags: -Zmiri-allow-uninit-numbers
 #![feature(core_intrinsics)]
 
 use std::mem;

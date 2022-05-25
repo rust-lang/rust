@@ -44,8 +44,7 @@ in your program, and cannot run all programs:
   positives here, so if your program runs fine in Miri right now that is by no
   means a guarantee that it is UB-free when these questions get answered.
 
-    In particular, Miri does currently not check that integers/floats are
-  initialized or that references point to valid data.
+    In particular, Miri does currently not check that references point to valid data.
 * If the program relies on unspecified details of how data is laid out, it will
   still run fine in Miri -- but might break (including causing UB) on different
   compiler versions or different platforms.
@@ -302,10 +301,15 @@ The remaining flags are for advanced use only, and more likely to change or be r
 Some of these are **unsound**, which means they can lead
 to Miri failing to detect cases of undefined behavior in a program.
 
-* `-Zmiri-check-number-validity` enables checking of integer and float validity
-  (e.g., they must be initialized and not carry pointer provenance) as part of
-  enforcing validity invariants. This has no effect when
+* `-Zmiri-allow-uninit-numbers` disables the check to ensure that number types (integer and float
+  types) always hold initialized data. (They must still be initialized when any actual operation,
+  such as arithmetic, is performed.) Using this flag is **unsound**. This has no effect when
   `-Zmiri-disable-validation` is present.
+* `-Zmiri-allow-ptr-int-transmute` makes Miri more accepting of transmutation between pointers and
+  integers via `mem::transmute` or union/pointer type punning. This has two effects: it disables the
+  check against integers storing a pointer (i.e., data with provenance), thus allowing
+  pointer-to-integer transmutation, and it treats integer-to-pointer transmutation as equivalent to
+  a cast. Using this flag is **unsound**.
 * `-Zmiri-disable-abi-check` disables checking [function ABI]. Using this flag
   is **unsound**.
 * `-Zmiri-disable-alignment-check` disables checking pointer alignment, so you

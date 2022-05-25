@@ -77,8 +77,10 @@ pub struct MiriConfig {
     pub stacked_borrows: bool,
     /// Controls alignment checking.
     pub check_alignment: AlignmentCheck,
-    /// Controls integer and float validity (e.g., initialization) checking.
-    pub check_number_validity: bool,
+    /// Controls integer and float validity initialization checking.
+    pub allow_uninit_numbers: bool,
+    /// Controls how we treat ptr2int and int2ptr transmutes.
+    pub allow_ptr_int_transmute: bool,
     /// Controls function [ABI](Abi) checking.
     pub check_abi: bool,
     /// Action for an op requiring communication with the host.
@@ -126,7 +128,8 @@ impl Default for MiriConfig {
             validate: true,
             stacked_borrows: true,
             check_alignment: AlignmentCheck::Int,
-            check_number_validity: false,
+            allow_uninit_numbers: false,
+            allow_ptr_int_transmute: false,
             check_abi: true,
             isolated_op: IsolatedOp::Reject(RejectOpWith::Abort),
             ignore_leaks: false,

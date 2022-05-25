@@ -405,8 +405,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         // To catch double-destroys, we de-initialize the mutexattr.
         // This is technically not right and might lead to false positives. For example, the below
-        // code is *likely* sound, even assuming uninit numbers are UB, but miri with
-        // -Zmiri-check-number-validity complains
+        // code is *likely* sound, even assuming uninit numbers are UB, but Miri complains.
         //
         // let mut x: MaybeUninit<libc::pthread_mutexattr_t> = MaybeUninit::zeroed();
         // libc::pthread_mutexattr_init(x.as_mut_ptr());

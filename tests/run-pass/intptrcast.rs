@@ -1,3 +1,5 @@
+// compile-flags: -Zmiri-allow-ptr-int-transmute
+
 // This returns a miri pointer at type usize, if the argument is a proper pointer
 fn transmute_ptr_to_int<T>(x: *const T) -> usize {
     unsafe { std::mem::transmute(x) }

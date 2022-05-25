@@ -1,5 +1,3 @@
-// compile-flags: -Zmiri-check-number-validity
-
 use std::mem::{self, MaybeUninit};
 
 #[repr(C)]

@@ -25,7 +25,8 @@ fn mk_rec() -> Rec {
 }
 
 fn is_u64_aligned(u: &Tag<u64>) -> bool {
-    let p: usize = unsafe { mem::transmute(u) };
+    let p: *const () = unsafe { mem::transmute(u) };
+    let p = p as usize;
     let u64_align = std::mem::align_of::<u64>();
     return (p & (u64_align - 1)) == 0;
 }

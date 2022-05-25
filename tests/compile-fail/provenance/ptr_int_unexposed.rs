@@ -1,4 +1,4 @@
-// compile-flags: -Zmiri-permissive-provenance -Zmiri-disable-stacked-borrows
+// compile-flags: -Zmiri-permissive-provenance -Zmiri-disable-stacked-borrows -Zmiri-allow-ptr-int-transmute
 
 fn main() {
     let x: i32 = 3;

@@ -1,5 +1,3 @@
-// compile-flags: -Zmiri-check-number-validity
-
 // This test is from https://github.com/rust-lang/miri/issues/1340#issue-600900312.
 
 fn main() {

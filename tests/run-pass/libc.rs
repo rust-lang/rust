@@ -197,17 +197,17 @@ fn test_prctl_thread_name() {
     use libc::c_long;
     unsafe {
         let mut buf = [255; 10];
-        assert_eq!(libc::prctl(libc::PR_GET_NAME, buf.as_mut_ptr() as c_long, 0 as c_long, 0 as c_long, 0 as c_long), 0);
+        assert_eq!(libc::prctl(libc::PR_GET_NAME, buf.as_mut_ptr(), 0 as c_long, 0 as c_long, 0 as c_long), 0);
         assert_eq!(b"<unnamed>\0", &buf);
         let thread_name = CString::new("hello").expect("CString::new failed");
-        assert_eq!(libc::prctl(libc::PR_SET_NAME, thread_name.as_ptr() as c_long, 0 as c_long, 0 as c_long, 0 as c_long), 0);
+        assert_eq!(libc::prctl(libc::PR_SET_NAME, thread_name.as_ptr(), 0 as c_long, 0 as c_long, 0 as c_long), 0);
         let mut buf = [255; 6];
-        assert_eq!(libc::prctl(libc::PR_GET_NAME, buf.as_mut_ptr() as c_long, 0 as c_long, 0 as c_long, 0 as c_long), 0);
+        assert_eq!(libc::prctl(libc::PR_GET_NAME, buf.as_mut_ptr(), 0 as c_long, 0 as c_long, 0 as c_long), 0);
         assert_eq!(b"hello\0", &buf);
         let long_thread_name = CString::new("01234567890123456789").expect("CString::new failed");
-        assert_eq!(libc::prctl(libc::PR_SET_NAME, long_thread_name.as_ptr() as c_long, 0 as c_long, 0 as c_long, 0 as c_long), 0);
+        assert_eq!(libc::prctl(libc::PR_SET_NAME, long_thread_name.as_ptr(), 0 as c_long, 0 as c_long, 0 as c_long), 0);
         let mut buf = [255; 16];
-        assert_eq!(libc::prctl(libc::PR_GET_NAME, buf.as_mut_ptr() as c_long, 0 as c_long, 0 as c_long, 0 as c_long), 0);
+        assert_eq!(libc::prctl(libc::PR_GET_NAME, buf.as_mut_ptr(), 0 as c_long, 0 as c_long, 0 as c_long), 0);
         assert_eq!(b"012345678901234\0", &buf);
     }
 }
