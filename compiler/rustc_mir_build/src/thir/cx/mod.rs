@@ -72,7 +72,7 @@ impl<'tcx> Cx<'tcx> {
             tcx,
             thir: Thir::new(),
             param_env: tcx.param_env(def.did),
-            region_scope_tree: &typeck_results.region_scope_tree,
+            region_scope_tree: tcx.region_scope_tree(def.did),
             typeck_results,
             rvalue_scopes: &typeck_results.rvalue_scopes,
             body_owner: def.did.to_def_id(),

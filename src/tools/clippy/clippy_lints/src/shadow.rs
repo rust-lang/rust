@@ -162,10 +162,7 @@ fn is_shadow(
     first: ItemLocalId,
     second: ItemLocalId,
 ) -> bool {
-    let scope_tree = &cx
-        .tcx
-        .typeck_body(cx.tcx.hir().body_owned_by(cx.tcx.hir().local_def_id_to_hir_id(owner)))
-        .region_scope_tree;
+    let scope_tree = cx.tcx.region_scope_tree(owner);
     let first_scope = scope_tree.var_scope(first).unwrap();
     let second_scope = scope_tree.var_scope(second).unwrap();
     scope_tree.is_subscope_of(second_scope, first_scope)

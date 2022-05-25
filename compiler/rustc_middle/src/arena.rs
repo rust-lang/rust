@@ -31,6 +31,7 @@ macro_rules! arena_types {
             [decode] unsafety_check_result: rustc_middle::mir::UnsafetyCheckResult,
             [decode] code_region: rustc_middle::mir::coverage::CodeRegion,
             [] const_allocs: rustc_middle::mir::interpret::Allocation,
+            [] region_scope_tree: rustc_middle::middle::region::ScopeTree,
             // Required for the incremental on-disk cache
             [] mir_keys: rustc_hir::def_id::DefIdSet,
             [] dropck_outlives:
