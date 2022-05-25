@@ -19,8 +19,38 @@ git subtree push --prefix=compiler/rustc_smir url_to_your_fork_of_project_stable
 
 and then open a PR of your `some_feature_branch` against https://github.com/rust-lang/project-stable-mir
 
-### Updating the rustc librar
+### Updating the rustc library
 
+First we need to bump our stack limit, as the rustc repo otherwise quickly hits that:
+
+```
+ulimit -s 60000
+```
+
+#### Maximum function recursion depth (1000) reached
+
+Then we need to disable `dash` as the default shell for sh scripts, as otherwise we run into a
+hard limit of a recursion depth of 1000:
+
+```
+sudo dpkg-reconfigure dash
+```
+
+and then select `No` to disable dash.
+
+
+#### Patching your `git worktree`
+
+The regular git worktree does not scale to repos of the size of the rustc repo.
+So download the `git-subtree.sh` from https://github.com/gitgitgadget/git/pull/493/files and run
+
+```
+sudo cp --backup /path/to/patched/git-subtree.sh /usr/lib/git-core/git-subtree
+sudo chmod --reference=/usr/lib/git-core/git-subtree~ /usr/lib/git-core/git-subtree
+sudo chown --reference=/usr/lib/git-core/git-subtree~ /usr/lib/git-core/git-subtree
+```
+
+#### Actually doing a sync
 
 In the rustc repo, execute
 
