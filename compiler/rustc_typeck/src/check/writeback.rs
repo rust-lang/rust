@@ -263,8 +263,6 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
         self.fix_scalar_builtin_expr(e);
         self.fix_index_builtin_expr(e);
 
-        self.visit_node_id(e.span, e.hir_id);
-
         match e.kind {
             hir::ExprKind::Closure(_, _, body, _, _) => {
                 let body = self.fcx.tcx.hir().body(body);
@@ -291,6 +289,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
             _ => {}
         }
 
+        self.visit_node_id(e.span, e.hir_id);
         intravisit::walk_expr(self, e);
     }
 
