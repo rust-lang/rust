@@ -1270,8 +1270,8 @@ macro_rules! try_from_secs {
         let mant = (bits & MANT_MASK) | (MANT_MASK + 1);
         let exp = ((bits >> $mant_bits) & EXP_MASK) as i16 + MIN_EXP;
 
-        let (secs, nanos) = if exp < -30 {
-            // the input represents less than 1ns.
+        let (secs, nanos) = if exp < -31 {
+            // the input represents less than 1ns and can not be rounded to it
             (0u64, 0u32)
         } else if exp < 0 {
             // the input is less than 1 second
@@ -1279,27 +1279,37 @@ macro_rules! try_from_secs {
             let nanos_offset = $mant_bits + $offset;
             let nanos_tmp = u128::from(NANOS_PER_SEC) * u128::from(t);
             let nanos = (nanos_tmp >> nanos_offset) as u32;
-            if nanos_tmp & (1 << (nanos_offset - 1)) == 0 {
-                (0, nanos)
-            } else if nanos + 1 != NANOS_PER_SEC {
-                (0, nanos + 1)
-            } else {
-                (1, 0)
-            }
+
+            let rem_mask = (1 << nanos_offset) - 1;
+            let rem_msb_mask = 1 << (nanos_offset - 1);
+            let rem = nanos_tmp & rem_mask;
+            let is_tie = rem == rem_msb_mask;
+            let is_even = (nanos & 1) == 0;
+            let rem_msb = nanos_tmp & rem_msb_mask == 0;
+            let add_ns = !(rem_msb || (is_even && is_tie));
+
+            // note that neither `f32`, nor `f64` can represent
+            // 0.999_999_999_5 exactly, so the nanos part
+            // never will be equal to 10^9.
+            (0, nanos + add_ns as u32)
         } else if exp < $mant_bits {
             let secs = u64::from(mant >> ($mant_bits - exp));
             let t = <$double_ty>::from((mant << exp) & MANT_MASK);
+            let nanos_offset = $mant_bits;
             let nanos_tmp = <$double_ty>::from(NANOS_PER_SEC) * t;
-            let nanos = (nanos_tmp >> $mant_bits) as u32;
-            if nanos_tmp & (1 << ($mant_bits - 1)) == 0 {
-                (secs, nanos)
-            } else if nanos + 1 != NANOS_PER_SEC {
-                (secs, nanos + 1)
-            } else {
-                // `secs + 1` can not overflow since `exp` is less than `$mant_bits`
-                // and the latter is less than 64 bits for both `f32` and `f64`
-                (secs + 1, 0)
-            }
+            let nanos = (nanos_tmp >> nanos_offset) as u32;
+
+            let rem_mask = (1 << nanos_offset) - 1;
+            let rem_msb_mask = 1 << (nanos_offset - 1);
+            let rem = nanos_tmp & rem_mask;
+            let is_tie = rem == rem_msb_mask;
+            let is_even = (nanos & 1) == 0;
+            let rem_msb = nanos_tmp & rem_msb_mask == 0;
+            let add_ns = !(rem_msb || (is_even && is_tie));
+
+            // neither `f32`, nor `f64` can represent x.999_999_999_5 exactly,
+            // so the nanos part never will be equal to 10^9
+            (secs, nanos + add_ns as u32)
         } else if exp < 64 {
             // the input has no fractional part
             let secs = u64::from(mant) << (exp - $mant_bits);
@@ -1348,6 +1358,28 @@ impl Duration {
     /// assert!(res.is_err());
     /// let res = Duration::try_from_secs_f32(2e19);
     /// assert!(res.is_err());
+    ///
+    /// // this method uses round to nearest, ties to even
+    ///
+    /// // this float represents exactly 976562.5e-9
+    /// let val = f32::from_bits(0x3A80_0000);
+    /// let res = Duration::try_from_secs_f32(val);
+    /// assert_eq!(res, Ok(Duration::new(0, 976_562)));
+    ///
+    /// // this float represents exactly 2929687.5e-9
+    /// let val = f32::from_bits(0x3B40_0000);
+    /// let res = Duration::try_from_secs_f32(val);
+    /// assert_eq!(res, Ok(Duration::new(0, 2_929_688)));
+    ///
+    /// // this float represents exactly 1.000_976_562_5
+    /// let val = f32::from_bits(0x3F802000);
+    /// let res = Duration::try_from_secs_f32(val);
+    /// assert_eq!(res, Ok(Duration::new(1, 976_562)));
+    ///
+    /// // this float represents exactly 1.002_929_687_5
+    /// let val = f32::from_bits(0x3F806000);
+    /// let res = Duration::try_from_secs_f32(val);
+    /// assert_eq!(res, Ok(Duration::new(1, 2_929_688)));
     /// ```
     #[unstable(feature = "duration_checked_float", issue = "83400")]
     #[inline]
@@ -1397,6 +1429,28 @@ impl Duration {
     /// assert!(res.is_err());
     /// let res = Duration::try_from_secs_f64(2e19);
     /// assert!(res.is_err());
+    ///
+    /// // this method uses round to nearest, ties to even
+    ///
+    /// // this float represents exactly 976562.5e-9
+    /// let val = f64::from_bits(0x3F50_0000_0000_0000);
+    /// let res = Duration::try_from_secs_f64(val);
+    /// assert_eq!(res, Ok(Duration::new(0, 976_562)));
+    ///
+    /// // this float represents exactly 2929687.5e-9
+    /// let val = f64::from_bits(0x3F68_0000_0000_0000);
+    /// let res = Duration::try_from_secs_f64(val);
+    /// assert_eq!(res, Ok(Duration::new(0, 2_929_688)));
+    ///
+    /// // this float represents exactly 1.000_976_562_5
+    /// let val = f64::from_bits(0x3FF0_0400_0000_0000);
+    /// let res = Duration::try_from_secs_f64(val);
+    /// assert_eq!(res, Ok(Duration::new(1, 976_562)));
+    ///
+    /// // this float represents exactly 1.002_929_687_5
+    /// let val = f64::from_bits(0x3_FF00_C000_0000_000);
+    /// let res = Duration::try_from_secs_f64(val);
+    /// assert_eq!(res, Ok(Duration::new(1, 2_929_688)));
     /// ```
     #[unstable(feature = "duration_checked_float", issue = "83400")]
     #[inline]
