@@ -715,6 +715,7 @@ impl<T> Option<T> {
     /// _expect_ the `Option` should be `Some`.
     ///
     /// ```should_panic
+    /// # let slice: &[u8] = &[];
     /// let item = slice.get(0)
     ///     .expect("slice should not be empty");
     /// ```
