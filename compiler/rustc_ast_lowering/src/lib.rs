@@ -977,7 +977,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             AssocConstraintKind::Bound { ref bounds } => {
                 let mut parent_def_id = self.current_hir_id_owner;
                 // Piggy-back on the `impl Trait` context to figure out the correct behavior.
-                let (/*desugar_to_impl_trait*/_, itctx) = match itctx {
+                let (/*desugar_to_impl_trait*/ _, itctx) = match itctx {
                     // We are in the return position:
                     //
                     //     fn foo() -> impl Iterator<Item: Debug>

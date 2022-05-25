@@ -286,7 +286,7 @@ impl<'a, 'b> visit::Visitor<'a> for DefCollector<'a, 'b> {
             TyKind::ImplTrait(node_id, _) => {
                 let parent_def = match self.impl_trait_context {
                     ImplTraitContext::Universal(item_def) => {
-                    //| ImplTraitContext::UniversalInDyn(item_def) => {
+                        //| ImplTraitContext::UniversalInDyn(item_def) => {
                         let def_id = self.resolver.create_def(
                             item_def,
                             node_id,
@@ -373,13 +373,14 @@ impl<'a, 'b> visit::Visitor<'a> for DefCollector<'a, 'b> {
     fn visit_assoc_constraint(&mut self, constraint: &'a AssocConstraint) {
         if let ImplTraitContext::UniversalInDyn(item_def) = self.impl_trait_context {
             let node_id = constraint.impl_trait_id;
-            self.resolver.create_def(
+            let def_id = self.resolver.create_def(
                 item_def,
                 node_id,
                 DefPathData::ImplTrait,
                 self.expansion.to_expn_id(),
                 constraint.span,
             );
+            self.resolver.impl_trait_context.insert(def_id, ImplTraitContext::UniversalInDyn(item_def));
         }
         /*if let ImplTraitContext::UniversalInDyn(_) = self.impl_trait_context {
             let node_id = constraint.impl_trait_id;
