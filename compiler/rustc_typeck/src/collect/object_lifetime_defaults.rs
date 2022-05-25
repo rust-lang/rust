@@ -172,7 +172,6 @@ enum Scope<'a> {
     /// it should be shifted by the number of `Binder`s in between the
     /// declaration `Binder` and the location it's referenced from.
     Binder {
-        scope_type: BinderScopeType,
         s: ScopeRef<'a>,
     },
 
@@ -199,35 +198,19 @@ enum Scope<'a> {
     Root,
 }
 
-#[derive(Copy, Clone, Debug)]
-enum BinderScopeType {
-    /// Any non-concatenating binder scopes.
-    Normal,
-    /// Within a syntactic trait ref, there may be multiple poly trait refs that
-    /// are nested (under the `associated_type_bounds` feature). The binders of
-    /// the inner poly trait refs are extended from the outer poly trait refs
-    /// and don't increase the late bound depth. If you had
-    /// `T: for<'a>  Foo<Bar: for<'b> Baz<'a, 'b>>`, then the `for<'b>` scope
-    /// would be `Concatenating`. This also used in trait refs in where clauses
-    /// where we have two binders `for<> T: for<> Foo` (I've intentionally left
-    /// out any lifetimes because they aren't needed to show the two scopes).
-    /// The inner `for<>` has a scope of `Concatenating`.
-    Concatenating,
-}
-
 type ScopeRef<'a> = &'a Scope<'a>;
 
 const ROOT_SCOPE: ScopeRef<'static> = &Scope::Root;
 
 impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
     /// Returns the binders in scope and the type of `Binder` that should be created for a poly trait ref.
-    fn poly_trait_ref_binder_info(&mut self) -> BinderScopeType {
+    fn poly_trait_ref_needs_binder(&mut self) -> bool {
         let mut scope = self.scope;
         loop {
             match scope {
                 // Nested poly trait refs have the binders concatenated
-                Scope::Binder { .. } => break BinderScopeType::Concatenating,
-                Scope::Body | Scope::Root => break BinderScopeType::Normal,
+                Scope::Binder { .. } => break false,
+                Scope::Body | Scope::Root => break true,
                 Scope::Static { s, .. } | Scope::ObjectLifetimeDefault { s, .. } => scope = s,
             }
         }
@@ -249,7 +232,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
 
     fn visit_expr(&mut self, e: &'tcx hir::Expr<'tcx>) {
         if let hir::ExprKind::Closure(..) = e.kind {
-            let scope = Scope::Binder { s: self.scope, scope_type: BinderScopeType::Normal };
+            let scope = Scope::Binder { s: self.scope };
             self.with(scope, |this| {
                 // a closure has no bounds, so everything
                 // contained within is scoped within its binder.
@@ -287,7 +270,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
             | hir::ItemKind::Fn(..)
             | hir::ItemKind::Impl(..) => {
                 // These kinds of items have only early-bound lifetime parameters.
-                let scope = Scope::Binder { scope_type: BinderScopeType::Normal, s: ROOT_SCOPE };
+                let scope = Scope::Binder { s: ROOT_SCOPE };
                 self.with(scope, |this| intravisit::walk_item(this, item));
             }
         }
@@ -296,7 +279,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
     fn visit_foreign_item(&mut self, item: &'tcx hir::ForeignItem<'tcx>) {
         match item.kind {
             hir::ForeignItemKind::Fn(..) => {
-                let scope = Scope::Binder { s: self.scope, scope_type: BinderScopeType::Normal };
+                let scope = Scope::Binder { s: self.scope };
                 self.with(scope, |this| intravisit::walk_foreign_item(this, item))
             }
             hir::ForeignItemKind::Static(..) | hir::ForeignItemKind::Type => {
@@ -309,7 +292,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
     fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx>) {
         match ty.kind {
             hir::TyKind::BareFn(..) => {
-                let scope = Scope::Binder { s: self.scope, scope_type: BinderScopeType::Normal };
+                let scope = Scope::Binder { s: self.scope };
                 self.with(scope, |this| {
                     // a bare fn has no bounds, so everything
                     // contained within is scoped within its binder.
@@ -342,7 +325,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
         use self::hir::TraitItemKind::*;
         match trait_item.kind {
             Fn(..) | Type(..) => {
-                let scope = Scope::Binder { s: self.scope, scope_type: BinderScopeType::Normal };
+                let scope = Scope::Binder { s: self.scope };
                 self.with(scope, |this| intravisit::walk_trait_item(this, trait_item));
             }
             // Only methods and types support generics.
@@ -354,7 +337,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
         use self::hir::ImplItemKind::*;
         match impl_item.kind {
             Fn(..) | TyAlias(..) => {
-                let scope = Scope::Binder { s: self.scope, scope_type: BinderScopeType::Normal };
+                let scope = Scope::Binder { s: self.scope };
                 self.with(scope, |this| intravisit::walk_impl_item(this, impl_item));
             }
             // Only methods and types support generics.
@@ -378,7 +361,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 // scope. If there happens to be a nested poly trait ref (an error), that
                 // will be `Concatenating` anyways, so we don't have to worry about the depth
                 // being wrong.
-                let scope = Scope::Binder { s: self.scope, scope_type: BinderScopeType::Normal };
+                let scope = Scope::Binder { s: self.scope };
                 self.with(scope, |this| intravisit::walk_where_predicate(this, predicate))
             }
             &hir::WherePredicate::RegionPredicate(..) | &hir::WherePredicate::EqPredicate(..) => {
@@ -389,15 +372,13 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
 
     fn visit_param_bound(&mut self, bound: &'tcx hir::GenericBound<'tcx>) {
         match bound {
-            hir::GenericBound::LangItemTrait(..) => {
-                // FIXME(jackh726): This is pretty weird. `LangItemTrait` doesn't go
-                // through the regular poly trait ref code, so we don't get another
-                // chance to introduce a binder. For now, I'm keeping the existing logic
-                // of "if there isn't a Binder scope above us, add one", but I
-                // imagine there's a better way to go about this.
-                let scope_type = self.poly_trait_ref_binder_info();
-
-                let scope = Scope::Binder { s: self.scope, scope_type };
+            // FIXME(jackh726): This is pretty weird. `LangItemTrait` doesn't go
+            // through the regular poly trait ref code, so we don't get another
+            // chance to introduce a binder. For now, I'm keeping the existing logic
+            // of "if there isn't a Binder scope above us, add one", but I
+            // imagine there's a better way to go about this.
+            hir::GenericBound::LangItemTrait(..) if self.poly_trait_ref_needs_binder() => {
+                let scope = Scope::Binder { s: self.scope };
                 self.with(scope, |this| intravisit::walk_param_bound(this, bound));
             }
             _ => intravisit::walk_param_bound(self, bound),
@@ -411,14 +392,16 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
     ) {
         debug!("visit_poly_trait_ref(trait_ref={:?})", trait_ref);
 
-        let scope_type = self.poly_trait_ref_binder_info();
-
-        // Always introduce a scope here, even if this is in a where clause and
-        // we introduced the binders around the bounded Ty. In that case, we
-        // just reuse the concatenation functionality also present in nested trait
-        // refs.
-        let scope = Scope::Binder { s: self.scope, scope_type };
-        self.with(scope, |this| intravisit::walk_poly_trait_ref(this, trait_ref, modifier));
+        if self.poly_trait_ref_needs_binder() {
+            // Always introduce a scope here, even if this is in a where clause and
+            // we introduced the binders around the bounded Ty. In that case, we
+            // just reuse the concatenation functionality also present in nested trait
+            // refs.
+            let scope = Scope::Binder { s: self.scope };
+            self.with(scope, |this| intravisit::walk_poly_trait_ref(this, trait_ref, modifier));
+        } else {
+            intravisit::walk_poly_trait_ref(self, trait_ref, modifier);
+        }
     }
 }
 
@@ -601,11 +584,8 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         let mut scope = self.scope;
         let lifetime = loop {
             match *scope {
-                Scope::Binder { s, scope_type, .. } => {
-                    match scope_type {
-                        BinderScopeType::Normal => late_depth += 1,
-                        BinderScopeType::Concatenating => {}
-                    }
+                Scope::Binder { s, .. } => {
+                    late_depth += 1;
                     scope = s;
                 }
 
