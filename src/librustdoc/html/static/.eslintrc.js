@@ -47,5 +47,6 @@ module.exports = {
             { "beforeColon": false, "afterColon": true, "mode": "strict" }
         ],
         "func-call-spacing": ["error", "never"],
+        "space-infix-ops": "error",
     }
 };
