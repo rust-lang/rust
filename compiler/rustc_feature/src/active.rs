@@ -319,6 +319,8 @@ declare_features! (
     (active, cfg_sanitize, "1.41.0", Some(39699), None),
     /// Allows `cfg(target_abi = "...")`.
     (active, cfg_target_abi, "1.55.0", Some(80970), None),
+    /// Allows `cfg(target(abi = "..."))`.
+    (active, cfg_target_compact, "1.63.0", Some(96901), None),
     /// Allows `cfg(target_has_atomic_load_store = "...")`.
     (active, cfg_target_has_atomic, "1.60.0", Some(94039), None),
     /// Allows `cfg(target_has_atomic_equal_alignment = "...")`.
