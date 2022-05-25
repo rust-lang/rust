@@ -141,6 +141,7 @@ pub const SERDE_DESERIALIZE: [&str; 3] = ["serde", "de", "Deserialize"];
 pub const SERDE_DE_VISITOR: [&str; 3] = ["serde", "de", "Visitor"];
 pub const SLICE_FROM_RAW_PARTS: [&str; 4] = ["core", "slice", "raw", "from_raw_parts"];
 pub const SLICE_FROM_RAW_PARTS_MUT: [&str; 4] = ["core", "slice", "raw", "from_raw_parts_mut"];
+pub const SLICE_GET: [&str; 4] = ["core", "slice", "<impl [T]>", "get"];
 pub const SLICE_INTO_VEC: [&str; 4] = ["alloc", "slice", "<impl [T]>", "into_vec"];
 pub const SLICE_ITER: [&str; 4] = ["core", "slice", "iter", "Iter"];
 pub const STDERR: [&str; 4] = ["std", "io", "stdio", "stderr"];

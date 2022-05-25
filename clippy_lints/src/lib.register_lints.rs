@@ -183,6 +183,7 @@ store.register_lints(&[
     functions::TOO_MANY_ARGUMENTS,
     functions::TOO_MANY_LINES,
     future_not_send::FUTURE_NOT_SEND,
+    get_first::GET_FIRST,
     identity_op::IDENTITY_OP,
     if_let_mutex::IF_LET_MUTEX,
     if_not_else::IF_NOT_ELSE,

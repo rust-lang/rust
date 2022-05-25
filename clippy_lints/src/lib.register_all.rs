@@ -91,6 +91,7 @@ store.register_group(true, "clippy::all", Some("clippy_all"), vec![
     LintId::of(functions::NOT_UNSAFE_PTR_ARG_DEREF),
     LintId::of(functions::RESULT_UNIT_ERR),
     LintId::of(functions::TOO_MANY_ARGUMENTS),
+    LintId::of(get_first::GET_FIRST),
     LintId::of(identity_op::IDENTITY_OP),
     LintId::of(if_let_mutex::IF_LET_MUTEX),
     LintId::of(indexing_slicing::OUT_OF_BOUNDS_INDEXING),
