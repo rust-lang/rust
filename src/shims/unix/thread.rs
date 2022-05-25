@@ -13,46 +13,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        // Create the new thread
-        let new_thread_id = this.create_thread();
-
-        // Write the current thread-id, switch to the next thread later
-        // to treat this write operation as occuring on the current thread.
-        let thread_info_place = this.deref_operand(thread)?;
-        this.write_scalar(
-            Scalar::from_uint(new_thread_id.to_u32(), thread_info_place.layout.size),
-            &thread_info_place.into(),
-        )?;
-
-        // Read the function argument that will be sent to the new thread
-        // before the thread starts executing since reading after the
-        // context switch will incorrectly report a data-race.
-        let fn_ptr = this.read_pointer(start_routine)?;
-        let func_arg = this.read_immediate(arg)?;
-
-        // Finally switch to new thread so that we can push the first stackframe.
-        // After this all accesses will be treated as occuring in the new thread.
-        let old_thread_id = this.set_active_thread(new_thread_id);
-
-        // Perform the function pointer load in the new thread frame.
-        let instance = this.get_ptr_fn(fn_ptr)?.as_instance()?;
-
-        // Note: the returned value is currently ignored (see the FIXME in
-        // pthread_join below) because the Rust standard library does not use
-        // it.
-        let ret_place =
-            this.allocate(this.layout_of(this.tcx.types.usize)?, MiriMemoryKind::Machine.into())?;
-
-        this.call_function(
-            instance,
+        this.start_thread(
+            Some(thread),
+            start_routine,
             Abi::C { unwind: false },
-            &[*func_arg],
-            Some(&ret_place.into()),
-            StackPopCleanup::Root { cleanup: true },
+            arg,
+            this.layout_of(this.tcx.types.usize)?,
         )?;
-
-        // Restore the old active thread frame.
-        this.set_active_thread(old_thread_id);
 
         Ok(0)
     }

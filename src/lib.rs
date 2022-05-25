@@ -5,6 +5,8 @@
 #![feature(try_blocks)]
 #![feature(let_else)]
 #![feature(io_error_more)]
+#![feature(int_log)]
+#![feature(variant_count)]
 #![feature(yeet_expr)]
 #![feature(is_some_with)]
 #![feature(nonzero_ops)]

@@ -1,5 +1,3 @@
-//@ignore-target-windows: Concurrency on Windows is not supported yet.
-
 use std::thread::spawn;
 
 fn initialize() {

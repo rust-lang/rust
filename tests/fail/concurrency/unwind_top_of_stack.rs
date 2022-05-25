@@ -1,4 +1,5 @@
-//@ignore-target-windows: Concurrency on Windows is not supported yet.
+//@ignore-windows: No libc on Windows
+
 //@compile-flags: -Zmiri-disable-abi-check
 
 //! Unwinding past the top frame of a stack is Undefined Behavior.

@@ -1,6 +1,5 @@
 // We want to control preemption here.
 //@compile-flags: -Zmiri-preemption-rate=0
-//@ignore-target-windows: Concurrency on Windows is not supported yet.
 
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::thread::spawn;

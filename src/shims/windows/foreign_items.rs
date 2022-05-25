@@ -1,12 +1,17 @@
 use std::iter;
+use std::time::{Duration, Instant};
 
 use rustc_span::Symbol;
 use rustc_target::abi::Size;
 use rustc_target::spec::abi::Abi;
 
+use crate::thread::Time;
 use crate::*;
 use shims::foreign_items::EmulateByNameResult;
+use shims::windows::handle::{EvalContextExt as _, Handle};
 use shims::windows::sync::EvalContextExt as _;
+use shims::windows::thread::EvalContextExt as _;
+
 use smallvec::SmallVec;
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
@@ -219,6 +224,29 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let result = this.QueryPerformanceFrequency(lpFrequency)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
+            "Sleep" => {
+                let [timeout] =
+                    this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
+
+                this.check_no_isolation("`Sleep`")?;
+
+                let timeout_ms = this.read_scalar(timeout)?.to_u32()?;
+
+                let duration = Duration::from_millis(timeout_ms as u64);
+                let timeout_time = Time::Monotonic(Instant::now().checked_add(duration).unwrap());
+
+                let active_thread = this.get_active_thread();
+                this.block_thread(active_thread);
+
+                this.register_timeout_callback(
+                    active_thread,
+                    timeout_time,
+                    Box::new(move |ecx| {
+                        ecx.unblock_thread(active_thread);
+                        Ok(())
+                    }),
+                );
+            }
 
             // Synchronization primitives
             "AcquireSRWLockExclusive" => {
@@ -314,10 +342,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // FIXME: we should set last_error, but to what?
                 this.write_null(dest)?;
             }
-            "SwitchToThread" => {
+            // this is only callable from std because we know that std ignores the return value
+            "SwitchToThread" if this.frame_in_std() => {
                 let [] = this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
-                // Note that once Miri supports concurrency, this will need to return a nonzero
-                // value if this call does result in switching to another thread.
+
+                this.yield_active_thread();
+
+                // FIXME: this should return a nonzero value if this call does result in switching to another thread.
                 this.write_null(dest)?;
             }
             "GetStdHandle" => {
@@ -329,14 +360,37 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // std-only shim.
                 this.write_scalar(Scalar::from_machine_isize(which.into(), this), dest)?;
             }
-
-            // Better error for attempts to create a thread
-            "CreateThread" => {
-                let [_, _, _, _, _, _] =
+            "CloseHandle" => {
+                let [handle] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
 
-                this.handle_unsupported("can't create threads on Windows")?;
-                return Ok(EmulateByNameResult::AlreadyJumped);
+                this.CloseHandle(handle)?;
+
+                this.write_scalar(Scalar::from_u32(1), dest)?;
+            }
+
+            // Threading
+            "CreateThread" => {
+                let [security, stacksize, start, arg, flags, thread] =
+                    this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
+
+                let thread_id =
+                    this.CreateThread(security, stacksize, start, arg, flags, thread)?;
+
+                this.write_scalar(Handle::Thread(thread_id).to_scalar(this), dest)?;
+            }
+            "WaitForSingleObject" => {
+                let [handle, timeout] =
+                    this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
+
+                this.WaitForSingleObject(handle, timeout)?;
+
+                this.write_scalar(Scalar::from_u32(0), dest)?;
+            }
+            "GetCurrentThread" => {
+                let [] = this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
+
+                this.write_scalar(Handle::CurrentThread.to_scalar(this), dest)?;
             }
 
             // Incomplete shims that we "stub out" just to get pre-main initialization code to work.
@@ -373,40 +427,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 // Any non zero value works for the stdlib. This is just used for stack overflows anyway.
                 this.write_scalar(Scalar::from_u32(1), dest)?;
-            }
-            | "InitializeCriticalSection"
-            | "EnterCriticalSection"
-            | "LeaveCriticalSection"
-            | "DeleteCriticalSection"
-                if this.frame_in_std() =>
-            {
-                #[allow(non_snake_case)]
-                let [_lpCriticalSection] =
-                    this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
-                assert_eq!(
-                    this.get_total_thread_count(),
-                    1,
-                    "concurrency on Windows is not supported"
-                );
-                // Nothing to do, not even a return value.
-                // (Windows locks are reentrant, and we have only 1 thread,
-                // so not doing any futher checks here is at least not incorrect.)
-            }
-            "TryEnterCriticalSection" if this.frame_in_std() => {
-                #[allow(non_snake_case)]
-                let [_lpCriticalSection] =
-                    this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
-                assert_eq!(
-                    this.get_total_thread_count(),
-                    1,
-                    "concurrency on Windows is not supported"
-                );
-                // There is only one thread, so this always succeeds and returns TRUE.
-                this.write_scalar(Scalar::from_i32(1), dest)?;
-            }
-            "GetCurrentThread" if this.frame_in_std() => {
-                let [] = this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
-                this.write_scalar(Scalar::from_machine_isize(1, this), dest)?;
             }
             "GetCurrentProcessId" if this.frame_in_std() => {
                 let [] = this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;

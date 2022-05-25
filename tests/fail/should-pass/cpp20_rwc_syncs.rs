@@ -1,4 +1,3 @@
-//@ignore-target-windows: Concurrency on Windows is not supported yet.
 //@compile-flags: -Zmiri-ignore-leaks
 
 // https://plv.mpi-sws.org/scfix/paper.pdf
