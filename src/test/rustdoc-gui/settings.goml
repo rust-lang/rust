@@ -34,7 +34,7 @@ wait-for: "#settings"
 
 // We check that the "Use system theme" is disabled.
 assert-property: ("#use-system-theme", {"checked": "false"})
-assert: "//*[@class='setting-line']/*[text()='Use system theme']"
+assert: "//*[@class='setting-line']//span[text()='Use system theme']"
 // Meaning that only the "theme" menu is showing up.
 assert: ".setting-line:not(.hidden) #theme"
 assert: ".setting-line.hidden #preferred-dark-theme"
@@ -55,7 +55,13 @@ assert: ".setting-line.hidden #theme"
 assert-text: ("#preferred-dark-theme .setting-name", "Preferred dark theme")
 assert-text: ("#preferred-light-theme .setting-name", "Preferred light theme")
 
+// We now check that clicking on the "sliders"' text is like clicking on the slider.
+// To test it, we use the "Disable keyboard shortcuts".
+local-storage: {"rustdoc-disable-shortcuts": "false"}
+click: ".setting-line:last-child .toggle .label"
+assert-local-storage: {"rustdoc-disable-shortcuts": "true"}
+
 // Now we go to the settings page to check that the CSS is loaded as expected.
 goto: file://|DOC_PATH|/settings.html
 wait-for: "#settings"
-assert-css: (".setting-line .toggle", {"width": "45px", "margin-right": "20px"})
+assert-css: (".setting-line .toggle .slider", {"width": "45px", "margin-right": "20px"})

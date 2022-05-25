@@ -46,9 +46,12 @@
 .toggle {
 	position: relative;
 	display: inline-block;
-	width: 45px;
+	width: 100%;
 	height: 27px;
 	margin-right: 20px;
+	display: flex;
+	align-items: center;
+	cursor: pointer;
 }
 
 .toggle input {
@@ -57,12 +60,12 @@
 }
 
 .slider {
-	position: absolute;
+	position: relative;
+	width: 45px;
+	display: block;
+	height: 28px;
+	margin-right: 20px;
 	cursor: pointer;
-	top: 0;
-	left: 0;
-	right: 0;
-	bottom: 0;
 	background-color: #ccc;
 	transition: .3s;
 }
@@ -94,4 +97,29 @@ input:checked + .slider:before {
 	padding-left: 42px;
 	width: 100%;
 	display: block;
+}
+
+div#settings {
+	position: absolute;
+	right: 0;
+	z-index: 1;
+	display: block;
+	margin-top: 7px;
+	border-radius: 3px;
+	border: 1px solid;
+}
+#settings .setting-line {
+	margin: 1.2em 0.6em;
+}
+/* This rule is to draw the little arrow connecting the settings menu to the gear icon. */
+div#settings::before {
+	content: '';
+	position: absolute;
+	right: 11px;
+	border: solid;
+	border-width: 1px 1px 0 0;
+	display: inline-block;
+	padding: 4px;
+	transform: rotate(-45deg);
+	top: -5px;
 }
