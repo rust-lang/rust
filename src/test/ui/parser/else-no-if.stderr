@@ -6,14 +6,10 @@ LL |     } else false {
    |       |
    |       expected an `if` or a block after this `else`
    |
-help: add an `if` if this is the condition to an chained `if` statement after the `else`
+help: add an `if` if this is the condition of a chained `else if` statement
    |
 LL |     } else if false {
    |            ++
-help: ... otherwise, place this expression inside of a block if it is not an `if` condition
-   |
-LL |     } else { false } {
-   |            +       +
 
 error: expected `{`, found `falsy`
   --> $DIR/else-no-if.rs:10:12
@@ -23,14 +19,10 @@ LL |     } else falsy() {
    |       |
    |       expected an `if` or a block after this `else`
    |
-help: add an `if` if this is the condition to an chained `if` statement after the `else`
+help: add an `if` if this is the condition of a chained `else if` statement
    |
 LL |     } else if falsy() {
    |            ++
-help: ... otherwise, place this expression inside of a block if it is not an `if` condition
-   |
-LL |     } else { falsy() } {
-   |            +         +
 
 error: expected `{`, found `falsy`
   --> $DIR/else-no-if.rs:17:12
