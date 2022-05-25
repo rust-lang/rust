@@ -342,11 +342,16 @@ impl Analysis {
         &self,
         position: FilePosition,
         char_typed: char,
+        autoclose: bool,
     ) -> Cancellable<Option<SourceChange>> {
         // Fast path to not even parse the file.
         if !typing::TRIGGER_CHARS.contains(char_typed) {
             return Ok(None);
         }
+        if char_typed == '<' && !autoclose {
+            return Ok(None);
+        }
+
         self.with_db(|db| typing::on_char_typed(db, position, char_typed))
     }
 

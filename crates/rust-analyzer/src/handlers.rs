@@ -299,7 +299,8 @@ pub(crate) fn handle_on_type_formatting(
         return Ok(None);
     }
 
-    let edit = snap.analysis.on_char_typed(position, char_typed)?;
+    let edit =
+        snap.analysis.on_char_typed(position, char_typed, snap.config.typing_autoclose_angle())?;
     let edit = match edit {
         Some(it) => it,
         None => return Ok(None),

@@ -92,7 +92,7 @@ fn on_char_typed_inner(
         '<' => on_left_angle_typed(&file.tree(), offset),
         '>' => conv(on_right_angle_typed(&file.tree(), offset)),
         '{' => conv(on_opening_brace_typed(file, offset)),
-        _ => unreachable!(),
+        _ => return None,
     };
 
     fn conv(text_edit: Option<TextEdit>) -> Option<ExtendedTextEdit> {
