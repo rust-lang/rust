@@ -29,7 +29,7 @@ Session.vim
 !/src/test/run-make/thumb-none-qemu/example/.cargo
 
 ## Configuration
-/config.toml
+#/config.toml
 /Makefile
 config.mk
 config.stamp
