@@ -8,8 +8,7 @@ use rustc_hir::{GenericArg, GenericParamKind, LifetimeName, Node};
 use rustc_middle::bug;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::resolve_lifetime::*;
-use rustc_middle::ty::{GenericParamDefKind, TyCtxt};
-use rustc_span::def_id::DefId;
+use rustc_middle::ty::{DefIdTree, GenericParamDefKind, TyCtxt};
 use rustc_span::symbol::sym;
 use std::borrow::Cow;
 
@@ -447,15 +446,13 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             return;
         }
 
+        let tcx = self.tcx;
+
         // Figure out if this is a type/trait segment,
         // which requires object lifetime defaults.
-        let parent_def_id = |this: &mut Self, def_id: DefId| {
-            let def_key = this.tcx.def_key(def_id);
-            DefId { krate: def_id.krate, index: def_key.parent.expect("missing parent") }
-        };
         let type_def_id = match res {
-            Res::Def(DefKind::AssocTy, def_id) if depth == 1 => Some(parent_def_id(self, def_id)),
-            Res::Def(DefKind::Variant, def_id) if depth == 0 => Some(parent_def_id(self, def_id)),
+            Res::Def(DefKind::AssocTy, def_id) if depth == 1 => Some(tcx.parent(def_id)),
+            Res::Def(DefKind::Variant, def_id) if depth == 0 => Some(tcx.parent(def_id)),
             Res::Def(
                 DefKind::Struct
                 | DefKind::Union
@@ -468,22 +465,24 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         };
         debug!(?type_def_id);
 
-        // Compute a vector of defaults, one for each type parameter,
-        // per the rules given in RFCs 599 and 1156. Example:
-        //
-        // ```rust
-        // struct Foo<'a, T: 'a, U> { }
-        // ```
-        //
-        // If you have `Foo<'x, dyn Bar, dyn Baz>`, we want to default
-        // `dyn Bar` to `dyn Bar + 'x` (because of the `T: 'a` bound)
-        // and `dyn Baz` to `dyn Baz + 'static` (because there is no
-        // such bound).
-        //
-        // Therefore, we would compute `object_lifetime_defaults` to a
-        // vector like `['x, 'static]`. Note that the vector only
-        // includes type parameters.
-        let object_lifetime_defaults = type_def_id.map_or_else(Vec::new, |def_id| {
+        if let Some(type_def_id) = type_def_id {
+            // Compute a vector of defaults, one for each type parameter,
+            // per the rules given in RFCs 599 and 1156. Example:
+            //
+            // ```rust
+            // struct Foo<'a, T: 'a, U> { }
+            // ```
+            //
+            // If you have `Foo<'x, dyn Bar, dyn Baz>`, we want to default
+            // `dyn Bar` to `dyn Bar + 'x` (because of the `T: 'a` bound)
+            // and `dyn Baz` to `dyn Baz + 'static` (because there is no
+            // such bound).
+            //
+            // Therefore, we would compute `object_lifetime_defaults` to a
+            // vector like `['x, 'static]`. Note that the vector only
+            // includes type parameters.
+            let generics = self.tcx.generics_of(type_def_id);
+
             let in_body = {
                 let mut scope = self.scope;
                 loop {
@@ -498,7 +497,16 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                     }
                 }
             };
-            let generics = self.tcx.generics_of(def_id);
+            let object_lifetime_default = |i: usize| {
+                let param = generics.params.get(i)?;
+                match param.kind {
+                    GenericParamDefKind::Type { object_lifetime_default, .. } => {
+                        Some(object_lifetime_default)
+                    }
+                    GenericParamDefKind::Const { .. } => Some(ObjectLifetimeDefault::Empty),
+                    GenericParamDefKind::Lifetime => return None,
+                }
+            };
             let set_to_region = |set: ObjectLifetimeDefault| match set {
                 ObjectLifetimeDefault::Empty => {
                     if in_body {
@@ -509,50 +517,31 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 }
                 ObjectLifetimeDefault::Static => Some(Region::Static),
                 ObjectLifetimeDefault::Param(def_id) => {
-                    let index = generics.param_def_id_to_index[&def_id];
+                    let index = *generics.param_def_id_to_index.get(&def_id)?;
                     generic_args.args.get(index as usize).and_then(|arg| match arg {
-                        GenericArg::Lifetime(lt) => self.tcx.named_region(lt.hir_id),
+                        GenericArg::Lifetime(lt) => tcx.named_region(lt.hir_id),
                         _ => None,
                     })
                 }
                 ObjectLifetimeDefault::Ambiguous => None,
             };
-            generics
-                .params
-                .iter()
-                .filter_map(|param| match param.kind {
-                    GenericParamDefKind::Type { object_lifetime_default, .. } => {
-                        Some(object_lifetime_default)
-                    }
-                    GenericParamDefKind::Const { .. } => Some(ObjectLifetimeDefault::Empty),
-                    GenericParamDefKind::Lifetime => None,
-                })
-                .map(set_to_region)
-                .collect()
-        });
-        debug!(?object_lifetime_defaults);
 
-        let mut i = 0;
-        for arg in generic_args.args {
-            match arg {
-                GenericArg::Lifetime(_) => {}
-                GenericArg::Type(ty) => {
-                    if let Some(&lt) = object_lifetime_defaults.get(i) {
-                        let scope = Scope::ObjectLifetimeDefault { lifetime: lt, s: self.scope };
+            for (i, arg) in generic_args.args.iter().enumerate() {
+                if let GenericArg::Type(ty) = arg {
+                    if let Some(default) = object_lifetime_default(i) {
+                        let lifetime = set_to_region(default);
+                        let scope = Scope::ObjectLifetimeDefault { lifetime, s: self.scope };
                         self.with(scope, |this| this.visit_ty(ty));
                     } else {
                         self.visit_ty(ty);
                     }
-                    i += 1;
+                } else {
+                    self.visit_generic_arg(arg);
                 }
-                GenericArg::Const(ct) => {
-                    self.visit_anon_const(&ct.value);
-                    i += 1;
-                }
-                GenericArg::Infer(inf) => {
-                    self.visit_id(inf.hir_id);
-                    i += 1;
-                }
+            }
+        } else {
+            for arg in generic_args.args {
+                self.visit_generic_arg(arg);
             }
         }
 
