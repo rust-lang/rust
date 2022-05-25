@@ -53,5 +53,6 @@ module.exports = {
         "comma-dangle": ["error", "always-multiline"],
         "comma-style": ["error", "last"],
         "max-len": ["error", { "code": 100, "tabWidth": 4 }],
+        "eol-last": ["error", "always"],
     }
 };
