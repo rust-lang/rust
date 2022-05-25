@@ -189,6 +189,7 @@ enum Scope<'a> {
     /// inferred in a function body or potentially error outside one),
     /// for the default choice of lifetime in a trait object type.
     ObjectLifetimeDefault {
+        //FIXME(cjgillot) This should use a `ty::Region`.
         lifetime: Option<Region>,
         s: ScopeRef<'a>,
     },
