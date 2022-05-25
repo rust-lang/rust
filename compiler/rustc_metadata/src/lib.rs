@@ -2,6 +2,7 @@
 #![feature(decl_macro)]
 #![feature(drain_filter)]
 #![feature(generators)]
+#![feature(generic_associated_types)]
 #![feature(let_chains)]
 #![feature(let_else)]
 #![feature(nll)]

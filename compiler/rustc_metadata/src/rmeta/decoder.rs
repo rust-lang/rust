@@ -25,7 +25,7 @@ use rustc_middle::thir;
 use rustc_middle::ty::codec::TyDecoder;
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::GeneratorDiagnosticData;
-use rustc_middle::ty::{self, Ty, TyCtxt, Visibility};
+use rustc_middle::ty::{self, ParameterizedOverTcx, Ty, TyCtxt, Visibility};
 use rustc_serialize::{opaque, Decodable, Decoder};
 use rustc_session::cstore::{
     CrateSource, ExternCrate, ForeignModule, LinkagePreference, NativeLib,
@@ -86,7 +86,7 @@ pub(crate) struct CrateMetadata {
     /// lifetime is only used behind `Lazy`, and therefore acts like a
     /// universal (`for<'tcx>`), that is paired up with whichever `TyCtxt`
     /// is being used to decode those values.
-    root: CrateRoot<'static>,
+    root: CrateRoot,
     /// Trait impl data.
     /// FIXME: Used only from queries and can use query cache,
     /// so pre-decoding can probably be avoided.
@@ -261,11 +261,14 @@ impl<'a, 'tcx> Metadata<'a, 'tcx> for (CrateMetadataRef<'a>, TyCtxt<'tcx>) {
     }
 }
 
-impl<'a, 'tcx, T: Decodable<DecodeContext<'a, 'tcx>>> LazyValue<T> {
-    fn decode<M: Metadata<'a, 'tcx>>(self, metadata: M) -> T {
+impl<T: ParameterizedOverTcx> LazyValue<T> {
+    fn decode<'a, 'tcx, M: Metadata<'a, 'tcx>>(self, metadata: M) -> T::Value<'tcx>
+    where
+        T::Value<'tcx>: Decodable<DecodeContext<'a, 'tcx>>,
+    {
         let mut dcx = metadata.decoder(self.position.get());
         dcx.lazy_state = LazyState::NodeStart(self.position);
-        T::decode(&mut dcx)
+        T::Value::decode(&mut dcx)
     }
 }
 
@@ -292,6 +295,9 @@ impl<'a, 'tcx, T: Decodable<DecodeContext<'a, 'tcx>>> Iterator for DecodeIterato
 impl<'a, 'tcx, T: Decodable<DecodeContext<'a, 'tcx>>> ExactSizeIterator
     for DecodeIterator<'a, 'tcx, T>
 {
+    fn len(&self) -> usize {
+        self.elem_counter.len()
+    }
 }
 
 unsafe impl<'a, 'tcx, T: Decodable<DecodeContext<'a, 'tcx>>> TrustedLen
@@ -299,8 +305,14 @@ unsafe impl<'a, 'tcx, T: Decodable<DecodeContext<'a, 'tcx>>> TrustedLen
 {
 }
 
-impl<'a: 'x, 'tcx: 'x, 'x, T: Decodable<DecodeContext<'a, 'tcx>>> LazyArray<T> {
-    fn decode<M: Metadata<'a, 'tcx>>(self, metadata: M) -> DecodeIterator<'a, 'tcx, T> {
+impl<T: ParameterizedOverTcx> LazyArray<T> {
+    fn decode<'a, 'tcx, M: Metadata<'a, 'tcx>>(
+        self,
+        metadata: M,
+    ) -> DecodeIterator<'a, 'tcx, T::Value<'tcx>>
+    where
+        T::Value<'tcx>: Decodable<DecodeContext<'a, 'tcx>>,
+    {
         let mut dcx = metadata.decoder(self.position.get());
         dcx.lazy_state = LazyState::NodeStart(self.position);
         DecodeIterator { elem_counter: (0..self.num_elems), dcx, _phantom: PhantomData }
@@ -671,14 +683,14 @@ impl MetadataBlob {
             .decode(self)
     }
 
-    pub(crate) fn get_root<'tcx>(&self) -> CrateRoot<'tcx> {
+    pub(crate) fn get_root(&self) -> CrateRoot {
         let slice = &self.blob()[..];
         let offset = METADATA_HEADER.len();
         let pos = (((slice[offset + 0] as u32) << 24)
             | ((slice[offset + 1] as u32) << 16)
             | ((slice[offset + 2] as u32) << 8)
             | ((slice[offset + 3] as u32) << 0)) as usize;
-        LazyValue::<CrateRoot<'tcx>>::from_position(NonZeroUsize::new(pos).unwrap()).decode(self)
+        LazyValue::<CrateRoot>::from_position(NonZeroUsize::new(pos).unwrap()).decode(self)
     }
 
     pub(crate) fn list_crate_metadata(&self, out: &mut dyn io::Write) -> io::Result<()> {
@@ -705,7 +717,7 @@ impl MetadataBlob {
     }
 }
 
-impl CrateRoot<'_> {
+impl CrateRoot {
     pub(crate) fn is_proc_macro_crate(&self) -> bool {
         self.proc_macro_data.is_some()
     }
@@ -1677,7 +1689,7 @@ impl CrateMetadata {
         sess: &Session,
         cstore: &CStore,
         blob: MetadataBlob,
-        root: CrateRoot<'static>,
+        root: CrateRoot,
         raw_proc_macros: Option<&'static [ProcMacro]>,
         cnum: CrateNum,
         cnum_map: CrateNumMap,

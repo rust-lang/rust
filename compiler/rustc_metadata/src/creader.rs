@@ -323,7 +323,7 @@ impl<'a> CrateLoader<'a> {
         None
     }
 
-    fn verify_no_symbol_conflicts(&self, root: &CrateRoot<'_>) -> Result<(), CrateError> {
+    fn verify_no_symbol_conflicts(&self, root: &CrateRoot) -> Result<(), CrateError> {
         // Check for (potential) conflicts with the local crate
         if self.sess.local_stable_crate_id() == root.stable_crate_id() {
             return Err(CrateError::SymbolConflictsCurrent(root.name()));
@@ -342,7 +342,7 @@ impl<'a> CrateLoader<'a> {
 
     fn verify_no_stable_crate_id_hash_conflicts(
         &mut self,
-        root: &CrateRoot<'_>,
+        root: &CrateRoot,
         cnum: CrateNum,
     ) -> Result<(), CrateError> {
         if let Some(existing) = self.cstore.stable_crate_ids.insert(root.stable_crate_id(), cnum) {
@@ -623,7 +623,7 @@ impl<'a> CrateLoader<'a> {
     fn resolve_crate_deps(
         &mut self,
         root: &CratePaths,
-        crate_root: &CrateRoot<'_>,
+        crate_root: &CrateRoot,
         metadata: &MetadataBlob,
         krate: CrateNum,
         dep_kind: CrateDepKind,
