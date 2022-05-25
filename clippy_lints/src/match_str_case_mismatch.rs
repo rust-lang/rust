@@ -21,7 +21,6 @@ declare_clippy_lint! {
     /// ### Example
     /// ```rust
     /// # let text = "Foo";
-    ///
     /// match &*text.to_ascii_lowercase() {
     ///     "foo" => {},
     ///     "Bar" => {},
@@ -31,7 +30,6 @@ declare_clippy_lint! {
     /// Use instead:
     /// ```rust
     /// # let text = "Foo";
-    ///
     /// match &*text.to_ascii_lowercase() {
     ///     "foo" => {},
     ///     "bar" => {},
