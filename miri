@@ -134,7 +134,8 @@ test|test-debug|bless|bless-debug)
     esac
     # Then test, and let caller control flags.
     # Only in root project as `cargo-miri` has no tests.
-    exec cargo test $CARGO_BUILD_FLAGS "$@"
+    cargo test $CARGO_BUILD_FLAGS "$@"
+    cargo test --manifest-path ui_test/Cargo.toml
     ;;
 run|run-debug)
     # Scan for "--target" to set the "MIRI_TEST_TARGET" env var so
