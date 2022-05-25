@@ -311,7 +311,7 @@ dependencies = [
 
 [[package]]
 name = "cargo"
-version = "0.63.0"
+version = "0.64.0"
 dependencies = [
  "anyhow",
  "atty",
@@ -970,9 +970,9 @@ dependencies = [
 
 [[package]]
 name = "curl"
-version = "0.4.41"
+version = "0.4.43"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1bc6d233563261f8db6ffb83bbaad5a73837a6e6b28868e926337ebbdece0be3"
+checksum = "37d855aeef205b43f65a5001e0997d81f8efca7badad4fad7d897aa7f0d0651f"
 dependencies = [
  "curl-sys",
  "libc",
@@ -985,9 +985,9 @@ dependencies = [
 
 [[package]]
 name = "curl-sys"
-version = "0.4.51+curl-7.80.0"
+version = "0.4.55+curl-7.83.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d130987e6a6a34fe0889e1083022fa48cd90e6709a84be3fb8dd95801de5af20"
+checksum = "23734ec77368ec583c2e61dd3f0b0e5c98b93abe6d2a004ca06b91dd7e3e2762"
 dependencies = [
  "cc",
  "libc",
