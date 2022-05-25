@@ -1034,9 +1034,15 @@ impl<T, E> Result<T, E> {
     ///     .expect("env variable `IMPORTANT_PATH` should be set by `wrapper_script.sh`");
     /// ```
     ///
-    /// For more detail on expect message styles and the reasoning behind our
-    /// recommendation please refer to the section on ["Common Message
-    /// Styles"]() in the [`std::error`]() module docs.
+    /// **Hint**: If you're having trouble remembering how to phrase expect
+    /// error messages remember to focus on the word "should" as in "env
+    /// variable should be set by blah" or "the given binary should be available
+    /// and executable by the current user".
+    ///
+    /// For more detail on expect message styles and the reasoning behind our recommendation please
+    /// refer to the section on ["Common Message
+    /// Styles"](../../std/error/index.html#common-message-styles) in the
+    /// [`std::error`](../../std/error/index.html) module docs.
     #[inline]
     #[track_caller]
     #[stable(feature = "result_expect", since = "1.4.0")]
