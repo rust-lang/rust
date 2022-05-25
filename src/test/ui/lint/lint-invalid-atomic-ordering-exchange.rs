@@ -42,19 +42,19 @@ fn main() {
 
     // Release success order forbids failure order of Acquire or SeqCst
     let _ = x.compare_exchange(0, 0, Ordering::Release, Ordering::Acquire);
-    //~^ ERROR compare_exchange's failure ordering may not be stronger
+    //~^ ERROR compare_exchange's success ordering must be at least as strong as
     let _ = x.compare_exchange(0, 0, Ordering::Release, Ordering::SeqCst);
-    //~^ ERROR compare_exchange's failure ordering may not be stronger
+    //~^ ERROR compare_exchange's success ordering must be at least as strong as
 
     // Relaxed success order also forbids failure order of Acquire or SeqCst
     let _ = x.compare_exchange(0, 0, Ordering::Relaxed, Ordering::SeqCst);
-    //~^ ERROR compare_exchange's failure ordering may not be stronger
+    //~^ ERROR compare_exchange's success ordering must be at least as strong as
     let _ = x.compare_exchange(0, 0, Ordering::Relaxed, Ordering::Acquire);
-    //~^ ERROR compare_exchange's failure ordering may not be stronger
+    //~^ ERROR compare_exchange's success ordering must be at least as strong as
 
     // Acquire/AcqRel forbids failure order of SeqCst
     let _ = x.compare_exchange(0, 0, Ordering::Acquire, Ordering::SeqCst);
-    //~^ ERROR compare_exchange's failure ordering may not be stronger
+    //~^ ERROR compare_exchange's success ordering must be at least as strong as
     let _ = x.compare_exchange(0, 0, Ordering::AcqRel, Ordering::SeqCst);
-    //~^ ERROR compare_exchange's failure ordering may not be stronger
+    //~^ ERROR compare_exchange's success ordering must be at least as strong as
 }

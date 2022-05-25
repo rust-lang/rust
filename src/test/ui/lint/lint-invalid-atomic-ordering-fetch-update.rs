@@ -42,19 +42,19 @@ fn main() {
 
     // Release success order forbids failure order of Acquire or SeqCst
     let _ = x.fetch_update(Ordering::Release, Ordering::Acquire, |old| Some(old + 1));
-    //~^ ERROR fetch_update's failure ordering may not be stronger
+    //~^ ERROR fetch_update's success ordering must be at least as strong as
     let _ = x.fetch_update(Ordering::Release, Ordering::SeqCst, |old| Some(old + 1));
-    //~^ ERROR fetch_update's failure ordering may not be stronger
+    //~^ ERROR fetch_update's success ordering must be at least as strong as
 
     // Relaxed success order also forbids failure order of Acquire or SeqCst
     let _ = x.fetch_update(Ordering::Relaxed, Ordering::SeqCst, |old| Some(old + 1));
-    //~^ ERROR fetch_update's failure ordering may not be stronger
+    //~^ ERROR fetch_update's success ordering must be at least as strong as
     let _ = x.fetch_update(Ordering::Relaxed, Ordering::Acquire, |old| Some(old + 1));
-    //~^ ERROR fetch_update's failure ordering may not be stronger
+    //~^ ERROR fetch_update's success ordering must be at least as strong as
 
     // Acquire/AcqRel forbids failure order of SeqCst
     let _ = x.fetch_update(Ordering::Acquire, Ordering::SeqCst, |old| Some(old + 1));
-    //~^ ERROR fetch_update's failure ordering may not be stronger
+    //~^ ERROR fetch_update's success ordering must be at least as strong as
     let _ = x.fetch_update(Ordering::AcqRel, Ordering::SeqCst, |old| Some(old + 1));
-    //~^ ERROR fetch_update's failure ordering may not be stronger
+    //~^ ERROR fetch_update's success ordering must be at least as strong as
 }
