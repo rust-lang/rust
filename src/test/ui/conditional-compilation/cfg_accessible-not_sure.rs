@@ -33,12 +33,6 @@ enum Enum {
     Existing { existing: u8 },
 }
 
-// FIXME: Currently returns `false` but should be "not sure"
-#[cfg_accessible(Enum::Existing::existing)]
-const A: bool = true;
-// FIXME: Currently returns `false` but should be "not sure"
-#[cfg_accessible(Enum::Existing::unresolved)]
-const B: bool = true;
 #[cfg_accessible(Enum::unresolved)] //~ ERROR not sure
 const C: bool = true;
 
