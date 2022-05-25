@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use ui_test::{check_annotations, Comments, Config, Error, Mode, OutputConflictHandling};
+use super::{check_annotations, Comments, Config, Error, Mode, OutputConflictHandling};
 
 fn config() -> Config {
     Config {

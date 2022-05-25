@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use ui_test::Comments;
+use super::Comments;
 
 #[test]
 fn parse_simple_comment() {

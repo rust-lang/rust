@@ -12,6 +12,8 @@ use regex::Regex;
 pub use crate::comments::Comments;
 
 mod comments;
+#[cfg(test)]
+mod tests;
 
 #[derive(Debug)]
 pub struct Config {
@@ -171,7 +173,7 @@ pub fn run_tests(config: Config) {
 }
 
 #[derive(Debug)]
-pub enum Error {
+enum Error {
     /// Got an invalid exit status for the given mode.
     ExitStatus(Mode, ExitStatus),
     PatternNotFound {
@@ -191,7 +193,7 @@ pub enum Error {
     },
 }
 
-pub type Errors = Vec<Error>;
+type Errors = Vec<Error>;
 
 fn run_test(
     path: &Path,
@@ -249,7 +251,7 @@ fn run_test(
     (miri, errors)
 }
 
-pub fn check_annotations(
+fn check_annotations(
     unnormalized_stderr: &[u8],
     errors: &mut Errors,
     config: &Config,

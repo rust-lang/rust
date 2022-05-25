@@ -2,6 +2,9 @@ use std::path::Path;
 
 use regex::Regex;
 
+#[cfg(test)]
+mod tests;
+
 /// This crate supports various magic comments that get parsed as file-specific
 /// configuration values. This struct parses them all in one go and then they
 /// get processed by their respective use sites.
