@@ -8,7 +8,7 @@ use crate::owning_ref::StableAddress;
 #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
 pub struct Mmap(memmap2::Mmap);
 
-#[cfg(any(target_arch = "wasm32", target_arch = "wasm64")]
+#[cfg(any(target_arch = "wasm32", target_arch = "wasm64"))]
 pub struct Mmap(Vec<u8>);
 
 #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]

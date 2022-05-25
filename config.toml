@@ -192,7 +192,6 @@ changelog-seen = 2
 #
 # Defaults to platform where `x.py` is run.
 #build = "x86_64-unknown-linux-gnu" (as an example)
-#build = "wasm64-wasi"
 
 # Which triples to produce a compiler toolchain for. Each of these triples will
 # be bootstrapped from the build triple themselves.
@@ -207,7 +206,6 @@ changelog-seen = 2
 # host triples to this list as well in order for those host toolchains to be
 # able to compile programs for their native target.
 #target = ["x86_64-unknown-linux-gnu"] (as an example)
-target = [ "wasm64-wasi" ]
 
 # Use this directory to store build artifacts.
 # You can use "$ROOT" to indicate the root of the git repository.
@@ -635,12 +633,6 @@ configure-args = []
 # If an explicit setting is given, it will be used for all parts of the codebase.
 #new-symbol-mangling = true|false (see comment)
 
-[target.wasm32-wasi]
-wasi-root = "/prog/sysroot"
-
-[target.wasm64-wasi]
-wasi-root = "/prog/wasix-libc/sysroot"
-
 # =============================================================================
 # Options for specific targets
 #
@@ -717,6 +709,11 @@ wasi-root = "/prog/wasix-libc/sysroot"
 # `wasm32-wasi` target. If you are building wasm32-wasi target, make sure to
 # create a `[target.wasm32-wasi]` section and move this field there.
 #wasi-root = <none> (path)
+
+# The root location of the `wasm64-wasix` sysroot. Only used for the
+# `wasm64-wasix` target. If you are building wasm64-wasix target, make sure to
+# create a `[target.wasm64-wasix]` section and move this field there.
+#wasix-root = <none> (path)
 
 # Used in testing for configuring where the QEMU images are located, you
 # probably don't want to use this.
