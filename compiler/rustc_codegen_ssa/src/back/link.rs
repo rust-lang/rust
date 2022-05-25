@@ -2698,37 +2698,20 @@ fn add_gcc_ld_path(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
         if let LinkerFlavor::Gcc = flavor {
             match ld_impl {
                 LdImpl::Lld => {
-                    if sess.target.lld_flavor == LldFlavor::Ld64 {
-                        let tools_path = sess.get_tools_search_paths(false);
-                        let ld64_exe = tools_path
-                            .into_iter()
-                            .map(|p| p.join("gcc-ld"))
-                            .map(|p| {
-                                p.join(if sess.host.is_like_windows { "ld64.exe" } else { "ld64" })
-                            })
-                            .find(|p| p.exists())
-                            .unwrap_or_else(|| sess.fatal("rust-lld (as ld64) not found"));
-                        cmd.cmd().arg({
-                            let mut arg = OsString::from("-fuse-ld=");
-                            arg.push(ld64_exe);
-                            arg
-                        });
-                    } else {
-                        let tools_path = sess.get_tools_search_paths(false);
-                        let lld_path = tools_path
-                            .into_iter()
-                            .map(|p| p.join("gcc-ld"))
-                            .find(|p| {
-                                p.join(if sess.host.is_like_windows { "ld.exe" } else { "ld" })
-                                    .exists()
-                            })
-                            .unwrap_or_else(|| sess.fatal("rust-lld (as ld) not found"));
-                        cmd.cmd().arg({
-                            let mut arg = OsString::from("-B");
-                            arg.push(lld_path);
-                            arg
-                        });
-                    }
+                    let tools_path = sess.get_tools_search_paths(false);
+                    let gcc_ld_dir = tools_path
+                        .into_iter()
+                        .map(|p| p.join("gcc-ld"))
+                        .find(|p| {
+                            p.join(if sess.host.is_like_windows { "ld.exe" } else { "ld" }).exists()
+                        })
+                        .unwrap_or_else(|| sess.fatal("rust-lld (as ld) not found"));
+                    cmd.arg({
+                        let mut arg = OsString::from("-B");
+                        arg.push(gcc_ld_dir);
+                        arg
+                    });
+                    cmd.arg(format!("-Wl,-rustc-lld-flavor={}", sess.target.lld_flavor.as_str()));
                 }
             }
         } else {

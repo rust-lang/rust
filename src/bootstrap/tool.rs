@@ -656,7 +656,6 @@ impl Step for Cargo {
 pub struct LldWrapper {
     pub compiler: Compiler,
     pub target: TargetSelection,
-    pub flavor_feature: &'static str,
 }
 
 impl Step for LldWrapper {
@@ -676,7 +675,7 @@ impl Step for LldWrapper {
                 path: "src/tools/lld-wrapper",
                 is_optional_tool: false,
                 source_type: SourceType::InTree,
-                extra_features: vec![self.flavor_feature.to_owned()],
+                extra_features: Vec::new(),
             })
             .expect("expected to build -- essential tool");
 
