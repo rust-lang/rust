@@ -161,38 +161,23 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
             // We've encountered an `AnonConst` in some path, so we need to
             // figure out which generic parameter it corresponds to and return
             // the relevant type.
-            let filtered = path.segments.iter().find_map(|seg| {
-                seg.args?
-                    .args
+            let Some((arg_index, segment)) = path.segments.iter().find_map(|seg| {
+                let args = seg.args?;
+                args.args
+                .iter()
+                .filter(|arg| arg.is_ty_or_const())
+                .position(|arg| arg.id() == hir_id)
+                .map(|index| (index, seg)).or_else(|| args.bindings
                     .iter()
-                    .filter(|arg| arg.is_ty_or_const())
-                    .position(|arg| arg.id() == hir_id)
-                    .map(|index| (index, seg))
-            });
-
-            // FIXME(associated_const_generics): can we blend this with iteration above?
-            let (arg_index, segment) = match filtered {
-                None => {
-                    let binding_filtered = path.segments.iter().find_map(|seg| {
-                        seg.args?
-                            .bindings
-                            .iter()
-                            .filter_map(TypeBinding::opt_const)
-                            .position(|ct| ct.hir_id == hir_id)
-                            .map(|idx| (idx, seg))
-                    });
-                    match binding_filtered {
-                        Some(inner) => inner,
-                        None => {
-                            tcx.sess.delay_span_bug(
-                                tcx.def_span(def_id),
-                                "no arg matching AnonConst in path",
-                            );
-                            return None;
-                        }
-                    }
-                }
-                Some(inner) => inner,
+                    .filter_map(TypeBinding::opt_const)
+                    .position(|ct| ct.hir_id == hir_id)
+                    .map(|idx| (idx, seg)))
+            }) else {
+                tcx.sess.delay_span_bug(
+                    tcx.def_span(def_id),
+                    "no arg matching AnonConst in path",
+                );
+                return None;
             };
 
             // Try to use the segment resolution if it is valid, otherwise we
