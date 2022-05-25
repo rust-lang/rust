@@ -63,7 +63,7 @@ function showMain() {
     removeClass(document.getElementById(MAIN_ID), "hidden");
 }
 
-(function () {
+(function() {
     window.rootPath = getVar("root-path");
     window.currentCrate = getVar("current-crate");
     window.searchJS =  resourcePath("search", ".js");
@@ -929,7 +929,7 @@ function loadCss(cssFileName) {
     searchState.setup();
 }());
 
-(function () {
+(function() {
     let reset_button_timeout = null;
 
     window.copy_path = but => {
