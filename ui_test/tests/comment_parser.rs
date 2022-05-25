@@ -3,7 +3,7 @@ use std::path::Path;
 use ui_test::Comments;
 
 #[test]
-fn issue_2156() {
+fn parse_simple_comment() {
     let s = r"
 use std::mem;
 
