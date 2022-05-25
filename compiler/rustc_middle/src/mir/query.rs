@@ -1,7 +1,7 @@
 //! Values computed by queries that use MIR.
 
 use crate::mir::{self, Body, Promoted};
-use crate::ty::{self, subst::SubstsRef, OpaqueHiddenType, Ty, TyCtxt};
+use crate::ty::{self, OpaqueHiddenType, Ty, TyCtxt};
 use rustc_data_structures::stable_map::FxHashMap;
 use rustc_data_structures::vec_map::VecMap;
 use rustc_errors::ErrorGuaranteed;
@@ -341,6 +341,10 @@ pub struct ClosureOutlivesRequirement<'tcx> {
     pub category: ConstraintCategory<'tcx>,
 }
 
+// Make sure this enum doesn't unintentionally grow
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+rustc_data_structures::static_assert_size!(ConstraintCategory<'_>, 16);
+
 /// Outlives-constraints can be categorized to determine whether and why they
 /// are interesting (for error reporting). Order of variants indicates sort
 /// order of the category, thereby influencing diagnostic output.
@@ -360,7 +364,9 @@ pub enum ConstraintCategory<'tcx> {
     ///
     /// We try to get the category that the closure used when reporting this.
     ClosureBounds,
-    CallArgument(Option<(DefId, SubstsRef<'tcx>)>),
+
+    /// Contains the function type if available.
+    CallArgument(Option<Ty<'tcx>>),
     CopyBound,
     SizedBound,
     Assignment,

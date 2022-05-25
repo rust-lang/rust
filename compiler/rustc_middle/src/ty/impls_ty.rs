@@ -135,8 +135,8 @@ impl<'a> HashStable<StableHashingContext<'a>> for ty::RegionKind {
             ty::RePlaceholder(p) => {
                 p.hash_stable(hcx, hasher);
             }
-            ty::ReVar(reg_vid) => {
-                reg_vid.hash_stable(hcx, hasher);
+            ty::ReVar(reg) => {
+                reg.hash_stable(hcx, hasher);
             }
         }
     }

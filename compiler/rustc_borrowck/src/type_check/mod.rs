@@ -1418,7 +1418,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 ref args,
                 ref destination,
                 from_hir_call,
-                fn_span,
+                target,
                 ..
             } => {
                 self.check_operand(func, term_location);
@@ -1427,9 +1427,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 }
 
                 let func_ty = func.ty(body, tcx);
-                debug!("check_terminator: call, func_ty={:?}", func_ty);
                 debug!("func_ty.kind: {:?}", func_ty.kind());
-                debug!(?fn_span);
+
                 let sig = match func_ty.kind() {
                     ty::FnDef(..) | ty::FnPtr(_) => func_ty.fn_sig(tcx),
                     _ => {
@@ -1444,7 +1443,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 );
                 debug!(?sig);
                 let sig = self.normalize(sig, term_location);
-                self.check_call_dest(body, term, &sig, destination, target, term_location);
+                self.check_call_dest(body, term, &sig, *destination, target, term_location);
 
                 self.prove_predicates(
                     sig.inputs_and_output
@@ -1604,24 +1603,19 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             span_mirbug!(self, term, "call to {:?} with wrong # of args", sig);
         }
 
-        let call_arg = if let TerminatorKind::Call { func, .. } = &term.kind {
-            let func_ty = func.ty(body, self.infcx.tcx);
-            if let ty::FnDef(fn_did, substs) = func_ty.kind() {
-                Some((*fn_did, *substs))
-            } else {
-                None
-            }
+        let func_ty = if let TerminatorKind::Call { func, .. } = &term.kind {
+            Some(func.ty(body, self.infcx.tcx))
         } else {
             None
         };
-        debug!(?call_arg);
+        debug!(?func_ty);
 
         for (n, (fn_arg, op_arg)) in iter::zip(sig.inputs(), args).enumerate() {
             let op_arg_ty = op_arg.ty(body, self.tcx());
 
             let op_arg_ty = self.normalize(op_arg_ty, term_location);
             let category = if from_hir_call {
-                ConstraintCategory::CallArgument(call_arg)
+                ConstraintCategory::CallArgument(func_ty)
             } else {
                 ConstraintCategory::Boring
             };

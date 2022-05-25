@@ -788,7 +788,11 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
         let tcx = self.infcx.tcx;
 
-        let instance = if let ConstraintCategory::CallArgument(Some((fn_did, substs))) = category {
+        let instance = if let ConstraintCategory::CallArgument(Some(func_ty)) = category {
+            let (fn_did, substs) = match func_ty.kind() {
+                ty::FnDef(fn_did, substs) => (fn_did, substs),
+                _ => return,
+            };
             debug!(?fn_did, ?substs);
 
             // Only suggest this on function calls, not closures
@@ -821,13 +825,10 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         let mut visitor = TraitObjectVisitor(FxHashSet::default());
         visitor.visit_ty(param.param_ty);
 
-        if let Some((ident, self_ty)) =
-            self.get_impl_ident_and_self_ty_from_trait(instance.def_id(), &visitor.0)
-        {
-            self.suggest_constrain_dyn_trait_in_impl(diag, &visitor.0, ident, self_ty)
-        } else {
-            return;
-        };
+        let Some((ident, self_ty)) =
+            self.get_impl_ident_and_self_ty_from_trait(instance.def_id(), &visitor.0) else {return};
+
+        self.suggest_constrain_dyn_trait_in_impl(diag, &visitor.0, ident, self_ty);
     }
 
     #[instrument(skip(self, err), level = "debug")]
