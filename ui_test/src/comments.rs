@@ -39,6 +39,8 @@ impl Comments {
         Self::parse(path, &content)
     }
 
+    /// Parse comments in `content`.
+    /// `path` is only used to emit diagnostics if parsing fails.
     pub fn parse(path: &Path, content: &str) -> Self {
         let mut this = Self::default();
         let error_pattern_regex =
