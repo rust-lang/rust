@@ -345,20 +345,27 @@ impl SourceMap {
         let end_pos = Pos::from_usize(start_pos + source_len);
         let start_pos = Pos::from_usize(start_pos);
 
+        // Translate these positions into the new global frame of reference,
+        // now that the offset of the SourceFile is known.
+        //
+        // These are all unsigned values. `original_start_pos` may be larger or
+        // smaller than `start_pos`, but `pos` is always larger than both.
+        // Therefore, `(pos - original_start_pos) + start_pos` won't overflow
+        // but `start_pos - original_start_pos` might. So we use the former
+        // form rather than pre-computing the offset into a local variable. The
+        // compiler backend can optimize away the repeated computations in a
+        // way that won't trigger overflow checks.
         for pos in &mut file_local_lines {
-            *pos = *pos + start_pos;
+            *pos = (*pos - original_start_pos) + start_pos;
         }
-
         for mbc in &mut file_local_multibyte_chars {
-            mbc.pos = mbc.pos + start_pos;
+            mbc.pos = (mbc.pos - original_start_pos) + start_pos;
         }
-
         for swc in &mut file_local_non_narrow_chars {
-            *swc = *swc + start_pos;
+            *swc = (*swc - original_start_pos) + start_pos;
         }
-
         for nc in &mut file_local_normalized_pos {
-            nc.pos = nc.pos + start_pos;
+            nc.pos = (nc.pos - original_start_pos) + start_pos;
         }
 
         let source_file = Lrc::new(SourceFile {
