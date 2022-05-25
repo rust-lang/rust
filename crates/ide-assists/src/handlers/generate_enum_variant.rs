@@ -141,6 +141,43 @@ fn main() {
     }
 
     #[test]
+    fn generate_basic_enum_variant_in_different_file() {
+        check_assist(
+            generate_enum_variant,
+            r"
+//- /main.rs
+mod foo;
+use foo::Foo;
+
+fn main() {
+    Foo::Baz$0
+}
+
+//- /foo.rs
+enum Foo {
+    Bar,
+}
+",
+            r"
+//- /main.rs
+mod foo;
+use foo::Foo;
+
+fn main() {
+    Foo::Baz
+}
+
+//- /foo.rs
+enum Foo {
+    Bar,
+    Baz,
+}
+
+",
+        )
+    }
+
+    #[test]
     fn not_applicable_for_existing_variant() {
         check_assist_not_applicable(
             generate_enum_variant,
