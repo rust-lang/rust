@@ -257,6 +257,9 @@ pub fn check_annotations(
     comments: &Comments,
 ) {
     let unnormalized_stderr = std::str::from_utf8(unnormalized_stderr).unwrap();
+    // erase annotations from the stderr so they don't match themselves
+    let annotations = Regex::new(r"\s*//~.*").unwrap();
+    let unnormalized_stderr = annotations.replace(unnormalized_stderr, "");
     let mut found_annotation = false;
     if let Some((ref error_pattern, definition_line)) = comments.error_pattern {
         if !unnormalized_stderr.contains(error_pattern) {
