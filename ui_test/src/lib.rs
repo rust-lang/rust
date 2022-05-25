@@ -129,7 +129,7 @@ pub fn run_tests(config: Config) {
                         eprintln!("`{pattern}` {} in stderr output", "not found".red());
                         eprintln!(
                             "expected because of pattern here: {}:{definition_line}",
-                            path.display()
+                            path.display().to_string().bold()
                         );
                         dump_stderr = Some(stderr.clone())
                     }
