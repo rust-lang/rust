@@ -1,3 +1,4 @@
+use crate::AstConv;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -8,7 +9,7 @@ use rustc_hir::{GenericArg, GenericParamKind, LifetimeName, Node};
 use rustc_middle::bug;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::resolve_lifetime::*;
-use rustc_middle::ty::{DefIdTree, GenericParamDefKind, TyCtxt};
+use rustc_middle::ty::{self, DefIdTree, GenericParamDefKind, TyCtxt};
 use rustc_span::symbol::sym;
 use std::borrow::Cow;
 
@@ -128,7 +129,7 @@ fn object_lifetime_defaults_for_item<'tcx>(
 pub(super) fn object_lifetime_map(
     tcx: TyCtxt<'_>,
     def_id: LocalDefId,
-) -> FxHashMap<ItemLocalId, Region> {
+) -> FxHashMap<ItemLocalId, ty::Region<'_>> {
     let mut named_region_map = Default::default();
     let mut visitor = LifetimeContext { tcx, defs: &mut named_region_map, scope: ROOT_SCOPE };
     let node = tcx.hir().get_by_def_id(def_id);
@@ -160,7 +161,7 @@ impl RegionExt for Region {
 
 struct LifetimeContext<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    defs: &'a mut FxHashMap<ItemLocalId, Region>,
+    defs: &'a mut FxHashMap<ItemLocalId, ty::Region<'tcx>>,
     scope: ScopeRef<'a>,
 }
 
@@ -586,6 +587,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             }
         };
         let def = lifetime.shifted(late_depth);
+        let def = <dyn AstConv<'tcx>>::ast_region_to_region_inner(self.tcx, def);
         debug!(?def);
         self.defs.insert(lifetime_ref.hir_id.local_id, def);
     }

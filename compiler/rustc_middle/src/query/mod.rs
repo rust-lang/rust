@@ -1595,7 +1595,7 @@ rustc_queries! {
         desc { "looking up lifetime defaults for a region on an item" }
     }
     /// Fetch the lifetimes for all the trait objects in an item-like.
-    query object_lifetime_map(_: LocalDefId) -> FxHashMap<ItemLocalId, Region> {
+    query object_lifetime_map(_: LocalDefId) -> FxHashMap<ItemLocalId, ty::Region<'tcx>> {
         storage(ArenaCacheSelector<'tcx>)
         desc { "looking up lifetime defaults for a region on an item" }
     }

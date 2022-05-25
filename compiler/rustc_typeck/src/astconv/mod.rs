@@ -204,7 +204,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let tcx = self.tcx();
 
         let r = if let Some(rl) = tcx.named_region(lifetime.hir_id) {
-            self.ast_region_to_region_inner(rl)
+            Self::ast_region_to_region_inner(tcx, rl)
         } else {
             self.re_infer(def, lifetime.span).unwrap_or_else(|| {
                 debug!(?lifetime, "unelided lifetime in signature");
@@ -226,9 +226,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         r
     }
 
-    #[tracing::instrument(level = "debug", skip(self))]
-    fn ast_region_to_region_inner(&self, lifetime: rl::Region) -> ty::Region<'tcx> {
-        let tcx = self.tcx();
+    #[tracing::instrument(level = "debug", skip(tcx))]
+    pub fn ast_region_to_region_inner(tcx: TyCtxt<'tcx>, lifetime: rl::Region) -> ty::Region<'tcx> {
         let lifetime_name = |def_id| tcx.hir().name(tcx.hir().local_def_id_to_hir_id(def_id));
 
         let r = match lifetime {
@@ -1547,33 +1546,33 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         // Use explicitly-specified region bound.
         let region_bound = if !lifetime.is_elided() {
             self.ast_region_to_region(lifetime, None)
+        } else if let Some(region) =
+            self.compute_object_lifetime_bound(span, existential_predicates)
+        {
+            region
+        } else if let Some(rl) = tcx.named_region(lifetime.hir_id) {
+            Self::ast_region_to_region_inner(self.tcx(), rl)
+        } else if let Some(&region) =
+            tcx.object_lifetime_map(lifetime.hir_id.owner).get(&lifetime.hir_id.local_id)
+        {
+            region
         } else {
-            self.compute_object_lifetime_bound(span, existential_predicates).unwrap_or_else(|| {
-                if let Some(rl) = tcx.named_region(lifetime.hir_id) {
-                    self.ast_region_to_region_inner(rl)
-                } else if let Some(&rl) =
-                    tcx.object_lifetime_map(lifetime.hir_id.owner).get(&lifetime.hir_id.local_id)
-                {
-                    self.ast_region_to_region_inner(rl)
-                } else {
-                    self.re_infer(None, span).unwrap_or_else(|| {
-                        let mut err = struct_span_err!(
-                            tcx.sess,
-                            span,
-                            E0228,
-                            "the lifetime bound for this object type cannot be deduced \
+            self.re_infer(None, span).unwrap_or_else(|| {
+                let mut err = struct_span_err!(
+                    tcx.sess,
+                    span,
+                    E0228,
+                    "the lifetime bound for this object type cannot be deduced \
                              from context; please supply an explicit bound"
-                        );
-                        if borrowed {
-                            // We will have already emitted an error E0106 complaining about a
-                            // missing named lifetime in `&dyn Trait`, so we elide this one.
-                            err.delay_as_bug();
-                        } else {
-                            err.emit();
-                        }
-                        tcx.lifetimes.re_static
-                    })
+                );
+                if borrowed {
+                    // We will have already emitted an error E0106 complaining about a
+                    // missing named lifetime in `&dyn Trait`, so we elide this one.
+                    err.delay_as_bug();
+                } else {
+                    err.emit();
                 }
+                tcx.lifetimes.re_static
             })
         };
         debug!("region_bound: {:?}", region_bound);
