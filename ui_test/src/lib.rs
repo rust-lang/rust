@@ -9,7 +9,7 @@ use comments::ErrorMatch;
 use crossbeam::queue::SegQueue;
 use regex::Regex;
 
-use crate::comments::Comments;
+pub use crate::comments::Comments;
 
 mod comments;
 
@@ -73,7 +73,7 @@ pub fn run_tests(config: Config) {
                     if !path.extension().map(|ext| ext == "rs").unwrap_or(false) {
                         continue;
                     }
-                    let comments = Comments::parse(&path);
+                    let comments = Comments::parse_file(&path);
                     // Ignore file if only/ignore rules do (not) apply
                     if ignore_file(&comments, &target) {
                         ignored.fetch_add(1, Ordering::Relaxed);
@@ -171,7 +171,7 @@ pub fn run_tests(config: Config) {
 }
 
 #[derive(Debug)]
-enum Error {
+pub enum Error {
     /// Got an invalid exit status for the given mode.
     ExitStatus(Mode, ExitStatus),
     PatternNotFound {
@@ -191,7 +191,7 @@ enum Error {
     },
 }
 
-type Errors = Vec<Error>;
+pub type Errors = Vec<Error>;
 
 fn run_test(
     path: &Path,
@@ -249,7 +249,7 @@ fn run_test(
     (miri, errors)
 }
 
-fn check_annotations(
+pub fn check_annotations(
     unnormalized_stderr: &[u8],
     errors: &mut Errors,
     config: &Config,
