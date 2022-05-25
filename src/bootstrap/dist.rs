@@ -407,11 +407,8 @@ impl Step for Rustc {
                 let gcc_lld_src_dir = src_dir.join("gcc-ld");
                 let gcc_lld_dst_dir = dst_dir.join("gcc-ld");
                 t!(fs::create_dir(&gcc_lld_dst_dir));
-                for flavor in ["ld", "ld64"] {
-                    let exe_name = exe(flavor, compiler.host);
-                    builder
-                        .copy(&gcc_lld_src_dir.join(&exe_name), &gcc_lld_dst_dir.join(&exe_name));
-                }
+                let exe_name = exe("ld", compiler.host);
+                builder.copy(&gcc_lld_src_dir.join(&exe_name), &gcc_lld_dst_dir.join(&exe_name));
             }
 
             // Man pages

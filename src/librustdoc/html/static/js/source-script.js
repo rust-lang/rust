@@ -187,7 +187,7 @@ function highlightSourceLines(match) {
     }
 }
 
-const handleSourceHighlight = (function () {
+const handleSourceHighlight = (function() {
     let prev_line_id = 0;
 
     const set_fragment = name => {
