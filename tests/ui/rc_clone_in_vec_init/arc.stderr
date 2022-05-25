@@ -1,4 +1,4 @@
-error: calling `Arc::new` in `vec![elem; len]`
+error: initializing a reference-counted pointer in `vec![elem; len]`
   --> $DIR/arc.rs:7:13
    |
 LL |     let v = vec![Arc::new("x".to_string()); 2];
@@ -10,19 +10,19 @@ help: consider initializing each `Arc` element individually
    |
 LL ~     let v = {
 LL +         let mut v = Vec::with_capacity(2);
-LL +         (0..2).for_each(|_| v.push(Arc::new("x".to_string())));
+LL +         (0..2).for_each(|_| v.push(Arc::new(..)));
 LL +         v
 LL ~     };
    |
 help: or if this is intentional, consider extracting the `Arc` initialization to a variable
    |
 LL ~     let v = {
-LL +         let data = Arc::new("x".to_string());
+LL +         let data = Arc::new(..);
 LL +         vec![data; 2]
 LL ~     };
    |
 
-error: calling `Arc::new` in `vec![elem; len]`
+error: initializing a reference-counted pointer in `vec![elem; len]`
   --> $DIR/arc.rs:15:21
    |
 LL |             let v = vec![Arc::new("x".to_string()); 2];
@@ -33,19 +33,19 @@ help: consider initializing each `Arc` element individually
    |
 LL ~             let v = {
 LL +                 let mut v = Vec::with_capacity(2);
-LL +                 (0..2).for_each(|_| v.push(Arc::new("x".to_string())));
+LL +                 (0..2).for_each(|_| v.push(Arc::new(..)));
 LL +                 v
 LL ~             };
    |
 help: or if this is intentional, consider extracting the `Arc` initialization to a variable
    |
 LL ~             let v = {
-LL +                 let data = Arc::new("x".to_string());
+LL +                 let data = Arc::new(..);
 LL +                 vec![data; 2]
 LL ~             };
    |
 
-error: calling `Arc::new` in `vec![elem; len]`
+error: initializing a reference-counted pointer in `vec![elem; len]`
   --> $DIR/arc.rs:21:13
    |
 LL |       let v = vec![
@@ -75,7 +75,7 @@ LL +         vec![data; 2]
 LL ~     };
    |
 
-error: calling `Arc::new` in `vec![elem; len]`
+error: initializing a reference-counted pointer in `vec![elem; len]`
   --> $DIR/arc.rs:30:14
    |
 LL |       let v1 = vec![
