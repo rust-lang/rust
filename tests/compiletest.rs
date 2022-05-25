@@ -109,13 +109,11 @@ regexes! {
 fn ui(mode: Mode, path: &str) {
     let target = get_target();
 
-    eprint!("{}", format!("## Running ui tests in {path} against miri for ").green().bold());
-
-    if let Some(target) = &target {
-        eprintln!("{target}");
-    } else {
-        eprintln!("host");
-    }
+    let msg = format!(
+        "## Running ui tests in {path} against miri for {}",
+        target.as_deref().unwrap_or("host")
+    );
+    eprintln!("{}", msg.green().bold());
 
     run_tests(mode, path, target);
 }
