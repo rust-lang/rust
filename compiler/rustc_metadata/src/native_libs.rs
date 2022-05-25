@@ -418,10 +418,11 @@ impl<'tcx> Collector<'tcx> {
                             // involved or not, library reordering and kind overriding without
                             // explicit `:rename` in particular.
                             if lib.has_modifiers() || passed_lib.has_modifiers() {
-                                self.tcx.sess.span_err(
-                                    self.tcx.def_span(lib.foreign_module.unwrap()),
-                                    "overriding linking modifiers from command line is not supported"
-                                );
+                                let msg = "overriding linking modifiers from command line is not supported";
+                                match lib.foreign_module {
+                                    Some(def_id) => self.tcx.sess.span_err(self.tcx.def_span(def_id), msg),
+                                    None => self.tcx.sess.err(msg),
+                                };
                             }
                             if passed_lib.kind != NativeLibKind::Unspecified {
                                 lib.kind = passed_lib.kind;
