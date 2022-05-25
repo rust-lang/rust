@@ -54,7 +54,14 @@ fn check_for_debugger_visualizer<'tcx>(
                     debugger_visualizers
                         .insert(DebuggerVisualizerFile::new(Arc::from(contents), visualizer_type));
                 }
-                _ => {}
+                Err(err) => {
+                    tcx.sess
+                        .struct_span_err(
+                            meta_item.span,
+                            &format!("couldn't read {}: {}", file.display(), err),
+                        )
+                        .emit();
+                }
             }
         }
     }
