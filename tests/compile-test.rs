@@ -394,8 +394,8 @@ fn check_rustfix_coverage() {
                     .binary_search_by_key(&filename, Path::new)
                     .is_ok(),
                 "`{}` runs `MachineApplicable` diagnostics but is missing a `run-rustfix` annotation. \
-                Please either add `// run-rustfix` at the top of file or add the file to \
-                `RUSTFIX_COVERAGE_KNOWN_EXCEPTIONS`.",
+                Please either add `// run-rustfix` at the top of the file or add the file to \
+                `RUSTFIX_COVERAGE_KNOWN_EXCEPTIONS` in `tests/compile-test.rs`.",
                 rs_path,
             );
         }
