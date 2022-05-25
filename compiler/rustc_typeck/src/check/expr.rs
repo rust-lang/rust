@@ -296,6 +296,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             ExprKind::Path(ref qpath) => self.check_expr_path(qpath, expr, &[]),
             ExprKind::InlineAsm(asm) => {
+                // We defer some asm checks as we may not have resolved the input and output types yet (they may still be infer vars).
                 self.deferred_asm_checks.borrow_mut().push((asm, expr.hir_id));
                 self.check_expr_asm(asm)
             }
@@ -539,6 +540,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if tcx.fn_sig(did).abi() == RustIntrinsic && tcx.item_name(did) == sym::transmute {
                 let from = fn_sig.inputs().skip_binder()[0];
                 let to = fn_sig.output().skip_binder();
+                // We defer the transmute to the end of typeck, once all inference vars have
+                // been resolved or we errored. This is important as we can only check transmute
+                // on concrete types, but the output type may not be known yet (it would only
+                // be known if explicitly specified via turbofish).
                 self.deferred_transmute_checks.borrow_mut().push((from, to, expr.span));
             }
             if !tcx.features().unsized_fn_params {

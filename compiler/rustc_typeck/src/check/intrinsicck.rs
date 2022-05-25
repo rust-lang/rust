@@ -361,7 +361,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // target. Reject those here.
                 if let InlineAsmRegOrRegClass::Reg(reg) = reg {
                     if let InlineAsmReg::Err = reg {
-                        return;
+                        // `validate` will panic on `Err`, as an error must
+                        // already have been reported.
+                        continue;
                     }
                     if let Err(msg) = reg.validate(
                         asm_arch,
@@ -380,7 +382,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let mut missing_required_features = vec![];
                     let reg_class = reg.reg_class();
                     if let InlineAsmRegClass::Err = reg_class {
-                        return;
+                        continue;
                     }
                     for &(_, feature) in reg_class.supported_types(asm_arch) {
                         match feature {
