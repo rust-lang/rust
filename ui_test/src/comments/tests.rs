@@ -12,7 +12,7 @@ fn main() {
 }
     ";
     let comments = Comments::parse(Path::new("<dummy>"), s);
-    println!("{:#?}", comments);
+    println!("parsed comments: {:#?}", comments);
     assert_eq!(comments.error_matches[0].definition_line, 4);
     assert_eq!(comments.error_matches[0].revision, None);
     assert_eq!(
