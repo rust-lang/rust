@@ -1,7 +1,4 @@
-// Unfortunately, the test framework does not support 'only-linux',
-// so we need to ignore Windows and macOS instead.
-// ignore-macos: Uses Linux-only APIs
-// ignore-windows: Uses Linux-only APIs
+// only-linux
 // compile-flags: -Zmiri-disable-isolation
 
 #![feature(rustc_private)]

@@ -19,7 +19,7 @@ pub fn main() {
         });
 
         let j2 = spawn(move || {
-            *c.0 = 64; //~ ERROR Data race (but not detected as the detector is disabled)
+            *c.0 = 64; // Data race (but not detected as the detector is disabled)
         });
 
         j1.join().unwrap();

@@ -1,0 +1,39 @@
+error: Undefined Behavior: not granting access to tag <untagged> because incompatible item is protected: [Unique for <TAG> (call ID)]
+  --> $DIR/illegal_write6.rs:LL:CC
+   |
+LL |     unsafe { *y = 2; }
+   |              ^^^^^^ not granting access to tag <untagged> because incompatible item is protected: [Unique for <TAG> (call ID)]
+   |
+   = help: this indicates a potential bug in the program: it performed an invalid operation, but the rules it violated are still experimental
+   = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information
+help: tag was most recently created at offsets [0x0..0x4]
+  --> $DIR/illegal_write6.rs:LL:CC
+   |
+LL |     let p = x as *mut u32;
+   |             ^
+help: <TAG> was protected due to a tag which was created here
+  --> $DIR/illegal_write6.rs:LL:CC
+   |
+LL |     foo(x, p);
+   |         ^
+help: this protector is live for this call
+  --> $DIR/illegal_write6.rs:LL:CC
+   |
+LL | / fn foo(a: &mut u32, y: *mut u32) -> u32 {
+LL | |     *a = 1;
+LL | |     let _b = &*a;
+LL | |     unsafe { *y = 2; }
+LL | |     return *a;
+LL | | }
+   | |_^
+   = note: inside `foo` at $DIR/illegal_write6.rs:LL:CC
+note: inside `main` at $DIR/illegal_write6.rs:LL:CC
+  --> $DIR/illegal_write6.rs:LL:CC
+   |
+LL |     foo(x, p);
+   |     ^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

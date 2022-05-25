@@ -1,0 +1,39 @@
+error: Undefined Behavior: not granting access to tag <untagged> because incompatible item is protected: [SharedReadOnly for <TAG> (call ID)]
+  --> $DIR/invalidate_against_barrier2.rs:LL:CC
+   |
+LL |     unsafe { *x = 0 };
+   |              ^^^^^^ not granting access to tag <untagged> because incompatible item is protected: [SharedReadOnly for <TAG> (call ID)]
+   |
+   = help: this indicates a potential bug in the program: it performed an invalid operation, but the rules it violated are still experimental
+   = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information
+help: tag was most recently created at offsets [0x0..0x4]
+  --> $DIR/invalidate_against_barrier2.rs:LL:CC
+   |
+LL |     let xraw = &mut x as *mut _;
+   |                ^^^^^^
+help: <TAG> was protected due to a tag which was created here
+  --> $DIR/invalidate_against_barrier2.rs:LL:CC
+   |
+LL |     inner(xraw, xref);
+   |                 ^^^^
+help: this protector is live for this call
+  --> $DIR/invalidate_against_barrier2.rs:LL:CC
+   |
+LL | / fn inner(x: *mut i32, _y: &i32) {
+LL | |     // If `x` and `y` alias, retagging is fine with this... but we really
+LL | |     // shouldn't be allowed to write to `x` at all because `y` was assumed to be
+LL | |     // immutable for the duration of this call.
+LL | |     unsafe { *x = 0 };
+LL | | }
+   | |_^
+   = note: inside `inner` at $DIR/invalidate_against_barrier2.rs:LL:CC
+note: inside `main` at $DIR/invalidate_against_barrier2.rs:LL:CC
+  --> $DIR/invalidate_against_barrier2.rs:LL:CC
+   |
+LL |     inner(xraw, xref);
+   |     ^^^^^^^^^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

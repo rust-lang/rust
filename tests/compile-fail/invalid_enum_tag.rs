@@ -2,7 +2,7 @@
 // Make sure we find these even with many checks disabled.
 // compile-flags: -Zmiri-disable-alignment-check -Zmiri-disable-stacked-borrows -Zmiri-disable-validation
 
-// error-pattern: enum value has invalid tag: 0x0000002a
+// error-pattern: enum value has invalid tag
 
 use std::mem;
 

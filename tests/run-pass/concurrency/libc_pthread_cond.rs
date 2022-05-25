@@ -1,5 +1,5 @@
 // ignore-windows: No libc on Windows
-// ignore-macos: pthread_condattr_setclock is not supported on MacOS.
+// ignore-apple: pthread_condattr_setclock is not supported on MacOS.
 // compile-flags: -Zmiri-disable-isolation -Zmiri-check-number-validity
 
 #![feature(rustc_private)]

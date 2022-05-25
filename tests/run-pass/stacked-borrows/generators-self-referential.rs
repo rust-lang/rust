@@ -13,7 +13,7 @@ fn firstn() -> impl Generator<Yield = u64, Return = ()> {
         let num = &mut num;
 
         yield *num;
-        *num += 1; //~ ERROR: borrow stack
+        *num += 1; // would fail here
 
         yield *num;
         *num += 1;

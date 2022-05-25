@@ -1,5 +1,3 @@
-// normalize-stderr-test "[^ ]*core/[a-z_/]+.rs[0-9:]*" -> "$$LOC"
-// normalize-stderr-test "catch_panic\.rs:[0-9]{2}" -> "catch_panic.rs:LL"
 // We test the `align_offset` panic below, make sure we test the interpreter impl and not the "real" one.
 // compile-flags: -Zmiri-symbolic-alignment-check
 #![feature(never_type)]

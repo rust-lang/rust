@@ -1,4 +1,4 @@
-// error-pattern: 0x4 is not a valid pointer
+// error-pattern: is not a valid pointer
 use std::ptr::NonNull;
 
 fn main() { unsafe {

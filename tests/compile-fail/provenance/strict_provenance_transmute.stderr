@@ -1,0 +1,20 @@
+error: Undefined Behavior: type validation failed: encountered pointer to $HEX[ALLOC]<TAG>, but expected plain (non-pointer) bytes
+  --> $DIR/strict_provenance_transmute.rs:LL:CC
+   |
+LL |     let left_int: usize = mem::transmute(left);
+   |                           ^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered pointer to $HEX[ALLOC]<TAG>, but expected plain (non-pointer) bytes
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+           
+   = note: inside `deref` at $DIR/strict_provenance_transmute.rs:LL:CC
+note: inside `main` at $DIR/strict_provenance_transmute.rs:LL:CC
+  --> $DIR/strict_provenance_transmute.rs:LL:CC
+   |
+LL |         deref(ptr1, ptr2.with_addr(ptr1.addr()));
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

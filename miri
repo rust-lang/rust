@@ -123,10 +123,15 @@ build|build-debug)
     cargo build $CARGO_BUILD_FLAGS --manifest-path "$MIRIDIR"/Cargo.toml "$@"
     cargo build $CARGO_BUILD_FLAGS --manifest-path "$MIRIDIR"/cargo-miri/Cargo.toml "$@"
     ;;
-test|test-debug)
+test|test-debug|bless|bless-debug)
     # First build and get a sysroot.
     cargo build $CARGO_BUILD_FLAGS
     find_sysroot
+    case "$COMMAND" in
+    bless|bless-debug)
+        export MIRI_BLESS="Gesundheit"
+        ;;
+    esac
     # Then test, and let caller control flags.
     # Only in root project as `cargo-miri` has no tests.
     exec cargo test $CARGO_BUILD_FLAGS "$@"

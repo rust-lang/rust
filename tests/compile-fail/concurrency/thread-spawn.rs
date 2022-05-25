@@ -1,5 +1,4 @@
-// ignore-linux: Only Windows is not supported.
-// ignore-macos: Only Windows is not supported.
+// only-windows: Only Windows is not supported.
 
 use std::thread;
 
