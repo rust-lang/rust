@@ -1,0 +1,2 @@
+warning: thread support is experimental: weak memory effects are not fully compatible with the Rust atomics memory model.
+
