@@ -1,4 +1,4 @@
-use hir::HasSource;
+use hir::{HasSource, InFile};
 use ide_db::assists::{AssistId, AssistKind};
 use syntax::{
     ast::{self, edit::IndentLevel},
@@ -63,10 +63,11 @@ fn add_variant_to_accumulator(
     adt: hir::Enum,
     name_ref: &ast::NameRef,
 ) -> Option<()> {
-    let adt_ast = adt.source(ctx.db())?.original_ast_node(ctx.db())?.value;
-    let enum_indent = IndentLevel::from_node(&adt_ast.syntax());
+    let db = ctx.db();
+    let InFile { file_id, value: enum_node } = adt.source(db)?.original_ast_node(db)?;
+    let enum_indent = IndentLevel::from_node(&enum_node.syntax());
 
-    let variant_list = adt_ast.variant_list()?;
+    let variant_list = enum_node.variant_list()?;
     let offset = variant_list.syntax().text_range().end() - TextSize::of('}');
     let empty_enum = variant_list.variants().next().is_none();
 
@@ -75,6 +76,7 @@ fn add_variant_to_accumulator(
         "Generate variant",
         target,
         |builder| {
+            builder.edit_file(file_id.original_file(db));
             let text = format!(
                 "{maybe_newline}{indent_1}{name},\n{enum_indent}",
                 maybe_newline = if empty_enum { "\n" } else { "" },
