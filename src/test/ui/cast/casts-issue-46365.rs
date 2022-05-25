@@ -3,5 +3,5 @@ struct Lorem {
 }
 
 fn main() {
-    let _foo: *mut Lorem = core::ptr::null_mut(); // no error here
+    let _foo: *mut Lorem = core::ptr::NonNull::dangling().as_ptr(); // no error here
 }
