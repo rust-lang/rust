@@ -781,10 +781,18 @@ void calculateUnusedValuesInFunction(
               return UseReq::Recur;
             }
           }
-          if (auto ai = dyn_cast<AllocaInst>(at)) {
+          bool newMemory = false;
+          if (isa<AllocaInst>(at))
+            newMemory = true;
+          else if (auto CI = dyn_cast<CallInst>(at))
+            if (Function *F = getFunctionFromCall(CI))
+              if (isAllocationFunction(*F, TLI))
+                newMemory = true;
+          if (newMemory) {
             bool foundStore = false;
             allInstructionsBetween(
-                gutils->OrigLI, ai, const_cast<MemTransferInst *>(mti),
+                gutils->OrigLI, cast<Instruction>(at),
+                const_cast<MemTransferInst *>(mti),
                 [&](Instruction *I) -> bool {
                   if (!I->mayWriteToMemory())
                     return /*earlyBreak*/ false;
@@ -880,7 +888,7 @@ void calculateUnusedStoresInFunction(
     Function &func,
     llvm::SmallPtrSetImpl<const Instruction *> &unnecessaryStores,
     const llvm::SmallPtrSetImpl<const Instruction *> &unnecessaryInstructions,
-    GradientUtils *gutils) {
+    GradientUtils *gutils, TargetLibraryInfo &TLI) {
   calculateUnusedStores(func, unnecessaryStores, [&](const Instruction *inst) {
     if (auto si = dyn_cast<StoreInst>(inst)) {
       if (isa<UndefValue>(si->getValueOperand()))
@@ -891,15 +899,22 @@ void calculateUnusedStoresInFunction(
 #if LLVM_VERSION_MAJOR >= 12
       auto at = getUnderlyingObject(mti->getArgOperand(1), 100);
 #else
-          auto at = GetUnderlyingObject(
-              mti->getArgOperand(1),
-              func.getParent()->getDataLayout(), 100);
+      auto at = GetUnderlyingObject(
+          mti->getArgOperand(1),
+          func.getParent()->getDataLayout(), 100);
 #endif
-      if (auto ai = dyn_cast<AllocaInst>(at)) {
+      bool newMemory = false;
+      if (isa<AllocaInst>(at))
+        newMemory = true;
+      else if (auto CI = dyn_cast<CallInst>(at))
+        if (Function *F = getFunctionFromCall(CI))
+          if (isAllocationFunction(*F, TLI))
+            newMemory = true;
+      if (newMemory) {
         bool foundStore = false;
         allInstructionsBetween(
-            gutils->OrigLI, ai, const_cast<MemTransferInst *>(mti),
-            [&](Instruction *I) -> bool {
+            gutils->OrigLI, cast<Instruction>(at),
+            const_cast<MemTransferInst *>(mti), [&](Instruction *I) -> bool {
               if (!I->mayWriteToMemory())
                 return /*earlyBreak*/ false;
               if (unnecessaryInstructions.count(I))
@@ -1923,7 +1938,7 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
 
   SmallPtrSet<const Instruction *, 4> unnecessaryStores;
   calculateUnusedStoresInFunction(*gutils->oldFunc, unnecessaryStores,
-                                  unnecessaryInstructions, gutils);
+                                  unnecessaryInstructions, gutils, TLI);
 
   insert_or_assign(AugmentedCachedFunctions, tup,
                    AugmentedReturn(gutils->newFunc, nullptr, {}, returnMapping,
@@ -3463,7 +3478,7 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
 
   SmallPtrSet<const Instruction *, 4> unnecessaryStores;
   calculateUnusedStoresInFunction(*gutils->oldFunc, unnecessaryStores,
-                                  unnecessaryInstructions, gutils);
+                                  unnecessaryInstructions, gutils, TLI);
 
   Value *additionalValue = nullptr;
   if (key.additionalType) {
@@ -4057,7 +4072,7 @@ Function *EnzymeLogic::CreateForwardDiff(
 
   SmallPtrSet<const Instruction *, 4> unnecessaryStores;
   calculateUnusedStoresInFunction(*gutils->oldFunc, unnecessaryStores,
-                                  unnecessaryInstructions, gutils);
+                                  unnecessaryInstructions, gutils, TLI);
 
   // set derivative of function arguments
   auto newArgs = gutils->newFunc->arg_begin();
