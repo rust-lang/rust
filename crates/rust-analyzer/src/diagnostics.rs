@@ -40,6 +40,11 @@ impl DiagnosticCollection {
         self.changes.extend(self.check.drain().map(|(key, _value)| key))
     }
 
+    pub(crate) fn clear_native_for(&mut self, file_id: FileId) {
+        self.native.remove(&file_id);
+        self.changes.insert(file_id);
+    }
+
     pub(crate) fn add_check_diagnostic(
         &mut self,
         file_id: FileId,
