@@ -40,14 +40,11 @@ declare_lint_pass!(GetFirst => [GET_FIRST]);
 impl<'tcx> LateLintPass<'tcx> for GetFirst {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
         if_chain! {
-            if let hir::ExprKind::MethodCall(_, expr_args, _) = &expr.kind;
+            if let hir::ExprKind::MethodCall(_, [struct_calling_on, method_arg], _) = &expr.kind;
             if let Some(expr_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id);
-            if match_def_path(cx, expr_def_id, &paths::SLICE_GET) && expr_args.len() == 2;
+            if match_def_path(cx, expr_def_id, &paths::SLICE_GET);
 
-            if let Some(struct_calling_on) = expr_args.get(0);
             if let Some(_) = is_slice_of_primitives(cx, struct_calling_on);
-
-            if let Some(method_arg) = expr_args.get(1);
             if let hir::ExprKind::Lit(Spanned { node: LitKind::Int(0, _), .. }) = method_arg.kind;
 
             then {
