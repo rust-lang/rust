@@ -10,8 +10,8 @@ mod int_to_float {
             return 0;
         }
         let n = i.leading_zeros();
-        let a = i << n >> 8; // Significant bits, with bit 24 still in tact.
-        let b = i << n << 24; // Insignificant bits, only relevant for rounding.
+        let a = (i << n) >> 8; // Significant bits, with bit 24 still in tact.
+        let b = (i << n) << 24; // Insignificant bits, only relevant for rounding.
         let m = a + ((b - (b >> 31 & !a)) >> 31); // Add one when we need to round up. Break ties to even.
         let e = 157 - n as u32; // Exponent plus 127, minus one.
         (e << 23) + m // + not |, so the mantissa can overflow into the exponent.
@@ -42,8 +42,8 @@ mod int_to_float {
             return 0;
         }
         let n = i.leading_zeros();
-        let a = (i << n >> 11) as u64; // Significant bits, with bit 53 still in tact.
-        let b = (i << n << 53) as u64; // Insignificant bits, only relevant for rounding.
+        let a = ((i << n) >> 11) as u64; // Significant bits, with bit 53 still in tact.
+        let b = ((i << n) << 53) as u64; // Insignificant bits, only relevant for rounding.
         let m = a + ((b - (b >> 63 & !a)) >> 63); // Add one when we need to round up. Break ties to even.
         let e = 1085 - n as u64; // Exponent plus 1023, minus one.
         (e << 52) + m // + not |, so the mantissa can overflow into the exponent.
@@ -53,7 +53,7 @@ mod int_to_float {
         let n = i.leading_zeros();
         let y = i.wrapping_shl(n);
         let a = (y >> 104) as u32; // Significant bits, with bit 24 still in tact.
-        let b = (y >> 72) as u32 | (y << 32 >> 32 != 0) as u32; // Insignificant bits, only relevant for rounding.
+        let b = (y >> 72) as u32 | ((y << 32) >> 32 != 0) as u32; // Insignificant bits, only relevant for rounding.
         let m = a + ((b - (b >> 31 & !a)) >> 31); // Add one when we need to round up. Break ties to even.
         let e = if i == 0 { 0 } else { 253 - n }; // Exponent plus 127, minus one, except for zero.
         (e << 23) + m // + not |, so the mantissa can overflow into the exponent.
