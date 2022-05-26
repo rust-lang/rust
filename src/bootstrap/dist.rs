@@ -903,29 +903,29 @@ impl Step for PlainSourceTarball {
 
         // If we're building from git sources, we need to vendor a complete distribution.
         if builder.rust_info.is_git() {
-            // Ensure we have the submodules checked out.
-            builder.update_submodule(Path::new("src/tools/rust-analyzer"));
+            // // Ensure we have the submodules checked out.
+            // builder.update_submodule(Path::new("src/tools/rust-analyzer"));
 
-            // Vendor all Cargo dependencies
-            let mut cmd = Command::new(&builder.initial_cargo);
-            cmd.arg("vendor")
-                .arg("--sync")
-                .arg(builder.src.join("./src/tools/rust-analyzer/Cargo.toml"))
-                .arg("--sync")
-                .arg(builder.src.join("./compiler/rustc_codegen_cranelift/Cargo.toml"))
-                .arg("--sync")
-                .arg(builder.src.join("./src/bootstrap/Cargo.toml"))
-                .current_dir(&plain_dst_src);
+            // // Vendor all Cargo dependencies
+            // let mut cmd = Command::new(&builder.initial_cargo);
+            // cmd.arg("vendor")
+            //     .arg("--sync")
+            //     .arg(builder.src.join("./src/tools/rust-analyzer/Cargo.toml"))
+            //     .arg("--sync")
+            //     .arg(builder.src.join("./compiler/rustc_codegen_cranelift/Cargo.toml"))
+            //     .arg("--sync")
+            //     .arg(builder.src.join("./src/bootstrap/Cargo.toml"))
+            //     .current_dir(&plain_dst_src);
 
-            let config = if !builder.config.dry_run {
-                t!(String::from_utf8(t!(cmd.output()).stdout))
-            } else {
-                String::new()
-            };
+            // let config = if !builder.config.dry_run {
+            //     t!(String::from_utf8(t!(cmd.output()).stdout))
+            // } else {
+            //     String::new()
+            // };
 
-            let cargo_config_dir = plain_dst_src.join(".cargo");
-            builder.create_dir(&cargo_config_dir);
-            builder.create(&cargo_config_dir.join("config.toml"), &config);
+            // let cargo_config_dir = plain_dst_src.join(".cargo");
+            // builder.create_dir(&cargo_config_dir);
+            // builder.create(&cargo_config_dir.join("config.toml"), &config);
         }
 
         tarball.bare()
