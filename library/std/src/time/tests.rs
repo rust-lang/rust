@@ -1,5 +1,5 @@
 use super::{Duration, Instant, SystemTime, UNIX_EPOCH};
-#[cfg(not(target_arch = "wasm"))]
+#[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
 use test::{black_box, Bencher};
 
 macro_rules! assert_almost_eq {
@@ -25,7 +25,7 @@ fn instant_monotonic() {
 }
 
 #[test]
-#[cfg(not(target_arch = "wasm"))]
+#[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
 fn instant_monotonic_concurrent() -> crate::thread::Result<()> {
     let threads: Vec<_> = (0..8)
         .map(|_| {
@@ -195,7 +195,7 @@ fn since_epoch() {
 macro_rules! bench_instant_threaded {
     ($bench_name:ident, $thread_count:expr) => {
         #[bench]
-        #[cfg(not(target_arch = "wasm"))]
+        #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
         fn $bench_name(b: &mut Bencher) -> crate::thread::Result<()> {
             use crate::sync::atomic::{AtomicBool, Ordering};
             use crate::sync::Arc;

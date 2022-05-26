@@ -714,13 +714,11 @@ impl Session {
     }
 
     pub fn is_wasi_reactor(&self) -> bool {
-        match self.target.options.os.as_ref() {
-            "wasi" | "wasix" => matches!(
+        self.target.options.os == "wasi"
+            && matches!(
                 self.opts.debugging_opts.wasi_exec_model,
                 Some(config::WasiExecModel::Reactor)
-            ),
-            _ => false
-        }
+            )
     }
 
     pub fn split_debuginfo(&self) -> SplitDebuginfo {

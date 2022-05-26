@@ -1428,8 +1428,7 @@ impl Build {
             return;
         }
         let _ = fs::remove_file(&dst);
-        let metadata = t!(src.symlink_metadata()
-            .map_err(|err| format!("{}: {}", src.as_os_str().to_string_lossy(), err)));
+        let metadata = t!(src.symlink_metadata());
         if metadata.file_type().is_symlink() {
             let link = t!(fs::read_link(src));
             t!(symlink_file(link, dst));

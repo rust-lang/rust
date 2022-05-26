@@ -504,7 +504,6 @@ impl<'a> fmt::Display for Display<'a> {
                         "redox" => "Redox",
                         "solaris" => "Solaris",
                         "wasi" => "WASI",
-                        "wasix" => "WASIX",
                         "windows" => "Windows",
                         _ => "",
                     },

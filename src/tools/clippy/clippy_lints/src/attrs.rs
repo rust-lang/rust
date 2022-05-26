@@ -41,7 +41,7 @@ static UNIX_SYSTEMS: &[&str] = &[
 ];
 
 // NOTE: windows is excluded from the list because it's also a valid target family.
-static NON_UNIX_SYSTEMS: &[&str] = &["hermit", "none", "wasi", "wasix"];
+static NON_UNIX_SYSTEMS: &[&str] = &["hermit", "none", "wasi"];
 
 declare_clippy_lint! {
     /// ### What it does
