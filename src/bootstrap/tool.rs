@@ -152,43 +152,43 @@ impl Step for ToolBuild {
         });
 
         if is_expected && !duplicates.is_empty() {
-            println!(
+            eprintln!(
                 "duplicate artifacts found when compiling a tool, this \
                       typically means that something was recompiled because \
                       a transitive dependency has different features activated \
                       than in a previous build:\n"
             );
-            println!(
+            eprintln!(
                 "the following dependencies are duplicated although they \
                       have the same features enabled:"
             );
             let (same, different): (Vec<_>, Vec<_>) =
                 duplicates.into_iter().partition(|(_, cur, prev)| cur.2 == prev.2);
             for (id, cur, prev) in same {
-                println!("  {}", id);
+                eprintln!("  {}", id);
                 // same features
-                println!("    `{}` ({:?})\n    `{}` ({:?})", cur.0, cur.1, prev.0, prev.1);
+                eprintln!("    `{}` ({:?})\n    `{}` ({:?})", cur.0, cur.1, prev.0, prev.1);
             }
-            println!("the following dependencies have different features:");
+            eprintln!("the following dependencies have different features:");
             for (id, cur, prev) in different {
-                println!("  {}", id);
+                eprintln!("  {}", id);
                 let cur_features: HashSet<_> = cur.2.into_iter().collect();
                 let prev_features: HashSet<_> = prev.2.into_iter().collect();
-                println!(
+                eprintln!(
                     "    `{}` additionally enabled features {:?} at {:?}",
                     cur.0,
                     &cur_features - &prev_features,
                     cur.1
                 );
-                println!(
+                eprintln!(
                     "    `{}` additionally enabled features {:?} at {:?}",
                     prev.0,
                     &prev_features - &cur_features,
                     prev.1
                 );
             }
-            println!();
-            println!(
+            eprintln!();
+            eprintln!(
                 "to fix this you will probably want to edit the local \
                       src/tools/rustc-workspace-hack/Cargo.toml crate, as \
                       that will update the dependency graph to ensure that \

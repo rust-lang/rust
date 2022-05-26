@@ -37,7 +37,7 @@ pub fn tmpdir(builder: &Builder<'_>) -> PathBuf {
 
 fn missing_tool(tool_name: &str, skip: bool) {
     if skip {
-        println!("Unable to build {}, skipping dist", tool_name)
+        eprintln!("Unable to build {}, skipping dist", tool_name)
     } else {
         panic!("Unable to build {}", tool_name)
     }

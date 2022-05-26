@@ -96,7 +96,7 @@ pub fn format(build: &Build, check: bool, paths: &[PathBuf]) {
                     entry.split(' ').nth(1).expect("every git status entry should list a path")
                 });
             for untracked_path in untracked_paths {
-                eprintln!("skip untracked path {} during rustfmt invocations", untracked_path);
+                println!("skip untracked path {} during rustfmt invocations", untracked_path);
                 // The leading `/` makes it an exact match against the
                 // repository root, rather than a glob. Without that, if you
                 // have `foo.rs` in the repository root it will also match
@@ -105,10 +105,10 @@ pub fn format(build: &Build, check: bool, paths: &[PathBuf]) {
                 ignore_fmt.add(&format!("!/{}", untracked_path)).expect(&untracked_path);
             }
         } else {
-            eprintln!("Not in git tree. Skipping git-aware format checks");
+            println!("Not in git tree. Skipping git-aware format checks");
         }
     } else {
-        eprintln!("Could not find usable git. Skipping git-aware format checks");
+        println!("Could not find usable git. Skipping git-aware format checks");
     }
     let ignore_fmt = ignore_fmt.build().unwrap();
 

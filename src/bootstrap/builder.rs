@@ -227,7 +227,7 @@ impl StepDescription {
 
     fn is_excluded(&self, builder: &Builder<'_>, pathset: &PathSet) -> bool {
         if builder.config.exclude.iter().any(|e| pathset.has(&e.path, e.kind)) {
-            eprintln!("Skipping {:?} because it is excluded", pathset);
+            println!("Skipping {:?} because it is excluded", pathset);
             return true;
         }
 

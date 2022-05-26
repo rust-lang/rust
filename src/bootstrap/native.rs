@@ -138,10 +138,10 @@ pub(crate) fn maybe_download_ci_llvm(builder: &Builder<'_>) {
     let llvm_sha = llvm_sha.trim();
 
     if llvm_sha == "" {
-        println!("error: could not find commit hash for downloading LLVM");
-        println!("help: maybe your repository history is too shallow?");
-        println!("help: consider disabling `download-ci-llvm`");
-        println!("help: or fetch enough history to include one upstream commit");
+        eprintln!("error: could not find commit hash for downloading LLVM");
+        eprintln!("help: maybe your repository history is too shallow?");
+        eprintln!("help: consider disabling `download-ci-llvm`");
+        eprintln!("help: or fetch enough history to include one upstream commit");
         panic!();
     }
 

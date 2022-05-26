@@ -766,7 +766,7 @@ impl Config {
             {
                 Ok(table) => table,
                 Err(err) => {
-                    println!("failed to parse TOML configuration '{}': {}", file.display(), err);
+                    eprintln!("failed to parse TOML configuration '{}': {}", file.display(), err);
                     process::exit(2);
                 }
             }
