@@ -167,8 +167,7 @@ impl<'tcx> MirPatch<'tcx> {
             if loc.statement_index > body[loc.block].statements.len() {
                 let term = body[loc.block].terminator();
                 for i in term.successors() {
-                    stmts_and_targets
-                        .push((Statement { source_info, kind: stmt.clone() }, i.clone()));
+                    stmts_and_targets.push((Statement { source_info, kind: stmt.clone() }, i));
                 }
                 delta += 1;
                 continue;

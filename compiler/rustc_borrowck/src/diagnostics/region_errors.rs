@@ -450,10 +450,10 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 _ => None,
             };
 
-            if defined_hir.is_some() {
+            if let Some(def_hir) = defined_hir {
                 let upvars_map = self.infcx.tcx.upvars_mentioned(def_id).unwrap();
-                let upvar_def_span = self.infcx.tcx.hir().span(defined_hir.unwrap());
-                let upvar_span = upvars_map.get(&defined_hir.unwrap()).unwrap().span;
+                let upvar_def_span = self.infcx.tcx.hir().span(def_hir);
+                let upvar_span = upvars_map.get(&def_hir).unwrap().span;
                 diag.span_label(upvar_def_span, "variable defined here");
                 diag.span_label(upvar_span, "variable captured here");
             }
