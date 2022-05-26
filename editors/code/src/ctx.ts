@@ -86,13 +86,19 @@ export class Ctx {
             case "warning":
                 this.statusBar.tooltip += "\nClick to reload.";
                 this.statusBar.command = "rust-analyzer.reloadWorkspace";
-                this.statusBar.color = new vscode.ThemeColor("notificationsWarningIcon.foreground");
+                this.statusBar.color = new vscode.ThemeColor("statusBarItem.warningForeground");
+                this.statusBar.backgroundColor = new vscode.ThemeColor(
+                    "statusBarItem.warningBackground"
+                );
                 icon = "$(warning) ";
                 break;
             case "error":
                 this.statusBar.tooltip += "\nClick to reload.";
                 this.statusBar.command = "rust-analyzer.reloadWorkspace";
-                this.statusBar.color = new vscode.ThemeColor("notificationsErrorIcon.foreground");
+                this.statusBar.color = new vscode.ThemeColor("statusBarItem.errorForeground");
+                this.statusBar.backgroundColor = new vscode.ThemeColor(
+                    "statusBarItem.errorBackground"
+                );
                 icon = "$(error) ";
                 break;
         }
