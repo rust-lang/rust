@@ -29,7 +29,6 @@ use crate::{
     attr_macro_as_call_id,
     db::DefDatabase,
     derive_macro_as_call_id,
-    intern::Interned,
     item_scope::{ImportType, PerNsGlobImports},
     item_tree::{
         self, Fields, FileItemTreeId, ImportKind, ItemTree, ItemTreeId, ItemTreeNode, MacroCall,
@@ -96,7 +95,7 @@ pub(super) fn collect_defs(db: &dyn DefDatabase, mut def_map: DefMap, tree_id: T
         deps,
         glob_imports: FxHashMap::default(),
         unresolved_imports: Vec::new(),
-        resolved_imports: Vec::new(),
+        indeterminate_imports: Vec::new(),
         unresolved_macros: Vec::new(),
         mod_dirs: FxHashMap::default(),
         cfg_options,
@@ -142,9 +141,9 @@ enum ImportSource {
     ExternCrate(ItemTreeId<item_tree::ExternCrate>),
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 struct Import {
-    path: Interned<ModPath>,
+    path: ModPath,
     alias: Option<ImportAlias>,
     visibility: RawVisibility,
     kind: ImportKind,
@@ -169,7 +168,7 @@ impl Import {
         let mut res = Vec::new();
         it.use_tree.expand(|idx, path, kind, alias| {
             res.push(Self {
-                path: Interned::new(path), // FIXME this makes little sense
+                path,
                 alias,
                 visibility: visibility.clone(),
                 kind,
@@ -192,10 +191,7 @@ impl Import {
         let attrs = &tree.attrs(db, krate, ModItem::from(id.value).into());
         let visibility = &tree[it.visibility];
         Self {
-            path: Interned::new(ModPath::from_segments(
-                PathKind::Plain,
-                iter::once(it.name.clone()),
-            )),
+            path: ModPath::from_segments(PathKind::Plain, iter::once(it.name.clone())),
             alias: it.alias.clone(),
             visibility: visibility.clone(),
             kind: ImportKind::Plain,
@@ -207,7 +203,7 @@ impl Import {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 struct ImportDirective {
     module_id: LocalModuleId,
     import: Import,
@@ -236,7 +232,7 @@ struct DefCollector<'a> {
     deps: FxHashMap<Name, ModuleId>,
     glob_imports: FxHashMap<LocalModuleId, Vec<(LocalModuleId, Visibility)>>,
     unresolved_imports: Vec<ImportDirective>,
-    resolved_imports: Vec<ImportDirective>,
+    indeterminate_imports: Vec<ImportDirective>,
     unresolved_macros: Vec<MacroDirective>,
     mod_dirs: FxHashMap<LocalModuleId, ModDir>,
     cfg_options: &'a CfgOptions,
@@ -352,30 +348,32 @@ impl DefCollector<'_> {
 
         // main name resolution fixed-point loop.
         let mut i = 0;
-        'outer: loop {
-            loop {
+        'resolve_attr: loop {
+            'resolve_macros: loop {
                 self.db.unwind_if_cancelled();
+
                 {
                     let _p = profile::span("resolve_imports loop");
-                    loop {
+
+                    'resolve_imports: loop {
                         if self.resolve_imports() == ReachedFixedPoint::Yes {
-                            break;
+                            break 'resolve_imports;
                         }
                     }
                 }
                 if self.resolve_macros() == ReachedFixedPoint::Yes {
-                    break;
+                    break 'resolve_macros;
                 }
 
                 i += 1;
                 if FIXED_POINT_LIMIT.check(i).is_err() {
                     tracing::error!("name resolution is stuck");
-                    break 'outer;
+                    break 'resolve_attr;
                 }
             }
 
             if self.reseed_with_unresolved_attribute() == ReachedFixedPoint::Yes {
-                break;
+                break 'resolve_attr;
             }
         }
     }
@@ -389,14 +387,9 @@ impl DefCollector<'_> {
         // As some of the macros will expand newly import shadowing partial resolved imports
         // FIXME: We maybe could skip this, if we handle the indeterminate imports in `resolve_imports`
         // correctly
-        let partial_resolved = self.resolved_imports.iter().filter_map(|directive| {
-            if let PartialResolvedImport::Indeterminate(_) = directive.status {
-                let mut directive = directive.clone();
-                directive.status = PartialResolvedImport::Unresolved;
-                Some(directive)
-            } else {
-                None
-            }
+        let partial_resolved = self.indeterminate_imports.drain(..).filter_map(|mut directive| {
+            directive.status = PartialResolvedImport::Unresolved;
+            Some(directive)
         });
         self.unresolved_imports.extend(partial_resolved);
         self.resolve_imports();
@@ -717,15 +710,12 @@ impl DefCollector<'_> {
                 match directive.status {
                     PartialResolvedImport::Indeterminate(_) => {
                         self.record_resolved_import(&directive);
-                        // FIXME: For avoid performance regression,
-                        // we consider an imported resolved if it is indeterminate (i.e not all namespace resolved)
-                        self.resolved_imports.push(directive);
+                        self.indeterminate_imports.push(directive);
                         res = ReachedFixedPoint::No;
                         None
                     }
                     PartialResolvedImport::Resolved(_) => {
                         self.record_resolved_import(&directive);
-                        self.resolved_imports.push(directive);
                         res = ReachedFixedPoint::No;
                         None
                     }
@@ -2102,7 +2092,7 @@ mod tests {
             deps: FxHashMap::default(),
             glob_imports: FxHashMap::default(),
             unresolved_imports: Vec::new(),
-            resolved_imports: Vec::new(),
+            indeterminate_imports: Vec::new(),
             unresolved_macros: Vec::new(),
             mod_dirs: FxHashMap::default(),
             cfg_options: &CfgOptions::default(),
