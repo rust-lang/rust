@@ -763,7 +763,7 @@ Most themes doesn't support styling unsafe operations differently yet. You can f
    "editor.semanticTokenColorCustomizations": {
          "rules": {
              "operator.unsafe": "#ff6600",
-             "function.unsafe": "#ff6600"
+             "function.unsafe": "#ff6600",
              "method.unsafe": "#ff6600"
          }
     },
