@@ -12,7 +12,7 @@ use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMut
 use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter, Print, Printer};
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, Subst, SubstsRef};
 use rustc_middle::ty::{self, DefIdTree, GenericParamDefKind, InferConst};
-use rustc_middle::ty::{Ty, TyCtxt};
+use rustc_middle::ty::{Ty, TyCtxt, TypeckResults};
 use rustc_span::symbol::{kw, Ident};
 use rustc_span::{BytePos, Span};
 use std::borrow::Cow;
@@ -272,7 +272,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         parent: None,
                     }
                 } else {
-                    // FIXME: This code seems a bit wrong, idk.
+                    // If we end up here the `FindInferSourceVisitor`
+                    // won't work, as its expected argument isn't an inference variable.
+                    //
+                    // FIXME: Ideally we should look into the generic constant
+                    // to figure out which inference var is actually unresolved so that
+                    // this path is unreachable.
                     let mut printer = ty::print::FmtPrinter::new(self.tcx, Namespace::ValueNS);
                     if let Some(highlight) = highlight {
                         printer.region_highlight_mode = highlight;
@@ -289,6 +294,24 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
     }
 
+    /// Used as a fallback in [InferCtxt::emit_inference_failure_err]
+    /// in case we weren't able to get a better error.
+    fn bad_inference_failure_err(
+        &self,
+        span: Span,
+        arg_data: InferenceDiagnosticsData,
+        error_code: TypeAnnotationNeeded,
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
+        let error_code = error_code.into();
+        let mut err = self.tcx.sess.struct_span_err_with_code(
+            span,
+            &format!("type annotations needed"),
+            error_code,
+        );
+        err.span_label(span, arg_data.cannot_infer_msg());
+        err
+    }
+
     pub fn emit_inference_failure_err(
         &self,
         body_id: Option<hir::BodyId>,
@@ -301,7 +324,16 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let arg = self.resolve_vars_if_possible(arg);
         let arg_data = self.extract_inference_diagnostics_data(arg, None);
 
-        let mut local_visitor = FindInferSourceVisitor::new(&self, arg);
+        let Some(typeck_results) = self.in_progress_typeck_results else {
+            // If we don't have any typeck results we're outside
+            // of a body, so we won't be able to get better info
+            // here.
+            return self.bad_inference_failure_err(span, arg_data, error_code);
+        };
+        let typeck_results = typeck_results.borrow();
+        let typeck_results = &typeck_results;
+
+        let mut local_visitor = FindInferSourceVisitor::new(&self, typeck_results, arg);
         if let Some(body_id) = body_id {
             let expr = self.tcx.hir().expect_expr(body_id.hir_id);
             debug!(?expr);
@@ -309,17 +341,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
 
         let Some(InferSource { span, kind }) = local_visitor.infer_source else {
-            let error_code = error_code.into();
-            let mut err = self.tcx.sess.struct_span_err_with_code(
-                span,
-                &format!("type annotations needed"),
-                error_code,
-            );
-            err.span_label(
-                span,
-                arg_data.cannot_infer_msg(),
-            );
-            return err;
+            return self.bad_inference_failure_err(span, arg_data, error_code)
         };
 
         let error_code = error_code.into();
@@ -394,8 +416,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 );
             }
             InferSourceKind::FullyQualifiedMethodCall { receiver, successor, substs, def_id } => {
-                let typeck_results = self.in_progress_typeck_results.unwrap();
-                let typeck_results = typeck_results.borrow();
                 let printer = fmt_printer(self, Namespace::ValueNS);
                 let def_path = printer.print_def_path(def_id, substs).unwrap().into_buffer();
 
@@ -548,6 +568,8 @@ struct InsertableGenericArgs<'tcx> {
 /// For details on how we rank spots, see [Self::source_cost]
 struct FindInferSourceVisitor<'a, 'tcx> {
     infcx: &'a InferCtxt<'a, 'tcx>,
+    typeck_results: &'a TypeckResults<'tcx>,
+
     target: GenericArg<'tcx>,
 
     attempt: usize,
@@ -556,9 +578,15 @@ struct FindInferSourceVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
-    fn new(infcx: &'a InferCtxt<'a, 'tcx>, target: GenericArg<'tcx>) -> Self {
+    fn new(
+        infcx: &'a InferCtxt<'a, 'tcx>,
+        typeck_results: &'a TypeckResults<'tcx>,
+        target: GenericArg<'tcx>,
+    ) -> Self {
         FindInferSourceVisitor {
             infcx,
+            typeck_results,
+
             target,
 
             attempt: 0,
@@ -603,7 +631,6 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                 variant_cost + generic_args.iter().map(|&arg| arg_cost(arg)).sum::<usize>()
             }
             InferSourceKind::FullyQualifiedMethodCall { substs, .. } => {
-                // FIXME: We should also consider the cost of lifetimes and constants here.
                 20 + substs.iter().map(|arg| arg_cost(arg)).sum::<usize>()
             }
             InferSourceKind::ClosureReturn { ty, should_wrap_expr, .. } => {
@@ -625,7 +652,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
     }
 
     fn opt_node_type(&self, hir_id: HirId) -> Option<Ty<'tcx>> {
-        let ty = self.infcx.in_progress_typeck_results?.borrow().node_type_opt(hir_id);
+        let ty = self.typeck_results.node_type_opt(hir_id);
         self.infcx.resolve_vars_if_possible(ty)
     }
 
@@ -698,10 +725,9 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
         expr: &'tcx hir::Expr<'tcx>,
     ) -> Box<dyn Iterator<Item = InsertableGenericArgs<'tcx>> + 'a> {
         let tcx = self.infcx.tcx;
-        let typeck_results = self.infcx.in_progress_typeck_results.unwrap().borrow();
         match expr.kind {
             hir::ExprKind::Path(ref path) => {
-                if let Some(substs) = typeck_results.node_substs_opt(expr.hir_id) {
+                if let Some(substs) = self.typeck_results.node_substs_opt(expr.hir_id) {
                     return self.path_inferred_subst_iter(expr.hir_id, substs, path);
                 }
             }
@@ -713,13 +739,13 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                 }
             }
             hir::ExprKind::MethodCall(segment, _, _) => {
-                if let Some(def_id) = typeck_results.type_dependent_def_id(expr.hir_id) {
+                if let Some(def_id) = self.typeck_results.type_dependent_def_id(expr.hir_id) {
                     let generics = tcx.generics_of(def_id);
                     let insertable: Option<_> = try {
                         if generics.has_impl_trait() {
                             None?
                         }
-                        let substs = typeck_results.node_substs_opt(expr.hir_id)?;
+                        let substs = self.typeck_results.node_substs_opt(expr.hir_id)?;
                         let span = tcx.hir().span(segment.hir_id?);
                         let insert_span = segment.ident.span.shrink_to_hi().with_hi(span.hi());
                         InsertableGenericArgs {
@@ -793,13 +819,12 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
         qpath: &'tcx hir::QPath<'tcx>,
     ) -> Box<dyn Iterator<Item = InsertableGenericArgs<'tcx>> + 'a> {
         let tcx = self.infcx.tcx;
-        let typeck_results = self.infcx.in_progress_typeck_results.unwrap().borrow();
         match qpath {
             hir::QPath::Resolved(_self_ty, path) => {
                 Box::new(self.resolved_path_inferred_subst_iter(path, substs))
             }
             hir::QPath::TypeRelative(ty, segment) => {
-                let Some(def_id) = typeck_results.type_dependent_def_id(hir_id) else {
+                let Some(def_id) = self.typeck_results.type_dependent_def_id(hir_id) else {
                     return Box::new(iter::empty());
                 };
 
@@ -996,10 +1021,9 @@ impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
             .any(|generics| generics.has_impl_trait())
         };
         if let ExprKind::MethodCall(path, args, span) = expr.kind
-            && let Some(typeck_results) = self.infcx.in_progress_typeck_results
-            && let Some(substs) = typeck_results.borrow().node_substs_opt(expr.hir_id)
+            && let Some(substs) = self.typeck_results.node_substs_opt(expr.hir_id)
             && substs.iter().any(|arg| self.generic_arg_contains_target(arg))
-            && let Some(def_id) = typeck_results.borrow().type_dependent_def_id(expr.hir_id)
+            && let Some(def_id) = self.typeck_results.type_dependent_def_id(expr.hir_id)
             && self.infcx.tcx.trait_of_item(def_id).is_some()
             && !has_impl_trait(def_id)
         {
