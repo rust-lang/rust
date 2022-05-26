@@ -1426,7 +1426,7 @@ pub fn stream_cargo(
                 cb(msg)
             }
             // If this was informational, just print it out and continue
-            Err(_) => eprintln!("{}", line),
+            Err(_) => println!("{}", line),
         }
     }
 
