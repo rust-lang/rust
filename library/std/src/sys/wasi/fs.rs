@@ -7,6 +7,7 @@ use crate::io::{self, IoSlice, IoSliceMut, ReadBuf, SeekFrom};
 use crate::iter;
 use crate::mem::{self, ManuallyDrop};
 use crate::os::raw::c_int;
+#[allow(unused_imports)]
 use crate::os::wasi::ffi::{OsStrExt, OsStringExt};
 use crate::os::wasi::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, RawFd};
 use crate::path::{Path, PathBuf};

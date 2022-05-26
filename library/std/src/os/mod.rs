@@ -91,7 +91,7 @@ pub mod unix;
 #[cfg(any(target_os = "linux", doc))]
 pub mod linux;
 
-// wasi
+// wasi (re-exported as unix when using wasm64 for compatibility)
 #[cfg(not(all(
     doc,
     any(
@@ -102,6 +102,12 @@ pub mod linux;
 )))]
 #[cfg(any(target_os = "wasi", doc))]
 pub mod wasi;
+#[cfg(any(all(target_arch = "wasm64", target_os = "wasi")))]
+#[stable(feature = "rust1", since = "1.0.0")]
+pub mod unix {
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub use super::wasi::*;
+}
 
 // windows
 #[cfg(not(all(

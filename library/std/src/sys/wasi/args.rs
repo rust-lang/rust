@@ -2,6 +2,7 @@
 
 use crate::ffi::{CStr, OsStr, OsString};
 use crate::fmt;
+#[allow(unused_imports)]
 use crate::os::wasi::ffi::OsStrExt;
 use crate::vec;
 
