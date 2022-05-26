@@ -8,7 +8,7 @@ use serde::ser::{Serialize, SerializeStruct, Serializer};
 
 use crate::clean;
 use crate::clean::types::{FnRetTy, Function, GenericBound, Generics, Type, WherePredicate};
-use crate::formats::cache::Cache;
+use crate::formats::cache::{Cache, OrphanImplItem};
 use crate::formats::item_type::ItemType;
 use crate::html::format::join_with_double_colon;
 use crate::html::markdown::short_markdown_summary;
@@ -25,8 +25,10 @@ pub(crate) fn build_index<'tcx>(
 
     // Attach all orphan items to the type's definition if the type
     // has since been learned.
-    for &(did, ref item, ref impl_generics, from_blanket_or_auto_impl) in &cache.orphan_impl_items {
-        if let Some(&(ref fqp, _)) = cache.paths.get(&did) {
+    for &OrphanImplItem { parent, ref item, ref impl_generics, parent_is_blanket_or_auto_impl } in
+        &cache.orphan_impl_items
+    {
+        if let Some(&(ref fqp, _)) = cache.paths.get(&parent) {
             let desc = item
                 .doc_value()
                 .map_or_else(String::new, |s| short_markdown_summary(&s, &item.link_names(cache)));
@@ -35,13 +37,13 @@ pub(crate) fn build_index<'tcx>(
                 name: item.name.unwrap().to_string(),
                 path: join_with_double_colon(&fqp[..fqp.len() - 1]),
                 desc,
-                parent: Some(did),
+                parent: Some(parent),
                 parent_idx: None,
                 search_type: get_function_type_for_search(
                     item,
                     tcx,
                     impl_generics.as_ref(),
-                    from_blanket_or_auto_impl,
+                    parent_is_blanket_or_auto_impl,
                     cache,
                 ),
                 aliases: item.attrs.get_doc_aliases(),

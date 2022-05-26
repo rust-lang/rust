@@ -107,8 +107,7 @@ pub(crate) struct Cache {
     // then the fully qualified name of the structure isn't presented in `paths`
     // yet when its implementation methods are being indexed. Caches such methods
     // and their parent id here and indexes them at the end of crate parsing.
-    pub(crate) orphan_impl_items:
-        Vec<(DefId, clean::Item, Option<(clean::Type, clean::Generics)>, bool)>,
+    pub(crate) orphan_impl_items: Vec<OrphanImplItem>,
 
     // Similarly to `orphan_impl_items`, sometimes trait impls are picked up
     // even though the trait itself is not exported. This can happen if a trait
@@ -332,12 +331,12 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                 (Some(parent), None) if is_inherent_impl_item => {
                     // We have a parent, but we don't know where they're
                     // defined yet. Wait for later to index this item.
-                    self.cache.orphan_impl_items.push((
+                    self.cache.orphan_impl_items.push(OrphanImplItem {
                         parent,
-                        item.clone(),
-                        self.cache.impl_generics_stack.last().cloned(),
-                        self.cache.parent_is_blanket_or_auto_impl,
-                    ));
+                        item: item.clone(),
+                        impl_generics: self.cache.impl_generics_stack.last().cloned(),
+                        parent_is_blanket_or_auto_impl: self.cache.parent_is_blanket_or_auto_impl,
+                    });
                 }
                 _ => {}
             }
@@ -553,4 +552,11 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
         self.cache.parent_is_trait_impl = orig_parent_is_trait_impl;
         ret
     }
+}
+
+pub(crate) struct OrphanImplItem {
+    pub(crate) parent: DefId,
+    pub(crate) item: clean::Item,
+    pub(crate) impl_generics: Option<(clean::Type, clean::Generics)>,
+    pub(crate) parent_is_blanket_or_auto_impl: bool,
 }
