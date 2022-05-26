@@ -86,7 +86,23 @@ const char *KnownInactiveFunctionsStartingWith[] = {
     "_ZNSt7__cxx1112basic_string",
     "_ZNSt7__cxx1118basic_string",
     "_ZNKSt7__cxx1112basic_string",
+    // filebuf
+    "_ZNSt12__basic_file",
+    "_ZNSt15basic_streambufIcSt11char_traits",
+    "_ZNSt13basic_filebufIcSt11char_traits",
+    "_ZNSt14basic_ofstreamIcSt11char_traits",
+    // ifstream
+    "_ZNSi4readEPcl",
+    "_ZNKSt14basic_ifstreamIcSt11char_traits",
+    "_ZNSt14basic_ifstreamIcSt11char_traits",
     // ostream generic <<
+    "_ZNSo5writeEPKcl",
+    "_ZNSt19basic_ostringstreamIcSt11char_traits",
+    "_ZStlsIcSt11char_traitsIcESaIcEERSt13basic_ostream",
+    "_ZNSt7__cxx1119basic_ostringstreamIcSt11char_traits",
+    "_ZNKSt7__cxx1119basic_ostringstreamIcSt11char_traits",
+    "_ZNSoD1Ev",
+    "_ZNSoC1EPSt15basic_streambufIcSt11char_traits",
     "_ZStlsISt11char_traitsIcEERSt13basic_ostream",
     "_ZSt16__ostream_insert",
     "_ZStlsIwSt11char_traitsIwEERSt13basic_ostream",
