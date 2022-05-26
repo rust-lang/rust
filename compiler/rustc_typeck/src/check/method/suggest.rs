@@ -492,7 +492,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 Obligation {
                                     cause: cause.clone(),
                                     param_env: self.param_env,
-                                    predicate: predicate.clone(),
+                                    predicate: *predicate,
                                     recursion_depth: 0,
                                 },
                             ));
@@ -676,7 +676,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 let span = self_ty.span.ctxt().outer_expn_data().call_site;
                                 let mut spans: MultiSpan = span.into();
                                 spans.push_span_label(span, derive_msg.to_string());
-                                let entry = spanned_predicates.entry(spans.into());
+                                let entry = spanned_predicates.entry(spans);
                                 entry.or_insert_with(|| (path, tr_self_ty, Vec::new())).2.push(p);
                             }
 
@@ -704,7 +704,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     ident.span.into()
                                 };
                                 spans.push_span_label(ident.span, "in this trait".to_string());
-                                let entry = spanned_predicates.entry(spans.into());
+                                let entry = spanned_predicates.entry(spans);
                                 entry.or_insert_with(|| (path, tr_self_ty, Vec::new())).2.push(p);
                             }
 
@@ -748,7 +748,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 }
                                 spans.push_span_label(self_ty.span, String::new());
 
-                                let entry = spanned_predicates.entry(spans.into());
+                                let entry = spanned_predicates.entry(spans);
                                 entry.or_insert_with(|| (path, tr_self_ty, Vec::new())).2.push(p);
                             }
                             _ => {}
@@ -1460,7 +1460,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             {
                                 derives.push((
                                     self_name.clone(),
-                                    self_span.clone(),
+                                    self_span,
                                     parent_diagnostic_name.to_string(),
                                 ));
                             }
