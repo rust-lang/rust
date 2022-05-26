@@ -705,7 +705,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let predicates = errors
                             .iter()
                             .filter_map(|error| {
-                                error.obligation.predicate.clone().to_opt_poly_trait_pred()
+                                error.obligation.predicate.to_opt_poly_trait_pred()
                             });
                         for pred in predicates {
                             self.infcx.suggest_restricting_param_bound(

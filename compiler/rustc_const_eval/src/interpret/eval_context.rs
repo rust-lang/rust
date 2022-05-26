@@ -520,13 +520,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         frame
             .instance
             .try_subst_mir_and_normalize_erasing_regions(*self.tcx, self.param_env, value)
-            .or_else(|e| {
+            .map_err(|e| {
                 self.tcx.sess.delay_span_bug(
                     self.cur_span(),
                     format!("failed to normalize {}", e.get_type_for_failure()).as_str(),
                 );
 
-                Err(InterpError::InvalidProgram(InvalidProgramInfo::TooGeneric))
+                InterpError::InvalidProgram(InvalidProgramInfo::TooGeneric)
             })
     }
 
@@ -1009,11 +1009,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> std::fmt::Debug
                     }
                 }
 
-                write!(
-                    fmt,
-                    ": {:?}",
-                    self.ecx.dump_allocs(allocs.into_iter().filter_map(|x| x).collect())
-                )
+                write!(fmt, ": {:?}", self.ecx.dump_allocs(allocs.into_iter().flatten().collect()))
             }
             Place::Ptr(mplace) => match mplace.ptr.provenance.and_then(Provenance::get_alloc_id) {
                 Some(alloc_id) => write!(

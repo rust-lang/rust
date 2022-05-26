@@ -1463,10 +1463,9 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         if let GenericBound::Trait(ref poly, modify) = *bound {
             match (ctxt, modify) {
                 (BoundKind::SuperTraits, TraitBoundModifier::Maybe) => {
-                    let mut err = self.err_handler().struct_span_err(
-                        poly.span,
-                        &format!("`?Trait` is not permitted in supertraits"),
-                    );
+                    let mut err = self
+                        .err_handler()
+                        .struct_span_err(poly.span, "`?Trait` is not permitted in supertraits");
                     let path_str = pprust::path_to_string(&poly.trait_ref.path);
                     err.note(&format!("traits are `?{}` by default", path_str));
                     err.emit();
@@ -1474,7 +1473,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 (BoundKind::TraitObject, TraitBoundModifier::Maybe) => {
                     let mut err = self.err_handler().struct_span_err(
                         poly.span,
-                        &format!("`?Trait` is not permitted in trait object types"),
+                        "`?Trait` is not permitted in trait object types",
                     );
                     err.emit();
                 }

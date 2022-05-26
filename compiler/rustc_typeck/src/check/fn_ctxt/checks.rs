@@ -845,7 +845,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let first_provided_ty = if let Some((ty, _)) = final_arg_types[input_idx] {
                             format!(",found `{}`", ty)
                         } else {
-                            "".into()
+                            String::new()
                         };
                         labels.push((
                             first_span,
@@ -857,7 +857,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             if let Some((ty, _)) = final_arg_types[other_input_idx] {
                                 format!(",found `{}`", ty)
                             } else {
-                                "".into()
+                                String::new()
                             };
                         labels.push((
                             second_span,
@@ -875,7 +875,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             let provided_ty = if let Some((ty, _)) = final_arg_types[dst_arg] {
                                 format!(",found `{}`", ty)
                             } else {
-                                "".into()
+                                String::new()
                             };
                             labels.push((
                                 provided_args[dst_arg].span,
@@ -1744,8 +1744,7 @@ fn label_fn_like<'tcx>(
             .get_if_local(def_id)
             .and_then(|node| node.body_id())
             .into_iter()
-            .map(|id| tcx.hir().body(id).params)
-            .flatten();
+            .flat_map(|id| tcx.hir().body(id).params);
 
         for param in params {
             spans.push_span_label(param.span, String::new());
