@@ -700,8 +700,14 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
             match inner.unpack() {
                 GenericArgKind::Lifetime(_) => {}
                 GenericArgKind::Type(ty) => {
-                    if matches!(ty.kind(), ty::Opaque(..)) {
-                        // Opaque types can't be named by the user right now
+                    if matches!(ty.kind(), ty::Opaque(..) | ty::Closure(..) | ty::Generator(..)) {
+                        // Opaque types can't be named by the user right now.
+                        //
+                        // Both the generic arguments of closures and generators can
+                        // also not be named. We may want to only look into the closure
+                        // signature in case it has no captures, as that can be represented
+                        // using `fn(T) -> R`.
+
                         // FIXME(type_alias_impl_trait): These opaque types
                         // can actually be named, so it would make sense to
                         // adjust this case and add a test for it.

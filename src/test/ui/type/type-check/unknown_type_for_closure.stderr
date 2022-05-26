@@ -1,13 +1,8 @@
-error[E0282]: type annotations needed for the closure `fn(Vec<_>)`
-  --> $DIR/unknown_type_for_closure.rs:2:9
+error[E0282]: type annotations needed
+  --> $DIR/unknown_type_for_closure.rs:2:13
    |
 LL |     let x = |b: Vec<_>| {};
-   |         ^
-   |
-help: consider giving `x` an explicit type, where the type for struct `Vec<_>` is specified
-   |
-LL |     let x: [closure@$DIR/unknown_type_for_closure.rs:2:13: 2:27] = |b: Vec<_>| {};
-   |          +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+   |             ^^^^^^^^^^^^^^ cannot infer type for struct `Vec<_>`
 
 error[E0282]: type annotations needed
   --> $DIR/unknown_type_for_closure.rs:6:14
@@ -20,16 +15,11 @@ help: consider giving this closure parameter an explicit type
 LL |     let x = |_: _| {};
    |               +++
 
-error[E0282]: type annotations needed for the closure `fn(_)`
-  --> $DIR/unknown_type_for_closure.rs:10:9
+error[E0282]: type annotations needed
+  --> $DIR/unknown_type_for_closure.rs:10:14
    |
 LL |     let x = |k: _| {};
-   |         ^
-   |
-help: consider giving `x` an explicit type, where the placeholders `_` are specified
-   |
-LL |     let x: [closure@$DIR/unknown_type_for_closure.rs:10:13: 10:22] = |k: _| {};
-   |          +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+   |              ^ cannot infer type
 
 error[E0282]: type annotations needed
   --> $DIR/unknown_type_for_closure.rs:14:28
