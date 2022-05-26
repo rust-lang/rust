@@ -83,6 +83,7 @@ use super::Utf8Error;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_stable(feature = "const_str_from_utf8_shared", since = "1.63.0")]
+#[rustc_allow_const_fn_unstable(str_internals)]
 pub const fn from_utf8(v: &[u8]) -> Result<&str, Utf8Error> {
     // FIXME: This should use `?` again, once it's `const`
     match run_utf8_validation(v) {
