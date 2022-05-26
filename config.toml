@@ -570,7 +570,7 @@ configure-args = []
 
 # Indicates whether LLD will be compiled and made available in the sysroot for
 # rustc to execute.
-#lld = false
+lld = true
 
 # Indicates whether LLD will be used to link Rust crates during bootstrap on
 # supported platforms. The LLD from the bootstrap distribution will be used
@@ -583,7 +583,7 @@ configure-args = []
 
 # Indicates whether some LLVM tools, like llvm-objdump, will be made available in the
 # sysroot.
-#llvm-tools = false
+llvm-tools = true
 
 # Whether to deny warnings in crates
 #deny-warnings = true
