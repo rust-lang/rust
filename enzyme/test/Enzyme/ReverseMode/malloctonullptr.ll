@@ -1196,7 +1196,7 @@ attributes #10 = { noreturn nounwind }
 ; CHECK-NEXT:   store float* %a0, float** %m_data.i.i, align 8
 ; CHECK-NEXT:   %a4 = load float, float* %K, align 4, !tbaa !{{[0-9]+}}
 ; CHECK-NEXT:   store float %a4, float* %a0, align 4, !tbaa !
-; CHECK-NEXT:   %.fca.0.insert = insertvalue { i8*, i8* } undef, i8* %"call'mi", 0
+; CHECK-NEXT:   %.fca.0.insert = insertvalue { i8*, i8* } {{(undef|poison)}}, i8* %"call'mi", 0
 ; CHECK-NEXT:   %.fca.1.insert = insertvalue { i8*, i8* } %.fca.0.insert, i8* %call, 1
 ; CHECK-NEXT:   ret { i8*, i8* } %.fca.1.insert
 ; CHECK-NEXT: }

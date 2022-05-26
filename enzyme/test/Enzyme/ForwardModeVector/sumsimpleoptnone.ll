@@ -41,7 +41,7 @@ attributes #0 = { noinline nounwind uwtable optnone }
 
 ; CHECK: define {{[^@]+}}@fwddiffe3f(double* [[X:%.*]], [3 x double*] %"x'", double** [[Y:%.*]], [3 x double**] %"y'", i64 [[N:%.*]]) 
 ; CHECK-NEXT:  entry:
-; CHECK-NEXT:    [[TMP0:%.*]] = add nuw i64 [[N]], 1
+; CHECK-NEXT:    [[TMP0:%.*]] = add {{(nuw )?}}i64 [[N]], 1
 ; CHECK-NEXT:    br label [[FOR_COND:%.*]]
 ; CHECK:       for.cond:
 ; CHECK-NEXT:    [[IV:%.*]] = phi i64 [ [[IV_NEXT:%.*]], [[FOR_BODY:%.*]] ], [ 0, [[ENTRY:%.*]] ]

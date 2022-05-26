@@ -78,7 +78,7 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %call = tail call fast double @readDouble()
 ; CHECK-NEXT:   %call1 = tail call fast float @flread()
-; CHECK-NEXT:   %[[insertcache1:.+]] = insertvalue { float, double } undef, float %call1, 0
+; CHECK-NEXT:   %[[insertcache1:.+]] = insertvalue { float, double } {{(undef|poison)}}, float %call1, 0
 ; CHECK-NEXT:   %[[insertcache2:.+]] = insertvalue { float, double } %[[insertcache1]], double %call, 1
 ; CHECK-NEXT:   ret { float, double } %[[insertcache2]]
 ; CHECK-NEXT: }

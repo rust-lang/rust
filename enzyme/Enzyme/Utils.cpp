@@ -364,7 +364,7 @@ Function *getOrInsertCheckedFree(Module &M, CallInst *call, Type *Ty,
   CI->setDebugLoc(DebugLoc);
 
   if (width > 1) {
-    Value *checkResult = EntryBuilder.getTrue();
+    Value *checkResult = nullptr;
     BasicBlock *free1 = BasicBlock::Create(M.getContext(), "free1", F);
     IRBuilder<> Free1Builder(free1);
 
@@ -375,7 +375,9 @@ Function *getOrInsertCheckedFree(Module &M, CallInst *call, Type *Ty,
       if (i < width - 1) {
         Argument *nextShadow = F->arg_begin() + i + 2;
         Value *isNotEqual = Free0Builder.CreateICmpNE(shadow, nextShadow);
-        checkResult = Free0Builder.CreateAnd(isNotEqual, checkResult);
+        checkResult = checkResult
+                          ? Free0Builder.CreateAnd(isNotEqual, checkResult)
+                          : isNotEqual;
 
         CallInst *CI = Free1Builder.CreateCall(FreeTy, Free, {nextShadow});
         CI->setAttributes(FreeAttributes);

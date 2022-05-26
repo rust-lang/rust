@@ -138,7 +138,7 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   br label %for.body
 
 ; CHECK: for.cond.cleanup:                                 ; preds = %for.body
-; CHECK-NEXT:   %.fca.0.insert = insertvalue { i8**, i8** } undef, i8** %"call'mi_malloccache", 0
+; CHECK-NEXT:   %.fca.0.insert = insertvalue { i8**, i8** } {{(undef|poison)}}, i8** %"call'mi_malloccache", 0
 ; CHECK-NEXT:   %.fca.1.insert = insertvalue { i8**, i8** } %.fca.0.insert, i8** %call_malloccache, 1
 ; CHECK-NEXT:   ret { i8**, i8** } %.fca.1.insert
 

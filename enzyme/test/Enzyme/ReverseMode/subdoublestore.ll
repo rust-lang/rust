@@ -92,7 +92,7 @@ attributes #6 = { nounwind }
 ; CHECK-NEXT:   %1 = bitcast i8* %arrayidx1 to i64*
 ; CHECK-NEXT:   store i64 %integral, i64* %[[ipc2]], align 8
 ; CHECK-NEXT:   store i64 %integral, i64* %1, align 8
-; CHECK-NEXT:   %.fca.0.0.insert = insertvalue { { i8*, i8* }, i64* } undef, i8* %"call'mi", 0, 0
+; CHECK-NEXT:   %.fca.0.0.insert = insertvalue { { i8*, i8* }, i64* } {{(undef|poison)}}, i8* %"call'mi", 0, 0
 ; CHECK-NEXT:   %.fca.0.1.insert = insertvalue { { i8*, i8* }, i64* } %.fca.0.0.insert, i8* %call, 0, 1
 ; CHECK-NEXT:   %.fca.1.insert = insertvalue { { i8*, i8* }, i64* } %.fca.0.1.insert, i64* %"'ipc1", 1
 ; CHECK-NEXT:   ret { { i8*, i8* }, i64* } %.fca.1.insert

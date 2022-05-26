@@ -81,9 +81,8 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %mul.i = shl i64 %n, 3
 ; CHECK-NEXT:   %call.i = tail call i8* @malloc(i64 %mul.i)
-; CHECK-NEXT:   %"call'mi.i" = tail call noalias nonnull i8* @malloc(i64 %mul.i)
-; CHECK-NEXT:   tail call void @llvm.memset.p0i8.i64(i8* nonnull {{(align 1 )?}}%"call'mi.i", i8 0, i64 %mul.i, {{(i32 1, )?}}i1 false)
-; CHECK-NEXT:   %[[ipci:.+]] = bitcast i8* %"call'mi.i" to double*
+; CHECK-NEXT:   %[[dcall:.+]] = {{(tail call noalias nonnull i8\* @malloc\(i64 %mul.i\) (#[0-9]+)?[[:space:]].*tail call void @llvm.memset.p0i8.i64\(i8\* nonnull (align 1 )?%"call'mi.i", i8 0, i64 %mul.i, (i32 1, )?i1 false\)|call i8\* @calloc\(i64 1, i64 %mul.i\))}}
+; CHECK-NEXT:   %[[ipci:.+]] = bitcast i8* %[[dcall]] to double*
 ; CHECK-NEXT:   %[[bccall:.+]] = bitcast i8* %call.i to double*
 ; CHECK-NEXT:   store double %x, double* %[[bccall]], align 8, !tbaa !2
 ; CHECK-NEXT:   %[[fresult:.+]] = tail call fastcc double @augmented_f(double %x)
@@ -93,7 +92,7 @@ attributes #4 = { nounwind }
 ; NOTE BETTER 03 / dead store elimination can get rid of the next line which is optional
 ;   since its being free'd next
 ; CHECK-NEXT:   store double 0.000000e+00, double* %[[ipci]], align 8
-; CHECK-NEXT:   tail call void bitcast (i32 (...)* @free to void (i8*)*)(i8* nonnull %"call'mi.i")
+; CHECK-NEXT:   tail call void bitcast (i32 (...)* @free to void (i8*)*)(i8* nonnull %[[dcall]])
 ; CHECK-NEXT:   tail call void bitcast (i32 (...)* @free to void (i8*)*)(i8* %call.i)
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }

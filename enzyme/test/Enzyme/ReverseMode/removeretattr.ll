@@ -26,7 +26,7 @@ entry:
 
 ; CHECK: define internal { double*, double* } @augmented_cst(double* noalias %W, double* %"W'")
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %[[fca0insert:.+]] = insertvalue { double*, double* } undef, double* %W, 0
+; CHECK-NEXT:   %[[fca0insert:.+]] = insertvalue { double*, double* } {{(undef|poison)}}, double* %W, 0
 ; CHECK-NEXT:   %[[fca1insert:.+]] = insertvalue { double*, double* } %[[fca0insert:.+]], double* %"W'", 1
 ; CHECK-NEXT:   ret { double*, double* } %[[fca1insert:.+]]
 ; CHECK-NEXT: }

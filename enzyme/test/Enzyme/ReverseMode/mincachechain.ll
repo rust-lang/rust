@@ -81,7 +81,7 @@ entry:
 ; CHECK-NEXT:   %"add.ptr.i'ipg" = getelementptr inbounds double, double* %"__x'", i64 %s2
 ; CHECK-NEXT:   %add.ptr.i = getelementptr inbounds double, double* %__x, i64 %s2
 ; CHECK-NEXT:   call void @augmented_mid(double* %add.ptr.i, double* %"add.ptr.i'ipg")
-; CHECK-NEXT:   %.fca.0.insert = insertvalue { i64, double*, double* } undef, i64 %s2, 0
+; CHECK-NEXT:   %.fca.0.insert = insertvalue { i64, double*, double* } {{(undef|poison)}}, i64 %s2, 0
 ; CHECK-NEXT:   %.fca.1.insert = insertvalue { i64, double*, double* } %.fca.0.insert, double* %__x, 1
 ; CHECK-NEXT:   %.fca.2.insert = insertvalue { i64, double*, double* } %.fca.1.insert, double* %"__x'", 2
 ; CHECK-NEXT:   ret { i64, double*, double* } %.fca.2.insert

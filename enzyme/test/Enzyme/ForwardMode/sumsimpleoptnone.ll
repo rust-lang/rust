@@ -39,7 +39,7 @@ attributes #0 = { noinline nounwind uwtable optnone }
 
 ; CHECK: define internal void @fwddiffef(double* %x, double* %"x'", double** %y, double** %"y'", i64 %n)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = add nuw i64 %n, 1
+; CHECK-NEXT:   %0 = add {{(nuw )?}}i64 %n, 1
 ; CHECK-NEXT:   br label %for.cond
 
 ; CHECK: for.cond:                                         ; preds = %for.body, %entry

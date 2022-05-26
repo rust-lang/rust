@@ -43,7 +43,7 @@ declare { double, double } @__enzyme_autodiff({ double, double } ({ double, doub
 ; CHECK-DAG:    %[[a21:.+]] = fmul fast double %14, %17
 ; CHECK-DAG:    %[[a22:.+]] = fmul fast double %15, %16
 ; CHECK-NEXT:   %23 = fadd fast double %[[a22]], %[[a21]]
-; CHECK-NEXT:   %.fca.0.insert5 = insertvalue { double, double } undef, double %20, 0
+; CHECK-NEXT:   %.fca.0.insert5 = insertvalue { double, double } {{(undef|poison)}}, double %20, 0
 ; CHECK-NEXT:   %.fca.1.insert8 = insertvalue { double, double } %.fca.0.insert5, double %23, 1
 ; CHECK-NEXT:   %24 = insertvalue { { double, double } } undef, { double, double } %.fca.1.insert8, 0
 ; CHECK-NEXT:   ret { { double, double } } %24

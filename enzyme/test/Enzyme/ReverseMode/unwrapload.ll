@@ -113,7 +113,7 @@ declare dso_local double @__enzyme_autodiff(i8*, double*, double*, i64*)
 ; CHECK-NEXT:   br i1 %exitcond25, label %returner, label %loop1
 
 ; CHECK: returner:                                         ; preds = %exit
-; CHECK-NEXT:   %.fca.0.0.insert = insertvalue { { i64, i64* }, double } undef, i64 %a5, 0, 0
+; CHECK-NEXT:   %.fca.0.0.insert = insertvalue { { i64, i64* }, double } {{(undef|poison)}}, i64 %a5, 0, 0
 ; CHECK-NEXT:   %.fca.0.1.insert = insertvalue { { i64, i64* }, double } %.fca.0.0.insert, i64* %a19_malloccache, 0, 1
 ; CHECK-NEXT:   %.fca.1.insert = insertvalue { { i64, i64* }, double } %.fca.0.1.insert, double %add, 1
 ; CHECK-NEXT:   ret { { i64, i64* }, double } %.fca.1.insert

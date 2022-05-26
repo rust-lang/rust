@@ -32,9 +32,9 @@ entry:
 ; CHECK-NEXT:    %2 = fmul fast <4 x float> %1, %x
 ; CHECK-NEXT:    %3 = fmul fast <4 x float> %sq, %"x'"
 ; CHECK-NEXT:    %4 = fadd fast <4 x float> %2, %3
-; CHECK-NEXT:    %[[i5:.+]] = extractelement <4 x float> %1, i32 1
-; CHECK-NEXT:    %[[i6:.+]] = extractelement <4 x float> %4, i32 0
-; CHECK-NEXT:    %[[i7:.+]] = extractelement <4 x float> %4, i32 1
+; CHECK-NEXT:    %[[i5:.+]] = extractelement <4 x float> %1, {{(i32|i64)}} 1
+; CHECK-NEXT:    %[[i6:.+]] = extractelement <4 x float> %4, {{(i32|i64)}} 0
+; CHECK-NEXT:    %[[i7:.+]] = extractelement <4 x float> %4, {{(i32|i64)}} 1
 ; CHECK-NEXT:    %[[i8:.+]] = insertvalue { float, float, float } zeroinitializer, float %[[i5]], 0
 ; CHECK-NEXT:    %[[i9:.+]] = insertvalue { float, float, float } %[[i8]], float %[[i6]], 1
 ; CHECK-NEXT:    %[[i10:.+]] = insertvalue { float, float, float } %[[i9]], float %[[i7]], 2

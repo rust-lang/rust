@@ -49,7 +49,7 @@ entry:
 ; CHECK-NEXT:   %"x'ipl" = load double*, double** %"xp'"
 ; CHECK-NEXT:   %x = load double*, double** %xp
 ; CHECK-NEXT:   %val = load double, double* %x
-; CHECK-NEXT:   %.fca.0.insert = insertvalue { double*, double } undef, double* %"x'ipl", 0
+; CHECK-NEXT:   %.fca.0.insert = insertvalue { double*, double } {{(undef|poison)}}, double* %"x'ipl", 0
 ; CHECK-NEXT:   %.fca.1.insert = insertvalue { double*, double } %.fca.0.insert, double %val, 1
 ; CHECK-NEXT:   ret { double*, double } %.fca.1.insert
 ; CHECK-NEXT: }

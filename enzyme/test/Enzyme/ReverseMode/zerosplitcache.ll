@@ -54,7 +54,7 @@ declare dso_local double @__enzyme_autodiff(i8*, ...)
 ; CHECK-NEXT:   %m = bitcast i8* %malloccall to double*
 ; CHECK-NEXT:   call void @augmented_set(double* %m, double* undef, double %i10)
 ; CHECK-NEXT:   %i12 = load double, double* %m, align 8
-; CHECK-NEXT:   %.fca.0.insert = insertvalue { i8*, double } undef, i8* %malloccall, 0
+; CHECK-NEXT:   %.fca.0.insert = insertvalue { i8*, double } {{(undef|poison)}}, i8* %malloccall, 0
 ; CHECK-NEXT:   %.fca.1.insert = insertvalue { i8*, double } %.fca.0.insert, double %i12, 1
 ; CHECK-NEXT:   ret { i8*, double } %.fca.1.insert
 ; CHECK-NEXT: }

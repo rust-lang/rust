@@ -82,7 +82,7 @@ attributes #22 = { readnone }
 
 ; CHECK: define internal { i64*, i64* } @augmented_cast(i64* %a, i64* %"a'")
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %.fca.0.insert = insertvalue { i64*, i64* } undef, i64* %a, 0
+; CHECK-NEXT:   %.fca.0.insert = insertvalue { i64*, i64* } {{(undef|poison)}}, i64* %a, 0
 ; CHECK-NEXT:   %.fca.1.insert = insertvalue { i64*, i64* } %.fca.0.insert, i64* %"a'", 1
 ; CHECK-NEXT:   ret { i64*, i64* } %.fca.1.insert
 ; CHECK-NEXT: }
@@ -100,7 +100,7 @@ attributes #22 = { readnone }
 ; CHECK-NEXT:   %[[dcall:.+]] = extractvalue { i64*, i64* } %call.i_augmented, 1
 ; CHECK-NEXT:   %a2 = load i64, i64* %call.i{{(, align 4)?}}, !tbaa !2
 ; CHECK-NEXT:   %call2 = call i64 @mul(i64 %a2)
-; CHECK-NEXT:   %.fca.0.0.insert = insertvalue { { i64*, i8*, i8*, i64 }, i64 } undef, i64* %[[dcall]], 0, 0
+; CHECK-NEXT:   %.fca.0.0.insert = insertvalue { { i64*, i8*, i8*, i64 }, i64 } {{(undef|poison)}}, i64* %[[dcall]], 0, 0
 ; CHECK-NEXT:   %.fca.0.1.insert = insertvalue { { i64*, i8*, i8*, i64 }, i64 } %.fca.0.0.insert, i8* %"malloccall'mi", 0, 1
 ; CHECK-NEXT:   %.fca.0.2.insert = insertvalue { { i64*, i8*, i8*, i64 }, i64 } %.fca.0.1.insert, i8* %malloccall, 0, 2
 ; CHECK-NEXT:   %.fca.0.3.insert = insertvalue { { i64*, i8*, i8*, i64 }, i64 } %.fca.0.2.insert, i64 %a2, 0, 3
