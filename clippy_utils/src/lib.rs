@@ -1916,7 +1916,17 @@ pub fn fn_def_id(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<DefId> {
                 ..
             },
             ..,
-        ) => cx.typeck_results().qpath_res(qpath, *path_hir_id).opt_def_id(),
+        ) => {
+            // Only return Fn-like DefIds, not the DefIds of statics/consts/etc that contain or
+            // deref to fn pointers, dyn Fn, impl Fn - #8850
+            if let Res::Def(DefKind::Fn | DefKind::Ctor(..) | DefKind::AssocFn, id) =
+                cx.typeck_results().qpath_res(qpath, *path_hir_id)
+            {
+                Some(id)
+            } else {
+                None
+            }
+        },
         _ => None,
     }
 }
