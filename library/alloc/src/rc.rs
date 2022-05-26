@@ -1884,6 +1884,17 @@ impl From<String> for Rc<str> {
     }
 }
 
+#[stable(feature = "shared_from_str", since = "1.63.0")]
+impl From<Rc<str>> for Rc<[u8]> {
+    #[inline]
+    fn from(s: Rc<str>) -> Self {
+        // SAFETY: the cast from `*const str` to `*const [u8]` is safe since
+        // `str` has the same layout as `[u8]` (only libstd can make this
+        // guarantee).
+        unsafe { Rc::from_raw(Rc::into_raw(s) as *const [u8]) }
+    }
+}
+
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "shared_from_slice", since = "1.21.0")]
 impl<T: ?Sized> From<Box<T>> for Rc<T> {
