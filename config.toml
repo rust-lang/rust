@@ -206,6 +206,7 @@ changelog-seen = 2
 # host triples to this list as well in order for those host toolchains to be
 # able to compile programs for their native target.
 #target = ["x86_64-unknown-linux-gnu"] (as an example)
+target = [ "x86_64-unknown-linux-gnu", "wasm32-wasi", "wasm64-wasi", "wasm32-unknown-unknown", "wasm64-unknown-unknown" ]
 
 # Use this directory to store build artifacts.
 # You can use "$ROOT" to indicate the root of the git repository.
@@ -708,7 +709,11 @@ configure-args = []
 # The root location of the `wasm32-wasi` sysroot. Only used for the
 # `wasm32-wasi` target. If you are building wasm32-wasi target, make sure to
 # create a `[target.wasm32-wasi]` section and move this field there.
-#wasi-root = <none> (path)
+[target.wasm32-wasi]
+wasi-root = "/prog/wasix-libc/sysroot"
+
+[target.wasm64-wasi]
+wasi-root = "/prog/wasix-libc/sysroot"
 
 # The root location of the `wasm64-wasix` sysroot. Only used for the
 # `wasm64-wasix` target. If you are building wasm64-wasix target, make sure to

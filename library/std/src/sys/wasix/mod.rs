@@ -103,6 +103,12 @@ pub fn hashmap_random_keys() -> (u64, u64) {
     return ret;
 }
 
+pub use super::common::cvt::{
+    IsMinusOne,
+    cvt,
+    cvt_r
+};
+
 fn err2io(err: wasi::Errno) -> std_io::Error {
     std_io::Error::from_raw_os_error(err.raw().into())
 }
