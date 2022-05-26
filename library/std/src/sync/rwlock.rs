@@ -512,9 +512,8 @@ impl<T> From<T> for RwLock<T> {
 
 impl<'rwlock, T: ?Sized> RwLockReadGuard<'rwlock, T> {
     /// Create a new instance of `RwLockReadGuard<T>` from a `RwLock<T>`.
-    ///
-    /// It is safe to call this function if and only if `lock.inner.read()` (or
-    /// `lock.inner.try_read()`) has been successfully called before instantiating this object.
+    // SAFETY: if and only if `lock.inner.read()` (or `lock.inner.try_read()`) has been
+    // successfully called from the same thread before instantiating this object.
     unsafe fn new(lock: &'rwlock RwLock<T>) -> LockResult<RwLockReadGuard<'rwlock, T>> {
         poison::map_result(lock.poison.borrow(), |()| RwLockReadGuard {
             data: NonNull::new_unchecked(lock.data.get()),
@@ -525,9 +524,8 @@ impl<'rwlock, T: ?Sized> RwLockReadGuard<'rwlock, T> {
 
 impl<'rwlock, T: ?Sized> RwLockWriteGuard<'rwlock, T> {
     /// Create a new instance of `RwLockWriteGuard<T>` from a `RwLock<T>`.
-    ///
-    /// It is safe to call this function if and only if `lock.inner.write()` (or
-    /// `lock.inner.try_write()`) has been successfully called before instantiating this object.
+    // SAFETY: if and only if `lock.inner.write()` (or `lock.inner.try_write()`) has been
+    // successfully called from the same thread before instantiating this object.
     unsafe fn new(lock: &'rwlock RwLock<T>) -> LockResult<RwLockWriteGuard<'rwlock, T>> {
         poison::map_result(lock.poison.guard(), |guard| RwLockWriteGuard { lock, poison: guard })
     }
@@ -566,6 +564,7 @@ impl<T: ?Sized> Deref for RwLockReadGuard<'_, T> {
     type Target = T;
 
     fn deref(&self) -> &T {
+        // SAFETY: the conditions of `RwLockGuard::new` were satisfied when created.
         unsafe { self.data.as_ref() }
     }
 }
@@ -575,6 +574,7 @@ impl<T: ?Sized> Deref for RwLockWriteGuard<'_, T> {
     type Target = T;
 
     fn deref(&self) -> &T {
+        // SAFETY: the conditions of `RwLockWriteGuard::new` were satisfied when created.
         unsafe { &*self.lock.data.get() }
     }
 }
@@ -582,6 +582,7 @@ impl<T: ?Sized> Deref for RwLockWriteGuard<'_, T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> DerefMut for RwLockWriteGuard<'_, T> {
     fn deref_mut(&mut self) -> &mut T {
+        // SAFETY: the conditions of `RwLockWriteGuard::new` were satisfied when created.
         unsafe { &mut *self.lock.data.get() }
     }
 }
@@ -589,6 +590,7 @@ impl<T: ?Sized> DerefMut for RwLockWriteGuard<'_, T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Drop for RwLockReadGuard<'_, T> {
     fn drop(&mut self) {
+        // SAFETY: the conditions of `RwLockReadGuard::new` were satisfied when created.
         unsafe {
             self.inner_lock.read_unlock();
         }
@@ -599,6 +601,7 @@ impl<T: ?Sized> Drop for RwLockReadGuard<'_, T> {
 impl<T: ?Sized> Drop for RwLockWriteGuard<'_, T> {
     fn drop(&mut self) {
         self.lock.poison.done(&self.poison);
+        // SAFETY: the conditions of `RwLockWriteGuard::new` were satisfied when created.
         unsafe {
             self.lock.inner.write_unlock();
         }
