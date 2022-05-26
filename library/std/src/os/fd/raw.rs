@@ -222,3 +222,35 @@ impl<'a> AsRawFd for io::StderrLock<'a> {
         libc::STDERR_FILENO
     }
 }
+
+#[stable(feature = "asraw_ptrs", since = "1.63.0")]
+/// This blanket impl allows implementing custom traits that require `AsRawFd` on Arc.
+/// ```
+/// # #[cfg(any(unix, target_os = "wasi"))] mod group_cfg {
+/// # #[cfg(target_os = "wasi")]
+/// # use std::os::wasi::io::AsRawFd;
+/// # #[cfg(unix)]
+/// # use std::os::unix::io::AsRawFd;
+/// use std::net::UdpSocket;
+/// use std::sync::Arc;
+/// trait MyTrait: AsRawFd {
+/// }
+/// impl MyTrait for Arc<UdpSocket> {}
+/// impl MyTrait for Box<UdpSocket> {}
+/// # }
+/// ```
+#[stable(feature = "asrawfd_ptrs", since = "1.63.0")]
+impl<T: AsRawFd> AsRawFd for crate::sync::Arc<T> {
+    #[inline]
+    fn as_raw_fd(&self) -> RawFd {
+        (**self).as_raw_fd()
+    }
+}
+
+#[stable(feature = "asraw_ptrs", since = "1.63.0")]
+impl<T: AsRawFd> AsRawFd for Box<T> {
+    #[inline]
+    fn as_raw_fd(&self) -> RawFd {
+        (**self).as_raw_fd()
+    }
+}
