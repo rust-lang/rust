@@ -888,7 +888,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(default_union_representation::DefaultUnionRepresentation));
     store.register_late_pass(|| Box::new(only_used_in_recursion::OnlyUsedInRecursion));
     store.register_late_pass(|| Box::new(significant_drop_in_scrutinee::SignificantDropInScrutinee));
-    store.register_late_pass(|| Box::new(dbg_macro::DbgMacro));
+    let allow_dbg_in_tests = conf.allow_dbg_in_tests;
+    store.register_late_pass(move || Box::new(dbg_macro::DbgMacro::new(allow_dbg_in_tests)));
     let cargo_ignore_publish = conf.cargo_ignore_publish;
     store.register_late_pass(move || {
         Box::new(cargo::Cargo {

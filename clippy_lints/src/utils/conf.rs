@@ -340,6 +340,10 @@ define_Conf! {
     ///
     /// Whether `unwrap` should be allowed in test functions
     (allow_unwrap_in_tests: bool = false),
+    /// Lint: DBG_MACRO.
+    ///
+    /// Whether `dbg!` should be allowed in test functions
+    (allow_dbg_in_tests: bool = false),
 }
 
 /// Search for the configuration file.
