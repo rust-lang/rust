@@ -8,7 +8,7 @@ import { makeDebugConfig } from "./debug";
 import { Config, RunnableEnvCfg } from "./config";
 
 const quickPickButtons = [
-    { iconPath: new vscode.ThemeIcon("save"), tooltip: "Save as a launch.json configurtation." },
+    { iconPath: new vscode.ThemeIcon("save"), tooltip: "Save as a launch.json configuration." },
 ];
 
 export async function selectRunnable(
