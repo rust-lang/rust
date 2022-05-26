@@ -280,10 +280,7 @@ mod c {
 
         if target_env == "msvc" {
             if target_arch == "x86_64" {
-                sources.extend(&[
-                    ("__floatdisf", "x86_64/floatdisf.c"),
-                    ("__floatdixf", "x86_64/floatdixf.c"),
-                ]);
+                sources.extend(&[("__floatdixf", "x86_64/floatdixf.c")]);
             }
         } else {
             // None of these seem to be used on x86_64 windows, and they've all
@@ -291,10 +288,7 @@ mod c {
             if target_os != "windows" {
                 if target_arch == "x86_64" {
                     sources.extend(&[
-                        ("__floatdisf", "x86_64/floatdisf.c"),
                         ("__floatdixf", "x86_64/floatdixf.c"),
-                        ("__floatundidf", "x86_64/floatundidf.S"),
-                        ("__floatundisf", "x86_64/floatundisf.S"),
                         ("__floatundixf", "x86_64/floatundixf.S"),
                     ]);
                 }
@@ -305,11 +299,7 @@ mod c {
                     ("__ashldi3", "i386/ashldi3.S"),
                     ("__ashrdi3", "i386/ashrdi3.S"),
                     ("__divdi3", "i386/divdi3.S"),
-                    ("__floatdidf", "i386/floatdidf.S"),
-                    ("__floatdisf", "i386/floatdisf.S"),
                     ("__floatdixf", "i386/floatdixf.S"),
-                    ("__floatundidf", "i386/floatundidf.S"),
-                    ("__floatundisf", "i386/floatundisf.S"),
                     ("__floatundixf", "i386/floatundixf.S"),
                     ("__lshrdi3", "i386/lshrdi3.S"),
                     ("__moddi3", "i386/moddi3.S"),
