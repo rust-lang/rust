@@ -225,6 +225,7 @@ dependencies = [
  "serde_json",
  "tar",
  "toml",
+ "walkdir",
  "winapi",
  "xz2",
 ]

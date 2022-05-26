@@ -848,7 +848,12 @@ impl Step for PlainSourceTarball {
 
     /// Creates the plain source tarball
     fn run(self, builder: &Builder<'_>) -> GeneratedTarball {
-        let tarball = Tarball::new(builder, "rustc", "src");
+        // NOTE: This is a strange component in a lot of ways. It uses `src` as the target, which
+        // means neither rustup nor rustup-toolchain-install-master know how to download it.
+        // It also contains symbolic links, unlike other any other dist tarball.
+        // It's used for distros building rustc from source in a pre-vendored environment.
+        let mut tarball = Tarball::new(builder, "rustc", "src");
+        tarball.permit_symlinks(true);
         let plain_dst_src = tarball.image_dir();
 
         // This is the set of root paths which will become part of the source package
