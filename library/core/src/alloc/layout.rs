@@ -187,8 +187,8 @@ impl Layout {
     /// which means this must not be used as a "not yet initialized"
     /// sentinel value. Types that lazily allocate must track initialization by
     /// some other means.
-    #[unstable(feature = "alloc_layout_extra", issue = "55724")]
-    #[rustc_const_unstable(feature = "alloc_layout_extra", issue = "55724")]
+    #[stable(feature = "alloc_layout_extra", since = "1.63.0")]
+    #[rustc_const_unstable(feature = "const_alloc_layout", issue = "67521")]
     #[must_use]
     #[inline]
     pub const fn dangling(&self) -> NonNull<u8> {
@@ -225,14 +225,11 @@ impl Layout {
     /// padding required to get a 4-aligned address (assuming that the
     /// corresponding memory block starts at a 4-aligned address).
     ///
-    /// The return value of this function has no meaning if `align` is
-    /// not a power-of-two.
-    ///
     /// Note that the utility of the returned value requires `align`
     /// to be less than or equal to the alignment of the starting
     /// address for the whole allocated block of memory. One way to
     /// satisfy this constraint is to ensure `align <= self.align()`.
-    #[unstable(feature = "alloc_layout_extra", issue = "55724")]
+    #[stable(feature = "alloc_layout_extra", since = "1.63.0")]
     #[rustc_const_unstable(feature = "const_alloc_layout", issue = "67521")]
     #[must_use = "this returns the padding needed, \
                   without modifying the `Layout`"]
@@ -288,24 +285,30 @@ impl Layout {
     /// Creates a layout describing the record for `n` instances of
     /// `self`, with a suitable amount of padding between each to
     /// ensure that each instance is given its requested size and
-    /// alignment. On success, returns `(k, offs)` where `k` is the
-    /// layout of the array and `offs` is the distance between the start
-    /// of each element in the array.
+    /// alignment, but *no trailing padding*. On success, returns `(k, offs)`
+    /// where `k` is the layout of the repetition and `offs` is the distance
+    /// between the start of each element in the repetition. This is equivalent
+    /// to calling `extend` multiple times.
     ///
     /// On arithmetic overflow, returns `LayoutError`.
-    #[unstable(feature = "alloc_layout_extra", issue = "55724")]
+    #[stable(feature = "alloc_layout_extra", since = "1.63.0")]
     #[inline]
     pub fn repeat(&self, n: usize) -> Result<(Self, usize), LayoutError> {
+        let padding = self.padding_needed_for(self.align());
+
         // This cannot overflow. Quoting from the invariant of Layout:
         // > `size`, when rounded up to the nearest multiple of `align`,
         // > must not overflow (i.e., the rounded value must be less than
         // > `usize::MAX`)
-        let padded_size = self.size() + self.padding_needed_for(self.align());
-        let alloc_size = padded_size.checked_mul(n).ok_or(LayoutError)?;
+        let padded_size = self.size() + padding;
+        let array_size = padded_size.checked_mul(n).ok_or(LayoutError)?;
+        let repetition_size = array_size - padding;
 
-        // SAFETY: self.align is already known to be valid and alloc_size has been
-        // padded already.
-        unsafe { Ok((Layout::from_size_align_unchecked(alloc_size, self.align()), padded_size)) }
+        Ok((
+            // SAFETY: self.align is already known to be valid and array_size doesn't overflow.
+            unsafe { Layout::from_size_align_unchecked(repetition_size, self.align()) },
+            padded_size,
+        ))
     }
 
     /// Creates a layout describing the record for `self` followed by
@@ -378,7 +381,7 @@ impl Layout {
     /// aligned.
     ///
     /// On arithmetic overflow, returns `LayoutError`.
-    #[unstable(feature = "alloc_layout_extra", issue = "55724")]
+    #[stable(feature = "alloc_layout_extra", since = "1.63.0")]
     #[inline]
     pub fn repeat_packed(&self, n: usize) -> Result<Self, LayoutError> {
         let size = self.size().checked_mul(n).ok_or(LayoutError)?;
@@ -391,7 +394,7 @@ impl Layout {
     /// and is not incorporated *at all* into the resulting layout.
     ///
     /// On arithmetic overflow, returns `LayoutError`.
-    #[unstable(feature = "alloc_layout_extra", issue = "55724")]
+    #[stable(feature = "alloc_layout_extra", since = "1.63.0")]
     #[inline]
     pub fn extend_packed(&self, next: Self) -> Result<Self, LayoutError> {
         let new_size = self.size().checked_add(next.size()).ok_or(LayoutError)?;

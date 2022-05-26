@@ -291,7 +291,6 @@
 #![feature(strict_provenance)]
 //
 // Library features (alloc):
-#![feature(alloc_layout_extra)]
 #![feature(alloc_c_string)]
 #![feature(allocator_api)]
 #![feature(get_mut_unchecked)]

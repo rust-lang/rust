@@ -87,7 +87,6 @@
 //
 // Library features:
 #![cfg_attr(not(no_global_oom_handling), feature(alloc_c_string))]
-#![feature(alloc_layout_extra)]
 #![feature(allocator_api)]
 #![feature(array_chunks)]
 #![feature(array_methods)]
