@@ -775,6 +775,12 @@ impl<'a> InferenceContext<'a> {
                 },
             },
             Expr::MacroStmts { tail } => self.infer_expr_inner(*tail, expected),
+            Expr::Underscore => {
+                // Underscore expressions may only appear in assignee expressions,
+                // which are handled by `infer_assignee_expr()`, so any underscore
+                // expression reaching this branch is an error.
+                self.err_ty()
+            }
         };
         // use a new type variable if we got unknown here
         let ty = self.insert_type_vars_shallow(ty);

@@ -203,6 +203,7 @@ pub enum Expr {
     },
     Array(Array),
     Literal(Literal),
+    Underscore,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -345,6 +346,7 @@ impl Expr {
             },
             Expr::MacroStmts { tail } => f(*tail),
             Expr::Literal(_) => {}
+            Expr::Underscore => {}
         }
     }
 }
