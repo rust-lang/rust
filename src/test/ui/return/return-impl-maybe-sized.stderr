@@ -1,0 +1,8 @@
+error: return type should be sized
+  --> $DIR/return-impl-maybe-sized.rs:3:17
+   |
+LL | fn test_fn() -> impl ?Sized {}
+   |                 ^^^^^^^^^^^
+
+error: aborting due to previous error
+

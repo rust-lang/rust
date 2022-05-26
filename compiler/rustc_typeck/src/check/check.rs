@@ -3,6 +3,7 @@ use super::compare_method::check_type_bounds;
 use super::compare_method::{compare_const_impl, compare_impl_method, compare_ty_impl};
 use super::*;
 
+use hir::{GenericBound, PolyTraitRef, TraitBoundModifier};
 use rustc_attr as attr;
 use rustc_errors::{Applicability, ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
@@ -95,6 +96,25 @@ pub(super) fn check_fn<'a, 'tcx>(
     let hir = tcx.hir();
 
     let declared_ret_ty = fn_sig.output();
+
+    if let ty::Opaque(def_id, _) = *declared_ret_ty.kind() {
+        let bounds = match &tcx.hir().expect_item(def_id.expect_local()).kind {
+            ItemKind::OpaqueTy(ty) => ty.bounds,
+            _ => bug!("unexpected opaque type"),
+        };
+
+        let sized_def_id = tcx.require_lang_item(LangItem::Sized, None);
+        if bounds.iter().any(|bound| match bound {
+            GenericBound::Trait(PolyTraitRef { trait_ref, .. }, TraitBoundModifier::Maybe)
+                if trait_ref.path.res.def_id() == sized_def_id =>
+            {
+                true
+            }
+            _ => false,
+        }) {
+            sess.span_err(decl.output.span(), "return type should be sized");
+        }
+    }
 
     let ret_ty =
         fcx.register_infer_ok_obligations(fcx.infcx.replace_opaque_types_with_inference_vars(
