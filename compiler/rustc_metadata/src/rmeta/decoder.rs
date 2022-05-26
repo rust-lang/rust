@@ -1565,10 +1565,10 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                         src_hash,
                         start_pos,
                         end_pos,
-                        mut lines,
-                        mut multibyte_chars,
-                        mut non_narrow_chars,
-                        mut normalized_pos,
+                        lines,
+                        multibyte_chars,
+                        non_narrow_chars,
+                        normalized_pos,
                         name_hash,
                         ..
                     } = source_file_to_import;
@@ -1604,24 +1604,6 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                     try_to_translate_virtual_to_real(&mut name);
 
                     let source_length = (end_pos - start_pos).to_usize();
-
-                    // Translate line-start positions and multibyte character
-                    // position into frame of reference local to file.
-                    // `SourceMap::new_imported_source_file()` will then translate those
-                    // coordinates to their new global frame of reference when the
-                    // offset of the SourceFile is known.
-                    for pos in &mut lines {
-                        *pos = *pos - start_pos;
-                    }
-                    for mbc in &mut multibyte_chars {
-                        mbc.pos = mbc.pos - start_pos;
-                    }
-                    for swc in &mut non_narrow_chars {
-                        *swc = *swc - start_pos;
-                    }
-                    for np in &mut normalized_pos {
-                        np.pos = np.pos - start_pos;
-                    }
 
                     let local_version = sess.source_map().new_imported_source_file(
                         name,
