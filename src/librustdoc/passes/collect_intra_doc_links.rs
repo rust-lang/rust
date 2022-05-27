@@ -20,7 +20,6 @@ use rustc_span::BytePos;
 use smallvec::{smallvec, SmallVec};
 
 use std::borrow::Cow;
-use std::fmt::Write;
 use std::mem;
 use std::ops::Range;
 
@@ -220,80 +219,43 @@ enum MalformedGenerics {
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub(crate) enum UrlFragment {
-    Item(ItemFragment),
+    Item(DefId),
     UserWritten(String),
 }
 
 impl UrlFragment {
     /// Render the fragment, including the leading `#`.
-    pub(crate) fn render(&self, s: &mut String, tcx: TyCtxt<'_>) -> std::fmt::Result {
+    pub(crate) fn render(&self, s: &mut String, tcx: TyCtxt<'_>) {
+        s.push('#');
         match self {
-            UrlFragment::Item(frag) => frag.render(s, tcx),
-            UrlFragment::UserWritten(raw) => write!(s, "#{}", raw),
-        }
-    }
-}
-
-#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
-pub(crate) struct ItemFragment(FragmentKind, DefId);
-
-#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
-pub(crate) enum FragmentKind {
-    Method,
-    TyMethod,
-    AssociatedConstant,
-    AssociatedType,
-
-    StructField,
-    Variant,
-    VariantField,
-}
-
-impl FragmentKind {
-    fn from_def_id(tcx: TyCtxt<'_>, def_id: DefId) -> FragmentKind {
-        match tcx.def_kind(def_id) {
-            DefKind::AssocFn => {
-                if tcx.associated_item(def_id).defaultness.has_value() {
-                    FragmentKind::Method
-                } else {
-                    FragmentKind::TyMethod
-                }
-            }
-            DefKind::AssocConst => FragmentKind::AssociatedConstant,
-            DefKind::AssocTy => FragmentKind::AssociatedType,
-            DefKind::Variant => FragmentKind::Variant,
-            DefKind::Field => {
-                if tcx.def_kind(tcx.parent(def_id)) == DefKind::Variant {
-                    FragmentKind::VariantField
-                } else {
-                    FragmentKind::StructField
-                }
-            }
-            kind => bug!("unexpected associated item kind: {:?}", kind),
-        }
-    }
-}
-
-impl ItemFragment {
-    /// Render the fragment, including the leading `#`.
-    pub(crate) fn render(&self, s: &mut String, tcx: TyCtxt<'_>) -> std::fmt::Result {
-        write!(s, "#")?;
-        match *self {
-            ItemFragment(kind, def_id) => {
-                let name = tcx.item_name(def_id);
-                match kind {
-                    FragmentKind::Method => write!(s, "method.{}", name),
-                    FragmentKind::TyMethod => write!(s, "tymethod.{}", name),
-                    FragmentKind::AssociatedConstant => write!(s, "associatedconstant.{}", name),
-                    FragmentKind::AssociatedType => write!(s, "associatedtype.{}", name),
-                    FragmentKind::StructField => write!(s, "structfield.{}", name),
-                    FragmentKind::Variant => write!(s, "variant.{}", name),
-                    FragmentKind::VariantField => {
-                        let variant = tcx.item_name(tcx.parent(def_id));
-                        write!(s, "variant.{}.field.{}", variant, name)
+            &UrlFragment::Item(def_id) => {
+                let kind = match tcx.def_kind(def_id) {
+                    DefKind::AssocFn => {
+                        if tcx.associated_item(def_id).defaultness.has_value() {
+                            "method."
+                        } else {
+                            "tymethod."
+                        }
                     }
-                }
+                    DefKind::AssocConst => "associatedconstant.",
+                    DefKind::AssocTy => "associatedtype.",
+                    DefKind::Variant => "variant.",
+                    DefKind::Field => {
+                        let parent_id = tcx.parent(def_id);
+                        if tcx.def_kind(parent_id) == DefKind::Variant {
+                            s.push_str("variant.");
+                            s.push_str(tcx.item_name(parent_id).as_str());
+                            ".field."
+                        } else {
+                            "structfield."
+                        }
+                    }
+                    kind => bug!("unexpected associated item kind: {:?}", kind),
+                };
+                s.push_str(kind);
+                s.push_str(tcx.item_name(def_id).as_str());
             }
+            UrlFragment::UserWritten(raw) => s.push_str(&raw),
         }
     }
 }
@@ -315,11 +277,6 @@ struct DiagnosticInfo<'a> {
     link_range: Range<usize>,
 }
 
-#[derive(Clone, Debug, Hash)]
-struct CachedLink {
-    res: (Res, Option<UrlFragment>),
-}
-
 struct LinkCollector<'a, 'tcx> {
     cx: &'a mut DocContext<'tcx>,
     /// A stack of modules used to decide what scope to resolve in.
@@ -329,7 +286,7 @@ struct LinkCollector<'a, 'tcx> {
     mod_ids: Vec<DefId>,
     /// Cache the resolved links so we can avoid resolving (and emitting errors for) the same link.
     /// The link will be `None` if it could not be resolved (i.e. the error was cached).
-    visited_links: FxHashMap<ResolutionInfo, Option<CachedLink>>,
+    visited_links: FxHashMap<ResolutionInfo, Option<(Res, Option<UrlFragment>)>>,
 }
 
 impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
@@ -1097,6 +1054,9 @@ impl LinkCollector<'_, '_> {
                 extra_fragment: extra_fragment.clone(),
             },
             diag_info.clone(), // this struct should really be Copy, but Range is not :(
+            // For reference-style links we want to report only one error so unsuccessful
+            // resolutions are cached, for other links we want to report an error every
+            // time so they are not cached.
             matches!(ori_link.kind, LinkType::Reference | LinkType::Shortcut),
         )?;
 
@@ -1123,7 +1083,7 @@ impl LinkCollector<'_, '_> {
 
         match res {
             Res::Primitive(prim) => {
-                if let Some(UrlFragment::Item(ItemFragment(_, id))) = fragment {
+                if let Some(UrlFragment::Item(id)) = fragment {
                     // We're actually resolving an associated item of a primitive, so we need to
                     // verify the disambiguator (if any) matches the type of the associated item.
                     // This case should really follow the same flow as the `Res::Def` branch below,
@@ -1171,12 +1131,11 @@ impl LinkCollector<'_, '_> {
                 })
             }
             Res::Def(kind, id) => {
-                let (kind_for_dis, id_for_dis) =
-                    if let Some(UrlFragment::Item(ItemFragment(_, id))) = fragment {
-                        (self.cx.tcx.def_kind(id), id)
-                    } else {
-                        (kind, id)
-                    };
+                let (kind_for_dis, id_for_dis) = if let Some(UrlFragment::Item(id)) = fragment {
+                    (self.cx.tcx.def_kind(id), id)
+                } else {
+                    (kind, id)
+                };
                 self.verify_disambiguator(
                     path_str,
                     ori_link,
@@ -1294,53 +1253,33 @@ impl LinkCollector<'_, '_> {
         &mut self,
         key: ResolutionInfo,
         diag: DiagnosticInfo<'_>,
-        cache_resolution_failure: bool,
+        // If errors are cached then they are only reported on first ocurrence
+        // which we want in some cases but not in others.
+        cache_errors: bool,
     ) -> Option<(Res, Option<UrlFragment>)> {
-        if let Some(ref cached) = self.visited_links.get(&key) {
-            match cached {
-                Some(cached) => {
-                    return Some(cached.res.clone());
-                }
-                None if cache_resolution_failure => return None,
-                None => {
-                    // Although we hit the cache and found a resolution error, this link isn't
-                    // supposed to cache those. Run link resolution again to emit the expected
-                    // resolution error.
-                }
+        if let Some(res) = self.visited_links.get(&key) {
+            if res.is_some() || cache_errors {
+                return res.clone();
             }
         }
 
         let res = self.resolve_with_disambiguator(&key, diag.clone()).and_then(|(res, def_id)| {
             let fragment = match (&key.extra_fragment, def_id) {
                 (Some(_), Some(def_id)) => {
-                    report_anchor_conflict(self.cx, diag, Res::from_def_id(self.cx.tcx, def_id));
+                    report_anchor_conflict(self.cx, diag, def_id);
                     return None;
                 }
                 (Some(u_frag), None) => Some(UrlFragment::UserWritten(u_frag.clone())),
-                (None, Some(def_id)) => Some(UrlFragment::Item(ItemFragment(
-                    FragmentKind::from_def_id(self.cx.tcx, def_id),
-                    def_id,
-                ))),
+                (None, Some(def_id)) => Some(UrlFragment::Item(def_id)),
                 (None, None) => None,
             };
             Some((res, fragment))
         });
 
-        // Cache only if resolved successfully - don't silence duplicate errors
-        if let Some(res) = res {
-            // Store result for the actual namespace
-            self.visited_links.insert(key, Some(CachedLink { res: res.clone() }));
-
-            Some(res)
-        } else {
-            if cache_resolution_failure {
-                // For reference-style links we only want to report one resolution error
-                // so let's cache them as well.
-                self.visited_links.insert(key, None);
-            }
-
-            None
+        if res.is_some() || cache_errors {
+            self.visited_links.insert(key, res.clone());
         }
+        res
     }
 
     /// After parsing the disambiguator, resolve the main part of the link.
@@ -1916,8 +1855,8 @@ fn report_multiple_anchors(cx: &DocContext<'_>, diag_info: DiagnosticInfo<'_>) {
     anchor_failure(cx, diag_info, &msg, 1)
 }
 
-fn report_anchor_conflict(cx: &DocContext<'_>, diag_info: DiagnosticInfo<'_>, res: Res) {
-    let (link, kind) = (diag_info.ori_link, res.descr());
+fn report_anchor_conflict(cx: &DocContext<'_>, diag_info: DiagnosticInfo<'_>, def_id: DefId) {
+    let (link, kind) = (diag_info.ori_link, Res::from_def_id(cx.tcx, def_id).descr());
     let msg = format!("`{link}` contains an anchor, but links to {kind}s are already anchored");
     anchor_failure(cx, diag_info, &msg, 0)
 }

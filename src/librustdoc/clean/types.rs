@@ -525,7 +525,7 @@ impl Item {
                 if let Ok((mut href, ..)) = href(*did, cx) {
                     debug!(?href);
                     if let Some(ref fragment) = *fragment {
-                        fragment.render(&mut href, cx.tcx()).unwrap()
+                        fragment.render(&mut href, cx.tcx())
                     }
                     Some(RenderedLink {
                         original_text: s.clone(),
