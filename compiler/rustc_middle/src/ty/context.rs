@@ -94,6 +94,7 @@ pub struct TyInterner<'tcx> {
     pub tcx: TyCtxt<'tcx>,
 }
 
+/*
 /// We don't ever actually need this. It's only required for derives.
 impl<'tcx> Hash for TyInterner<'tcx> {
     fn hash<H: Hasher>(&self, _state: &mut H) {}
@@ -128,6 +129,7 @@ impl fmt::Debug for TyInterner<'_> {
         write!(f, "TyInterner")
     }
 }
+*/
 
 #[allow(rustc::usage_of_ty_tykind)]
 impl<'tcx> Interner for TyInterner<'tcx> {

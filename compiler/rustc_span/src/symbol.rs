@@ -205,6 +205,7 @@ symbols! {
         IntoIterator,
         IoRead,
         IoWrite,
+        IrTyKind,
         Is,
         ItemContext,
         Iterator,

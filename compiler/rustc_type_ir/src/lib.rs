@@ -21,8 +21,6 @@ pub mod sty;
 pub use codec::*;
 pub use sty::*;
 
-extern crate self as rustc_type_ir;
-
 pub trait Interner {
     type AdtDef: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
     type SubstsRef: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;

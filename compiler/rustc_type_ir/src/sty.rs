@@ -1,3 +1,8 @@
+#![allow(rustc::usage_of_ty_tykind)]
+
+use std::cmp::{Eq, Ord, Ordering, PartialEq, PartialOrd};
+use std::{fmt, hash};
+
 use crate::DebruijnIndex;
 use crate::FloatTy;
 use crate::IntTy;
@@ -6,17 +11,17 @@ use crate::TyDecoder;
 use crate::TyEncoder;
 use crate::UintTy;
 
+use self::TyKind::*;
+
 use rustc_serialize::{Decodable, Encodable};
 
 /// Defines the kinds of types used by the type system.
 ///
-/// Types written by the user start out as [hir::TyKind](rustc_hir::TyKind) and get
+/// Types written by the user start out as `hir::TyKind` and get
 /// converted to this representation using `AstConv::ast_ty_to_ty`.
-#[allow(rustc::usage_of_ty_tykind)]
-#[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-//#[derive(TyEncodable, TyDecodable)]
-//#[derive(HashStable)]
-#[rustc_diagnostic_item = "TyKind"]
+///
+/// The `HashStable` implementation for this type is defined in `rustc_query_system::ich`.
+#[rustc_diagnostic_item = "IrTyKind"]
 pub enum TyKind<I: Interner> {
     /// The primitive boolean type. Written as `bool`.
     Bool,
@@ -95,18 +100,18 @@ pub enum TyKind<I: Interner> {
     ///
     /// Closure substs contain both the - potentially substituted - generic parameters
     /// of its parent and some synthetic parameters. See the documentation for
-    /// [ClosureSubsts] for more details.
+    /// `ClosureSubsts` for more details.
     Closure(I::DefId, I::SubstsRef),
 
     /// The anonymous type of a generator. Used to represent the type of
     /// `|a| yield a`.
     ///
     /// For more info about generator substs, visit the documentation for
-    /// [GeneratorSubsts].
+    /// `GeneratorSubsts`.
     Generator(I::DefId, I::SubstsRef, I::Movability),
 
     /// A type representing the types stored inside a generator.
-    /// This should only appear as part of the [GeneratorSubsts].
+    /// This should only appear as part of the `GeneratorSubsts`.
     ///
     /// Note that the captured variables for generators are stored separately
     /// using a tuple in the same way as for closures.
@@ -186,10 +191,47 @@ pub enum TyKind<I: Interner> {
     Error(I::DelaySpanBugEmitted),
 }
 
-#[allow(rustc::usage_of_ty_tykind)]
+impl<I: Interner> TyKind<I> {
+    #[inline]
+    pub fn is_primitive(&self) -> bool {
+        matches!(self, Bool | Char | Int(_) | Uint(_) | Float(_))
+    }
+}
+
+fn discriminant<I: Interner>(value: &TyKind<I>) -> usize {
+    match value {
+        Bool => 0,
+        Char => 1,
+        Int(_) => 2,
+        Uint(_) => 3,
+        Float(_) => 4,
+        Adt(_, _) => 5,
+        Foreign(_) => 6,
+        Str => 7,
+        Array(_, _) => 8,
+        Slice(_) => 9,
+        RawPtr(_) => 10,
+        Ref(_, _, _) => 11,
+        FnDef(_, _) => 12,
+        FnPtr(_) => 13,
+        Dynamic(_, _) => 14,
+        Closure(_, _) => 15,
+        Generator(_, _, _) => 16,
+        GeneratorWitness(_) => 17,
+        Never => 18,
+        Tuple(_) => 19,
+        Projection(_) => 20,
+        Opaque(_, _) => 21,
+        Param(_) => 22,
+        Bound(_, _) => 23,
+        Placeholder(_) => 24,
+        Infer(_) => 25,
+        Error(_) => 26,
+    }
+}
+
 impl<I: Interner> Clone for TyKind<I> {
     fn clone(&self) -> Self {
-        use crate::TyKind::*;
         match self {
             Bool => Bool,
             Char => Char,
@@ -222,149 +264,553 @@ impl<I: Interner> Clone for TyKind<I> {
     }
 }
 
-#[allow(rustc::usage_of_ty_tykind)]
-impl<I: Interner> TyKind<I> {
+impl<I: Interner> PartialEq for TyKind<I> {
     #[inline]
-    pub fn is_primitive(&self) -> bool {
-        use crate::TyKind::*;
-        matches!(self, Bool | Char | Int(_) | Uint(_) | Float(_))
+    fn eq(&self, other: &TyKind<I>) -> bool {
+        let __self_vi = discriminant(self);
+        let __arg_1_vi = discriminant(other);
+        if __self_vi == __arg_1_vi {
+            match (&*self, &*other) {
+                (&Int(ref __self_0), &Int(ref __arg_1_0)) => __self_0 == __arg_1_0,
+                (&Uint(ref __self_0), &Uint(ref __arg_1_0)) => __self_0 == __arg_1_0,
+                (&Float(ref __self_0), &Float(ref __arg_1_0)) => __self_0 == __arg_1_0,
+                (&Adt(ref __self_0, ref __self_1), &Adt(ref __arg_1_0, ref __arg_1_1)) => {
+                    __self_0 == __arg_1_0 && __self_1 == __arg_1_1
+                }
+                (&Foreign(ref __self_0), &Foreign(ref __arg_1_0)) => __self_0 == __arg_1_0,
+                (&Array(ref __self_0, ref __self_1), &Array(ref __arg_1_0, ref __arg_1_1)) => {
+                    __self_0 == __arg_1_0 && __self_1 == __arg_1_1
+                }
+                (&Slice(ref __self_0), &Slice(ref __arg_1_0)) => __self_0 == __arg_1_0,
+                (&RawPtr(ref __self_0), &RawPtr(ref __arg_1_0)) => __self_0 == __arg_1_0,
+                (
+                    &Ref(ref __self_0, ref __self_1, ref __self_2),
+                    &Ref(ref __arg_1_0, ref __arg_1_1, ref __arg_1_2),
+                ) => __self_0 == __arg_1_0 && __self_1 == __arg_1_1 && __self_2 == __arg_1_2,
+                (&FnDef(ref __self_0, ref __self_1), &FnDef(ref __arg_1_0, ref __arg_1_1)) => {
+                    __self_0 == __arg_1_0 && __self_1 == __arg_1_1
+                }
+                (&FnPtr(ref __self_0), &FnPtr(ref __arg_1_0)) => __self_0 == __arg_1_0,
+                (&Dynamic(ref __self_0, ref __self_1), &Dynamic(ref __arg_1_0, ref __arg_1_1)) => {
+                    __self_0 == __arg_1_0 && __self_1 == __arg_1_1
+                }
+                (&Closure(ref __self_0, ref __self_1), &Closure(ref __arg_1_0, ref __arg_1_1)) => {
+                    __self_0 == __arg_1_0 && __self_1 == __arg_1_1
+                }
+                (
+                    &Generator(ref __self_0, ref __self_1, ref __self_2),
+                    &Generator(ref __arg_1_0, ref __arg_1_1, ref __arg_1_2),
+                ) => __self_0 == __arg_1_0 && __self_1 == __arg_1_1 && __self_2 == __arg_1_2,
+                (&GeneratorWitness(ref __self_0), &GeneratorWitness(ref __arg_1_0)) => {
+                    __self_0 == __arg_1_0
+                }
+                (&Tuple(ref __self_0), &Tuple(ref __arg_1_0)) => __self_0 == __arg_1_0,
+                (&Projection(ref __self_0), &Projection(ref __arg_1_0)) => __self_0 == __arg_1_0,
+                (&Opaque(ref __self_0, ref __self_1), &Opaque(ref __arg_1_0, ref __arg_1_1)) => {
+                    __self_0 == __arg_1_0 && __self_1 == __arg_1_1
+                }
+                (&Param(ref __self_0), &Param(ref __arg_1_0)) => __self_0 == __arg_1_0,
+                (&Bound(ref __self_0, ref __self_1), &Bound(ref __arg_1_0, ref __arg_1_1)) => {
+                    __self_0 == __arg_1_0 && __self_1 == __arg_1_1
+                }
+                (&Placeholder(ref __self_0), &Placeholder(ref __arg_1_0)) => __self_0 == __arg_1_0,
+                (&Infer(ref __self_0), &Infer(ref __arg_1_0)) => __self_0 == __arg_1_0,
+                (&Error(ref __self_0), &Error(ref __arg_1_0)) => __self_0 == __arg_1_0,
+                _ => true,
+            }
+        } else {
+            false
+        }
     }
 }
 
-#[allow(rustc::usage_of_ty_tykind)]
-impl<__I: Interner, __E: TyEncoder> Encodable<__E> for TyKind<__I>
+impl<I: Interner> Eq for TyKind<I> {}
+
+impl<I: Interner> PartialOrd for TyKind<I> {
+    #[inline]
+    fn partial_cmp(&self, other: &TyKind<I>) -> Option<Ordering> {
+        Some(Ord::cmp(self, other))
+    }
+}
+
+impl<I: Interner> Ord for TyKind<I> {
+    #[inline]
+    fn cmp(&self, other: &TyKind<I>) -> Ordering {
+        let __self_vi = discriminant(self);
+        let __arg_1_vi = discriminant(other);
+        if __self_vi == __arg_1_vi {
+            match (&*self, &*other) {
+                (&Int(ref __self_0), &Int(ref __arg_1_0)) => Ord::cmp(__self_0, __arg_1_0),
+                (&Uint(ref __self_0), &Uint(ref __arg_1_0)) => Ord::cmp(__self_0, __arg_1_0),
+                (&Float(ref __self_0), &Float(ref __arg_1_0)) => Ord::cmp(__self_0, __arg_1_0),
+                (&Adt(ref __self_0, ref __self_1), &Adt(ref __arg_1_0, ref __arg_1_1)) => {
+                    match Ord::cmp(__self_0, __arg_1_0) {
+                        Ordering::Equal => Ord::cmp(__self_1, __arg_1_1),
+                        cmp => cmp,
+                    }
+                }
+                (&Foreign(ref __self_0), &Foreign(ref __arg_1_0)) => Ord::cmp(__self_0, __arg_1_0),
+                (&Array(ref __self_0, ref __self_1), &Array(ref __arg_1_0, ref __arg_1_1)) => {
+                    match Ord::cmp(__self_0, __arg_1_0) {
+                        Ordering::Equal => Ord::cmp(__self_1, __arg_1_1),
+                        cmp => cmp,
+                    }
+                }
+                (&Slice(ref __self_0), &Slice(ref __arg_1_0)) => Ord::cmp(__self_0, __arg_1_0),
+                (&RawPtr(ref __self_0), &RawPtr(ref __arg_1_0)) => Ord::cmp(__self_0, __arg_1_0),
+                (
+                    &Ref(ref __self_0, ref __self_1, ref __self_2),
+                    &Ref(ref __arg_1_0, ref __arg_1_1, ref __arg_1_2),
+                ) => match Ord::cmp(__self_0, __arg_1_0) {
+                    Ordering::Equal => match Ord::cmp(__self_1, __arg_1_1) {
+                        Ordering::Equal => Ord::cmp(__self_2, __arg_1_2),
+                        cmp => cmp,
+                    },
+                    cmp => cmp,
+                },
+                (&FnDef(ref __self_0, ref __self_1), &FnDef(ref __arg_1_0, ref __arg_1_1)) => {
+                    match Ord::cmp(__self_0, __arg_1_0) {
+                        Ordering::Equal => Ord::cmp(__self_1, __arg_1_1),
+                        cmp => cmp,
+                    }
+                }
+                (&FnPtr(ref __self_0), &FnPtr(ref __arg_1_0)) => Ord::cmp(__self_0, __arg_1_0),
+                (&Dynamic(ref __self_0, ref __self_1), &Dynamic(ref __arg_1_0, ref __arg_1_1)) => {
+                    match Ord::cmp(__self_0, __arg_1_0) {
+                        Ordering::Equal => Ord::cmp(__self_1, __arg_1_1),
+                        cmp => cmp,
+                    }
+                }
+                (&Closure(ref __self_0, ref __self_1), &Closure(ref __arg_1_0, ref __arg_1_1)) => {
+                    match Ord::cmp(__self_0, __arg_1_0) {
+                        Ordering::Equal => Ord::cmp(__self_1, __arg_1_1),
+                        cmp => cmp,
+                    }
+                }
+                (
+                    &Generator(ref __self_0, ref __self_1, ref __self_2),
+                    &Generator(ref __arg_1_0, ref __arg_1_1, ref __arg_1_2),
+                ) => match Ord::cmp(__self_0, __arg_1_0) {
+                    Ordering::Equal => match Ord::cmp(__self_1, __arg_1_1) {
+                        Ordering::Equal => Ord::cmp(__self_2, __arg_1_2),
+                        cmp => cmp,
+                    },
+                    cmp => cmp,
+                },
+                (&GeneratorWitness(ref __self_0), &GeneratorWitness(ref __arg_1_0)) => {
+                    Ord::cmp(__self_0, __arg_1_0)
+                }
+                (&Tuple(ref __self_0), &Tuple(ref __arg_1_0)) => Ord::cmp(__self_0, __arg_1_0),
+                (&Projection(ref __self_0), &Projection(ref __arg_1_0)) => {
+                    Ord::cmp(__self_0, __arg_1_0)
+                }
+                (&Opaque(ref __self_0, ref __self_1), &Opaque(ref __arg_1_0, ref __arg_1_1)) => {
+                    match Ord::cmp(__self_0, __arg_1_0) {
+                        Ordering::Equal => Ord::cmp(__self_1, __arg_1_1),
+                        cmp => cmp,
+                    }
+                }
+                (&Param(ref __self_0), &Param(ref __arg_1_0)) => Ord::cmp(__self_0, __arg_1_0),
+                (&Bound(ref __self_0, ref __self_1), &Bound(ref __arg_1_0, ref __arg_1_1)) => {
+                    match Ord::cmp(__self_0, __arg_1_0) {
+                        Ordering::Equal => Ord::cmp(__self_1, __arg_1_1),
+                        cmp => cmp,
+                    }
+                }
+                (&Placeholder(ref __self_0), &Placeholder(ref __arg_1_0)) => {
+                    Ord::cmp(__self_0, __arg_1_0)
+                }
+                (&Infer(ref __self_0), &Infer(ref __arg_1_0)) => Ord::cmp(__self_0, __arg_1_0),
+                (&Error(ref __self_0), &Error(ref __arg_1_0)) => Ord::cmp(__self_0, __arg_1_0),
+                _ => Ordering::Equal,
+            }
+        } else {
+            Ord::cmp(&__self_vi, &__arg_1_vi)
+        }
+    }
+}
+
+impl<I: Interner> hash::Hash for TyKind<I> {
+    fn hash<__H: hash::Hasher>(&self, state: &mut __H) -> () {
+        match (&*self,) {
+            (&Int(ref __self_0),) => {
+                hash::Hash::hash(&discriminant(self), state);
+                hash::Hash::hash(__self_0, state)
+            }
+            (&Uint(ref __self_0),) => {
+                hash::Hash::hash(&discriminant(self), state);
+                hash::Hash::hash(__self_0, state)
+            }
+            (&Float(ref __self_0),) => {
+                hash::Hash::hash(&discriminant(self), state);
+                hash::Hash::hash(__self_0, state)
+            }
+            (&Adt(ref __self_0, ref __self_1),) => {
+                hash::Hash::hash(&discriminant(self), state);
+                hash::Hash::hash(__self_0, state);
+                hash::Hash::hash(__self_1, state)
+            }
+            (&Foreign(ref __self_0),) => {
+                hash::Hash::hash(&discriminant(self), state);
+                hash::Hash::hash(__self_0, state)
+            }
+            (&Array(ref __self_0, ref __self_1),) => {
+                hash::Hash::hash(&discriminant(self), state);
+                hash::Hash::hash(__self_0, state);
+                hash::Hash::hash(__self_1, state)
+            }
+            (&Slice(ref __self_0),) => {
+                hash::Hash::hash(&discriminant(self), state);
+                hash::Hash::hash(__self_0, state)
+            }
+            (&RawPtr(ref __self_0),) => {
+                hash::Hash::hash(&discriminant(self), state);
+                hash::Hash::hash(__self_0, state)
+            }
+            (&Ref(ref __self_0, ref __self_1, ref __self_2),) => {
+                hash::Hash::hash(&discriminant(self), state);
+                hash::Hash::hash(__self_0, state);
+                hash::Hash::hash(__self_1, state);
+                hash::Hash::hash(__self_2, state)
+            }
+            (&FnDef(ref __self_0, ref __self_1),) => {
+                hash::Hash::hash(&discriminant(self), state);
+                hash::Hash::hash(__self_0, state);
+                hash::Hash::hash(__self_1, state)
+            }
+            (&FnPtr(ref __self_0),) => {
+                hash::Hash::hash(&discriminant(self), state);
+                hash::Hash::hash(__self_0, state)
+            }
+            (&Dynamic(ref __self_0, ref __self_1),) => {
+                hash::Hash::hash(&discriminant(self), state);
+                hash::Hash::hash(__self_0, state);
+                hash::Hash::hash(__self_1, state)
+            }
+            (&Closure(ref __self_0, ref __self_1),) => {
+                hash::Hash::hash(&discriminant(self), state);
+                hash::Hash::hash(__self_0, state);
+                hash::Hash::hash(__self_1, state)
+            }
+            (&Generator(ref __self_0, ref __self_1, ref __self_2),) => {
+                hash::Hash::hash(&discriminant(self), state);
+                hash::Hash::hash(__self_0, state);
+                hash::Hash::hash(__self_1, state);
+                hash::Hash::hash(__self_2, state)
+            }
+            (&GeneratorWitness(ref __self_0),) => {
+                hash::Hash::hash(&discriminant(self), state);
+                hash::Hash::hash(__self_0, state)
+            }
+            (&Tuple(ref __self_0),) => {
+                hash::Hash::hash(&discriminant(self), state);
+                hash::Hash::hash(__self_0, state)
+            }
+            (&Projection(ref __self_0),) => {
+                hash::Hash::hash(&discriminant(self), state);
+                hash::Hash::hash(__self_0, state)
+            }
+            (&Opaque(ref __self_0, ref __self_1),) => {
+                hash::Hash::hash(&discriminant(self), state);
+                hash::Hash::hash(__self_0, state);
+                hash::Hash::hash(__self_1, state)
+            }
+            (&Param(ref __self_0),) => {
+                hash::Hash::hash(&discriminant(self), state);
+                hash::Hash::hash(__self_0, state)
+            }
+            (&Bound(ref __self_0, ref __self_1),) => {
+                hash::Hash::hash(&discriminant(self), state);
+                hash::Hash::hash(__self_0, state);
+                hash::Hash::hash(__self_1, state)
+            }
+            (&Placeholder(ref __self_0),) => {
+                hash::Hash::hash(&discriminant(self), state);
+                hash::Hash::hash(__self_0, state)
+            }
+            (&Infer(ref __self_0),) => {
+                hash::Hash::hash(&discriminant(self), state);
+                hash::Hash::hash(__self_0, state)
+            }
+            (&Error(ref __self_0),) => {
+                hash::Hash::hash(&discriminant(self), state);
+                hash::Hash::hash(__self_0, state)
+            }
+            _ => hash::Hash::hash(&discriminant(self), state),
+        }
+    }
+}
+
+impl<I: Interner> fmt::Debug for TyKind<I> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match (&*self,) {
+            (&Bool,) => fmt::Formatter::write_str(f, "Bool"),
+            (&Char,) => fmt::Formatter::write_str(f, "Char"),
+            (&Int(ref __self_0),) => {
+                let debug_trait_builder = &mut fmt::Formatter::debug_tuple(f, "Int");
+                let _ = fmt::DebugTuple::field(debug_trait_builder, &__self_0);
+                fmt::DebugTuple::finish(debug_trait_builder)
+            }
+            (&Uint(ref __self_0),) => {
+                let debug_trait_builder = &mut fmt::Formatter::debug_tuple(f, "Uint");
+                let _ = fmt::DebugTuple::field(debug_trait_builder, &__self_0);
+                fmt::DebugTuple::finish(debug_trait_builder)
+            }
+            (&Float(ref __self_0),) => {
+                let debug_trait_builder = &mut fmt::Formatter::debug_tuple(f, "Float");
+                let _ = fmt::DebugTuple::field(debug_trait_builder, &__self_0);
+                fmt::DebugTuple::finish(debug_trait_builder)
+            }
+            (&Adt(ref __self_0, ref __self_1),) => {
+                let debug_trait_builder = &mut fmt::Formatter::debug_tuple(f, "Adt");
+                let _ = fmt::DebugTuple::field(debug_trait_builder, &__self_0);
+                let _ = fmt::DebugTuple::field(debug_trait_builder, &__self_1);
+                fmt::DebugTuple::finish(debug_trait_builder)
+            }
+            (&Foreign(ref __self_0),) => {
+                let debug_trait_builder = &mut fmt::Formatter::debug_tuple(f, "Foreign");
+                let _ = fmt::DebugTuple::field(debug_trait_builder, &__self_0);
+                fmt::DebugTuple::finish(debug_trait_builder)
+            }
+            (&Str,) => fmt::Formatter::write_str(f, "Str"),
+            (&Array(ref __self_0, ref __self_1),) => {
+                let debug_trait_builder = &mut fmt::Formatter::debug_tuple(f, "Array");
+                let _ = fmt::DebugTuple::field(debug_trait_builder, &__self_0);
+                let _ = fmt::DebugTuple::field(debug_trait_builder, &__self_1);
+                fmt::DebugTuple::finish(debug_trait_builder)
+            }
+            (&Slice(ref __self_0),) => {
+                let debug_trait_builder = &mut fmt::Formatter::debug_tuple(f, "Slice");
+                let _ = fmt::DebugTuple::field(debug_trait_builder, &__self_0);
+                fmt::DebugTuple::finish(debug_trait_builder)
+            }
+            (&RawPtr(ref __self_0),) => {
+                let debug_trait_builder = &mut fmt::Formatter::debug_tuple(f, "RawPtr");
+                let _ = fmt::DebugTuple::field(debug_trait_builder, &__self_0);
+                fmt::DebugTuple::finish(debug_trait_builder)
+            }
+            (&Ref(ref __self_0, ref __self_1, ref __self_2),) => {
+                let debug_trait_builder = &mut fmt::Formatter::debug_tuple(f, "Ref");
+                let _ = fmt::DebugTuple::field(debug_trait_builder, &__self_0);
+                let _ = fmt::DebugTuple::field(debug_trait_builder, &__self_1);
+                let _ = fmt::DebugTuple::field(debug_trait_builder, &__self_2);
+                fmt::DebugTuple::finish(debug_trait_builder)
+            }
+            (&FnDef(ref __self_0, ref __self_1),) => {
+                let debug_trait_builder = &mut fmt::Formatter::debug_tuple(f, "FnDef");
+                let _ = fmt::DebugTuple::field(debug_trait_builder, &__self_0);
+                let _ = fmt::DebugTuple::field(debug_trait_builder, &__self_1);
+                fmt::DebugTuple::finish(debug_trait_builder)
+            }
+            (&FnPtr(ref __self_0),) => {
+                let debug_trait_builder = &mut fmt::Formatter::debug_tuple(f, "FnPtr");
+                let _ = fmt::DebugTuple::field(debug_trait_builder, &__self_0);
+                fmt::DebugTuple::finish(debug_trait_builder)
+            }
+            (&Dynamic(ref __self_0, ref __self_1),) => {
+                let debug_trait_builder = &mut fmt::Formatter::debug_tuple(f, "Dynamic");
+                let _ = fmt::DebugTuple::field(debug_trait_builder, &__self_0);
+                let _ = fmt::DebugTuple::field(debug_trait_builder, &__self_1);
+                fmt::DebugTuple::finish(debug_trait_builder)
+            }
+            (&Closure(ref __self_0, ref __self_1),) => {
+                let debug_trait_builder = &mut fmt::Formatter::debug_tuple(f, "Closure");
+                let _ = fmt::DebugTuple::field(debug_trait_builder, &__self_0);
+                let _ = fmt::DebugTuple::field(debug_trait_builder, &__self_1);
+                fmt::DebugTuple::finish(debug_trait_builder)
+            }
+            (&Generator(ref __self_0, ref __self_1, ref __self_2),) => {
+                let debug_trait_builder = &mut fmt::Formatter::debug_tuple(f, "Generator");
+                let _ = fmt::DebugTuple::field(debug_trait_builder, &__self_0);
+                let _ = fmt::DebugTuple::field(debug_trait_builder, &__self_1);
+                let _ = fmt::DebugTuple::field(debug_trait_builder, &__self_2);
+                fmt::DebugTuple::finish(debug_trait_builder)
+            }
+            (&GeneratorWitness(ref __self_0),) => {
+                let debug_trait_builder = &mut fmt::Formatter::debug_tuple(f, "GeneratorWitness");
+                let _ = fmt::DebugTuple::field(debug_trait_builder, &__self_0);
+                fmt::DebugTuple::finish(debug_trait_builder)
+            }
+            (&Never,) => fmt::Formatter::write_str(f, "Never"),
+            (&Tuple(ref __self_0),) => {
+                let debug_trait_builder = &mut fmt::Formatter::debug_tuple(f, "Tuple");
+                let _ = fmt::DebugTuple::field(debug_trait_builder, &__self_0);
+                fmt::DebugTuple::finish(debug_trait_builder)
+            }
+            (&Projection(ref __self_0),) => {
+                let debug_trait_builder = &mut fmt::Formatter::debug_tuple(f, "Projection");
+                let _ = fmt::DebugTuple::field(debug_trait_builder, &__self_0);
+                fmt::DebugTuple::finish(debug_trait_builder)
+            }
+            (&Opaque(ref __self_0, ref __self_1),) => {
+                let debug_trait_builder = &mut fmt::Formatter::debug_tuple(f, "Opaque");
+                let _ = fmt::DebugTuple::field(debug_trait_builder, &__self_0);
+                let _ = fmt::DebugTuple::field(debug_trait_builder, &__self_1);
+                fmt::DebugTuple::finish(debug_trait_builder)
+            }
+            (&Param(ref __self_0),) => {
+                let debug_trait_builder = &mut fmt::Formatter::debug_tuple(f, "Param");
+                let _ = fmt::DebugTuple::field(debug_trait_builder, &__self_0);
+                fmt::DebugTuple::finish(debug_trait_builder)
+            }
+            (&Bound(ref __self_0, ref __self_1),) => {
+                let debug_trait_builder = &mut fmt::Formatter::debug_tuple(f, "Bound");
+                let _ = fmt::DebugTuple::field(debug_trait_builder, &__self_0);
+                let _ = fmt::DebugTuple::field(debug_trait_builder, &__self_1);
+                fmt::DebugTuple::finish(debug_trait_builder)
+            }
+            (&Placeholder(ref __self_0),) => {
+                let debug_trait_builder = &mut fmt::Formatter::debug_tuple(f, "Placeholder");
+                let _ = fmt::DebugTuple::field(debug_trait_builder, &__self_0);
+                fmt::DebugTuple::finish(debug_trait_builder)
+            }
+            (&Infer(ref __self_0),) => {
+                let debug_trait_builder = &mut fmt::Formatter::debug_tuple(f, "Infer");
+                let _ = fmt::DebugTuple::field(debug_trait_builder, &__self_0);
+                fmt::DebugTuple::finish(debug_trait_builder)
+            }
+            (&Error(ref __self_0),) => {
+                let debug_trait_builder = &mut fmt::Formatter::debug_tuple(f, "Error");
+                let _ = fmt::DebugTuple::field(debug_trait_builder, &__self_0);
+                fmt::DebugTuple::finish(debug_trait_builder)
+            }
+        }
+    }
+}
+
+impl<I: Interner, E: TyEncoder> Encodable<E> for TyKind<I>
 where
-    __I::DelaySpanBugEmitted: Encodable<__E>,
-    __I::AdtDef: Encodable<__E>,
-    __I::SubstsRef: Encodable<__E>,
-    __I::DefId: Encodable<__E>,
-    __I::Ty: Encodable<__E>,
-    __I::Const: Encodable<__E>,
-    __I::Region: Encodable<__E>,
-    __I::TypeAndMut: Encodable<__E>,
-    __I::Mutability: Encodable<__E>,
-    __I::Movability: Encodable<__E>,
-    __I::PolyFnSig: Encodable<__E>,
-    __I::ListBinderExistentialPredicate: Encodable<__E>,
-    __I::BinderListTy: Encodable<__E>,
-    __I::ListTy: Encodable<__E>,
-    __I::ProjectionTy: Encodable<__E>,
-    __I::ParamTy: Encodable<__E>,
-    __I::BoundTy: Encodable<__E>,
-    __I::PlaceholderType: Encodable<__E>,
-    __I::InferTy: Encodable<__E>,
-    __I::DelaySpanBugEmitted: Encodable<__E>,
-    __I::PredicateKind: Encodable<__E>,
-    __I::AllocId: Encodable<__E>,
+    I::DelaySpanBugEmitted: Encodable<E>,
+    I::AdtDef: Encodable<E>,
+    I::SubstsRef: Encodable<E>,
+    I::DefId: Encodable<E>,
+    I::Ty: Encodable<E>,
+    I::Const: Encodable<E>,
+    I::Region: Encodable<E>,
+    I::TypeAndMut: Encodable<E>,
+    I::Mutability: Encodable<E>,
+    I::Movability: Encodable<E>,
+    I::PolyFnSig: Encodable<E>,
+    I::ListBinderExistentialPredicate: Encodable<E>,
+    I::BinderListTy: Encodable<E>,
+    I::ListTy: Encodable<E>,
+    I::ProjectionTy: Encodable<E>,
+    I::ParamTy: Encodable<E>,
+    I::BoundTy: Encodable<E>,
+    I::PlaceholderType: Encodable<E>,
+    I::InferTy: Encodable<E>,
+    I::DelaySpanBugEmitted: Encodable<E>,
+    I::PredicateKind: Encodable<E>,
+    I::AllocId: Encodable<E>,
 {
-    fn encode(&self, e: &mut __E) -> Result<(), <__E as rustc_serialize::Encoder>::Error> {
+    fn encode(&self, e: &mut E) -> Result<(), <E as rustc_serialize::Encoder>::Error> {
         rustc_serialize::Encoder::emit_enum(e, |e| {
-            use rustc_type_ir::TyKind::*;
+            let disc = discriminant(self);
             match self {
-                Bool => e.emit_enum_variant("Bool", 0, 0, |_| Ok(())),
-                Char => e.emit_enum_variant("Char", 1, 0, |_| Ok(())),
-                Int(i) => e.emit_enum_variant("Int", 2, 1, |e| {
+                Bool => e.emit_enum_variant("Bool", disc, 0, |_| Ok(())),
+                Char => e.emit_enum_variant("Char", disc, 0, |_| Ok(())),
+                Int(i) => e.emit_enum_variant("Int", disc, 1, |e| {
                     e.emit_enum_variant_arg(true, |e| i.encode(e))?;
                     Ok(())
                 }),
-                Uint(u) => e.emit_enum_variant("Uint", 3, 1, |e| {
+                Uint(u) => e.emit_enum_variant("Uint", disc, 1, |e| {
                     e.emit_enum_variant_arg(true, |e| u.encode(e))?;
                     Ok(())
                 }),
-                Float(f) => e.emit_enum_variant("Float", 4, 1, |e| {
+                Float(f) => e.emit_enum_variant("Float", disc, 1, |e| {
                     e.emit_enum_variant_arg(true, |e| f.encode(e))?;
                     Ok(())
                 }),
-                Adt(adt, substs) => e.emit_enum_variant("Adt", 5, 2, |e| {
+                Adt(adt, substs) => e.emit_enum_variant("Adt", disc, 2, |e| {
                     e.emit_enum_variant_arg(true, |e| adt.encode(e))?;
                     e.emit_enum_variant_arg(false, |e| substs.encode(e))?;
                     Ok(())
                 }),
-                Foreign(def_id) => e.emit_enum_variant("Foreign", 6, 1, |e| {
+                Foreign(def_id) => e.emit_enum_variant("Foreign", disc, 1, |e| {
                     e.emit_enum_variant_arg(true, |e| def_id.encode(e))?;
                     Ok(())
                 }),
-                Str => e.emit_enum_variant("Str", 7, 0, |_| Ok(())),
-                Array(t, c) => e.emit_enum_variant("Array", 8, 2, |e| {
+                Str => e.emit_enum_variant("Str", disc, 0, |_| Ok(())),
+                Array(t, c) => e.emit_enum_variant("Array", disc, 2, |e| {
                     e.emit_enum_variant_arg(true, |e| t.encode(e))?;
                     e.emit_enum_variant_arg(false, |e| c.encode(e))?;
                     Ok(())
                 }),
-                Slice(t) => e.emit_enum_variant("Slice", 9, 1, |e| {
+                Slice(t) => e.emit_enum_variant("Slice", disc, 1, |e| {
                     e.emit_enum_variant_arg(true, |e| t.encode(e))?;
                     Ok(())
                 }),
-                RawPtr(tam) => e.emit_enum_variant("RawPtr", 10, 1, |e| {
+                RawPtr(tam) => e.emit_enum_variant("RawPtr", disc, 1, |e| {
                     e.emit_enum_variant_arg(true, |e| tam.encode(e))?;
                     Ok(())
                 }),
-                Ref(r, t, m) => e.emit_enum_variant("Ref", 11, 3, |e| {
+                Ref(r, t, m) => e.emit_enum_variant("Ref", disc, 3, |e| {
                     e.emit_enum_variant_arg(true, |e| r.encode(e))?;
                     e.emit_enum_variant_arg(false, |e| t.encode(e))?;
                     e.emit_enum_variant_arg(false, |e| m.encode(e))?;
                     Ok(())
                 }),
-                FnDef(def_id, substs) => e.emit_enum_variant("FnDef", 12, 2, |e| {
+                FnDef(def_id, substs) => e.emit_enum_variant("FnDef", disc, 2, |e| {
                     e.emit_enum_variant_arg(true, |e| def_id.encode(e))?;
                     e.emit_enum_variant_arg(false, |e| substs.encode(e))?;
                     Ok(())
                 }),
-                FnPtr(polyfnsig) => e.emit_enum_variant("FnPtr", 13, 1, |e| {
+                FnPtr(polyfnsig) => e.emit_enum_variant("FnPtr", disc, 1, |e| {
                     e.emit_enum_variant_arg(true, |e| polyfnsig.encode(e))?;
                     Ok(())
                 }),
-                Dynamic(l, r) => e.emit_enum_variant("Dynamic", 14, 2, |e| {
+                Dynamic(l, r) => e.emit_enum_variant("Dynamic", disc, 2, |e| {
                     e.emit_enum_variant_arg(true, |e| l.encode(e))?;
                     e.emit_enum_variant_arg(false, |e| r.encode(e))?;
                     Ok(())
                 }),
-                Closure(def_id, substs) => e.emit_enum_variant("Closure", 15, 2, |e| {
+                Closure(def_id, substs) => e.emit_enum_variant("Closure", disc, 2, |e| {
                     e.emit_enum_variant_arg(true, |e| def_id.encode(e))?;
                     e.emit_enum_variant_arg(false, |e| substs.encode(e))?;
                     Ok(())
                 }),
-                Generator(def_id, substs, m) => e.emit_enum_variant("Generator", 16, 3, |e| {
+                Generator(def_id, substs, m) => e.emit_enum_variant("Generator", disc, 3, |e| {
                     e.emit_enum_variant_arg(true, |e| def_id.encode(e))?;
                     e.emit_enum_variant_arg(false, |e| substs.encode(e))?;
                     e.emit_enum_variant_arg(false, |e| m.encode(e))?;
                     Ok(())
                 }),
-                GeneratorWitness(b) => e.emit_enum_variant("GeneratorWitness", 17, 1, |e| {
+                GeneratorWitness(b) => e.emit_enum_variant("GeneratorWitness", disc, 1, |e| {
                     e.emit_enum_variant_arg(true, |e| b.encode(e))?;
                     Ok(())
                 }),
-                Never => e.emit_enum_variant("Never", 18, 0, |_| Ok(())),
-                Tuple(substs) => e.emit_enum_variant("Tuple", 19, 1, |e| {
+                Never => e.emit_enum_variant("Never", disc, 0, |_| Ok(())),
+                Tuple(substs) => e.emit_enum_variant("Tuple", disc, 1, |e| {
                     e.emit_enum_variant_arg(true, |e| substs.encode(e))?;
                     Ok(())
                 }),
-                Projection(p) => e.emit_enum_variant("Projection", 20, 1, |e| {
+                Projection(p) => e.emit_enum_variant("Projection", disc, 1, |e| {
                     e.emit_enum_variant_arg(true, |e| p.encode(e))?;
                     Ok(())
                 }),
-                Opaque(def_id, substs) => e.emit_enum_variant("Opaque", 21, 2, |e| {
+                Opaque(def_id, substs) => e.emit_enum_variant("Opaque", disc, 2, |e| {
                     e.emit_enum_variant_arg(true, |e| def_id.encode(e))?;
                     e.emit_enum_variant_arg(false, |e| substs.encode(e))?;
                     Ok(())
                 }),
-                Param(p) => e.emit_enum_variant("Param", 22, 1, |e| {
+                Param(p) => e.emit_enum_variant("Param", disc, 1, |e| {
                     e.emit_enum_variant_arg(true, |e| p.encode(e))?;
                     Ok(())
                 }),
-                Bound(d, b) => e.emit_enum_variant("Bound", 23, 2, |e| {
+                Bound(d, b) => e.emit_enum_variant("Bound", disc, 2, |e| {
                     e.emit_enum_variant_arg(true, |e| d.encode(e))?;
                     e.emit_enum_variant_arg(false, |e| b.encode(e))?;
                     Ok(())
                 }),
-                Placeholder(p) => e.emit_enum_variant("Placeholder", 24, 1, |e| {
+                Placeholder(p) => e.emit_enum_variant("Placeholder", disc, 1, |e| {
                     e.emit_enum_variant_arg(true, |e| p.encode(e))?;
                     Ok(())
                 }),
-                Infer(i) => e.emit_enum_variant("Infer", 25, 1, |e| {
+                Infer(i) => e.emit_enum_variant("Infer", disc, 1, |e| {
                     e.emit_enum_variant_arg(true, |e| i.encode(e))?;
                     Ok(())
                 }),
-                Error(d) => e.emit_enum_variant("Error", 26, 1, |e| {
+                Error(d) => e.emit_enum_variant("Error", disc, 1, |e| {
                     e.emit_enum_variant_arg(true, |e| d.encode(e))?;
                     Ok(())
                 }),
@@ -373,92 +819,82 @@ where
     }
 }
 
-#[allow(rustc::usage_of_ty_tykind)]
-impl<__I: Interner, __D: TyDecoder<I = __I>> Decodable<__D> for TyKind<__I>
+impl<I: Interner, D: TyDecoder<I = I>> Decodable<D> for TyKind<I>
 where
-    __I::DelaySpanBugEmitted: Decodable<__D>,
-    __I::AdtDef: Decodable<__D>,
-    __I::SubstsRef: Decodable<__D>,
-    __I::DefId: Decodable<__D>,
-    __I::Ty: Decodable<__D>,
-    __I::Const: Decodable<__D>,
-    __I::Region: Decodable<__D>,
-    __I::TypeAndMut: Decodable<__D>,
-    __I::Mutability: Decodable<__D>,
-    __I::Movability: Decodable<__D>,
-    __I::PolyFnSig: Decodable<__D>,
-    __I::ListBinderExistentialPredicate: Decodable<__D>,
-    __I::BinderListTy: Decodable<__D>,
-    __I::ListTy: Decodable<__D>,
-    __I::ProjectionTy: Decodable<__D>,
-    __I::ParamTy: Decodable<__D>,
-    __I::BoundTy: Decodable<__D>,
-    __I::PlaceholderType: Decodable<__D>,
-    __I::InferTy: Decodable<__D>,
-    __I::DelaySpanBugEmitted: Decodable<__D>,
-    __I::PredicateKind: Decodable<__D>,
-    __I::AllocId: Decodable<__D>,
+    I::DelaySpanBugEmitted: Decodable<D>,
+    I::AdtDef: Decodable<D>,
+    I::SubstsRef: Decodable<D>,
+    I::DefId: Decodable<D>,
+    I::Ty: Decodable<D>,
+    I::Const: Decodable<D>,
+    I::Region: Decodable<D>,
+    I::TypeAndMut: Decodable<D>,
+    I::Mutability: Decodable<D>,
+    I::Movability: Decodable<D>,
+    I::PolyFnSig: Decodable<D>,
+    I::ListBinderExistentialPredicate: Decodable<D>,
+    I::BinderListTy: Decodable<D>,
+    I::ListTy: Decodable<D>,
+    I::ProjectionTy: Decodable<D>,
+    I::ParamTy: Decodable<D>,
+    I::BoundTy: Decodable<D>,
+    I::PlaceholderType: Decodable<D>,
+    I::InferTy: Decodable<D>,
+    I::DelaySpanBugEmitted: Decodable<D>,
+    I::PredicateKind: Decodable<D>,
+    I::AllocId: Decodable<D>,
 {
-    fn decode(__decoder: &mut __D) -> Self {
-        use TyKind::*;
-
-        match rustc_serialize::Decoder::read_usize(__decoder) {
+    fn decode(d: &mut D) -> Self {
+        match rustc_serialize::Decoder::read_usize(d) {
             0 => Bool,
             1 => Char,
-            2 => Int(rustc_serialize::Decodable::decode(__decoder)),
-            3 => Uint(rustc_serialize::Decodable::decode(__decoder)),
-            4 => Float(rustc_serialize::Decodable::decode(__decoder)),
-            5 => Adt(
-                rustc_serialize::Decodable::decode(__decoder),
-                rustc_serialize::Decodable::decode(__decoder),
-            ),
-            6 => Foreign(rustc_serialize::Decodable::decode(__decoder)),
+            2 => Int(rustc_serialize::Decodable::decode(d)),
+            3 => Uint(rustc_serialize::Decodable::decode(d)),
+            4 => Float(rustc_serialize::Decodable::decode(d)),
+            5 => Adt(rustc_serialize::Decodable::decode(d), rustc_serialize::Decodable::decode(d)),
+            6 => Foreign(rustc_serialize::Decodable::decode(d)),
             7 => Str,
-            8 => Array(
-                rustc_serialize::Decodable::decode(__decoder),
-                rustc_serialize::Decodable::decode(__decoder),
-            ),
-            9 => Slice(rustc_serialize::Decodable::decode(__decoder)),
-            10 => RawPtr(rustc_serialize::Decodable::decode(__decoder)),
+            8 => {
+                Array(rustc_serialize::Decodable::decode(d), rustc_serialize::Decodable::decode(d))
+            }
+            9 => Slice(rustc_serialize::Decodable::decode(d)),
+            10 => RawPtr(rustc_serialize::Decodable::decode(d)),
             11 => Ref(
-                rustc_serialize::Decodable::decode(__decoder),
-                rustc_serialize::Decodable::decode(__decoder),
-                rustc_serialize::Decodable::decode(__decoder),
+                rustc_serialize::Decodable::decode(d),
+                rustc_serialize::Decodable::decode(d),
+                rustc_serialize::Decodable::decode(d),
             ),
-            12 => FnDef(
-                rustc_serialize::Decodable::decode(__decoder),
-                rustc_serialize::Decodable::decode(__decoder),
-            ),
-            13 => FnPtr(rustc_serialize::Decodable::decode(__decoder)),
+            12 => {
+                FnDef(rustc_serialize::Decodable::decode(d), rustc_serialize::Decodable::decode(d))
+            }
+            13 => FnPtr(rustc_serialize::Decodable::decode(d)),
             14 => Dynamic(
-                rustc_serialize::Decodable::decode(__decoder),
-                rustc_serialize::Decodable::decode(__decoder),
+                rustc_serialize::Decodable::decode(d),
+                rustc_serialize::Decodable::decode(d),
             ),
             15 => Closure(
-                rustc_serialize::Decodable::decode(__decoder),
-                rustc_serialize::Decodable::decode(__decoder),
+                rustc_serialize::Decodable::decode(d),
+                rustc_serialize::Decodable::decode(d),
             ),
             16 => Generator(
-                rustc_serialize::Decodable::decode(__decoder),
-                rustc_serialize::Decodable::decode(__decoder),
-                rustc_serialize::Decodable::decode(__decoder),
+                rustc_serialize::Decodable::decode(d),
+                rustc_serialize::Decodable::decode(d),
+                rustc_serialize::Decodable::decode(d),
             ),
-            17 => GeneratorWitness(rustc_serialize::Decodable::decode(__decoder)),
+            17 => GeneratorWitness(rustc_serialize::Decodable::decode(d)),
             18 => Never,
-            19 => Tuple(rustc_serialize::Decodable::decode(__decoder)),
-            20 => Projection(rustc_serialize::Decodable::decode(__decoder)),
-            21 => Opaque(
-                rustc_serialize::Decodable::decode(__decoder),
-                rustc_serialize::Decodable::decode(__decoder),
-            ),
-            22 => Param(rustc_serialize::Decodable::decode(__decoder)),
-            23 => Bound(
-                rustc_serialize::Decodable::decode(__decoder),
-                rustc_serialize::Decodable::decode(__decoder),
-            ),
-            24 => Placeholder(rustc_serialize::Decodable::decode(__decoder)),
-            25 => Infer(rustc_serialize::Decodable::decode(__decoder)),
-            26 => Error(rustc_serialize::Decodable::decode(__decoder)),
+            19 => Tuple(rustc_serialize::Decodable::decode(d)),
+            20 => Projection(rustc_serialize::Decodable::decode(d)),
+            21 => {
+                Opaque(rustc_serialize::Decodable::decode(d), rustc_serialize::Decodable::decode(d))
+            }
+            22 => Param(rustc_serialize::Decodable::decode(d)),
+            23 => {
+                Bound(rustc_serialize::Decodable::decode(d), rustc_serialize::Decodable::decode(d))
+            }
+            24 => Placeholder(rustc_serialize::Decodable::decode(d)),
+            25 => Infer(rustc_serialize::Decodable::decode(d)),
+            26 => Error(rustc_serialize::Decodable::decode(d)),
             _ => panic!(
                 "{}",
                 format!(

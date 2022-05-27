@@ -449,13 +449,13 @@ pub(crate) struct TyS<'tcx> {
 }
 
 // `TyS` is used a lot. Make sure it doesn't unintentionally get bigger.
-//#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-//static_assert_size!(TyS<'_>, 40);
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+static_assert_size!(TyS<'_>, 40);
 
 // We are actually storing a stable hash cache next to the type, so let's
 // also check the full size
-//#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-//static_assert_size!(WithStableHash<TyS<'_>>, 56);
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+static_assert_size!(WithStableHash<TyS<'_>>, 56);
 
 /// Use this rather than `TyS`, whenever possible.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable)]
