@@ -36,9 +36,11 @@ fn main() {
 
         asm!("", in("p0") foo);
         //~^ ERROR register class `preg` can only be used as a clobber, not as an input or output
+        //~| ERROR type `i32` cannot be used with this register class
         asm!("", out("p0") _);
         asm!("{}", in(preg) foo);
         //~^ ERROR register class `preg` can only be used as a clobber, not as an input or output
+        //~| ERROR type `i32` cannot be used with this register class
         asm!("{}", out(preg) _);
         //~^ ERROR register class `preg` can only be used as a clobber, not as an input or output
 
