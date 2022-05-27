@@ -795,7 +795,9 @@ fn partition_source(s: &str, edition: Edition) -> (String, String, String) {
                         // If not, then we append the new line into the pending attribute to check
                         // if this time it's complete...
                         mod_attr_pending.push_str(line);
-                        if !trimline.is_empty() && check_if_attr_is_complete(line, edition) {
+                        if !trimline.is_empty()
+                            && check_if_attr_is_complete(&mod_attr_pending, edition)
+                        {
                             // If it's complete, then we can clear the pending content.
                             mod_attr_pending.clear();
                         }
