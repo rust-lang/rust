@@ -94,10 +94,7 @@ pub(crate) struct Cache {
 
     // Private fields only used when initially crawling a crate to build a cache
     stack: Vec<Symbol>,
-    parent_stack: Vec<DefId>,
-    impl_generics_stack: Vec<(clean::Type, clean::Generics)>,
-    parent_is_trait_impl: bool,
-    parent_is_blanket_or_auto_impl: bool,
+    parent_stack: Vec<ParentStackItem>,
     stripped_mod: bool,
 
     pub(crate) search_index: Vec<IndexItem>,
@@ -263,7 +260,11 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
             let (parent, is_inherent_impl_item) = match *item.kind {
                 clean::StrippedItem(..) => ((None, None), false),
                 clean::AssocConstItem(..) | clean::AssocTypeItem(..)
-                    if self.cache.parent_is_trait_impl =>
+                    if self
+                        .cache
+                        .parent_stack
+                        .last()
+                        .map_or(false, |parent| parent.is_trait_impl()) =>
                 {
                     // skip associated items in trait impls
                     ((None, None), false)
@@ -274,7 +275,14 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                 | clean::StructFieldItem(..)
                 | clean::VariantItem(..) => (
                     (
-                        Some(*self.cache.parent_stack.last().expect("parent_stack is empty")),
+                        Some(
+                            self.cache
+                                .parent_stack
+                                .last()
+                                .expect("parent_stack is empty")
+                                .item_id()
+                                .expect_def_id(),
+                        ),
                         Some(&self.cache.stack[..self.cache.stack.len() - 1]),
                     ),
                     false,
@@ -284,8 +292,11 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                         ((None, None), false)
                     } else {
                         let last = self.cache.parent_stack.last().expect("parent_stack is empty 2");
-                        let did = *last;
-                        let path = match self.cache.paths.get(&did) {
+                        let did = match &*last {
+                            ParentStackItem::Impl { for_, .. } => for_.def_id(&self.cache),
+                            ParentStackItem::Type(item_id) => item_id.as_def_id(),
+                        };
+                        let path = match did.and_then(|did| self.cache.paths.get(&did)) {
                             // The current stack not necessarily has correlation
                             // for where the type was defined. On the other
                             // hand, `paths` always has the right
@@ -293,7 +304,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                             Some(&(ref fqp, _)) => Some(&fqp[..fqp.len() - 1]),
                             None => None,
                         };
-                        ((Some(*last), path), true)
+                        ((did, path), true)
                     }
                 }
                 _ => ((None, Some(&*self.cache.stack)), false),
@@ -320,8 +331,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                             search_type: get_function_type_for_search(
                                 &item,
                                 self.tcx,
-                                self.cache.impl_generics_stack.last(),
-                                self.cache.parent_is_blanket_or_auto_impl,
+                                clean_impl_generics(self.cache.parent_stack.last()).as_ref(),
                                 self.cache,
                             ),
                             aliases: item.attrs.get_doc_aliases(),
@@ -331,11 +341,11 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                 (Some(parent), None) if is_inherent_impl_item => {
                     // We have a parent, but we don't know where they're
                     // defined yet. Wait for later to index this item.
+                    let impl_generics = clean_impl_generics(self.cache.parent_stack.last());
                     self.cache.orphan_impl_items.push(OrphanImplItem {
                         parent,
                         item: item.clone(),
-                        impl_generics: self.cache.impl_generics_stack.last().cloned(),
-                        parent_is_blanket_or_auto_impl: self.cache.parent_is_blanket_or_auto_impl,
+                        impl_generics,
                     });
                 }
                 _ => {}
@@ -411,72 +421,19 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
             }
         }
 
-        // Maintain the parent stack
-        let orig_parent_is_trait_impl = self.cache.parent_is_trait_impl;
-        let parent_pushed = match *item.kind {
+        // Maintain the parent stack.
+        let (item, parent_pushed) = match *item.kind {
             clean::TraitItem(..)
             | clean::EnumItem(..)
             | clean::ForeignTypeItem
             | clean::StructItem(..)
             | clean::UnionItem(..)
-            | clean::VariantItem(..) => {
-                self.cache.parent_stack.push(item.item_id.expect_def_id());
-                self.cache.parent_is_trait_impl = false;
-                true
+            | clean::VariantItem(..)
+            | clean::ImplItem(..) => {
+                self.cache.parent_stack.push(ParentStackItem::new(&item));
+                (self.fold_item_recur(item), true)
             }
-            clean::ImplItem(ref i) => {
-                self.cache.parent_is_trait_impl = i.trait_.is_some();
-                match i.for_ {
-                    clean::Type::Path { ref path } => {
-                        self.cache.parent_stack.push(path.def_id());
-                        true
-                    }
-                    clean::DynTrait(ref bounds, _)
-                    | clean::BorrowedRef { type_: box clean::DynTrait(ref bounds, _), .. } => {
-                        self.cache.parent_stack.push(bounds[0].trait_.def_id());
-                        true
-                    }
-                    ref t => {
-                        let prim_did = t
-                            .primitive_type()
-                            .and_then(|t| self.cache.primitive_locations.get(&t).cloned());
-                        match prim_did {
-                            Some(did) => {
-                                self.cache.parent_stack.push(did);
-                                true
-                            }
-                            None => false,
-                        }
-                    }
-                }
-            }
-            _ => false,
-        };
-
-        // When recursing into an impl item, make the generics context visible
-        // to the child items.
-        let item = {
-            let mut item = item;
-            let mut old_parent_is_blanket_or_auto_impl = false;
-            if let clean::Item { kind: box clean::ImplItem(ref mut i), .. } = item {
-                old_parent_is_blanket_or_auto_impl = mem::replace(
-                    &mut self.cache.parent_is_blanket_or_auto_impl,
-                    !matches!(i.kind, clean::ImplKind::Normal),
-                );
-                self.cache.impl_generics_stack.push((
-                    mem::replace(&mut i.for_, clean::Type::Infer),
-                    mem::replace(
-                        &mut i.generics,
-                        clean::Generics { params: Vec::new(), where_predicates: Vec::new() },
-                    ),
-                ));
-            }
-            let mut item = self.fold_item_recur(item);
-            if let clean::Item { kind: box clean::ImplItem(ref mut i), .. } = item {
-                self.cache.parent_is_blanket_or_auto_impl = old_parent_is_blanket_or_auto_impl;
-                (i.for_, i.generics) = self.cache.impl_generics_stack.pop().expect("pushed above");
-            }
-            item
+            _ => (self.fold_item_recur(item), false),
         };
 
         // Once we've recursively found all the generics, hoard off all the
@@ -549,7 +506,6 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
             self.cache.parent_stack.pop().expect("parent stack already empty");
         }
         self.cache.stripped_mod = orig_stripped_mod;
-        self.cache.parent_is_trait_impl = orig_parent_is_trait_impl;
         ret
     }
 }
@@ -558,5 +514,56 @@ pub(crate) struct OrphanImplItem {
     pub(crate) parent: DefId,
     pub(crate) item: clean::Item,
     pub(crate) impl_generics: Option<(clean::Type, clean::Generics)>,
-    pub(crate) parent_is_blanket_or_auto_impl: bool,
+}
+
+/// Information about trait and type parents is tracked while traversing the item tree to build
+/// the cache.
+///
+/// We don't just store `Item` in there, because `Item` contains the list of children being
+/// traversed and it would be wasteful to clone all that. We also need the item id, so just
+/// storing `ItemKind` won't work, either.
+enum ParentStackItem {
+    Impl {
+        for_: clean::Type,
+        trait_: Option<clean::Path>,
+        generics: clean::Generics,
+        kind: clean::ImplKind,
+        item_id: ItemId,
+    },
+    Type(ItemId),
+}
+
+impl ParentStackItem {
+    fn new(item: &clean::Item) -> Self {
+        match &*item.kind {
+            clean::ItemKind::ImplItem(clean::Impl { for_, trait_, generics, kind, .. }) => {
+                ParentStackItem::Impl {
+                    for_: for_.clone(),
+                    trait_: trait_.clone(),
+                    generics: generics.clone(),
+                    kind: kind.clone(),
+                    item_id: item.item_id,
+                }
+            }
+            _ => ParentStackItem::Type(item.item_id),
+        }
+    }
+    fn is_trait_impl(&self) -> bool {
+        matches!(self, ParentStackItem::Impl { trait_: Some(..), .. })
+    }
+    fn item_id(&self) -> ItemId {
+        match self {
+            ParentStackItem::Impl { item_id, .. } => *item_id,
+            ParentStackItem::Type(item_id) => *item_id,
+        }
+    }
+}
+
+fn clean_impl_generics(item: Option<&ParentStackItem>) -> Option<(clean::Type, clean::Generics)> {
+    if let Some(ParentStackItem::Impl { for_, generics, kind: clean::ImplKind::Normal, .. }) = item
+    {
+        Some((for_.clone(), generics.clone()))
+    } else {
+        None
+    }
 }

@@ -25,9 +25,7 @@ pub(crate) fn build_index<'tcx>(
 
     // Attach all orphan items to the type's definition if the type
     // has since been learned.
-    for &OrphanImplItem { parent, ref item, ref impl_generics, parent_is_blanket_or_auto_impl } in
-        &cache.orphan_impl_items
-    {
+    for &OrphanImplItem { parent, ref item, ref impl_generics } in &cache.orphan_impl_items {
         if let Some(&(ref fqp, _)) = cache.paths.get(&parent) {
             let desc = item
                 .doc_value()
@@ -39,13 +37,7 @@ pub(crate) fn build_index<'tcx>(
                 desc,
                 parent: Some(parent),
                 parent_idx: None,
-                search_type: get_function_type_for_search(
-                    item,
-                    tcx,
-                    impl_generics.as_ref(),
-                    parent_is_blanket_or_auto_impl,
-                    cache,
-                ),
+                search_type: get_function_type_for_search(item, tcx, impl_generics.as_ref(), cache),
                 aliases: item.attrs.get_doc_aliases(),
             });
         }
@@ -201,13 +193,8 @@ pub(crate) fn get_function_type_for_search<'tcx>(
     item: &clean::Item,
     tcx: TyCtxt<'tcx>,
     impl_generics: Option<&(clean::Type, clean::Generics)>,
-    from_blanket_or_auto_impl: bool,
     cache: &Cache,
 ) -> Option<IndexItemFunctionType> {
-    if from_blanket_or_auto_impl {
-        return None;
-    }
-
     let (mut inputs, mut output) = match *item.kind {
         clean::FunctionItem(ref f) => get_fn_inputs_and_outputs(f, tcx, impl_generics, cache),
         clean::MethodItem(ref m, _) => get_fn_inputs_and_outputs(m, tcx, impl_generics, cache),
