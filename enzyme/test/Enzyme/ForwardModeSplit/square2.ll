@@ -20,7 +20,7 @@
 ; }
 
 
-define dso_local void @square_(double* nocapture readonly %src, double* nocapture %dest) local_unnamed_addr #0 {
+define dso_local void @square_(double* nocapture readonly %src, double* nocapture noalias %dest) local_unnamed_addr #0 {
 entry:
   %0 = load double, double* %src, align 8
   %mul = fmul double %0, %0
@@ -60,30 +60,28 @@ attributes #3 = { "correctly-rounded-divide-sqrt-fp-math"="false" "disable-tail-
 attributes #4 = { nounwind }
 
 
-; CHECK: define internal double @fwddiffesquare(double %x, double %"x'", i8* %tapeArg)
+; CHECK: define internal double @fwddiffesquare(double %x, double %"x'", i8* %malloccall1)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = bitcast i8* %tapeArg to { double, i8*, i8* }*
-; CHECK-NEXT:   %truetape = load { double, i8*, i8* }, { double, i8*, i8* }* %0
-; CHECK-NEXT:   %malloccall = extractvalue { double, i8*, i8* } %truetape, 2
+; CHECK-NEXT:   %[[malloccall:.+]] = alloca i8, i64 8, align 8
 ; CHECK-NEXT:   %"malloccall'mi" = alloca i8, i64 8, align 8
 ; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull dereferenceable(8) dereferenceable_or_null(8) %"malloccall'mi", i8 0, i64 8, i1 false)
 ; CHECK-NEXT:   %"x.addr'ipc" = bitcast i8* %"malloccall'mi" to double*
-; CHECK-NEXT:   %x.addr = bitcast i8* %malloccall to double*
-; CHECK-NEXT:   %malloccall1 = extractvalue { double, i8*, i8* } %truetape, 1
+; CHECK-NEXT:   %x.addr = bitcast i8* %[[malloccall]] to double*
 ; CHECK-NEXT:   %"malloccall1'mi" = alloca i8, i64 8, align 8
 ; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull dereferenceable(8) dereferenceable_or_null(8) %"malloccall1'mi", i8 0, i64 8, i1 false)
 ; CHECK-NEXT:   %"y'ipc" = bitcast i8* %"malloccall1'mi" to double*
 ; CHECK-NEXT:   %y = bitcast i8* %malloccall1 to double*
+; CHECK-NEXT:   store double %x, double* %x.addr, align 8
 ; CHECK-NEXT:   store double %"x'", double* %"x.addr'ipc", align 8
-; CHECK-NEXT:   %[[tapeArg1:.+]] = extractvalue { double, i8*, i8* } %truetape, 0
-; CHECK-NEXT:   call void @fwddiffesquare_(double* %x.addr, double* %"x.addr'ipc", double* %y, double* %"y'ipc", double %[[tapeArg1]])
+; CHECK-NEXT:   call void @fwddiffesquare_(double* %x.addr, double* %"x.addr'ipc", double* %y, double* %"y'ipc")
 ; CHECK-NEXT:   %[[i1:.+]] = load double, double* %"y'ipc", align 8
 ; CHECK-NEXT:   ret double %[[i1]]
 ; CHECK-NEXT: }
 
-; CHECK: define internal void @fwddiffesquare_(double* nocapture readonly %src, double* nocapture %"src'", double* nocapture %dest, double* nocapture %"dest'", double
+; CHECK: define internal void @fwddiffesquare_(double* nocapture readonly %src, double* nocapture %"src'", double* noalias nocapture %dest, double* nocapture %"dest'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[i1:.+]] = load double, double* %"src'", align 8
+; CHECK-NEXT:   %0 = load double, double* %src
 ; CHECK-NEXT:   %[[i2:.+]] = fmul fast double %[[i1]], %0
 ; CHECK-NEXT:   %[[i3:.+]] = fmul fast double %[[i1]], %0
 ; CHECK-NEXT:   %[[i4:.+]] = fadd fast double %[[i2]], %[[i3]]

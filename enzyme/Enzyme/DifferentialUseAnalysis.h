@@ -432,7 +432,7 @@ static inline bool is_value_needed_in_reverse(
       return seen[idx] = true;
     }
 
-    // Anything we may try to rematerialize requires its store opreands for
+    // Anything we may try to rematerialize requires its store operands for
     // the reverse pass.
     if (!OneLevel) {
       if (isa<StoreInst>(user) || isa<MemTransferInst>(user) ||
@@ -443,12 +443,21 @@ static inline bool is_value_needed_in_reverse(
           // we'll set it to unused, then check the gep, then here we'll
           // directly say unused by induction instead of checking the final
           // loads.
-          if (pair.second.stores.count(user))
+          if (pair.second.stores.count(user)) {
             for (LoadInst *L : pair.second.loads)
               if (is_value_needed_in_reverse<VT>(TR, gutils, L, mode, seen,
                                                  oldUnreachable)) {
                 return seen[idx] = true;
               }
+            for (auto &pair : pair.second.loadLikeCalls)
+              if (is_use_directly_needed_in_reverse(TR, gutils, pair.operand,
+                                                    pair.loadCall,
+                                                    oldUnreachable) ||
+                  is_value_needed_in_reverse<VT>(TR, gutils, pair.loadCall,
+                                                 mode, seen, oldUnreachable)) {
+                return seen[idx] = true;
+              }
+          }
         }
       }
     }
@@ -646,6 +655,11 @@ static inline void minCut(const DataLayout &DL, LoopInfo &OrigLI,
       for (LoadInst *L : pair.second.loads) {
         if (Intermediates.count(L)) {
           G[Node(pair.first, true)].insert(Node(L, false));
+        }
+      }
+      for (auto L : pair.second.loadLikeCalls) {
+        if (Intermediates.count(L.loadCall)) {
+          G[Node(pair.first, true)].insert(Node(L.loadCall, false));
         }
       }
     }

@@ -822,7 +822,8 @@ void calculateUnusedValuesInFunction(
         // Don't erase any store that needs to be preserved for a
         // rematerialization. However, if not used in a rematerialization, the
         // store should be eliminated in the reverse pass
-        if (mode == DerivativeMode::ReverseModeGradient) {
+        if (mode == DerivativeMode::ReverseModeGradient ||
+            mode == DerivativeMode::ForwardModeSplit) {
           auto CI = dyn_cast<CallInst>(const_cast<Instruction *>(inst));
           Function *CF = CI ? getFunctionFromCall(CI) : nullptr;
           StringRef funcName = CF ? CF->getName() : "";
@@ -832,8 +833,9 @@ void calculateUnusedValuesInFunction(
               if (pair.second.stores.count(inst)) {
                 if (is_value_needed_in_reverse<ValueType::Primal>(
                         TR, gutils, pair.first, mode, PrimalSeen,
-                        oldUnreachable))
+                        oldUnreachable)) {
                   return UseReq::Need;
+                }
               }
             }
             return UseReq::Recur;
@@ -4063,6 +4065,8 @@ Function *EnzymeLogic::CreateForwardDiff(
     for (auto &I : *BB)
       unnecessaryInstructionsTmp.insert(&I);
   }
+  if (mode == DerivativeMode::ForwardModeSplit)
+    gutils->computeGuaranteedFrees(guaranteedUnreachable, TR);
 
   SmallPtrSet<const Value *, 4> unnecessaryValues;
   SmallPtrSet<const Instruction *, 4> unnecessaryInstructions;
