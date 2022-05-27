@@ -559,7 +559,7 @@ impl<'tcx> WfPredicates<'tcx> {
                     }
                 }
 
-                ty::Generator(..) => {
+                ty::Generator(did, substs, ..) => {
                     // Walk ALL the types in the generator: this will
                     // include the upvar types as well as the yield
                     // type. Note that this is mildly distinct from
@@ -567,6 +567,8 @@ impl<'tcx> WfPredicates<'tcx> {
                     // about the signature of the closure. We don't
                     // have the problem of implied bounds here since
                     // generators don't take arguments.
+                    let obligations = self.nominal_obligations(did, substs);
+                    self.out.extend(obligations);
                 }
 
                 ty::Closure(did, substs) => {
@@ -618,11 +620,9 @@ impl<'tcx> WfPredicates<'tcx> {
                 }
 
                 ty::Opaque(did, substs) => {
-                    // all of the requirements on type parameters
-                    // should've been checked by the instantiation
-                    // of whatever returned this exact `impl Trait`.
-
-                    // for named opaque `impl Trait` types we still need to check them
+                    // All of the requirements on type parameters
+                    // have already been checked for `impl Trait` in
+                    // return position. We do need to check type-alias-impl-trait though.
                     if ty::is_impl_trait_defn(self.tcx, did).is_none() {
                         let obligations = self.nominal_obligations(did, substs);
                         self.out.extend(obligations);
@@ -684,6 +684,7 @@ impl<'tcx> WfPredicates<'tcx> {
         }
     }
 
+    #[instrument(level = "debug", skip(self))]
     fn nominal_obligations(
         &mut self,
         def_id: DefId,
@@ -698,6 +699,7 @@ impl<'tcx> WfPredicates<'tcx> {
         }
 
         let predicates = predicates.instantiate(self.tcx, substs);
+        trace!("{:#?}", predicates);
         debug_assert_eq!(predicates.predicates.len(), origins.len());
 
         iter::zip(iter::zip(predicates.predicates, predicates.spans), origins.into_iter().rev())
