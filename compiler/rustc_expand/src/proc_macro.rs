@@ -17,7 +17,7 @@ pub struct BangProcMacro {
     pub client: pm::bridge::client::Client<fn(pm::TokenStream) -> pm::TokenStream>,
 }
 
-impl base::ProcMacro for BangProcMacro {
+impl base::BangProcMacro for BangProcMacro {
     fn expand<'cx>(
         &self,
         ecx: &'cx mut ExtCtxt<'_>,
@@ -72,11 +72,11 @@ impl base::AttrProcMacro for AttrProcMacro {
     }
 }
 
-pub struct ProcMacroDerive {
+pub struct DeriveProcMacro {
     pub client: pm::bridge::client::Client<fn(pm::TokenStream) -> pm::TokenStream>,
 }
 
-impl MultiItemModifier for ProcMacroDerive {
+impl MultiItemModifier for DeriveProcMacro {
     fn expand(
         &self,
         ecx: &mut ExtCtxt<'_>,

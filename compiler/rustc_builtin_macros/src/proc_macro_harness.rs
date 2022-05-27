@@ -22,21 +22,16 @@ struct ProcMacroDerive {
     attrs: Vec<Symbol>,
 }
 
-enum ProcMacroDefType {
-    Attr,
-    Bang,
-}
-
 struct ProcMacroDef {
     id: NodeId,
     function_name: Ident,
     span: Span,
-    def_type: ProcMacroDefType,
 }
 
 enum ProcMacro {
     Derive(ProcMacroDerive),
-    Def(ProcMacroDef),
+    Attr(ProcMacroDef),
+    Bang(ProcMacroDef),
 }
 
 struct CollectProcMacros<'a> {
@@ -128,11 +123,10 @@ impl<'a> CollectProcMacros<'a> {
 
     fn collect_attr_proc_macro(&mut self, item: &'a ast::Item) {
         if self.in_root && item.vis.kind.is_pub() {
-            self.macros.push(ProcMacro::Def(ProcMacroDef {
+            self.macros.push(ProcMacro::Attr(ProcMacroDef {
                 id: item.id,
                 span: item.span,
                 function_name: item.ident,
-                def_type: ProcMacroDefType::Attr,
             }));
         } else {
             let msg = if !self.in_root {
@@ -147,11 +141,10 @@ impl<'a> CollectProcMacros<'a> {
 
     fn collect_bang_proc_macro(&mut self, item: &'a ast::Item) {
         if self.in_root && item.vis.kind.is_pub() {
-            self.macros.push(ProcMacro::Def(ProcMacroDef {
+            self.macros.push(ProcMacro::Bang(ProcMacroDef {
                 id: item.id,
                 span: item.span,
                 function_name: item.ident,
-                def_type: ProcMacroDefType::Bang,
             }));
         } else {
             let msg = if !self.in_root {
@@ -308,6 +301,17 @@ fn mk_decls(cx: &mut ExtCtxt<'_>, macros: &[ProcMacro]) -> P<ast::Item> {
         let proc_macro_ty_method_path = |cx: &ExtCtxt<'_>, method| {
             cx.expr_path(cx.path(span, vec![proc_macro, bridge, client, proc_macro_ty, method]))
         };
+        let attr_or_bang = |cx: &mut ExtCtxt<'_>, ca: &ProcMacroDef, ident| {
+            cx.resolver.declare_proc_macro(ca.id);
+            cx.expr_call(
+                span,
+                proc_macro_ty_method_path(cx, ident),
+                vec![
+                    cx.expr_str(ca.span, ca.function_name.name),
+                    local_path(cx, ca.span, ca.function_name),
+                ],
+            )
+        };
         macros
             .iter()
             .map(|m| match m {
@@ -329,22 +333,8 @@ fn mk_decls(cx: &mut ExtCtxt<'_>, macros: &[ProcMacro]) -> P<ast::Item> {
                         ],
                     )
                 }
-                ProcMacro::Def(ca) => {
-                    cx.resolver.declare_proc_macro(ca.id);
-                    let ident = match ca.def_type {
-                        ProcMacroDefType::Attr => attr,
-                        ProcMacroDefType::Bang => bang,
-                    };
-
-                    cx.expr_call(
-                        span,
-                        proc_macro_ty_method_path(cx, ident),
-                        vec![
-                            cx.expr_str(ca.span, ca.function_name.name),
-                            local_path(cx, ca.span, ca.function_name),
-                        ],
-                    )
-                }
+                ProcMacro::Attr(ca) => attr_or_bang(cx, &ca, attr),
+                ProcMacro::Bang(ca) => attr_or_bang(cx, &ca, bang),
             })
             .collect()
     };

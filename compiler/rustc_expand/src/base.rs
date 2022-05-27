@@ -266,7 +266,7 @@ where
     }
 }
 
-pub trait ProcMacro {
+pub trait BangProcMacro {
     fn expand<'cx>(
         &self,
         ecx: &'cx mut ExtCtxt<'_>,
@@ -275,7 +275,7 @@ pub trait ProcMacro {
     ) -> Result<TokenStream, ErrorGuaranteed>;
 }
 
-impl<F> ProcMacro for F
+impl<F> BangProcMacro for F
 where
     F: Fn(TokenStream) -> TokenStream,
 {
@@ -640,7 +640,7 @@ pub enum SyntaxExtensionKind {
     /// A token-based function-like macro.
     Bang(
         /// An expander with signature TokenStream -> TokenStream.
-        Box<dyn ProcMacro + sync::Sync + sync::Send>,
+        Box<dyn BangProcMacro + sync::Sync + sync::Send>,
     ),
 
     /// An AST-based function-like macro.

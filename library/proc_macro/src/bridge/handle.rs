@@ -8,6 +8,8 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 pub(super) type Handle = NonZeroU32;
 
+/// A store that associates values of type `T` with numeric handles. A value can
+/// be looked up using its handle.
 pub(super) struct OwnedStore<T: 'static> {
     counter: &'static AtomicUsize,
     data: BTreeMap<Handle, T>,
@@ -49,6 +51,7 @@ impl<T> IndexMut<Handle> for OwnedStore<T> {
     }
 }
 
+/// Like `OwnedStore`, but avoids storing any value more than once.
 pub(super) struct InternedStore<T: 'static> {
     owned: OwnedStore<T>,
     interner: HashMap<T, Handle>,

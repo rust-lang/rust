@@ -5,37 +5,30 @@ use super::*;
 // FIXME(eddyb) generate the definition of `HandleStore` in `server.rs`.
 use super::client::HandleStore;
 
-/// Declare an associated item of one of the traits below, optionally
-/// adjusting it (i.e., adding bounds to types and default bodies to methods).
-macro_rules! associated_item {
-    (type FreeFunctions) =>
-        (type FreeFunctions: 'static;);
-    (type TokenStream) =>
-        (type TokenStream: 'static + Clone;);
-    (type TokenStreamBuilder) =>
-        (type TokenStreamBuilder: 'static;);
-    (type TokenStreamIter) =>
-        (type TokenStreamIter: 'static + Clone;);
-    (type Group) =>
-        (type Group: 'static + Clone;);
-    (type Punct) =>
-        (type Punct: 'static + Copy + Eq + Hash;);
-    (type Ident) =>
-        (type Ident: 'static + Copy + Eq + Hash;);
-    (type Literal) =>
-        (type Literal: 'static + Clone;);
-    (type SourceFile) =>
-        (type SourceFile: 'static + Clone;);
-    (type MultiSpan) =>
-        (type MultiSpan: 'static;);
-    (type Diagnostic) =>
-        (type Diagnostic: 'static;);
-    (type Span) =>
-        (type Span: 'static + Copy + Eq + Hash;);
+pub trait Types {
+    type FreeFunctions: 'static;
+    type TokenStream: 'static + Clone;
+    type TokenStreamBuilder: 'static;
+    type TokenStreamIter: 'static + Clone;
+    type Group: 'static + Clone;
+    type Punct: 'static + Copy + Eq + Hash;
+    type Ident: 'static + Copy + Eq + Hash;
+    type Literal: 'static + Clone;
+    type SourceFile: 'static + Clone;
+    type MultiSpan: 'static;
+    type Diagnostic: 'static;
+    type Span: 'static + Copy + Eq + Hash;
+}
+
+/// Declare an associated fn of one of the traits below, adding necessary
+/// default bodies.
+macro_rules! associated_fn {
     (fn drop(&mut self, $arg:ident: $arg_ty:ty)) =>
         (fn drop(&mut self, $arg: $arg_ty) { mem::drop($arg) });
+
     (fn clone(&mut self, $arg:ident: $arg_ty:ty) -> $ret_ty:ty) =>
         (fn clone(&mut self, $arg: $arg_ty) -> $ret_ty { $arg.clone() });
+
     ($($item:tt)*) => ($($item)*;)
 }
 
@@ -43,12 +36,8 @@ macro_rules! declare_server_traits {
     ($($name:ident {
         $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)?;)*
     }),* $(,)?) => {
-        pub trait Types {
-            $(associated_item!(type $name);)*
-        }
-
         $(pub trait $name: Types {
-            $(associated_item!(fn $method(&mut self, $($arg: $arg_ty),*) $(-> $ret_ty)?);)*
+            $(associated_fn!(fn $method(&mut self, $($arg: $arg_ty),*) $(-> $ret_ty)?);)*
         })*
 
         pub trait Server: Types $(+ $name)* {}
@@ -89,15 +78,15 @@ macro_rules! define_dispatcher_impl {
         pub trait DispatcherTrait {
             // HACK(eddyb) these are here to allow `Self::$name` to work below.
             $(type $name;)*
-            fn dispatch(&mut self, b: Buffer<u8>) -> Buffer<u8>;
+            fn dispatch(&mut self, buf: Buffer) -> Buffer;
         }
 
         impl<S: Server> DispatcherTrait for Dispatcher<MarkedTypes<S>> {
             $(type $name = <MarkedTypes<S> as Types>::$name;)*
-            fn dispatch(&mut self, mut b: Buffer<u8>) -> Buffer<u8> {
+            fn dispatch(&mut self, mut buf: Buffer) -> Buffer {
                 let Dispatcher { handle_store, server } = self;
 
-                let mut reader = &b[..];
+                let mut reader = &buf[..];
                 match api_tags::Method::decode(&mut reader, &mut ()) {
                     $(api_tags::Method::$name(m) => match m {
                         $(api_tags::$name::$method => {
@@ -116,12 +105,12 @@ macro_rules! define_dispatcher_impl {
                                     .map_err(PanicMessage::from)
                             };
 
-                            b.clear();
-                            r.encode(&mut b, handle_store);
+                            buf.clear();
+                            r.encode(&mut buf, handle_store);
                         })*
                     }),*
                 }
-                b
+                buf
             }
         }
     }
@@ -132,11 +121,11 @@ pub trait ExecutionStrategy {
     fn run_bridge_and_client<D: Copy + Send + 'static>(
         &self,
         dispatcher: &mut impl DispatcherTrait,
-        input: Buffer<u8>,
-        run_client: extern "C" fn(Bridge<'_>, D) -> Buffer<u8>,
+        input: Buffer,
+        run_client: extern "C" fn(Bridge<'_>, D) -> Buffer,
         client_data: D,
         force_show_panics: bool,
-    ) -> Buffer<u8>;
+    ) -> Buffer;
 }
 
 pub struct SameThread;
@@ -145,12 +134,12 @@ impl ExecutionStrategy for SameThread {
     fn run_bridge_and_client<D: Copy + Send + 'static>(
         &self,
         dispatcher: &mut impl DispatcherTrait,
-        input: Buffer<u8>,
-        run_client: extern "C" fn(Bridge<'_>, D) -> Buffer<u8>,
+        input: Buffer,
+        run_client: extern "C" fn(Bridge<'_>, D) -> Buffer,
         client_data: D,
         force_show_panics: bool,
-    ) -> Buffer<u8> {
-        let mut dispatch = |b| dispatcher.dispatch(b);
+    ) -> Buffer {
+        let mut dispatch = |buf| dispatcher.dispatch(buf);
 
         run_client(
             Bridge {
@@ -173,19 +162,19 @@ impl ExecutionStrategy for CrossThread1 {
     fn run_bridge_and_client<D: Copy + Send + 'static>(
         &self,
         dispatcher: &mut impl DispatcherTrait,
-        input: Buffer<u8>,
-        run_client: extern "C" fn(Bridge<'_>, D) -> Buffer<u8>,
+        input: Buffer,
+        run_client: extern "C" fn(Bridge<'_>, D) -> Buffer,
         client_data: D,
         force_show_panics: bool,
-    ) -> Buffer<u8> {
+    ) -> Buffer {
         use std::sync::mpsc::channel;
 
         let (req_tx, req_rx) = channel();
         let (res_tx, res_rx) = channel();
 
         let join_handle = thread::spawn(move || {
-            let mut dispatch = |b| {
-                req_tx.send(b).unwrap();
+            let mut dispatch = |buf| {
+                req_tx.send(buf).unwrap();
                 res_rx.recv().unwrap()
             };
 
@@ -214,11 +203,11 @@ impl ExecutionStrategy for CrossThread2 {
     fn run_bridge_and_client<D: Copy + Send + 'static>(
         &self,
         dispatcher: &mut impl DispatcherTrait,
-        input: Buffer<u8>,
-        run_client: extern "C" fn(Bridge<'_>, D) -> Buffer<u8>,
+        input: Buffer,
+        run_client: extern "C" fn(Bridge<'_>, D) -> Buffer,
         client_data: D,
         force_show_panics: bool,
-    ) -> Buffer<u8> {
+    ) -> Buffer {
         use std::sync::{Arc, Mutex};
 
         enum State<T> {
@@ -285,25 +274,25 @@ fn run_server<
     handle_counters: &'static client::HandleCounters,
     server: S,
     input: I,
-    run_client: extern "C" fn(Bridge<'_>, D) -> Buffer<u8>,
+    run_client: extern "C" fn(Bridge<'_>, D) -> Buffer,
     client_data: D,
     force_show_panics: bool,
 ) -> Result<O, PanicMessage> {
     let mut dispatcher =
         Dispatcher { handle_store: HandleStore::new(handle_counters), server: MarkedTypes(server) };
 
-    let mut b = Buffer::new();
-    input.encode(&mut b, &mut dispatcher.handle_store);
+    let mut buf = Buffer::new();
+    input.encode(&mut buf, &mut dispatcher.handle_store);
 
-    b = strategy.run_bridge_and_client(
+    buf = strategy.run_bridge_and_client(
         &mut dispatcher,
-        b,
+        buf,
         run_client,
         client_data,
         force_show_panics,
     );
 
-    Result::decode(&mut &b[..], &mut dispatcher.handle_store)
+    Result::decode(&mut &buf[..], &mut dispatcher.handle_store)
 }
 
 impl client::Client<fn(crate::TokenStream) -> crate::TokenStream> {

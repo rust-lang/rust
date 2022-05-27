@@ -176,7 +176,7 @@ macro_rules! with_api {
 }
 
 // FIXME(eddyb) this calls `encode` for each argument, but in reverse,
-// to avoid borrow conflicts from borrows started by `&mut` arguments.
+// to match the ordering in `reverse_decode`.
 macro_rules! reverse_encode {
     ($writer:ident;) => {};
     ($writer:ident; $first:ident $(, $rest:ident)*) => {
@@ -224,15 +224,17 @@ use rpc::{Decode, DecodeMut, Encode, Reader, Writer};
 pub struct Bridge<'a> {
     /// Reusable buffer (only `clear`-ed, never shrunk), primarily
     /// used for making requests, but also for passing input to client.
-    cached_buffer: Buffer<u8>,
+    cached_buffer: Buffer,
 
     /// Server-side function that the client uses to make requests.
-    dispatch: closure::Closure<'a, Buffer<u8>, Buffer<u8>>,
+    dispatch: closure::Closure<'a, Buffer, Buffer>,
 
     /// If 'true', always invoke the default panic hook
     force_show_panics: bool,
 
-    // Prevent Send and Sync impls
+    // Prevent Send and Sync impls. `!Send`/`!Sync` is the usual way of doing
+    // this, but that requires unstable features. rust-analyzer uses this code
+    // and avoids unstable features.
     _marker: marker::PhantomData<*mut ()>,
 }
 
@@ -251,7 +253,6 @@ mod api_tags {
                 }
                 rpc_encode_decode!(enum $name { $($method),* });
             )*
-
 
             pub(super) enum Method {
                 $($name($name)),*
