@@ -1939,6 +1939,9 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                             param.ident,
                             orig_is_param,
                         );
+                        // Record lifetime res, so lowering knows there is something fishy.
+                        self.record_lifetime_res(param.id, LifetimeRes::Error);
+                        continue;
                     }
                     Entry::Vacant(entry) => {
                         entry.insert(true);
@@ -1966,6 +1969,8 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 )
                 .span_label(param.ident.span, "`'_` is a reserved lifetime name")
                 .emit();
+                // Record lifetime res, so lowering knows there is something fishy.
+                self.record_lifetime_res(param.id, LifetimeRes::Error);
                 continue;
             }
 
@@ -1979,6 +1984,8 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 )
                 .span_label(param.ident.span, "'static is a reserved lifetime name")
                 .emit();
+                // Record lifetime res, so lowering knows there is something fishy.
+                self.record_lifetime_res(param.id, LifetimeRes::Error);
                 continue;
             }
 
