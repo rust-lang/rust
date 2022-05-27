@@ -168,6 +168,29 @@ pub macro assert_matches {
     },
 }
 
+/// Part of an experiment to enable debug assertions in consteval regardless of actual setting.
+///
+/// This returns `true` in consteval context and `cfg!(debug_assertions)` at runtime.
+#[macro_export]
+#[unstable(feature = "consteval_debug_assertions", issue = "none")]
+#[allow_internal_unstable(const_eval_select)]
+#[allow(unused_unsafe)]
+#[rustc_macro_transparency = "semitransparent"]
+pub macro use_debug_assertions() {{
+    // FIXME: Currently no unsafe hygiene inside macros; see https://github.com/rust-lang/rust/issues/74838
+    const fn use_debug_assertions() -> bool {
+        const fn always_true() -> bool {
+            true
+        }
+
+        // SAFETY: Code isn't going to rely on these values being the same, so, we're okay here.
+        unsafe {
+            $crate::intrinsics::const_eval_select((), always_true, || $crate::cfg!(debug_assertions))
+        }
+    }
+    use_debug_assertions()
+}}
+
 /// Asserts that a boolean expression is `true` at runtime.
 ///
 /// This will invoke the [`panic!`] macro if the provided expression cannot be
@@ -212,10 +235,10 @@ pub macro assert_matches {
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "debug_assert_macro"]
-#[allow_internal_unstable(edition_panic)]
+#[allow_internal_unstable(edition_panic, consteval_debug_assertions)]
 macro_rules! debug_assert {
     ($($arg:tt)*) => {
-        if $crate::cfg!(debug_assertions) {
+        if $crate::use_debug_assertions::use_debug_assertions!() {
             $crate::assert!($($arg)*);
         }
     };
@@ -243,9 +266,10 @@ macro_rules! debug_assert {
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "debug_assert_eq_macro")]
+#[allow_internal_unstable(consteval_debug_assertions)]
 macro_rules! debug_assert_eq {
     ($($arg:tt)*) => {
-        if $crate::cfg!(debug_assertions) {
+        if $crate::use_debug_assertions::use_debug_assertions!() {
             $crate::assert_eq!($($arg)*);
         }
     };
@@ -273,9 +297,10 @@ macro_rules! debug_assert_eq {
 #[macro_export]
 #[stable(feature = "assert_ne", since = "1.13.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "debug_assert_ne_macro")]
+#[allow_internal_unstable(consteval_debug_assertions)]
 macro_rules! debug_assert_ne {
     ($($arg:tt)*) => {
-        if $crate::cfg!(debug_assertions) {
+        if $crate::use_debug_assertions::use_debug_assertions!() {
             $crate::assert_ne!($($arg)*);
         }
     };
@@ -314,10 +339,10 @@ macro_rules! debug_assert_ne {
 /// ```
 #[macro_export]
 #[unstable(feature = "assert_matches", issue = "82775")]
-#[allow_internal_unstable(assert_matches)]
+#[allow_internal_unstable(assert_matches, consteval_debug_assertions)]
 #[rustc_macro_transparency = "semitransparent"]
 pub macro debug_assert_matches($($arg:tt)*) {
-    if $crate::cfg!(debug_assertions) {
+    if $crate::use_debug_assertions::use_debug_assertions!() {
         $crate::assert_matches::assert_matches!($($arg)*);
     }
 }

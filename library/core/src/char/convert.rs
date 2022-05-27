@@ -5,6 +5,7 @@ use crate::convert::TryFrom;
 use crate::fmt;
 use crate::mem::transmute;
 use crate::str::FromStr;
+use crate::use_debug_assertions::use_debug_assertions;
 
 /// Converts a `u32` to a `char`. See [`char::from_u32`].
 #[must_use]
@@ -23,7 +24,7 @@ pub(super) const fn from_u32(i: u32) -> Option<char> {
 #[must_use]
 pub(super) const unsafe fn from_u32_unchecked(i: u32) -> char {
     // SAFETY: the caller must guarantee that `i` is a valid char value.
-    if cfg!(debug_assertions) { char::from_u32(i).unwrap() } else { unsafe { transmute(i) } }
+    if use_debug_assertions!() { char::from_u32(i).unwrap() } else { unsafe { transmute(i) } }
 }
 
 #[stable(feature = "char_convert", since = "1.13.0")]

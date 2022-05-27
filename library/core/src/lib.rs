@@ -144,6 +144,7 @@
 #![feature(const_type_name)]
 #![feature(const_default_impls)]
 #![feature(const_unsafecell_get_mut)]
+#![feature(consteval_debug_assertions)]
 #![feature(core_panic)]
 #![feature(duration_consts_float)]
 #![feature(maybe_uninit_uninit_array)]
@@ -241,6 +242,15 @@ mod macros;
 pub mod assert_matches {
     #[unstable(feature = "assert_matches", issue = "82775")]
     pub use crate::macros::{assert_matches, debug_assert_matches};
+}
+
+// We don't export this through #[macro_export] for now, to avoid breakage.
+// See https://github.com/rust-lang/rust/issues/82913
+#[unstable(feature = "consteval_debug_assertions", issue = "none")]
+/// Unstable module containing the unstable `use_debug_assertions` macro.
+pub mod use_debug_assertions {
+    #[unstable(feature = "consteval_debug_assertions", issue = "none")]
+    pub use crate::macros::use_debug_assertions;
 }
 
 #[macro_use]
