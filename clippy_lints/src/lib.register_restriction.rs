@@ -3,8 +3,6 @@
 // Manual edits will be overwritten.
 
 store.register_group(true, "clippy::restriction", Some("clippy_restriction"), vec![
-    LintId::of(arithmetic::FLOAT_ARITHMETIC),
-    LintId::of(arithmetic::INTEGER_ARITHMETIC),
     LintId::of(as_conversions::AS_CONVERSIONS),
     LintId::of(asm_syntax::INLINE_ASM_X86_ATT_SYNTAX),
     LintId::of(asm_syntax::INLINE_ASM_X86_INTEL_SYNTAX),
@@ -50,6 +48,8 @@ store.register_group(true, "clippy::restriction", Some("clippy_restriction"), ve
     LintId::of(module_style::MOD_MODULE_FILES),
     LintId::of(module_style::SELF_NAMED_MODULE_FILES),
     LintId::of(modulo_arithmetic::MODULO_ARITHMETIC),
+    LintId::of(numeric_arithmetic::FLOAT_ARITHMETIC),
+    LintId::of(numeric_arithmetic::INTEGER_ARITHMETIC),
     LintId::of(panic_in_result_fn::PANIC_IN_RESULT_FN),
     LintId::of(panic_unimplemented::PANIC),
     LintId::of(panic_unimplemented::TODO),
