@@ -801,7 +801,7 @@ impl<'tcx> Visitor<'tcx> for RegionResolutionVisitor<'tcx> {
 /// Performance: This is a query rather than a simple function to enable
 /// re-use in incremental scenarios. We may sometimes need to rerun the
 /// type checker even when the HIR hasn't changed, and in those cases
-/// we can avoid reconstructing the region scope tree. 
+/// we can avoid reconstructing the region scope tree.
 pub fn region_scope_tree(tcx: TyCtxt<'_>, def_id: DefId) -> &ScopeTree {
     let typeck_root_def_id = tcx.typeck_root_def_id(def_id);
     if typeck_root_def_id != def_id {
