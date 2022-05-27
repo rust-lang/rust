@@ -367,8 +367,8 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
             }
         }
         if !pass_sanity_check {
-            println!("{}\n", subcommand_help);
-            println!(
+            eprintln!("{}\n", subcommand_help);
+            eprintln!(
                 "Sorry, I couldn't figure out which subcommand you were trying to specify.\n\
                  You may need to move some options to after the subcommand.\n"
             );
@@ -532,7 +532,7 @@ Arguments:
             Kind::Build => Subcommand::Build { paths },
             Kind::Check => {
                 if matches.opt_present("all-targets") {
-                    eprintln!(
+                    println!(
                         "Warning: --all-targets is now on by default and does not need to be passed explicitly."
                     );
                 }
@@ -606,7 +606,7 @@ Arguments:
             if matches.opt_str("keep-stage").is_some()
                 || matches.opt_str("keep-stage-std").is_some()
             {
-                println!("--keep-stage not yet supported for x.py check");
+                eprintln!("--keep-stage not yet supported for x.py check");
                 process::exit(1);
             }
         }
