@@ -734,7 +734,7 @@ impl<'hir> WherePredicate<'hir> {
     }
 }
 
-#[derive(Debug, HashStable_Generic, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, HashStable_Generic, PartialEq, Eq)]
 pub enum PredicateOrigin {
     WhereClause,
     GenericParam,
