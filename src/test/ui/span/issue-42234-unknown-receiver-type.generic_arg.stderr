@@ -1,14 +1,14 @@
 error[E0282]: type annotations needed
   --> $DIR/issue-42234-unknown-receiver-type.rs:9:24
    |
-LL |     let x: Option<_> = None::<_>;
-   |                        ^^^^^^^^^ cannot infer type of the type parameter `T` declared on the enum `Option`
+LL |     let x: Option<_> = None;
+   |                        ^^^^ cannot infer type of the type parameter `T` declared on the enum `Option`
    |
    = note: type must be known at this point
 help: consider specifying the generic argument
    |
 LL |     let x: Option<_> = None::<T>;
-   |                            ~~~~~
+   |                            +++++
 
 error[E0282]: type annotations needed
   --> $DIR/issue-42234-unknown-receiver-type.rs:15:10
