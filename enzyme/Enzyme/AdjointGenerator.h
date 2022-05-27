@@ -2566,11 +2566,13 @@ public:
     }
   }
 
-  void visitMemSetInst(llvm::MemSetInst &MS) {
+  void visitMemSetInst(llvm::MemSetInst &MS) { visitMemSetCommon(MS); }
+
+  void visitMemSetCommon(llvm::CallInst &MS) {
     eraseIfUnused(MS);
 
-    Value *orig_op0 = MS.getOperand(0);
-    Value *orig_op1 = MS.getOperand(1);
+    Value *orig_op0 = MS.getArgOperand(0);
+    Value *orig_op1 = MS.getArgOperand(1);
 
     // TODO this should 1) assert that the value being meset is constant
     //                 2) duplicate the memset for the inverted pointer
@@ -2616,15 +2618,23 @@ public:
       bool forwardMode = Mode == DerivativeMode::ForwardMode;
 
       Value *op0 = gutils->invertPointerM(orig_op0, BuilderZ);
-      Value *op1 = gutils->getNewFromOriginal(MS.getOperand(1));
+      Value *op1 = gutils->getNewFromOriginal(MS.getArgOperand(1));
       if (!forwardMode)
         op1 = gutils->lookupM(op1, BuilderZ);
-      Value *op2 = gutils->getNewFromOriginal(MS.getOperand(2));
+      Value *op2 = gutils->getNewFromOriginal(MS.getArgOperand(2));
       if (!forwardMode)
         op2 = gutils->lookupM(op2, BuilderZ);
-      Value *op3 = gutils->getNewFromOriginal(MS.getOperand(3));
-      if (!forwardMode)
-        op3 = gutils->lookupM(op3, BuilderZ);
+      Value *op3 = nullptr;
+#if LLVM_VERSION_MAJOR >= 14
+      if (3 < MS.arg_size())
+#else
+      if (3 < MS.getNumArgOperands())
+#endif
+      {
+        op3 = gutils->getNewFromOriginal(MS.getOperand(3));
+        if (!forwardMode)
+          op3 = gutils->lookupM(op3, BuilderZ);
+      }
 
       auto Defs =
           gutils->getInvertedBundles(&MS,
@@ -2635,13 +2645,10 @@ public:
       applyChainRule(
           BuilderZ,
           [&](Value *op0) {
-            Type *tys[] = {op0->getType(), op2->getType()};
-            Value *args[] = {op0, op1, op2, op3};
-            auto cal = BuilderZ.CreateCall(
-                Intrinsic::getDeclaration(
-                    MS.getParent()->getParent()->getParent(), Intrinsic::memset,
-                    tys),
-                args, Defs);
+            SmallVector<Value *, 4> args = {op0, op1, op2};
+            if (op3)
+              args.push_back(op3);
+            auto cal = BuilderZ.CreateCall(MS.getCalledFunction(), args, Defs);
             cal->copyMetadata(MS, MD_ToCopy);
             cal->setAttributes(MS.getAttributes());
             cal->setCallingConv(MS.getCallingConv());
@@ -10866,6 +10873,10 @@ public:
                              gutils->getNewFromOriginal(orig->getArgOperand(2)),
                              ConstantInt::getFalse(orig->getContext()));
 #endif
+      return;
+    }
+    if (funcName == "memset") {
+      visitMemSetCommon(*orig);
       return;
     }
     if (funcName == "posix_memalign") {
