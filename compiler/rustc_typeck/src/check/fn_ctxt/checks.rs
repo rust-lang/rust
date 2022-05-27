@@ -47,6 +47,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
+    pub(in super::super) fn check_transmutes(&self) {
+        let mut deferred_transmute_checks = self.deferred_transmute_checks.borrow_mut();
+        debug!("FnCtxt::check_transmutes: {} deferred checks", deferred_transmute_checks.len());
+        for (from, to, span) in deferred_transmute_checks.drain(..) {
+            self.check_transmute(span, from, to);
+        }
+    }
+
+    pub(in super::super) fn check_asms(&self) {
+        let mut deferred_asm_checks = self.deferred_asm_checks.borrow_mut();
+        debug!("FnCtxt::check_asm: {} deferred checks", deferred_asm_checks.len());
+        for (asm, hir_id) in deferred_asm_checks.drain(..) {
+            let enclosing_id = self.tcx.hir().enclosing_body_owner(hir_id);
+            self.check_asm(asm, enclosing_id);
+        }
+    }
+
     pub(in super::super) fn check_method_argument_types(
         &self,
         sp: Span,

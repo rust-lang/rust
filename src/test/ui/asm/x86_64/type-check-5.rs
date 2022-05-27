@@ -2,7 +2,7 @@
 
 #![feature(repr_simd, never_type, asm_sym)]
 
-use std::arch::{asm, global_asm};
+use std::arch::asm;
 
 #[repr(simd)]
 struct SimdNonCopy(f32, f32, f32, f32);
@@ -13,8 +13,10 @@ fn main() {
 
         let x: u64;
         asm!("{}", in(reg) x);
+        //~^ ERROR use of possibly-uninitialized variable: `x`
         let mut y: u64;
         asm!("{}", inout(reg) y);
+        //~^ ERROR use of possibly-uninitialized variable: `y`
         let _ = y;
 
         // Outputs require mutable places
@@ -22,7 +24,9 @@ fn main() {
         let v: Vec<u64> = vec![0, 1, 2];
         asm!("{}", in(reg) v[0]);
         asm!("{}", out(reg) v[0]);
+        //~^ ERROR cannot borrow `v` as mutable, as it is not declared as mutable
         asm!("{}", inout(reg) v[0]);
+        //~^ ERROR cannot borrow `v` as mutable, as it is not declared as mutable
 
         // Sym operands must point to a function or static
 
@@ -30,15 +34,8 @@ fn main() {
         static S: i32 = 0;
         asm!("{}", sym S);
         asm!("{}", sym main);
-        asm!("{}", sym C);
-        //~^ ERROR invalid `sym` operand
-        asm!("{}", sym x);
-        //~^ ERROR invalid `sym` operand
 
         // Register operands must be Copy
-
-        asm!("{}", in(xmm_reg) SimdNonCopy(0.0, 0.0, 0.0, 0.0));
-        //~^ ERROR arguments for inline assembly must be copyable
 
         // Register operands must be integers, floats, SIMD vectors, pointers or
         // function pointers.
@@ -49,25 +46,13 @@ fn main() {
         asm!("{}", in(reg) 0 as *const u8);
         asm!("{}", in(reg) 0 as *mut u8);
         asm!("{}", in(reg) main as fn());
-        asm!("{}", in(reg) |x: i32| x);
-        //~^ ERROR cannot use value of type
-        asm!("{}", in(reg) vec![0]);
-        //~^ ERROR cannot use value of type `Vec<i32>` for inline assembly
-        asm!("{}", in(reg) (1, 2, 3));
-        //~^ ERROR cannot use value of type `(i32, i32, i32)` for inline assembly
-        asm!("{}", in(reg) [1, 2, 3]);
-        //~^ ERROR cannot use value of type `[i32; 3]` for inline assembly
 
         // Register inputs (but not outputs) allow references and function types
 
         let mut f = main;
         let mut r = &mut 0;
         asm!("{}", in(reg) f);
-        asm!("{}", inout(reg) f);
-        //~^ ERROR cannot use value of type `fn() {main}` for inline assembly
         asm!("{}", in(reg) r);
-        asm!("{}", inout(reg) r);
-        //~^ ERROR cannot use value of type `&mut i32` for inline assembly
         let _ = (f, r);
 
         // Type checks ignore never type
@@ -76,12 +61,3 @@ fn main() {
         asm!("{}", in(reg) u);
     }
 }
-
-// Sym operands must point to a function or static
-
-const C: i32 = 0;
-static S: i32 = 0;
-global_asm!("{}", sym S);
-global_asm!("{}", sym main);
-global_asm!("{}", sym C);
-//~^ ERROR invalid `sym` operand

@@ -1,37 +1,16 @@
-use hir::intravisit::walk_inline_asm;
 use rustc_ast::InlineAsmTemplatePiece;
 use rustc_data_structures::stable_set::FxHashSet;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
-use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::intravisit::{self, Visitor};
 use rustc_index::vec::Idx;
 use rustc_middle::ty::layout::{LayoutError, SizeSkeleton};
-use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::{self, FloatTy, IntTy, Ty, TyCtxt, UintTy};
+use rustc_middle::ty::{self, FloatTy, InferTy, IntTy, Ty, TyCtxt, TypeFoldable, UintTy};
 use rustc_session::lint;
-use rustc_span::{sym, Span, Symbol, DUMMY_SP};
+use rustc_span::{Span, Symbol, DUMMY_SP};
 use rustc_target::abi::{Pointer, VariantIdx};
-use rustc_target::asm::{InlineAsmRegOrRegClass, InlineAsmType};
+use rustc_target::asm::{InlineAsmReg, InlineAsmRegClass, InlineAsmRegOrRegClass, InlineAsmType};
 
-fn check_mod_intrinsics(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
-    tcx.hir().deep_visit_item_likes_in_module(module_def_id, &mut ItemVisitor { tcx });
-}
-
-pub fn provide(providers: &mut Providers) {
-    *providers = Providers { check_mod_intrinsics, ..*providers };
-}
-
-struct ItemVisitor<'tcx> {
-    tcx: TyCtxt<'tcx>,
-}
-
-struct ExprVisitor<'tcx> {
-    tcx: TyCtxt<'tcx>,
-    typeck_results: &'tcx ty::TypeckResults<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-}
+use super::FnCtxt;
 
 /// If the type is `Option<T>`, it will return `T`, otherwise
 /// the type itself. Works on most `Option`-like types.
@@ -60,14 +39,15 @@ fn unpack_option_like<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
     ty
 }
 
-impl<'tcx> ExprVisitor<'tcx> {
-    fn def_id_is_transmute(&self, def_id: DefId) -> bool {
-        self.tcx.is_intrinsic(def_id) && self.tcx.item_name(def_id) == sym::transmute
-    }
-
-    fn check_transmute(&self, span: Span, from: Ty<'tcx>, to: Ty<'tcx>) {
-        let sk_from = SizeSkeleton::compute(from, self.tcx, self.param_env);
-        let sk_to = SizeSkeleton::compute(to, self.tcx, self.param_env);
+impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
+    pub fn check_transmute(&self, span: Span, from: Ty<'tcx>, to: Ty<'tcx>) {
+        let convert = |ty: Ty<'tcx>| {
+            let ty = self.resolve_vars_if_possible(ty);
+            let ty = self.tcx.normalize_erasing_regions(self.param_env, ty);
+            (SizeSkeleton::compute(ty, self.tcx, self.param_env), ty)
+        };
+        let (sk_from, from) = convert(from);
+        let (sk_to, to) = convert(to);
 
         // Check for same size using the skeletons.
         if let (Ok(sk_from), Ok(sk_to)) = (sk_from, sk_to) {
@@ -139,7 +119,8 @@ impl<'tcx> ExprVisitor<'tcx> {
         target_features: &FxHashSet<Symbol>,
     ) -> Option<InlineAsmType> {
         // Check the type against the allowed types for inline asm.
-        let ty = self.typeck_results.expr_ty_adjusted(expr);
+        let ty = self.typeck_results.borrow().expr_ty_adjusted(expr);
+        let ty = self.resolve_vars_if_possible(ty);
         let asm_ty_isize = match self.tcx.sess.target.pointer_width {
             16 => InlineAsmType::I16,
             32 => InlineAsmType::I32,
@@ -152,10 +133,24 @@ impl<'tcx> ExprVisitor<'tcx> {
             ty::Error(_) => return None,
             ty::Int(IntTy::I8) | ty::Uint(UintTy::U8) => Some(InlineAsmType::I8),
             ty::Int(IntTy::I16) | ty::Uint(UintTy::U16) => Some(InlineAsmType::I16),
+            // Somewhat of a hack: fallback in the presence of errors does not actually
+            // fall back to i32, but to ty::Error. For integer inference variables this
+            // means that they don't get any fallback and stay as `{integer}`.
+            // Since compilation can't succeed anyway, it's fine to use this to avoid printing
+            // "cannot use value of type `{integer}`", even though that would absolutely
+            // work due due i32 fallback if the current function had no other errors.
+            ty::Infer(InferTy::IntVar(_)) => {
+                assert!(self.is_tainted_by_errors());
+                Some(InlineAsmType::I32)
+            }
             ty::Int(IntTy::I32) | ty::Uint(UintTy::U32) => Some(InlineAsmType::I32),
             ty::Int(IntTy::I64) | ty::Uint(UintTy::U64) => Some(InlineAsmType::I64),
             ty::Int(IntTy::I128) | ty::Uint(UintTy::U128) => Some(InlineAsmType::I128),
             ty::Int(IntTy::Isize) | ty::Uint(UintTy::Usize) => Some(asm_ty_isize),
+            ty::Infer(InferTy::FloatVar(_)) => {
+                assert!(self.is_tainted_by_errors());
+                Some(InlineAsmType::F32)
+            }
             ty::Float(FloatTy::F32) => Some(InlineAsmType::F32),
             ty::Float(FloatTy::F64) => Some(InlineAsmType::F64),
             ty::FnPtr(_) => Some(asm_ty_isize),
@@ -208,6 +203,11 @@ impl<'tcx> ExprVisitor<'tcx> {
             return None;
         };
 
+        if ty.has_infer_types_or_consts() {
+            assert!(self.is_tainted_by_errors());
+            return None;
+        }
+
         // Check that the type implements Copy. The only case where this can
         // possibly fail is for SIMD types which don't #[derive(Copy)].
         if !ty.is_copy_modulo_regions(self.tcx.at(DUMMY_SP), self.param_env) {
@@ -230,10 +230,10 @@ impl<'tcx> ExprVisitor<'tcx> {
             if in_asm_ty != asm_ty {
                 let msg = "incompatible types for asm inout argument";
                 let mut err = self.tcx.sess.struct_span_err(vec![in_expr.span, expr.span], msg);
-                err.span_label(
-                    in_expr.span,
-                    &format!("type `{}`", self.typeck_results.expr_ty_adjusted(in_expr)),
-                );
+
+                let in_expr_ty = self.typeck_results.borrow().expr_ty_adjusted(in_expr);
+                let in_expr_ty = self.resolve_vars_if_possible(in_expr_ty);
+                err.span_label(in_expr.span, &format!("type `{in_expr_ty}`"));
                 err.span_label(expr.span, &format!("type `{ty}`"));
                 err.note(
                     "asm inout arguments must have the same type, \
@@ -337,12 +337,14 @@ impl<'tcx> ExprVisitor<'tcx> {
         Some(asm_ty)
     }
 
-    fn check_asm(&self, asm: &hir::InlineAsm<'tcx>, hir_id: hir::HirId) {
+    pub fn check_asm(&self, asm: &hir::InlineAsm<'tcx>, enclosing_id: hir::HirId) {
         let hir = self.tcx.hir();
-        let enclosing_id = hir.enclosing_body_owner(hir_id);
         let enclosing_def_id = hir.local_def_id(enclosing_id).to_def_id();
         let target_features = self.tcx.asm_target_features(enclosing_def_id);
-        let asm_arch = self.tcx.sess.asm_arch.unwrap();
+        let Some(asm_arch) = self.tcx.sess.asm_arch else {
+            self.tcx.sess.delay_span_bug(DUMMY_SP, "target architecture does not support asm");
+            return;
+        };
         for (idx, (op, op_sp)) in asm.operands.iter().enumerate() {
             // Validate register classes against currently enabled target
             // features. We check that at least one type is available for
@@ -358,6 +360,11 @@ impl<'tcx> ExprVisitor<'tcx> {
                 // Some explicit registers cannot be used depending on the
                 // target. Reject those here.
                 if let InlineAsmRegOrRegClass::Reg(reg) = reg {
+                    if let InlineAsmReg::Err = reg {
+                        // `validate` will panic on `Err`, as an error must
+                        // already have been reported.
+                        continue;
+                    }
                     if let Err(msg) = reg.validate(
                         asm_arch,
                         self.tcx.sess.relocation_model(),
@@ -374,6 +381,9 @@ impl<'tcx> ExprVisitor<'tcx> {
                 if !op.is_clobber() {
                     let mut missing_required_features = vec![];
                     let reg_class = reg.reg_class();
+                    if let InlineAsmRegClass::Err = reg_class {
+                        continue;
+                    }
                     for &(_, feature) in reg_class.supported_types(asm_arch) {
                         match feature {
                             Some(feature) => {
@@ -482,33 +492,6 @@ impl<'tcx> ExprVisitor<'tcx> {
                         );
                     }
                 }
-                // These are checked in ItemVisitor.
-                hir::InlineAsmOperand::Const { .. }
-                | hir::InlineAsmOperand::SymFn { .. }
-                | hir::InlineAsmOperand::SymStatic { .. } => {}
-            }
-        }
-    }
-}
-
-impl<'tcx> Visitor<'tcx> for ItemVisitor<'tcx> {
-    fn visit_nested_body(&mut self, body_id: hir::BodyId) {
-        let owner_def_id = self.tcx.hir().body_owner_def_id(body_id);
-        let body = self.tcx.hir().body(body_id);
-        let param_env = self.tcx.param_env(owner_def_id.to_def_id());
-        let typeck_results = self.tcx.typeck(owner_def_id);
-        ExprVisitor { tcx: self.tcx, param_env, typeck_results }.visit_body(body);
-        self.visit_body(body);
-    }
-
-    fn visit_inline_asm(&mut self, asm: &'tcx hir::InlineAsm<'tcx>, id: hir::HirId) {
-        for (op, op_sp) in asm.operands.iter() {
-            match *op {
-                // These are checked in ExprVisitor.
-                hir::InlineAsmOperand::In { .. }
-                | hir::InlineAsmOperand::Out { .. }
-                | hir::InlineAsmOperand::InOut { .. }
-                | hir::InlineAsmOperand::SplitInOut { .. } => {}
                 // No special checking is needed for these:
                 // - Typeck has checked that Const operands are integers.
                 // - AST lowering guarantees that SymStatic points to a static.
@@ -534,31 +517,5 @@ impl<'tcx> Visitor<'tcx> for ItemVisitor<'tcx> {
                 }
             }
         }
-        walk_inline_asm(self, asm, id);
-    }
-}
-
-impl<'tcx> Visitor<'tcx> for ExprVisitor<'tcx> {
-    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
-        match expr.kind {
-            hir::ExprKind::Path(ref qpath) => {
-                let res = self.typeck_results.qpath_res(qpath, expr.hir_id);
-                if let Res::Def(DefKind::Fn, did) = res
-                    && self.def_id_is_transmute(did)
-                {
-                    let typ = self.typeck_results.node_type(expr.hir_id);
-                    let sig = typ.fn_sig(self.tcx);
-                    let from = sig.inputs().skip_binder()[0];
-                    let to = sig.output().skip_binder();
-                    self.check_transmute(expr.span, from, to);
-                }
-            }
-
-            hir::ExprKind::InlineAsm(asm) => self.check_asm(asm, expr.hir_id),
-
-            _ => {}
-        }
-
-        intravisit::walk_expr(self, expr);
     }
 }

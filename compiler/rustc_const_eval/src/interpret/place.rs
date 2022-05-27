@@ -906,16 +906,12 @@ where
         }
         // We still require the sizes to match.
         if src.layout.size != dest.layout.size {
-            // FIXME: This should be an assert instead of an error, but if we transmute within an
-            // array length computation, `typeck` may not have yet been run and errored out. In fact
-            // most likely we *are* running `typeck` right now. Investigate whether we can bail out
-            // on `typeck_results().has_errors` at all const eval entry points.
-            debug!("Size mismatch when transmuting!\nsrc: {:#?}\ndest: {:#?}", src, dest);
-            self.tcx.sess.delay_span_bug(
+            span_bug!(
                 self.cur_span(),
-                "size-changing transmute, should have been caught by transmute checking",
+                "size-changing transmute, should have been caught by transmute checking: {:#?}\ndest: {:#?}",
+                src,
+                dest
             );
-            throw_inval!(TransmuteSizeDiff(src.layout.ty, dest.layout.ty));
         }
         // Unsized copies rely on interpreting `src.meta` with `dest.layout`, we want
         // to avoid that here.

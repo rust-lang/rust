@@ -81,6 +81,7 @@ mod gather_locals;
 mod generator_interior;
 mod inherited;
 pub mod intrinsic;
+mod intrinsicck;
 pub mod method;
 mod op;
 mod pat;
@@ -486,6 +487,12 @@ fn typeck_with_fallback<'tcx>(
         }
 
         fcx.select_all_obligations_or_error();
+
+        if !fcx.infcx.is_tainted_by_errors() {
+            fcx.check_transmutes();
+        }
+
+        fcx.check_asms();
 
         if fn_sig.is_some() {
             fcx.regionck_fn(id, body, span, wf_tys);

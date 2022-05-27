@@ -30,7 +30,6 @@ mod diagnostic_items;
 pub mod entry;
 pub mod hir_id_validator;
 pub mod hir_stats;
-mod intrinsicck;
 mod lang_items;
 pub mod layout_test;
 mod lib_features;
@@ -54,7 +53,6 @@ pub fn provide(providers: &mut Providers) {
     loops::provide(providers);
     naked_functions::provide(providers);
     liveness::provide(providers);
-    intrinsicck::provide(providers);
     reachable::provide(providers);
     stability::provide(providers);
     upvars::provide(providers);

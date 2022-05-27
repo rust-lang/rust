@@ -32,16 +32,21 @@ fn main() {
 
         asm!("", in("st(2)") foo);
         //~^ ERROR register class `x87_reg` can only be used as a clobber, not as an input or output
+        //~| ERROR `i32` cannot be used with this register class
         asm!("", in("mm0") foo);
         //~^ ERROR register class `mmx_reg` can only be used as a clobber, not as an input or output
+        //~| ERROR `i32` cannot be used with this register class
         asm!("", in("k0") foo);
         //~^ ERROR register class `kreg0` can only be used as a clobber, not as an input or output
+        //~| ERROR `i32` cannot be used with this register class
         asm!("", out("st(2)") _);
         asm!("", out("mm0") _);
         asm!("{}", in(x87_reg) foo);
         //~^ ERROR register class `x87_reg` can only be used as a clobber, not as an input or output
+        //~| ERROR `i32` cannot be used with this register class
         asm!("{}", in(mmx_reg) foo);
         //~^ ERROR register class `mmx_reg` can only be used as a clobber, not as an input or output
+        //~| ERROR `i32` cannot be used with this register class
         asm!("{}", out(x87_reg) _);
         //~^ ERROR register class `x87_reg` can only be used as a clobber, not as an input or output
         asm!("{}", out(mmx_reg) _);
@@ -52,9 +57,12 @@ fn main() {
 
         asm!("", in("eax") foo, in("al") bar);
         //~^ ERROR register `al` conflicts with register `ax`
+        //~| ERROR `i32` cannot be used with this register class
         asm!("", in("rax") foo, out("rax") bar);
         //~^ ERROR register `ax` conflicts with register `ax`
         asm!("", in("al") foo, lateout("al") bar);
+        //~^ ERROR `i32` cannot be used with this register class
+        //~| ERROR `i32` cannot be used with this register class
         asm!("", in("xmm0") foo, in("ymm0") bar);
         //~^ ERROR register `ymm0` conflicts with register `xmm0`
         asm!("", in("xmm0") foo, out("ymm0") bar);

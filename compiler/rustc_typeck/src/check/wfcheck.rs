@@ -41,7 +41,7 @@ use std::ops::ControlFlow;
 /// ```ignore (illustrative)
 /// F: for<'b, 'tcx> where 'tcx FnOnce(FnCtxt<'b, 'tcx>)
 /// ```
-struct CheckWfFcxBuilder<'tcx> {
+pub(super) struct CheckWfFcxBuilder<'tcx> {
     inherited: super::InheritedBuilder<'tcx>,
     id: hir::HirId,
     span: Span,
@@ -49,7 +49,7 @@ struct CheckWfFcxBuilder<'tcx> {
 }
 
 impl<'tcx> CheckWfFcxBuilder<'tcx> {
-    fn with_fcx<F>(&mut self, f: F)
+    pub(super) fn with_fcx<F>(&mut self, f: F)
     where
         F: for<'b> FnOnce(&FnCtxt<'b, 'tcx>) -> FxHashSet<Ty<'tcx>>,
     {
@@ -972,7 +972,7 @@ fn check_associated_item(
     })
 }
 
-fn for_item<'tcx>(tcx: TyCtxt<'tcx>, item: &hir::Item<'_>) -> CheckWfFcxBuilder<'tcx> {
+pub(super) fn for_item<'tcx>(tcx: TyCtxt<'tcx>, item: &hir::Item<'_>) -> CheckWfFcxBuilder<'tcx> {
     for_id(tcx, item.def_id, item.span)
 }
 

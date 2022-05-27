@@ -51,6 +51,7 @@ use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::source_map::Span;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, Pos};
+use rustc_target::spec::abi::Abi::RustIntrinsic;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{self, ObligationCauseCode};
 
@@ -294,7 +295,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.check_lang_item_path(lang_item, expr, hir_id)
             }
             ExprKind::Path(ref qpath) => self.check_expr_path(qpath, expr, &[]),
-            ExprKind::InlineAsm(asm) => self.check_expr_asm(asm),
+            ExprKind::InlineAsm(asm) => {
+                // We defer some asm checks as we may not have resolved the input and output types yet (they may still be infer vars).
+                self.deferred_asm_checks.borrow_mut().push((asm, expr.hir_id));
+                self.check_expr_asm(asm)
+            }
             ExprKind::Break(destination, ref expr_opt) => {
                 self.check_expr_break(destination, expr_opt.as_deref(), expr)
             }
@@ -530,8 +535,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => self.instantiate_value_path(segs, opt_ty, res, expr.span, expr.hir_id).0,
         };
 
-        if let ty::FnDef(..) = ty.kind() {
+        if let ty::FnDef(did, ..) = *ty.kind() {
             let fn_sig = ty.fn_sig(tcx);
+            if tcx.fn_sig(did).abi() == RustIntrinsic && tcx.item_name(did) == sym::transmute {
+                let from = fn_sig.inputs().skip_binder()[0];
+                let to = fn_sig.output().skip_binder();
+                // We defer the transmute to the end of typeck, once all inference vars have
+                // been resolved or we errored. This is important as we can only check transmute
+                // on concrete types, but the output type may not be known yet (it would only
+                // be known if explicitly specified via turbofish).
+                self.deferred_transmute_checks.borrow_mut().push((from, to, expr.span));
+            }
             if !tcx.features().unsized_fn_params {
                 // We want to remove some Sized bounds from std functions,
                 // but don't want to expose the removal to stable Rust.

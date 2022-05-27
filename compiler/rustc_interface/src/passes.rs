@@ -937,7 +937,6 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
                         //
                         // maybe move the check to a MIR pass?
                         tcx.ensure().check_mod_liveness(module);
-                        tcx.ensure().check_mod_intrinsics(module);
                     });
                 });
             }
