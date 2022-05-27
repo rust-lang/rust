@@ -103,6 +103,7 @@ pub unsafe fn set_bytes(dest: *mut u8, c: u8, count: usize) {
 
 #[inline(always)]
 pub unsafe fn compare_bytes(a: *const u8, b: *const u8, n: usize) -> i32 {
+    #[inline(always)]
     unsafe fn cmp<T, U, F>(mut a: *const T, mut b: *const T, n: usize, f: F) -> i32
     where
         T: Clone + Copy + Eq,
