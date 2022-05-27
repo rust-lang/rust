@@ -11,7 +11,7 @@ use crate::{FilePosition, NavigationTarget, RangeInfo, TryToNav};
 
 // Feature: Go to Implementation
 //
-// Navigates to the impl block of structs, enums or traits. Also implemented as a code lens.
+// Navigates to the impl blocks of types.
 //
 // |===
 // | Editor  | Shortcut

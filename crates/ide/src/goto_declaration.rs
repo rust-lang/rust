@@ -10,6 +10,9 @@ use crate::{FilePosition, NavigationTarget, RangeInfo};
 // Feature: Go to Declaration
 //
 // Navigates to the declaration of an identifier.
+//
+// This is currently the same as `Go to Definition` with the exception of outline modules where it
+// will navigate to the `mod name;` item declaration.
 pub(crate) fn goto_declaration(
     db: &RootDatabase,
     position: FilePosition,
