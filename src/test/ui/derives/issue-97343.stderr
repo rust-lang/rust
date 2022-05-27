@@ -1,0 +1,22 @@
+error[E0574]: expected struct, variant or union type, found type parameter `Irrelevant`
+  --> $DIR/issue-97343.rs:3:10
+   |
+LL | #[derive(Debug)]
+   |          ^^^^^ not a struct, variant or union type
+   |
+   = note: this error originates in the derive macro `Debug` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0109]: type arguments are not allowed for this type
+  --> $DIR/issue-97343.rs:4:23
+   |
+LL | #[derive(Debug)]
+   |          ----- in this derive macro expansion
+LL | pub struct Irrelevant<Irrelevant> {
+   |                       ^^^^^^^^^^ type argument not allowed
+   |
+   = note: this error originates in the derive macro `Debug` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0109, E0574.
+For more information about an error, try `rustc --explain E0109`.
