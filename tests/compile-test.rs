@@ -22,6 +22,7 @@ const RUN_INTERNAL_TESTS: bool = cfg!(feature = "internal");
 
 /// All crates used in UI tests are listed here
 static TEST_DEPENDENCIES: &[&str] = &[
+    "clap",
     "clippy_utils",
     "derive_new",
     "futures",
@@ -39,6 +40,8 @@ static TEST_DEPENDENCIES: &[&str] = &[
 
 // Test dependencies may need an `extern crate` here to ensure that they show up
 // in the depinfo file (otherwise cargo thinks they are unused)
+#[allow(unused_extern_crates)]
+extern crate clap;
 #[allow(unused_extern_crates)]
 extern crate clippy_utils;
 #[allow(unused_extern_crates)]
@@ -109,8 +112,9 @@ static EXTERN_FLAGS: SyncLazy<String> = SyncLazy::new(|| {
         not_found.is_empty(),
         "dependencies not found in depinfo: {:?}\n\
         help: Make sure the `-Z binary-dep-depinfo` rust flag is enabled\n\
-        help: Try adding to dev-dependencies in Cargo.toml",
-        not_found
+        help: Try adding to dev-dependencies in Cargo.toml\n\
+        help: Be sure to also add `extern crate ...;` to tests/compile-test.rs",
+        not_found,
     );
     crates
         .into_iter()
