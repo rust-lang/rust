@@ -463,7 +463,7 @@ static_assert_size!(WithStableHash<TyS<'_>>, 56);
 #[rustc_pass_by_value]
 pub struct Ty<'tcx>(Interned<'tcx, WithStableHash<TyS<'tcx>>>);
 
-const LEAKED_BOOL_TY_ALREADY: std::sync::atomic::AtomicBool =
+static LEAKED_BOOL_TY_ALREADY: std::sync::atomic::AtomicBool =
     std::sync::atomic::AtomicBool::new(false);
 
 /// "Static" bool only used for internal testing.

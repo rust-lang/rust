@@ -382,6 +382,7 @@ impl<'a, 'tcx> TyDecoder for DecodeContext<'a, 'tcx> {
 
     type I = TyInterner<'tcx>;
 
+    #[inline]
     fn interner(&self) -> Self::I {
         TyInterner { tcx: self.tcx() }
     }

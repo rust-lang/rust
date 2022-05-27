@@ -94,43 +94,6 @@ pub struct TyInterner<'tcx> {
     pub tcx: TyCtxt<'tcx>,
 }
 
-/*
-/// We don't ever actually need this. It's only required for derives.
-impl<'tcx> Hash for TyInterner<'tcx> {
-    fn hash<H: Hasher>(&self, _state: &mut H) {}
-}
-
-/// We don't ever actually need this. It's only required for derives.
-impl<'tcx> Ord for TyInterner<'tcx> {
-    fn cmp(&self, _other: &Self) -> Ordering {
-        Ordering::Equal
-    }
-}
-
-/// We don't ever actually need this. It's only required for derives.
-impl<'tcx> PartialOrd for TyInterner<'tcx> {
-    fn partial_cmp(&self, _other: &Self) -> Option<Ordering> {
-        None
-    }
-}
-
-/// We don't ever actually need this. It's only required for derives.
-impl<'tcx> PartialEq for TyInterner<'tcx> {
-    fn eq(&self, _other: &Self) -> bool {
-        false
-    }
-}
-
-/// We don't ever actually need this. It's only required for derives.
-impl<'tcx> Eq for TyInterner<'tcx> {}
-
-impl fmt::Debug for TyInterner<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "TyInterner")
-    }
-}
-*/
-
 #[allow(rustc::usage_of_ty_tykind)]
 impl<'tcx> Interner for TyInterner<'tcx> {
     type AdtDef = ty::AdtDef<'tcx>;
@@ -1140,6 +1103,7 @@ pub struct GlobalCtxt<'tcx> {
 }
 
 impl<'tcx> TyCtxt<'tcx> {
+    #[inline]
     pub fn interner(self) -> TyInterner<'tcx> {
         TyInterner { tcx: self }
     }
