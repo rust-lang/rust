@@ -1288,12 +1288,14 @@ macro_rules! try_from_secs {
             let rem_msb = nanos_tmp & rem_msb_mask == 0;
             let add_ns = !(rem_msb || (is_even && is_tie));
 
-            // note that neither `f32`, nor `f64` can represent
-            // 0.999_999_999_5 exactly, so the nanos part
-            // never will be equal to NANOS_PER_SEC
+            // f32 does not have enough presicion to trigger the second branch
+            // since it can not represent numbers between 0.999_999_940_395 and 1.0.
             let nanos = nanos + add_ns as u32;
-            debug_assert!(nanos < NANOS_PER_SEC);
-            (0, nanos)
+            if ($mant_bits == 23) || (nanos != NANOS_PER_SEC) {
+                (0, nanos)
+            } else {
+                (1, 0)
+            }
         } else if exp < $mant_bits {
             let secs = u64::from(mant >> ($mant_bits - exp));
             let t = <$double_ty>::from((mant << exp) & MANT_MASK);
@@ -1309,11 +1311,16 @@ macro_rules! try_from_secs {
             let rem_msb = nanos_tmp & rem_msb_mask == 0;
             let add_ns = !(rem_msb || (is_even && is_tie));
 
-            // neither `f32`, nor `f64` can represent x.999_999_999_5 exactly,
-            // so the nanos part never will be equal to NANOS_PER_SEC
+            // f32 does not have enough presicion to trigger the second branch.
+            // For example, it can not represent numbers between 1.999_999_880...
+            // and 2.0. Bigger values result in even smaller presicion of the
+            // fractional part.
             let nanos = nanos + add_ns as u32;
-            debug_assert!(nanos < NANOS_PER_SEC);
-            (secs, nanos)
+            if ($mant_bits == 23) || (nanos != NANOS_PER_SEC) {
+                (secs, nanos)
+            } else {
+                (secs + 1, 0)
+            }
         } else if exp < 64 {
             // the input has no fractional part
             let secs = u64::from(mant) << (exp - $mant_bits);
@@ -1433,6 +1440,14 @@ impl Duration {
     /// // the conversion uses rounding with tie resolution to even
     /// let res = Duration::try_from_secs_f64(0.999e-9);
     /// assert_eq!(res, Ok(Duration::new(0, 1)));
+    /// let res = Duration::try_from_secs_f64(0.999_999_999_499);
+    /// assert_eq!(res, Ok(Duration::new(0, 999_999_999)));
+    /// let res = Duration::try_from_secs_f64(0.999_999_999_501);
+    /// assert_eq!(res, Ok(Duration::new(1, 0)));
+    /// let res = Duration::try_from_secs_f64(42.999_999_999_499);
+    /// assert_eq!(res, Ok(Duration::new(42, 999_999_999)));
+    /// let res = Duration::try_from_secs_f64(42.999_999_999_501);
+    /// assert_eq!(res, Ok(Duration::new(43, 0)));
     ///
     /// // this float represents exactly 976562.5e-9
     /// let val = f64::from_bits(0x3F50_0000_0000_0000);
