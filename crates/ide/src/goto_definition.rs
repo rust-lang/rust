@@ -15,6 +15,8 @@ use syntax::{ast, AstNode, AstToken, SyntaxKind::*, SyntaxToken, TextRange, T};
 //
 // Navigates to the definition of an identifier.
 //
+// For outline modules, this will navigate to the source file of the module.
+//
 // |===
 // | Editor  | Shortcut
 //
