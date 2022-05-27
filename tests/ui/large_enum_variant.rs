@@ -98,6 +98,24 @@ struct Struct2 {
     a: [i32; 8000],
 }
 
+#[derive(Copy, Clone)]
+enum CopyableLargeEnum {
+    A(bool),
+    B([u128; 4000]),
+}
+
+enum ManuallyCopyLargeEnum {
+    A(bool),
+    B([u128; 4000]),
+}
+
+impl Clone for ManuallyCopyLargeEnum {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+impl Copy for ManuallyCopyLargeEnum {}
+
 fn main() {
     large_enum_variant!();
 }

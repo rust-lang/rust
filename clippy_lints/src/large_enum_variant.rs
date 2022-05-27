@@ -1,7 +1,7 @@
 //! lint when there is a large size difference between variants on an enum
 
-use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet_with_applicability;
+use clippy_utils::{diagnostics::span_lint_and_then, ty::is_copy};
 use rustc_errors::Applicability;
 use rustc_hir::{Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -132,37 +132,43 @@ impl<'tcx> LateLintPass<'tcx> for LargeEnumVariant {
                         let fields = def.variants[variants_size[0].ind].data.fields();
                         variants_size[0].fields_size.sort_by(|a, b| (a.size.cmp(&b.size)));
                         let mut applicability = Applicability::MaybeIncorrect;
-                        let sugg: Vec<(Span, String)> = variants_size[0]
-                            .fields_size
-                            .iter()
-                            .rev()
-                            .map_while(|val| {
-                                if difference > self.maximum_size_difference_allowed {
-                                    difference = difference.saturating_sub(val.size);
-                                    Some((
-                                        fields[val.ind].ty.span,
-                                        format!(
-                                            "Box<{}>",
-                                            snippet_with_applicability(
-                                                cx,
-                                                fields[val.ind].ty.span,
-                                                "..",
-                                                &mut applicability
-                                            )
-                                            .into_owned()
-                                        ),
-                                    ))
-                                } else {
-                                    None
-                                }
-                            })
-                            .collect();
+                        if is_copy(cx, ty) {
+                            diag.span_note(
+                                item.ident.span,
+                                "boxing a variant would require the type no longer be `Copy`",
+                            );
+                        } else {
+                            let sugg: Vec<(Span, String)> = variants_size[0]
+                                .fields_size
+                                .iter()
+                                .rev()
+                                .map_while(|val| {
+                                    if difference > self.maximum_size_difference_allowed {
+                                        difference = difference.saturating_sub(val.size);
+                                        Some((
+                                            fields[val.ind].ty.span,
+                                            format!(
+                                                "Box<{}>",
+                                                snippet_with_applicability(
+                                                    cx,
+                                                    fields[val.ind].ty.span,
+                                                    "..",
+                                                    &mut applicability
+                                                )
+                                                .into_owned()
+                                            ),
+                                        ))
+                                    } else {
+                                        None
+                                    }
+                                })
+                                .collect();
 
-                        if !sugg.is_empty() {
-                            diag.multipart_suggestion(help_text, sugg, Applicability::MaybeIncorrect);
-                            return;
+                            if !sugg.is_empty() {
+                                diag.multipart_suggestion(help_text, sugg, Applicability::MaybeIncorrect);
+                                return;
+                            }
                         }
-
                         diag.span_help(def.variants[variants_size[0].ind].span, help_text);
                     },
                 );
