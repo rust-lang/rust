@@ -116,55 +116,26 @@ fn memset_nonzero() {
 
 #[test]
 fn memcmp_eq() {
-    let arr1: [u8; 32] = [
-        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
-        25, 26, 27, 28, 29, 30, 31,
-    ];
-    let arr2: [u8; 32] = [
-        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
-        25, 26, 27, 28, 29, 30, 31,
-    ];
-    for i in 0..32 {
+    let arr1 @ arr2 = gen_arr::<256>();
+    for i in 0..256 {
         unsafe {
-            assert_eq!(memcmp(arr1.as_ptr(), arr2.as_ptr(), i), 0);
-            assert_eq!(memcmp(arr2.as_ptr(), arr1.as_ptr(), i), 0);
+            assert_eq!(memcmp(arr1.0.as_ptr(), arr2.0.as_ptr(), i), 0);
+            assert_eq!(memcmp(arr2.0.as_ptr(), arr1.0.as_ptr(), i), 0);
         }
     }
 }
 
 #[test]
 fn memcmp_ne() {
-    let arr1: [u8; 8] = [0, 1, 2, 3, 4, 5, 6, 7];
-    let arr2: [u8; 8] = [0, 1, 2, 3, 4, 5, 7, 7];
-    unsafe {
-        assert!(memcmp(arr1.as_ptr(), arr2.as_ptr(), 8) < 0);
-        assert!(memcmp(arr2.as_ptr(), arr1.as_ptr(), 8) > 0);
-    }
-}
-
-#[test]
-fn memcmp_ne_16() {
-    let arr1: [u8; 16] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
-    let arr2: [u8; 16] = [0, 1, 2, 3, 4, 5, 7, 7, 8, 9, 10, 11, 12, 13, 14, 15];
-    unsafe {
-        assert!(memcmp(arr1.as_ptr(), arr2.as_ptr(), 16) < 0);
-        assert!(memcmp(arr2.as_ptr(), arr1.as_ptr(), 16) > 0);
-    }
-}
-
-#[test]
-fn memcmp_ne_32() {
-    let arr1: [u8; 32] = [
-        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0,
-    ];
-    let arr2: [u8; 32] = [
-        0, 1, 2, 3, 4, 5, 7, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0,
-    ];
-    unsafe {
-        assert!(memcmp(arr1.as_ptr(), arr2.as_ptr(), 32) < 0);
-        assert!(memcmp(arr2.as_ptr(), arr1.as_ptr(), 32) > 0);
+    let arr1 @ arr2 = gen_arr::<256>();
+    for i in 0..256 {
+        let mut diff_arr = arr1;
+        diff_arr.0[i] = 127;
+        let expect = diff_arr.0[i].cmp(&arr2.0[i]);
+        for k in i + 1..256 {
+            let result = unsafe { memcmp(diff_arr.0.as_ptr(), arr2.0.as_ptr(), k) };
+            assert_eq!(expect, result.cmp(&0));
+        }
     }
 }
 

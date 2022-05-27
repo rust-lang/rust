@@ -267,7 +267,7 @@ pub unsafe fn set_bytes(mut s: *mut u8, c: u8, mut n: usize) {
 }
 
 #[inline(always)]
-pub unsafe fn compare_bytes(s1: *const u8, s2: *const u8, n: usize) {
+pub unsafe fn compare_bytes(s1: *const u8, s2: *const u8, n: usize) -> i32 {
     let mut i = 0;
     while i < n {
         let a = *s1.add(i);
