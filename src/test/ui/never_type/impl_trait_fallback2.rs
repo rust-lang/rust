@@ -13,6 +13,7 @@ fn should_ret_unit() -> impl T {
 type Foo = impl T;
 
 fn a() -> Foo {
+    //~^ ERROR `(): T` is not satisfied
     panic!()
 }
 

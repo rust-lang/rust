@@ -7,6 +7,7 @@ use crate::rustc_middle::ty::subst::Subst;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
+use rustc_infer::infer::opaque_types::ReplaceOpaqueTypes;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::LateBoundRegionConversionTime;
 use rustc_infer::infer::{InferOk, InferResult};
@@ -645,6 +646,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         result
     }
 
+    /// Closures can't create hidden types for opaque types of their parent, as they
+    /// do not have all the outlives information available. Also `type_of` looks for
+    /// hidden types in the owner (so the closure's parent), so it would not find these
+    /// definitions.
     fn hide_parent_opaque_types(&self, ty: Ty<'tcx>, span: Span, body_id: hir::HirId) -> Ty<'tcx> {
         let InferOk { value, obligations } = self.replace_opaque_types_with_inference_vars(
             ty,
@@ -652,6 +657,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             span,
             ObligationCauseCode::MiscObligation,
             self.param_env,
+            ReplaceOpaqueTypes::OnlyForRPIT,
         );
         self.register_predicates(obligations);
         value
@@ -671,38 +677,43 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let ret_ty = ret_coercion.borrow().expected_ty();
         let ret_ty = self.inh.infcx.shallow_resolve(ret_ty);
-        let (def_id, substs) = match *ret_ty.kind() {
-            ty::Opaque(def_id, substs) => (def_id, substs),
+
+        let get_future_output = |predicate: ty::Predicate<'tcx>, span| {
+            // Search for a pending obligation like
+            //
+            // `<R as Future>::Output = T`
+            //
+            // where R is the return type we are expecting. This type `T`
+            // will be our output.
+            let bound_predicate = predicate.kind();
+            if let ty::PredicateKind::Projection(proj_predicate) = bound_predicate.skip_binder() {
+                self.deduce_future_output_from_projection(
+                    span,
+                    bound_predicate.rebind(proj_predicate),
+                )
+            } else {
+                None
+            }
+        };
+
+        let output_ty = match *ret_ty.kind() {
+            ty::Infer(ty::TyVar(ret_vid)) => {
+                self.obligations_for_self_ty(ret_vid).find_map(|(_, obligation)| {
+                    get_future_output(obligation.predicate, obligation.cause.span)
+                })
+            }
+            ty::Opaque(def_id, substs) => self
+                .tcx
+                .bound_explicit_item_bounds(def_id)
+                .transpose_iter()
+                .map(|e| e.map_bound(|e| *e).transpose_tuple2())
+                .find_map(|(p, s)| get_future_output(p.subst(self.tcx, substs), s.0)),
             ty::Error(_) => return None,
             _ => span_bug!(
                 self.tcx.def_span(expr_def_id),
                 "async fn generator return type not an inference variable"
             ),
         };
-
-        let item_bounds = self.tcx.bound_explicit_item_bounds(def_id);
-
-        // Search for a pending obligation like
-        //
-        // `<R as Future>::Output = T`
-        //
-        // where R is the return type we are expecting. This type `T`
-        // will be our output.
-        let output_ty = item_bounds
-            .transpose_iter()
-            .map(|e| e.map_bound(|e| *e).transpose_tuple2())
-            .find_map(|(predicate, span)| {
-                let bound_predicate = predicate.subst(self.tcx, substs).kind();
-                if let ty::PredicateKind::Projection(proj_predicate) = bound_predicate.skip_binder()
-                {
-                    self.deduce_future_output_from_projection(
-                        span.0,
-                        bound_predicate.rebind(proj_predicate),
-                    )
-                } else {
-                    None
-                }
-            });
 
         debug!("deduce_future_output_from_obligations: output_ty={:?}", output_ty);
         output_ty

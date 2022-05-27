@@ -1,10 +1,8 @@
-error[E0271]: type mismatch resolving `<[generator@$DIR/issue-94429.rs:16:9: 18:10] as Generator>::Yield == ()`
-  --> $DIR/issue-94429.rs:16:9
+error[E0271]: type mismatch resolving `<[generator@$DIR/issue-94429.rs:17:9: 19:10] as Generator>::Yield == ()`
+  --> $DIR/issue-94429.rs:15:26
    |
-LL | /         move || {
-LL | |             yield 1;
-LL | |         }
-   | |_________^ expected integer, found `()`
+LL |     fn run(&mut self) -> Self::Gen {
+   |                          ^^^^^^^^^ expected integer, found `()`
 
 error: aborting due to previous error
 
