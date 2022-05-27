@@ -1459,12 +1459,12 @@ fn download_ci_rustc(builder: &Builder<'_>, commit: &str) {
         }
         let filename = format!("rust-std-{CHANNEL}-{host}.tar.xz");
         let pattern = format!("rust-std-{host}");
-        download_component(builder, filename, &pattern, commit);
+        download_ci_component(builder, filename, &pattern, commit);
         let filename = format!("rustc-{CHANNEL}-{host}.tar.xz");
-        download_component(builder, filename, "rustc", commit);
+        download_ci_component(builder, filename, "rustc", commit);
         // download-rustc doesn't need its own cargo, it can just use beta's.
         let filename = format!("rustc-dev-{CHANNEL}-{host}.tar.xz");
-        download_component(builder, filename, "rustc-dev", commit);
+        download_ci_component(builder, filename, "rustc-dev", commit);
 
         builder.fix_bin_or_dylib(&bin_root.join("bin").join("rustc"));
         builder.fix_bin_or_dylib(&bin_root.join("bin").join("rustdoc"));
@@ -1481,7 +1481,7 @@ fn download_ci_rustc(builder: &Builder<'_>, commit: &str) {
 
 /// Download a single component of a CI-built toolchain (not necessarily a published nightly).
 // NOTE: intentionally takes an owned string to avoid downloading multiple times by accident
-fn download_component(builder: &Builder<'_>, filename: String, prefix: &str, commit: &str) {
+fn download_ci_component(builder: &Builder<'_>, filename: String, prefix: &str, commit: &str) {
     let cache_dst = builder.out.join("cache");
     let rustc_cache = cache_dst.join(commit);
     if !rustc_cache.exists() {
