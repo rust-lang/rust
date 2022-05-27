@@ -345,8 +345,6 @@ const RUSTFIX_COVERAGE_KNOWN_EXCEPTIONS: &[&str] = &[
     "cast_size_32bit.rs",
     "char_lit_as_u8.rs",
     "cmp_owned/without_suggestion.rs",
-    "crashes/ice-6250.rs",
-    "crashes/ice-6251.rs",
     "dbg_macro.rs",
     "deref_addrof_double_trigger.rs",
     "doc/unbalanced_ticks.rs",
@@ -388,6 +386,9 @@ fn check_rustfix_coverage() {
         assert!(RUSTFIX_COVERAGE_KNOWN_EXCEPTIONS.iter().is_sorted_by_key(Path::new));
 
         for rs_path in missing_coverage_contents.lines() {
+            if Path::new(rs_path).starts_with("tests/ui/crashes") {
+                continue;
+            }
             let filename = Path::new(rs_path).strip_prefix("tests/ui/").unwrap();
             assert!(
                 RUSTFIX_COVERAGE_KNOWN_EXCEPTIONS

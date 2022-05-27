@@ -1,7 +1,0 @@
-// run-rustfix
-fn _f(s: &str) -> Option<()> {
-    let _ = s[1..].split('.').next()?;
-    Some(())
-}
-
-fn main() {}

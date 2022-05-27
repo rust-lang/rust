@@ -1,6 +1,3 @@
-// run-rustfix
-#![allow(dead_code)]
-
 #[derive(Default)]
 struct A<T> {
     a: Vec<A<T>>,
