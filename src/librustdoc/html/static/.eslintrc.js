@@ -62,5 +62,6 @@ module.exports = {
                 "varsIgnorePattern": "^_"
             }
         ],
+        "eqeqeq": "error",
     }
 };
