@@ -54,5 +54,6 @@ module.exports = {
         "comma-style": ["error", "last"],
         "max-len": ["error", { "code": 100, "tabWidth": 4 }],
         "eol-last": ["error", "always"],
+        "arrow-parens": ["error", "as-needed"],
     }
 };
