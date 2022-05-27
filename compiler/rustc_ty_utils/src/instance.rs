@@ -148,6 +148,7 @@ fn inner_resolve_instance<'tcx>(
 
     let result = if let Some(trait_def_id) = tcx.trait_of_item(def.did) {
         debug!(" => associated item, attempting to find impl in param_env {:#?}", param_env);
+        let substs = tcx.normalize_erasing_regions(param_env, substs);
         resolve_associated_item(tcx, def.did, param_env, trait_def_id, substs)
     } else {
         let ty = tcx.type_of(def.def_id_for_type_of());
