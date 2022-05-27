@@ -355,3 +355,34 @@ impl From<OwnedFd> for crate::net::UdpSocket {
         ))))
     }
 }
+
+#[stable(feature = "io_safety", since = "1.63.0")]
+/// This impl allows implementing traits that require `AsFd` on Arc.
+/// ```
+/// # #[cfg(any(unix, target_os = "wasi"))] mod group_cfg {
+/// # #[cfg(target_os = "wasi")]
+/// # use std::os::wasi::io::AsFd;
+/// # #[cfg(unix)]
+/// # use std::os::unix::io::AsFd;
+/// use std::net::UdpSocket;
+/// use std::sync::Arc;
+///
+/// trait MyTrait: AsFd {}
+/// impl MyTrait for Arc<UdpSocket> {}
+/// impl MyTrait for Box<UdpSocket> {}
+/// # }
+/// ```
+impl<T: AsFd> AsFd for crate::sync::Arc<T> {
+    #[inline]
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        (**self).as_fd()
+    }
+}
+
+#[stable(feature = "io_safety", since = "1.63.0")]
+impl<T: AsFd> AsFd for Box<T> {
+    #[inline]
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        (**self).as_fd()
+    }
+}
