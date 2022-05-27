@@ -1290,8 +1290,10 @@ macro_rules! try_from_secs {
 
             // note that neither `f32`, nor `f64` can represent
             // 0.999_999_999_5 exactly, so the nanos part
-            // never will be equal to 10^9.
-            (0, nanos + add_ns as u32)
+            // never will be equal to NANOS_PER_SEC
+            let nanos = nanos + add_ns as u32;
+            debug_assert!(nanos < NANOS_PER_SEC);
+            (0, nanos)
         } else if exp < $mant_bits {
             let secs = u64::from(mant >> ($mant_bits - exp));
             let t = <$double_ty>::from((mant << exp) & MANT_MASK);
@@ -1308,8 +1310,10 @@ macro_rules! try_from_secs {
             let add_ns = !(rem_msb || (is_even && is_tie));
 
             // neither `f32`, nor `f64` can represent x.999_999_999_5 exactly,
-            // so the nanos part never will be equal to 10^9
-            (secs, nanos + add_ns as u32)
+            // so the nanos part never will be equal to NANOS_PER_SEC
+            let nanos = nanos + add_ns as u32;
+            debug_assert!(nanos < NANOS_PER_SEC);
+            (secs, nanos)
         } else if exp < 64 {
             // the input has no fractional part
             let secs = u64::from(mant) << (exp - $mant_bits);
