@@ -1291,11 +1291,7 @@ macro_rules! try_from_secs {
             // f32 does not have enough presicion to trigger the second branch
             // since it can not represent numbers between 0.999_999_940_395 and 1.0.
             let nanos = nanos + add_ns as u32;
-            if ($mant_bits == 23) || (nanos != NANOS_PER_SEC) {
-                (0, nanos)
-            } else {
-                (1, 0)
-            }
+            if ($mant_bits == 23) || (nanos != NANOS_PER_SEC) { (0, nanos) } else { (1, 0) }
         } else if exp < $mant_bits {
             let secs = u64::from(mant >> ($mant_bits - exp));
             let t = <$double_ty>::from((mant << exp) & MANT_MASK);
