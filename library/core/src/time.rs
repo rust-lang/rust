@@ -730,9 +730,9 @@ impl Duration {
     /// // subnormal float
     /// let res = Duration::from_secs_f64(f64::from_bits(1));
     /// assert_eq!(res, Duration::new(0, 0));
-    /// // conversion uses truncation, not rounding
+    /// // conversion uses rounding
     /// let res = Duration::from_secs_f64(0.999e-9);
-    /// assert_eq!(res, Duration::new(0, 0));
+    /// assert_eq!(res, Duration::new(0, 1));
     /// ```
     #[stable(feature = "duration_float", since = "1.38.0")]
     #[must_use]
@@ -760,17 +760,17 @@ impl Duration {
     /// let res = Duration::from_secs_f32(1e-20);
     /// assert_eq!(res, Duration::new(0, 0));
     /// let res = Duration::from_secs_f32(4.2e-7);
-    /// assert_eq!(res, Duration::new(0, 419));
+    /// assert_eq!(res, Duration::new(0, 420));
     /// let res = Duration::from_secs_f32(2.7);
-    /// assert_eq!(res, Duration::new(2, 700_000_047));
+    /// assert_eq!(res, Duration::new(2, 700_000_048));
     /// let res = Duration::from_secs_f32(3e10);
     /// assert_eq!(res, Duration::new(30_000_001_024, 0));
     /// // subnormal float
     /// let res = Duration::from_secs_f32(f32::from_bits(1));
     /// assert_eq!(res, Duration::new(0, 0));
-    /// // conversion uses truncation, not rounding
+    /// // conversion uses rounding
     /// let res = Duration::from_secs_f32(0.999e-9);
-    /// assert_eq!(res, Duration::new(0, 0));
+    /// assert_eq!(res, Duration::new(0, 1));
     /// ```
     #[stable(feature = "duration_float", since = "1.38.0")]
     #[must_use]
@@ -815,7 +815,7 @@ impl Duration {
     /// use std::time::Duration;
     ///
     /// let dur = Duration::new(2, 700_000_000);
-    /// assert_eq!(dur.mul_f32(3.14), Duration::new(8, 478_000_640));
+    /// assert_eq!(dur.mul_f32(3.14), Duration::new(8, 478_000_641));
     /// assert_eq!(dur.mul_f32(3.14e5), Duration::new(847800, 0));
     /// ```
     #[stable(feature = "duration_float", since = "1.38.0")]
@@ -838,8 +838,7 @@ impl Duration {
     ///
     /// let dur = Duration::new(2, 700_000_000);
     /// assert_eq!(dur.div_f64(3.14), Duration::new(0, 859_872_611));
-    /// // note that truncation is used, not rounding
-    /// assert_eq!(dur.div_f64(3.14e5), Duration::new(0, 8_598));
+    /// assert_eq!(dur.div_f64(3.14e5), Duration::new(0, 8_599));
     /// ```
     #[stable(feature = "duration_float", since = "1.38.0")]
     #[must_use = "this returns the result of the operation, \
@@ -862,9 +861,8 @@ impl Duration {
     /// let dur = Duration::new(2, 700_000_000);
     /// // note that due to rounding errors result is slightly
     /// // different from 0.859_872_611
-    /// assert_eq!(dur.div_f32(3.14), Duration::new(0, 859_872_579));
-    /// // note that truncation is used, not rounding
-    /// assert_eq!(dur.div_f32(3.14e5), Duration::new(0, 8_598));
+    /// assert_eq!(dur.div_f32(3.14), Duration::new(0, 859_872_580));
+    /// assert_eq!(dur.div_f32(3.14e5), Duration::new(0, 8_599));
     /// ```
     #[stable(feature = "duration_float", since = "1.38.0")]
     #[must_use = "this returns the result of the operation, \
@@ -1272,19 +1270,53 @@ macro_rules! try_from_secs {
         let mant = (bits & MANT_MASK) | (MANT_MASK + 1);
         let exp = ((bits >> $mant_bits) & EXP_MASK) as i16 + MIN_EXP;
 
-        let (secs, nanos) = if exp < -30 {
-            // the input represents less than 1ns.
+        let (secs, nanos) = if exp < -31 {
+            // the input represents less than 1ns and can not be rounded to it
             (0u64, 0u32)
         } else if exp < 0 {
             // the input is less than 1 second
             let t = <$double_ty>::from(mant) << ($offset + exp);
-            let nanos = (u128::from(NANOS_PER_SEC) * u128::from(t)) >> ($mant_bits + $offset);
-            (0, nanos as u32)
+            let nanos_offset = $mant_bits + $offset;
+            let nanos_tmp = u128::from(NANOS_PER_SEC) * u128::from(t);
+            let nanos = (nanos_tmp >> nanos_offset) as u32;
+
+            let rem_mask = (1 << nanos_offset) - 1;
+            let rem_msb_mask = 1 << (nanos_offset - 1);
+            let rem = nanos_tmp & rem_mask;
+            let is_tie = rem == rem_msb_mask;
+            let is_even = (nanos & 1) == 0;
+            let rem_msb = nanos_tmp & rem_msb_mask == 0;
+            let add_ns = !(rem_msb || (is_even && is_tie));
+
+            // f32 does not have enough presicion to trigger the second branch
+            // since it can not represent numbers between 0.999_999_940_395 and 1.0.
+            let nanos = nanos + add_ns as u32;
+            if ($mant_bits == 23) || (nanos != NANOS_PER_SEC) { (0, nanos) } else { (1, 0) }
         } else if exp < $mant_bits {
-            let secs = mant >> ($mant_bits - exp);
+            let secs = u64::from(mant >> ($mant_bits - exp));
             let t = <$double_ty>::from((mant << exp) & MANT_MASK);
-            let nanos = (<$double_ty>::from(NANOS_PER_SEC) * t) >> $mant_bits;
-            (u64::from(secs), nanos as u32)
+            let nanos_offset = $mant_bits;
+            let nanos_tmp = <$double_ty>::from(NANOS_PER_SEC) * t;
+            let nanos = (nanos_tmp >> nanos_offset) as u32;
+
+            let rem_mask = (1 << nanos_offset) - 1;
+            let rem_msb_mask = 1 << (nanos_offset - 1);
+            let rem = nanos_tmp & rem_mask;
+            let is_tie = rem == rem_msb_mask;
+            let is_even = (nanos & 1) == 0;
+            let rem_msb = nanos_tmp & rem_msb_mask == 0;
+            let add_ns = !(rem_msb || (is_even && is_tie));
+
+            // f32 does not have enough presicion to trigger the second branch.
+            // For example, it can not represent numbers between 1.999_999_880...
+            // and 2.0. Bigger values result in even smaller presicion of the
+            // fractional part.
+            let nanos = nanos + add_ns as u32;
+            if ($mant_bits == 23) || (nanos != NANOS_PER_SEC) {
+                (secs, nanos)
+            } else {
+                (secs + 1, 0)
+            }
         } else if exp < 64 {
             // the input has no fractional part
             let secs = u64::from(mant) << (exp - $mant_bits);
@@ -1315,16 +1347,13 @@ impl Duration {
     /// let res = Duration::try_from_secs_f32(1e-20);
     /// assert_eq!(res, Ok(Duration::new(0, 0)));
     /// let res = Duration::try_from_secs_f32(4.2e-7);
-    /// assert_eq!(res, Ok(Duration::new(0, 419)));
+    /// assert_eq!(res, Ok(Duration::new(0, 420)));
     /// let res = Duration::try_from_secs_f32(2.7);
-    /// assert_eq!(res, Ok(Duration::new(2, 700_000_047)));
+    /// assert_eq!(res, Ok(Duration::new(2, 700_000_048)));
     /// let res = Duration::try_from_secs_f32(3e10);
     /// assert_eq!(res, Ok(Duration::new(30_000_001_024, 0)));
     /// // subnormal float:
     /// let res = Duration::try_from_secs_f32(f32::from_bits(1));
-    /// assert_eq!(res, Ok(Duration::new(0, 0)));
-    /// // conversion uses truncation, not rounding
-    /// let res = Duration::try_from_secs_f32(0.999e-9);
     /// assert_eq!(res, Ok(Duration::new(0, 0)));
     ///
     /// let res = Duration::try_from_secs_f32(-5.0);
@@ -1333,6 +1362,30 @@ impl Duration {
     /// assert!(res.is_err());
     /// let res = Duration::try_from_secs_f32(2e19);
     /// assert!(res.is_err());
+    ///
+    /// // the conversion uses rounding with tie resolution to even
+    /// let res = Duration::try_from_secs_f32(0.999e-9);
+    /// assert_eq!(res, Ok(Duration::new(0, 1)));
+    ///
+    /// // this float represents exactly 976562.5e-9
+    /// let val = f32::from_bits(0x3A80_0000);
+    /// let res = Duration::try_from_secs_f32(val);
+    /// assert_eq!(res, Ok(Duration::new(0, 976_562)));
+    ///
+    /// // this float represents exactly 2929687.5e-9
+    /// let val = f32::from_bits(0x3B40_0000);
+    /// let res = Duration::try_from_secs_f32(val);
+    /// assert_eq!(res, Ok(Duration::new(0, 2_929_688)));
+    ///
+    /// // this float represents exactly 1.000_976_562_5
+    /// let val = f32::from_bits(0x3F802000);
+    /// let res = Duration::try_from_secs_f32(val);
+    /// assert_eq!(res, Ok(Duration::new(1, 976_562)));
+    ///
+    /// // this float represents exactly 1.002_929_687_5
+    /// let val = f32::from_bits(0x3F806000);
+    /// let res = Duration::try_from_secs_f32(val);
+    /// assert_eq!(res, Ok(Duration::new(1, 2_929_688)));
     /// ```
     #[unstable(feature = "duration_checked_float", issue = "83400")]
     #[inline]
@@ -1372,9 +1425,6 @@ impl Duration {
     /// // subnormal float
     /// let res = Duration::try_from_secs_f64(f64::from_bits(1));
     /// assert_eq!(res, Ok(Duration::new(0, 0)));
-    /// // conversion uses truncation, not rounding
-    /// let res = Duration::try_from_secs_f32(0.999e-9);
-    /// assert_eq!(res, Ok(Duration::new(0, 0)));
     ///
     /// let res = Duration::try_from_secs_f64(-5.0);
     /// assert!(res.is_err());
@@ -1382,6 +1432,38 @@ impl Duration {
     /// assert!(res.is_err());
     /// let res = Duration::try_from_secs_f64(2e19);
     /// assert!(res.is_err());
+    ///
+    /// // the conversion uses rounding with tie resolution to even
+    /// let res = Duration::try_from_secs_f64(0.999e-9);
+    /// assert_eq!(res, Ok(Duration::new(0, 1)));
+    /// let res = Duration::try_from_secs_f64(0.999_999_999_499);
+    /// assert_eq!(res, Ok(Duration::new(0, 999_999_999)));
+    /// let res = Duration::try_from_secs_f64(0.999_999_999_501);
+    /// assert_eq!(res, Ok(Duration::new(1, 0)));
+    /// let res = Duration::try_from_secs_f64(42.999_999_999_499);
+    /// assert_eq!(res, Ok(Duration::new(42, 999_999_999)));
+    /// let res = Duration::try_from_secs_f64(42.999_999_999_501);
+    /// assert_eq!(res, Ok(Duration::new(43, 0)));
+    ///
+    /// // this float represents exactly 976562.5e-9
+    /// let val = f64::from_bits(0x3F50_0000_0000_0000);
+    /// let res = Duration::try_from_secs_f64(val);
+    /// assert_eq!(res, Ok(Duration::new(0, 976_562)));
+    ///
+    /// // this float represents exactly 2929687.5e-9
+    /// let val = f64::from_bits(0x3F68_0000_0000_0000);
+    /// let res = Duration::try_from_secs_f64(val);
+    /// assert_eq!(res, Ok(Duration::new(0, 2_929_688)));
+    ///
+    /// // this float represents exactly 1.000_976_562_5
+    /// let val = f64::from_bits(0x3FF0_0400_0000_0000);
+    /// let res = Duration::try_from_secs_f64(val);
+    /// assert_eq!(res, Ok(Duration::new(1, 976_562)));
+    ///
+    /// // this float represents exactly 1.002_929_687_5
+    /// let val = f64::from_bits(0x3_FF00_C000_0000_000);
+    /// let res = Duration::try_from_secs_f64(val);
+    /// assert_eq!(res, Ok(Duration::new(1, 2_929_688)));
     /// ```
     #[unstable(feature = "duration_checked_float", issue = "83400")]
     #[inline]

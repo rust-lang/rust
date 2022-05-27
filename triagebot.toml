@@ -80,6 +80,13 @@ resolved/implemented on Fuchsia. Could one of you weigh in?
 """
 label = "O-fuchsia"
 
+[ping.macos]
+message = """\
+Hey MacOS Group! This issue or PR could use some MacOS-specific guidance. Could one
+of you weigh in? Thanks <3
+"""
+label = "O-macos"
+
 [prioritize]
 label = "I-prioritize"
 
