@@ -208,6 +208,8 @@ mod handle;
 mod rpc;
 #[allow(unsafe_code)]
 mod scoped_cell;
+#[allow(unsafe_code)]
+mod selfless_reify;
 #[forbid(unsafe_code)]
 pub mod server;
 
