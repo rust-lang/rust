@@ -3004,13 +3004,12 @@ impl ItemKind<'_> {
         Some(match *self {
             ItemKind::Fn(_, ref generics, _)
             | ItemKind::TyAlias(_, ref generics)
-            | ItemKind::OpaqueTy(OpaqueTy {
-                ref generics, origin: OpaqueTyOrigin::TyAlias, ..
-            })
+            | ItemKind::OpaqueTy(OpaqueTy { ref generics, .. })
             | ItemKind::Enum(_, ref generics)
             | ItemKind::Struct(_, ref generics)
             | ItemKind::Union(_, ref generics)
             | ItemKind::Trait(_, _, ref generics, _, _)
+            | ItemKind::TraitAlias(ref generics, _)
             | ItemKind::Impl(Impl { ref generics, .. }) => generics,
             _ => return None,
         })
@@ -3210,13 +3209,8 @@ impl<'hir> OwnerNode<'hir> {
         }
     }
 
-    pub fn generics(&self) -> Option<&'hir Generics<'hir>> {
-        match self {
-            OwnerNode::TraitItem(TraitItem { generics, .. })
-            | OwnerNode::ImplItem(ImplItem { generics, .. }) => Some(generics),
-            OwnerNode::Item(item) => item.kind.generics(),
-            _ => None,
-        }
+    pub fn generics(self) -> Option<&'hir Generics<'hir>> {
+        Node::generics(self.into())
     }
 
     pub fn def_id(self) -> LocalDefId {
@@ -3403,9 +3397,12 @@ impl<'hir> Node<'hir> {
         }
     }
 
-    pub fn generics(&self) -> Option<&'hir Generics<'hir>> {
+    pub fn generics(self) -> Option<&'hir Generics<'hir>> {
         match self {
-            Node::TraitItem(TraitItem { generics, .. })
+            Node::ForeignItem(ForeignItem {
+                kind: ForeignItemKind::Fn(_, _, generics), ..
+            })
+            | Node::TraitItem(TraitItem { generics, .. })
             | Node::ImplItem(ImplItem { generics, .. }) => Some(generics),
             Node::Item(item) => item.kind.generics(),
             _ => None,
