@@ -110,14 +110,20 @@ pub unsafe fn compare_bytes(a: *const u8, b: *const u8, n: usize) -> i32 {
         U: Clone + Copy + Eq,
         F: FnOnce(*const U, *const U, usize) -> i32,
     {
-        for _ in 0..n / mem::size_of::<T>() {
+        // Just to be sure we're actually working with powers of two...
+        let _ = const { 1 - mem::size_of::<T>().count_ones() }; // <= 1
+        let _ = const { mem::size_of::<T>().count_ones() - 1 }; // >= 1
+        // This should be equivalent to division with power-of-two sizes, except the former
+        // somehow still leaves a call to panic because ??
+        for _ in 0..n >> mem::size_of::<T>().trailing_zeros() {
             if a.read_unaligned() != b.read_unaligned() {
                 return f(a.cast(), b.cast(), mem::size_of::<T>());
             }
             a = a.add(1);
             b = b.add(1);
         }
-        f(a.cast(), b.cast(), n % mem::size_of::<T>())
+        // Ditto
+        f(a.cast(), b.cast(), n & (mem::size_of::<T>() - 1))
     }
     let c1 = |mut a: *const u8, mut b: *const u8, n| {
         for _ in 0..n {
