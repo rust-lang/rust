@@ -455,7 +455,7 @@ fn dir_up_to_date(src: &Path, threshold: SystemTime) -> bool {
 }
 
 fn fail(s: &str) -> ! {
-    println!("\n\n{}\n\n", s);
+    eprintln!("\n\n{}\n\n", s);
     std::process::exit(1);
 }
 

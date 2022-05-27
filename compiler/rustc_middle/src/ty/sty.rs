@@ -1469,7 +1469,7 @@ impl ParamConst {
     }
 }
 
-/// Use this rather than `TyKind`, whenever possible.
+/// Use this rather than `RegionKind`, whenever possible.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable)]
 #[rustc_pass_by_value]
 pub struct Region<'tcx>(pub Interned<'tcx, RegionKind>);

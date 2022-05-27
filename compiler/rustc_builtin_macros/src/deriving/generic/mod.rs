@@ -1039,7 +1039,9 @@ impl<'a> MethodDef<'a> {
         let span = trait_.span;
         let mut patterns = Vec::new();
         for i in 0..self_args.len() {
-            let struct_path = cx.path(span, vec![type_ident]);
+            // We could use `type_ident` instead of `Self`, but in the case of a type parameter
+            // shadowing the struct name, that causes a second, unnecessary E0578 error. #97343
+            let struct_path = cx.path(span, vec![Ident::new(kw::SelfUpper, type_ident.span)]);
             let (pat, ident_expr) = trait_.create_struct_pattern(
                 cx,
                 struct_path,
