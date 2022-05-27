@@ -859,9 +859,6 @@ impl Config {
         set(&mut config.full_bootstrap, build.full_bootstrap);
         set(&mut config.extended, build.extended);
         config.tools = build.tools;
-        if build.rustfmt.is_some() {
-            config.initial_rustfmt = build.rustfmt;
-        }
         set(&mut config.verbose, build.verbose);
         set(&mut config.sanitizers, build.sanitizers);
         set(&mut config.profiler, build.profiler);
@@ -1154,17 +1151,12 @@ impl Config {
             set(&mut config.missing_tools, t.missing_tools);
         }
 
-        config.initial_rustfmt = config.initial_rustfmt.or_else({
-            let build = config.build;
-            let initial_rustc = &config.initial_rustc;
+        config.initial_rustfmt = build.rustfmt.or_else(|| {
+            // Cargo does not provide a RUSTFMT environment variable, so we
+            // synthesize it manually.
+            let rustfmt = config.initial_rustc.with_file_name(exe("rustfmt", config.build));
 
-            move || {
-                // Cargo does not provide a RUSTFMT environment variable, so we
-                // synthesize it manually.
-                let rustfmt = initial_rustc.with_file_name(exe("rustfmt", build));
-
-                if rustfmt.exists() { Some(rustfmt) } else { None }
-            }
+            if rustfmt.exists() { Some(rustfmt) } else { None }
         });
 
         // Now that we've reached the end of our configuration, infer the
