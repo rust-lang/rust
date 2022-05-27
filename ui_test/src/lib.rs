@@ -9,7 +9,7 @@ use comments::ErrorMatch;
 use crossbeam::queue::SegQueue;
 use regex::Regex;
 
-pub use crate::comments::Comments;
+use crate::comments::Comments;
 
 mod comments;
 #[cfg(test)]
