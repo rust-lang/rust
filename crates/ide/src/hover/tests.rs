@@ -3598,6 +3598,72 @@ const FOO$0: u8 = b'\x61';
             This is a doc
         "#]],
     );
+    // show float literal
+    check(
+        r#"
+    /// This is a doc
+    const FOO$0: f64 = 1.0234;
+    "#,
+        expect![[r#"
+            *FOO*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            const FOO: f64 = 1.0234
+            ```
+
+            ---
+
+            This is a doc
+        "#]],
+    );
+    //show float typecasted from int
+    check(
+        r#"
+/// This is a doc
+const FOO$0: f32 = 1f32;
+"#,
+        expect![[r#"
+            *FOO*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            const FOO: f32 = 1
+            ```
+
+            ---
+
+            This is a doc
+        "#]],
+    );
+    //show f64 typecasted from float
+    check(
+        r#"
+/// This is a doc
+const FOO$0: f64 = 1.0f64;
+"#,
+        expect![[r#"
+            *FOO*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            const FOO: f64 = 1
+            ```
+
+            ---
+
+            This is a doc
+        "#]],
+    );
 }
 
 #[test]

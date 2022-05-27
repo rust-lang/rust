@@ -38,6 +38,24 @@ pub struct Label {
 }
 pub type LabelId = Idx<Label>;
 
+// We convert float values into bits and that's how we don't need to deal with f32 and f64.
+// For PartialEq, bits comparison should work, as ordering is not important
+// https://github.com/rust-lang/rust-analyzer/issues/12380#issuecomment-1137284360
+#[derive(Default, Debug, Clone, Eq, PartialEq)]
+pub struct FloatTypeWrapper(u64);
+
+impl FloatTypeWrapper {
+    pub fn new(value: f64) -> Self {
+        Self(value.to_bits())
+    }
+}
+
+impl std::fmt::Display for FloatTypeWrapper {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", f64::from_bits(self.0))
+    }
+}
+
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Literal {
     String(Box<str>),
@@ -46,7 +64,10 @@ pub enum Literal {
     Bool(bool),
     Int(i128, Option<BuiltinInt>),
     Uint(u128, Option<BuiltinUint>),
-    Float(u64, Option<BuiltinFloat>), // FIXME: f64 is not Eq
+    // Here we are using a wrapper around float because f32 and f64 do not implement Eq, so they
+    // could not be used directly here, to understand how the wrapper works go to definition of
+    // FloatTypeWrapper
+    Float(FloatTypeWrapper, Option<BuiltinFloat>),
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]

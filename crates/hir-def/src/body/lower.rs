@@ -29,8 +29,8 @@ use crate::{
     builtin_type::{BuiltinFloat, BuiltinInt, BuiltinUint},
     db::DefDatabase,
     expr::{
-        dummy_expr_id, Array, BindingAnnotation, Expr, ExprId, Label, LabelId, Literal, MatchArm,
-        Pat, PatId, RecordFieldPat, RecordLitField, Statement,
+        dummy_expr_id, Array, BindingAnnotation, Expr, ExprId, FloatTypeWrapper, Label, LabelId,
+        Literal, MatchArm, Pat, PatId, RecordFieldPat, RecordLitField, Statement,
     },
     intern::Interned,
     item_scope::BuiltinShadowMode,
@@ -968,7 +968,10 @@ impl From<ast::LiteralKind> for Literal {
             // FIXME: these should have actual values filled in, but unsure on perf impact
             LiteralKind::IntNumber(lit) => {
                 if let builtin @ Some(_) = lit.suffix().and_then(BuiltinFloat::from_suffix) {
-                    Literal::Float(Default::default(), builtin)
+                    Literal::Float(
+                        FloatTypeWrapper::new(lit.float_value().unwrap_or(Default::default())),
+                        builtin,
+                    )
                 } else if let builtin @ Some(_) = lit.suffix().and_then(BuiltinInt::from_suffix) {
                     Literal::Int(lit.value().unwrap_or(0) as i128, builtin)
                 } else {
@@ -978,7 +981,7 @@ impl From<ast::LiteralKind> for Literal {
             }
             LiteralKind::FloatNumber(lit) => {
                 let ty = lit.suffix().and_then(BuiltinFloat::from_suffix);
-                Literal::Float(Default::default(), ty)
+                Literal::Float(FloatTypeWrapper::new(lit.value().unwrap_or(Default::default())), ty)
             }
             LiteralKind::ByteString(bs) => {
                 let text = bs.value().map(Box::from).unwrap_or_else(Default::default);

@@ -319,17 +319,49 @@ impl ast::IntNumber {
             Some(suffix)
         }
     }
+
+    pub fn float_value(&self) -> Option<f64> {
+        let (_, text, _) = self.split_into_parts();
+        text.parse::<f64>().ok()
+    }
 }
 
 impl ast::FloatNumber {
-    pub fn suffix(&self) -> Option<&str> {
+    pub fn split_into_parts(&self) -> (&str, &str) {
         let text = self.text();
+        let mut float_text = self.text();
+        let mut suffix = "";
         let mut indices = text.char_indices();
-        let (mut suffix_start, c) = indices.by_ref().find(|(_, c)| c.is_ascii_alphabetic())?;
-        if c == 'e' || c == 'E' {
-            suffix_start = indices.find(|(_, c)| c.is_ascii_alphabetic())?.0;
+        if let Some((mut suffix_start, c)) = indices.by_ref().find(|(_, c)| c.is_ascii_alphabetic())
+        {
+            if c == 'e' || c == 'E' {
+                if let Some(suffix_start_tuple) = indices.find(|(_, c)| c.is_ascii_alphabetic()) {
+                    suffix_start = suffix_start_tuple.0;
+
+                    float_text = &text[..suffix_start];
+                    suffix = &text[suffix_start..];
+                }
+            } else {
+                float_text = &text[..suffix_start];
+                suffix = &text[suffix_start..];
+            }
         }
-        Some(&text[suffix_start..])
+
+        (float_text, suffix)
+    }
+
+    pub fn suffix(&self) -> Option<&str> {
+        let (_, suffix) = self.split_into_parts();
+        if suffix.is_empty() {
+            None
+        } else {
+            Some(suffix)
+        }
+    }
+
+    pub fn value(&self) -> Option<f64> {
+        let (text, _) = self.split_into_parts();
+        text.parse::<f64>().ok()
     }
 }
 
