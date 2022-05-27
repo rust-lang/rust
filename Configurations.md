@@ -1705,6 +1705,8 @@ How imports should be grouped into `use` statements. Imports will be merged or s
 - **Possible values**: `Preserve`, `Crate`, `Module`, `Item`, `One`
 - **Stable**: No (tracking issue: [#4991](https://github.com/rust-lang/rustfmt/issues/4991))
 
+Note that rustfmt will not modify the granularity of imports containing comments if doing so could potentially lose or misplace said comments.
+
 #### `Preserve` (default):
 
 Do not change the granularity of any imports and preserve the original structure written by the developer.

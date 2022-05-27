@@ -8,6 +8,7 @@
 
 ### Fixed
 
+- Don't change granularity of imports containing comments with `imports_granularity` if doing so could lose or misplace those comments [#5311](https://github.com/rust-lang/rustfmt/pull/5311)
 - Prevent rustfmt from removing trailing comments at the end of files annotated with inner `#![rustfmt::skip]` attributes [#5033](https://github.com/rust-lang/rustfmt/issues/5033)
 - Fixed various `error[internal]: left behind trailing whitespace"` issues:
   - Remove trailing whitespace when formatting a where clause who's bounds have an empty right hand side [#5012](https://github.com/rust-lang/rustfmt/issues/5012) [#4850](https://github.com/rust-lang/rustfmt/issues/4850)
