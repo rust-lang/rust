@@ -2,7 +2,7 @@
 #![feature(
     const_slice_from_raw_parts,
     slice_from_ptr_range,
-    slice_from_ptr_range_const,
+    const_slice_from_ptr_range,
     pointer_byte_offsets,
     const_pointer_byte_offsets
 )]
