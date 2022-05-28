@@ -1,6 +1,6 @@
 // run-rustfix
 
-#![allow(unused_variables, dead_code)]
+#![allow(unused_variables, dead_code, clippy::derive_partial_eq_without_eq)]
 #![warn(clippy::equatable_if_let)]
 
 use std::cmp::Ordering;

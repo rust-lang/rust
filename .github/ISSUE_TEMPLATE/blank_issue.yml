@@ -9,7 +9,7 @@ body:
     attributes:
       label: Description
       description: >
-        Please provide a discription of the issue, along with any information
+        Please provide a description of the issue, along with any information
         you feel relevant to replicate it.
     validations:
       required: true

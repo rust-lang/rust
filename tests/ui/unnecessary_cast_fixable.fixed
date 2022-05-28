@@ -42,4 +42,9 @@ fn main() {
 
     let _ = -1_i32;
     let _ = -1.0_f32;
+
+    let _ = 1 as I32Alias;
+    let _ = &1 as &I32Alias;
 }
+
+type I32Alias = i32;

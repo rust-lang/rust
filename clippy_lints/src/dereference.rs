@@ -12,7 +12,7 @@ use rustc_hir::{
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
-use rustc_middle::ty::{self, Ty, TyCtxt, TyS, TypeckResults};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeckResults};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::{symbol::sym, Span};
 
@@ -168,7 +168,7 @@ struct RefPat {
 }
 
 impl<'tcx> LateLintPass<'tcx> for Dereferencing {
-    #[allow(clippy::too_many_lines)]
+    #[expect(clippy::too_many_lines)]
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         // Skip path expressions from deref calls. e.g. `Deref::deref(e)`
         if Some(expr.hir_id) == self.skip_expr.take() {
@@ -448,7 +448,7 @@ fn try_parse_ref_op<'tcx>(
 // the reference.
 fn deref_method_same_type(result_ty: Ty<'_>, arg_ty: Ty<'_>) -> bool {
     match (result_ty.kind(), arg_ty.kind()) {
-        (ty::Ref(_, result_ty, _), ty::Ref(_, arg_ty, _)) => TyS::same_type(result_ty, arg_ty),
+        (ty::Ref(_, result_ty, _), ty::Ref(_, arg_ty, _)) => result_ty == arg_ty,
 
         // The result type for a deref method is always a reference
         // Not matching the previous pattern means the argument type is not a reference
@@ -528,7 +528,7 @@ fn is_auto_reborrow_position(parent: Option<Node<'_>>) -> bool {
 fn is_auto_borrow_position(parent: Option<Node<'_>>, child_id: HirId) -> bool {
     if let Some(Node::Expr(parent)) = parent {
         match parent.kind {
-            ExprKind::MethodCall(_, [self_arg, ..], _) => self_arg.hir_id == child_id,
+            // ExprKind::MethodCall(_, [self_arg, ..], _) => self_arg.hir_id == child_id,
             ExprKind::Field(..) => true,
             ExprKind::Call(f, _) => f.hir_id == child_id,
             _ => false,
@@ -580,7 +580,7 @@ fn find_adjustments<'tcx>(
     }
 }
 
-#[allow(clippy::needless_pass_by_value)]
+#[expect(clippy::needless_pass_by_value)]
 fn report(cx: &LateContext<'_>, expr: &Expr<'_>, state: State, data: StateData) {
     match state {
         State::DerefMethod {

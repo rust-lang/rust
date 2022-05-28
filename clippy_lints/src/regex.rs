@@ -7,7 +7,6 @@ use rustc_hir::{BorrowKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::{BytePos, Span};
-use std::convert::TryFrom;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -79,9 +78,8 @@ impl<'tcx> LateLintPass<'tcx> for Regex {
     }
 }
 
-#[allow(clippy::cast_possible_truncation)] // truncation very unlikely here
 #[must_use]
-fn str_span(base: Span, c: regex_syntax::ast::Span, offset: u16) -> Span {
+fn str_span(base: Span, c: regex_syntax::ast::Span, offset: u8) -> Span {
     let offset = u32::from(offset);
     let end = base.lo() + BytePos(u32::try_from(c.end.offset).expect("offset too large") + offset);
     let start = base.lo() + BytePos(u32::try_from(c.start.offset).expect("offset too large") + offset);

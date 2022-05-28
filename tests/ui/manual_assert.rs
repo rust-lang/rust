@@ -6,6 +6,12 @@
 #![warn(clippy::manual_assert)]
 #![allow(clippy::nonminimal_bool)]
 
+macro_rules! one {
+    () => {
+        1
+    };
+}
+
 fn main() {
     let a = vec![1, 2, 3];
     let c = Some(2);
@@ -55,5 +61,8 @@ fn main() {
     }
     if a.is_empty() || !b.is_empty() {
         panic!("panic5");
+    }
+    if a.is_empty() {
+        panic!("with expansion {}", one!())
     }
 }

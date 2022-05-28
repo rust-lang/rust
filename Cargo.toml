@@ -1,6 +1,6 @@
 [package]
 name = "clippy"
-version = "0.1.60"
+version = "0.1.63"
 description = "A bunch of helpful lints to avoid common pitfalls in Rust"
 repository = "https://github.com/rust-lang/rust-clippy"
 readme = "README.md"
@@ -21,14 +21,14 @@ name = "clippy-driver"
 path = "src/driver.rs"
 
 [dependencies]
-clippy_lints = { version = "0.1", path = "clippy_lints" }
+clippy_lints = { path = "clippy_lints" }
 semver = "1.0"
-rustc_tools_util = { version = "0.2", path = "rustc_tools_util" }
+rustc_tools_util = { path = "rustc_tools_util" }
 tempfile = { version = "3.2", optional = true }
+termize = "0.1"
 
 [dev-dependencies]
-cargo_metadata = "0.14"
-compiletest_rs = { version = "0.7.1", features = ["tmp"] }
+compiletest_rs = { version = "0.8", features = ["tmp"] }
 tester = "0.9"
 regex = "1.5"
 # This is used by the `collect-metadata` alias.
@@ -40,16 +40,18 @@ filetime = "0.2"
 rustc-workspace-hack = "1.0"
 
 # UI test dependencies
+clap = { version = "3.1", features = ["derive"] }
 clippy_utils = { path = "clippy_utils" }
 derive-new = "0.5"
 if_chain = "1.0"
-itertools = "0.10"
+itertools = "0.10.1"
 quote = "1.0"
-serde = { version = "1.0", features = ["derive"] }
+serde = { version = "1.0.125", features = ["derive"] }
 syn = { version = "1.0", features = ["full"] }
 futures = "0.3"
-parking_lot = "0.11.2"
+parking_lot = "0.12"
 tokio = { version = "1", features = ["io-util"] }
+rustc-semver = "1.1"
 
 [build-dependencies]
 rustc_tools_util = { version = "0.2", path = "rustc_tools_util" }

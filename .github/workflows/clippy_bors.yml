@@ -25,7 +25,7 @@ jobs:
         github_token: "${{ secrets.github_token }}"
 
     - name: Checkout
-      uses: actions/checkout@v2.3.3
+      uses: actions/checkout@v3.0.2
       with:
         ref: ${{ github.ref }}
 
@@ -88,7 +88,7 @@ jobs:
       if: matrix.host == 'i686-unknown-linux-gnu'
 
     - name: Checkout
-      uses: actions/checkout@v2.3.3
+      uses: actions/checkout@v3.0.2
 
     - name: Install toolchain
       run: rustup show active-toolchain
@@ -143,13 +143,6 @@ jobs:
       env:
         OS: ${{ runner.os }}
 
-    - name: Test cargo dev new lint
-      run: |
-        cargo dev new_lint --name new_early_pass --pass early
-        cargo dev new_lint --name new_late_pass --pass late
-        cargo check
-        git reset --hard HEAD
-
   integration_build:
     needs: changelog
     runs-on: ubuntu-latest
@@ -161,7 +154,7 @@ jobs:
         github_token: "${{ secrets.github_token }}"
 
     - name: Checkout
-      uses: actions/checkout@v2.3.3
+      uses: actions/checkout@v3.0.2
 
     - name: Install toolchain
       run: rustup show active-toolchain
@@ -219,7 +212,7 @@ jobs:
         github_token: "${{ secrets.github_token }}"
 
     - name: Checkout
-      uses: actions/checkout@v2.3.3
+      uses: actions/checkout@v3.0.2
 
     - name: Install toolchain
       run: rustup show active-toolchain

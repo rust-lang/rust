@@ -8,7 +8,6 @@ use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::{Expr, ExprKind, PatKind, QPath, UnOp};
 use rustc_lint::LateContext;
-use rustc_middle::ty::TyS;
 use rustc_span::source_map::Span;
 use rustc_span::symbol::{sym, Symbol};
 use std::borrow::Cow;
@@ -120,9 +119,9 @@ pub(super) fn check<'tcx>(
             if let PatKind::Binding(_, filter_param_id, _, None) = filter_pat.kind;
             if let ExprKind::MethodCall(path, [filter_arg], _) = filter_body.value.kind;
             if let Some(opt_ty) = cx.typeck_results().expr_ty(filter_arg).ty_adt_def();
-            if let Some(is_result) = if cx.tcx.is_diagnostic_item(sym::Option, opt_ty.did) {
+            if let Some(is_result) = if cx.tcx.is_diagnostic_item(sym::Option, opt_ty.did()) {
                 Some(false)
-            } else if cx.tcx.is_diagnostic_item(sym::Result, opt_ty.did) {
+            } else if cx.tcx.is_diagnostic_item(sym::Result, opt_ty.did()) {
                 Some(true)
             } else {
                 None
@@ -149,7 +148,7 @@ pub(super) fn check<'tcx>(
                 if_chain! {
                     if path_to_local_id(a_path, filter_param_id);
                     if path_to_local_id(b, map_param_id);
-                    if TyS::same_type(cx.typeck_results().expr_ty_adjusted(a), cx.typeck_results().expr_ty_adjusted(b));
+                    if cx.typeck_results().expr_ty_adjusted(a) == cx.typeck_results().expr_ty_adjusted(b);
                     then {
                         return true;
                     }

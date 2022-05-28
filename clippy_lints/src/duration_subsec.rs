@@ -1,15 +1,14 @@
+use clippy_utils::consts::{constant, Constant};
+use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::ty::match_type;
+use clippy_utils::ty::is_type_diagnostic_item;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Spanned;
-
-use clippy_utils::consts::{constant, Constant};
-use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::paths;
+use rustc_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -46,7 +45,7 @@ impl<'tcx> LateLintPass<'tcx> for DurationSubsec {
         if_chain! {
             if let ExprKind::Binary(Spanned { node: BinOpKind::Div, .. }, left, right) = expr.kind;
             if let ExprKind::MethodCall(method_path, args, _) = left.kind;
-            if match_type(cx, cx.typeck_results().expr_ty(&args[0]).peel_refs(), &paths::DURATION);
+            if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(&args[0]).peel_refs(), sym::Duration);
             if let Some((Constant::Int(divisor), _)) = constant(cx, cx.typeck_results(), right);
             then {
                 let suggested_fn = match (method_path.ident.as_str(), divisor) {

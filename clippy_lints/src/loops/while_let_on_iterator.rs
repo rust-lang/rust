@@ -239,7 +239,7 @@ fn uses_iter<'tcx>(cx: &LateContext<'tcx>, iter_expr: &IterExpr, container: &'tc
     v.uses_iter
 }
 
-#[allow(clippy::too_many_lines)]
+#[expect(clippy::too_many_lines)]
 fn needs_mutable_borrow(cx: &LateContext<'_>, iter_expr: &IterExpr, loop_expr: &Expr<'_>) -> bool {
     struct AfterLoopVisitor<'a, 'b, 'tcx> {
         cx: &'a LateContext<'tcx>,

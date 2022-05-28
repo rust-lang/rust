@@ -72,4 +72,46 @@ mod issue4291 {
     }
 }
 
+mod issue6437 {
+    pub struct Scalar;
+
+    impl<'a> std::ops::AddAssign<&Scalar> for &mut Scalar {
+        fn add_assign(&mut self, _rhs: &Scalar) {
+            unimplemented!();
+        }
+    }
+
+    impl<'b> Scalar {
+        pub fn something<'c>() -> Self {
+            Self
+        }
+    }
+}
+
+// https://github.com/rust-lang/rust-clippy/pull/8737#pullrequestreview-951268213
+mod first_case {
+    use serde::de::Visitor;
+    pub trait Expected {
+        fn fmt(&self, formatter: &mut std::fmt::Formatter);
+    }
+
+    impl<'de, T> Expected for T
+    where
+        T: Visitor<'de>,
+    {
+        fn fmt(&self, formatter: &mut std::fmt::Formatter) {}
+    }
+}
+
+// https://github.com/rust-lang/rust-clippy/pull/8737#pullrequestreview-951268213
+mod second_case {
+    pub trait Source {
+        fn hey();
+    }
+
+    impl<'a, T: Source + ?Sized + 'a> Source for Box<T> {
+        fn hey() {}
+    }
+}
+
 fn main() {}

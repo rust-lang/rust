@@ -96,6 +96,10 @@ declare_lint_pass!(IndexingSlicing => [INDEXING_SLICING, OUT_OF_BOUNDS_INDEXING]
 
 impl<'tcx> LateLintPass<'tcx> for IndexingSlicing {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
+        if cx.tcx.hir().is_inside_const_context(expr.hir_id) {
+            return;
+        }
+
         if let ExprKind::Index(array, index) = &expr.kind {
             let ty = cx.typeck_results().expr_ty(array).peel_refs();
             if let Some(range) = higher::Range::hir(index) {
@@ -151,6 +155,10 @@ impl<'tcx> LateLintPass<'tcx> for IndexingSlicing {
             } else {
                 // Catchall non-range index, i.e., [n] or [n << m]
                 if let ty::Array(..) = ty.kind() {
+                    // Index is a const block.
+                    if let ExprKind::ConstBlock(..) = index.kind {
+                        return;
+                    }
                     // Index is a constant uint.
                     if let Some(..) = constant(cx, cx.typeck_results(), index) {
                         // Let rustc's `const_err` lint handle constant `usize` indexing on arrays.

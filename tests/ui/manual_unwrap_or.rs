@@ -102,7 +102,7 @@ fn result_unwrap_or() {
     };
 
     // method call case, suggestion must not surround Result expr `s.method()` with parentheses
-    struct S {}
+    struct S;
     impl S {
         fn method(self) -> Option<i32> {
             Some(42)

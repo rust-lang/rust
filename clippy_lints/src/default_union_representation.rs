@@ -25,7 +25,7 @@ declare_clippy_lint! {
     ///
     /// fn main() {
     ///     let _x: u32 = unsafe {
-    ///         Foo { a: 0_i32 }.b // Undefined behaviour: `b` is allowed to be padding
+    ///         Foo { a: 0_i32 }.b // Undefined behavior: `b` is allowed to be padding
     ///     };
     /// }
     /// ```
@@ -39,7 +39,7 @@ declare_clippy_lint! {
     ///
     /// fn main() {
     ///     let _x: u32 = unsafe {
-    ///         Foo { a: 0_i32 }.b // Now defined behaviour, this is just an i32 -> u32 transmute
+    ///         Foo { a: 0_i32 }.b // Now defined behavior, this is just an i32 -> u32 transmute
     ///     };
     /// }
     /// ```

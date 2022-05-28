@@ -32,7 +32,7 @@ pub(super) fn check<'tcx>(
                         if info.eq { "" } else { "!" },
                         snippet_with_applicability(cx, args[0][0].span, "..", &mut applicability),
                         suggest,
-                        c),
+                        c.escape_default()),
                 applicability,
             );
 

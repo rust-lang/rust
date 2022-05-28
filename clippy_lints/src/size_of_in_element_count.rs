@@ -7,8 +7,9 @@ use if_chain::if_chain;
 use rustc_hir::BinOpKind;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::{self, Ty, TyS, TypeAndMut};
+use rustc_middle::ty::{self, Ty, TypeAndMut};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -44,8 +45,7 @@ fn get_size_of_ty<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, inverted: 
                 if !inverted;
                 if let ExprKind::Path(ref count_func_qpath) = count_func.kind;
                 if let Some(def_id) = cx.qpath_res(count_func_qpath, count_func.hir_id).opt_def_id();
-                if match_def_path(cx, def_id, &paths::MEM_SIZE_OF)
-                    || match_def_path(cx, def_id, &paths::MEM_SIZE_OF_VAL);
+                if matches!(cx.tcx.get_diagnostic_name(def_id), Some(sym::mem_size_of | sym::mem_size_of_val));
                 then {
                     cx.typeck_results().node_substs(count_func.hir_id).types().next()
                 } else {
@@ -116,7 +116,7 @@ fn get_pointee_ty_and_count_expr<'tcx>(
         if let ty::RawPtr(TypeAndMut { ty: pointee_ty, .. }) =
             cx.typeck_results().expr_ty(ptr_self).kind();
         then {
-            return Some((pointee_ty, count));
+            return Some((*pointee_ty, count));
         }
     };
     None
@@ -138,7 +138,7 @@ impl<'tcx> LateLintPass<'tcx> for SizeOfInElementCount {
             // Find a size_of call in the count parameter expression and
             // check that it's the same type
             if let Some(ty_used_for_size_of) = get_size_of_ty(cx, count_expr, false);
-            if TyS::same_type(pointee_ty, ty_used_for_size_of);
+            if pointee_ty == ty_used_for_size_of;
             then {
                 span_lint_and_help(
                     cx,

@@ -139,14 +139,20 @@ impl<'tcx> LateLintPass<'tcx> for Shadow {
 
     fn check_body(&mut self, cx: &LateContext<'_>, body: &Body<'_>) {
         let hir = cx.tcx.hir();
-        if !matches!(hir.body_owner_kind(hir.body_owner(body.id())), BodyOwnerKind::Closure) {
+        if !matches!(
+            hir.body_owner_kind(hir.body_owner_def_id(body.id())),
+            BodyOwnerKind::Closure
+        ) {
             self.bindings.push(FxHashMap::default());
         }
     }
 
     fn check_body_post(&mut self, cx: &LateContext<'_>, body: &Body<'_>) {
         let hir = cx.tcx.hir();
-        if !matches!(hir.body_owner_kind(hir.body_owner(body.id())), BodyOwnerKind::Closure) {
+        if !matches!(
+            hir.body_owner_kind(hir.body_owner_def_id(body.id())),
+            BodyOwnerKind::Closure
+        ) {
             self.bindings.pop();
         }
     }
@@ -154,8 +160,8 @@ impl<'tcx> LateLintPass<'tcx> for Shadow {
 
 fn is_shadow(cx: &LateContext<'_>, owner: LocalDefId, first: ItemLocalId, second: ItemLocalId) -> bool {
     let scope_tree = cx.tcx.region_scope_tree(owner.to_def_id());
-    let first_scope = scope_tree.var_scope(first);
-    let second_scope = scope_tree.var_scope(second);
+    let first_scope = scope_tree.var_scope(first).unwrap();
+    let second_scope = scope_tree.var_scope(second).unwrap();
     scope_tree.is_subscope_of(second_scope, first_scope)
 }
 

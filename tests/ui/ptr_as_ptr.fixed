@@ -1,7 +1,16 @@
 // run-rustfix
+// aux-build:macro_rules.rs
 
 #![warn(clippy::ptr_as_ptr)]
 #![feature(custom_inner_attributes)]
+
+extern crate macro_rules;
+
+macro_rules! cast_it {
+    ($ptr: ident) => {
+        $ptr.cast::<i32>()
+    };
+}
 
 fn main() {
     let ptr: *const u32 = &42_u32;
@@ -28,6 +37,12 @@ fn main() {
     // Ensure the lint doesn't produce unnecessary turbofish for inferred types.
     let _: *const i32 = ptr.cast();
     let _: *mut i32 = mut_ptr.cast();
+
+    // Make sure the lint is triggered inside a macro
+    let _ = cast_it!(ptr);
+
+    // Do not lint inside macros from external crates
+    let _ = macro_rules::ptr_as_ptr_cast!(ptr);
 }
 
 fn _msrv_1_37() {

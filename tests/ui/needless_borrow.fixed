@@ -64,9 +64,9 @@ fn main() {
     *x = 5;
 
     let s = String::new();
-    let _ = s.len();
-    let _ = s.capacity();
-    let _ = s.capacity();
+    // let _ = (&s).len();
+    // let _ = (&s).capacity();
+    // let _ = (&&s).capacity();
 
     let x = (1, 2);
     let _ = x.0;

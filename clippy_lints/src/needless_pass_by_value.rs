@@ -6,7 +6,7 @@ use clippy_utils::{get_trait_def_id, is_self, paths};
 use if_chain::if_chain;
 use rustc_ast::ast::Attribute;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{Applicability, DiagnosticBuilder};
+use rustc_errors::{Applicability, Diagnostic};
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{BindingAnnotation, Body, FnDecl, GenericArg, HirId, Impl, ItemKind, Node, PatKind, QPath, TyKind};
 use rustc_hir::{HirIdMap, HirIdSet};
@@ -70,7 +70,7 @@ macro_rules! need {
 }
 
 impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
-    #[allow(clippy::too_many_lines)]
+    #[expect(clippy::too_many_lines)]
     fn check_fn(
         &mut self,
         cx: &LateContext<'tcx>,
@@ -85,7 +85,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
         }
 
         match kind {
-            FnKind::ItemFn(.., header, _) => {
+            FnKind::ItemFn(.., header) => {
                 let attrs = cx.tcx.hir().attrs(hir_id);
                 if header.abi != Abi::Rust || requires_exact_signature(attrs) {
                     return;
@@ -196,10 +196,15 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                     }
 
                     // Dereference suggestion
-                    let sugg = |diag: &mut DiagnosticBuilder<'_>| {
+                    let sugg = |diag: &mut Diagnostic| {
                         if let ty::Adt(def, ..) = ty.kind() {
-                            if let Some(span) = cx.tcx.hir().span_if_local(def.did) {
-                                if can_type_implement_copy(cx.tcx, cx.param_env, ty).is_ok() {
+                            if let Some(span) = cx.tcx.hir().span_if_local(def.did()) {
+                                if can_type_implement_copy(
+                                    cx.tcx,
+                                    cx.param_env,
+                                    ty,
+                                    traits::ObligationCause::dummy_with_span(span),
+                                ).is_ok() {
                                     diag.span_help(span, "consider marking this type as `Copy`");
                                 }
                             }
@@ -230,12 +235,13 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                                 for (span, suggestion) in clone_spans {
                                     diag.span_suggestion(
                                         span,
-                                        &snippet_opt(cx, span)
+                                        snippet_opt(cx, span)
                                             .map_or(
                                                 "change the call to".into(),
                                                 |x| Cow::from(format!("change `{}` to", x)),
-                                            ),
-                                        suggestion.into(),
+                                            )
+                                            .as_ref(),
+                                        suggestion,
                                         Applicability::Unspecified,
                                     );
                                 }
@@ -259,12 +265,13 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                                 for (span, suggestion) in clone_spans {
                                     diag.span_suggestion(
                                         span,
-                                        &snippet_opt(cx, span)
+                                        snippet_opt(cx, span)
                                             .map_or(
                                                 "change the call to".into(),
                                                 |x| Cow::from(format!("change `{}` to", x))
-                                            ),
-                                        suggestion.into(),
+                                            )
+                                            .as_ref(),
+                                        suggestion,
                                         Applicability::Unspecified,
                                     );
                                 }

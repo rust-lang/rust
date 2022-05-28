@@ -33,7 +33,7 @@ use std::path::Path;
 /// This is the output file of the lint collector.
 const OUTPUT_FILE: &str = "../util/gh-pages/lints.json";
 /// These lints are excluded from the export.
-const BLACK_LISTED_LINTS: [&str; 3] = ["lint_author", "deep_code_inspection", "internal_metadata_collector"];
+const BLACK_LISTED_LINTS: &[&str] = &["lint_author", "dump_hir", "internal_metadata_collector"];
 /// These groups will be ignored by the lint group matcher. This is useful for collections like
 /// `clippy::all`
 const IGNORED_LINT_GROUPS: [&str; 1] = ["clippy::all"];
@@ -85,7 +85,7 @@ macro_rules! CONFIGURATION_VALUE_TEMPLATE {
     };
 }
 
-const LINT_EMISSION_FUNCTIONS: [&[&str]; 7] = [
+const LINT_EMISSION_FUNCTIONS: [&[&str]; 8] = [
     &["clippy_utils", "diagnostics", "span_lint"],
     &["clippy_utils", "diagnostics", "span_lint_and_help"],
     &["clippy_utils", "diagnostics", "span_lint_and_note"],
@@ -93,6 +93,7 @@ const LINT_EMISSION_FUNCTIONS: [&[&str]; 7] = [
     &["clippy_utils", "diagnostics", "span_lint_and_sugg"],
     &["clippy_utils", "diagnostics", "span_lint_and_then"],
     &["clippy_utils", "diagnostics", "span_lint_hir_and_then"],
+    &["clippy_utils", "diagnostics", "span_lint_and_sugg_for_edges"],
 ];
 const SUGGESTION_DIAGNOSTIC_BUILDER_METHODS: [(&str, bool); 9] = [
     ("span_suggestion", false),
@@ -116,7 +117,7 @@ const APPLICABILITY_NAME_INDEX: usize = 2;
 /// This applicability will be set for unresolved applicability values.
 const APPLICABILITY_UNRESOLVED_STR: &str = "Unresolved";
 /// The version that will be displayed if none has been defined
-const VERION_DEFAULT_STR: &str = "Unknown";
+const VERSION_DEFAULT_STR: &str = "Unknown";
 
 declare_clippy_lint! {
     /// ### What it does
@@ -473,7 +474,7 @@ impl<'hir> LateLintPass<'hir> for MetadataCollector {
     /// ```
     fn check_expr(&mut self, cx: &LateContext<'hir>, expr: &'hir hir::Expr<'_>) {
         if let Some(args) = match_lint_emission(cx, expr) {
-            let mut emission_info = extract_emission_info(cx, args);
+            let emission_info = extract_emission_info(cx, args);
             if emission_info.is_empty() {
                 // See:
                 // - src/misc.rs:734:9
@@ -483,7 +484,7 @@ impl<'hir> LateLintPass<'hir> for MetadataCollector {
                 return;
             }
 
-            for (lint_name, applicability, is_multi_part) in emission_info.drain(..) {
+            for (lint_name, applicability, is_multi_part) in emission_info {
                 let app_info = self.applicability_info.entry(lint_name).or_default();
                 app_info.applicability = applicability;
                 app_info.is_multi_part_suggestion = is_multi_part;
@@ -570,7 +571,7 @@ fn extract_attr_docs(cx: &LateContext<'_>, item: &Item<'_>) -> Option<String> {
 
 fn get_lint_version(cx: &LateContext<'_>, item: &Item<'_>) -> String {
     extract_clippy_version_value(cx, item).map_or_else(
-        || VERION_DEFAULT_STR.to_string(),
+        || VERSION_DEFAULT_STR.to_string(),
         |version| version.as_str().to_string(),
     )
 }
@@ -612,8 +613,8 @@ fn get_lint_group_and_level_or_lint(
 }
 
 fn get_lint_group(cx: &LateContext<'_>, lint_id: LintId) -> Option<String> {
-    for (group_name, lints, _) in &cx.lint_store.get_lint_groups() {
-        if IGNORED_LINT_GROUPS.contains(group_name) {
+    for (group_name, lints, _) in cx.lint_store.get_lint_groups() {
+        if IGNORED_LINT_GROUPS.contains(&group_name) {
             continue;
         }
 
@@ -693,7 +694,7 @@ fn extract_emission_info<'hir>(
     }
 
     lints
-        .drain(..)
+        .into_iter()
         .map(|lint_name| (lint_name, applicability, multi_part))
         .collect()
 }
@@ -755,7 +756,7 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for LintResolver<'a, 'hir> {
             let (expr_ty, _) = walk_ptrs_ty_depth(self.cx.typeck_results().expr_ty(expr));
             if match_type(self.cx, expr_ty, &paths::LINT);
             then {
-                if let hir::def::Res::Def(DefKind::Static, _) = path.res {
+                if let hir::def::Res::Def(DefKind::Static(..), _) = path.res {
                     let lint_name = last_path_segment(qpath).ident.name;
                     self.lints.push(sym_to_string(lint_name).to_ascii_lowercase());
                 } else if let Some(local) = get_parent_local(self.cx, expr) {
@@ -871,7 +872,7 @@ impl<'a, 'hir> IsMultiSpanScanner<'a, 'hir> {
         self.suggestion_count += 2;
     }
 
-    /// Checks if the suggestions include multiple spanns
+    /// Checks if the suggestions include multiple spans
     fn is_multi_part(&self) -> bool {
         self.suggestion_count > 1
     }

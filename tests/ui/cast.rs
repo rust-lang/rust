@@ -1,10 +1,13 @@
-#[warn(
+#![feature(repr128)]
+#![allow(incomplete_features)]
+#![warn(
     clippy::cast_precision_loss,
     clippy::cast_possible_truncation,
     clippy::cast_sign_loss,
     clippy::cast_possible_wrap
 )]
-#[allow(clippy::no_effect, clippy::unnecessary_operation)]
+#![allow(clippy::cast_abs_to_unsigned, clippy::no_effect, clippy::unnecessary_operation)]
+
 fn main() {
     // Test clippy::cast_precision_loss
     let x0 = 1i32;
@@ -115,4 +118,145 @@ fn main() {
     }) as u8;
     999999u64.clamp(0, 255) as u8;
     999999u64.clamp(0, 256) as u8; // should still be linted
+
+    #[derive(Clone, Copy)]
+    enum E1 {
+        A,
+        B,
+        C,
+    }
+    impl E1 {
+        fn test(self) {
+            let _ = self as u8; // Don't lint. `0..=2` fits in u8
+        }
+    }
+
+    #[derive(Clone, Copy)]
+    enum E2 {
+        A = 255,
+        B,
+    }
+    impl E2 {
+        fn test(self) {
+            let _ = self as u8;
+            let _ = Self::B as u8;
+            let _ = self as i16; // Don't lint. `255..=256` fits in i16
+            let _ = Self::A as u8; // Don't lint.
+        }
+    }
+
+    #[derive(Clone, Copy)]
+    enum E3 {
+        A = -1,
+        B,
+        C = 50,
+    }
+    impl E3 {
+        fn test(self) {
+            let _ = self as i8; // Don't lint. `-1..=50` fits in i8
+        }
+    }
+
+    #[derive(Clone, Copy)]
+    enum E4 {
+        A = -128,
+        B,
+    }
+    impl E4 {
+        fn test(self) {
+            let _ = self as i8; // Don't lint. `-128..=-127` fits in i8
+        }
+    }
+
+    #[derive(Clone, Copy)]
+    enum E5 {
+        A = -129,
+        B = 127,
+    }
+    impl E5 {
+        fn test(self) {
+            let _ = self as i8;
+            let _ = Self::A as i8;
+            let _ = self as i16; // Don't lint. `-129..=127` fits in i16
+            let _ = Self::B as u8; // Don't lint.
+        }
+    }
+
+    #[derive(Clone, Copy)]
+    #[repr(u32)]
+    enum E6 {
+        A = u16::MAX as u32,
+        B,
+    }
+    impl E6 {
+        fn test(self) {
+            let _ = self as i16;
+            let _ = Self::A as u16; // Don't lint. `2^16-1` fits in u16
+            let _ = self as u32; // Don't lint. `2^16-1..=2^16` fits in u32
+            let _ = Self::A as u16; // Don't lint.
+        }
+    }
+
+    #[derive(Clone, Copy)]
+    #[repr(u64)]
+    enum E7 {
+        A = u32::MAX as u64,
+        B,
+    }
+    impl E7 {
+        fn test(self) {
+            let _ = self as usize;
+            let _ = Self::A as usize; // Don't lint.
+            let _ = self as u64; // Don't lint. `2^32-1..=2^32` fits in u64
+        }
+    }
+
+    #[derive(Clone, Copy)]
+    #[repr(i128)]
+    enum E8 {
+        A = i128::MIN,
+        B,
+        C = 0,
+        D = i128::MAX,
+    }
+    impl E8 {
+        fn test(self) {
+            let _ = self as i128; // Don't lint. `-(2^127)..=2^127-1` fits it i128
+        }
+    }
+
+    #[derive(Clone, Copy)]
+    #[repr(u128)]
+    enum E9 {
+        A,
+        B = u128::MAX,
+    }
+    impl E9 {
+        fn test(self) {
+            let _ = Self::A as u8; // Don't lint.
+            let _ = self as u128; // Don't lint. `0..=2^128-1` fits in u128
+        }
+    }
+
+    #[derive(Clone, Copy)]
+    #[repr(usize)]
+    enum E10 {
+        A,
+        B = u32::MAX as usize,
+    }
+    impl E10 {
+        fn test(self) {
+            let _ = self as u16;
+            let _ = Self::B as u32; // Don't lint.
+            let _ = self as u64; // Don't lint.
+        }
+    }
+}
+
+fn avoid_subtract_overflow(q: u32) {
+    let c = (q >> 16) as u8;
+    c as usize;
+
+    let c = (q / 1000) as u8;
+    c as usize;
 }

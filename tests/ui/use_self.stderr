@@ -168,5 +168,23 @@ error: unnecessary structure name repetition
 LL |             S2::new()
    |             ^^ help: use the applicable keyword: `Self`
 
-error: aborting due to 28 previous errors
+error: unnecessary structure name repetition
+  --> $DIR/use_self.rs:532:17
+   |
+LL |                 Foo::Bar => unimplemented!(),
+   |                 ^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> $DIR/use_self.rs:533:17
+   |
+LL |                 Foo::Baz => unimplemented!(),
+   |                 ^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> $DIR/use_self.rs:539:20
+   |
+LL |             if let Foo::Bar = self {
+   |                    ^^^ help: use the applicable keyword: `Self`
+
+error: aborting due to 31 previous errors
 

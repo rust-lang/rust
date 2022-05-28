@@ -1,0 +1,2 @@
+Using config file `$SRC_DIR/tests/ui-cargo/multiple_config_files/warn/.clippy.toml`
+Warning: `$SRC_DIR/tests/ui-cargo/multiple_config_files/warn/clippy.toml` will be ignored.

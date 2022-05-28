@@ -361,7 +361,7 @@ impl MiscEarlyLints {
         // See <https://github.com/rust-lang/rust-clippy/issues/4507> for a regression.
         // FIXME: Find a better way to detect those cases.
         let lit_snip = match snippet_opt(cx, lit.span) {
-            Some(snip) if snip.chars().next().map_or(false, |c| c.is_digit(10)) => snip,
+            Some(snip) if snip.chars().next().map_or(false, |c| c.is_ascii_digit()) => snip,
             _ => return,
         };
 
