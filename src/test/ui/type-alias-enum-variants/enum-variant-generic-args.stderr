@@ -28,6 +28,19 @@ error[E0109]: type arguments are not allowed for this type
    |
 LL |         Self::<()>::TSVariant(());
    |                ^^ type argument not allowed
+   |
+note: the `Self` type is `Enum<T>`
+  --> $DIR/enum-variant-generic-args.rs:7:6
+   |
+LL | enum Enum<T> { TSVariant(T), SVariant { v: T }, UVariant }
+   |      ^^^^ `Self` corresponds to this type
+...
+LL | impl<T> Enum<T> {
+   | --------------- `Self` is `Enum` in this `impl`
+help: the `Self` type doesn't accept type parameters, use the concrete type's name `Enum` instead if you want to specify its type parameters
+   |
+LL |         Enum::<()>::TSVariant(());
+   |         ~~~~
 
 error[E0308]: mismatched types
   --> $DIR/enum-variant-generic-args.rs:17:31
@@ -53,6 +66,19 @@ error[E0109]: type arguments are not allowed for this type
    |
 LL |         Self::<()>::TSVariant::<()>(());
    |                ^^ type argument not allowed
+   |
+note: the `Self` type is `Enum<T>`
+  --> $DIR/enum-variant-generic-args.rs:7:6
+   |
+LL | enum Enum<T> { TSVariant(T), SVariant { v: T }, UVariant }
+   |      ^^^^ `Self` corresponds to this type
+...
+LL | impl<T> Enum<T> {
+   | --------------- `Self` is `Enum` in this `impl`
+help: the `Self` type doesn't accept type parameters, use the concrete type's name `Enum` instead if you want to specify its type parameters
+   |
+LL |         Enum::<()>::TSVariant::<()>(());
+   |         ~~~~
 
 error[E0109]: type arguments are not allowed for this type
   --> $DIR/enum-variant-generic-args.rs:20:33
@@ -77,6 +103,13 @@ error[E0109]: type arguments are not allowed for this type
    |
 LL |         Self::SVariant::<()> { v: () };
    |                          ^^ type argument not allowed
+   |
+   = note: enum variants can't have type parameters
+help: you might have meant to specity type parameters on enum `Enum`
+   |
+LL -         Self::SVariant::<()> { v: () };
+LL +         Enum::<()>::SVariant { v: () };
+   | 
 
 error[E0308]: mismatched types
   --> $DIR/enum-variant-generic-args.rs:28:35
@@ -95,6 +128,19 @@ error[E0109]: type arguments are not allowed for this type
    |
 LL |         Self::<()>::SVariant { v: () };
    |                ^^ type argument not allowed
+   |
+note: the `Self` type is `Enum<T>`
+  --> $DIR/enum-variant-generic-args.rs:7:6
+   |
+LL | enum Enum<T> { TSVariant(T), SVariant { v: T }, UVariant }
+   |      ^^^^ `Self` corresponds to this type
+...
+LL | impl<T> Enum<T> {
+   | --------------- `Self` is `Enum` in this `impl`
+help: the `Self` type doesn't accept type parameters, use the concrete type's name `Enum` instead if you want to specify its type parameters
+   |
+LL |         Enum::<()>::SVariant { v: () };
+   |         ~~~~
 
 error[E0308]: mismatched types
   --> $DIR/enum-variant-generic-args.rs:31:35
@@ -113,12 +159,32 @@ error[E0109]: type arguments are not allowed for this type
    |
 LL |         Self::<()>::SVariant::<()> { v: () };
    |                ^^ type argument not allowed
+   |
+note: the `Self` type is `Enum<T>`
+  --> $DIR/enum-variant-generic-args.rs:7:6
+   |
+LL | enum Enum<T> { TSVariant(T), SVariant { v: T }, UVariant }
+   |      ^^^^ `Self` corresponds to this type
+...
+LL | impl<T> Enum<T> {
+   | --------------- `Self` is `Enum` in this `impl`
+help: the `Self` type doesn't accept type parameters, use the concrete type's name `Enum` instead if you want to specify its type parameters
+   |
+LL |         Enum::<()>::SVariant::<()> { v: () };
+   |         ~~~~
 
 error[E0109]: type arguments are not allowed for this type
   --> $DIR/enum-variant-generic-args.rs:34:32
    |
 LL |         Self::<()>::SVariant::<()> { v: () };
    |                                ^^ type argument not allowed
+   |
+   = note: enum variants can't have type parameters
+help: you might have meant to specity type parameters on enum `Enum`
+   |
+LL -         Self::<()>::SVariant::<()> { v: () };
+LL +         Enum::<()>::SVariant { v: () };
+   | 
 
 error[E0308]: mismatched types
   --> $DIR/enum-variant-generic-args.rs:34:41
@@ -143,12 +209,38 @@ error[E0109]: type arguments are not allowed for this type
    |
 LL |         Self::<()>::UVariant;
    |                ^^ type argument not allowed
+   |
+note: the `Self` type is `Enum<T>`
+  --> $DIR/enum-variant-generic-args.rs:7:6
+   |
+LL | enum Enum<T> { TSVariant(T), SVariant { v: T }, UVariant }
+   |      ^^^^ `Self` corresponds to this type
+...
+LL | impl<T> Enum<T> {
+   | --------------- `Self` is `Enum` in this `impl`
+help: the `Self` type doesn't accept type parameters, use the concrete type's name `Enum` instead if you want to specify its type parameters
+   |
+LL |         Enum::<()>::UVariant;
+   |         ~~~~
 
 error[E0109]: type arguments are not allowed for this type
   --> $DIR/enum-variant-generic-args.rs:45:16
    |
 LL |         Self::<()>::UVariant::<()>;
    |                ^^ type argument not allowed
+   |
+note: the `Self` type is `Enum<T>`
+  --> $DIR/enum-variant-generic-args.rs:7:6
+   |
+LL | enum Enum<T> { TSVariant(T), SVariant { v: T }, UVariant }
+   |      ^^^^ `Self` corresponds to this type
+...
+LL | impl<T> Enum<T> {
+   | --------------- `Self` is `Enum` in this `impl`
+help: the `Self` type doesn't accept type parameters, use the concrete type's name `Enum` instead if you want to specify its type parameters
+   |
+LL |         Enum::<()>::UVariant::<()>;
+   |         ~~~~
 
 error[E0109]: type arguments are not allowed for this type
   --> $DIR/enum-variant-generic-args.rs:45:32
@@ -219,24 +311,47 @@ error[E0109]: type arguments are not allowed for this type
    |
 LL |     Enum::<()>::SVariant::<()> { v: () };
    |                            ^^ type argument not allowed
+   |
+   = note: enum variants can't have type parameters
 
 error[E0109]: type arguments are not allowed for this type
   --> $DIR/enum-variant-generic-args.rs:75:23
    |
 LL |     Alias::SVariant::<()> { v: () };
    |                       ^^ type argument not allowed
+   |
+   = note: enum variants can't have type parameters
+help: you might have meant to specity type parameters on enum `Enum`
+   |
+LL -     Alias::SVariant::<()> { v: () };
+LL +     Alias::<()>::SVariant { v: () };
+   | 
 
 error[E0109]: type arguments are not allowed for this type
   --> $DIR/enum-variant-generic-args.rs:77:29
    |
 LL |     Alias::<()>::SVariant::<()> { v: () };
    |                             ^^ type argument not allowed
+   |
+   = note: enum variants can't have type parameters
+help: you might have meant to specity type parameters on enum `Enum`
+   |
+LL -     Alias::<()>::SVariant::<()> { v: () };
+LL +     Alias::<()>::SVariant { v: () };
+   | 
 
 error[E0109]: type arguments are not allowed for this type
   --> $DIR/enum-variant-generic-args.rs:80:28
    |
 LL |     AliasFixed::SVariant::<()> { v: () };
    |                            ^^ type argument not allowed
+   |
+   = note: enum variants can't have type parameters
+help: you might have meant to specity type parameters on enum `Enum`
+   |
+LL -     AliasFixed::SVariant::<()> { v: () };
+LL +     AliasFixed::<()>::SVariant { v: () };
+   | 
 
 error[E0107]: this type alias takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/enum-variant-generic-args.rs:82:5
@@ -271,6 +386,13 @@ error[E0109]: type arguments are not allowed for this type
    |
 LL |     AliasFixed::<()>::SVariant::<()> { v: () };
    |                                  ^^ type argument not allowed
+   |
+   = note: enum variants can't have type parameters
+help: you might have meant to specity type parameters on enum `Enum`
+   |
+LL -     AliasFixed::<()>::SVariant::<()> { v: () };
+LL +     AliasFixed::<()>::SVariant { v: () };
+   | 
 
 error[E0109]: type arguments are not allowed for this type
   --> $DIR/enum-variant-generic-args.rs:90:28

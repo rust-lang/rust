@@ -3,6 +3,12 @@ error[E0109]: const arguments are not allowed for this type
    |
 LL |     let x: usize<foo>;
    |                  ^^^ const argument not allowed
+   |
+help: primitive type `usize` doesn't have type parameters
+   |
+LL -     let x: usize<foo>;
+LL +     let x: usize;
+   | 
 
 error: aborting due to previous error
 

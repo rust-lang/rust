@@ -9,6 +9,12 @@ error[E0109]: type arguments are not allowed for this type
    |
 LL |         let z = Self::<u8> {};
    |                        ^^ type argument not allowed
+   |
+help: the `Self` type doesn't accept type parameters
+   |
+LL -         let z = Self::<u8> {};
+LL +         let z = Self {};
+   | 
 
 error[E0071]: expected struct, variant or union type, found type parameter `Self`
   --> $DIR/struct-path-self.rs:7:17
@@ -27,12 +33,38 @@ error[E0109]: type arguments are not allowed for this type
    |
 LL |         let z = Self::<u8> {};
    |                        ^^ type argument not allowed
+   |
+note: the `Self` type is `S`
+  --> $DIR/struct-path-self.rs:1:8
+   |
+LL | struct S;
+   |        ^ `Self` corresponds to this type
+...
+LL | impl Tr for S {
+   | ------------- `Self` is `S` in this `impl`
+help: the `Self` type doesn't accept type parameters, use the concrete type's name `S` instead if you want to specify its type parameters
+   |
+LL |         let z = S::<u8> {};
+   |                 ~
 
 error[E0109]: type arguments are not allowed for this type
   --> $DIR/struct-path-self.rs:30:24
    |
 LL |         let z = Self::<u8> {};
    |                        ^^ type argument not allowed
+   |
+note: the `Self` type is `S`
+  --> $DIR/struct-path-self.rs:1:8
+   |
+LL | struct S;
+   |        ^ `Self` corresponds to this type
+...
+LL | impl S {
+   | ------ `Self` is `S` in this `impl`
+help: the `Self` type doesn't accept type parameters, use the concrete type's name `S` instead if you want to specify its type parameters
+   |
+LL |         let z = S::<u8> {};
+   |                 ~
 
 error: aborting due to 6 previous errors
 
