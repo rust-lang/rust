@@ -9,7 +9,7 @@ doctest = false
 [dependencies]
 arrayvec = { version = "0.7", default-features = false }
 ena = "0.14"
-indexmap = { version = "1.8.0" }
+indexmap = { version = "1.8.2" }
 tracing = "0.1"
 jobserver_crate = { version = "0.1.13", package = "jobserver" }
 rustc_serialize = { path = "../rustc_serialize" }
@@ -17,8 +17,8 @@ rustc_macros = { path = "../rustc_macros" }
 rustc_graphviz = { path = "../rustc_graphviz" }
 cfg-if = "0.1.2"
 stable_deref_trait = "1.0.0"
-rayon = { version = "0.3.2", package = "rustc-rayon", optional = true }
-rayon-core = { version = "0.3.2", package = "rustc-rayon-core", optional = true }
+rayon = { version = "0.4.0", package = "rustc-rayon", optional = true }
+rayon-core = { version = "0.4.0", package = "rustc-rayon-core", optional = true }
 rustc-hash = "1.1.0"
 smallvec = { version = "1.6.1", features = ["const_generics", "union", "may_dangle"] }
 rustc_index = { path = "../rustc_index", package = "rustc_index" }
