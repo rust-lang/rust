@@ -1478,8 +1478,8 @@ macro_rules! fnptr_impl_for_abi_with_docs {
 macro_rules! fnptr_impl_for_abi_variadic_support {
     ($Abi:tt, ) => {
         // No variadic functions with 0 parameters
-        fnptr_impls_safety_abi! { extern $Abi fn() -> Ret, }
-        fnptr_impls_safety_abi! { unsafe extern $Abi fn() -> Ret, }
+        fnptr_impls_safety_abi! { #[doc(hidden)] extern $Abi fn() -> Ret, }
+        fnptr_impls_safety_abi! { #[doc(hidden)] unsafe extern $Abi fn() -> Ret, }
     };
 
     ($Abi:tt, $($Arg: ident),*) => {
