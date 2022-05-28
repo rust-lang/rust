@@ -104,7 +104,7 @@
 //! On Unix, [`OsStr`] implements the
 //! <code>std::os::unix::ffi::[OsStrExt][unix.OsStrExt]</code> trait, which
 //! augments it with two methods, [`from_bytes`] and [`as_bytes`].
-//! These do inexpensive conversions from and to UTF-8 byte slices.
+//! These do inexpensive conversions from and to byte slices.
 //!
 //! Additionally, on Unix [`OsString`] implements the
 //! <code>std::os::unix::ffi::[OsStringExt][unix.OsStringExt]</code> trait,
