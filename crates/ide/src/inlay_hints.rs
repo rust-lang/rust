@@ -21,7 +21,7 @@ pub struct InlayHintsConfig {
     pub parameter_hints: bool,
     pub chaining_hints: bool,
     pub reborrow_hints: ReborrowHints,
-    pub closure_return_type_hints: bool,
+    pub closure_return_type_hints: ClosureReturnTypeHints,
     pub binding_mode_hints: bool,
     pub lifetime_elision_hints: LifetimeElisionHints,
     pub param_names_for_lifetime_elision_hints: bool,
@@ -29,6 +29,13 @@ pub struct InlayHintsConfig {
     pub hide_closure_initialization_hints: bool,
     pub max_length: Option<usize>,
     pub closing_brace_hints_min_lines: Option<usize>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ClosureReturnTypeHints {
+    Always,
+    WithBlock,
+    Never,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -86,7 +93,7 @@ pub enum InlayTooltip {
 //
 // Optionally, one can enable additional hints for
 //
-// * return types of closure expressions with blocks
+// * return types of closure expressions
 // * elided lifetimes
 // * compiler inserted reborrows
 //
@@ -460,7 +467,7 @@ fn closure_ret_hints(
     file_id: FileId,
     closure: ast::ClosureExpr,
 ) -> Option<()> {
-    if !config.closure_return_type_hints {
+    if config.closure_return_type_hints == ClosureReturnTypeHints::Never {
         return None;
     }
 
@@ -468,7 +475,9 @@ fn closure_ret_hints(
         return None;
     }
 
-    if !closure_has_block_body(&closure) {
+    if !closure_has_block_body(&closure)
+        && config.closure_return_type_hints == ClosureReturnTypeHints::WithBlock
+    {
         return None;
     }
 
@@ -1092,13 +1101,15 @@ mod tests {
     use crate::inlay_hints::ReborrowHints;
     use crate::{fixture, inlay_hints::InlayHintsConfig, LifetimeElisionHints};
 
+    use super::ClosureReturnTypeHints;
+
     const DISABLED_CONFIG: InlayHintsConfig = InlayHintsConfig {
         render_colons: false,
         type_hints: false,
         parameter_hints: false,
         chaining_hints: false,
         lifetime_elision_hints: LifetimeElisionHints::Never,
-        closure_return_type_hints: false,
+        closure_return_type_hints: ClosureReturnTypeHints::Never,
         reborrow_hints: ReborrowHints::Always,
         binding_mode_hints: false,
         hide_named_constructor_hints: false,
@@ -1112,7 +1123,7 @@ mod tests {
         parameter_hints: true,
         chaining_hints: true,
         reborrow_hints: ReborrowHints::Always,
-        closure_return_type_hints: true,
+        closure_return_type_hints: ClosureReturnTypeHints::WithBlock,
         binding_mode_hints: true,
         lifetime_elision_hints: LifetimeElisionHints::Always,
         ..DISABLED_CONFIG
@@ -2050,6 +2061,23 @@ fn main() {
       //^^^^^^^^^ || -> i32
       || { 42 };
     //^^ i32
+}"#,
+        );
+    }
+
+    #[test]
+    fn return_type_hints_for_closure_without_block() {
+        check_with_config(
+            InlayHintsConfig {
+                closure_return_type_hints: ClosureReturnTypeHints::Always,
+                ..DISABLED_CONFIG
+            },
+            r#"
+fn main() {
+    let a = || { 0 };
+          //^^ i32
+    let b = || 0;
+          //^^ i32
 }"#,
         );
     }
