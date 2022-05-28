@@ -604,9 +604,15 @@ use crate::string;
 #[cfg(not(no_global_oom_handling))]
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[inline]
 pub fn format(args: Arguments<'_>) -> string::String {
-    let capacity = args.estimated_capacity();
-    let mut output = string::String::with_capacity(capacity);
-    output.write_fmt(args).expect("a formatting trait implementation returned an error");
-    output
+    #[cold]
+    fn format_cold(args: Arguments<'_>) -> string::String {
+        let capacity = args.estimated_capacity();
+        let mut output = string::String::with_capacity(capacity);
+        output.write_fmt(args).expect("a formatting trait implementation returned an error");
+        output
+    }
+
+    args.as_str().map_or_else(|| format_cold(args), crate::borrow::ToOwned::to_owned)
 }
