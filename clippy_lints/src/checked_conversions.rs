@@ -2,7 +2,7 @@
 
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::{meets_msrv, msrvs, SpanlessEq};
+use clippy_utils::{in_constant, meets_msrv, msrvs, SpanlessEq};
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
@@ -61,6 +61,7 @@ impl<'tcx> LateLintPass<'tcx> for CheckedConversions {
         }
 
         let result = if_chain! {
+            if !in_constant(cx, item.hir_id);
             if !in_external_macro(cx.sess(), item.span);
             if let ExprKind::Binary(op, left, right) = &item.kind;
 
