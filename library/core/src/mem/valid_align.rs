@@ -1,6 +1,6 @@
 use crate::convert::TryFrom;
 use crate::num::NonZeroUsize;
-use crate::{cmp, fmt, mem, num};
+use crate::{cmp, fmt, hash, mem, num};
 
 /// A type storing a `usize` which is a power of two, and thus
 /// represents a possible alignment in the rust abstract machine.
@@ -102,6 +102,13 @@ impl cmp::PartialOrd for ValidAlign {
     #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
         Some(self.cmp(other))
+    }
+}
+
+impl hash::Hash for ValidAlign {
+    #[inline]
+    fn hash<H: hash::Hasher>(&self, state: &mut H) {
+        self.as_nonzero().hash(state)
     }
 }
 
