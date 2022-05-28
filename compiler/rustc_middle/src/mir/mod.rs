@@ -1618,6 +1618,12 @@ pub enum StatementKind<'tcx> {
     /// parts of this may do type specific things that are more complicated than simply copying
     /// bytes.
     ///
+    /// For `Rvalue::Use`, `Rvalue::Aggregate`, and `Rvalue::Repeat`, the destination `Place` may
+    /// not overlap with any memory computed as a part of the `Rvalue`. Relatedly, the evaluation
+    /// order is `compute lhs place -> compute rhs value -> store value in place`. The plan is for
+    /// the rule about the evaluation order to justify the rule about the non-overlappingness via
+    /// the aliasing model.
+    ///
     /// **Needs clarification**: The implication of the above idea would be that assignment implies
     /// that the resulting value is initialized. I believe we could commit to this separately from
     /// committing to whatever part of the memory model we would need to decide on to make the above
@@ -1629,11 +1635,6 @@ pub enum StatementKind<'tcx> {
     /// the typing requirement in post drop-elaboration MIR? I think probably not - I'm not sure we
     /// could meaningfully require this anyway. How about free lifetimes? Is ignoring this
     /// interesting for optimizations? Do we want to allow such optimizations?
-    ///
-    /// **Needs clarification**: We currently require that the LHS place not overlap with any place
-    /// read as part of computation of the RHS for some rvalues (generally those not producing
-    /// primitives). This requirement is under discussion in [#68364]. As a part of this discussion,
-    /// it is also unclear in what order the components are evaluated.
     ///
     /// [#68364]: https://github.com/rust-lang/rust/issues/68364
     ///
@@ -2475,9 +2476,9 @@ impl<'tcx> Operand<'tcx> {
 ///
 /// Not all of these are allowed at every [`MirPhase`] - when this is the case, it's stated below.
 ///
-/// Computing any rvalue begins by evaluating the places and operands in some order (**Needs
-/// clarification**: Which order?). These are then used to produce a "value" - the same kind of
-/// value that an [`Operand`] produces.
+/// The evaluation order of all components of any part of these rvalues is the order in which they
+/// appear. These components are then combined in a variant specific way, until they finally produce
+/// a "value" - the same kind of value that an [`Operand`] produces.
 pub enum Rvalue<'tcx> {
     /// Yields the operand unchanged
     Use(Operand<'tcx>),
