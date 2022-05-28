@@ -186,3 +186,9 @@ codegen_ssa_apple_sdk_error_sdk_path = failed to get {$sdk_name} SDK path: {erro
 codegen_ssa_read_file = failed to read file: {message}
 
 codegen_ssa_unsupported_link_self_contained = option `-C link-self-contained` is not supported on this target
+
+codegen_ssa_archive_build_failure =
+    failed to build archive: {$error}
+
+codegen_ssa_unknown_archive_kind =
+    Don't know how to build archive of type: {$kind}

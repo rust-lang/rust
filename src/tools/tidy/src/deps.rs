@@ -31,18 +31,19 @@ const LICENSES: &[&str] = &[
 /// tooling. It is _crucial_ that no exception crates be dependencies
 /// of the Rust runtime (std/test).
 const EXCEPTIONS: &[(&str, &str)] = &[
-    ("mdbook", "MPL-2.0"),            // mdbook
-    ("openssl", "Apache-2.0"),        // cargo, mdbook
-    ("colored", "MPL-2.0"),           // rustfmt
-    ("ryu", "Apache-2.0 OR BSL-1.0"), // cargo/... (because of serde)
-    ("bytesize", "Apache-2.0"),       // cargo
-    ("im-rc", "MPL-2.0+"),            // cargo
-    ("sized-chunks", "MPL-2.0+"),     // cargo via im-rc
-    ("bitmaps", "MPL-2.0+"),          // cargo via im-rc
-    ("instant", "BSD-3-Clause"),      // rustc_driver/tracing-subscriber/parking_lot
-    ("snap", "BSD-3-Clause"),         // rustc
+    ("ar_archive_writer", "Apache-2.0 WITH LLVM-exception"), // rustc
+    ("mdbook", "MPL-2.0"),                                   // mdbook
+    ("openssl", "Apache-2.0"),                               // cargo, mdbook
+    ("colored", "MPL-2.0"),                                  // rustfmt
+    ("ryu", "Apache-2.0 OR BSL-1.0"),                        // cargo/... (because of serde)
+    ("bytesize", "Apache-2.0"),                              // cargo
+    ("im-rc", "MPL-2.0+"),                                   // cargo
+    ("sized-chunks", "MPL-2.0+"),                            // cargo via im-rc
+    ("bitmaps", "MPL-2.0+"),                                 // cargo via im-rc
+    ("instant", "BSD-3-Clause"), // rustc_driver/tracing-subscriber/parking_lot
+    ("snap", "BSD-3-Clause"),    // rustc
     ("fluent-langneg", "Apache-2.0"), // rustc (fluent translations)
-    ("self_cell", "Apache-2.0"),      // rustc (fluent translations)
+    ("self_cell", "Apache-2.0"), // rustc (fluent translations)
     // FIXME: this dependency violates the documentation comment above:
     ("fortanix-sgx-abi", "MPL-2.0"), // libstd but only for `sgx` target
     ("dunce", "CC0-1.0"),            // cargo (dev dependency)
@@ -86,6 +87,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "aho-corasick",
     "annotate-snippets",
     "ansi_term",
+    "ar_archive_writer",
     "arrayvec",
     "atty",
     "autocfg",
@@ -274,7 +276,6 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
 const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "ahash",
     "anyhow",
-    "ar",
     "arrayvec",
     "autocfg",
     "bumpalo",
