@@ -12,8 +12,8 @@ bitflags = "1.2.1"
 either = "1.5.0"
 gsgdt = "0.1.2"
 tracing = "0.1"
-rustc-rayon = { version = "0.3.2", optional = true }
-rustc-rayon-core = { version = "0.3.2", optional = true }
+rustc-rayon = { version = "0.4.0", optional = true }
+rustc-rayon-core = { version = "0.4.0", optional = true }
 polonius-engine = "0.13.0"
 rustc_apfloat = { path = "../rustc_apfloat" }
 rustc_attr = { path = "../rustc_attr" }

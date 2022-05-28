@@ -100,6 +100,7 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "compiler_builtins",
     "cpufeatures",
     "crc32fast",
+    "crossbeam-channel",
     "crossbeam-deque",
     "crossbeam-epoch",
     "crossbeam-utils",
