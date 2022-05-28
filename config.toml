@@ -286,6 +286,7 @@ extended = true
 # built with `profiler = true`. If chosen tool failed to build the installation
 # fails. If `extended = false`, this option is ignored.
 #tools = ["cargo", "rls", "clippy", "rustfmt", "analysis", "src"] # + "rust-demangler" if `profiler`
+tools = [ "clippy", "rustfmt" ]
 
 # Verbosity level: 0 == not verbose, 1 == verbose, 2 == very verbose
 #verbose = 0
