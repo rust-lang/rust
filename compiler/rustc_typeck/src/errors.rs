@@ -1,7 +1,5 @@
 //! Errors emitted by typeck.
-use rustc_errors::{
-    error_code, Applicability, DiagnosticBuilder, DiagnosticMessage, ErrorGuaranteed,
-};
+use rustc_errors::{error_code, Applicability, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_macros::{SessionDiagnostic, SessionSubdiagnostic};
 use rustc_middle::ty::Ty;
 use rustc_session::{parse::ParseSess, SessionDiagnostic};
@@ -264,10 +262,9 @@ pub struct MissingTypeParams {
 // Manual implementation of `SessionDiagnostic` to be able to call `span_to_snippet`.
 impl<'a> SessionDiagnostic<'a> for MissingTypeParams {
     fn into_diagnostic(self, sess: &'a ParseSess) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
-        static SLUG: &'static str = "typeck-missing-type-params";
         let mut err = sess.span_diagnostic.struct_span_err_with_code(
             self.span,
-            DiagnosticMessage::fluent(SLUG),
+            rustc_errors::fluent::typeck::missing_type_params,
             error_code!(E0393),
         );
         err.set_arg("parameterCount", self.missing_type_params.len());
@@ -280,7 +277,7 @@ impl<'a> SessionDiagnostic<'a> for MissingTypeParams {
                 .join(", "),
         );
 
-        err.span_label(self.def_span, DiagnosticMessage::fluent_attr(SLUG, "label"));
+        err.span_label(self.def_span, rustc_errors::fluent::typeck::missing_type_params_label);
 
         let mut suggested = false;
         if let (Ok(snippet), true) = (
@@ -298,7 +295,7 @@ impl<'a> SessionDiagnostic<'a> for MissingTypeParams {
                 // least we can clue them to the correct syntax `Iterator<Type>`.
                 err.span_suggestion(
                     self.span,
-                    DiagnosticMessage::fluent_attr(SLUG, "suggestion"),
+                    rustc_errors::fluent::typeck::missing_type_params_suggestion,
                     format!("{}<{}>", snippet, self.missing_type_params.join(", ")),
                     Applicability::HasPlaceholders,
                 );
@@ -306,10 +303,13 @@ impl<'a> SessionDiagnostic<'a> for MissingTypeParams {
             }
         }
         if !suggested {
-            err.span_label(self.span, DiagnosticMessage::fluent_attr(SLUG, "no-suggestion-label"));
+            err.span_label(
+                self.span,
+                rustc_errors::fluent::typeck::missing_type_params_no_suggestion_label,
+            );
         }
 
-        err.note(DiagnosticMessage::fluent_attr(SLUG, "note"));
+        err.note(rustc_errors::fluent::typeck::missing_type_params_note);
         err
     }
 }
