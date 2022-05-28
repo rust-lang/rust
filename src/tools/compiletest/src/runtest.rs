@@ -929,6 +929,16 @@ impl<'test> TestCx<'test> {
                             "add-auto-load-safe-path {}\n",
                             rust_pp_module_abs_path.replace(r"\", r"\\")
                         ));
+
+                        let output_base_dir = self.output_base_dir().to_str().unwrap().to_owned();
+
+                        // Add the directory containing the output binary to
+                        // include embedded pretty printers to GDB's script
+                        // auto loading safe path
+                        script_str.push_str(&format!(
+                            "add-auto-load-safe-path {}\n",
+                            output_base_dir.replace(r"\", r"\\")
+                        ));
                     }
                 }
                 _ => {
