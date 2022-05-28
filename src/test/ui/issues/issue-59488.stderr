@@ -103,7 +103,7 @@ LL |     assert_eq!(Foo::Bar, i);
              extern "C" fn(A, B, C) -> Ret
              extern "C" fn(A, B, C, ...) -> Ret
              extern "C" fn(A, B, C, D) -> Ret
-           and 68 others
+           and 768 others
    = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 9 previous errors
