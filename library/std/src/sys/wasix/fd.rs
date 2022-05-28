@@ -139,14 +139,14 @@ impl WasiFd {
 
     pub fn readdir(&self, buf: &mut [u8], cookie: wasi::Dircookie) -> io::Result<usize> {
         unsafe {
-            wasi::fd_readdir(self.as_raw_fd() as wasi::Fd, buf.as_mut_ptr(), buf.len() as u64, cookie)
+            wasi::fd_readdir(self.as_raw_fd() as wasi::Fd, buf.as_mut_ptr(), buf.len(), cookie)
                 .map_err(err2io)
         }
     }
 
     pub fn readlink(&self, path: &str, buf: &mut [u8]) -> io::Result<usize> {
         unsafe {
-            wasi::path_readlink(self.as_raw_fd() as wasi::Fd, path, buf.as_mut_ptr(), buf.len() as u64)
+            wasi::path_readlink(self.as_raw_fd() as wasi::Fd, path, buf.as_mut_ptr(), buf.len())
                 .map_err(err2io)
         }
     }

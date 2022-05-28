@@ -52,8 +52,6 @@ pub mod thread_local_key;
 #[path = "../wasi/time.rs"]
 pub mod time;
 
-pub type WasiInt = u64;
-
 #[path = "../unsupported/common.rs"]
 #[deny(unsafe_op_in_unsafe_fn)]
 #[allow(unused)]
@@ -98,7 +96,7 @@ pub fn hashmap_random_keys() -> (u64, u64) {
     unsafe {
         let base = &mut ret as *mut (u64, u64) as *mut u8;
         let len = mem::size_of_val(&ret);
-        wasi::random_get(base, len as super::WasiInt).expect("random_get failure");
+        wasi::random_get(base, len as usize).expect("random_get failure");
     }
     return ret;
 }

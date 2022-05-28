@@ -762,9 +762,9 @@ dependencies = [
 
 [[package]]
 name = "compiler_builtins"
-version = "0.1.72"
+version = "0.1.73"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "afdbb35d279238cf77f0c9e8d90ad50d6c7bff476ab342baafa29440f0f10bff"
+checksum = "71b72fde1d7792ca3bd654f7c3ea4508f9e4d0c826e24179eabb7fcc97a90bc3"
 dependencies = [
  "cc",
  "rustc-std-workspace-core",
@@ -1265,9 +1265,9 @@ dependencies = [
 
 [[package]]
 name = "expect-test"
-version = "1.2.2"
+version = "1.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7e3e6b28dccda91d8742195c71fbda412112c0c77febf56bf3d895d68b19db16"
+checksum = "dced95c9dcd4e3241f95841aad395f9c8d7933a3b0b524bdeb2440885c72a271"
 dependencies = [
  "dissimilar",
  "once_cell",
@@ -1314,13 +1314,11 @@ checksum = "37ab347416e802de484e4d03c7316c48f1ecb56574dfd4a46a80f173ce1de04d"
 
 [[package]]
 name = "flate2"
-version = "1.0.23"
+version = "1.0.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b39522e96686d38f4bc984b9198e3a0613264abaebaff2c5c918bfa6b6da09af"
+checksum = "f82b0f4c27ad9f8bfd1f3208d882da2b09c301bc1c828fd3a00d0216d2fbbff6"
 dependencies = [
- "cfg-if 1.0.0",
  "crc32fast",
- "libc 0.2.126 (registry+https://github.com/rust-lang/crates.io-index)",
  "libz-sys",
  "miniz_oxide 0.5.1",
 ]
@@ -1858,13 +1856,13 @@ dependencies = [
 
 [[package]]
 name = "indexmap"
-version = "1.8.1"
+version = "1.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0f647032dfaa1f8b6dc29bd3edb7bbef4861b8b8007ebb118d6db284fd59f6ee"
+checksum = "e6012d540c5baa3589337a98ce73408de9b5a25ec9fc2c6fd6be8f0d39e0ca5a"
 dependencies = [
  "autocfg",
  "hashbrown 0.11.2",
- "rustc-rayon",
+ "rustc-rayon 0.4.0",
  "serde",
 ]
 
@@ -2113,7 +2111,7 @@ dependencies = [
 [[package]]
 name = "libc"
 version = "0.2.126"
-source = "git+https://github.com/john-sharratt/libc.git#1642748eceb229d6e67060ed46f9c737982d5f06"
+source = "git+https://github.com/john-sharratt/libc.git#438aac3f71364e41cc9b59235697f64061a7e115"
 dependencies = [
  "rustc-std-workspace-core",
 ]
@@ -2174,9 +2172,9 @@ dependencies = [
 
 [[package]]
 name = "libz-sys"
-version = "1.1.6"
+version = "1.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "92e7e15d7610cce1d9752e137625f14e61a28cd45929b6e12e47b50fe154ee2e"
+checksum = "9702761c3935f8cc2f101793272e202c72b99da8f4224a19ddcf1279a6450bbf"
 dependencies = [
  "cc",
  "libc 0.2.126 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2679,9 +2677,9 @@ dependencies = [
 
 [[package]]
 name = "os_str_bytes"
-version = "6.0.1"
+version = "6.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "029d8d0b2f198229de29dca79676f2738ff952edf3fde542eb8bf94d8c21b435"
+checksum = "21326818e99cfe6ce1e524c2a805c189a99b5ae555a35d19f9a284b427d86afa"
 
 [[package]]
 name = "output_vt100"
@@ -3461,7 +3459,19 @@ checksum = "9974ab223660e61c1b4e7b43b827379df286736ca988308ce7e16f59f2d89246"
 dependencies = [
  "crossbeam-deque",
  "either",
- "rustc-rayon-core",
+ "rustc-rayon-core 0.3.2",
+]
+
+[[package]]
+name = "rustc-rayon"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1a79f0b0b2609e2eacf9758013f50e7176cb4b29fd6436a747b14a5362c8727a"
+dependencies = [
+ "autocfg",
+ "crossbeam-deque",
+ "either",
+ "rustc-rayon-core 0.4.1",
 ]
 
 [[package]]
@@ -3473,6 +3483,18 @@ dependencies = [
  "crossbeam-deque",
  "crossbeam-utils",
  "lazy_static",
+ "num_cpus",
+]
+
+[[package]]
+name = "rustc-rayon-core"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "02269144a0db9bb55cf5d4a41a5a0e95b334b0b78b08269018ca9b0250718c30"
+dependencies = [
+ "crossbeam-channel",
+ "crossbeam-deque",
+ "crossbeam-utils",
  "num_cpus",
 ]
 
@@ -3771,8 +3793,8 @@ dependencies = [
  "memmap2",
  "parking_lot 0.11.2",
  "rustc-hash",
- "rustc-rayon",
- "rustc-rayon-core",
+ "rustc-rayon 0.3.2",
+ "rustc-rayon-core 0.3.2",
  "rustc_graphviz",
  "rustc_index",
  "rustc_macros",
@@ -3975,8 +3997,8 @@ version = "0.0.0"
 dependencies = [
  "libc 0.2.126 (registry+https://github.com/rust-lang/crates.io-index)",
  "libloading",
- "rustc-rayon",
- "rustc-rayon-core",
+ "rustc-rayon 0.3.2",
+ "rustc-rayon-core 0.3.2",
  "rustc_ast",
  "rustc_ast_lowering",
  "rustc_ast_passes",
@@ -4130,8 +4152,8 @@ dependencies = [
  "polonius-engine",
  "rand 0.8.5",
  "rand_xoshiro",
- "rustc-rayon",
- "rustc-rayon-core",
+ "rustc-rayon 0.3.2",
+ "rustc-rayon-core 0.3.2",
  "rustc_apfloat",
  "rustc_arena",
  "rustc_ast",
@@ -4323,7 +4345,7 @@ name = "rustc_query_impl"
 version = "0.0.0"
 dependencies = [
  "measureme 10.0.0",
- "rustc-rayon-core",
+ "rustc-rayon-core 0.3.2",
  "rustc_ast",
  "rustc_data_structures",
  "rustc_errors",
@@ -4343,7 +4365,7 @@ name = "rustc_query_system"
 version = "0.0.0"
 dependencies = [
  "parking_lot 0.11.2",
- "rustc-rayon-core",
+ "rustc-rayon-core 0.3.2",
  "rustc_arena",
  "rustc_ast",
  "rustc_data_structures",
@@ -5022,7 +5044,6 @@ dependencies = [
  "rustc-demangle",
  "std_detect",
  "unwind",
- "wasi 0.11.0+wasi-snapshot-preview1",
  "wasix",
 ]
 
@@ -5507,9 +5528,9 @@ dependencies = [
 
 [[package]]
 name = "tracing-tree"
-version = "0.2.0"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3ce989c9962c7f61fe084dd4a230eec784649dfc2392467c790007c3a6e134e7"
+checksum = "d07e90b329c621ade432823988574e820212648aa40e7a2497777d58de0fb453"
 dependencies = [
  "ansi_term",
  "atty",
@@ -5868,17 +5889,12 @@ name = "wasi"
 version = "0.11.0+wasi-snapshot-preview1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9c8d87e72b64a3b4db28d11ce29237c246188f4f51057d65a7eab63b7987e423"
-dependencies = [
- "compiler_builtins",
- "rustc-std-workspace-alloc",
- "rustc-std-workspace-core",
-]
 
 [[package]]
 name = "wasix"
-version = "0.11.10+wasix-snapshot-preview1"
+version = "0.11.11+wasix-snapshot-preview1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2332491fd721035942b71b0dd89dc3776ca7d07042aeb11ffa64807510b705e8"
+checksum = "b15875ac0562885f914145ada52dc94ccca0038a0171dd03a2b6cb55d19e48f3"
 dependencies = [
  "compiler_builtins",
  "rustc-std-workspace-alloc",

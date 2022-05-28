@@ -279,7 +279,7 @@ target = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown", "wasm64-unknown-
 # which are used to install Rust and Cargo together. This is disabled by
 # default. The `tools` option (immediately below) specifies which tools should
 # be built if `extended = true`.
-#extended = false
+extended = true
 
 # Installs chosen set of extended tools if `extended = true`. By default builds
 # all extended tools except `rust-demangler`, unless the target is also being

@@ -37,10 +37,7 @@ cfg_if::cfg_if! {
     } else if #[cfg(target_os = "hermit")] {
         mod hermit;
         pub use self::hermit::*;
-    } else if #[cfg(all(target_arch = "wasm32", target_os = "wasi"))] {
-        mod wasi;
-        pub use self::wasi::*;
-    } else if #[cfg(all(target_arch = "wasm64", target_os = "wasi"))] {
+    } else if #[cfg(all(target_family = "wasm", target_os = "wasi"))] {
         #[path = "wasix/mod.rs"]
         mod wasi;
         pub use self::wasi::*;

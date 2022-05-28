@@ -49,9 +49,9 @@ pub fn getcwd() -> io::Result<PathBuf> {
     let mut buf = Vec::<u8>::with_capacity(1024);
     for _ in 0..2 {
         unsafe {
-            let mut len = buf.capacity() as super::WasiInt;
+            let mut len = buf.capacity() as usize;
             let ptr_buf = buf.as_mut_ptr() as *mut u8;
-            let ptr_len = &mut len as *mut super::WasiInt;
+            let ptr_len = &mut len as *mut usize;
             match wasi::getcwd(ptr_buf, ptr_len) {
                 Ok(()) => {
                     drop(ptr_len);

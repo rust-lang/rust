@@ -16,6 +16,8 @@ use libc::{
     c_int,
 };
 
+pub use crate::sys::{cvt, cvt_r};
+
 pub struct Socket {
     fd: Option<WasiFd>,
     addr: SocketAddr,
@@ -48,14 +50,20 @@ impl Socket
             let wasi_ty = match ty {
                 SOCK_DGRAM => wasi::SOCK_TYPE_SOCKET_DGRAM,
                 SOCK_STREAM => wasi::SOCK_TYPE_SOCKET_STREAM,
+                SOCK_RAW => wasi::SOCK_TYPE_SOCKET_RAW,
                 _ => { return Err(io::const_io_error!(io::ErrorKind::Uncategorized, "invalid socket type")); }
+            };
+            let wasi_proto = match ty {
+                SOCK_DGRAM => wasi::SOCK_PROTO_UDP,
+                SOCK_STREAM => wasi::SOCK_PROTO_TCP,
+                _ => { return Err(io::const_io_error!(io::ErrorKind::Uncategorized, "invalid socket protocol")); }
             };
             let ip = match fam {
                 AF_INET6 => IpAddr::V6(Ipv6Addr::UNSPECIFIED),
                 AF_INET => IpAddr::V4(Ipv4Addr::UNSPECIFIED),
                 _ => { return Err(io::const_io_error!(io::ErrorKind::Uncategorized, "invalid address family")); }
             };
-            let fd = wasi::sock_open(wasi_fam, wasi_ty).map_err(err2io)?;
+            let fd = wasi::sock_open(wasi_fam, wasi_ty, wasi_proto).map_err(err2io)?;
             Ok(Socket {
                 fd: Some(WasiFd::from_raw_fd(fd as RawFd)),
                 addr: SocketAddr::new(ip, 0),
@@ -88,7 +96,7 @@ impl Socket
     }
 
     pub fn connect(&self, addr: &SocketAddr) -> io::Result<()> {
-        let timeout = self.timeout_internal(wasi::TIMEOUT_TYPE_CONNECT)?
+        let timeout = self.timeout_internal(wasi::SOCK_OPTION_CONNECT_TIMEOUT)?
             .unwrap_or_else(|| Duration::from_secs(20));
         self.connect_timeout(addr, timeout)
     }
@@ -249,6 +257,12 @@ impl Socket
         Ok((ret.0, ret.2))
     }
 
+    #[allow(dead_code)]
+    pub fn recv_msg(&self, msg: &mut libc::msghdr) -> io::Result<usize> {
+        let n = cvt(unsafe { libc::recvmsg(self.as_raw_fd(), msg, libc::MSG_CMSG_CLOEXEC) })?;
+        Ok(n as usize)
+    }
+
     pub fn peek_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
         let mut data = [ IoSliceMut::new(buf) ];
         let ret = self.recv_from_with_flags(&mut data, MSG_PEEK as u16)?;
@@ -301,25 +315,35 @@ impl Socket
         self.send_to_with_flags(bufs, 0, addr)
     }
 
+    #[allow(dead_code)]
+    pub fn send_msg(&self, msg: &mut libc::msghdr) -> io::Result<usize> {
+        let n = cvt(unsafe { libc::sendmsg(self.as_raw_fd(), msg, 0) })?;
+        Ok(n as usize)
+    }
+
     pub fn set_timeout(&self, dur: Option<Duration>, kind: libc::c_int) -> io::Result<()> {
-        let ty = match kind {
-            SO_RCVTIMEO => wasi::TIMEOUT_TYPE_READ,
-            SO_SNDTIMEO => wasi::TIMEOUT_TYPE_WRITE,
+        let option = match kind {
+            SO_RCVTIMEO => wasi::SOCK_OPTION_RECV_TIMEOUT,
+            SO_SNDTIMEO => wasi::SOCK_OPTION_SEND_TIMEOUT,
+            SO_CONNTIMEO => wasi::SOCK_OPTION_CONNECT_TIMEOUT,
+            SO_ACCPTIMEO => wasi::SOCK_OPTION_ACCEPT_TIMEOUT,
             _ => { return Err(io::const_io_error!(io::ErrorKind::Uncategorized, "invalid timeout type")); }
         };
-        self.set_timeout_internal(dur, ty)
+        self.set_timeout_internal(dur, option)
     }
 
     pub fn timeout(&self, kind: libc::c_int) -> io::Result<Option<Duration>> {
-        let ty = match kind {
-            SO_RCVTIMEO => wasi::TIMEOUT_TYPE_READ,
-            SO_SNDTIMEO => wasi::TIMEOUT_TYPE_WRITE,
+        let option = match kind {
+            SO_RCVTIMEO => wasi::SOCK_OPTION_RECV_TIMEOUT,
+            SO_SNDTIMEO => wasi::SOCK_OPTION_SEND_TIMEOUT,
+            SO_CONNTIMEO => wasi::SOCK_OPTION_CONNECT_TIMEOUT,
+            SO_ACCPTIMEO => wasi::SOCK_OPTION_ACCEPT_TIMEOUT,
             _ => { return Err(io::const_io_error!(io::ErrorKind::Uncategorized, "invalid timeout type")); }
         };
-        self.timeout_internal(ty)
+        self.timeout_internal(option)
     }
 
-    fn set_timeout_internal(&self, dur: Option<Duration>, ty: wasi::TimeoutType) -> io::Result<()> {
+    fn set_timeout_internal(&self, dur: Option<Duration>, option: wasi::SockOption) -> io::Result<()> {
         let dur = match dur {
             Some(dur) => wasi::OptionTimestamp {
                 tag: wasi::OPTION_SOME.raw(),
@@ -335,13 +359,13 @@ impl Socket
             }
         };
         unsafe {
-            wasi::sock_set_timeout(self.fd(), ty, &dur).map_err(err2io)
+            wasi::sock_set_opt_time(self.fd(), option, &dur).map_err(err2io)
         }
     }
 
-    fn timeout_internal(&self, ty: wasi::TimeoutType) -> io::Result<Option<Duration>> {
+    fn timeout_internal(&self, option: wasi::SockOption) -> io::Result<Option<Duration>> {
         let ret = unsafe {
-            wasi::sock_get_timeout(self.fd(), ty).map_err(err2io)?
+            wasi::sock_get_opt_time(self.fd(), option).map_err(err2io)?
         };
         Ok(
             match ret.tag {
@@ -388,76 +412,76 @@ impl Socket
 
     #[allow(dead_code)]
     pub fn set_reuse_addr(&self, reuse: bool) -> io::Result<()> {
-        self.set_opt(wasi::SOCK_OPTION_REUSE_ADDR, reuse)
+        self.set_opt_flag(wasi::SOCK_OPTION_REUSE_ADDR, reuse)
     }
 
     #[allow(dead_code)]
     pub fn reuse_addr(&self) -> io::Result<bool> {
-        self.get_opt(wasi::SOCK_OPTION_REUSE_ADDR)
+        self.get_opt_flag(wasi::SOCK_OPTION_REUSE_ADDR)
     }
 
     #[allow(dead_code)]
     pub fn set_reuse_port(&self, reuse: bool) -> io::Result<()> {
-        self.set_opt(wasi::SOCK_OPTION_REUSE_PORT, reuse)
+        self.set_opt_flag(wasi::SOCK_OPTION_REUSE_PORT, reuse)
     }
 
     #[allow(dead_code)]
     pub fn reuse_port(&self) -> io::Result<bool> {
-        self.get_opt(wasi::SOCK_OPTION_REUSE_PORT)
+        self.get_opt_flag(wasi::SOCK_OPTION_REUSE_PORT)
     }
 
     pub fn set_nodelay(&self, nodelay: bool) -> io::Result<()> {
-        self.set_opt(wasi::SOCK_OPTION_NODELAY, nodelay)
+        self.set_opt_flag(wasi::SOCK_OPTION_NO_DELAY, nodelay)
     }
 
     pub fn nodelay(&self) -> io::Result<bool> {
-        self.get_opt(wasi::SOCK_OPTION_NODELAY)
+        self.get_opt_flag(wasi::SOCK_OPTION_NO_DELAY)
     }
 
     pub fn set_only_v6(&self, only_v6: bool) -> io::Result<()> {
-        self.set_opt(wasi::SOCK_OPTION_ONLY_V6, only_v6)
+        self.set_opt_flag(wasi::SOCK_OPTION_ONLY_V6, only_v6)
     }
 
     pub fn only_v6(&self) -> io::Result<bool> {
-        self.get_opt(wasi::SOCK_OPTION_ONLY_V6)
+        self.get_opt_flag(wasi::SOCK_OPTION_ONLY_V6)
     }
 
     pub fn set_broadcast(&self, broadcast: bool) -> io::Result<()> {
-        self.set_opt(wasi::SOCK_OPTION_BROADCAST, broadcast)
+        self.set_opt_flag(wasi::SOCK_OPTION_BROADCAST, broadcast)
     }
 
     pub fn broadcast(&self) -> io::Result<bool> {
-        self.get_opt(wasi::SOCK_OPTION_BROADCAST)
+        self.get_opt_flag(wasi::SOCK_OPTION_BROADCAST)
     }
     pub fn set_multicast_loop_v4(&self, val: bool) -> io::Result<()> {
-        self.set_opt(wasi::SOCK_OPTION_MULTICAST_LOOP_V4, val)
+        self.set_opt_flag(wasi::SOCK_OPTION_MULTICAST_LOOP_V4, val)
     }
 
     pub fn multicast_loop_v4(&self) -> io::Result<bool> {
-        self.get_opt(wasi::SOCK_OPTION_MULTICAST_LOOP_V4)
+        self.get_opt_flag(wasi::SOCK_OPTION_MULTICAST_LOOP_V4)
     }
 
     pub fn set_multicast_loop_v6(&self, val: bool) -> io::Result<()> {
-        self.set_opt(wasi::SOCK_OPTION_MULTICAST_LOOP_V6, val)
+        self.set_opt_flag(wasi::SOCK_OPTION_MULTICAST_LOOP_V6, val)
     }
 
     pub fn multicast_loop_v6(&self) -> io::Result<bool> {
-        self.get_opt(wasi::SOCK_OPTION_MULTICAST_LOOP_V6)
+        self.get_opt_flag(wasi::SOCK_OPTION_MULTICAST_LOOP_V6)
     }
 
-    fn set_opt(&self, sockopt: wasi::SockOption, val: bool) -> io::Result<()> {
+    fn set_opt_flag(&self, sockopt: wasi::SockOption, val: bool) -> io::Result<()> {
         unsafe {
             let val = match val {
                 false => wasi::BOOL_FALSE,
                 true => wasi::BOOL_TRUE
             };
-            wasi::sock_set_opt(self.fd(), sockopt, val).map_err(err2io)
+            wasi::sock_set_opt_flag(self.fd(), sockopt, val).map_err(err2io)
         }
     }
 
-    fn get_opt(&self, sockopt: wasi::SockOption) -> io::Result<bool> {
+    fn get_opt_flag(&self, sockopt: wasi::SockOption) -> io::Result<bool> {
         let val = unsafe {
-            wasi::sock_get_opt(self.fd(), sockopt).map_err(err2io)?
+            wasi::sock_get_opt_flag(self.fd(), sockopt).map_err(err2io)?
         };
         Ok(
             match val {
@@ -483,13 +507,13 @@ impl Socket
             }
         };
         unsafe {
-            wasi::sock_set_linger(self.fd(), &val).map_err(err2io)
+            wasi::sock_set_opt_time(self.fd(), wasi::SOCK_OPTION_LINGER, &val).map_err(err2io)
         }
     }
 
     pub fn linger(&self) -> io::Result<Option<Duration>> {
         let ret = unsafe {
-            wasi::sock_get_linger(self.fd()).map_err(err2io)?
+            wasi::sock_get_opt_time(self.fd(), wasi::SOCK_OPTION_LINGER).map_err(err2io)?
         };
         Ok(
             match ret.tag {
@@ -508,15 +532,15 @@ impl Socket
 
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         if nonblocking {
-            self.set_timeout_internal(Some(Duration::ZERO), wasi::TIMEOUT_TYPE_READ)?;
-            self.set_timeout_internal(Some(Duration::ZERO), wasi::TIMEOUT_TYPE_WRITE)?;
-            self.set_timeout_internal(Some(Duration::ZERO), wasi::TIMEOUT_TYPE_CONNECT)?;
-            self.set_timeout_internal(Some(Duration::ZERO), wasi::TIMEOUT_TYPE_ACCEPT)?;
+            self.set_timeout_internal(Some(Duration::ZERO), wasi::SOCK_OPTION_RECV_TIMEOUT)?;
+            self.set_timeout_internal(Some(Duration::ZERO), wasi::SOCK_OPTION_SEND_TIMEOUT)?;
+            self.set_timeout_internal(Some(Duration::ZERO), wasi::SOCK_OPTION_CONNECT_TIMEOUT)?;
+            self.set_timeout_internal(Some(Duration::ZERO), wasi::SOCK_OPTION_ACCEPT_TIMEOUT)?;
         } else {
-            self.set_timeout_internal(None, wasi::TIMEOUT_TYPE_READ)?;
-            self.set_timeout_internal(None, wasi::TIMEOUT_TYPE_WRITE)?;
-            self.set_timeout_internal(None, wasi::TIMEOUT_TYPE_CONNECT)?;
-            self.set_timeout_internal(None, wasi::TIMEOUT_TYPE_ACCEPT)?;
+            self.set_timeout_internal(None, wasi::SOCK_OPTION_RECV_TIMEOUT)?;
+            self.set_timeout_internal(None, wasi::SOCK_OPTION_SEND_TIMEOUT)?;
+            self.set_timeout_internal(None, wasi::SOCK_OPTION_CONNECT_TIMEOUT)?;
+            self.set_timeout_internal(None, wasi::SOCK_OPTION_ACCEPT_TIMEOUT)?;
         }
 
         let fdstat = unsafe {
@@ -541,26 +565,26 @@ impl Socket
 
     pub fn set_ttl(&self, ttl: u32) -> io::Result<()> {
         unsafe {
-            wasi::sock_set_ttl(self.fd(), ttl as wasi::Size).map_err(err2io)
+            wasi::sock_set_opt_size(self.fd(), wasi::SOCK_OPTION_TTL, ttl as wasi::Filesize).map_err(err2io)
         }
     }
 
     pub fn ttl(&self) -> io::Result<u32> {
         let ttl = unsafe {
-            wasi::sock_get_ttl(self.fd()).map_err(err2io)? as u32
+            wasi::sock_get_opt_size(self.fd(), wasi::SOCK_OPTION_TTL).map_err(err2io)? as u32
         };
         Ok(ttl)
     }
 
     pub fn set_multicast_ttl_v4(&self, ttl: u32) -> io::Result<()> {
         unsafe {
-            wasi::sock_set_multicast_ttl_v4(self.fd(), ttl as wasi::Size).map_err(err2io)
+            wasi::sock_set_opt_size(self.fd(), wasi::SOCK_OPTION_MULTICAST_TTL_V4, ttl as wasi::Filesize).map_err(err2io)
         }
     }
 
     pub fn multicast_ttl_v4(&self) -> io::Result<u32> {
         let ttl = unsafe {
-            wasi::sock_get_multicast_ttl_v4(self.fd()).map_err(err2io)? as u32
+            wasi::sock_get_opt_size(self.fd(), wasi::SOCK_OPTION_MULTICAST_TTL_V4).map_err(err2io)? as u32
         };
         Ok(ttl)
     }
@@ -819,19 +843,19 @@ impl TcpStream {
     }
 
     pub fn set_read_timeout(&self, timeout: Option<Duration>) -> io::Result<()> {
-        self.inner.set_timeout_internal(timeout, wasi::TIMEOUT_TYPE_READ)
+        self.inner.set_timeout_internal(timeout, wasi::SOCK_OPTION_RECV_TIMEOUT)
     }
 
     pub fn set_write_timeout(&self, timeout: Option<Duration>) -> io::Result<()> {
-        self.inner.set_timeout_internal(timeout, wasi::TIMEOUT_TYPE_WRITE)
+        self.inner.set_timeout_internal(timeout, wasi::SOCK_OPTION_SEND_TIMEOUT)
     }
 
     pub fn read_timeout(&self) -> io::Result<Option<Duration>> {
-        self.inner.timeout_internal(wasi::TIMEOUT_TYPE_READ)
+        self.inner.timeout_internal(wasi::SOCK_OPTION_RECV_TIMEOUT)
     }
 
     pub fn write_timeout(&self) -> io::Result<Option<Duration>> {
-        self.inner.timeout_internal(wasi::TIMEOUT_TYPE_WRITE)
+        self.inner.timeout_internal(wasi::SOCK_OPTION_SEND_TIMEOUT)
     }
 
     pub fn peek(&self, buf: &mut [u8]) -> io::Result<usize> {
@@ -1254,19 +1278,27 @@ impl<'a> TryFrom<(&'a str, u16)> for LookupHost {
     }
 }
 
+#[allow(dead_code)]
 #[allow(nonstandard_style)]
 pub mod netc {
-    pub const AF_INET: i32 = 0;
-    pub const AF_INET6: i32 = 1;
+    pub const AF_UNSPEC: i32 = 0;
+    pub const AF_INET: i32 = 1;
+    pub const AF_INET6: i32 = 2;
+    pub const AF_UNIX: i32 = 3;
     pub type sa_family_t = u8;
 
-    pub const SOCK_STREAM: i32 = 1;
-    pub const SOCK_DGRAM: i32 = 2;
+    pub const SOCK_STREAM: i32 = 0;
+    pub const SOCK_DGRAM: i32 = 1;
+    pub const SOCK_RAW: i32 = 2;
 
-    pub const SO_RCVTIMEO: i32 = 20;
-    pub const SO_SNDTIMEO: i32 = 21;
+    pub const SO_RCVTIMEO: i32 = 19;
+    pub const SO_SNDTIMEO: i32 = 20;
+    pub const SO_CONNTIMEO: i32 = 21;
+    pub const SO_ACCPTIMEO: i32 = 22;
 
-    pub const MSG_PEEK: u32 = 2;
+    pub const MSG_PEEK: u32 = 1;
+    pub const MSG_WAITALL: u32 = 2;
+    pub const MSG_TRUNC: u32 = 4;
 
     #[derive(Copy, Clone)]
     pub struct in_addr {
