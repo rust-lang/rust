@@ -224,7 +224,7 @@ impl<H> WithHeader<H> {
         //    will always result in an aligned header pointer, it just may not point to the
         //    beginning of the allocation.
         let hp = unsafe { self.0.as_ptr().sub(Self::header_size()) as *mut H };
-        debug_assert!((hp.addr() & (core::mem::align_of::<H>() - 1)) == 0);
+        debug_assert!(hp.is_aligned());
         hp
     }
 

@@ -168,6 +168,7 @@
 #![feature(nll)] // Not necessary, but here to test the `nll` feature.
 #![feature(rustc_allow_const_fn_unstable)]
 #![feature(rustc_attrs)]
+#![feature(pointer_is_aligned)]
 #![feature(slice_internals)]
 #![feature(staged_api)]
 #![cfg_attr(test, feature(test))]
