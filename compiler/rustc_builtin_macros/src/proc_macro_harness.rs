@@ -294,50 +294,57 @@ fn mk_decls(cx: &mut ExtCtxt<'_>, macros: &[ProcMacro]) -> P<ast::Item> {
     // that we generate expressions. The position of each NodeId
     // in the 'proc_macros' Vec corresponds to its position
     // in the static array that will be generated
-    let decls = {
-        let local_path = |cx: &ExtCtxt<'_>, sp: Span, name| {
-            cx.expr_path(cx.path(sp.with_ctxt(span.ctxt()), vec![name]))
-        };
-        let proc_macro_ty_method_path = |cx: &ExtCtxt<'_>, method| {
-            cx.expr_path(cx.path(span, vec![proc_macro, bridge, client, proc_macro_ty, method]))
-        };
-        let attr_or_bang = |cx: &mut ExtCtxt<'_>, ca: &ProcMacroDef, ident| {
-            cx.resolver.declare_proc_macro(ca.id);
-            cx.expr_call(
-                span,
-                proc_macro_ty_method_path(cx, ident),
-                vec![
-                    cx.expr_str(ca.span, ca.function_name.name),
-                    local_path(cx, ca.span, ca.function_name),
-                ],
-            )
-        };
-        macros
-            .iter()
-            .map(|m| match m {
+    let decls = macros
+        .iter()
+        .map(|m| {
+            let harness_span = span;
+            let span = match m {
+                ProcMacro::Derive(m) => m.span,
+                ProcMacro::Attr(m) | ProcMacro::Bang(m) => m.span,
+            };
+            let local_path = |cx: &ExtCtxt<'_>, name| cx.expr_path(cx.path(span, vec![name]));
+            let proc_macro_ty_method_path = |cx: &ExtCtxt<'_>, method| {
+                cx.expr_path(cx.path(
+                    span.with_ctxt(harness_span.ctxt()),
+                    vec![proc_macro, bridge, client, proc_macro_ty, method],
+                ))
+            };
+            match m {
                 ProcMacro::Derive(cd) => {
                     cx.resolver.declare_proc_macro(cd.id);
                     cx.expr_call(
                         span,
                         proc_macro_ty_method_path(cx, custom_derive),
                         vec![
-                            cx.expr_str(cd.span, cd.trait_name),
+                            cx.expr_str(span, cd.trait_name),
                             cx.expr_vec_slice(
                                 span,
-                                cd.attrs
-                                    .iter()
-                                    .map(|&s| cx.expr_str(cd.span, s))
-                                    .collect::<Vec<_>>(),
+                                cd.attrs.iter().map(|&s| cx.expr_str(span, s)).collect::<Vec<_>>(),
                             ),
-                            local_path(cx, cd.span, cd.function_name),
+                            local_path(cx, cd.function_name),
                         ],
                     )
                 }
-                ProcMacro::Attr(ca) => attr_or_bang(cx, &ca, attr),
-                ProcMacro::Bang(ca) => attr_or_bang(cx, &ca, bang),
-            })
-            .collect()
-    };
+                ProcMacro::Attr(ca) | ProcMacro::Bang(ca) => {
+                    cx.resolver.declare_proc_macro(ca.id);
+                    let ident = match m {
+                        ProcMacro::Attr(_) => attr,
+                        ProcMacro::Bang(_) => bang,
+                        ProcMacro::Derive(_) => unreachable!(),
+                    };
+
+                    cx.expr_call(
+                        span,
+                        proc_macro_ty_method_path(cx, ident),
+                        vec![
+                            cx.expr_str(span, ca.function_name.name),
+                            local_path(cx, ca.function_name),
+                        ],
+                    )
+                }
+            }
+        })
+        .collect();
 
     let decls_static = cx
         .item_static(

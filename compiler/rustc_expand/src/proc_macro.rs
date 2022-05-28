@@ -14,7 +14,7 @@ use rustc_span::{Span, DUMMY_SP};
 const EXEC_STRATEGY: pm::bridge::server::SameThread = pm::bridge::server::SameThread;
 
 pub struct BangProcMacro {
-    pub client: pm::bridge::client::Client<fn(pm::TokenStream) -> pm::TokenStream>,
+    pub client: pm::bridge::client::Client<pm::TokenStream, pm::TokenStream>,
 }
 
 impl base::BangProcMacro for BangProcMacro {
@@ -42,7 +42,7 @@ impl base::BangProcMacro for BangProcMacro {
 }
 
 pub struct AttrProcMacro {
-    pub client: pm::bridge::client::Client<fn(pm::TokenStream, pm::TokenStream) -> pm::TokenStream>,
+    pub client: pm::bridge::client::Client<(pm::TokenStream, pm::TokenStream), pm::TokenStream>,
 }
 
 impl base::AttrProcMacro for AttrProcMacro {
@@ -73,7 +73,7 @@ impl base::AttrProcMacro for AttrProcMacro {
 }
 
 pub struct DeriveProcMacro {
-    pub client: pm::bridge::client::Client<fn(pm::TokenStream) -> pm::TokenStream>,
+    pub client: pm::bridge::client::Client<pm::TokenStream, pm::TokenStream>,
 }
 
 impl MultiItemModifier for DeriveProcMacro {

@@ -118,12 +118,11 @@ macro_rules! define_dispatcher_impl {
 with_api!(Self, self_, define_dispatcher_impl);
 
 pub trait ExecutionStrategy {
-    fn run_bridge_and_client<D: Copy + Send + 'static>(
+    fn run_bridge_and_client(
         &self,
         dispatcher: &mut impl DispatcherTrait,
         input: Buffer,
-        run_client: extern "C" fn(Bridge<'_>, D) -> Buffer,
-        client_data: D,
+        run_client: extern "C" fn(Bridge<'_>) -> Buffer,
         force_show_panics: bool,
     ) -> Buffer;
 }
@@ -131,25 +130,21 @@ pub trait ExecutionStrategy {
 pub struct SameThread;
 
 impl ExecutionStrategy for SameThread {
-    fn run_bridge_and_client<D: Copy + Send + 'static>(
+    fn run_bridge_and_client(
         &self,
         dispatcher: &mut impl DispatcherTrait,
         input: Buffer,
-        run_client: extern "C" fn(Bridge<'_>, D) -> Buffer,
-        client_data: D,
+        run_client: extern "C" fn(Bridge<'_>) -> Buffer,
         force_show_panics: bool,
     ) -> Buffer {
         let mut dispatch = |buf| dispatcher.dispatch(buf);
 
-        run_client(
-            Bridge {
-                cached_buffer: input,
-                dispatch: (&mut dispatch).into(),
-                force_show_panics,
-                _marker: marker::PhantomData,
-            },
-            client_data,
-        )
+        run_client(Bridge {
+            cached_buffer: input,
+            dispatch: (&mut dispatch).into(),
+            force_show_panics,
+            _marker: marker::PhantomData,
+        })
     }
 }
 
@@ -159,12 +154,11 @@ impl ExecutionStrategy for SameThread {
 pub struct CrossThread1;
 
 impl ExecutionStrategy for CrossThread1 {
-    fn run_bridge_and_client<D: Copy + Send + 'static>(
+    fn run_bridge_and_client(
         &self,
         dispatcher: &mut impl DispatcherTrait,
         input: Buffer,
-        run_client: extern "C" fn(Bridge<'_>, D) -> Buffer,
-        client_data: D,
+        run_client: extern "C" fn(Bridge<'_>) -> Buffer,
         force_show_panics: bool,
     ) -> Buffer {
         use std::sync::mpsc::channel;
@@ -178,15 +172,12 @@ impl ExecutionStrategy for CrossThread1 {
                 res_rx.recv().unwrap()
             };
 
-            run_client(
-                Bridge {
-                    cached_buffer: input,
-                    dispatch: (&mut dispatch).into(),
-                    force_show_panics,
-                    _marker: marker::PhantomData,
-                },
-                client_data,
-            )
+            run_client(Bridge {
+                cached_buffer: input,
+                dispatch: (&mut dispatch).into(),
+                force_show_panics,
+                _marker: marker::PhantomData,
+            })
         });
 
         for b in req_rx {
@@ -200,12 +191,11 @@ impl ExecutionStrategy for CrossThread1 {
 pub struct CrossThread2;
 
 impl ExecutionStrategy for CrossThread2 {
-    fn run_bridge_and_client<D: Copy + Send + 'static>(
+    fn run_bridge_and_client(
         &self,
         dispatcher: &mut impl DispatcherTrait,
         input: Buffer,
-        run_client: extern "C" fn(Bridge<'_>, D) -> Buffer,
-        client_data: D,
+        run_client: extern "C" fn(Bridge<'_>) -> Buffer,
         force_show_panics: bool,
     ) -> Buffer {
         use std::sync::{Arc, Mutex};
@@ -231,15 +221,12 @@ impl ExecutionStrategy for CrossThread2 {
                 }
             };
 
-            let r = run_client(
-                Bridge {
-                    cached_buffer: input,
-                    dispatch: (&mut dispatch).into(),
-                    force_show_panics,
-                    _marker: marker::PhantomData,
-                },
-                client_data,
-            );
+            let r = run_client(Bridge {
+                cached_buffer: input,
+                dispatch: (&mut dispatch).into(),
+                force_show_panics,
+                _marker: marker::PhantomData,
+            });
 
             // Wake up the server so it can exit the dispatch loop.
             drop(state2);
@@ -268,14 +255,12 @@ fn run_server<
     S: Server,
     I: Encode<HandleStore<MarkedTypes<S>>>,
     O: for<'a, 's> DecodeMut<'a, 's, HandleStore<MarkedTypes<S>>>,
-    D: Copy + Send + 'static,
 >(
     strategy: &impl ExecutionStrategy,
     handle_counters: &'static client::HandleCounters,
     server: S,
     input: I,
-    run_client: extern "C" fn(Bridge<'_>, D) -> Buffer,
-    client_data: D,
+    run_client: extern "C" fn(Bridge<'_>) -> Buffer,
     force_show_panics: bool,
 ) -> Result<O, PanicMessage> {
     let mut dispatcher =
@@ -284,18 +269,12 @@ fn run_server<
     let mut buf = Buffer::new();
     input.encode(&mut buf, &mut dispatcher.handle_store);
 
-    buf = strategy.run_bridge_and_client(
-        &mut dispatcher,
-        buf,
-        run_client,
-        client_data,
-        force_show_panics,
-    );
+    buf = strategy.run_bridge_and_client(&mut dispatcher, buf, run_client, force_show_panics);
 
     Result::decode(&mut &buf[..], &mut dispatcher.handle_store)
 }
 
-impl client::Client<fn(crate::TokenStream) -> crate::TokenStream> {
+impl client::Client<crate::TokenStream, crate::TokenStream> {
     pub fn run<S: Server>(
         &self,
         strategy: &impl ExecutionStrategy,
@@ -303,21 +282,20 @@ impl client::Client<fn(crate::TokenStream) -> crate::TokenStream> {
         input: S::TokenStream,
         force_show_panics: bool,
     ) -> Result<S::TokenStream, PanicMessage> {
-        let client::Client { get_handle_counters, run, f } = *self;
+        let client::Client { get_handle_counters, run, _marker } = *self;
         run_server(
             strategy,
             get_handle_counters(),
             server,
             <MarkedTypes<S> as Types>::TokenStream::mark(input),
             run,
-            f,
             force_show_panics,
         )
         .map(<MarkedTypes<S> as Types>::TokenStream::unmark)
     }
 }
 
-impl client::Client<fn(crate::TokenStream, crate::TokenStream) -> crate::TokenStream> {
+impl client::Client<(crate::TokenStream, crate::TokenStream), crate::TokenStream> {
     pub fn run<S: Server>(
         &self,
         strategy: &impl ExecutionStrategy,
@@ -326,7 +304,7 @@ impl client::Client<fn(crate::TokenStream, crate::TokenStream) -> crate::TokenSt
         input2: S::TokenStream,
         force_show_panics: bool,
     ) -> Result<S::TokenStream, PanicMessage> {
-        let client::Client { get_handle_counters, run, f } = *self;
+        let client::Client { get_handle_counters, run, _marker } = *self;
         run_server(
             strategy,
             get_handle_counters(),
@@ -336,7 +314,6 @@ impl client::Client<fn(crate::TokenStream, crate::TokenStream) -> crate::TokenSt
                 <MarkedTypes<S> as Types>::TokenStream::mark(input2),
             ),
             run,
-            f,
             force_show_panics,
         )
         .map(<MarkedTypes<S> as Types>::TokenStream::unmark)
