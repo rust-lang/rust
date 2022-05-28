@@ -69,7 +69,7 @@ fn test_collect() {
 
     // test that it does not take more elements than it needs
     let mut functions: [Box<dyn Fn() -> Result<(), isize>>; 3] =
-        [box || Ok(()), box || Err(1), box || panic!()];
+        [Box::new(|| Ok(())), Box::new(|| Err(1)), Box::new(|| panic!())];
 
     let v: Result<Vec<()>, isize> = functions.iter_mut().map(|f| (*f)()).collect();
     assert!(v == Err(1));

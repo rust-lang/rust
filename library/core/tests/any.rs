@@ -24,8 +24,11 @@ fn any_referenced() {
 
 #[test]
 fn any_owning() {
-    let (a, b, c) =
-        (box 5_usize as Box<dyn Any>, box TEST as Box<dyn Any>, box Test as Box<dyn Any>);
+    let (a, b, c) = (
+        Box::new(5_usize) as Box<dyn Any>,
+        Box::new(TEST) as Box<dyn Any>,
+        Box::new(Test) as Box<dyn Any>,
+    );
 
     assert!(a.is::<usize>());
     assert!(!b.is::<usize>());
@@ -58,7 +61,7 @@ fn any_downcast_ref() {
 #[test]
 fn any_downcast_mut() {
     let mut a = 5_usize;
-    let mut b: Box<_> = box 7_usize;
+    let mut b: Box<_> = Box::new(7_usize);
 
     let a_r = &mut a as &mut dyn Any;
     let tmp: &mut usize = &mut *b;

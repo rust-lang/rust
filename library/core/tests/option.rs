@@ -7,7 +7,7 @@ use core::option::*;
 #[test]
 fn test_get_ptr() {
     unsafe {
-        let x: Box<_> = box 0;
+        let x: Box<_> = Box::new(0);
         let addr_x: *const isize = mem::transmute(&*x);
         let opt = Some(x);
         let y = opt.unwrap();
@@ -315,7 +315,7 @@ fn test_collect() {
 
     // test that it does not take more elements than it needs
     let mut functions: [Box<dyn Fn() -> Option<()>>; 3] =
-        [box || Some(()), box || None, box || panic!()];
+        [Box::new(|| Some(())), Box::new(|| None), Box::new(|| panic!())];
 
     let v: Option<Vec<()>> = functions.iter_mut().map(|f| (*f)()).collect();
 
