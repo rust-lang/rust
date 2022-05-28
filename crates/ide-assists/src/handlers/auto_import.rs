@@ -111,8 +111,17 @@ pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext) -> Option<()> 
     // we aren't interested in different namespaces
     proposed_imports.dedup_by(|a, b| a.import_path == b.import_path);
 
+    let current_node = match ctx.covering_element() {
+        NodeOrToken::Node(node) => Some(node),
+        NodeOrToken::Token(token) => token.parent(),
+    };
+
+    let current_module =
+        current_node.as_ref().and_then(|node| ctx.sema.scope(node)).map(|scope| scope.module());
+
     // prioritize more relevant imports
-    proposed_imports.sort_by_key(|import| Reverse(relevance_score(ctx, import)));
+    proposed_imports
+        .sort_by_key(|import| Reverse(relevance_score(ctx, import, current_module.as_ref())));
 
     for import in proposed_imports {
         acc.add_group(
@@ -167,7 +176,11 @@ fn group_label(import_candidate: &ImportCandidate) -> GroupLabel {
 
 /// Determine how relevant a given import is in the current context. Higher scores are more
 /// relevant.
-fn relevance_score(ctx: &AssistContext, import: &LocatedImport) -> i32 {
+fn relevance_score(
+    ctx: &AssistContext,
+    import: &LocatedImport,
+    current_module: Option<&Module>,
+) -> i32 {
     let mut score = 0;
 
     let db = ctx.db();
@@ -177,25 +190,11 @@ fn relevance_score(ctx: &AssistContext, import: &LocatedImport) -> i32 {
         hir::ItemInNs::Macros(makro) => Some(makro.module(db)),
     };
 
-    let current_node = match ctx.covering_element() {
-        NodeOrToken::Node(node) => Some(node),
-        NodeOrToken::Token(token) => token.parent(),
-    };
-
-    if let Some(module) = item_module.as_ref() {
-        if module.krate().is_builtin(db) {
-            // prefer items builtin to the language
-            score += 5;
-        }
-    }
-
-    let current_scope = current_node.as_ref().and_then(|node| ctx.sema.scope(node));
-
-    match item_module.zip(current_scope) {
-        // get the distance between the modules (prefer items that are more local)
-        Some((item_module, current_scope)) => {
-            let current_module = current_scope.module();
-            score -= module_distance_hueristic(&current_module, &item_module, db) as i32;
+    match item_module.zip(current_module) {
+        // get the distance between the imported path and the current module
+        // (prefer items that are more local)
+        Some((item_module, current_module)) => {
+            score -= module_distance_hueristic(db, &current_module, &item_module) as i32;
         }
 
         // could not find relevant modules, so just use the length of the path as an estimate
@@ -206,30 +205,31 @@ fn relevance_score(ctx: &AssistContext, import: &LocatedImport) -> i32 {
 }
 
 /// A heuristic that gives a higher score to modules that are more separated.
-fn module_distance_hueristic(current: &Module, item: &Module, db: &dyn HirDatabase) -> usize {
+fn module_distance_hueristic(db: &dyn HirDatabase, current: &Module, item: &Module) -> usize {
+    // get the path starting from the item to the respective crate roots
     let mut current_path = current.path_to_root(db);
     let mut item_path = item.path_to_root(db);
 
+    // we want paths going from the root to the item
     current_path.reverse();
     item_path.reverse();
 
-    let mut i = 0;
-    while i < current_path.len() && i < item_path.len() {
-        if current_path[i] == item_path[i] {
-            i += 1
-        } else {
-            break;
-        }
-    }
+    // length of the common prefix of the two paths
+    let prefix_length = current_path.iter().zip(&item_path).take_while(|(a, b)| a == b).count();
 
-    let distinct_distance = current_path.len() + item_path.len();
-    let common_prefix = 2 * i;
+    // how many modules differ between the two paths (all modules, removing any duplicates)
+    let distinct_length = current_path.len() + item_path.len() - 2 * prefix_length;
 
-    // prefer builtin crates and items within the same crate
-    let crate_boundary_cost =
-        if item.krate().is_builtin(db) || current.krate() == item.krate() { 0 } else { 4 };
+    // cost of importing from another crate
+    let crate_boundary_cost = if current.krate() == item.krate() {
+        0
+    } else if item.krate().is_builtin(db) {
+        2
+    } else {
+        4
+    };
 
-    distinct_distance - common_prefix + crate_boundary_cost
+    distinct_length + crate_boundary_cost
 }
 
 #[cfg(test)]
@@ -266,14 +266,14 @@ mod tests {
     #[test]
     fn prefer_shorter_paths() {
         let before = r"
-            //- /main.rs crate:main deps:foo,bar
-            HashMap$0::new();
+//- /main.rs crate:main deps:foo,bar
+HashMap$0::new();
 
-            //- /lib.rs crate:foo
-            pub mod collections { pub struct HashMap; }
+//- /lib.rs crate:foo
+pub mod collections { pub struct HashMap; }
 
-            //- /lib.rs crate:bar
-            pub mod collections { pub mod hash_map { pub struct HashMap; } }
+//- /lib.rs crate:bar
+pub mod collections { pub mod hash_map { pub struct HashMap; } }
         ";
 
         check_auto_import_order(
@@ -285,17 +285,17 @@ mod tests {
     #[test]
     fn prefer_same_crate() {
         let before = r"
-            //- /main.rs crate:main deps:foo
-            HashMap$0::new();
+//- /main.rs crate:main deps:foo
+HashMap$0::new();
 
-            mod collections {
-                pub mod hash_map {
-                    pub struct HashMap;
-                }
-            }
+mod collections {
+    pub mod hash_map {
+        pub struct HashMap;
+    }
+}
 
-            //- /lib.rs crate:foo
-            pub struct HashMap;
+//- /lib.rs crate:foo
+pub struct HashMap;
         ";
 
         check_auto_import_order(
