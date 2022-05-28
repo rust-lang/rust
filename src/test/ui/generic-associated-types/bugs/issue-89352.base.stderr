@@ -1,0 +1,22 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-89352.rs:36:13
+   |
+LL |         let a = A::reborrow::<'ai, 's>(self.a.clone());
+   |             ^ lifetime mismatch
+   |
+   = note: expected type `<<A as GenAssoc<T>>::Iter<'s> as Sized>`
+              found type `<<A as GenAssoc<T>>::Iter<'ai> as Sized>`
+note: the lifetime `'s` as defined here...
+  --> $DIR/issue-89352.rs:35:13
+   |
+LL |     fn iter<'s>(&'s self) -> Self::Iter<'s> {
+   |             ^^
+note: ...does not necessarily outlive the lifetime `'ai` as defined here
+  --> $DIR/issue-89352.rs:30:6
+   |
+LL | impl<'ai, T: 'ai, A: GenAssoc<T>> GenAssoc<T> for Wrapper<'ai, T, A>
+   |      ^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

@@ -255,7 +255,38 @@ declare_clippy_lint! {
     "usage of `cfg(operating_system)` instead of `cfg(target_os = \"operating_system\")`"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for attributes that allow lints without a reason.
+    ///
+    /// (This requires the `lint_reasons` feature)
+    ///
+    /// ### Why is this bad?
+    /// Allowing a lint should always have a reason. This reason should be documented to
+    /// ensure that others understand the reasoning
+    ///
+    /// ### Example
+    /// Bad:
+    /// ```rust
+    /// #![feature(lint_reasons)]
+    ///
+    /// #![allow(clippy::some_lint)]
+    /// ```
+    ///
+    /// Good:
+    /// ```rust
+    /// #![feature(lint_reasons)]
+    ///
+    /// #![allow(clippy::some_lint, reason = "False positive rust-lang/rust-clippy#1002020")]
+    /// ```
+    #[clippy::version = "1.61.0"]
+    pub ALLOW_ATTRIBUTES_WITHOUT_REASON,
+    restriction,
+    "ensures that all `allow` and `expect` attributes have a reason"
+}
+
 declare_lint_pass!(Attributes => [
+    ALLOW_ATTRIBUTES_WITHOUT_REASON,
     INLINE_ALWAYS,
     DEPRECATED_SEMVER,
     USELESS_ATTRIBUTE,
@@ -268,6 +299,9 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
             if let Some(ident) = attr.ident() {
                 if is_lint_level(ident.name) {
                     check_clippy_lint_names(cx, ident.name, items);
+                }
+                if matches!(ident.name, sym::allow | sym::expect) {
+                    check_lint_reason(cx, ident.name, items, attr);
                 }
                 if items.is_empty() || !attr.has_name(sym::deprecated) {
                     return;
@@ -301,9 +335,6 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
                     }
                     if let Some(lint_list) = &attr.meta_item_list() {
                         if attr.ident().map_or(false, |ident| is_lint_level(ident.name)) {
-                            // permit `unused_imports`, `deprecated`, `unreachable_pub`,
-                            // `clippy::wildcard_imports`, and `clippy::enum_glob_use` for `use` items
-                            // and `unused_imports` for `extern crate` items with `macro_use`
                             for lint in lint_list {
                                 match item.kind {
                                     ItemKind::Use(..) => {
@@ -311,10 +342,12 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
                                             || is_word(lint, sym::deprecated)
                                             || is_word(lint, sym!(unreachable_pub))
                                             || is_word(lint, sym!(unused))
-                                            || extract_clippy_lint(lint)
-                                                .map_or(false, |s| s.as_str() == "wildcard_imports")
-                                            || extract_clippy_lint(lint)
-                                                .map_or(false, |s| s.as_str() == "enum_glob_use")
+                                            || extract_clippy_lint(lint).map_or(false, |s| {
+                                                matches!(
+                                                    s.as_str(),
+                                                    "wildcard_imports" | "enum_glob_use" | "redundant_pub_crate",
+                                                )
+                                            })
                                         {
                                             return;
                                         }
@@ -402,6 +435,30 @@ fn check_clippy_lint_names(cx: &LateContext<'_>, name: Symbol, items: &[NestedMe
             }
         }
     }
+}
+
+fn check_lint_reason(cx: &LateContext<'_>, name: Symbol, items: &[NestedMetaItem], attr: &'_ Attribute) {
+    // Check for the feature
+    if !cx.tcx.sess.features_untracked().lint_reasons {
+        return;
+    }
+
+    // Check if the reason is present
+    if let Some(item) = items.last().and_then(NestedMetaItem::meta_item)
+        && let MetaItemKind::NameValue(_) = &item.kind
+        && item.path == sym::reason
+    {
+        return;
+    }
+
+    span_lint_and_help(
+        cx,
+        ALLOW_ATTRIBUTES_WITHOUT_REASON,
+        attr.span,
+        &format!("`{}` attribute without specifying a reason", name.as_str()),
+        None,
+        "try adding a reason at the end with `, reason = \"..\"`",
+    );
 }
 
 fn is_relevant_item(cx: &LateContext<'_>, item: &Item<'_>) -> bool {
@@ -529,17 +586,10 @@ impl EarlyLintPass for EarlyAttributes {
 
 fn check_empty_line_after_outer_attr(cx: &EarlyContext<'_>, item: &rustc_ast::Item) {
     for attr in &item.attrs {
-        let attr_item = if let AttrKind::Normal(ref attr, _) = attr.kind {
-            attr
-        } else {
-            return;
-        };
-
-        if attr.style == AttrStyle::Outer {
-            if attr_item.args.inner_tokens().is_empty() || !is_present_in_source(cx, attr.span) {
-                return;
-            }
-
+        if matches!(attr.kind, AttrKind::Normal(..))
+            && attr.style == AttrStyle::Outer
+            && is_present_in_source(cx, attr.span)
+        {
             let begin_of_attr_to_item = Span::new(attr.span.lo(), item.span.lo(), item.span.ctxt(), item.span.parent());
             let end_of_attr_to_item = Span::new(attr.span.hi(), item.span.lo(), item.span.ctxt(), item.span.parent());
 
@@ -563,7 +613,7 @@ fn check_empty_line_after_outer_attr(cx: &EarlyContext<'_>, item: &rustc_ast::It
 
 fn check_deprecated_cfg_attr(cx: &EarlyContext<'_>, attr: &Attribute, msrv: Option<RustcVersion>) {
     if_chain! {
-        if meets_msrv(msrv.as_ref(), &msrvs::TOOL_ATTRIBUTES);
+        if meets_msrv(msrv, msrvs::TOOL_ATTRIBUTES);
         // check cfg_attr
         if attr.has_name(sym::cfg_attr);
         if let Some(items) = attr.meta_item_list();
@@ -659,5 +709,5 @@ fn check_mismatched_target_os(cx: &EarlyContext<'_>, attr: &Attribute) {
 }
 
 fn is_lint_level(symbol: Symbol) -> bool {
-    matches!(symbol, sym::allow | sym::warn | sym::deny | sym::forbid)
+    matches!(symbol, sym::allow | sym::expect | sym::warn | sym::deny | sym::forbid)
 }

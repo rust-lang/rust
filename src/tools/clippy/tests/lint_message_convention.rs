@@ -16,7 +16,7 @@ impl Message {
     fn new(path: PathBuf) -> Self {
         let content: String = std::fs::read_to_string(&path).unwrap();
         // we don't want the first letter after "error: ", "help: " ... to be capitalized
-        // also no puncutation (except for "?" ?) at the end of a line
+        // also no punctuation (except for "?" ?) at the end of a line
         let regex_set: RegexSet = RegexSet::new(&[
             r"error: [A-Z]",
             r"help: [A-Z]",
@@ -66,7 +66,7 @@ fn lint_message_convention() {
 
     // make sure that lint messages:
     // * are not capitalized
-    // * don't have puncuation at the end of the last sentence
+    // * don't have punctuation at the end of the last sentence
 
     // these directories have interesting tests
     let test_dirs = ["ui", "ui-cargo", "ui-internal", "ui-toml"]

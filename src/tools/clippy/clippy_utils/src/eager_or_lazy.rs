@@ -12,7 +12,7 @@
 use crate::ty::{all_predicates_of, is_copy};
 use crate::visitors::is_const_evaluatable;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::intravisit::{walk_expr, ErasedMap, NestedVisitorMap, Visitor};
+use rustc_hir::intravisit::{walk_expr, Visitor};
 use rustc_hir::{def_id::DefId, Block, Expr, ExprKind, QPath, UnOp};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, PredicateKind};
@@ -73,7 +73,7 @@ fn fn_eagerness<'tcx>(
         // than marker traits.
         // Due to the limited operations on these types functions should be fairly cheap.
         if def
-            .variants
+            .variants()
             .iter()
             .flat_map(|v| v.fields.iter())
             .any(|x| matches!(cx.tcx.type_of(x.did).peel_refs().kind(), ty::Param(_)))
@@ -96,7 +96,7 @@ fn fn_eagerness<'tcx>(
     }
 }
 
-#[allow(clippy::too_many_lines)]
+#[expect(clippy::too_many_lines)]
 fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessSuggestion {
     struct V<'cx, 'tcx> {
         cx: &'cx LateContext<'tcx>,
@@ -104,11 +104,6 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
     }
 
     impl<'cx, 'tcx> Visitor<'tcx> for V<'cx, 'tcx> {
-        type Map = ErasedMap<'tcx>;
-        fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-            NestedVisitorMap::None
-        }
-
         fn visit_expr(&mut self, e: &'tcx Expr<'_>) {
             use EagernessSuggestion::{ForceNoChange, Lazy, NoChange};
             if self.eagerness == ForceNoChange {
@@ -146,7 +141,7 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
                     self.eagerness |= NoChange;
                     return;
                 },
-                ExprKind::MethodCall(name, _, args, _) => {
+                ExprKind::MethodCall(name, args, _) => {
                     self.eagerness |= self
                         .cx
                         .typeck_results()
@@ -180,7 +175,6 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
                 | ExprKind::Continue(_)
                 | ExprKind::Ret(_)
                 | ExprKind::InlineAsm(_)
-                | ExprKind::LlvmInlineAsm(_)
                 | ExprKind::Yield(..)
                 | ExprKind::Err => {
                     self.eagerness = ForceNoChange;

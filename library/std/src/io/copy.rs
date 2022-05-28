@@ -39,6 +39,16 @@ use crate::mem::MaybeUninit;
 ///     Ok(())
 /// }
 /// ```
+///
+/// # Platform-specific behavior
+///
+/// On Linux (including Android), this function uses `copy_file_range(2)`,
+/// `sendfile(2)` or `splice(2)` syscalls to move data directly between file
+/// descriptors if possible.
+///
+/// Note that platform-specific behavior [may change in the future][changes].
+///
+/// [changes]: crate::io#platform-specific-behavior
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn copy<R: ?Sized, W: ?Sized>(reader: &mut R, writer: &mut W) -> Result<u64>
 where

@@ -2,7 +2,7 @@
 #![feature(repr_simd)]
 #![feature(platform_intrinsics)]
 #![feature(staged_api)]
-#![stable(feature = "foo", since = "1.33.7")]
+#![stable(feature = "foo", since = "1.3.37")]
 #![allow(non_camel_case_types)]
 
 #[repr(simd)] struct i8x1(i8);

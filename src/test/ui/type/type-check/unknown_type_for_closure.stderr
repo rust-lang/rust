@@ -1,9 +1,32 @@
-error[E0282]: type annotations needed
+error[E0282]: type annotations needed for `Vec<_>`
   --> $DIR/unknown_type_for_closure.rs:2:14
    |
-LL |     let x = |_| {    };
+LL |     let x = |b: Vec<_>| {};
    |              ^ consider giving this closure parameter a type
 
-error: aborting due to previous error
+error[E0282]: type annotations needed
+  --> $DIR/unknown_type_for_closure.rs:6:14
+   |
+LL |     let x = |_| {};
+   |              ^ consider giving this closure parameter a type
+
+error[E0282]: type annotations needed
+  --> $DIR/unknown_type_for_closure.rs:10:14
+   |
+LL |     let x = |k: _| {};
+   |              ^ consider giving this closure parameter a type
+
+error[E0282]: type annotations needed for the closure `fn() -> Vec<_>`
+  --> $DIR/unknown_type_for_closure.rs:14:28
+   |
+LL |     let x = || -> Vec<_> { Vec::new() };
+   |                            ^^^^^^^^ cannot infer type for type parameter `T`
+   |
+help: give this closure an explicit return type without `_` placeholders
+   |
+LL |     let x = || -> Vec<_> { Vec::new() };
+   |                   ~~~~~~
+
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0282`.

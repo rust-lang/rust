@@ -17,11 +17,11 @@ use std::cell::RefCell;
 use std::ops::Deref;
 
 /// Closures defined within the function. For example:
-///
-///     fn foo() {
-///         bar(move|| { ... })
-///     }
-///
+/// ```ignore (illustrative)
+/// fn foo() {
+///     bar(move|| { ... })
+/// }
+/// ```
 /// Here, the function `foo()` and the closure passed to
 /// `bar()` will each have their own `FnCtxt`, but they will
 /// share the inherited fields.
@@ -50,6 +50,10 @@ pub struct Inherited<'a, 'tcx> {
 
     pub(super) deferred_cast_checks: RefCell<Vec<super::cast::CastCheck<'tcx>>>,
 
+    pub(super) deferred_transmute_checks: RefCell<Vec<(Ty<'tcx>, Ty<'tcx>, Span)>>,
+
+    pub(super) deferred_asm_checks: RefCell<Vec<(&'tcx hir::InlineAsm<'tcx>, hir::HirId)>>,
+
     pub(super) deferred_generator_interiors:
         RefCell<Vec<(hir::BodyId, Ty<'tcx>, hir::GeneratorKind)>>,
 
@@ -68,9 +72,9 @@ impl<'a, 'tcx> Deref for Inherited<'a, 'tcx> {
     }
 }
 
-/// Helper type of a temporary returned by `Inherited::build(...)`.
-/// Necessary because we can't write the following bound:
-/// `F: for<'b, 'tcx> where 'tcx FnOnce(Inherited<'b, 'tcx>)`.
+/// A temporary returned by `Inherited::build(...)`. This is necessary
+/// for multiple `InferCtxt` to share the same `in_progress_typeck_results`
+/// without using `Rc` or something similar.
 pub struct InheritedBuilder<'tcx> {
     infcx: infer::InferCtxtBuilder<'tcx>,
     def_id: LocalDefId,
@@ -113,14 +117,16 @@ impl<'a, 'tcx> Inherited<'a, 'tcx> {
             deferred_sized_obligations: RefCell::new(Vec::new()),
             deferred_call_resolutions: RefCell::new(Default::default()),
             deferred_cast_checks: RefCell::new(Vec::new()),
+            deferred_transmute_checks: RefCell::new(Vec::new()),
+            deferred_asm_checks: RefCell::new(Vec::new()),
             deferred_generator_interiors: RefCell::new(Vec::new()),
             diverging_type_vars: RefCell::new(Default::default()),
             body_id,
         }
     }
 
+    #[instrument(level = "debug", skip(self))]
     pub(super) fn register_predicate(&self, obligation: traits::PredicateObligation<'tcx>) {
-        debug!("register_predicate({:?})", obligation);
         if obligation.has_escaping_bound_vars() {
             span_bug!(obligation.cause.span, "escaping bound vars in predicate {:?}", obligation);
         }

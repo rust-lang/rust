@@ -43,6 +43,22 @@ impl RawWaker {
     pub const fn new(data: *const (), vtable: &'static RawWakerVTable) -> RawWaker {
         RawWaker { data, vtable }
     }
+
+    /// Get the `data` pointer used to create this `RawWaker`.
+    #[inline]
+    #[must_use]
+    #[unstable(feature = "waker_getters", issue = "87021")]
+    pub fn data(&self) -> *const () {
+        self.data
+    }
+
+    /// Get the `vtable` pointer used to create this `RawWaker`.
+    #[inline]
+    #[must_use]
+    #[unstable(feature = "waker_getters", issue = "87021")]
+    pub fn vtable(&self) -> &'static RawWakerVTable {
+        self.vtable
+    }
 }
 
 /// A virtual function pointer table (vtable) that specifies the behavior
@@ -131,7 +147,6 @@ impl RawWakerVTable {
     #[rustc_promotable]
     #[stable(feature = "futures_api", since = "1.36.0")]
     #[rustc_const_stable(feature = "futures_api", since = "1.36.0")]
-    #[rustc_allow_const_fn_unstable(const_fn_fn_ptr_basics)]
     pub const fn new(
         clone: unsafe fn(*const ()) -> RawWaker,
         wake: unsafe fn(*const ()),
@@ -203,6 +218,19 @@ unsafe impl Sync for Waker {}
 
 impl Waker {
     /// Wake up the task associated with this `Waker`.
+    ///
+    /// As long as the runtime keeps running and the task is not finished, it is
+    /// guaranteed that each invocation of `wake` (or `wake_by_ref`) will be followed
+    /// by at least one `poll` of the task to which this `Waker` belongs. This makes
+    /// it possible to temporarily yield to other tasks while running potentially
+    /// unbounded processing loops.
+    ///
+    /// Note that the above implies that multiple wake-ups may be coalesced into a
+    /// single `poll` invocation by the runtime.
+    ///
+    /// Also note that yielding to competing tasks is not guaranteed: it is the
+    /// executor’s choice which task to run and the executor may choose to run the
+    /// current task again.
     #[inline]
     #[stable(feature = "futures_api", since = "1.36.0")]
     pub fn wake(self) {
@@ -259,6 +287,14 @@ impl Waker {
     #[stable(feature = "futures_api", since = "1.36.0")]
     pub unsafe fn from_raw(waker: RawWaker) -> Waker {
         Waker { waker }
+    }
+
+    /// Get a reference to the underlying [`RawWaker`].
+    #[inline]
+    #[must_use]
+    #[unstable(feature = "waker_getters", issue = "87021")]
+    pub fn as_raw(&self) -> &RawWaker {
+        &self.waker
     }
 }
 

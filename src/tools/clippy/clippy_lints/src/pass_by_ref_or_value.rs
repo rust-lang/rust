@@ -52,7 +52,7 @@ declare_clippy_lint! {
     /// to a function that needs the memory address. For further details, refer to
     /// [this issue](https://github.com/rust-lang/rust-clippy/issues/5953)
     /// that explains a real case in which this false positive
-    /// led to an **undefined behaviour** introduced with unsafe code.
+    /// led to an **undefined behavior** introduced with unsafe code.
     ///
     /// ### Example
     ///
@@ -124,7 +124,7 @@ impl<'tcx> PassByRefOrValue {
             // Cap the calculated bit width at 32-bits to reduce
             // portability problems between 32 and 64-bit targets
             let bit_width = cmp::min(bit_width, 32);
-            #[allow(clippy::integer_division)]
+            #[expect(clippy::integer_division)]
             let byte_width = bit_width / 8;
             // Use a limit of 2 times the register byte width
             byte_width * 2
@@ -167,8 +167,8 @@ impl<'tcx> PassByRefOrValue {
 
                     if_chain! {
                         if !output_lts.contains(input_lt);
-                        if is_copy(cx, ty);
-                        if let Some(size) = cx.layout_of(ty).ok().map(|l| l.size.bytes());
+                        if is_copy(cx, *ty);
+                        if let Some(size) = cx.layout_of(*ty).ok().map(|l| l.size.bytes());
                         if size <= self.ref_min_size;
                         if let hir::TyKind::Rptr(_, MutTy { ty: decl_ty, .. }) = input.kind;
                         then {
@@ -251,7 +251,7 @@ impl<'tcx> LateLintPass<'tcx> for PassByRefOrValue {
         }
 
         match kind {
-            FnKind::ItemFn(.., header, _) => {
+            FnKind::ItemFn(.., header) => {
                 if header.abi != Abi::Rust {
                     return;
                 }

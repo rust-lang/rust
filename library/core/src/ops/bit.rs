@@ -68,6 +68,17 @@ macro_rules! not_impl {
 
 not_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 
+#[stable(feature = "not_never", since = "1.60.0")]
+#[rustc_const_unstable(feature = "const_ops", issue = "90080")]
+impl const Not for ! {
+    type Output = !;
+
+    #[inline]
+    fn not(self) -> ! {
+        match self {}
+    }
+}
+
 /// The bitwise AND operator `&`.
 ///
 /// Note that `Rhs` is `Self` by default, but this is not mandatory.

@@ -1,10 +1,12 @@
 //! Random access inspection of the results of a dataflow analysis.
 
+use crate::framework::BitSetExt;
+
 use std::borrow::Borrow;
 use std::cmp::Ordering;
 
+#[cfg(debug_assertions)]
 use rustc_index::bit_set::BitSet;
-use rustc_index::vec::Idx;
 use rustc_middle::mir::{self, BasicBlock, Location};
 
 use super::{Analysis, Direction, Effect, EffectIndex, Results};
@@ -209,13 +211,13 @@ where
     }
 }
 
-impl<'mir, 'tcx, A, R, T> ResultsCursor<'mir, 'tcx, A, R>
+impl<'mir, 'tcx, A, R> ResultsCursor<'mir, 'tcx, A, R>
 where
-    A: Analysis<'tcx, Domain = BitSet<T>>,
-    T: Idx,
+    A: crate::GenKillAnalysis<'tcx>,
+    A::Domain: BitSetExt<A::Idx>,
     R: Borrow<Results<'tcx, A>>,
 {
-    pub fn contains(&self, elem: T) -> bool {
+    pub fn contains(&self, elem: A::Idx) -> bool {
         self.get().contains(elem)
     }
 }

@@ -1,10 +1,10 @@
 #![feature(assert_matches)]
-#![feature(bool_to_option)]
 #![feature(core_intrinsics)]
 #![feature(hash_raw_entry)]
 #![feature(let_else)]
 #![feature(min_specialization)]
 #![feature(extern_types)]
+#![allow(rustc::potential_query_instability)]
 
 #[macro_use]
 extern crate tracing;

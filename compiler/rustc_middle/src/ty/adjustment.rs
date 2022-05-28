@@ -59,7 +59,7 @@ pub enum PointerCast {
 ///    sized struct to a dynamically sized one. E.g., `&[i32; 4]` -> `&[i32]` is
 ///    represented by:
 ///
-///    ```
+///    ```ignore (illustrative)
 ///    Deref(None) -> [i32; 4],
 ///    Borrow(AutoBorrow::Ref) -> &[i32; 4],
 ///    Unsize -> &[i32],

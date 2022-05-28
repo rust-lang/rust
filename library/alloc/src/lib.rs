@@ -67,17 +67,14 @@
     issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/",
     test(no_crate_inject, attr(allow(unused_variables), deny(warnings)))
 )]
-#![cfg_attr(
-    not(bootstrap),
-    doc(cfg_hide(
-        not(test),
-        not(any(test, bootstrap)),
-        any(not(feature = "miri-test-libstd"), test, doctest),
-        no_global_oom_handling,
-        not(no_global_oom_handling),
-        target_has_atomic = "ptr"
-    ))
-)]
+#![doc(cfg_hide(
+    not(test),
+    not(any(test, bootstrap)),
+    any(not(feature = "miri-test-libstd"), test, doctest),
+    no_global_oom_handling,
+    not(no_global_oom_handling),
+    target_has_atomic = "ptr"
+))]
 #![no_std]
 #![needs_allocator]
 //
@@ -89,12 +86,14 @@
 #![allow(explicit_outlives_requirements)]
 //
 // Library features:
+#![cfg_attr(not(no_global_oom_handling), feature(alloc_c_string))]
 #![feature(alloc_layout_extra)]
 #![feature(allocator_api)]
 #![feature(array_chunks)]
 #![feature(array_methods)]
 #![feature(array_windows)]
-#![feature(async_stream)]
+#![feature(assert_matches)]
+#![feature(async_iterator)]
 #![feature(coerce_unsized)]
 #![cfg_attr(not(no_global_oom_handling), feature(const_alloc_error))]
 #![feature(const_box)]
@@ -107,15 +106,18 @@
 #![feature(const_maybe_uninit_write)]
 #![feature(const_maybe_uninit_as_mut_ptr)]
 #![feature(const_refs_to_cell)]
+#![feature(core_c_str)]
 #![feature(core_intrinsics)]
+#![feature(core_ffi_c)]
 #![feature(const_eval_select)]
 #![feature(const_pin)]
+#![feature(cstr_from_bytes_until_nul)]
 #![feature(dispatch_from_dyn)]
 #![feature(exact_size_is_empty)]
 #![feature(extend_one)]
 #![feature(fmt_internals)]
 #![feature(fn_traits)]
-#![feature(inherent_ascii_escape)]
+#![feature(hasher_prefixfree_extras)]
 #![feature(inplace_iteration)]
 #![feature(iter_advance_by)]
 #![feature(layout_for_ptr)]
@@ -124,6 +126,8 @@
 #![feature(nonnull_slice_from_raw_parts)]
 #![feature(pattern)]
 #![feature(ptr_internals)]
+#![feature(ptr_metadata)]
+#![feature(ptr_sub_ptr)]
 #![feature(receiver_trait)]
 #![feature(set_ptr_value)]
 #![feature(slice_group_by)]
@@ -131,9 +135,11 @@
 #![feature(slice_ptr_len)]
 #![feature(slice_range)]
 #![feature(str_internals)]
+#![feature(strict_provenance)]
 #![feature(trusted_len)]
 #![feature(trusted_random_access)]
 #![feature(try_trait_v2)]
+#![feature(unchecked_math)]
 #![feature(unicode_internals)]
 #![feature(unsize)]
 //
@@ -143,30 +149,31 @@
 #![feature(associated_type_bounds)]
 #![feature(box_syntax)]
 #![feature(cfg_sanitize)]
-#![feature(cfg_target_has_atomic)]
 #![feature(const_deref)]
-#![feature(const_fn_trait_bound)]
 #![feature(const_mut_refs)]
 #![feature(const_ptr_write)]
 #![feature(const_precise_live_drops)]
 #![feature(const_trait_impl)]
 #![feature(const_try)]
-#![cfg_attr(bootstrap, feature(destructuring_assignment))]
 #![feature(dropck_eyepatch)]
 #![feature(exclusive_range_pattern)]
 #![feature(fundamental)]
 #![cfg_attr(not(test), feature(generator_trait))]
+#![feature(hashmap_internals)]
 #![feature(lang_items)]
+#![feature(let_else)]
 #![feature(min_specialization)]
 #![feature(negative_impls)]
 #![feature(never_type)]
 #![feature(nll)] // Not necessary, but here to test the `nll` feature.
 #![feature(rustc_allow_const_fn_unstable)]
 #![feature(rustc_attrs)]
+#![feature(slice_internals)]
 #![feature(staged_api)]
 #![cfg_attr(test, feature(test))]
 #![feature(unboxed_closures)]
 #![feature(unsized_fn_params)]
+#![feature(c_unwind)]
 //
 // Rustdoc features:
 #![feature(doc_cfg)]
@@ -207,6 +214,8 @@ mod boxed {
 }
 pub mod borrow;
 pub mod collections;
+#[cfg(not(no_global_oom_handling))]
+pub mod ffi;
 pub mod fmt;
 pub mod rc;
 pub mod slice;

@@ -106,10 +106,21 @@ fn main() {
         0 => println!("Array index start"),
         _ => println!("Not an array index start"),
     }
-    // False negative
+
+    // Lint
     let x = 1;
-    match x {
-        // =>
-        _ => println!("Not an array index start"),
-    }
+    println!("Not an array index start");
+}
+
+#[allow(dead_code)]
+fn issue_8723() {
+    let (mut val, idx) = ("a b", 1);
+
+    let (pre, suf) = val.split_at(idx);
+    val = {
+        println!("{}", pre);
+        suf
+    };
+
+    let _ = val;
 }

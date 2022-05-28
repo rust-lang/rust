@@ -28,9 +28,9 @@ pub(super) fn check<'tcx>(
         loop {
             arg_root = match &arg_root.kind {
                 hir::ExprKind::AddrOf(hir::BorrowKind::Ref, _, expr) => expr,
-                hir::ExprKind::MethodCall(method_name, _, call_args, _) => {
+                hir::ExprKind::MethodCall(method_name, call_args, _) => {
                     if call_args.len() == 1
-                        && (method_name.ident.name == sym::as_str || method_name.ident.name == sym!(as_ref))
+                        && (method_name.ident.name == sym::as_str || method_name.ident.name == sym::as_ref)
                         && {
                             let arg_type = cx.typeck_results().expr_ty(&call_args[0]);
                             let base_type = arg_type.peel_refs();
@@ -73,7 +73,7 @@ pub(super) fn check<'tcx>(
                     match cx.qpath_res(p, fun.hir_id) {
                         hir::def::Res::Def(hir::def::DefKind::Fn | hir::def::DefKind::AssocFn, def_id) => matches!(
                             cx.tcx.fn_sig(def_id).output().skip_binder().kind(),
-                            ty::Ref(ty::ReStatic, ..)
+                            ty::Ref(re, ..) if re.is_static(),
                         ),
                         _ => false,
                     }
@@ -87,13 +87,13 @@ pub(super) fn check<'tcx>(
                     .map_or(false, |method_id| {
                         matches!(
                             cx.tcx.fn_sig(method_id).output().skip_binder().kind(),
-                            ty::Ref(ty::ReStatic, ..)
+                            ty::Ref(re, ..) if re.is_static()
                         )
                     })
             },
             hir::ExprKind::Path(ref p) => matches!(
                 cx.qpath_res(p, arg.hir_id),
-                hir::def::Res::Def(hir::def::DefKind::Const | hir::def::DefKind::Static, _)
+                hir::def::Res::Def(hir::def::DefKind::Const | hir::def::DefKind::Static(_), _)
             ),
             _ => false,
         }

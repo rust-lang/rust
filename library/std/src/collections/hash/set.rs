@@ -7,7 +7,7 @@ use crate::borrow::Borrow;
 use crate::collections::TryReserveError;
 use crate::fmt;
 use crate::hash::{BuildHasher, Hash};
-use crate::iter::{Chain, FromIterator, FusedIterator};
+use crate::iter::{Chain, FusedIterator};
 use crate::ops::{BitAnd, BitOr, BitXor, Sub};
 
 use super::map::{map_try_reserve_error, RandomState};
@@ -66,7 +66,7 @@ use super::map::{map_try_reserve_error, RandomState};
 ///
 /// // Iterate over everything.
 /// for book in &books {
-///     println!("{}", book);
+///     println!("{book}");
 /// }
 /// ```
 ///
@@ -91,7 +91,7 @@ use super::map::{map_try_reserve_error, RandomState};
 ///
 /// // Use derived implementation to print the vikings.
 /// for x in &vikings {
-///     println!("{:?}", x);
+///     println!("{x:?}");
 /// }
 /// ```
 ///
@@ -181,10 +181,16 @@ impl<T, S> HashSet<T, S> {
     ///
     /// // Will print in an arbitrary order.
     /// for x in set.iter() {
-    ///     println!("{}", x);
+    ///     println!("{x}");
     /// }
     /// ```
+    ///
+    /// # Performance
+    ///
+    /// In the current implementation, iterating over set takes O(capacity) time
+    /// instead of O(len) because it internally visits empty buckets too.
     #[inline]
+    #[rustc_lint_query_instability]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter(&self) -> Iter<'_, T> {
         Iter { base: self.base.iter() }
@@ -226,7 +232,12 @@ impl<T, S> HashSet<T, S> {
         self.base.is_empty()
     }
 
-    /// Clears the set, returning all elements in an iterator.
+    /// Clears the set, returning all elements as an iterator. Keeps the
+    /// allocated memory for reuse.
+    ///
+    /// If the returned iterator is dropped before being fully consumed, it
+    /// drops the remaining elements. The returned iterator keeps a mutable
+    /// borrow on the vector to optimize its implementation.
     ///
     /// # Examples
     ///
@@ -238,12 +249,13 @@ impl<T, S> HashSet<T, S> {
     ///
     /// // print 1, 2, 3 in an arbitrary order
     /// for i in set.drain() {
-    ///     println!("{}", i);
+    ///     println!("{i}");
     /// }
     ///
     /// assert!(set.is_empty());
     /// ```
     #[inline]
+    #[rustc_lint_query_instability]
     #[stable(feature = "drain", since = "1.6.0")]
     pub fn drain(&mut self) -> Drain<'_, T> {
         Drain { base: self.base.drain() }
@@ -282,6 +294,7 @@ impl<T, S> HashSet<T, S> {
     /// assert_eq!(odds, vec![1, 3, 5, 7]);
     /// ```
     #[inline]
+    #[rustc_lint_query_instability]
     #[unstable(feature = "hash_drain_filter", issue = "59618")]
     pub fn drain_filter<F>(&mut self, pred: F) -> DrainFilter<'_, T, F>
     where
@@ -292,7 +305,7 @@ impl<T, S> HashSet<T, S> {
 
     /// Retains only the elements specified by the predicate.
     ///
-    /// In other words, remove all elements `e` such that `f(&e)` returns `false`.
+    /// In other words, remove all elements `e` for which `f(&e)` returns `false`.
     /// The elements are visited in unsorted (and unspecified) order.
     ///
     /// # Examples
@@ -304,6 +317,12 @@ impl<T, S> HashSet<T, S> {
     /// set.retain(|&k| k % 2 == 0);
     /// assert_eq!(set.len(), 3);
     /// ```
+    ///
+    /// # Performance
+    ///
+    /// In the current implementation, this operation takes O(capacity) time
+    /// instead of O(len) because it internally visits empty buckets too.
+    #[rustc_lint_query_instability]
     #[stable(feature = "retain_hash_collection", since = "1.18.0")]
     pub fn retain<F>(&mut self, f: F)
     where
@@ -516,7 +535,7 @@ where
     ///
     /// // Can be seen as `a - b`.
     /// for x in a.difference(&b) {
-    ///     println!("{}", x); // Print 1
+    ///     println!("{x}"); // Print 1
     /// }
     ///
     /// let diff: HashSet<_> = a.difference(&b).collect();
@@ -528,6 +547,7 @@ where
     /// assert_eq!(diff, [4].iter().collect());
     /// ```
     #[inline]
+    #[rustc_lint_query_instability]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn difference<'a>(&'a self, other: &'a HashSet<T, S>) -> Difference<'a, T, S> {
         Difference { iter: self.iter(), other }
@@ -545,7 +565,7 @@ where
     ///
     /// // Print 1, 4 in arbitrary order.
     /// for x in a.symmetric_difference(&b) {
-    ///     println!("{}", x);
+    ///     println!("{x}");
     /// }
     ///
     /// let diff1: HashSet<_> = a.symmetric_difference(&b).collect();
@@ -555,6 +575,7 @@ where
     /// assert_eq!(diff1, [1, 4].iter().collect());
     /// ```
     #[inline]
+    #[rustc_lint_query_instability]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn symmetric_difference<'a>(
         &'a self,
@@ -575,13 +596,14 @@ where
     ///
     /// // Print 2, 3 in arbitrary order.
     /// for x in a.intersection(&b) {
-    ///     println!("{}", x);
+    ///     println!("{x}");
     /// }
     ///
     /// let intersection: HashSet<_> = a.intersection(&b).collect();
     /// assert_eq!(intersection, [2, 3].iter().collect());
     /// ```
     #[inline]
+    #[rustc_lint_query_instability]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn intersection<'a>(&'a self, other: &'a HashSet<T, S>) -> Intersection<'a, T, S> {
         if self.len() <= other.len() {
@@ -603,13 +625,14 @@ where
     ///
     /// // Print 1, 2, 3, 4 in arbitrary order.
     /// for x in a.union(&b) {
-    ///     println!("{}", x);
+    ///     println!("{x}");
     /// }
     ///
     /// let union: HashSet<_> = a.union(&b).collect();
     /// assert_eq!(union, [1, 2, 3, 4].iter().collect());
     /// ```
     #[inline]
+    #[rustc_lint_query_instability]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn union<'a>(&'a self, other: &'a HashSet<T, S>) -> Union<'a, T, S> {
         if self.len() >= other.len() {
@@ -1410,6 +1433,7 @@ impl<'a, T, S> IntoIterator for &'a HashSet<T, S> {
     type IntoIter = Iter<'a, T>;
 
     #[inline]
+    #[rustc_lint_query_instability]
     fn into_iter(self) -> Iter<'a, T> {
         self.iter()
     }
@@ -1437,10 +1461,11 @@ impl<T, S> IntoIterator for HashSet<T, S> {
     ///
     /// // Will print in an arbitrary order.
     /// for x in &v {
-    ///     println!("{}", x);
+    ///     println!("{x}");
     /// }
     /// ```
     #[inline]
+    #[rustc_lint_query_instability]
     fn into_iter(self) -> IntoIter<T> {
         IntoIter { base: self.base.into_iter() }
     }

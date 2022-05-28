@@ -1,3 +1,4 @@
+use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::vec::IndexVec;
 use rustc_middle::infer::MemberConstraint;
@@ -8,7 +9,7 @@ use std::ops::Index;
 
 /// Compactly stores a set of `R0 member of [R1...Rn]` constraints,
 /// indexed by the region `R0`.
-crate struct MemberConstraintSet<'tcx, R>
+pub(crate) struct MemberConstraintSet<'tcx, R>
 where
     R: Copy + Eq,
 {
@@ -28,17 +29,17 @@ where
 }
 
 /// Represents a `R0 member of [R1..Rn]` constraint
-crate struct NllMemberConstraint<'tcx> {
+pub(crate) struct NllMemberConstraint<'tcx> {
     next_constraint: Option<NllMemberConstraintIndex>,
 
     /// The span where the hidden type was instantiated.
-    crate definition_span: Span,
+    pub(crate) definition_span: Span,
 
     /// The hidden type in which `R0` appears. (Used in error reporting.)
-    crate hidden_ty: Ty<'tcx>,
+    pub(crate) hidden_ty: Ty<'tcx>,
 
     /// The region `R0`.
-    crate member_region_vid: ty::RegionVid,
+    pub(crate) member_region_vid: ty::RegionVid,
 
     /// Index of `R1` in `choice_regions` vector from `MemberConstraintSet`.
     start_index: usize,
@@ -48,7 +49,7 @@ crate struct NllMemberConstraint<'tcx> {
 }
 
 rustc_index::newtype_index! {
-    crate struct NllMemberConstraintIndex {
+    pub(crate) struct NllMemberConstraintIndex {
         DEBUG_FORMAT = "MemberConstraintIndex({})"
     }
 }
@@ -73,7 +74,7 @@ impl<'tcx> MemberConstraintSet<'tcx, ty::RegionVid> {
     /// within into `RegionVid` format -- it typically consults the
     /// `UniversalRegions` data structure that is known to the caller
     /// (but which this code is unaware of).
-    crate fn push_constraint(
+    pub(crate) fn push_constraint(
         &mut self,
         m_c: &MemberConstraint<'tcx>,
         mut to_region_vid: impl FnMut(ty::Region<'tcx>) -> ty::RegionVid,
@@ -106,7 +107,7 @@ where
     /// the original `RegionVid` to an scc index. In some cases, we
     /// may have multiple `R1` values mapping to the same `R2` key -- that
     /// is ok, the two sets will be merged.
-    crate fn into_mapped<R2>(
+    pub(crate) fn into_mapped<R2>(
         self,
         mut map_fn: impl FnMut(R1) -> R2,
     ) -> MemberConstraintSet<'tcx, R2>
@@ -140,21 +141,23 @@ where
     }
 }
 
-impl<R> MemberConstraintSet<'_, R>
+impl<'tcx, R> MemberConstraintSet<'tcx, R>
 where
     R: Copy + Hash + Eq,
 {
-    crate fn all_indices(&self) -> impl Iterator<Item = NllMemberConstraintIndex> + '_ {
+    pub(crate) fn all_indices(
+        &self,
+    ) -> impl Iterator<Item = NllMemberConstraintIndex> + Captures<'tcx> + '_ {
         self.constraints.indices()
     }
 
     /// Iterate down the constraint indices associated with a given
     /// peek-region.  You can then use `choice_regions` and other
     /// methods to access data.
-    crate fn indices(
+    pub(crate) fn indices(
         &self,
         member_region_vid: R,
-    ) -> impl Iterator<Item = NllMemberConstraintIndex> + '_ {
+    ) -> impl Iterator<Item = NllMemberConstraintIndex> + Captures<'tcx> + '_ {
         let mut next = self.first_constraints.get(&member_region_vid).cloned();
         std::iter::from_fn(move || -> Option<NllMemberConstraintIndex> {
             if let Some(current) = next {
@@ -169,10 +172,10 @@ where
     /// Returns the "choice regions" for a given member
     /// constraint. This is the `R1..Rn` from a constraint like:
     ///
-    /// ```
+    /// ```text
     /// R0 member of [R1..Rn]
     /// ```
-    crate fn choice_regions(&self, pci: NllMemberConstraintIndex) -> &[ty::RegionVid] {
+    pub(crate) fn choice_regions(&self, pci: NllMemberConstraintIndex) -> &[ty::RegionVid] {
         let NllMemberConstraint { start_index, end_index, .. } = &self.constraints[pci];
         &self.choice_regions[*start_index..*end_index]
     }
@@ -195,14 +198,14 @@ where
 ///
 /// Before:
 ///
-/// ```
+/// ```text
 /// target_list: A -> B -> C -> (None)
 /// source_list: D -> E -> F -> (None)
 /// ```
 ///
 /// After:
 ///
-/// ```
+/// ```text
 /// target_list: A -> B -> C -> D -> E -> F -> (None)
 /// ```
 fn append_list(

@@ -1,134 +1,134 @@
 error: literal with an empty format string
-  --> $DIR/write_literal.rs:30:32
+  --> $DIR/write_literal.rs:30:27
    |
-LL |     write!(&mut v, "Hello {}", "world");
-   |                                ^^^^^^^
+LL |     write!(v, "Hello {}", "world");
+   |                           ^^^^^^^
    |
    = note: `-D clippy::write-literal` implied by `-D warnings`
 help: try this
    |
-LL -     write!(&mut v, "Hello {}", "world");
-LL +     write!(&mut v, "Hello world");
+LL -     write!(v, "Hello {}", "world");
+LL +     write!(v, "Hello world");
    | 
 
 error: literal with an empty format string
-  --> $DIR/write_literal.rs:31:44
+  --> $DIR/write_literal.rs:31:39
    |
-LL |     writeln!(&mut v, "Hello {} {}", world, "world");
-   |                                            ^^^^^^^
+LL |     writeln!(v, "Hello {} {}", world, "world");
+   |                                       ^^^^^^^
    |
 help: try this
    |
-LL -     writeln!(&mut v, "Hello {} {}", world, "world");
-LL +     writeln!(&mut v, "Hello {} world", world);
+LL -     writeln!(v, "Hello {} {}", world, "world");
+LL +     writeln!(v, "Hello {} world", world);
    | 
 
 error: literal with an empty format string
-  --> $DIR/write_literal.rs:32:34
+  --> $DIR/write_literal.rs:32:29
    |
-LL |     writeln!(&mut v, "Hello {}", "world");
-   |                                  ^^^^^^^
+LL |     writeln!(v, "Hello {}", "world");
+   |                             ^^^^^^^
    |
 help: try this
    |
-LL -     writeln!(&mut v, "Hello {}", "world");
-LL +     writeln!(&mut v, "Hello world");
+LL -     writeln!(v, "Hello {}", "world");
+LL +     writeln!(v, "Hello world");
    | 
 
 error: literal with an empty format string
-  --> $DIR/write_literal.rs:37:33
+  --> $DIR/write_literal.rs:37:28
    |
-LL |     writeln!(&mut v, "{0} {1}", "hello", "world");
-   |                                 ^^^^^^^
+LL |     writeln!(v, "{0} {1}", "hello", "world");
+   |                            ^^^^^^^
    |
 help: try this
    |
-LL -     writeln!(&mut v, "{0} {1}", "hello", "world");
-LL +     writeln!(&mut v, "hello {1}", "world");
+LL -     writeln!(v, "{0} {1}", "hello", "world");
+LL +     writeln!(v, "hello {1}", "world");
    | 
 
 error: literal with an empty format string
-  --> $DIR/write_literal.rs:37:42
+  --> $DIR/write_literal.rs:37:37
    |
-LL |     writeln!(&mut v, "{0} {1}", "hello", "world");
-   |                                          ^^^^^^^
+LL |     writeln!(v, "{0} {1}", "hello", "world");
+   |                                     ^^^^^^^
    |
 help: try this
    |
-LL -     writeln!(&mut v, "{0} {1}", "hello", "world");
-LL +     writeln!(&mut v, "{0} world", "hello");
+LL -     writeln!(v, "{0} {1}", "hello", "world");
+LL +     writeln!(v, "{0} world", "hello");
    | 
 
 error: literal with an empty format string
-  --> $DIR/write_literal.rs:38:33
+  --> $DIR/write_literal.rs:38:28
    |
-LL |     writeln!(&mut v, "{1} {0}", "hello", "world");
-   |                                 ^^^^^^^
+LL |     writeln!(v, "{1} {0}", "hello", "world");
+   |                            ^^^^^^^
    |
 help: try this
    |
-LL -     writeln!(&mut v, "{1} {0}", "hello", "world");
-LL +     writeln!(&mut v, "{1} hello", "world");
+LL -     writeln!(v, "{1} {0}", "hello", "world");
+LL +     writeln!(v, "{1} hello", "world");
    | 
 
 error: literal with an empty format string
-  --> $DIR/write_literal.rs:38:42
+  --> $DIR/write_literal.rs:38:37
    |
-LL |     writeln!(&mut v, "{1} {0}", "hello", "world");
-   |                                          ^^^^^^^
+LL |     writeln!(v, "{1} {0}", "hello", "world");
+   |                                     ^^^^^^^
    |
 help: try this
    |
-LL -     writeln!(&mut v, "{1} {0}", "hello", "world");
-LL +     writeln!(&mut v, "world {0}", "hello");
+LL -     writeln!(v, "{1} {0}", "hello", "world");
+LL +     writeln!(v, "world {0}", "hello");
    | 
 
 error: literal with an empty format string
-  --> $DIR/write_literal.rs:41:37
+  --> $DIR/write_literal.rs:41:32
    |
-LL |     writeln!(&mut v, "{foo} {bar}", foo = "hello", bar = "world");
-   |                                     ^^^^^^^^^^^^^
+LL |     writeln!(v, "{foo} {bar}", foo = "hello", bar = "world");
+   |                                ^^^^^^^^^^^^^
    |
 help: try this
    |
-LL -     writeln!(&mut v, "{foo} {bar}", foo = "hello", bar = "world");
-LL +     writeln!(&mut v, "hello {bar}", bar = "world");
+LL -     writeln!(v, "{foo} {bar}", foo = "hello", bar = "world");
+LL +     writeln!(v, "hello {bar}", bar = "world");
    | 
 
 error: literal with an empty format string
-  --> $DIR/write_literal.rs:41:52
+  --> $DIR/write_literal.rs:41:47
    |
-LL |     writeln!(&mut v, "{foo} {bar}", foo = "hello", bar = "world");
-   |                                                    ^^^^^^^^^^^^^
+LL |     writeln!(v, "{foo} {bar}", foo = "hello", bar = "world");
+   |                                               ^^^^^^^^^^^^^
    |
 help: try this
    |
-LL -     writeln!(&mut v, "{foo} {bar}", foo = "hello", bar = "world");
-LL +     writeln!(&mut v, "{foo} world", foo = "hello");
+LL -     writeln!(v, "{foo} {bar}", foo = "hello", bar = "world");
+LL +     writeln!(v, "{foo} world", foo = "hello");
    | 
 
 error: literal with an empty format string
-  --> $DIR/write_literal.rs:42:37
+  --> $DIR/write_literal.rs:42:32
    |
-LL |     writeln!(&mut v, "{bar} {foo}", foo = "hello", bar = "world");
-   |                                     ^^^^^^^^^^^^^
+LL |     writeln!(v, "{bar} {foo}", foo = "hello", bar = "world");
+   |                                ^^^^^^^^^^^^^
    |
 help: try this
    |
-LL -     writeln!(&mut v, "{bar} {foo}", foo = "hello", bar = "world");
-LL +     writeln!(&mut v, "{bar} hello", bar = "world");
+LL -     writeln!(v, "{bar} {foo}", foo = "hello", bar = "world");
+LL +     writeln!(v, "{bar} hello", bar = "world");
    | 
 
 error: literal with an empty format string
-  --> $DIR/write_literal.rs:42:52
+  --> $DIR/write_literal.rs:42:47
    |
-LL |     writeln!(&mut v, "{bar} {foo}", foo = "hello", bar = "world");
-   |                                                    ^^^^^^^^^^^^^
+LL |     writeln!(v, "{bar} {foo}", foo = "hello", bar = "world");
+   |                                               ^^^^^^^^^^^^^
    |
 help: try this
    |
-LL -     writeln!(&mut v, "{bar} {foo}", foo = "hello", bar = "world");
-LL +     writeln!(&mut v, "world {foo}", foo = "hello");
+LL -     writeln!(v, "{bar} {foo}", foo = "hello", bar = "world");
+LL +     writeln!(v, "world {foo}", foo = "hello");
    | 
 
 error: aborting due to 11 previous errors

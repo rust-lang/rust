@@ -1,4 +1,4 @@
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::ChunkedBitSet;
 use rustc_middle::mir::{Body, Field, Rvalue, Statement, StatementKind, TerminatorKind};
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt, VariantDef};
@@ -12,7 +12,7 @@ use crate::MirPass;
 /// that point.
 ///
 /// This is redundant with drop elaboration, but we need to do it prior to const-checking, and
-/// running const-checking after drop elaboration makes it opimization dependent, causing issues
+/// running const-checking after drop elaboration makes it optimization dependent, causing issues
 /// like [#90770].
 ///
 /// [#90770]: https://github.com/rust-lang/rust/issues/90770
@@ -89,7 +89,7 @@ impl<'tcx> MirPass<'tcx> for RemoveUninitDrops {
 fn is_needs_drop_and_init<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ParamEnv<'tcx>,
-    maybe_inits: &BitSet<MovePathIndex>,
+    maybe_inits: &ChunkedBitSet<MovePathIndex>,
     move_data: &MoveData<'tcx>,
     ty: Ty<'tcx>,
     mpi: MovePathIndex,
@@ -124,7 +124,7 @@ fn is_needs_drop_and_init<'tcx>(
             //
             // If its projection *is* present in `MoveData`, then the field may have been moved
             // from separate from its parent. Recurse.
-            adt.variants.iter_enumerated().any(|(vid, variant)| {
+            adt.variants().iter_enumerated().any(|(vid, variant)| {
                 // Enums have multiple variants, which are discriminated with a `Downcast` projection.
                 // Structs have a single variant, and don't use a `Downcast` projection.
                 let mpi = if adt.is_enum() {
@@ -148,8 +148,8 @@ fn is_needs_drop_and_init<'tcx>(
             })
         }
 
-        ty::Tuple(_) => ty
-            .tuple_fields()
+        ty::Tuple(fields) => fields
+            .iter()
             .enumerate()
             .map(|(f, f_ty)| (Field::from_usize(f), f_ty, mpi))
             .any(field_needs_drop_and_init),

@@ -1,0 +1,21 @@
+error[E0381]: use of possibly-uninitialized variable: `z`
+  --> $DIR/chains-without-let.rs:3:34
+   |
+LL |     if true && { z = 3; true} && z == 3 {}
+   |                                  ^ use of possibly-uninitialized `z`
+
+error[E0381]: use of possibly-uninitialized variable: `z`
+  --> $DIR/chains-without-let.rs:9:31
+   |
+LL |     true && { z = 3; true} && z == 3;
+   |                               ^ use of possibly-uninitialized `z`
+
+error[E0381]: use of possibly-uninitialized variable: `z`
+  --> $DIR/chains-without-let.rs:15:36
+   |
+LL |     if false || { z = 3; false} || z == 3 {}
+   |                                    ^ use of possibly-uninitialized `z`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0381`.

@@ -89,7 +89,7 @@ changelog-seen = 2
 
 # Link libstdc++ statically into the rustc_llvm instead of relying on a
 # dynamic version to be available.
-#static-libstdcpp = false
+#static-libstdcpp = true
 
 # Whether to use Ninja to build LLVM. This runs much faster than make.
 #ninja = true
@@ -156,6 +156,9 @@ changelog-seen = 2
 
 # Whether to build the clang compiler.
 #clang = false
+
+# Custom CMake defines to set when building LLVM.
+#build-config = {}
 
 # =============================================================================
 # General build configuration options
@@ -237,10 +240,6 @@ changelog-seen = 2
 # Indicate whether git submodules are managed and updated automatically.
 #submodules = true
 
-# Update git submodules only when the checked out commit in the submodules differs
-# from what is committed in the main rustc repo.
-#fast-submodules = true
-
 # The path to (or name of) the GDB executable to use. This is only used for
 # executing the debuginfo test suite.
 #gdb = "gdb"
@@ -289,7 +288,7 @@ changelog-seen = 2
 #sanitizers = false
 
 # Build the profiler runtime (required when compiling with options that depend
-# on this runtime, such as `-C profile-generate` or `-Z instrument-coverage`).
+# on this runtime, such as `-C profile-generate` or `-C instrument-coverage`).
 #profiler = false
 
 # Indicates whether the native libraries linked into Cargo will be statically
@@ -470,13 +469,23 @@ changelog-seen = 2
 # FIXME(#61117): Some tests fail when this option is enabled.
 #debuginfo-level-tests = 0
 
-# Whether to run `dsymutil` on Apple platforms to gather debug info into .dSYM
-# bundles. `dsymutil` adds time to builds for no clear benefit, and also makes
-# it more difficult for debuggers to find debug info. The compiler currently
-# defaults to running `dsymutil` to preserve its historical default, but when
-# compiling the compiler itself, we skip it by default since we know it's safe
-# to do so in that case.
-#run-dsymutil = false
+# Should rustc be build with split debuginfo? Default is platform dependent.
+# Valid values are the same as those accepted by `-C split-debuginfo`
+# (`off`/`unpacked`/`packed`).
+#
+# On Linux, split debuginfo is disabled by default.
+#
+# On Apple platforms, unpacked split debuginfo is used by default. Unpacked
+# debuginfo does not run `dsymutil`, which packages debuginfo from disparate
+# object files into a single `.dSYM` file. `dsymutil` adds time to builds for
+# no clear benefit, and also makes it more difficult for debuggers to find
+# debug info. The compiler currently defaults to running `dsymutil` to preserve
+# its historical default, but when compiling the compiler itself, we skip it by
+# default since we know it's safe to do so in that case.
+#
+# On Windows platforms, packed debuginfo is the only supported option,
+# producing a `.pdb` file.
+#split-debuginfo = if linux { off } else if windows { packed } else if apple { unpacked }
 
 # Whether or not `panic!`s generate backtraces (RUST_BACKTRACE)
 #backtrace = true
@@ -548,7 +557,9 @@ changelog-seen = 2
 
 # This is an array of the codegen backends that will be compiled for the rustc
 # that's being compiled. The default is to only build the LLVM codegen backend,
-# and currently the only standard options supported are `"llvm"` and `"cranelift"`.
+# and currently the only standard options supported are `"llvm"`, `"cranelift"`
+# and `"gcc"`. The first backend in this list will be used as default by rustc
+# when no explicit backend is specified.
 #codegen-backends = ["llvm"]
 
 # Indicates whether LLD will be compiled and made available in the sysroot for
@@ -594,16 +605,9 @@ changelog-seen = 2
 # development of NLL
 #test-compare-mode = false
 
-# Use LLVM libunwind as the implementation for Rust's unwinder.
-# Accepted values are 'in-tree' (formerly true), 'system' or 'no' (formerly false).
-# This option only applies for Linux and Fuchsia targets.
-# On Linux target, if crt-static is not enabled, 'no' means dynamic link to
-# `libgcc_s.so`, 'in-tree' means static link to the in-tree build of llvm libunwind
-# and 'system' means dynamic link to `libunwind.so`. If crt-static is enabled,
-# the behavior is depend on the libc. On musl target, 'no' and 'in-tree' both
-# means static link to the in-tree build of llvm libunwind, and 'system' means
-# static link to `libunwind.a` provided by system. Due to the limitation of glibc,
-# it must link to `libgcc_eh.a` to get a working output, and this option have no effect.
+# Global default for llvm-libunwind for all targets. See the target-specific
+# documentation for llvm-libunwind below. Note that the target-specific
+# option will override this if set.
 #llvm-libunwind = 'no'
 
 # Enable Windows Control Flow Guard checks in the standard library.
@@ -660,6 +664,18 @@ changelog-seen = 2
 # not, you can specify an explicit file name for it.
 #llvm-filecheck = "/path/to/llvm-version/bin/FileCheck"
 
+# Use LLVM libunwind as the implementation for Rust's unwinder.
+# Accepted values are 'in-tree' (formerly true), 'system' or 'no' (formerly false).
+# This option only applies for Linux and Fuchsia targets.
+# On Linux target, if crt-static is not enabled, 'no' means dynamic link to
+# `libgcc_s.so`, 'in-tree' means static link to the in-tree build of llvm libunwind
+# and 'system' means dynamic link to `libunwind.so`. If crt-static is enabled,
+# the behavior is depend on the libc. On musl target, 'no' and 'in-tree' both
+# means static link to the in-tree build of llvm libunwind, and 'system' means
+# static link to `libunwind.a` provided by system. Due to the limitation of glibc,
+# it must link to `libgcc_eh.a` to get a working output, and this option have no effect.
+#llvm-libunwind = 'no' if Linux, 'in-tree' if Fuchsia
+
 # If this target is for Android, this option will be required to specify where
 # the NDK for the target lives. This is used to find the C compiler to link and
 # build native code.
@@ -671,7 +687,7 @@ changelog-seen = 2
 #sanitizers = build.sanitizers (bool)
 
 # Build the profiler runtime for this target(required when compiling with options that depend
-# on this runtime, such as `-C profile-generate` or `-Z instrument-coverage`).
+# on this runtime, such as `-C profile-generate` or `-C instrument-coverage`).
 # This option will override the same option under [build] section.
 #profiler = build.profiler (bool)
 

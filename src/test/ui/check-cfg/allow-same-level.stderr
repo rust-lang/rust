@@ -1,0 +1,10 @@
+warning: unexpected `cfg` condition name
+  --> $DIR/allow-same-level.rs:7:7
+   |
+LL | #[cfg(FALSE)]
+   |       ^^^^^
+   |
+   = note: `#[warn(unexpected_cfgs)]` on by default
+
+warning: 1 warning emitted
+

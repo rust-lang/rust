@@ -41,7 +41,7 @@ fn check_round_trip<T: Encodable<Encoder> + for<'a> Decodable<Decoder<'a>> + Par
     let mut decoder = Decoder::new(&data[..], 0);
 
     for value in values {
-        let decoded = Decodable::decode(&mut decoder).unwrap();
+        let decoded = Decodable::decode(&mut decoder);
         assert_eq!(value, decoded);
     }
 }

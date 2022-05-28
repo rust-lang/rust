@@ -5,10 +5,26 @@
 fn main() {
     let item1 = 2;
     for item in &[item1] {
-        println!("{}", item);
+        dbg!(item);
     }
 
     for item in [item1].iter() {
-        println!("{:?}", item);
+        dbg!(item);
+    }
+
+    for item in &[0..5] {
+        dbg!(item);
+    }
+
+    for item in [0..5].iter_mut() {
+        dbg!(item);
+    }
+
+    for item in [0..5] {
+        dbg!(item);
+    }
+
+    for item in [0..5].into_iter() {
+        dbg!(item);
     }
 }

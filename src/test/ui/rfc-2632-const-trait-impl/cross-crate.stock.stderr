@@ -1,14 +1,18 @@
-error[E0015]: calls in constant functions are limited to constant functions, tuple structs and tuple variants
-  --> $DIR/cross-crate.rs:15:5
+error[E0015]: cannot call non-const fn `<cross_crate::NonConst as cross_crate::MyTrait>::func` in constant functions
+  --> $DIR/cross-crate.rs:15:14
    |
 LL |     NonConst.func();
-   |     ^^^^^^^^^^^^^^^
+   |              ^^^^^^
+   |
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
 
-error[E0015]: calls in constant functions are limited to constant functions, tuple structs and tuple variants
-  --> $DIR/cross-crate.rs:17:5
+error[E0015]: cannot call non-const fn `<cross_crate::Const as cross_crate::MyTrait>::func` in constant functions
+  --> $DIR/cross-crate.rs:17:11
    |
 LL |     Const.func();
-   |     ^^^^^^^^^^^^
+   |           ^^^^^^
+   |
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
 
 error: aborting due to 2 previous errors
 

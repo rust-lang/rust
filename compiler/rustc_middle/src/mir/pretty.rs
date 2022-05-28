@@ -12,14 +12,14 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
 use rustc_index::vec::Idx;
 use rustc_middle::mir::interpret::{
-    read_target_uint, AllocId, Allocation, ConstValue, GlobalAlloc, Pointer, Provenance,
+    read_target_uint, AllocId, Allocation, ConstAllocation, ConstValue, GlobalAlloc, Pointer,
+    Provenance,
 };
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::MirSource;
 use rustc_middle::mir::*;
-use rustc_middle::ty::{self, TyCtxt, TyS, TypeFoldable, TypeVisitor};
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_target::abi::Size;
-use std::ops::ControlFlow;
 
 const INDENT: &str = "    ";
 /// Alignment for lining up comments following MIR statements
@@ -90,14 +90,11 @@ pub fn dump_mir<'tcx, F>(
 }
 
 pub fn dump_enabled<'tcx>(tcx: TyCtxt<'tcx>, pass_name: &str, def_id: DefId) -> bool {
-    let filters = match tcx.sess.opts.debugging_opts.dump_mir {
-        None => return false,
-        Some(ref filters) => filters,
+    let Some(ref filters) = tcx.sess.opts.debugging_opts.dump_mir else {
+        return false;
     };
-    let node_path = ty::print::with_forced_impl_filename_line(|| {
-        // see notes on #41697 below
-        tcx.def_path_str(def_id)
-    });
+    // see notes on #41697 below
+    let node_path = ty::print::with_forced_impl_filename_line!(tcx.def_path_str(def_id));
     filters.split('|').any(|or_filter| {
         or_filter.split('&').all(|and_filter| {
             let and_filter_trimmed = and_filter.trim();
@@ -125,10 +122,9 @@ fn dump_matched_mir_node<'tcx, F>(
     let _: io::Result<()> = try {
         let mut file =
             create_dump_file(tcx, "mir", pass_num, pass_name, disambiguator, body.source)?;
-        let def_path = ty::print::with_forced_impl_filename_line(|| {
-            // see notes on #41697 above
-            tcx.def_path_str(body.source.def_id())
-        });
+        // see notes on #41697 above
+        let def_path =
+            ty::print::with_forced_impl_filename_line!(tcx.def_path_str(body.source.def_id()));
         write!(file, "// MIR for `{}", def_path)?;
         match body.source.promoted {
             None => write!(file, "`")?,
@@ -427,12 +423,12 @@ impl<'tcx> ExtraComments<'tcx> {
     }
 }
 
-fn use_verbose<'tcx>(ty: &&TyS<'tcx>, fn_def: bool) -> bool {
-    match ty.kind() {
+fn use_verbose<'tcx>(ty: Ty<'tcx>, fn_def: bool) -> bool {
+    match *ty.kind() {
         ty::Int(_) | ty::Uint(_) | ty::Bool | ty::Char | ty::Float(_) => false,
         // Unit type
         ty::Tuple(g_args) if g_args.is_empty() => false,
-        ty::Tuple(g_args) => g_args.iter().any(|g_arg| use_verbose(&g_arg.expect_ty(), fn_def)),
+        ty::Tuple(g_args) => g_args.iter().any(|g_arg| use_verbose(g_arg, fn_def)),
         ty::Array(ty, _) => use_verbose(ty, fn_def),
         ty::FnDef(..) => fn_def,
         _ => true,
@@ -440,10 +436,9 @@ fn use_verbose<'tcx>(ty: &&TyS<'tcx>, fn_def: bool) -> bool {
 }
 
 impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
-    fn visit_constant(&mut self, constant: &Constant<'tcx>, location: Location) {
-        self.super_constant(constant, location);
+    fn visit_constant(&mut self, constant: &Constant<'tcx>, _location: Location) {
         let Constant { span, user_ty, literal } = constant;
-        if use_verbose(&literal.ty(), true) {
+        if use_verbose(literal.ty(), true) {
             self.push("mir::Constant");
             self.push(&format!(
                 "+ span: {}",
@@ -452,37 +447,36 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
             if let Some(user_ty) = user_ty {
                 self.push(&format!("+ user_ty: {:?}", user_ty));
             }
-            match literal {
-                ConstantKind::Ty(literal) => self.push(&format!("+ literal: {:?}", literal)),
-                ConstantKind::Val(val, ty) => {
-                    // To keep the diffs small, we render this almost like we render ty::Const
-                    self.push(&format!("+ literal: Const {{ ty: {}, val: Value({:?}) }}", ty, val))
-                }
-            }
-        }
-    }
 
-    fn visit_const(&mut self, constant: &&'tcx ty::Const<'tcx>, _: Location) {
-        self.super_const(constant);
-        let ty::Const { ty, val, .. } = constant;
-        if use_verbose(ty, false) {
-            self.push("ty::Const");
-            self.push(&format!("+ ty: {:?}", ty));
-            let val = match val {
-                ty::ConstKind::Param(p) => format!("Param({})", p),
-                ty::ConstKind::Infer(infer) => format!("Infer({:?})", infer),
-                ty::ConstKind::Bound(idx, var) => format!("Bound({:?}, {:?})", idx, var),
-                ty::ConstKind::Placeholder(ph) => format!("PlaceHolder({:?})", ph),
-                ty::ConstKind::Unevaluated(uv) => format!(
-                    "Unevaluated({}, {:?}, {:?})",
-                    self.tcx.def_path_str(uv.def.did),
-                    uv.substs(self.tcx),
-                    uv.promoted
-                ),
-                ty::ConstKind::Value(val) => format!("Value({:?})", val),
-                ty::ConstKind::Error(_) => "Error".to_string(),
+            let fmt_val = |val: &ConstValue<'tcx>| match val {
+                ConstValue::Scalar(s) => format!("Scalar({:?})", s),
+                ConstValue::Slice { .. } => format!("Slice(..)"),
+                ConstValue::ByRef { .. } => format!("ByRef(..)"),
             };
-            self.push(&format!("+ val: {}", val));
+
+            let val = match literal {
+                ConstantKind::Ty(ct) => match ct.val() {
+                    ty::ConstKind::Param(p) => format!("Param({})", p),
+                    ty::ConstKind::Unevaluated(uv) => format!(
+                        "Unevaluated({}, {:?}, {:?})",
+                        self.tcx.def_path_str(uv.def.did),
+                        uv.substs,
+                        uv.promoted,
+                    ),
+                    ty::ConstKind::Value(val) => format!("Value({})", fmt_val(&val)),
+                    ty::ConstKind::Error(_) => "Error".to_string(),
+                    // These variants shouldn't exist in the MIR.
+                    ty::ConstKind::Placeholder(_)
+                    | ty::ConstKind::Infer(_)
+                    | ty::ConstKind::Bound(..) => bug!("unexpected MIR constant: {:?}", literal),
+                },
+                // To keep the diffs small, we render this like we render `ty::Const::Value`.
+                //
+                // This changes once `ty::Const::Value` is represented using valtrees.
+                ConstantKind::Val(val, _) => format!("Value({})", fmt_val(&val)),
+            };
+
+            self.push(&format!("+ literal: Const {{ ty: {}, val: {} }}", literal.ty(), val));
         }
     }
 
@@ -573,8 +567,7 @@ fn write_scope_tree(
         }
         indented_decl.push(';');
 
-        let local_name =
-            if local == RETURN_PLACE { " return place".to_string() } else { String::new() };
+        let local_name = if local == RETURN_PLACE { " return place" } else { "" };
 
         writeln!(
             w,
@@ -586,9 +579,8 @@ fn write_scope_tree(
         )?;
     }
 
-    let children = match scope_tree.get(&parent) {
-        Some(children) => children,
-        None => return Ok(()),
+    let Some(children) = scope_tree.get(&parent) else {
+        return Ok(());
     };
 
     for &child in children {
@@ -665,12 +657,14 @@ pub fn write_allocations<'tcx>(
     body: &Body<'_>,
     w: &mut dyn Write,
 ) -> io::Result<()> {
-    fn alloc_ids_from_alloc(alloc: &Allocation) -> impl DoubleEndedIterator<Item = AllocId> + '_ {
-        alloc.relocations().values().map(|id| *id)
+    fn alloc_ids_from_alloc(
+        alloc: ConstAllocation<'_>,
+    ) -> impl DoubleEndedIterator<Item = AllocId> + '_ {
+        alloc.inner().relocations().values().map(|id| *id)
     }
     fn alloc_ids_from_const(val: ConstValue<'_>) -> impl Iterator<Item = AllocId> + '_ {
         match val {
-            ConstValue::Scalar(interpret::Scalar::Ptr(ptr, _size)) => {
+            ConstValue::Scalar(interpret::Scalar::Ptr(ptr, _)) => {
                 Either::Left(Either::Left(std::iter::once(ptr.provenance)))
             }
             ConstValue::Scalar(interpret::Scalar::Int { .. }) => {
@@ -682,22 +676,27 @@ pub fn write_allocations<'tcx>(
         }
     }
     struct CollectAllocIds(BTreeSet<AllocId>);
-    impl<'tcx> TypeVisitor<'tcx> for CollectAllocIds {
-        fn tcx_for_anon_const_substs(&self) -> Option<TyCtxt<'tcx>> {
-            // `AllocId`s are only inside of `ConstKind::Value` which
-            // can't be part of the anon const default substs.
-            None
-        }
 
-        fn visit_const(&mut self, c: &'tcx ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
-            if let ty::ConstKind::Value(val) = c.val {
+    impl<'tcx> Visitor<'tcx> for CollectAllocIds {
+        fn visit_const(&mut self, c: ty::Const<'tcx>, _loc: Location) {
+            if let ty::ConstKind::Value(val) = c.val() {
                 self.0.extend(alloc_ids_from_const(val));
             }
-            c.super_visit_with(self)
+        }
+
+        fn visit_constant(&mut self, c: &Constant<'tcx>, loc: Location) {
+            match c.literal {
+                ConstantKind::Ty(c) => self.visit_const(c, loc),
+                ConstantKind::Val(val, _) => {
+                    self.0.extend(alloc_ids_from_const(val));
+                }
+            }
         }
     }
+
     let mut visitor = CollectAllocIds(Default::default());
-    body.visit_with(&mut visitor);
+    visitor.visit_body(body);
+
     // `seen` contains all seen allocations, including the ones we have *not* printed yet.
     // The protocol is to first `insert` into `seen`, and only if that returns `true`
     // then push to `todo`.
@@ -705,14 +704,14 @@ pub fn write_allocations<'tcx>(
     let mut todo: Vec<_> = seen.iter().copied().collect();
     while let Some(id) = todo.pop() {
         let mut write_allocation_track_relocs =
-            |w: &mut dyn Write, alloc: &Allocation| -> io::Result<()> {
+            |w: &mut dyn Write, alloc: ConstAllocation<'tcx>| -> io::Result<()> {
                 // `.rev()` because we are popping them from the back of the `todo` vector.
                 for id in alloc_ids_from_alloc(alloc).rev() {
                     if seen.insert(id) {
                         todo.push(id);
                     }
                 }
-                write!(w, "{}", display_allocation(tcx, alloc))
+                write!(w, "{}", display_allocation(tcx, alloc.inner()))
             };
         write!(w, "\n{}", id)?;
         match tcx.get_global_alloc(id) {
@@ -858,6 +857,7 @@ fn write_allocation_bytes<'tcx, Tag: Provenance, Extra>(
         }
         if let Some(&tag) = alloc.relocations().get(&i) {
             // Memory with a relocation must be defined
+            assert!(alloc.init_mask().is_range_initialized(i, i + ptr_size).is_ok());
             let j = i.bytes_usize();
             let offset = alloc
                 .inspect_with_uninit_and_ptr_outside_interpreter(j..j + ptr_size.bytes_usize());
@@ -956,18 +956,17 @@ fn write_mir_sig(tcx: TyCtxt<'_>, body: &Body<'_>, w: &mut dyn Write) -> io::Res
     match (kind, body.source.promoted) {
         (_, Some(i)) => write!(w, "{:?} in ", i)?,
         (DefKind::Const | DefKind::AssocConst, _) => write!(w, "const ")?,
-        (DefKind::Static, _) => {
-            write!(w, "static {}", if tcx.is_mutable_static(def_id) { "mut " } else { "" })?
-        }
+        (DefKind::Static(hir::Mutability::Not), _) => write!(w, "static ")?,
+        (DefKind::Static(hir::Mutability::Mut), _) => write!(w, "static mut ")?,
         (_, _) if is_function => write!(w, "fn ")?,
         (DefKind::AnonConst | DefKind::InlineConst, _) => {} // things like anon const, not an item
         _ => bug!("Unexpected def kind {:?}", kind),
     }
 
-    ty::print::with_forced_impl_filename_line(|| {
+    ty::print::with_forced_impl_filename_line! {
         // see notes on #41697 elsewhere
-        write!(w, "{}", tcx.def_path_str(def_id))
-    })?;
+        write!(w, "{}", tcx.def_path_str(def_id))?
+    }
 
     if body.source.promoted.is_none() && is_function {
         write!(w, "(")?;
@@ -1008,10 +1007,11 @@ fn write_user_type_annotations(
     for (index, annotation) in body.user_type_annotations.iter_enumerated() {
         writeln!(
             w,
-            "| {:?}: {:?} at {}",
+            "| {:?}: user_ty: {:?}, span: {}, inferred_ty: {:?}",
             index.index(),
             annotation.user_ty,
-            tcx.sess.source_map().span_to_embeddable_string(annotation.span)
+            tcx.sess.source_map().span_to_embeddable_string(annotation.span),
+            annotation.inferred_ty,
         )?;
     }
     if !body.user_type_annotations.is_empty() {

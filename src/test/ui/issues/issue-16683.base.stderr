@@ -1,0 +1,32 @@
+error[E0495]: cannot infer an appropriate lifetime for autoref due to conflicting requirements
+  --> $DIR/issue-16683.rs:8:14
+   |
+LL |         self.a();
+   |              ^
+   |
+note: first, the lifetime cannot outlive the anonymous lifetime defined here...
+  --> $DIR/issue-16683.rs:7:10
+   |
+LL |     fn b(&self) {
+   |          ^^^^^
+note: ...so that reference does not outlive borrowed content
+  --> $DIR/issue-16683.rs:8:9
+   |
+LL |         self.a();
+   |         ^^^^
+note: but, the lifetime must be valid for the lifetime `'a` as defined here...
+  --> $DIR/issue-16683.rs:5:9
+   |
+LL | trait T<'a> {
+   |         ^^
+note: ...so that the types are compatible
+  --> $DIR/issue-16683.rs:8:14
+   |
+LL |         self.a();
+   |              ^
+   = note: expected `&'a Self`
+              found `&Self`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0495`.

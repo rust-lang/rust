@@ -1,4 +1,5 @@
 PRINT-BANG INPUT (DISPLAY): ;
+PRINT-BANG RE-COLLECTED (DISPLAY): /*«*/ ; /*»*/
 PRINT-BANG INPUT (DEBUG): TokenStream [
     Group {
         delimiter: None,

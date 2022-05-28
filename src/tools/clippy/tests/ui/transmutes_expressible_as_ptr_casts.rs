@@ -25,8 +25,8 @@ fn main() {
     let slice_ptr = &[0, 1, 2, 3] as *const [i32];
 
     // ... or pointer_kind(T) = pointer_kind(U_0); ptr-ptr-cast
-    let _ptr_to_unsized_transmute = unsafe { transmute::<*const [i32], *const [u16]>(slice_ptr) };
-    let _ptr_to_unsized = slice_ptr as *const [u16];
+    let _ptr_to_unsized_transmute = unsafe { transmute::<*const [i32], *const [u32]>(slice_ptr) };
+    let _ptr_to_unsized = slice_ptr as *const [u32];
     // TODO: We could try testing vtable casts here too, but maybe
     // we should wait until std::raw::TraitObject is stabilized?
 

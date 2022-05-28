@@ -15,18 +15,39 @@ error: field is never read: `f`
    |
 LL | struct B { f: () }
    |            ^^^^^
+   |
+note: `B` has a derived impl for the trait `Clone`, but this is intentionally ignored during dead code analysis
+  --> $DIR/clone-debug-dead-code.rs:9:10
+   |
+LL | #[derive(Clone)]
+   |          ^^^^^
+   = note: this error originates in the derive macro `Clone` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: field is never read: `f`
   --> $DIR/clone-debug-dead-code.rs:14:12
    |
 LL | struct C { f: () }
    |            ^^^^^
+   |
+note: `C` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+  --> $DIR/clone-debug-dead-code.rs:13:10
+   |
+LL | #[derive(Debug)]
+   |          ^^^^^
+   = note: this error originates in the derive macro `Debug` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: field is never read: `f`
   --> $DIR/clone-debug-dead-code.rs:18:12
    |
 LL | struct D { f: () }
    |            ^^^^^
+   |
+note: `D` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+  --> $DIR/clone-debug-dead-code.rs:17:10
+   |
+LL | #[derive(Debug,Clone)]
+   |          ^^^^^ ^^^^^
+   = note: this error originates in the derive macro `Debug` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: field is never read: `f`
   --> $DIR/clone-debug-dead-code.rs:21:12

@@ -1,8 +1,8 @@
 # `asm_experimental_arch`
 
-The tracking issue for this feature is: [#72016]
+The tracking issue for this feature is: [#93335]
 
-[#72016]: https://github.com/rust-lang/rust/issues/72016
+[#93335]: https://github.com/rust-lang/rust/issues/93335
 
 ------------------------
 
@@ -15,6 +15,7 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 - BPF
 - SPIR-V
 - AVR
+- MSP430
 
 ## Register classes
 
@@ -39,6 +40,7 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 | AVR          | `reg_pair`     | `r3r2` .. `r25r24`, `X`, `Z`       | `r`                  |
 | AVR          | `reg_iw`       | `r25r24`, `X`, `Z`                 | `w`                  |
 | AVR          | `reg_ptr`      | `X`, `Z`                           | `e`                  |
+| MSP430       | `reg`          | `r[0-15]`                          | `r`                  |
 
 > **Notes**:
 > - NVPTX doesn't have a fixed register set, so named registers are not supported.
@@ -67,6 +69,7 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 | BPF          | `wreg`                          | `alu32`        | `i8` `i16` `i32`                        |
 | AVR          | `reg`, `reg_upper`              | None           | `i8`                                    |
 | AVR          | `reg_pair`, `reg_iw`, `reg_ptr` | None           | `i16`                                   |
+| MSP430       | `reg`                           | None           | `i8`, `i16`                             |
 
 ## Register aliases
 
@@ -80,13 +83,22 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 | AVR          | `XL`          | `r26`     |
 | AVR          | `ZH`          | `r31`     |
 | AVR          | `ZL`          | `r30`     |
+| MSP430       | `r0`          | `pc`      |
+| MSP430       | `r1`          | `sp`      |
+| MSP430       | `r2`          | `sr`      |
+| MSP430       | `r3`          | `cg`      |
+| MSP430       | `r4`          | `fp`      |
+
+> **Notes**:
+> - TI does not mandate a frame pointer for MSP430, but toolchains are allowed
+    to use one; LLVM uses `r4`.
 
 ## Unsupported registers
 
 | Architecture | Unsupported register                    | Reason                                                                                                                                                                              |
 | ------------ | --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | All          | `sp`                                    | The stack pointer must be restored to its original value at the end of an asm code block.                                                                                           |
-| All          | `fr` (Hexagon), `$fp` (MIPS), `Y` (AVR) | The frame pointer cannot be used as an input or output.                                                                                                                             |
+| All          | `fr` (Hexagon), `$fp` (MIPS), `Y` (AVR), `r4` (MSP430) | The frame pointer cannot be used as an input or output.                                                                                                                             |
 | All          | `r19` (Hexagon)                         | This is used internally by LLVM as a "base pointer" for functions with complex stack frames.                                                                                        |
 | MIPS         | `$0` or `$zero`                         | This is a constant zero register which can't be modified.                                                                                                                           |
 | MIPS         | `$1` or `$at`                           | Reserved for assembler.                                                                                                                                                             |
@@ -95,6 +107,7 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 | MIPS         | `$ra`                                   | Return address cannot be used as inputs or outputs.                                                                                                                                 |
 | Hexagon      | `lr`                                    | This is the link register which cannot be used as an input or output.                                                                                                               |
 | AVR          | `r0`, `r1`, `r1r0`                      | Due to an issue in LLVM, the `r0` and `r1` registers cannot be used as inputs or outputs.  If modified, they must be restored to their original values before the end of the block. |
+|MSP430        | `r0`, `r2`, `r3`                        | These are the program counter, status register, and constant generator respectively. Neither the status register nor constant generator can be written to.                          |
 
 ## Template modifiers
 
@@ -115,3 +128,5 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 These flags registers must be restored upon exiting the asm block if the `preserves_flags` option is set:
 - AVR
   - The status register `SREG`.
+- MSP430
+  - The status register `r2`.

@@ -16,4 +16,13 @@ enum ListCell<T> {
     Nil
 }
 
+struct WithBounds<T: Sized> {}
+//~^ ERROR parameter `T` is never used
+
+struct WithWhereBounds<T> where T: Sized {}
+//~^ ERROR parameter `T` is never used
+
+struct WithOutlivesBounds<T: 'static> {}
+//~^ ERROR parameter `T` is never used
+
 fn main() {}

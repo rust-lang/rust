@@ -13,7 +13,7 @@
 //! Instead of listing all those constructors (which is intractable), we group those value
 //! constructors together as much as possible. Example:
 //!
-//! ```
+//! ```compile_fail,E0004
 //! match (0, false) {
 //!     (0 ..=100, true) => {} // `p_1`
 //!     (50..=150, false) => {} // `p_2`
@@ -52,10 +52,10 @@ use rustc_data_structures::captures::Captures;
 use rustc_index::vec::Idx;
 
 use rustc_hir::{HirId, RangeEnd};
-use rustc_middle::mir::Field;
+use rustc_middle::mir::{self, Field};
 use rustc_middle::thir::{FieldPat, Pat, PatKind, PatRange};
 use rustc_middle::ty::layout::IntegerExt;
-use rustc_middle::ty::{self, Const, Ty, TyCtxt, VariantDef};
+use rustc_middle::ty::{self, Ty, TyCtxt, VariantDef};
 use rustc_middle::{middle::stability::EvalResult, mir::interpret::ConstValue};
 use rustc_session::lint;
 use rustc_span::{Span, DUMMY_SP};
@@ -133,23 +133,35 @@ impl IntRange {
     }
 
     #[inline]
-    fn from_const<'tcx>(
+    fn from_constant<'tcx>(
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        value: &Const<'tcx>,
+        value: mir::ConstantKind<'tcx>,
     ) -> Option<IntRange> {
-        if let Some((target_size, bias)) = Self::integral_size_and_signed_bias(tcx, value.ty) {
-            let ty = value.ty;
+        let ty = value.ty();
+        if let Some((target_size, bias)) = Self::integral_size_and_signed_bias(tcx, ty) {
             let val = (|| {
-                if let ty::ConstKind::Value(ConstValue::Scalar(scalar)) = value.val {
-                    // For this specific pattern we can skip a lot of effort and go
-                    // straight to the result, after doing a bit of checking. (We
-                    // could remove this branch and just fall through, which
-                    // is more general but much slower.)
-                    if let Ok(bits) = scalar.to_bits_or_ptr_internal(target_size) {
-                        return Some(bits);
+                match value {
+                    mir::ConstantKind::Val(ConstValue::Scalar(scalar), _) => {
+                        // For this specific pattern we can skip a lot of effort and go
+                        // straight to the result, after doing a bit of checking. (We
+                        // could remove this branch and just fall through, which
+                        // is more general but much slower.)
+                        if let Ok(Ok(bits)) = scalar.to_bits_or_ptr_internal(target_size) {
+                            return Some(bits);
+                        } else {
+                            return None;
+                        }
                     }
+                    mir::ConstantKind::Ty(c) => match c.val() {
+                        ty::ConstKind::Value(_) => bug!(
+                            "encountered ConstValue in mir::ConstantKind::Ty, whereas this is expected to be in ConstantKind::Val"
+                        ),
+                        _ => {}
+                    },
+                    _ => {}
                 }
+
                 // This is a more general form of the previous case.
                 value.try_eval_bits(tcx, param_env, ty)
             })()?;
@@ -234,8 +246,8 @@ impl IntRange {
         let (lo, hi) = (lo ^ bias, hi ^ bias);
 
         let env = ty::ParamEnv::empty().and(ty);
-        let lo_const = ty::Const::from_bits(tcx, lo, env);
-        let hi_const = ty::Const::from_bits(tcx, hi, env);
+        let lo_const = mir::ConstantKind::from_bits(tcx, lo, env);
+        let hi_const = mir::ConstantKind::from_bits(tcx, hi, env);
 
         let kind = if lo == hi {
             PatKind::Constant { value: lo_const }
@@ -344,13 +356,13 @@ enum IntBorder {
 /// straddles the boundary of one of the inputs.
 ///
 /// The following input:
-/// ```
+/// ```text
 ///   |-------------------------| // `self`
 /// |------|  |----------|   |----|
 ///    |-------| |-------|
 /// ```
 /// would be iterated over as follows:
-/// ```
+/// ```text
 ///   ||---|--||-|---|---|---|--|
 /// ```
 #[derive(Debug, Clone)]
@@ -492,14 +504,17 @@ impl Slice {
 ///
 /// Let's look at an example, where we are trying to split the last pattern:
 /// ```
+/// # fn foo(x: &[bool]) {
 /// match x {
 ///     [true, true, ..] => {}
 ///     [.., false, false] => {}
 ///     [..] => {}
 /// }
+/// # }
 /// ```
 /// Here are the results of specialization for the first few lengths:
 /// ```
+/// # fn foo(x: &[bool]) { match x {
 /// // length 0
 /// [] => {}
 /// // length 1
@@ -520,6 +535,8 @@ impl Slice {
 /// [true, true, _, _,     _    ] => {}
 /// [_,    _,    _, false, false] => {}
 /// [_,    _,    _, _,     _    ] => {}
+/// # _ => {}
+/// # }}
 /// ```
 ///
 /// If we went above length 5, we would simply be inserting more columns full of wildcards in the
@@ -560,9 +577,9 @@ impl SplitVarLenSlice {
 
     /// Pass a set of slices relative to which to split this one.
     fn split(&mut self, slices: impl Iterator<Item = SliceKind>) {
-        let (max_prefix_len, max_suffix_len) = match &mut self.max_slice {
-            VarLen(prefix, suffix) => (prefix, suffix),
-            FixedLen(_) => return, // No need to split
+        let VarLen(max_prefix_len, max_suffix_len) = &mut self.max_slice else {
+            // No need to split
+            return;
         };
         // We grow `self.max_slice` to be larger than all slices encountered, as described above.
         // For diagnostics, we keep the prefix and suffix lengths separate, but grow them so that
@@ -630,9 +647,9 @@ pub(super) enum Constructor<'tcx> {
     /// Ranges of integer literal values (`2`, `2..=5` or `2..5`).
     IntRange(IntRange),
     /// Ranges of floating-point literal values (`2.0..=5.2`).
-    FloatRange(&'tcx ty::Const<'tcx>, &'tcx ty::Const<'tcx>, RangeEnd),
+    FloatRange(mir::ConstantKind<'tcx>, mir::ConstantKind<'tcx>, RangeEnd),
     /// String literals. Strings are not quite the same as `&[u8]` so we treat them separately.
-    Str(&'tcx ty::Const<'tcx>),
+    Str(mir::ConstantKind<'tcx>),
     /// Array and slice patterns.
     Slice(Slice),
     /// Constants that must not be matched structurally. They are treated as black
@@ -680,32 +697,28 @@ impl<'tcx> Constructor<'tcx> {
     ///
     /// This means that the variant has a stdlib unstable feature marking it.
     pub(super) fn is_unstable_variant(&self, pcx: PatCtxt<'_, '_, 'tcx>) -> bool {
-        if let Constructor::Variant(idx) = self {
-            if let ty::Adt(adt, _) = pcx.ty.kind() {
-                let variant_def_id = adt.variants[*idx].def_id;
-                // Filter variants that depend on a disabled unstable feature.
-                return matches!(
-                    pcx.cx.tcx.eval_stability(variant_def_id, None, DUMMY_SP, None),
-                    EvalResult::Deny { .. }
-                );
-            }
+        if let Constructor::Variant(idx) = self && let ty::Adt(adt, _) = pcx.ty.kind() {
+            let variant_def_id = adt.variant(*idx).def_id;
+            // Filter variants that depend on a disabled unstable feature.
+            return matches!(
+                pcx.cx.tcx.eval_stability(variant_def_id, None, DUMMY_SP, None),
+                EvalResult::Deny { .. }
+            );
         }
         false
     }
 
     /// Checks if the `Constructor` is a `Constructor::Variant` with a `#[doc(hidden)]`
-    /// attribute.
+    /// attribute from a type not local to the current crate.
     pub(super) fn is_doc_hidden_variant(&self, pcx: PatCtxt<'_, '_, 'tcx>) -> bool {
-        if let Constructor::Variant(idx) = self {
-            if let ty::Adt(adt, _) = pcx.ty.kind() {
-                let variant_def_id = adt.variants[*idx].def_id;
-                return pcx.cx.tcx.is_doc_hidden(variant_def_id);
-            }
+        if let Constructor::Variant(idx) = self && let ty::Adt(adt, _) = pcx.ty.kind() {
+            let variant_def_id = adt.variants()[*idx].def_id;
+            return pcx.cx.tcx.is_doc_hidden(variant_def_id) && !variant_def_id.is_local();
         }
         false
     }
 
-    fn variant_index_for_adt(&self, adt: &'tcx ty::AdtDef) -> VariantIdx {
+    fn variant_index_for_adt(&self, adt: ty::AdtDef<'tcx>) -> VariantIdx {
         match *self {
             Variant(idx) => idx,
             Single => {
@@ -729,7 +742,7 @@ impl<'tcx> Constructor<'tcx> {
                         // patterns. If we're here we can assume this is a box pattern.
                         1
                     } else {
-                        let variant = &adt.variants[self.variant_index_for_adt(adt)];
+                        let variant = &adt.variant(self.variant_index_for_adt(*adt));
                         Fields::list_variant_nonhidden_fields(pcx.cx, pcx.ty, variant).count()
                     }
                 }
@@ -815,8 +828,14 @@ impl<'tcx> Constructor<'tcx> {
                 FloatRange(other_from, other_to, other_end),
             ) => {
                 match (
-                    compare_const_vals(pcx.cx.tcx, self_to, other_to, pcx.cx.param_env, pcx.ty),
-                    compare_const_vals(pcx.cx.tcx, self_from, other_from, pcx.cx.param_env, pcx.ty),
+                    compare_const_vals(pcx.cx.tcx, *self_to, *other_to, pcx.cx.param_env, pcx.ty),
+                    compare_const_vals(
+                        pcx.cx.tcx,
+                        *self_from,
+                        *other_from,
+                        pcx.cx.param_env,
+                        pcx.ty,
+                    ),
                 ) {
                     (Some(to), Some(from)) => {
                         (from == Ordering::Greater || from == Ordering::Equal)
@@ -827,9 +846,15 @@ impl<'tcx> Constructor<'tcx> {
                 }
             }
             (Str(self_val), Str(other_val)) => {
-                // FIXME: there's probably a more direct way of comparing for equality
-                match compare_const_vals(pcx.cx.tcx, self_val, other_val, pcx.cx.param_env, pcx.ty)
-                {
+                // FIXME Once valtrees are available we can directly use the bytes
+                // in the `Str` variant of the valtree for the comparison here.
+                match compare_const_vals(
+                    pcx.cx.tcx,
+                    *self_val,
+                    *other_val,
+                    pcx.cx.param_env,
+                    pcx.ty,
+                ) {
                     Some(comparison) => comparison == Ordering::Equal,
                     None => false,
                 }
@@ -929,7 +954,7 @@ impl<'tcx> SplitWildcard<'tcx> {
             ty::Bool => smallvec![make_range(0, 1)],
             ty::Array(sub_ty, len) if len.try_eval_usize(cx.tcx, cx.param_env).is_some() => {
                 let len = len.eval_usize(cx.tcx, cx.param_env) as usize;
-                if len != 0 && cx.is_uninhabited(sub_ty) {
+                if len != 0 && cx.is_uninhabited(*sub_ty) {
                     smallvec![]
                 } else {
                     smallvec![Slice(Slice::new(Some(len), VarLen(0, 0)))]
@@ -937,7 +962,7 @@ impl<'tcx> SplitWildcard<'tcx> {
             }
             // Treat arrays of a constant but unknown length like slices.
             ty::Array(sub_ty, _) | ty::Slice(sub_ty) => {
-                let kind = if cx.is_uninhabited(sub_ty) { FixedLen(0) } else { VarLen(0, 0) };
+                let kind = if cx.is_uninhabited(*sub_ty) { FixedLen(0) } else { VarLen(0, 0) };
                 smallvec![Slice(Slice::new(None, kind))]
             }
             ty::Adt(def, substs) if def.is_enum() => {
@@ -966,10 +991,10 @@ impl<'tcx> SplitWildcard<'tcx> {
                 // exception is if the pattern is at the top level, because we want empty matches to be
                 // considered exhaustive.
                 let is_secretly_empty =
-                    def.variants.is_empty() && !is_exhaustive_pat_feature && !pcx.is_top_level;
+                    def.variants().is_empty() && !is_exhaustive_pat_feature && !pcx.is_top_level;
 
                 let mut ctors: SmallVec<[_; 1]> = def
-                    .variants
+                    .variants()
                     .iter_enumerated()
                     .filter(|(_, v)| {
                         // If `exhaustive_patterns` is enabled, we exclude variants known to be
@@ -1000,7 +1025,7 @@ impl<'tcx> SplitWildcard<'tcx> {
             {
                 // `usize`/`isize` are not allowed to be matched exhaustively unless the
                 // `precise_pointer_size_matching` feature is enabled. So we treat those types like
-                // `#[non_exhaustive]` enums by returning a special unmatcheable constructor.
+                // `#[non_exhaustive]` enums by returning a special unmatchable constructor.
                 smallvec![NonExhaustive]
             }
             &ty::Int(ity) => {
@@ -1120,7 +1145,8 @@ impl<'tcx> SplitWildcard<'tcx> {
 /// In the following example `Fields::wildcards` returns `[_, _, _, _]`. Then in
 /// `extract_pattern_arguments` we fill some of the entries, and the result is
 /// `[Some(0), _, _, _]`.
-/// ```rust
+/// ```compile_fail,E0004
+/// # fn foo() -> [Option<u8>; 4] { [None; 4] }
 /// let x: [Option<u8>; 4] = foo();
 /// match x {
 ///     [Some(0), ..] => {}
@@ -1170,12 +1196,9 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
         ty: Ty<'tcx>,
         variant: &'a VariantDef,
     ) -> impl Iterator<Item = (Field, Ty<'tcx>)> + Captures<'a> + Captures<'p> {
-        let (adt, substs) = match ty.kind() {
-            ty::Adt(adt, substs) => (adt, substs),
-            _ => bug!(),
-        };
+        let ty::Adt(adt, substs) = ty.kind() else { bug!() };
         // Whether we must not match the fields of this variant exhaustively.
-        let is_non_exhaustive = variant.is_field_list_non_exhaustive() && !adt.did.is_local();
+        let is_non_exhaustive = variant.is_field_list_non_exhaustive() && !adt.did().is_local();
 
         variant.fields.iter().enumerate().filter_map(move |(i, field)| {
             let ty = field.ty(cx.tcx, substs);
@@ -1201,7 +1224,7 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
     ) -> Self {
         let ret = match constructor {
             Single | Variant(_) => match ty.kind() {
-                ty::Tuple(fs) => Fields::wildcards_from_tys(cx, fs.iter().map(|ty| ty.expect_ty())),
+                ty::Tuple(fs) => Fields::wildcards_from_tys(cx, fs.iter()),
                 ty::Ref(_, rty, _) => Fields::wildcards_from_tys(cx, once(*rty)),
                 ty::Adt(adt, substs) => {
                     if adt.is_box() {
@@ -1209,7 +1232,7 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
                         // patterns. If we're here we can assume this is a box pattern.
                         Fields::wildcards_from_tys(cx, once(substs.type_at(0)))
                     } else {
-                        let variant = &adt.variants[constructor.variant_index_for_adt(adt)];
+                        let variant = &adt.variant(constructor.variant_index_for_adt(*adt));
                         let tys = Fields::list_variant_nonhidden_fields(cx, ty, variant)
                             .map(|(_, ty)| ty);
                         Fields::wildcards_from_tys(cx, tys)
@@ -1307,11 +1330,8 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
                 match pat.ty.kind() {
                     ty::Tuple(fs) => {
                         ctor = Single;
-                        let mut wilds: SmallVec<[_; 2]> = fs
-                            .iter()
-                            .map(|ty| ty.expect_ty())
-                            .map(DeconstructedPat::wildcard)
-                            .collect();
+                        let mut wilds: SmallVec<[_; 2]> =
+                            fs.iter().map(DeconstructedPat::wildcard).collect();
                         for pat in subpatterns {
                             wilds[pat.field.index()] = mkpat(&pat.pattern);
                         }
@@ -1345,7 +1365,7 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
                             PatKind::Variant { variant_index, .. } => Variant(*variant_index),
                             _ => bug!(),
                         };
-                        let variant = &adt.variants[ctor.variant_index_for_adt(adt)];
+                        let variant = &adt.variant(ctor.variant_index_for_adt(*adt));
                         // For each field in the variant, we store the relevant index into `self.fields` if any.
                         let mut field_id_to_id: Vec<Option<usize>> =
                             (0..variant.fields.len()).map(|_| None).collect();
@@ -1368,13 +1388,13 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
                 }
             }
             PatKind::Constant { value } => {
-                if let Some(int_range) = IntRange::from_const(cx.tcx, cx.param_env, value) {
+                if let Some(int_range) = IntRange::from_constant(cx.tcx, cx.param_env, *value) {
                     ctor = IntRange(int_range);
                     fields = Fields::empty();
                 } else {
                     match pat.ty.kind() {
                         ty::Float(_) => {
-                            ctor = FloatRange(value, value, RangeEnd::Included);
+                            ctor = FloatRange(*value, *value, RangeEnd::Included);
                             fields = Fields::empty();
                         }
                         ty::Ref(_, t, _) if t.is_str() => {
@@ -1386,7 +1406,7 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
                             // fields.
                             // Note: `t` is `str`, not `&str`.
                             let subpattern =
-                                DeconstructedPat::new(Str(value), Fields::empty(), t, pat.span);
+                                DeconstructedPat::new(Str(*value), Fields::empty(), *t, pat.span);
                             ctor = Single;
                             fields = Fields::singleton(cx, subpattern)
                         }
@@ -1401,11 +1421,11 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
                 }
             }
             &PatKind::Range(PatRange { lo, hi, end }) => {
-                let ty = lo.ty;
+                let ty = lo.ty();
                 ctor = if let Some(int_range) = IntRange::from_range(
                     cx.tcx,
-                    lo.eval_bits(cx.tcx, cx.param_env, lo.ty),
-                    hi.eval_bits(cx.tcx, cx.param_env, hi.ty),
+                    lo.eval_bits(cx.tcx, cx.param_env, lo.ty()),
+                    hi.eval_bits(cx.tcx, cx.param_env, hi.ty()),
                     ty,
                     &end,
                 ) {
@@ -1458,15 +1478,15 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
                     PatKind::Deref { subpattern: subpatterns.next().unwrap() }
                 }
                 ty::Adt(adt_def, substs) => {
-                    let variant_index = self.ctor.variant_index_for_adt(adt_def);
-                    let variant = &adt_def.variants[variant_index];
+                    let variant_index = self.ctor.variant_index_for_adt(*adt_def);
+                    let variant = &adt_def.variant(variant_index);
                     let subpatterns = Fields::list_variant_nonhidden_fields(cx, self.ty, variant)
                         .zip(subpatterns)
                         .map(|((field, _ty), pattern)| FieldPat { field, pattern })
                         .collect();
 
                     if adt_def.is_enum() {
-                        PatKind::Variant { adt_def, substs, variant_index, subpatterns }
+                        PatKind::Variant { adt_def: *adt_def, substs, variant_index, subpatterns }
                     } else {
                         PatKind::Leaf { subpatterns }
                     }
@@ -1567,9 +1587,8 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
                 match self_slice.kind {
                     FixedLen(_) => bug!("{:?} doesn't cover {:?}", self_slice, other_slice),
                     VarLen(prefix, suffix) => {
-                        let inner_ty = match *self.ty.kind() {
-                            ty::Slice(ty) | ty::Array(ty, _) => ty,
-                            _ => bug!("bad slice pattern {:?} {:?}", self.ctor, self.ty),
+                        let (ty::Slice(inner_ty) | ty::Array(inner_ty, _)) = *self.ty.kind() else {
+                            bug!("bad slice pattern {:?} {:?}", self.ctor, self.ty);
                         };
                         let prefix = &self.fields.fields[..prefix];
                         let suffix = &self.fields.fields[self_slice.arity() - suffix..];
@@ -1640,9 +1659,7 @@ impl<'p, 'tcx> fmt::Debug for DeconstructedPat<'p, 'tcx> {
                 }
                 ty::Adt(..) | ty::Tuple(..) => {
                     let variant = match self.ty.kind() {
-                        ty::Adt(adt, _) => {
-                            Some(&adt.variants[self.ctor.variant_index_for_adt(adt)])
-                        }
+                        ty::Adt(adt, _) => Some(adt.variant(self.ctor.variant_index_for_adt(*adt))),
                         ty::Tuple(_) => None,
                         _ => unreachable!(),
                     };
@@ -1652,7 +1669,7 @@ impl<'p, 'tcx> fmt::Debug for DeconstructedPat<'p, 'tcx> {
                     }
 
                     // Without `cx`, we can't know which field corresponds to which, so we can't
-                    // get the names of the fields. Instead we just display everything as a suple
+                    // get the names of the fields. Instead we just display everything as a tuple
                     // struct, which should be good enough.
                     write!(f, "(")?;
                     for p in self.iter_fields() {

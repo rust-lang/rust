@@ -1,3 +1,5 @@
+#[cfg(not(no_global_oom_handling))]
+use super::AsVecIntoIter;
 use crate::alloc::{Allocator, Global};
 use crate::raw_vec::RawVec;
 use core::fmt;
@@ -6,7 +8,8 @@ use core::iter::{
     FusedIterator, InPlaceIterable, SourceIter, TrustedLen, TrustedRandomAccessNoCoerce,
 };
 use core::marker::PhantomData;
-use core::mem::{self};
+use core::mem::{self, ManuallyDrop};
+use core::ops::Deref;
 use core::ptr::{self, NonNull};
 use core::slice::{self};
 
@@ -30,7 +33,9 @@ pub struct IntoIter<
     pub(super) buf: NonNull<T>,
     pub(super) phantom: PhantomData<T>,
     pub(super) cap: usize,
-    pub(super) alloc: A,
+    // the drop impl reconstructs a RawVec from buf, cap and alloc
+    // to avoid dropping the allocator twice we need to wrap it into ManuallyDrop
+    pub(super) alloc: ManuallyDrop<A>,
     pub(super) ptr: *const T,
     pub(super) end: *const T,
 }
@@ -97,6 +102,9 @@ impl<T, A: Allocator> IntoIter<T, A> {
     /// (&mut into_iter).for_each(core::mem::drop);
     /// unsafe { core::ptr::write(&mut into_iter, Vec::new().into_iter()); }
     /// ```
+    ///
+    /// This method is used by in-place iteration, refer to the vec::in_place_collect
+    /// documentation for an overview.
     #[cfg(not(no_global_oom_handling))]
     pub(super) fn forget_allocation_drop_remaining(&mut self) {
         let remaining = self.as_raw_mut_slice();
@@ -112,6 +120,11 @@ impl<T, A: Allocator> IntoIter<T, A> {
         unsafe {
             ptr::drop_in_place(remaining);
         }
+    }
+
+    /// Forgets to Drop the remaining elements while still allowing the backing allocation to be freed.
+    pub(crate) fn forget_remaining_elements(&mut self) {
+        self.ptr = self.end;
     }
 }
 
@@ -154,9 +167,9 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         let exact = if mem::size_of::<T>() == 0 {
-            (self.end as usize).wrapping_sub(self.ptr as usize)
+            self.end.addr().wrapping_sub(self.ptr.addr())
         } else {
-            unsafe { self.end.offset_from(self.ptr) as usize }
+            unsafe { self.end.sub_ptr(self.ptr) }
         };
         (exact, Some(exact))
     }
@@ -189,7 +202,6 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
         self.len()
     }
 
-    #[doc(hidden)]
     unsafe fn __iterator_get_unchecked(&mut self, i: usize) -> Self::Item
     where
         Self: TrustedRandomAccessNoCoerce,
@@ -290,11 +302,11 @@ where
 impl<T: Clone, A: Allocator + Clone> Clone for IntoIter<T, A> {
     #[cfg(not(test))]
     fn clone(&self) -> Self {
-        self.as_slice().to_vec_in(self.alloc.clone()).into_iter()
+        self.as_slice().to_vec_in(self.alloc.deref().clone()).into_iter()
     }
     #[cfg(test)]
     fn clone(&self) -> Self {
-        crate::slice::to_vec(self.as_slice(), self.alloc.clone()).into_iter()
+        crate::slice::to_vec(self.as_slice(), self.alloc.deref().clone()).into_iter()
     }
 }
 
@@ -306,8 +318,8 @@ unsafe impl<#[may_dangle] T, A: Allocator> Drop for IntoIter<T, A> {
         impl<T, A: Allocator> Drop for DropGuard<'_, T, A> {
             fn drop(&mut self) {
                 unsafe {
-                    // `IntoIter::alloc` is not used anymore after this
-                    let alloc = ptr::read(&self.0.alloc);
+                    // `IntoIter::alloc` is not used anymore after this and will be dropped by RawVec
+                    let alloc = ManuallyDrop::take(&mut self.0.alloc);
                     // RawVec handles deallocation
                     let _ = RawVec::from_raw_parts_in(self.0.buf.as_ptr(), self.0.cap, alloc);
                 }
@@ -323,6 +335,8 @@ unsafe impl<#[may_dangle] T, A: Allocator> Drop for IntoIter<T, A> {
     }
 }
 
+// In addition to the SAFETY invariants of the following three unsafe traits
+// also refer to the vec::in_place_collect module documentation to get an overview
 #[unstable(issue = "none", feature = "inplace_iteration")]
 #[doc(hidden)]
 unsafe impl<T, A: Allocator> InPlaceIterable for IntoIter<T, A> {}
@@ -338,14 +352,8 @@ unsafe impl<T, A: Allocator> SourceIter for IntoIter<T, A> {
     }
 }
 
-// internal helper trait for in-place iteration specialization.
-#[rustc_specialization_trait]
-pub(crate) trait AsIntoIter {
-    type Item;
-    fn as_into_iter(&mut self) -> &mut IntoIter<Self::Item>;
-}
-
-impl<T> AsIntoIter for IntoIter<T> {
+#[cfg(not(no_global_oom_handling))]
+unsafe impl<T> AsVecIntoIter for IntoIter<T> {
     type Item = T;
 
     fn as_into_iter(&mut self) -> &mut IntoIter<Self::Item> {

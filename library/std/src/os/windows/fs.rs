@@ -158,6 +158,7 @@ pub trait OpenOptionsExt {
     /// # Examples
     ///
     /// ```no_run
+    /// # #![allow(unexpected_cfgs)]
     /// # #[cfg(for_demonstration_only)]
     /// extern crate winapi;
     /// # mod winapi { pub const FILE_FLAG_DELETE_ON_CLOSE: u32 = 0x04000000; }
@@ -195,6 +196,7 @@ pub trait OpenOptionsExt {
     /// # Examples
     ///
     /// ```no_run
+    /// # #![allow(unexpected_cfgs)]
     /// # #[cfg(for_demonstration_only)]
     /// extern crate winapi;
     /// # mod winapi { pub const FILE_ATTRIBUTE_HIDDEN: u32 = 2; }
@@ -236,6 +238,7 @@ pub trait OpenOptionsExt {
     /// # Examples
     ///
     /// ```no_run
+    /// # #![allow(unexpected_cfgs)]
     /// # #[cfg(for_demonstration_only)]
     /// extern crate winapi;
     /// # mod winapi { pub const SECURITY_IDENTIFICATION: u32 = 0; }

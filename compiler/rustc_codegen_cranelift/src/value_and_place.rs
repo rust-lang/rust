@@ -24,7 +24,7 @@ fn codegen_field<'tcx>(
         }
         match field_layout.ty.kind() {
             ty::Slice(..) | ty::Str | ty::Foreign(..) => simple(fx),
-            ty::Adt(def, _) if def.repr.packed() => {
+            ty::Adt(def, _) if def.repr().packed() => {
                 assert_eq!(layout.align.abi.bytes(), 1);
                 simple(fx)
             }
@@ -50,7 +50,7 @@ fn codegen_field<'tcx>(
 }
 
 fn scalar_pair_calculate_b_offset(tcx: TyCtxt<'_>, a_scalar: Scalar, b_scalar: Scalar) -> Offset32 {
-    let b_offset = a_scalar.value.size(&tcx).align_to(b_scalar.value.align(&tcx).abi);
+    let b_offset = a_scalar.size(&tcx).align_to(b_scalar.align(&tcx).abi);
     Offset32::new(b_offset.bytes().try_into().unwrap())
 }
 
@@ -514,7 +514,7 @@ impl<'tcx> CPlace<'tcx> {
                     // Can only happen for vector types
                     let len =
                         u16::try_from(len.eval_usize(fx.tcx, ParamEnv::reveal_all())).unwrap();
-                    let vector_ty = fx.clif_type(element).unwrap().by(len).unwrap();
+                    let vector_ty = fx.clif_type(*element).unwrap().by(len).unwrap();
 
                     let data = match from.0 {
                         CValueInner::ByRef(ptr, None) => {
@@ -721,8 +721,8 @@ impl<'tcx> CPlace<'tcx> {
         index: Value,
     ) -> CPlace<'tcx> {
         let (elem_layout, ptr) = match self.layout().ty.kind() {
-            ty::Array(elem_ty, _) => (fx.layout_of(elem_ty), self.to_ptr()),
-            ty::Slice(elem_ty) => (fx.layout_of(elem_ty), self.to_ptr_maybe_unsized().0),
+            ty::Array(elem_ty, _) => (fx.layout_of(*elem_ty), self.to_ptr()),
+            ty::Slice(elem_ty) => (fx.layout_of(*elem_ty), self.to_ptr_maybe_unsized().0),
             _ => bug!("place_index({:?})", self.layout().ty),
         };
 
@@ -781,11 +781,11 @@ pub(crate) fn assert_assignable<'tcx>(
             ty::RawPtr(TypeAndMut { ty: a, mutbl: _ }),
             ty::RawPtr(TypeAndMut { ty: b, mutbl: _ }),
         ) => {
-            assert_assignable(fx, a, b);
+            assert_assignable(fx, *a, *b);
         }
         (ty::Ref(_, a, _), ty::RawPtr(TypeAndMut { ty: b, mutbl: _ }))
         | (ty::RawPtr(TypeAndMut { ty: a, mutbl: _ }), ty::Ref(_, b, _)) => {
-            assert_assignable(fx, a, b);
+            assert_assignable(fx, *a, *b);
         }
         (ty::FnPtr(_), ty::FnPtr(_)) => {
             let from_sig = fx.tcx.normalize_erasing_late_bound_regions(
@@ -816,7 +816,7 @@ pub(crate) fn assert_assignable<'tcx>(
             // dyn for<'r> Trait<'r> -> dyn Trait<'_> is allowed
         }
         (&ty::Adt(adt_def_a, substs_a), &ty::Adt(adt_def_b, substs_b))
-            if adt_def_a.did == adt_def_b.did =>
+            if adt_def_a.did() == adt_def_b.did() =>
         {
             let mut types_a = substs_a.types();
             let mut types_b = substs_b.types();
@@ -828,6 +828,7 @@ pub(crate) fn assert_assignable<'tcx>(
                 }
             }
         }
+        (ty::Array(a, _), ty::Array(b, _)) => assert_assignable(fx, *a, *b),
         _ => {
             assert_eq!(
                 from_ty, to_ty,

@@ -66,7 +66,7 @@ pub trait Printer<'tcx>: Sized {
         predicates: &'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>>,
     ) -> Result<Self::DynExistential, Self::Error>;
 
-    fn print_const(self, ct: &'tcx ty::Const<'tcx>) -> Result<Self::Const, Self::Error>;
+    fn print_const(self, ct: ty::Const<'tcx>) -> Result<Self::Const, Self::Error>;
 
     fn path_crate(self, cnum: CrateNum) -> Result<Self::Path, Self::Error>;
 
@@ -115,12 +115,16 @@ pub trait Printer<'tcx>: Sized {
 
             DefPathData::Impl => {
                 let generics = self.tcx().generics_of(def_id);
-                let mut self_ty = self.tcx().type_of(def_id);
-                let mut impl_trait_ref = self.tcx().impl_trait_ref(def_id);
-                if substs.len() >= generics.count() {
-                    self_ty = self_ty.subst(self.tcx(), substs);
-                    impl_trait_ref = impl_trait_ref.subst(self.tcx(), substs);
-                }
+                let self_ty = self.tcx().bound_type_of(def_id);
+                let impl_trait_ref = self.tcx().bound_impl_trait_ref(def_id);
+                let (self_ty, impl_trait_ref) = if substs.len() >= generics.count() {
+                    (
+                        self_ty.subst(self.tcx(), substs),
+                        impl_trait_ref.map(|i| i.subst(self.tcx(), substs)),
+                    )
+                } else {
+                    (self_ty.0, impl_trait_ref.map(|i| i.0))
+                };
                 self.print_impl_path(def_id, substs, self_ty, impl_trait_ref)
             }
 
@@ -136,6 +140,10 @@ pub trait Printer<'tcx>: Sized {
                     match key.disambiguated_data.data {
                         // Closures' own generics are only captures, don't print them.
                         DefPathData::ClosureExpr => {}
+                        // This covers both `DefKind::AnonConst` and `DefKind::InlineConst`.
+                        // Anon consts doesn't have their own generics, and inline consts' own
+                        // generics are their inferred types, so don't print them.
+                        DefPathData::AnonConst => {}
 
                         // If we have any generic arguments to print, we do that
                         // on top of the same path, but without its own generics.
@@ -188,11 +196,6 @@ pub trait Printer<'tcx>: Sized {
             own_params.start = 1;
         }
 
-        // If we're in verbose mode, then print default-equal args too
-        if self.tcx().sess.verbose() {
-            return &substs[own_params];
-        }
-
         // Don't print args that are the defaults of their respective parameters.
         own_params.end -= generics
             .params
@@ -204,7 +207,7 @@ pub trait Printer<'tcx>: Sized {
                     has_default
                         && substs[param.index as usize]
                             == GenericArg::from(
-                                self.tcx().type_of(param.def_id).subst(self.tcx(), substs),
+                                self.tcx().bound_type_of(param.def_id).subst(self.tcx(), substs),
                             )
                 }
                 ty::GenericParamDefKind::Const { has_default } => {
@@ -240,11 +243,11 @@ pub trait Printer<'tcx>: Sized {
         // as the trait.
         let in_self_mod = match characteristic_def_id_of_type(self_ty) {
             None => false,
-            Some(ty_def_id) => self.tcx().parent(ty_def_id) == Some(parent_def_id),
+            Some(ty_def_id) => self.tcx().parent(ty_def_id) == parent_def_id,
         };
         let in_trait_mod = match impl_trait_ref {
             None => false,
-            Some(trait_ref) => self.tcx().parent(trait_ref.def_id) == Some(parent_def_id),
+            Some(trait_ref) => self.tcx().parent(trait_ref.def_id) == parent_def_id,
         };
 
         if !in_self_mod && !in_trait_mod {
@@ -279,7 +282,7 @@ fn characteristic_def_id_of_type_cached<'a>(
     visited: &mut SsoHashSet<Ty<'a>>,
 ) -> Option<DefId> {
     match *ty.kind() {
-        ty::Adt(adt_def, _) => Some(adt_def.did),
+        ty::Adt(adt_def, _) => Some(adt_def.did()),
 
         ty::Dynamic(data, ..) => data.principal_def_id(),
 
@@ -292,7 +295,6 @@ fn characteristic_def_id_of_type_cached<'a>(
         ty::Ref(_, ty, _) => characteristic_def_id_of_type_cached(ty, visited),
 
         ty::Tuple(ref tys) => tys.iter().find_map(|ty| {
-            let ty = ty.expect_ty();
             if visited.insert(ty) {
                 return characteristic_def_id_of_type_cached(ty, visited);
             }
@@ -326,19 +328,11 @@ pub fn characteristic_def_id_of_type(ty: Ty<'_>) -> Option<DefId> {
     characteristic_def_id_of_type_cached(ty, &mut SsoHashSet::new())
 }
 
-impl<'tcx, P: Printer<'tcx>> Print<'tcx, P> for ty::RegionKind {
-    type Output = P::Region;
-    type Error = P::Error;
-    fn print(&self, cx: P) -> Result<Self::Output, Self::Error> {
-        cx.print_region(self)
-    }
-}
-
 impl<'tcx, P: Printer<'tcx>> Print<'tcx, P> for ty::Region<'_> {
     type Output = P::Region;
     type Error = P::Error;
     fn print(&self, cx: P) -> Result<Self::Output, Self::Error> {
-        cx.print_region(self)
+        cx.print_region(*self)
     }
 }
 
@@ -346,7 +340,7 @@ impl<'tcx, P: Printer<'tcx>> Print<'tcx, P> for Ty<'tcx> {
     type Output = P::Type;
     type Error = P::Error;
     fn print(&self, cx: P) -> Result<Self::Output, Self::Error> {
-        cx.print_type(self)
+        cx.print_type(*self)
     }
 }
 
@@ -360,10 +354,10 @@ impl<'tcx, P: Printer<'tcx>> Print<'tcx, P>
     }
 }
 
-impl<'tcx, P: Printer<'tcx>> Print<'tcx, P> for &'tcx ty::Const<'tcx> {
+impl<'tcx, P: Printer<'tcx>> Print<'tcx, P> for ty::Const<'tcx> {
     type Output = P::Const;
     type Error = P::Error;
     fn print(&self, cx: P) -> Result<Self::Output, Self::Error> {
-        cx.print_const(self)
+        cx.print_const(*self)
     }
 }

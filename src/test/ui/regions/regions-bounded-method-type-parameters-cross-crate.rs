@@ -1,4 +1,7 @@
 // aux-build:rbmtp_cross_crate_lib.rs
+// revisions: base nll
+// ignore-compare-mode-nll
+//[nll] compile-flags: -Z borrowck=mir
 
 // Check explicit region bounds on methods in the cross crate case.
 
@@ -17,7 +20,9 @@ fn call_into_maybe_owned<'x,F:IntoMaybeOwned<'x>>(f: F) {
 
 fn call_bigger_region<'x, 'y>(a: Inv<'x>, b: Inv<'y>) {
     // Here the value provided for 'y is 'y, and hence 'y:'x does not hold.
-    a.bigger_region(b) //~ ERROR lifetime mismatch [E0623]
+    a.bigger_region(b)
+    //[base]~^ ERROR lifetime mismatch [E0623]
+    //[nll]~^^ ERROR lifetime may not live long enough
 }
 
 fn main() { }

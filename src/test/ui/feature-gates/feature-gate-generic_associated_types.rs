@@ -24,7 +24,7 @@ trait Bar {
 }
 
 impl Bar for Foo {
-    type Assoc where Self: Sized = Foo;
+    type Assoc = Foo where Self: Sized;
     //~^ ERROR where clauses on associated types are unstable
 }
 

@@ -75,7 +75,7 @@ impl<'tcx> chalk_ir::interner::Interner for RustInterner<'tcx> {
     type InternedVariances = Vec<chalk_ir::Variance>;
     type InternedConstraints = Vec<chalk_ir::InEnvironment<chalk_ir::Constraint<Self>>>;
     type DefId = DefId;
-    type InternedAdtId = &'tcx AdtDef;
+    type InternedAdtId = AdtDef<'tcx>;
     type Identifier = ();
     type FnAbi = Abi;
 

@@ -27,13 +27,12 @@ impl From<ty::ParamConst> for Parameter {
 
 /// Returns the set of parameters constrained by the impl header.
 pub fn parameters_for_impl<'tcx>(
-    tcx: TyCtxt<'tcx>,
     impl_self_ty: Ty<'tcx>,
     impl_trait_ref: Option<ty::TraitRef<'tcx>>,
 ) -> FxHashSet<Parameter> {
     let vec = match impl_trait_ref {
-        Some(tr) => parameters_for(tcx, &tr, false),
-        None => parameters_for(tcx, &impl_self_ty, false),
+        Some(tr) => parameters_for(&tr, false),
+        None => parameters_for(&impl_self_ty, false),
     };
     vec.into_iter().collect()
 }
@@ -44,29 +43,23 @@ pub fn parameters_for_impl<'tcx>(
 /// of parameters whose values are needed in order to constrain `ty` - these
 /// differ, with the latter being a superset, in the presence of projections.
 pub fn parameters_for<'tcx>(
-    tcx: TyCtxt<'tcx>,
     t: &impl TypeFoldable<'tcx>,
     include_nonconstraining: bool,
 ) -> Vec<Parameter> {
-    let mut collector = ParameterCollector { tcx, parameters: vec![], include_nonconstraining };
+    let mut collector = ParameterCollector { parameters: vec![], include_nonconstraining };
     t.visit_with(&mut collector);
     collector.parameters
 }
 
-struct ParameterCollector<'tcx> {
-    tcx: TyCtxt<'tcx>,
+struct ParameterCollector {
     parameters: Vec<Parameter>,
     include_nonconstraining: bool,
 }
 
-impl<'tcx> TypeVisitor<'tcx> for ParameterCollector<'tcx> {
-    fn tcx_for_anon_const_substs(&self) -> Option<TyCtxt<'tcx>> {
-        Some(self.tcx)
-    }
-
+impl<'tcx> TypeVisitor<'tcx> for ParameterCollector {
     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
         match *t.kind() {
-            ty::Projection(..) | ty::Opaque(..) if !self.include_nonconstraining => {
+            ty::Projection(..) if !self.include_nonconstraining => {
                 // projections are not injective
                 return ControlFlow::CONTINUE;
             }
@@ -86,11 +79,11 @@ impl<'tcx> TypeVisitor<'tcx> for ParameterCollector<'tcx> {
         ControlFlow::CONTINUE
     }
 
-    fn visit_const(&mut self, c: &'tcx ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
-        match c.val {
+    fn visit_const(&mut self, c: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
+        match c.val() {
             ty::ConstKind::Unevaluated(..) if !self.include_nonconstraining => {
                 // Constant expressions are not injective
-                return c.ty.visit_with(self);
+                return c.ty().visit_with(self);
             }
             ty::ConstKind::Param(data) => {
                 self.parameters.push(Parameter::from(data));
@@ -116,9 +109,9 @@ pub fn identify_constrained_generic_params<'tcx>(
 /// constrained before it is used, if that is possible, and add the
 /// parameters so constrained to `input_parameters`. For example,
 /// imagine the following impl:
-///
-///     impl<T: Debug, U: Iterator<Item = T>> Trait for U
-///
+/// ```ignore (illustrative)
+/// impl<T: Debug, U: Iterator<Item = T>> Trait for U
+/// ```
 /// The impl's predicates are collected from left to right. Ignoring
 /// the implicit `Sized` bounds, these are
 ///   * T: Debug
@@ -205,12 +198,12 @@ pub fn setup_constraining_predicates<'tcx>(
                 //     `<<T as Bar>::Baz as Iterator>::Output = <U as Iterator>::Output`
                 // Then the projection only applies if `T` is known, but it still
                 // does not determine `U`.
-                let inputs = parameters_for(tcx, &projection.projection_ty, true);
+                let inputs = parameters_for(&projection.projection_ty, true);
                 let relies_only_on_inputs = inputs.iter().all(|p| input_parameters.contains(p));
                 if !relies_only_on_inputs {
                     continue;
                 }
-                input_parameters.extend(parameters_for(tcx, &projection.ty, false));
+                input_parameters.extend(parameters_for(&projection.term, false));
             } else {
                 continue;
             }

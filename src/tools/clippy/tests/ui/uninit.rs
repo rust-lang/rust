@@ -1,4 +1,5 @@
 #![feature(stmt_expr_attributes)]
+#![allow(clippy::let_unit_value)]
 
 use std::mem::{self, MaybeUninit};
 

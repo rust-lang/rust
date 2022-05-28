@@ -20,7 +20,7 @@ use crate::str;
 use crate::sys::cvt;
 use crate::sys::fd;
 use crate::sys::memchr;
-use crate::sys_common::rwlock::{StaticRWLock, StaticRWLockReadGuard};
+use crate::sys_common::rwlock::{StaticRwLock, StaticRwLockReadGuard};
 use crate::vec;
 
 #[cfg(all(target_env = "gnu", not(target_os = "vxworks")))]
@@ -75,7 +75,7 @@ pub fn errno() -> i32 {
 }
 
 /// Sets the platform-specific value of errno
-#[cfg(all(not(target_os = "linux"), not(target_os = "dragonfly"), not(target_os = "vxworks")))] // needed for readdir and syscall!
+#[cfg(all(not(target_os = "dragonfly"), not(target_os = "vxworks")))] // needed for readdir and syscall!
 #[allow(dead_code)] // but not all target cfgs actually end up using it
 pub fn set_errno(e: i32) {
     unsafe { *errno_location() = e as c_int }
@@ -294,9 +294,9 @@ pub fn current_exe() -> io::Result<PathBuf> {
                 0,
             ))?;
             if path_len <= 1 {
-                return Err(io::Error::new_const(
+                return Err(io::const_io_error!(
                     io::ErrorKind::Uncategorized,
-                    &"KERN_PROC_PATHNAME sysctl returned zero-length string",
+                    "KERN_PROC_PATHNAME sysctl returned zero-length string",
                 ));
             }
             let mut path: Vec<u8> = Vec::with_capacity(path_len);
@@ -317,9 +317,9 @@ pub fn current_exe() -> io::Result<PathBuf> {
         if curproc_exe.is_file() {
             return crate::fs::read_link(curproc_exe);
         }
-        Err(io::Error::new_const(
+        Err(io::const_io_error!(
             io::ErrorKind::Uncategorized,
-            &"/proc/curproc/exe doesn't point to regular file.",
+            "/proc/curproc/exe doesn't point to regular file.",
         ))
     }
     sysctl().or_else(|_| procfs())
@@ -336,9 +336,9 @@ pub fn current_exe() -> io::Result<PathBuf> {
         cvt(libc::sysctl(mib, 4, argv.as_mut_ptr() as *mut _, &mut argv_len, ptr::null_mut(), 0))?;
         argv.set_len(argv_len as usize);
         if argv[0].is_null() {
-            return Err(io::Error::new_const(
+            return Err(io::const_io_error!(
                 io::ErrorKind::Uncategorized,
-                &"no current exe available",
+                "no current exe available",
             ));
         }
         let argv0 = CStr::from_ptr(argv[0]).to_bytes();
@@ -353,9 +353,9 @@ pub fn current_exe() -> io::Result<PathBuf> {
 #[cfg(any(target_os = "linux", target_os = "android", target_os = "emscripten"))]
 pub fn current_exe() -> io::Result<PathBuf> {
     match crate::fs::read_link("/proc/self/exe") {
-        Err(ref e) if e.kind() == io::ErrorKind::NotFound => Err(io::Error::new_const(
+        Err(ref e) if e.kind() == io::ErrorKind::NotFound => Err(io::const_io_error!(
             io::ErrorKind::Uncategorized,
-            &"no /proc/self/exe available. Is /proc mounted?",
+            "no /proc/self/exe available. Is /proc mounted?",
         )),
         other => other,
     }
@@ -384,11 +384,8 @@ pub fn current_exe() -> io::Result<PathBuf> {
     if let Ok(path) = crate::fs::read_link("/proc/self/path/a.out") {
         Ok(path)
     } else {
-        extern "C" {
-            fn getexecname() -> *const c_char;
-        }
         unsafe {
-            let path = getexecname();
+            let path = libc::getexecname();
             if path.is_null() {
                 Err(io::Error::last_os_error())
             } else {
@@ -417,7 +414,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
         );
         if result != 0 {
             use crate::io::ErrorKind;
-            Err(io::Error::new_const(ErrorKind::Uncategorized, &"Error getting executable path"))
+            Err(io::const_io_error!(ErrorKind::Uncategorized, "Error getting executable path"))
         } else {
             let name = CStr::from_ptr((*info.as_ptr()).name.as_ptr()).to_bytes();
             Ok(PathBuf::from(OsStr::from_bytes(name)))
@@ -430,10 +427,10 @@ pub fn current_exe() -> io::Result<PathBuf> {
     crate::fs::read_to_string("sys:exe").map(PathBuf::from)
 }
 
-#[cfg(any(target_os = "fuchsia", target_os = "l4re"))]
+#[cfg(target_os = "l4re")]
 pub fn current_exe() -> io::Result<PathBuf> {
     use crate::io::ErrorKind;
-    Err(io::Error::new_const(ErrorKind::Unsupported, &"Not yet implemented!"))
+    Err(io::const_io_error!(ErrorKind::Unsupported, "Not yet implemented!"))
 }
 
 #[cfg(target_os = "vxworks")]
@@ -452,6 +449,26 @@ pub fn current_exe() -> io::Result<PathBuf> {
 #[cfg(target_os = "espidf")]
 pub fn current_exe() -> io::Result<PathBuf> {
     super::unsupported::unsupported()
+}
+
+#[cfg(target_os = "fuchsia")]
+pub fn current_exe() -> io::Result<PathBuf> {
+    use crate::io::ErrorKind;
+
+    #[cfg(test)]
+    use realstd::env;
+
+    #[cfg(not(test))]
+    use crate::env;
+
+    let exe_path = env::args().next().ok_or(io::const_io_error!(
+        ErrorKind::Uncategorized,
+        "an executable path was not found because no arguments were provided through argv"
+    ))?;
+    let path = PathBuf::from(exe_path);
+
+    // Prepend the current working directory to the path if it's not absolute.
+    if !path.is_absolute() { getcwd().map(|cwd| cwd.join(path)) } else { Ok(path) }
 }
 
 pub struct Env {
@@ -484,9 +501,9 @@ pub unsafe fn environ() -> *mut *const *const c_char {
     ptr::addr_of_mut!(environ)
 }
 
-static ENV_LOCK: StaticRWLock = StaticRWLock::new();
+static ENV_LOCK: StaticRwLock = StaticRwLock::new();
 
-pub fn env_read_lock() -> StaticRWLockReadGuard {
+pub fn env_read_lock() -> StaticRwLockReadGuard {
     ENV_LOCK.read()
 }
 

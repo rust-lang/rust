@@ -1,0 +1,11 @@
+warning: unexpected `cfg` condition value
+  --> $DIR/check-cfg-test.rs:9:7
+   |
+LL | #[cfg(feature = "invalid")]
+   |       ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unexpected_cfgs)]` on by default
+   = note: expected values for `feature` are: test
+
+warning: 1 warning emitted
+

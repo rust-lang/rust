@@ -52,7 +52,8 @@ fn lower_slice_len_call<'tcx>(
         TerminatorKind::Call {
             func,
             args,
-            destination: Some((dest, bb)),
+            destination,
+            target: Some(bb),
             cleanup: None,
             from_hir_call: true,
             ..
@@ -61,10 +62,7 @@ fn lower_slice_len_call<'tcx>(
             if args.len() != 1 {
                 return;
             }
-            let arg = match args[0].place() {
-                Some(arg) => arg,
-                None => return,
-            };
+            let Some(arg) = args[0].place() else { return };
             let func_ty = func.ty(local_decls, tcx);
             match func_ty.kind() {
                 ty::FnDef(fn_def_id, _) if fn_def_id == &slice_len_fn_item_def_id => {
@@ -76,7 +74,8 @@ fn lower_slice_len_call<'tcx>(
                     // make new RValue for Len
                     let deref_arg = tcx.mk_place_deref(arg);
                     let r_value = Rvalue::Len(deref_arg);
-                    let len_statement_kind = StatementKind::Assign(Box::new((*dest, r_value)));
+                    let len_statement_kind =
+                        StatementKind::Assign(Box::new((*destination, r_value)));
                     let add_statement =
                         Statement { kind: len_statement_kind, source_info: terminator.source_info };
 

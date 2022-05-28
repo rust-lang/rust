@@ -1,5 +1,3 @@
-#![feature(extern_prelude)]
-
 mod m {
     fn check() {
         Vec::clone!(); //~ ERROR failed to resolve: `Vec` is a struct, not a module

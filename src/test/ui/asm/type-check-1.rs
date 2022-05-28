@@ -3,7 +3,7 @@
 // ignore-spirv
 // ignore-wasm32
 
-#![feature(asm_const)]
+#![feature(asm_const, asm_sym)]
 
 use std::arch::{asm, global_asm};
 
@@ -22,10 +22,13 @@ fn main() {
         let v: [u64; 3] = [0, 1, 2];
         asm!("{}", in(reg) v[..]);
         //~^ ERROR the size for values of type `[u64]` cannot be known at compilation time
+        //~| ERROR cannot use value of type `[u64]` for inline assembly
         asm!("{}", out(reg) v[..]);
         //~^ ERROR the size for values of type `[u64]` cannot be known at compilation time
+        //~| ERROR cannot use value of type `[u64]` for inline assembly
         asm!("{}", inout(reg) v[..]);
         //~^ ERROR the size for values of type `[u64]` cannot be known at compilation time
+        //~| ERROR cannot use value of type `[u64]` for inline assembly
 
         // Constants must be... constant
 
@@ -44,6 +47,8 @@ fn main() {
         asm!("{}", const const_bar(0));
         asm!("{}", const const_bar(x));
         //~^ ERROR attempt to use a non-constant value in a constant
+        asm!("{}", sym x);
+        //~^ ERROR invalid `sym` operand
 
         // Const operands must be integers and must be constants.
 
@@ -57,6 +62,10 @@ fn main() {
         asm!("{}", const &0);
         //~^ ERROR mismatched types
     }
+}
+
+unsafe fn generic<T>() {
+    asm!("{}", sym generic::<T>);
 }
 
 // Const operands must be integers and must be constants.

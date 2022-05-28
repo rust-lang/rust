@@ -7,7 +7,6 @@ use crate::path::PathBuf;
 use crate::time::Duration;
 
 pub use self::rand::hashmap_random_keys;
-pub use libc::strlen;
 
 #[macro_use]
 pub mod compat;
@@ -16,13 +15,12 @@ pub mod alloc;
 pub mod args;
 pub mod c;
 pub mod cmath;
-pub mod condvar;
 pub mod env;
 pub mod fs;
 pub mod handle;
 pub mod io;
+pub mod locks;
 pub mod memchr;
-pub mod mutex;
 pub mod net;
 pub mod os;
 pub mod os_str;
@@ -30,7 +28,6 @@ pub mod path;
 pub mod pipe;
 pub mod process;
 pub mod rand;
-pub mod rwlock;
 pub mod thread;
 pub mod thread_local_dtor;
 pub mod thread_local_key;
@@ -71,6 +68,7 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
         c::ERROR_FILE_NOT_FOUND => return NotFound,
         c::ERROR_PATH_NOT_FOUND => return NotFound,
         c::ERROR_NO_DATA => return BrokenPipe,
+        c::ERROR_INVALID_NAME => return InvalidFilename,
         c::ERROR_INVALID_PARAMETER => return InvalidInput,
         c::ERROR_NOT_ENOUGH_MEMORY | c::ERROR_OUTOFMEMORY => return OutOfMemory,
         c::ERROR_SEM_TIMEOUT
@@ -104,7 +102,7 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
         c::ERROR_POSSIBLE_DEADLOCK => return Deadlock,
         c::ERROR_NOT_SAME_DEVICE => return CrossesDevices,
         c::ERROR_TOO_MANY_LINKS => return TooManyLinks,
-        c::ERROR_FILENAME_EXCED_RANGE => return FilenameTooLong,
+        c::ERROR_FILENAME_EXCED_RANGE => return InvalidFilename,
         _ => {}
     }
 
@@ -137,7 +135,7 @@ pub fn unrolled_find_u16s(needle: u16, haystack: &[u16]) -> Option<usize> {
             ($($n:literal,)+) => {
                 $(
                     if start[$n] == needle {
-                        return Some((&start[$n] as *const u16 as usize - ptr as usize) / 2);
+                        return Some(((&start[$n] as *const u16).addr() - ptr.addr()) / 2);
                     }
                 )+
             }
@@ -150,7 +148,7 @@ pub fn unrolled_find_u16s(needle: u16, haystack: &[u16]) -> Option<usize> {
 
     for c in start {
         if *c == needle {
-            return Some((c as *const u16 as usize - ptr as usize) / 2);
+            return Some(((c as *const u16).addr() - ptr.addr()) / 2);
         }
     }
     None
@@ -158,11 +156,17 @@ pub fn unrolled_find_u16s(needle: u16, haystack: &[u16]) -> Option<usize> {
 
 pub fn to_u16s<S: AsRef<OsStr>>(s: S) -> crate::io::Result<Vec<u16>> {
     fn inner(s: &OsStr) -> crate::io::Result<Vec<u16>> {
-        let mut maybe_result: Vec<u16> = s.encode_wide().collect();
+        // Most paths are ASCII, so reserve capacity for as much as there are bytes
+        // in the OsStr plus one for the null-terminating character. We are not
+        // wasting bytes here as paths created by this function are primarily used
+        // in an ephemeral fashion.
+        let mut maybe_result = Vec::with_capacity(s.len() + 1);
+        maybe_result.extend(s.encode_wide());
+
         if unrolled_find_u16s(0, &maybe_result).is_some() {
-            return Err(crate::io::Error::new_const(
+            return Err(crate::io::const_io_error!(
                 ErrorKind::InvalidInput,
-                &"strings passed to WinAPI cannot contain NULs",
+                "strings passed to WinAPI cannot contain NULs",
             ));
         }
         maybe_result.push(0);
@@ -192,6 +196,10 @@ where
 {
     // Start off with a stack buf but then spill over to the heap if we end up
     // needing more space.
+    //
+    // This initial size also works around `GetFullPathNameW` returning
+    // incorrect size hints for some short paths:
+    // https://github.com/dylni/normpath/issues/5
     let mut stack_buf = [0u16; 512];
     let mut heap_buf = Vec::new();
     unsafe {
@@ -223,8 +231,14 @@ where
             } as usize;
             if k == n && c::GetLastError() == c::ERROR_INSUFFICIENT_BUFFER {
                 n *= 2;
-            } else if k >= n {
+            } else if k > n {
                 n = k;
+            } else if k == n {
+                // It is impossible to reach this point.
+                // On success, k is the returned string length excluding the null.
+                // On failure, k is the required buffer length including the null.
+                // Therefore k never equals n.
+                unreachable!();
             } else {
                 return Ok(f2(&buf[..k]));
             }
@@ -284,7 +298,9 @@ pub fn dur2timeout(dur: Duration) -> c::DWORD {
 /// that function for more information on `__fastfail`
 #[allow(unreachable_code)]
 pub fn abort_internal() -> ! {
+    #[allow(unused)]
     const FAST_FAIL_FATAL_APP_EXIT: usize = 7;
+    #[cfg(not(miri))] // inline assembly does not work in Miri
     unsafe {
         cfg_if::cfg_if! {
             if #[cfg(any(target_arch = "x86", target_arch = "x86_64"))] {

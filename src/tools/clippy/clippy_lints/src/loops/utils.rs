@@ -3,17 +3,17 @@ use clippy_utils::{get_parent_expr, is_integer_const, path_to_local, path_to_loc
 use if_chain::if_chain;
 use rustc_ast::ast::{LitIntType, LitKind};
 use rustc_errors::Applicability;
-use rustc_hir::intravisit::{walk_expr, walk_local, walk_pat, walk_stmt, NestedVisitorMap, Visitor};
+use rustc_hir::intravisit::{walk_expr, walk_local, walk_pat, walk_stmt, Visitor};
 use rustc_hir::{BinOpKind, BorrowKind, Expr, ExprKind, HirId, HirIdMap, Local, Mutability, Pat, PatKind, Stmt};
 use rustc_lint::LateContext;
-use rustc_middle::hir::map::Map;
-use rustc_middle::ty::Ty;
+use rustc_middle::hir::nested_filter;
+use rustc_middle::ty::{self, Ty};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_typeck::hir_ty_to_ty;
 use std::iter::Iterator;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 enum IncrementVisitorVarState {
     Initial,  // Not examined yet
     IncrOnce, // Incremented exactly once, may be a loop counter
@@ -50,8 +50,6 @@ impl<'a, 'tcx> IncrementVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for IncrementVisitor<'a, 'tcx> {
-    type Map = Map<'tcx>;
-
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         if self.done {
             return;
@@ -102,9 +100,6 @@ impl<'a, 'tcx> Visitor<'tcx> for IncrementVisitor<'a, 'tcx> {
             walk_expr(self, expr);
         }
     }
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::None
-    }
 }
 
 enum InitializeVisitorState<'hir> {
@@ -151,7 +146,7 @@ impl<'a, 'tcx> InitializeVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
-    type Map = Map<'tcx>;
+    type NestedFilter = nested_filter::OnlyBodies;
 
     fn visit_local(&mut self, l: &'tcx Local<'_>) {
         // Look for declarations of the variable
@@ -254,8 +249,8 @@ impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
         }
     }
 
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::OnlyBodies(self.cx.tcx.hir())
+    fn nested_visit_map(&mut self) -> Self::Map {
+        self.cx.tcx.hir()
     }
 }
 
@@ -283,8 +278,6 @@ pub(super) struct LoopNestVisitor {
 }
 
 impl<'tcx> Visitor<'tcx> for LoopNestVisitor {
-    type Map = Map<'tcx>;
-
     fn visit_stmt(&mut self, stmt: &'tcx Stmt<'_>) {
         if stmt.hir_id == self.hir_id {
             self.nesting = LookFurther;
@@ -323,10 +316,6 @@ impl<'tcx> Visitor<'tcx> for LoopNestVisitor {
         }
         walk_pat(self, pat);
     }
-
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::None
-    }
 }
 
 /// If `arg` was the argument to a `for` loop, return the "cleanest" way of writing the
@@ -343,18 +332,21 @@ pub(super) fn make_iterator_snippet(cx: &LateContext<'_>, arg: &Expr<'_>, applic
     } else {
         // (&x).into_iter() ==> x.iter()
         // (&mut x).into_iter() ==> x.iter_mut()
-        match &arg.kind {
-            ExprKind::AddrOf(BorrowKind::Ref, mutability, arg_inner)
-                if has_iter_method(cx, cx.typeck_results().expr_ty(arg_inner)).is_some() =>
-            {
-                let meth_name = match mutability {
+        let arg_ty = cx.typeck_results().expr_ty_adjusted(arg);
+        match &arg_ty.kind() {
+            ty::Ref(_, inner_ty, mutbl) if has_iter_method(cx, *inner_ty).is_some() => {
+                let method_name = match mutbl {
                     Mutability::Mut => "iter_mut",
                     Mutability::Not => "iter",
                 };
+                let caller = match &arg.kind {
+                    ExprKind::AddrOf(BorrowKind::Ref, _, arg_inner) => arg_inner,
+                    _ => arg,
+                };
                 format!(
                     "{}.{}()",
-                    sugg::Sugg::hir_with_applicability(cx, arg_inner, "_", applic_ref).maybe_par(),
-                    meth_name,
+                    sugg::Sugg::hir_with_applicability(cx, caller, "_", applic_ref).maybe_par(),
+                    method_name,
                 )
             },
             _ => format!(

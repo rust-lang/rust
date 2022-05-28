@@ -20,6 +20,10 @@ impl Hasher for MyHasher {
             self.hash += *byte as u64;
         }
     }
+    fn write_str(&mut self, s: &str) {
+        self.write(s.as_bytes());
+        self.write_u8(0xFF);
+    }
     fn finish(&self) -> u64 {
         self.hash
     }
@@ -145,4 +149,12 @@ fn test_build_hasher_object_safe() {
     use std::collections::hash_map::{DefaultHasher, RandomState};
 
     let _: &dyn BuildHasher<Hasher = DefaultHasher> = &RandomState::new();
+}
+
+// just tests by whether or not this compiles
+fn _build_hasher_default_impl_all_auto_traits<T>() {
+    use std::panic::{RefUnwindSafe, UnwindSafe};
+    fn all_auto_traits<T: Send + Sync + Unpin + UnwindSafe + RefUnwindSafe>() {}
+
+    all_auto_traits::<std::hash::BuildHasherDefault<T>>();
 }

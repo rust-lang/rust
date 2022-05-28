@@ -1,10 +1,12 @@
+//! Greatest lower bound. See [`lattice`].
+
 use super::combine::CombineFields;
 use super::lattice::{self, LatticeDir};
 use super::InferCtxt;
 use super::Subtype;
 
 use crate::infer::combine::ConstEquateRelation;
-use crate::traits::ObligationCause;
+use crate::traits::{ObligationCause, PredicateObligation};
 use rustc_middle::ty::relate::{Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 
@@ -78,9 +80,9 @@ impl<'tcx> TypeRelation<'tcx> for Glb<'_, '_, 'tcx> {
 
     fn consts(
         &mut self,
-        a: &'tcx ty::Const<'tcx>,
-        b: &'tcx ty::Const<'tcx>,
-    ) -> RelateResult<'tcx, &'tcx ty::Const<'tcx>> {
+        a: ty::Const<'tcx>,
+        b: ty::Const<'tcx>,
+    ) -> RelateResult<'tcx, ty::Const<'tcx>> {
         self.fields.infcx.super_combine_consts(self, a, b)
     }
 
@@ -111,16 +113,24 @@ impl<'combine, 'infcx, 'tcx> LatticeDir<'infcx, 'tcx> for Glb<'combine, 'infcx, 
         &self.fields.trace.cause
     }
 
+    fn add_obligations(&mut self, obligations: Vec<PredicateObligation<'tcx>>) {
+        self.fields.obligations.extend(obligations)
+    }
+
     fn relate_bound(&mut self, v: Ty<'tcx>, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, ()> {
         let mut sub = self.fields.sub(self.a_is_expected);
         sub.relate(v, a)?;
         sub.relate(v, b)?;
         Ok(())
     }
+
+    fn define_opaque_types(&self) -> bool {
+        self.fields.define_opaque_types
+    }
 }
 
 impl<'tcx> ConstEquateRelation<'tcx> for Glb<'_, '_, 'tcx> {
-    fn const_equate_obligation(&mut self, a: &'tcx ty::Const<'tcx>, b: &'tcx ty::Const<'tcx>) {
+    fn const_equate_obligation(&mut self, a: ty::Const<'tcx>, b: ty::Const<'tcx>) {
         self.fields.add_const_equate_obligation(self.a_is_expected, a, b);
     }
 }

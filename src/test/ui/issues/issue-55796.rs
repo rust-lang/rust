@@ -1,4 +1,6 @@
-// ignore-compare-mode-chalk
+// revisions: base nll
+// ignore-compare-mode-nll
+//[nll] compile-flags: -Z borrowck=mir
 
 pub trait EdgeTrait<N> {
     fn target(&self) -> N;
@@ -16,12 +18,14 @@ pub trait Graph<'a> {
 
     fn out_neighbors(&'a self, u: &Self::Node) -> Box<dyn Iterator<Item = Self::Node>> {
         Box::new(self.out_edges(u).map(|e| e.target()))
-//~^ ERROR cannot infer
+        //[base]~^ ERROR cannot infer
+        //[nll]~^^ ERROR lifetime may not live long enough
     }
 
     fn in_neighbors(&'a self, u: &Self::Node) -> Box<dyn Iterator<Item = Self::Node>> {
         Box::new(self.in_edges(u).map(|e| e.target()))
-//~^ ERROR cannot infer
+        //[base]~^ ERROR cannot infer
+        //[nll]~^^ ERROR lifetime may not live long enough
     }
 }
 

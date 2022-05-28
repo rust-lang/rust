@@ -10,7 +10,7 @@ use rustc_session::Session;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
 
-crate struct Expander;
+pub(crate) struct Expander;
 
 impl MultiItemModifier for Expander {
     fn expand(
@@ -64,7 +64,12 @@ impl MultiItemModifier for Expander {
                 match &mut resolutions[..] {
                     [] => {}
                     [(_, first_item, _), others @ ..] => {
-                        *first_item = cfg_eval(sess, features, item.clone());
+                        *first_item = cfg_eval(
+                            sess,
+                            features,
+                            item.clone(),
+                            ecx.current_expansion.lint_node_id,
+                        );
                         for (_, item, _) in others {
                             *item = first_item.clone();
                         }
@@ -90,6 +95,7 @@ fn dummy_annotatable() -> Annotatable {
         bounds: Default::default(),
         is_placeholder: false,
         kind: GenericParamKind::Lifetime,
+        colon_span: None,
     })
 }
 

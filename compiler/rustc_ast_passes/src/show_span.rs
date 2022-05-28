@@ -57,9 +57,8 @@ impl<'a> Visitor<'a> for ShowSpanVisitor<'a> {
 }
 
 pub fn run(span_diagnostic: &rustc_errors::Handler, mode: &str, krate: &ast::Crate) {
-    let mode = match mode.parse().ok() {
-        Some(mode) => mode,
-        None => return,
+    let Ok(mode) = mode.parse() else {
+        return;
     };
     let mut v = ShowSpanVisitor { span_diagnostic, mode };
     visit::walk_crate(&mut v, krate);

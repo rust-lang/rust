@@ -1,64 +1,76 @@
 error: implicitly cloning a `Vec` by calling `to_owned` on its dereferenced type
-  --> $DIR/implicit_clone.rs:65:17
+  --> $DIR/implicit_clone.rs:65:13
    |
 LL |     let _ = vec.to_owned();
-   |                 ^^^^^^^^ help: consider using: `clone`
+   |             ^^^^^^^^^^^^^^ help: consider using: `vec.clone()`
    |
    = note: `-D clippy::implicit-clone` implied by `-D warnings`
 
 error: implicitly cloning a `Vec` by calling `to_vec` on its dereferenced type
-  --> $DIR/implicit_clone.rs:66:17
+  --> $DIR/implicit_clone.rs:66:13
    |
 LL |     let _ = vec.to_vec();
-   |                 ^^^^^^ help: consider using: `clone`
+   |             ^^^^^^^^^^^^ help: consider using: `vec.clone()`
 
 error: implicitly cloning a `Vec` by calling `to_owned` on its dereferenced type
-  --> $DIR/implicit_clone.rs:70:21
+  --> $DIR/implicit_clone.rs:70:13
    |
 LL |     let _ = vec_ref.to_owned();
-   |                     ^^^^^^^^ help: consider using: `clone`
+   |             ^^^^^^^^^^^^^^^^^^ help: consider using: `vec_ref.clone()`
 
 error: implicitly cloning a `Vec` by calling `to_vec` on its dereferenced type
-  --> $DIR/implicit_clone.rs:71:21
+  --> $DIR/implicit_clone.rs:71:13
    |
 LL |     let _ = vec_ref.to_vec();
-   |                     ^^^^^^ help: consider using: `clone`
+   |             ^^^^^^^^^^^^^^^^ help: consider using: `vec_ref.clone()`
 
 error: implicitly cloning a `String` by calling `to_owned` on its dereferenced type
-  --> $DIR/implicit_clone.rs:83:17
+  --> $DIR/implicit_clone.rs:83:13
    |
 LL |     let _ = str.to_owned();
-   |                 ^^^^^^^^ help: consider using: `clone`
+   |             ^^^^^^^^^^^^^^ help: consider using: `str.clone()`
 
 error: implicitly cloning a `Kitten` by calling `to_owned` on its dereferenced type
-  --> $DIR/implicit_clone.rs:87:20
+  --> $DIR/implicit_clone.rs:87:13
    |
 LL |     let _ = kitten.to_owned();
-   |                    ^^^^^^^^ help: consider using: `clone`
+   |             ^^^^^^^^^^^^^^^^^ help: consider using: `kitten.clone()`
 
 error: implicitly cloning a `PathBuf` by calling `to_owned` on its dereferenced type
-  --> $DIR/implicit_clone.rs:97:21
+  --> $DIR/implicit_clone.rs:97:13
    |
 LL |     let _ = pathbuf.to_owned();
-   |                     ^^^^^^^^ help: consider using: `clone`
+   |             ^^^^^^^^^^^^^^^^^^ help: consider using: `pathbuf.clone()`
 
 error: implicitly cloning a `PathBuf` by calling `to_path_buf` on its dereferenced type
-  --> $DIR/implicit_clone.rs:98:21
+  --> $DIR/implicit_clone.rs:98:13
    |
 LL |     let _ = pathbuf.to_path_buf();
-   |                     ^^^^^^^^^^^ help: consider using: `clone`
+   |             ^^^^^^^^^^^^^^^^^^^^^ help: consider using: `pathbuf.clone()`
 
 error: implicitly cloning a `OsString` by calling `to_owned` on its dereferenced type
-  --> $DIR/implicit_clone.rs:101:23
+  --> $DIR/implicit_clone.rs:101:13
    |
 LL |     let _ = os_string.to_owned();
-   |                       ^^^^^^^^ help: consider using: `clone`
+   |             ^^^^^^^^^^^^^^^^^^^^ help: consider using: `os_string.clone()`
 
 error: implicitly cloning a `OsString` by calling `to_os_string` on its dereferenced type
-  --> $DIR/implicit_clone.rs:102:23
+  --> $DIR/implicit_clone.rs:102:13
    |
 LL |     let _ = os_string.to_os_string();
-   |                       ^^^^^^^^^^^^ help: consider using: `clone`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `os_string.clone()`
 
-error: aborting due to 10 previous errors
+error: implicitly cloning a `PathBuf` by calling `to_path_buf` on its dereferenced type
+  --> $DIR/implicit_clone.rs:113:13
+   |
+LL |     let _ = pathbuf_ref.to_path_buf();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `(*pathbuf_ref).clone()`
+
+error: implicitly cloning a `PathBuf` by calling `to_path_buf` on its dereferenced type
+  --> $DIR/implicit_clone.rs:116:13
+   |
+LL |     let _ = pathbuf_ref.to_path_buf();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `(**pathbuf_ref).clone()`
+
+error: aborting due to 12 previous errors
 

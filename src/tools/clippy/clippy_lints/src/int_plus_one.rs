@@ -52,7 +52,7 @@ enum Side {
 }
 
 impl IntPlusOne {
-    #[allow(clippy::cast_sign_loss)]
+    #[expect(clippy::cast_sign_loss)]
     fn check_lit(lit: &Lit, target_value: i128) -> bool {
         if let LitKind::Int(value, ..) = lit.kind {
             return value == (target_value as u128);

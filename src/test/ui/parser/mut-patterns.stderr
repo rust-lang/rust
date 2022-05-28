@@ -56,10 +56,10 @@ error: expected identifier, found reserved keyword `yield`
 LL |     let mut mut yield(become, await) = r#yield(0, 0);
    |                 ^^^^^ expected identifier, found reserved keyword
    |
-help: you can escape reserved keywords to use them as identifiers
+help: escape `yield` to use it as an identifier
    |
 LL |     let mut mut r#yield(become, await) = r#yield(0, 0);
-   |                 ~~~~~~~
+   |                 ++
 
 error: expected identifier, found reserved keyword `become`
   --> $DIR/mut-patterns.rs:28:23
@@ -67,10 +67,10 @@ error: expected identifier, found reserved keyword `become`
 LL |     let mut mut yield(become, await) = r#yield(0, 0);
    |                       ^^^^^^ expected identifier, found reserved keyword
    |
-help: you can escape reserved keywords to use them as identifiers
+help: escape `become` to use it as an identifier
    |
 LL |     let mut mut yield(r#become, await) = r#yield(0, 0);
-   |                       ~~~~~~~~
+   |                       ++
 
 error: expected identifier, found keyword `await`
   --> $DIR/mut-patterns.rs:28:31
@@ -78,10 +78,10 @@ error: expected identifier, found keyword `await`
 LL |     let mut mut yield(become, await) = r#yield(0, 0);
    |                               ^^^^^ expected identifier, found keyword
    |
-help: you can escape reserved keywords to use them as identifiers
+help: escape `await` to use it as an identifier
    |
 LL |     let mut mut yield(become, r#await) = r#yield(0, 0);
-   |                               ~~~~~~~
+   |                               ++
 
 error: `mut` must be attached to each individual binding
   --> $DIR/mut-patterns.rs:28:9

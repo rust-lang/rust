@@ -14,8 +14,8 @@ pub enum E {
 
 pub enum E2 {
     // This can be changed once https://github.com/rust-lang/rustfmt/issues/4854 is fixed
-// Expand as needed, numbers should be ascending according to the stage
-// through the inclusion pipeline, or according to the descriptions
+    // Expand as needed, numbers should be ascending according to the stage
+    // through the inclusion pipeline, or according to the descriptions
 }
 
 pub enum E3 {
@@ -42,8 +42,8 @@ pub struct S {
 
 pub struct S2 {
     // This can be changed once https://github.com/rust-lang/rustfmt/issues/4854 is fixed
-// Expand as needed, numbers should be ascending according to the stage
-// through the inclusion pipeline, or according to the descriptions
+    // Expand as needed, numbers should be ascending according to the stage
+    // through the inclusion pipeline, or according to the descriptions
 }
 
 pub struct S3 {

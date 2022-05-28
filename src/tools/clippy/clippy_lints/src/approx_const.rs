@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::{meets_msrv, msrvs};
 use rustc_ast::ast::{FloatTy, LitFloatType, LitKind};
 use rustc_hir::{Expr, ExprKind};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_lint::{LateContext, LateLintPass};
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::symbol;
@@ -87,9 +87,7 @@ impl ApproxConstant {
         let s = s.as_str();
         if s.parse::<f64>().is_ok() {
             for &(constant, name, min_digits, msrv) in &KNOWN_CONSTS {
-                if is_approx_const(constant, s, min_digits)
-                    && msrv.as_ref().map_or(true, |msrv| meets_msrv(self.msrv.as_ref(), msrv))
-                {
+                if is_approx_const(constant, s, min_digits) && msrv.map_or(true, |msrv| meets_msrv(self.msrv, msrv)) {
                     span_lint_and_help(
                         cx,
                         APPROX_CONSTANT,

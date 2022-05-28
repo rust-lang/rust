@@ -21,7 +21,7 @@ use crate::clean::GenericArgs as PP;
 use crate::clean::WherePredicate as WP;
 use crate::core::DocContext;
 
-crate fn where_clauses(cx: &DocContext<'_>, clauses: Vec<WP>) -> Vec<WP> {
+pub(crate) fn where_clauses(cx: &DocContext<'_>, clauses: Vec<WP>) -> Vec<WP> {
     // First, partition the where clause into its separate components.
     //
     // We use `FxIndexMap` so that the insertion order is preserved to prevent messing up to
@@ -51,19 +51,11 @@ crate fn where_clauses(cx: &DocContext<'_>, clauses: Vec<WP>) -> Vec<WP> {
     // Look for equality predicates on associated types that can be merged into
     // general bound predicates
     equalities.retain(|&(ref lhs, ref rhs)| {
-        let (self_, trait_did, name) = if let Some(p) = lhs.projection() {
-            p
-        } else {
+        let Some((self_, trait_did, name)) = lhs.projection() else {
             return true;
         };
-        let generic = match self_ {
-            clean::Generic(s) => s,
-            _ => return true,
-        };
-        let (bounds, _) = match params.get_mut(generic) {
-            Some(bound) => bound,
-            None => return true,
-        };
+        let clean::Generic(generic) = self_ else { return true };
+        let Some((bounds, _)) = params.get_mut(generic) else { return true };
 
         merge_bounds(cx, bounds, trait_did, name, rhs)
     });
@@ -87,12 +79,12 @@ crate fn where_clauses(cx: &DocContext<'_>, clauses: Vec<WP>) -> Vec<WP> {
     clauses
 }
 
-crate fn merge_bounds(
+pub(crate) fn merge_bounds(
     cx: &clean::DocContext<'_>,
     bounds: &mut Vec<clean::GenericBound>,
     trait_did: DefId,
-    name: Symbol,
-    rhs: &clean::Type,
+    assoc: clean::PathSegment,
+    rhs: &clean::Term,
 ) -> bool {
     !bounds.iter_mut().any(|b| {
         let trait_ref = match *b {
@@ -109,15 +101,15 @@ crate fn merge_bounds(
         match last.args {
             PP::AngleBracketed { ref mut bindings, .. } => {
                 bindings.push(clean::TypeBinding {
-                    name,
-                    kind: clean::TypeBindingKind::Equality { ty: rhs.clone() },
+                    assoc: assoc.clone(),
+                    kind: clean::TypeBindingKind::Equality { term: rhs.clone() },
                 });
             }
             PP::Parenthesized { ref mut output, .. } => match output {
-                Some(o) => assert_eq!(o.as_ref(), rhs),
+                Some(o) => assert_eq!(&clean::Term::Type(o.as_ref().clone()), rhs),
                 None => {
-                    if *rhs != clean::Type::Tuple(Vec::new()) {
-                        *output = Some(Box::new(rhs.clone()));
+                    if *rhs != clean::Term::Type(clean::Type::Tuple(Vec::new())) {
+                        *output = Some(Box::new(rhs.ty().unwrap().clone()));
                     }
                 }
             },

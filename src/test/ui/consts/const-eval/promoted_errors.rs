@@ -15,20 +15,25 @@ const fn overflow() -> u32 {
     0 - 1
     //[opt_with_overflow_checks,noopt]~^ WARN any use of this value will cause an error
     //[opt_with_overflow_checks,noopt]~| WARN this was previously accepted by the compiler
+    //~^^^ WARN this arithmetic operation will overflow
 }
 const fn div_by_zero1() -> i32 {
     1 / 0
     //[opt]~^ WARN any use of this value will cause an error
     //[opt]~| WARN this was previously accepted by the compiler but is being phased out
+    //~^^^ WARN this operation will panic at runtime
 }
 const fn div_by_zero2() -> i32 {
     1 / (1 - 1)
+    //~^ WARN this operation will panic at runtime
 }
 const fn div_by_zero3() -> i32 {
     1 / (false as i32)
+    //~^ WARN this operation will panic at runtime
 }
 const fn oob() -> i32 {
     [1, 2, 3][4]
+    //~^ WARN this operation will panic at runtime
 }
 
 // An unused constant containing failing promoteds.

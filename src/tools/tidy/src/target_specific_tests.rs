@@ -20,7 +20,7 @@ fn iter_header<'a>(contents: &'a str, it: &mut dyn FnMut(Option<&'a str>, &'a st
                 let lncfg = &ln[open_brace + 1..close_brace];
                 it(Some(lncfg), ln[(close_brace + 1)..].trim_start());
             } else {
-                panic!("malformed condition directive: expected `//[foo]`, found `{}`", ln)
+                panic!("malformed condition directive: expected `//[foo]`, found `{ln}`")
             }
         } else if ln.starts_with(COMMENT) {
             it(None, ln[COMMENT.len()..].trim_start());
@@ -61,7 +61,7 @@ pub fn check(path: &Path, bad: &mut bool) {
                             let info = header_map.entry(cfg).or_insert(RevisionInfo::default());
                             info.target_arch.replace(arch);
                         } else {
-                            eprintln!("{}: seems to have a malformed --target value", file);
+                            eprintln!("{file}: seems to have a malformed --target value");
                             *bad = true;
                         }
                     }

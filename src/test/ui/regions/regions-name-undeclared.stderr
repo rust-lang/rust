@@ -1,38 +1,17 @@
-error[E0261]: use of undeclared lifetime name `'a`
-  --> $DIR/regions-name-undeclared.rs:28:13
-   |
-LL |     enum E {
-   |           - help: consider introducing lifetime `'a` here: `<'a>`
-LL |         E1(&'a isize)
-   |             ^^ undeclared lifetime
-   |
-   = help: if you want to experiment with in-band lifetime bindings, add `#![feature(in_band_lifetimes)]` to the crate attributes
-
-error[E0261]: use of undeclared lifetime name `'a`
-  --> $DIR/regions-name-undeclared.rs:31:13
-   |
-LL |     struct S {
-   |             - help: consider introducing lifetime `'a` here: `<'a>`
-LL |         f: &'a isize
-   |             ^^ undeclared lifetime
-   |
-   = help: if you want to experiment with in-band lifetime bindings, add `#![feature(in_band_lifetimes)]` to the crate attributes
-
 error[E0261]: use of undeclared lifetime name `'b`
   --> $DIR/regions-name-undeclared.rs:16:24
    |
 LL |     fn m4(&self, arg: &'b isize) { }
    |                        ^^ undeclared lifetime
    |
-   = help: if you want to experiment with in-band lifetime bindings, add `#![feature(in_band_lifetimes)]` to the crate attributes
-help: consider introducing lifetime `'b` here
-   |
-LL | impl<'b, 'a> Foo<'a> {
-   |      +++
 help: consider introducing lifetime `'b` here
    |
 LL |     fn m4<'b>(&self, arg: &'b isize) { }
    |          ++++
+help: consider introducing lifetime `'b` here
+   |
+LL | impl<'b, 'a> Foo<'a> {
+   |      +++
 
 error[E0261]: use of undeclared lifetime name `'b`
   --> $DIR/regions-name-undeclared.rs:17:12
@@ -40,15 +19,14 @@ error[E0261]: use of undeclared lifetime name `'b`
 LL |     fn m5(&'b self) { }
    |            ^^ undeclared lifetime
    |
-   = help: if you want to experiment with in-band lifetime bindings, add `#![feature(in_band_lifetimes)]` to the crate attributes
-help: consider introducing lifetime `'b` here
-   |
-LL | impl<'b, 'a> Foo<'a> {
-   |      +++
 help: consider introducing lifetime `'b` here
    |
 LL |     fn m5<'b>(&'b self) { }
    |          ++++
+help: consider introducing lifetime `'b` here
+   |
+LL | impl<'b, 'a> Foo<'a> {
+   |      +++
 
 error[E0261]: use of undeclared lifetime name `'b`
   --> $DIR/regions-name-undeclared.rs:18:27
@@ -56,35 +34,58 @@ error[E0261]: use of undeclared lifetime name `'b`
 LL |     fn m6(&self, arg: Foo<'b>) { }
    |                           ^^ undeclared lifetime
    |
-   = help: if you want to experiment with in-band lifetime bindings, add `#![feature(in_band_lifetimes)]` to the crate attributes
-help: consider introducing lifetime `'b` here
-   |
-LL | impl<'b, 'a> Foo<'a> {
-   |      +++
 help: consider introducing lifetime `'b` here
    |
 LL |     fn m6<'b>(&self, arg: Foo<'b>) { }
    |          ++++
+help: consider introducing lifetime `'b` here
+   |
+LL | impl<'b, 'a> Foo<'a> {
+   |      +++
 
-error[E0261]: use of undeclared lifetime name `'a`
+error[E0401]: can't use generic parameters from outer item
   --> $DIR/regions-name-undeclared.rs:26:22
    |
+LL | fn bar<'a>(x: &'a isize) {
+   |        -- lifetime parameter from outer item
+...
 LL |     type X = Option<&'a isize>;
-   |           -          ^^ undeclared lifetime
+   |           -          ^^ use of generic parameter from outer item
    |           |
    |           help: consider introducing lifetime `'a` here: `<'a>`
-   |
-   = help: if you want to experiment with in-band lifetime bindings, add `#![feature(in_band_lifetimes)]` to the crate attributes
 
-error[E0261]: use of undeclared lifetime name `'a`
+error[E0401]: can't use generic parameters from outer item
+  --> $DIR/regions-name-undeclared.rs:28:13
+   |
+LL | fn bar<'a>(x: &'a isize) {
+   |        -- lifetime parameter from outer item
+...
+LL |     enum E {
+   |           - help: consider introducing lifetime `'a` here: `<'a>`
+LL |         E1(&'a isize)
+   |             ^^ use of generic parameter from outer item
+
+error[E0401]: can't use generic parameters from outer item
+  --> $DIR/regions-name-undeclared.rs:31:13
+   |
+LL | fn bar<'a>(x: &'a isize) {
+   |        -- lifetime parameter from outer item
+...
+LL |     struct S {
+   |             - help: consider introducing lifetime `'a` here: `<'a>`
+LL |         f: &'a isize
+   |             ^^ use of generic parameter from outer item
+
+error[E0401]: can't use generic parameters from outer item
   --> $DIR/regions-name-undeclared.rs:33:14
    |
+LL | fn bar<'a>(x: &'a isize) {
+   |        -- lifetime parameter from outer item
+...
 LL |     fn f(a: &'a isize) { }
-   |         -    ^^ undeclared lifetime
+   |         -    ^^ use of generic parameter from outer item
    |         |
    |         help: consider introducing lifetime `'a` here: `<'a>`
-   |
-   = help: if you want to experiment with in-band lifetime bindings, add `#![feature(in_band_lifetimes)]` to the crate attributes
 
 error[E0261]: use of undeclared lifetime name `'a`
   --> $DIR/regions-name-undeclared.rs:41:17
@@ -93,8 +94,6 @@ LL | fn fn_types(a: &'a isize,
    |            -    ^^ undeclared lifetime
    |            |
    |            help: consider introducing lifetime `'a` here: `<'a>`
-   |
-   = help: if you want to experiment with in-band lifetime bindings, add `#![feature(in_band_lifetimes)]` to the crate attributes
 
 error[E0261]: use of undeclared lifetime name `'b`
   --> $DIR/regions-name-undeclared.rs:43:36
@@ -103,15 +102,14 @@ LL | ...                   &'b isize,
    |                        ^^ undeclared lifetime
    |
    = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
-   = help: if you want to experiment with in-band lifetime bindings, add `#![feature(in_band_lifetimes)]` to the crate attributes
+help: consider making the bound lifetime-generic with a new `'b` lifetime
+   |
+LL |             b: Box<dyn for<'b, 'a> FnOnce(&'a isize,
+   |                            +++
 help: consider introducing lifetime `'b` here
    |
 LL | fn fn_types<'b>(a: &'a isize,
    |            ++++
-help: consider making the bound lifetime-generic with a new `'b` lifetime
-   |
-LL |             b: Box<dyn for<'a, 'b> FnOnce(&'a isize,
-   |                              ++++
 
 error[E0261]: use of undeclared lifetime name `'b`
   --> $DIR/regions-name-undeclared.rs:46:36
@@ -119,16 +117,14 @@ error[E0261]: use of undeclared lifetime name `'b`
 LL | ...                   &'b isize)>,
    |                        ^^ undeclared lifetime
    |
-   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
-   = help: if you want to experiment with in-band lifetime bindings, add `#![feature(in_band_lifetimes)]` to the crate attributes
+help: consider making the bound lifetime-generic with a new `'b` lifetime
+   |
+LL |             b: Box<dyn for<'b, 'a> FnOnce(&'a isize,
+   |                            +++
 help: consider introducing lifetime `'b` here
    |
 LL | fn fn_types<'b>(a: &'a isize,
    |            ++++
-help: consider making the bound lifetime-generic with a new `'b` lifetime
-   |
-LL |             b: Box<dyn for<'a, 'b> FnOnce(&'a isize,
-   |                              ++++
 
 error[E0261]: use of undeclared lifetime name `'a`
   --> $DIR/regions-name-undeclared.rs:47:17
@@ -138,8 +134,6 @@ LL | fn fn_types(a: &'a isize,
 ...
 LL |             c: &'a isize)
    |                 ^^ undeclared lifetime
-   |
-   = help: if you want to experiment with in-band lifetime bindings, add `#![feature(in_band_lifetimes)]` to the crate attributes
 
 error[E0261]: use of undeclared lifetime name `'a`
   --> $DIR/regions-name-undeclared.rs:53:31
@@ -147,16 +141,16 @@ error[E0261]: use of undeclared lifetime name `'a`
 LL |     async fn buggy(&self) -> &'a str {
    |                               ^^ undeclared lifetime
    |
-   = help: if you want to experiment with in-band lifetime bindings, add `#![feature(in_band_lifetimes)]` to the crate attributes
-help: consider introducing lifetime `'a` here
-   |
-LL | impl<'a> Bug {
-   |     ++++
 help: consider introducing lifetime `'a` here
    |
 LL |     async fn buggy<'a>(&self) -> &'a str {
    |                   ++++
+help: consider introducing lifetime `'a` here
+   |
+LL | impl<'a> Bug {
+   |     ++++
 
 error: aborting due to 12 previous errors
 
-For more information about this error, try `rustc --explain E0261`.
+Some errors have detailed explanations: E0261, E0401.
+For more information about an error, try `rustc --explain E0261`.

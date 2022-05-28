@@ -81,7 +81,7 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
 
         for (_, data) in traversal::preorder(body) {
             if let Some(ref term) = data.terminator {
-                for &tgt in term.successors() {
+                for tgt in term.successors() {
                     pred_count[tgt] += 1;
                 }
             }
@@ -172,9 +172,8 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
         let mut terminators: SmallVec<[_; 1]> = Default::default();
         let mut current = *start;
         while let Some(terminator) = self.take_terminator_if_simple_goto(current) {
-            let target = match terminator {
-                Terminator { kind: TerminatorKind::Goto { target }, .. } => target,
-                _ => unreachable!(),
+            let Terminator { kind: TerminatorKind::Goto { target }, .. } = terminator else {
+                unreachable!();
             };
             terminators.push((current, terminator));
             current = target;
@@ -182,9 +181,8 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
         let last = current;
         *start = last;
         while let Some((current, mut terminator)) = terminators.pop() {
-            let target = match terminator {
-                Terminator { kind: TerminatorKind::Goto { ref mut target }, .. } => target,
-                _ => unreachable!(),
+            let Terminator { kind: TerminatorKind::Goto { ref mut target }, .. } = terminator else {
+                unreachable!();
             };
             *changed |= *target != last;
             *target = last;
@@ -237,8 +235,8 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
         };
 
         let first_succ = {
-            if let Some(&first_succ) = terminator.successors().next() {
-                if terminator.successors().all(|s| *s == first_succ) {
+            if let Some(first_succ) = terminator.successors().next() {
+                if terminator.successors().all(|s| s == first_succ) {
                     let count = terminator.successors().count();
                     self.pred_count[first_succ] -= (count - 1) as u32;
                     first_succ
@@ -303,7 +301,7 @@ pub fn remove_dead_blocks<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
 /// evaluation: `if false { ... }`.
 ///
 /// Those statements are bypassed by redirecting paths in the CFG around the
-/// `dead blocks`; but with `-Z instrument-coverage`, the dead blocks usually
+/// `dead blocks`; but with `-C instrument-coverage`, the dead blocks usually
 /// include `Coverage` statements representing the Rust source code regions to
 /// be counted at runtime. Without these `Coverage` statements, the regions are
 /// lost, and the Rust source code will show no coverage information.
@@ -483,8 +481,7 @@ impl UsedLocals {
 impl<'tcx> Visitor<'tcx> for UsedLocals {
     fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
         match statement.kind {
-            StatementKind::LlvmInlineAsm(..)
-            | StatementKind::CopyNonOverlapping(..)
+            StatementKind::CopyNonOverlapping(..)
             | StatementKind::Retag(..)
             | StatementKind::Coverage(..)
             | StatementKind::FakeRead(..)
@@ -501,7 +498,8 @@ impl<'tcx> Visitor<'tcx> for UsedLocals {
                 self.visit_rvalue(rvalue, location);
             }
 
-            StatementKind::SetDiscriminant { ref place, variant_index: _ } => {
+            StatementKind::SetDiscriminant { ref place, variant_index: _ }
+            | StatementKind::Deinit(ref place) => {
                 self.visit_lhs(place, location);
             }
         }
@@ -537,9 +535,8 @@ fn remove_unused_definitions(used_locals: &mut UsedLocals, body: &mut Body<'_>) 
                     }
                     StatementKind::Assign(box (place, _)) => used_locals.is_used(place.local),
 
-                    StatementKind::SetDiscriminant { ref place, .. } => {
-                        used_locals.is_used(place.local)
-                    }
+                    StatementKind::SetDiscriminant { ref place, .. }
+                    | StatementKind::Deinit(ref place) => used_locals.is_used(place.local),
                     _ => true,
                 };
 

@@ -208,11 +208,9 @@ pub unsafe trait GlobalAlloc {
     ///
     /// If this returns a non-null pointer, then ownership of the memory block
     /// referenced by `ptr` has been transferred to this allocator.
-    /// The memory may or may not have been deallocated,
-    /// and should be considered unusable (unless of course it was
-    /// transferred back to the caller again via the return value of
-    /// this method). The new memory block is allocated with `layout`, but
-    /// with the `size` updated to `new_size`. This new layout should be
+    /// The memory may or may not have been deallocated, and should be
+    /// considered unusable. The new memory block is allocated with `layout`,
+    /// but with the `size` updated to `new_size`. This new layout should be
     /// used when deallocating the new memory block with `dealloc`. The range
     /// `0..min(layout.size(), new_size)` of the new memory block is
     /// guaranteed to have the same values as the original block.

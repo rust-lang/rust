@@ -1,5 +1,10 @@
 #![warn(clippy::modulo_arithmetic)]
-#![allow(clippy::no_effect, clippy::unnecessary_operation, clippy::modulo_one)]
+#![allow(
+    clippy::no_effect,
+    clippy::unnecessary_operation,
+    clippy::modulo_one,
+    clippy::identity_op
+)]
 
 fn main() {
     // Lint when both sides are const and of the opposite sign

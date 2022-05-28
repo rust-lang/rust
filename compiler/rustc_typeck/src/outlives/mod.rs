@@ -9,7 +9,7 @@ use rustc_span::Span;
 
 mod explicit;
 mod implicit_infer;
-crate mod outlives_bounds;
+pub(crate) mod outlives_bounds;
 /// Code to write unit test for outlives.
 pub mod test;
 mod utils;
@@ -105,14 +105,14 @@ fn inferred_outlives_crate(tcx: TyCtxt<'_>, (): ()) -> CratePredicatesMap<'_> {
                     match kind1.unpack() {
                         GenericArgKind::Type(ty1) => Some((
                             ty::Binder::dummy(ty::PredicateKind::TypeOutlives(
-                                ty::OutlivesPredicate(ty1, region2),
+                                ty::OutlivesPredicate(ty1, *region2),
                             ))
                             .to_predicate(tcx),
                             span,
                         )),
                         GenericArgKind::Lifetime(region1) => Some((
                             ty::Binder::dummy(ty::PredicateKind::RegionOutlives(
-                                ty::OutlivesPredicate(region1, region2),
+                                ty::OutlivesPredicate(region1, *region2),
                             ))
                             .to_predicate(tcx),
                             span,

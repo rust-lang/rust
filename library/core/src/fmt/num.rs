@@ -317,10 +317,10 @@ macro_rules! impl_Exp {
                         }
                         (fmt_prec.saturating_sub(prec), prec.saturating_sub(fmt_prec))
                     }
-                    None => (0,0)
+                    None => (0, 0)
                 };
                 for _ in 1..subtracted_precision {
-                    n/=10;
+                    n /= 10;
                     exponent += 1;
                 }
                 if subtracted_precision != 0 {
@@ -392,7 +392,7 @@ macro_rules! impl_Exp {
             // SAFETY: In either case, `exp_buf` is written within bounds and `exp_ptr[..len]`
             // is contained within `exp_buf` since `len <= 3`.
             let exp_slice = unsafe {
-                *exp_ptr.offset(0) = if upper {b'E'} else {b'e'};
+                *exp_ptr.offset(0) = if upper { b'E' } else { b'e' };
                 let len = if exponent < 10 {
                     *exp_ptr.offset(1) = (exponent as u8) + b'0';
                     2

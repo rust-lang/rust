@@ -1,4 +1,3 @@
-use crate::convert::{TryFrom, TryInto};
 use crate::fmt;
 use crate::io;
 use crate::mem;
@@ -23,9 +22,9 @@ impl Command {
         let envp = self.capture_env();
 
         if self.saw_nul() {
-            return Err(io::Error::new_const(
+            return Err(io::const_io_error!(
                 io::ErrorKind::InvalidInput,
-                &"nul byte found in provided data",
+                "nul byte found in provided data",
             ));
         }
 
@@ -38,9 +37,9 @@ impl Command {
 
     pub fn exec(&mut self, default: Stdio) -> io::Error {
         if self.saw_nul() {
-            return io::Error::new_const(
+            return io::const_io_error!(
                 io::ErrorKind::InvalidInput,
-                &"nul byte found in provided data",
+                "nul byte found in provided data",
             );
         }
 
@@ -186,9 +185,9 @@ impl Process {
             ))?;
         }
         if actual != 1 {
-            return Err(io::Error::new_const(
+            return Err(io::const_io_error!(
                 io::ErrorKind::InvalidData,
-                &"Failed to get exit status of process",
+                "Failed to get exit status of process",
             ));
         }
         Ok(ExitStatus(proc_info.return_code))
@@ -211,7 +210,7 @@ impl Process {
                     return Ok(None);
                 }
                 _ => {
-                    panic!("Failed to wait on process handle: {}", status);
+                    panic!("Failed to wait on process handle: {status}");
                 }
             }
             zx_cvt(zx_object_get_info(
@@ -224,9 +223,9 @@ impl Process {
             ))?;
         }
         if actual != 1 {
-            return Err(io::Error::new_const(
+            return Err(io::const_io_error!(
                 io::ErrorKind::InvalidData,
-                &"Failed to get exit status of process",
+                "Failed to get exit status of process",
             ));
         }
         Ok(Some(ExitStatus(proc_info.return_code)))

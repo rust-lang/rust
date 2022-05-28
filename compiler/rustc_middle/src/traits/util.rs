@@ -4,7 +4,7 @@ use crate::ty::{PolyTraitRef, TyCtxt};
 
 /// Given a PolyTraitRef, get the PolyTraitRefs of the trait's (transitive) supertraits.
 ///
-/// A simplfied version of the same function at `rustc_infer::traits::util::supertraits`.
+/// A simplified version of the same function at `rustc_infer::traits::util::supertraits`.
 pub fn supertraits<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_ref: PolyTraitRef<'tcx>,

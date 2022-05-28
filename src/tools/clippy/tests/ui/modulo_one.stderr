@@ -1,18 +1,18 @@
-error: this arithmetic operation will overflow
+error: this operation will panic at runtime
   --> $DIR/modulo_one.rs:11:5
    |
 LL |     i32::MIN % (-1); // also caught by rustc
    |     ^^^^^^^^^^^^^^^ attempt to compute the remainder of `i32::MIN % -1_i32`, which would overflow
    |
-   = note: `#[deny(arithmetic_overflow)]` on by default
+   = note: `#[deny(unconditional_panic)]` on by default
 
-error: this arithmetic operation will overflow
+error: this operation will panic at runtime
   --> $DIR/modulo_one.rs:21:5
    |
 LL |     INT_MIN % NEG_ONE; // also caught by rustc
    |     ^^^^^^^^^^^^^^^^^ attempt to compute the remainder of `i64::MIN % -1_i64`, which would overflow
 
-error: this arithmetic operation will overflow
+error: this operation will panic at runtime
   --> $DIR/modulo_one.rs:22:5
    |
 LL |     INT_MIN % STATIC_NEG_ONE; // ONLY caught by rustc

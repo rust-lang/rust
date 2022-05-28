@@ -1,4 +1,4 @@
-error[E0562]: `impl Trait` not allowed outside of function and method return types
+error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in variable binding
   --> $DIR/issue-54600.rs:4:19
    |
 LL |     let x: Option<impl Debug> = Some(44_u32);

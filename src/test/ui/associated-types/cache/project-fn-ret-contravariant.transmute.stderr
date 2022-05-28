@@ -1,5 +1,5 @@
 error[E0759]: `x` has lifetime `'a` but it needs to satisfy a `'static` lifetime requirement
-  --> $DIR/project-fn-ret-contravariant.rs:38:8
+  --> $DIR/project-fn-ret-contravariant.rs:45:8
    |
 LL | fn baz<'a,'b>(x: &'a u32) -> &'static u32 {
    |                  ------- this data with lifetime `'a`...

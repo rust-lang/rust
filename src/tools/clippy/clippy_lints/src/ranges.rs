@@ -2,19 +2,18 @@ use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::{snippet, snippet_opt, snippet_with_applicability};
 use clippy_utils::sugg::Sugg;
-use clippy_utils::{get_parent_expr, in_constant, is_integer_const, meets_msrv, msrvs, single_segment_path};
+use clippy_utils::{get_parent_expr, in_constant, is_integer_const, meets_msrv, msrvs, path_to_local};
 use clippy_utils::{higher, SpanlessEq};
 use if_chain::if_chain;
 use rustc_ast::ast::RangeLimits;
 use rustc_errors::Applicability;
-use rustc_hir::{BinOpKind, Expr, ExprKind, PathSegment, QPath};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_hir::{BinOpKind, Expr, ExprKind, HirId, PathSegment, QPath};
+use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::{Span, Spanned};
 use rustc_span::sym;
-use rustc_span::symbol::Ident;
 use std::cmp::Ordering;
 
 declare_clippy_lint! {
@@ -190,11 +189,11 @@ impl_lint_pass!(Ranges => [
 impl<'tcx> LateLintPass<'tcx> for Ranges {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         match expr.kind {
-            ExprKind::MethodCall(path, _, args, _) => {
+            ExprKind::MethodCall(path, args, _) => {
                 check_range_zip_with_len(cx, path, args, expr.span);
             },
             ExprKind::Binary(ref op, l, r) => {
-                if meets_msrv(self.msrv.as_ref(), &msrvs::RANGE_CONTAINS) {
+                if meets_msrv(self.msrv, msrvs::RANGE_CONTAINS) {
                     check_possible_range_contains(cx, op.node, l, r, expr);
                 }
             },
@@ -208,7 +207,13 @@ impl<'tcx> LateLintPass<'tcx> for Ranges {
     extract_msrv_attr!(LateContext);
 }
 
-fn check_possible_range_contains(cx: &LateContext<'_>, op: BinOpKind, l: &Expr<'_>, r: &Expr<'_>, expr: &Expr<'_>) {
+fn check_possible_range_contains(
+    cx: &LateContext<'_>,
+    op: BinOpKind,
+    left: &Expr<'_>,
+    right: &Expr<'_>,
+    expr: &Expr<'_>,
+) {
     if in_constant(cx, expr.hir_id) {
         return;
     }
@@ -220,21 +225,19 @@ fn check_possible_range_contains(cx: &LateContext<'_>, op: BinOpKind, l: &Expr<'
         _ => return,
     };
     // value, name, order (higher/lower), inclusiveness
-    if let (Some((lval, lname, name_span, lval_span, lord, linc)), Some((rval, rname, _, rval_span, rord, rinc))) =
-        (check_range_bounds(cx, l), check_range_bounds(cx, r))
-    {
+    if let (Some(l), Some(r)) = (check_range_bounds(cx, left), check_range_bounds(cx, right)) {
         // we only lint comparisons on the same name and with different
         // direction
-        if lname != rname || lord == rord {
+        if l.id != r.id || l.ord == r.ord {
             return;
         }
-        let ord = Constant::partial_cmp(cx.tcx, cx.typeck_results().expr_ty(l), &lval, &rval);
-        if combine_and && ord == Some(rord) {
+        let ord = Constant::partial_cmp(cx.tcx, cx.typeck_results().expr_ty(l.expr), &l.val, &r.val);
+        if combine_and && ord == Some(r.ord) {
             // order lower bound and upper bound
-            let (l_span, u_span, l_inc, u_inc) = if rord == Ordering::Less {
-                (lval_span, rval_span, linc, rinc)
+            let (l_span, u_span, l_inc, u_inc) = if r.ord == Ordering::Less {
+                (l.val_span, r.val_span, l.inc, r.inc)
             } else {
-                (rval_span, lval_span, rinc, linc)
+                (r.val_span, l.val_span, r.inc, l.inc)
             };
             // we only lint inclusive lower bounds
             if !l_inc {
@@ -246,7 +249,7 @@ fn check_possible_range_contains(cx: &LateContext<'_>, op: BinOpKind, l: &Expr<'
                 ("Range", "..")
             };
             let mut applicability = Applicability::MachineApplicable;
-            let name = snippet_with_applicability(cx, name_span, "_", &mut applicability);
+            let name = snippet_with_applicability(cx, l.name_span, "_", &mut applicability);
             let lo = snippet_with_applicability(cx, l_span, "_", &mut applicability);
             let hi = snippet_with_applicability(cx, u_span, "_", &mut applicability);
             let space = if lo.ends_with('.') { " " } else { "" };
@@ -259,13 +262,13 @@ fn check_possible_range_contains(cx: &LateContext<'_>, op: BinOpKind, l: &Expr<'
                 format!("({}{}{}{}).contains(&{})", lo, space, range_op, hi, name),
                 applicability,
             );
-        } else if !combine_and && ord == Some(lord) {
+        } else if !combine_and && ord == Some(l.ord) {
             // `!_.contains(_)`
             // order lower bound and upper bound
-            let (l_span, u_span, l_inc, u_inc) = if lord == Ordering::Less {
-                (lval_span, rval_span, linc, rinc)
+            let (l_span, u_span, l_inc, u_inc) = if l.ord == Ordering::Less {
+                (l.val_span, r.val_span, l.inc, r.inc)
             } else {
-                (rval_span, lval_span, rinc, linc)
+                (r.val_span, l.val_span, r.inc, l.inc)
             };
             if l_inc {
                 return;
@@ -276,7 +279,7 @@ fn check_possible_range_contains(cx: &LateContext<'_>, op: BinOpKind, l: &Expr<'
                 ("RangeInclusive", "..=")
             };
             let mut applicability = Applicability::MachineApplicable;
-            let name = snippet_with_applicability(cx, name_span, "_", &mut applicability);
+            let name = snippet_with_applicability(cx, l.name_span, "_", &mut applicability);
             let lo = snippet_with_applicability(cx, l_span, "_", &mut applicability);
             let hi = snippet_with_applicability(cx, u_span, "_", &mut applicability);
             let space = if lo.ends_with('.') { " " } else { "" };
@@ -293,7 +296,20 @@ fn check_possible_range_contains(cx: &LateContext<'_>, op: BinOpKind, l: &Expr<'
     }
 }
 
-fn check_range_bounds(cx: &LateContext<'_>, ex: &Expr<'_>) -> Option<(Constant, Ident, Span, Span, Ordering, bool)> {
+struct RangeBounds<'a> {
+    val: Constant,
+    expr: &'a Expr<'a>,
+    id: HirId,
+    name_span: Span,
+    val_span: Span,
+    ord: Ordering,
+    inc: bool,
+}
+
+// Takes a binary expression such as x <= 2 as input
+// Breaks apart into various pieces, such as the value of the number,
+// hir id of the variable, and direction/inclusiveness of the operator
+fn check_range_bounds<'a>(cx: &'a LateContext<'_>, ex: &'a Expr<'_>) -> Option<RangeBounds<'a>> {
     if let ExprKind::Binary(ref op, l, r) = ex.kind {
         let (inclusive, ordering) = match op.node {
             BinOpKind::Gt => (false, Ordering::Greater),
@@ -302,24 +318,29 @@ fn check_range_bounds(cx: &LateContext<'_>, ex: &Expr<'_>) -> Option<(Constant, 
             BinOpKind::Le => (true, Ordering::Less),
             _ => return None,
         };
-        if let Some(id) = match_ident(l) {
+        if let Some(id) = path_to_local(l) {
             if let Some((c, _)) = constant(cx, cx.typeck_results(), r) {
-                return Some((c, id, l.span, r.span, ordering, inclusive));
+                return Some(RangeBounds {
+                    val: c,
+                    expr: r,
+                    id,
+                    name_span: l.span,
+                    val_span: r.span,
+                    ord: ordering,
+                    inc: inclusive,
+                });
             }
-        } else if let Some(id) = match_ident(r) {
+        } else if let Some(id) = path_to_local(r) {
             if let Some((c, _)) = constant(cx, cx.typeck_results(), l) {
-                return Some((c, id, r.span, l.span, ordering.reverse(), inclusive));
-            }
-        }
-    }
-    None
-}
-
-fn match_ident(e: &Expr<'_>) -> Option<Ident> {
-    if let ExprKind::Path(ref qpath) = e.kind {
-        if let Some(seg) = single_segment_path(qpath) {
-            if seg.args.is_none() {
-                return Some(seg.ident);
+                return Some(RangeBounds {
+                    val: c,
+                    expr: l,
+                    id,
+                    name_span: r.span,
+                    val_span: l.span,
+                    ord: ordering.reverse(),
+                    inc: inclusive,
+                });
             }
         }
     }
@@ -331,13 +352,13 @@ fn check_range_zip_with_len(cx: &LateContext<'_>, path: &PathSegment<'_>, args: 
         if path.ident.as_str() == "zip";
         if let [iter, zip_arg] = args;
         // `.iter()` call
-        if let ExprKind::MethodCall(iter_path, _, iter_args, _) = iter.kind;
+        if let ExprKind::MethodCall(iter_path, iter_args, _) = iter.kind;
         if iter_path.ident.name == sym::iter;
         // range expression in `.zip()` call: `0..x.len()`
         if let Some(higher::Range { start: Some(start), end: Some(end), .. }) = higher::Range::hir(zip_arg);
         if is_integer_const(cx, start, 0);
         // `.len()` call
-        if let ExprKind::MethodCall(len_path, _, len_args, _) = end.kind;
+        if let ExprKind::MethodCall(len_path, len_args, _) = end.kind;
         if len_path.ident.name == sym::len && len_args.len() == 1;
         // `.iter()` and `.len()` called on same `Path`
         if let ExprKind::Path(QPath::Resolved(_, iter_path)) = iter_args[0].kind;

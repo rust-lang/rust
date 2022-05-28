@@ -5,12 +5,11 @@ use if_chain::if_chain;
 use rustc_ast::ast::{LitFloatType, LitIntType, LitKind};
 use rustc_errors::Applicability;
 use rustc_hir::{
-    intravisit::{walk_expr, walk_stmt, NestedVisitorMap, Visitor},
+    intravisit::{walk_expr, walk_stmt, Visitor},
     Body, Expr, ExprKind, HirId, Lit, Stmt, StmtKind,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::{
-    hir::map::Map,
     lint::in_external_macro,
     ty::{self, FloatTy, IntTy, PolyFnSig, Ty},
 };
@@ -117,16 +116,13 @@ impl<'a, 'tcx> NumericFallbackVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for NumericFallbackVisitor<'a, 'tcx> {
-    type Map = Map<'tcx>;
-
-    #[allow(clippy::too_many_lines)]
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         match &expr.kind {
             ExprKind::Call(func, args) => {
                 if let Some(fn_sig) = fn_sig_opt(self.cx, func.hir_id) {
                     for (expr, bound) in iter::zip(*args, fn_sig.skip_binder().inputs()) {
                         // Push found arg type, then visit arg.
-                        self.ty_bounds.push(TyBound::Ty(bound));
+                        self.ty_bounds.push(TyBound::Ty(*bound));
                         self.visit_expr(expr);
                         self.ty_bounds.pop();
                     }
@@ -134,11 +130,11 @@ impl<'a, 'tcx> Visitor<'tcx> for NumericFallbackVisitor<'a, 'tcx> {
                 }
             },
 
-            ExprKind::MethodCall(_, _, args, _) => {
+            ExprKind::MethodCall(_, args, _) => {
                 if let Some(def_id) = self.cx.typeck_results().type_dependent_def_id(expr.hir_id) {
                     let fn_sig = self.cx.tcx.fn_sig(def_id).skip_binder();
                     for (expr, bound) in iter::zip(*args, fn_sig.inputs()) {
-                        self.ty_bounds.push(TyBound::Ty(bound));
+                        self.ty_bounds.push(TyBound::Ty(*bound));
                         self.visit_expr(expr);
                         self.ty_bounds.pop();
                     }
@@ -151,7 +147,7 @@ impl<'a, 'tcx> Visitor<'tcx> for NumericFallbackVisitor<'a, 'tcx> {
                 if_chain! {
                     if let Some(adt_def) = ty.ty_adt_def();
                     if adt_def.is_struct();
-                    if let Some(variant) = adt_def.variants.iter().next();
+                    if let Some(variant) = adt_def.variants().iter().next();
                     then {
                         let fields_def = &variant.fields;
 
@@ -209,15 +205,11 @@ impl<'a, 'tcx> Visitor<'tcx> for NumericFallbackVisitor<'a, 'tcx> {
         walk_stmt(self, stmt);
         self.ty_bounds.pop();
     }
-
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::None
-    }
 }
 
 fn fn_sig_opt<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Option<PolyFnSig<'tcx>> {
     let node_ty = cx.typeck_results().node_type_opt(hir_id)?;
-    // We can't use `TyS::fn_sig` because it automatically performs substs, this may result in FNs.
+    // We can't use `Ty::fn_sig` because it automatically performs substs, this may result in FNs.
     match node_ty.kind() {
         ty::FnDef(def_id, _) => Some(cx.tcx.fn_sig(*def_id)),
         ty::FnPtr(fn_sig) => Some(*fn_sig),

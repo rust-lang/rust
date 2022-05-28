@@ -1,6 +1,6 @@
 // compile-flags: -O
 
-// On x86 the closure is inlined in foo() producting something like
+// On x86 the closure is inlined in foo() producing something like
 // define i32 @foo() [...] {
 // tail call void @bar() [...]
 // ret i32 0

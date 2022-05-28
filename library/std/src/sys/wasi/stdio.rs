@@ -104,7 +104,7 @@ impl io::Write for Stderr {
 pub const STDIN_BUF_SIZE: usize = crate::sys_common::io::DEFAULT_BUF_SIZE;
 
 pub fn is_ebadf(err: &io::Error) -> bool {
-    err.raw_os_error() == Some(wasi::ERRNO_BADF.into())
+    err.raw_os_error() == Some(wasi::ERRNO_BADF.raw().into())
 }
 
 pub fn panic_output() -> Option<impl io::Write> {

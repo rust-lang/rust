@@ -26,6 +26,7 @@ fn python() -> &'static str {
     let mut python3 = false;
 
     for dir in env::split_paths(&val) {
+        // `python` should always take precedence over python2 / python3 if it exists
         if dir.join(PYTHON).exists() {
             return PYTHON;
         }
@@ -34,11 +35,14 @@ fn python() -> &'static str {
         python3 |= dir.join(PYTHON3).exists();
     }
 
+    // try 3 before 2
     if python3 {
         PYTHON3
     } else if python2 {
         PYTHON2
     } else {
+        // We would have returned early if we found that python is installed ...
+        // maybe this should panic with an error instead?
         PYTHON
     }
 }
@@ -58,7 +62,7 @@ fn main() {
     let current = match env::current_dir() {
         Ok(dir) => dir,
         Err(err) => {
-            eprintln!("Failed to get current directory: {}", err);
+            eprintln!("Failed to get current directory: {err}");
             process::exit(1);
         }
     };

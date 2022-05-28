@@ -32,8 +32,17 @@ LL |
 LL | struct MyPhantomData<T, U>;
    |                     ------ this struct has 2 generic arguments
 
+error[E0718]: `owned_box` language item must be applied to a struct with at least 1 generic argument
+  --> $DIR/lang-item-generic-requirements.rs:28:1
+   |
+LL | #[lang = "owned_box"]
+   | ^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | struct Foo;
+   |           - this struct has 0 generic arguments
+
 error[E0718]: `start` language item must be applied to a function with 1 generic argument
-  --> $DIR/lang-item-generic-requirements.rs:30:1
+  --> $DIR/lang-item-generic-requirements.rs:34:1
    |
 LL | #[lang = "start"]
    | ^^^^^^^^^^^^^^^^^
@@ -59,7 +68,7 @@ LL | struct MyPhantomData<T, U>;
    = help: consider removing `U` or referring to it in a field
    = help: if you intended `U` to be a const parameter, use `const U: usize` instead
 
-error: aborting due to 7 previous errors
+error: aborting due to 8 previous errors
 
 Some errors have detailed explanations: E0392, E0718.
 For more information about an error, try `rustc --explain E0392`.

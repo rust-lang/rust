@@ -1,5 +1,5 @@
 error[E0425]: cannot find value `u` in this scope
-  --> $DIR/issues-71798.rs:6:24
+  --> $DIR/issues-71798.rs:7:24
    |
 LL |     let _ = test_ref & u;
    |                        ^ not found in this scope

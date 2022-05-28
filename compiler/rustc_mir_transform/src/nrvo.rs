@@ -39,12 +39,9 @@ impl<'tcx> MirPass<'tcx> for RenameReturnPlace {
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut mir::Body<'tcx>) {
         let def_id = body.source.def_id();
-        let returned_local = match local_eligible_for_nrvo(body) {
-            Some(l) => l,
-            None => {
-                debug!("`{:?}` was ineligible for NRVO", def_id);
-                return;
-            }
+        let Some(returned_local) = local_eligible_for_nrvo(body) else {
+            debug!("`{:?}` was ineligible for NRVO", def_id);
+            return;
         };
 
         if !tcx.consider_optimizing(|| format!("RenameReturnPlace {:?}", def_id)) {
@@ -67,7 +64,7 @@ impl<'tcx> MirPass<'tcx> for RenameReturnPlace {
         let (renamed_decl, ret_decl) =
             body.local_decls.pick2_mut(returned_local, mir::RETURN_PLACE);
 
-        // Sometimes, the return place is assigned a local of a different but coercable type, for
+        // Sometimes, the return place is assigned a local of a different but coercible type, for
         // example `&mut T` instead of `&T`. Overwriting the `LocalInfo` for the return place means
         // its type may no longer match the return type of its function. This doesn't cause a
         // problem in codegen because these two types are layout-compatible, but may be unexpected.

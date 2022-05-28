@@ -16,6 +16,12 @@ error[E0080]: evaluation of `foo::<()>` failed
 LL |     &<A<T> as Foo<T>>::BAR
    |      ^^^^^^^^^^^^^^^^^^^^^ referenced constant has errors
 
+note: the above error was encountered while instantiating `fn foo::<()>`
+  --> $DIR/issue-50814-2.rs:31:22
+   |
+LL |     println!("{:x}", foo::<()>() as *const usize as usize);
+   |                      ^^^^^^^^^^^
+
 error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0080`.

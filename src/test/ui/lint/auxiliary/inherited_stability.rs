@@ -20,7 +20,7 @@ pub mod stable_mod {
 #[unstable(feature = "unstable_test_feature", issue = "none")]
 pub mod unstable_mod {
     #[stable(feature = "stable_test_feature", since = "1.0.0")]
-    #[rustc_deprecated(since = "1.0.0", reason = "text")]
+    #[deprecated(since = "1.0.0", note = "text")]
     pub fn deprecated() {}
 
     pub fn unstable() {}

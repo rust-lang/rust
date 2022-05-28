@@ -1,4 +1,4 @@
-error[E0121]: the type placeholder `_` is not allowed within types on item signatures for static variables
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for static variables
   --> $DIR/issue-83621-placeholder-static-in-extern.rs:4:15
    |
 LL |     static x: _;

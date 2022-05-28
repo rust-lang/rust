@@ -1,6 +1,6 @@
 use crate::collect::ItemCtxt;
 use rustc_hir as hir;
-use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
+use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::HirId;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::TraitEngine;
@@ -64,10 +64,6 @@ fn diagnostic_hir_wf_check<'tcx>(
     }
 
     impl<'tcx> Visitor<'tcx> for HirWfCheck<'tcx> {
-        type Map = intravisit::ErasedMap<'tcx>;
-        fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-            NestedVisitorMap::None
-        }
         fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx>) {
             self.tcx.infer_ctxt().enter(|infcx| {
                 let mut fulfill = traits::FulfillmentContext::new();
@@ -177,13 +173,13 @@ struct EraseAllBoundRegions<'tcx> {
 // `ItemCtxt::to_ty`. To make things simpler, we just erase all
 // of them, regardless of depth. At worse, this will give
 // us an inaccurate span for an error message, but cannot
-// lead to unsoundess (we call `delay_span_bug` at the start
+// lead to unsoundness (we call `delay_span_bug` at the start
 // of `diagnostic_hir_wf_check`).
 impl<'tcx> TypeFolder<'tcx> for EraseAllBoundRegions<'tcx> {
     fn tcx<'a>(&'a self) -> TyCtxt<'tcx> {
         self.tcx
     }
     fn fold_region(&mut self, r: Region<'tcx>) -> Region<'tcx> {
-        if let ty::ReLateBound(..) = r { &ty::ReErased } else { r }
+        if r.is_late_bound() { self.tcx.lifetimes.re_erased } else { r }
     }
 }

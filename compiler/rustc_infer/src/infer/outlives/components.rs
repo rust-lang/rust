@@ -125,7 +125,7 @@ fn compute_components<'tcx>(
             // regionck more ways to prove that it holds. However,
             // regionck is not (at least currently) prepared to deal with
             // higher-ranked regions that may appear in the
-            // trait-ref. Therefore, if we see any higher-ranke regions,
+            // trait-ref. Therefore, if we see any higher-ranked regions,
             // we simply fallback to the most restrictive rule, which
             // requires that `Pi: 'a` for all `i`.
             ty::Projection(ref data) => {
@@ -196,7 +196,7 @@ fn compute_components_recursive<'tcx>(
     out: &mut SmallVec<[Component<'tcx>; 4]>,
     visited: &mut SsoHashSet<GenericArg<'tcx>>,
 ) {
-    for child in parent.walk_shallow(tcx, visited) {
+    for child in parent.walk_shallow(visited) {
         match child.unpack() {
             GenericArgKind::Type(ty) => {
                 compute_components(tcx, ty, out, visited);

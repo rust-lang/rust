@@ -143,5 +143,41 @@ LL |     pub fn test_rc_box(_: Rc<Box<Box<dyn T>>>) {}
    = note: `Box<Box<dyn T>>` is already on the heap, `Rc<Box<Box<dyn T>>>` makes an extra allocation
    = help: consider using just `Rc<Box<dyn T>>` or `Box<Box<dyn T>>`
 
-error: aborting due to 16 previous errors
+error: usage of `Rc<Box<Box<str>>>`
+  --> $DIR/redundant_allocation.rs:129:31
+   |
+LL |     pub fn test_rc_box_str(_: Rc<Box<Box<str>>>) {}
+   |                               ^^^^^^^^^^^^^^^^^
+   |
+   = note: `Box<Box<str>>` is already on the heap, `Rc<Box<Box<str>>>` makes an extra allocation
+   = help: consider using just `Rc<Box<str>>` or `Box<Box<str>>`
+
+error: usage of `Rc<Box<Box<[usize]>>>`
+  --> $DIR/redundant_allocation.rs:130:33
+   |
+LL |     pub fn test_rc_box_slice(_: Rc<Box<Box<[usize]>>>) {}
+   |                                 ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `Box<Box<[usize]>>` is already on the heap, `Rc<Box<Box<[usize]>>>` makes an extra allocation
+   = help: consider using just `Rc<Box<[usize]>>` or `Box<Box<[usize]>>`
+
+error: usage of `Rc<Box<Box<Path>>>`
+  --> $DIR/redundant_allocation.rs:131:32
+   |
+LL |     pub fn test_rc_box_path(_: Rc<Box<Box<Path>>>) {}
+   |                                ^^^^^^^^^^^^^^^^^^
+   |
+   = note: `Box<Box<Path>>` is already on the heap, `Rc<Box<Box<Path>>>` makes an extra allocation
+   = help: consider using just `Rc<Box<Path>>` or `Box<Box<Path>>`
+
+error: usage of `Rc<Box<Box<DynSized>>>`
+  --> $DIR/redundant_allocation.rs:132:34
+   |
+LL |     pub fn test_rc_box_custom(_: Rc<Box<Box<DynSized>>>) {}
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `Box<Box<DynSized>>` is already on the heap, `Rc<Box<Box<DynSized>>>` makes an extra allocation
+   = help: consider using just `Rc<Box<DynSized>>` or `Box<Box<DynSized>>`
+
+error: aborting due to 20 previous errors
 

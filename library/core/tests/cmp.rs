@@ -134,6 +134,19 @@ fn ordering_const() {
 }
 
 #[test]
+fn ordering_structural_eq() {
+    // test that consts of type `Ordering` are usable in patterns
+
+    const ORDERING: Ordering = Greater;
+
+    const REVERSE: Ordering = ORDERING.reverse();
+    match Ordering::Less {
+        REVERSE => {}
+        _ => unreachable!(),
+    };
+}
+
+#[test]
 fn cmp_default() {
     // Test default methods in PartialOrd and PartialEq
 
@@ -204,7 +217,6 @@ fn cmp_default() {
     assert_eq!(Fool(false), Fool(true));
 }
 
-#[cfg(not(bootstrap))]
 mod const_cmp {
     use super::*;
 

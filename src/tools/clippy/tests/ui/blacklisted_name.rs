@@ -46,10 +46,10 @@ fn issue_1647_ref_mut() {
 
 mod tests {
     fn issue_7305() {
-        // `blackisted_name` lint should not be triggered inside of the test code.
+        // `blacklisted_name` lint should not be triggered inside of the test code.
         let foo = 0;
 
-        // Check that even in nested functions warning is still not triggere.
+        // Check that even in nested functions warning is still not triggered.
         fn nested() {
             let foo = 0;
         }

@@ -54,7 +54,7 @@ pub fn cvt_gai(err: c_int) -> io::Result<()> {
 
     Err(io::Error::new(
         io::ErrorKind::Uncategorized,
-        &format!("failed to lookup address information: {}", detail)[..],
+        &format!("failed to lookup address information: {detail}")[..],
     ))
 }
 
@@ -154,9 +154,9 @@ impl Socket {
         let mut pollfd = libc::pollfd { fd: self.as_raw_fd(), events: libc::POLLOUT, revents: 0 };
 
         if timeout.as_secs() == 0 && timeout.subsec_nanos() == 0 {
-            return Err(io::Error::new_const(
+            return Err(io::const_io_error!(
                 io::ErrorKind::InvalidInput,
-                &"cannot set a 0 duration timeout",
+                "cannot set a 0 duration timeout",
             ));
         }
 
@@ -165,7 +165,7 @@ impl Socket {
         loop {
             let elapsed = start.elapsed();
             if elapsed >= timeout {
-                return Err(io::Error::new_const(io::ErrorKind::TimedOut, &"connection timed out"));
+                return Err(io::const_io_error!(io::ErrorKind::TimedOut, "connection timed out"));
             }
 
             let timeout = timeout - elapsed;
@@ -192,9 +192,9 @@ impl Socket {
                     // for POLLHUP rather than read readiness
                     if pollfd.revents & libc::POLLHUP != 0 {
                         let e = self.take_error()?.unwrap_or_else(|| {
-                            io::Error::new_const(
+                            io::const_io_error!(
                                 io::ErrorKind::Uncategorized,
-                                &"no error set after POLLHUP",
+                                "no error set after POLLHUP",
                             )
                         });
                         return Err(e);
@@ -289,15 +289,7 @@ impl Socket {
         self.recv_from_with_flags(buf, 0)
     }
 
-    #[cfg(any(
-        target_os = "android",
-        target_os = "dragonfly",
-        target_os = "emscripten",
-        target_os = "freebsd",
-        target_os = "linux",
-        target_os = "netbsd",
-        target_os = "openbsd",
-    ))]
+    #[cfg(any(target_os = "android", target_os = "linux"))]
     pub fn recv_msg(&self, msg: &mut libc::msghdr) -> io::Result<usize> {
         let n = cvt(unsafe { libc::recvmsg(self.as_raw_fd(), msg, libc::MSG_CMSG_CLOEXEC) })?;
         Ok(n as usize)
@@ -320,15 +312,7 @@ impl Socket {
         self.0.is_write_vectored()
     }
 
-    #[cfg(any(
-        target_os = "android",
-        target_os = "dragonfly",
-        target_os = "emscripten",
-        target_os = "freebsd",
-        target_os = "linux",
-        target_os = "netbsd",
-        target_os = "openbsd",
-    ))]
+    #[cfg(any(target_os = "android", target_os = "linux"))]
     pub fn send_msg(&self, msg: &mut libc::msghdr) -> io::Result<usize> {
         let n = cvt(unsafe { libc::sendmsg(self.as_raw_fd(), msg, 0) })?;
         Ok(n as usize)
@@ -338,9 +322,9 @@ impl Socket {
         let timeout = match dur {
             Some(dur) => {
                 if dur.as_secs() == 0 && dur.subsec_nanos() == 0 {
-                    return Err(io::Error::new_const(
+                    return Err(io::const_io_error!(
                         io::ErrorKind::InvalidInput,
-                        &"cannot set a 0 duration timeout",
+                        "cannot set a 0 duration timeout",
                     ));
                 }
 
@@ -416,6 +400,17 @@ impl Socket {
     #[cfg(any(target_os = "android", target_os = "linux",))]
     pub fn passcred(&self) -> io::Result<bool> {
         let passcred: libc::c_int = getsockopt(self, libc::SOL_SOCKET, libc::SO_PASSCRED)?;
+        Ok(passcred != 0)
+    }
+
+    #[cfg(target_os = "netbsd")]
+    pub fn set_passcred(&self, passcred: bool) -> io::Result<()> {
+        setsockopt(self, 0 as libc::c_int, libc::LOCAL_CREDS, passcred as libc::c_int)
+    }
+
+    #[cfg(target_os = "netbsd")]
+    pub fn passcred(&self) -> io::Result<bool> {
+        let passcred: libc::c_int = getsockopt(self, 0 as libc::c_int, libc::LOCAL_CREDS)?;
         Ok(passcred != 0)
     }
 

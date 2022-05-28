@@ -100,7 +100,6 @@ impl<'a, T> Iterator for IterMut<'a, T> {
     }
 
     #[inline]
-    #[doc(hidden)]
     unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item {
         // Safety: The TrustedRandomAccess contract requires that callers only pass an index
         // that is in bounds.

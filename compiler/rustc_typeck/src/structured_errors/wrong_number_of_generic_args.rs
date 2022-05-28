@@ -1,38 +1,42 @@
 use crate::structured_errors::StructuredDiagnostic;
-use rustc_errors::{pluralize, Applicability, DiagnosticBuilder, DiagnosticId};
+use rustc_errors::{
+    pluralize, Applicability, Diagnostic, DiagnosticBuilder, DiagnosticId, ErrorGuaranteed,
+    MultiSpan,
+};
 use rustc_hir as hir;
 use rustc_middle::hir::map::fn_sig;
 use rustc_middle::middle::resolve_lifetime::LifetimeScopeForPath;
-use rustc_middle::ty::{self as ty, TyCtxt};
+use rustc_middle::ty::{self as ty, AssocItems, AssocKind, TyCtxt};
 use rustc_session::Session;
-use rustc_span::{def_id::DefId, MultiSpan};
+use rustc_span::def_id::DefId;
+use std::iter;
 
 use GenericArgsInfo::*;
 
 /// Handles the `wrong number of type / lifetime / ... arguments` family of error messages.
 pub struct WrongNumberOfGenericArgs<'a, 'tcx> {
-    crate tcx: TyCtxt<'tcx>,
+    pub(crate) tcx: TyCtxt<'tcx>,
 
-    crate angle_brackets: AngleBrackets,
+    pub(crate) angle_brackets: AngleBrackets,
 
-    crate gen_args_info: GenericArgsInfo,
+    pub(crate) gen_args_info: GenericArgsInfo,
 
     /// Offending path segment
-    crate path_segment: &'a hir::PathSegment<'a>,
+    pub(crate) path_segment: &'a hir::PathSegment<'a>,
 
     /// Generic parameters as expected by type or trait
-    crate gen_params: &'a ty::Generics,
+    pub(crate) gen_params: &'a ty::Generics,
 
     /// Index offset into parameters. Depends on whether `Self` is included and on
     /// number of lifetime parameters in case we're processing missing or redundant
     /// type or constant arguments.
-    crate params_offset: usize,
+    pub(crate) params_offset: usize,
 
     /// Generic arguments as provided by user
-    crate gen_args: &'a hir::GenericArgs<'a>,
+    pub(crate) gen_args: &'a hir::GenericArgs<'a>,
 
     /// DefId of the generic type
-    crate def_id: DefId,
+    pub(crate) def_id: DefId,
 }
 
 // Provides information about the kind of arguments that were provided for
@@ -82,6 +86,9 @@ pub enum GenericArgsInfo {
         // us infer the position of type and const generic arguments
         // in the angle brackets
         args_offset: usize,
+
+        // if synthetic type arguments (e.g. `impl Trait`) are specified
+        synth_provided: bool,
     },
 }
 
@@ -252,6 +259,13 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         }
     }
 
+    fn is_synth_provided(&self) -> bool {
+        match self.gen_args_info {
+            ExcessTypesOrConsts { synth_provided, .. } => synth_provided,
+            _ => false,
+        }
+    }
+
     // Helper function to choose a quantifier word for the number of expected arguments
     // and to give a bound for the number of expected arguments
     fn get_quantifier_and_bound(&self) -> (&'static str, usize) {
@@ -311,7 +325,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
             .skip(self.params_offset + self.num_provided_type_or_const_args())
             .take(num_params_to_take)
             .map(|param| match param.kind {
-                // This is being infered from the item's inputs, no need to set it.
+                // This is being inferred from the item's inputs, no need to set it.
                 ty::GenericParamDefKind::Type { .. } if is_used_in_input(param.def_id) => {
                     "_".to_string()
                 }
@@ -319,6 +333,22 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
             })
             .collect::<Vec<_>>()
             .join(", ")
+    }
+
+    fn get_unbound_associated_types(&self) -> Vec<String> {
+        if self.tcx.is_trait(self.def_id) {
+            let items: &AssocItems<'_> = self.tcx.associated_items(self.def_id);
+            items
+                .in_definition_order()
+                .filter(|item| item.kind == AssocKind::Type)
+                .filter(|item| {
+                    !self.gen_args.bindings.iter().any(|binding| binding.ident.name == item.name)
+                })
+                .map(|item| item.name.to_ident_string())
+                .collect()
+        } else {
+            Vec::default()
+        }
     }
 
     fn create_error_message(&self) -> String {
@@ -362,7 +392,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         }
     }
 
-    fn start_diagnostics(&self) -> DiagnosticBuilder<'tcx> {
+    fn start_diagnostics(&self) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let span = self.path_segment.ident.span;
         let msg = self.create_error_message();
 
@@ -370,7 +400,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
     }
 
     /// Builds the `expected 1 type argument / supplied 2 type arguments` message.
-    fn notify(&self, err: &mut DiagnosticBuilder<'_>) {
+    fn notify(&self, err: &mut Diagnostic) {
         let (quantifier, bound) = self.get_quantifier_and_bound();
         let provided_args = self.num_provided_args();
 
@@ -422,7 +452,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         }
     }
 
-    fn suggest(&self, err: &mut DiagnosticBuilder<'_>) {
+    fn suggest(&self, err: &mut Diagnostic) {
         debug!(
             "suggest(self.provided {:?}, self.gen_args.span(): {:?})",
             self.num_provided_args(),
@@ -449,7 +479,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
     /// ```text
     /// type Map = HashMap<String>;
     /// ```
-    fn suggest_adding_args(&self, err: &mut DiagnosticBuilder<'_>) {
+    fn suggest_adding_args(&self, err: &mut Diagnostic) {
         if self.gen_args.parenthesized {
             return;
         }
@@ -465,14 +495,14 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         }
     }
 
-    fn suggest_adding_lifetime_args(&self, err: &mut DiagnosticBuilder<'_>) {
+    fn suggest_adding_lifetime_args(&self, err: &mut Diagnostic) {
         debug!("suggest_adding_lifetime_args(path_segment: {:?})", self.path_segment);
         let num_missing_args = self.num_missing_lifetime_args();
         let num_params_to_take = num_missing_args;
         let msg = format!("add missing {} argument{}", self.kind(), pluralize!(num_missing_args));
 
         // we first try to get lifetime name suggestions from scope or elision information. If none is
-        // available we use the parameter defintions
+        // available we use the parameter definitions
         let suggested_args = if let Some(hir_id) = self.path_segment.hir_id {
             if let Some(lifetimes_in_scope) = self.tcx.lifetime_scope(hir_id) {
                 match lifetimes_in_scope {
@@ -484,7 +514,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                             param_names
                                 .iter()
                                 .take(num_params_to_take)
-                                .map(|p| (*p).clone())
+                                .map(|p| p.as_str())
                                 .collect::<Vec<_>>()
                                 .join(", ")
                         } else {
@@ -547,7 +577,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         }
     }
 
-    fn suggest_adding_type_and_const_args(&self, err: &mut DiagnosticBuilder<'_>) {
+    fn suggest_adding_type_and_const_args(&self, err: &mut Diagnostic) {
         let num_missing_args = self.num_missing_type_or_const_args();
         let msg = format!("add missing {} argument{}", self.kind(), pluralize!(num_missing_args));
 
@@ -575,7 +605,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                     (gen_args_span.shrink_to_lo(), true)
                 } else {
                     let arg_span = self.gen_args.args[sugg_offset - 1].span();
-                    // If we came here then inferred lifetimes's spans can only point
+                    // If we came here then inferred lifetime's spans can only point
                     // to either the opening bracket or to the space right after.
                     // Both of these spans have an `hi` lower than or equal to the span
                     // of the generics excluding the brackets.
@@ -602,9 +632,10 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
     /// ```text
     /// type Map = HashMap<String, String, String, String>;
     /// ```
-    fn suggest_removing_args_or_generics(&self, err: &mut DiagnosticBuilder<'_>) {
+    fn suggest_removing_args_or_generics(&self, err: &mut Diagnostic) {
         let num_provided_lt_args = self.num_provided_lifetime_args();
         let num_provided_type_const_args = self.num_provided_type_or_const_args();
+        let unbound_types = self.get_unbound_associated_types();
         let num_provided_args = num_provided_lt_args + num_provided_type_const_args;
         assert!(num_provided_args > 0);
 
@@ -616,8 +647,10 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         let redundant_type_or_const_args = num_redundant_type_or_const_args > 0;
 
         let remove_entire_generics = num_redundant_args >= self.gen_args.args.len();
+        let provided_args_matches_unbound_traits =
+            unbound_types.len() == num_redundant_type_or_const_args;
 
-        let remove_lifetime_args = |err: &mut DiagnosticBuilder<'_>| {
+        let remove_lifetime_args = |err: &mut Diagnostic| {
             let mut lt_arg_spans = Vec::new();
             let mut found_redundant = false;
             for arg in self.gen_args.args {
@@ -645,10 +678,9 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
 
             let num_redundant_lt_args = lt_arg_spans.len() - self.num_expected_lifetime_args();
             let msg_lifetimes = format!(
-                "remove {} {} argument{}",
-                if num_redundant_lt_args == 1 { "this" } else { "these" },
-                "lifetime",
-                pluralize!(num_redundant_lt_args),
+                "remove {these} lifetime argument{s}",
+                these = pluralize!("this", num_redundant_lt_args),
+                s = pluralize!(num_redundant_lt_args),
             );
 
             err.span_suggestion(
@@ -659,7 +691,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
             );
         };
 
-        let remove_type_or_const_args = |err: &mut DiagnosticBuilder<'_>| {
+        let remove_type_or_const_args = |err: &mut Diagnostic| {
             let mut gen_arg_spans = Vec::new();
             let mut found_redundant = false;
             for arg in self.gen_args.args {
@@ -688,10 +720,9 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
             let num_redundant_gen_args =
                 gen_arg_spans.len() - self.num_expected_type_or_const_args();
             let msg_types_or_consts = format!(
-                "remove {} {} argument{}",
-                if num_redundant_gen_args == 1 { "this" } else { "these" },
-                "generic",
-                pluralize!(num_redundant_type_or_const_args),
+                "remove {these} generic argument{s}",
+                these = pluralize!("this", num_redundant_gen_args),
+                s = pluralize!(num_redundant_gen_args),
             );
 
             err.span_suggestion(
@@ -702,7 +733,28 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
             );
         };
 
-        if remove_entire_generics {
+        // If there is a single unbound associated type and a single excess generic param
+        // suggest replacing the generic param with the associated type bound
+        if provided_args_matches_unbound_traits && !unbound_types.is_empty() {
+            let mut suggestions = vec![];
+            let unused_generics = &self.gen_args.args[self.num_expected_type_or_const_args()..];
+            for (potential, name) in iter::zip(unused_generics, &unbound_types) {
+                if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(potential.span()) {
+                    suggestions.push((potential.span(), format!("{} = {}", name, snippet)));
+                }
+            }
+
+            if !suggestions.is_empty() {
+                err.multipart_suggestion(
+                    &format!(
+                        "replace the generic bound{s} with the associated type{s}",
+                        s = pluralize!(unbound_types.len())
+                    ),
+                    suggestions,
+                    Applicability::MaybeIncorrect,
+                );
+            }
+        } else if remove_entire_generics {
             let span = self
                 .path_segment
                 .args
@@ -729,7 +781,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
     }
 
     /// Builds the `type defined here` message.
-    fn show_definition(&self, err: &mut DiagnosticBuilder<'_>) {
+    fn show_definition(&self, err: &mut Diagnostic) {
         let mut spans: MultiSpan = if let Some(def_span) = self.tcx.def_ident_span(self.def_id) {
             if self.tcx.sess.source_map().span_to_snippet(def_span).is_ok() {
                 def_span.into()
@@ -778,6 +830,15 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
 
         err.span_note(spans, &msg);
     }
+
+    /// Add note if `impl Trait` is explicitly specified.
+    fn note_synth_provided(&self, err: &mut Diagnostic) {
+        if !self.is_synth_provided() {
+            return;
+        }
+
+        err.note("`impl Trait` cannot be explicitly specified as a generic argument");
+    }
 }
 
 impl<'tcx> StructuredDiagnostic<'tcx> for WrongNumberOfGenericArgs<'_, 'tcx> {
@@ -789,12 +850,13 @@ impl<'tcx> StructuredDiagnostic<'tcx> for WrongNumberOfGenericArgs<'_, 'tcx> {
         rustc_errors::error_code!(E0107)
     }
 
-    fn diagnostic_common(&self) -> DiagnosticBuilder<'tcx> {
+    fn diagnostic_common(&self) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let mut err = self.start_diagnostics();
 
         self.notify(&mut err);
         self.suggest(&mut err);
         self.show_definition(&mut err);
+        self.note_synth_provided(&mut err);
 
         err
     }

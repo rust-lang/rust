@@ -1,0 +1,20 @@
+error[E0275]: overflow evaluating the requirement `LinkedList<A>: Sized`
+  --> $DIR/issue-80626.rs:14:10
+   |
+LL |     Next(A::Allocated<Self>)
+   |          ^^^^^^^^^^^^^^^^^^
+   |
+   = note: no field of an enum variant may have a dynamically sized type
+   = help: change the field's type to have a statically known size
+help: borrowed types always have a statically known size
+   |
+LL |     Next(&A::Allocated<Self>)
+   |          +
+help: the `Box` type always has a statically known size and allocates its contents in the heap
+   |
+LL |     Next(Box<A::Allocated<Self>>)
+   |          ++++                  +
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0275`.

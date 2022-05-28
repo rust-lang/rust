@@ -67,7 +67,7 @@ fn not_ok() {
         foo_rslice(mrrrrrslice);
         foo_rslice(mrrrrrslice);
     }
-    #[allow(unused_parens, clippy::double_parens)]
+    #[allow(unused_parens, clippy::double_parens, clippy::needless_borrow)]
     foo_rrrrmr((&&&&MoreRef));
 
     generic_not_ok(mrslice);

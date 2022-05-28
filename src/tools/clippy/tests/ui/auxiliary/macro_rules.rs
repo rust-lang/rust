@@ -120,3 +120,10 @@ macro_rules! mut_mut {
         let mut_mut_ty: &mut &mut u32 = &mut &mut 1u32;
     };
 }
+
+#[macro_export]
+macro_rules! ptr_as_ptr_cast {
+    ($ptr: ident) => {
+        $ptr as *const i32
+    };
+}

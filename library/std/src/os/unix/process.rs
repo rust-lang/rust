@@ -24,8 +24,8 @@ pub trait CommandExt: Sealed {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn uid(
         &mut self,
-        #[cfg(not(target_os = "vxworks"))] id: u32,
-        #[cfg(target_os = "vxworks")] id: u16,
+        #[cfg(not(any(target_os = "vxworks", target_os = "espidf")))] id: u32,
+        #[cfg(any(target_os = "vxworks", target_os = "espidf"))] id: u16,
     ) -> &mut process::Command;
 
     /// Similar to `uid`, but sets the group ID of the child process. This has
@@ -33,8 +33,8 @@ pub trait CommandExt: Sealed {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn gid(
         &mut self,
-        #[cfg(not(target_os = "vxworks"))] id: u32,
-        #[cfg(target_os = "vxworks")] id: u16,
+        #[cfg(not(any(target_os = "vxworks", target_os = "espidf")))] id: u32,
+        #[cfg(any(target_os = "vxworks", target_os = "espidf"))] id: u16,
     ) -> &mut process::Command;
 
     /// Sets the supplementary group IDs for the calling process. Translates to
@@ -42,8 +42,8 @@ pub trait CommandExt: Sealed {
     #[unstable(feature = "setgroups", issue = "90747")]
     fn groups(
         &mut self,
-        #[cfg(not(target_os = "vxworks"))] groups: &[u32],
-        #[cfg(target_os = "vxworks")] groups: &[u16],
+        #[cfg(not(any(target_os = "vxworks", target_os = "espidf")))] groups: &[u32],
+        #[cfg(any(target_os = "vxworks", target_os = "espidf"))] groups: &[u16],
     ) -> &mut process::Command;
 
     /// Schedules a closure to be run just before the `exec` function is
@@ -103,7 +103,7 @@ pub trait CommandExt: Sealed {
     ///
     /// [`pre_exec`]: CommandExt::pre_exec
     #[stable(feature = "process_exec", since = "1.15.0")]
-    #[rustc_deprecated(since = "1.37.0", reason = "should be unsafe, use `pre_exec` instead")]
+    #[deprecated(since = "1.37.0", note = "should be unsafe, use `pre_exec` instead")]
     fn before_exec<F>(&mut self, f: F) -> &mut process::Command
     where
         F: FnMut() -> io::Result<()> + Send + Sync + 'static,
@@ -149,14 +149,19 @@ pub trait CommandExt: Sealed {
     fn arg0<S>(&mut self, arg: S) -> &mut process::Command
     where
         S: AsRef<OsStr>;
+
+    /// Sets the process group ID of the child process. Translates to a `setpgid` call in the child
+    /// process.
+    #[unstable(feature = "process_set_process_group", issue = "93857")]
+    fn process_group(&mut self, pgroup: i32) -> &mut process::Command;
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl CommandExt for process::Command {
     fn uid(
         &mut self,
-        #[cfg(not(target_os = "vxworks"))] id: u32,
-        #[cfg(target_os = "vxworks")] id: u16,
+        #[cfg(not(any(target_os = "vxworks", target_os = "espidf")))] id: u32,
+        #[cfg(any(target_os = "vxworks", target_os = "espidf"))] id: u16,
     ) -> &mut process::Command {
         self.as_inner_mut().uid(id);
         self
@@ -164,8 +169,8 @@ impl CommandExt for process::Command {
 
     fn gid(
         &mut self,
-        #[cfg(not(target_os = "vxworks"))] id: u32,
-        #[cfg(target_os = "vxworks")] id: u16,
+        #[cfg(not(any(target_os = "vxworks", target_os = "espidf")))] id: u32,
+        #[cfg(any(target_os = "vxworks", target_os = "espidf"))] id: u16,
     ) -> &mut process::Command {
         self.as_inner_mut().gid(id);
         self
@@ -173,8 +178,8 @@ impl CommandExt for process::Command {
 
     fn groups(
         &mut self,
-        #[cfg(not(target_os = "vxworks"))] groups: &[u32],
-        #[cfg(target_os = "vxworks")] groups: &[u16],
+        #[cfg(not(any(target_os = "vxworks", target_os = "espidf")))] groups: &[u32],
+        #[cfg(any(target_os = "vxworks", target_os = "espidf"))] groups: &[u16],
     ) -> &mut process::Command {
         self.as_inner_mut().groups(groups);
         self
@@ -199,6 +204,11 @@ impl CommandExt for process::Command {
         S: AsRef<OsStr>,
     {
         self.as_inner_mut().set_arg_0(arg.as_ref());
+        self
+    }
+
+    fn process_group(&mut self, pgroup: i32) -> &mut process::Command {
+        self.as_inner_mut().pgroup(pgroup);
         self
     }
 }

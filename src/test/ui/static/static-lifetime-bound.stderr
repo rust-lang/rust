@@ -2,7 +2,7 @@ warning: unnecessary lifetime parameter `'a`
   --> $DIR/static-lifetime-bound.rs:1:6
    |
 LL | fn f<'a: 'static>(_: &'a i32) {}
-   |      ^^^^^^^^^^^
+   |      ^^
    |
    = help: you can use the `'static` lifetime directly, in place of `'a`
 

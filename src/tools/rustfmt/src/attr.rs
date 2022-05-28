@@ -1,7 +1,7 @@
 //! Format attributes and meta items.
 
 use rustc_ast::ast;
-use rustc_ast::AstLike;
+use rustc_ast::HasAttrs;
 use rustc_span::{symbol::sym, Span, Symbol};
 
 use self::doc_comment::DocCommentFormatter;
@@ -389,6 +389,10 @@ impl Rewrite for [ast::Attribute] {
         let mut attrs = self;
         let mut result = String::new();
 
+        // Determine if the source text is annotated with `#[rustfmt::skip::attributes(derive)]`
+        // or `#![rustfmt::skip::attributes(derive)]`
+        let skip_derives = context.skip_context.skip_attribute("derive");
+
         // This is not just a simple map because we need to handle doc comments
         // (where we take as many doc comment attributes as possible) and possibly
         // merging derives into a single attribute.
@@ -431,7 +435,7 @@ impl Rewrite for [ast::Attribute] {
             }
 
             // Handle derives if we will merge them.
-            if context.config.merge_derives() && is_derive(&attrs[0]) {
+            if !skip_derives && context.config.merge_derives() && is_derive(&attrs[0]) {
                 let derives = take_while_with_pred(context, attrs, is_derive);
                 let derive_str = format_derive(derives, shape, context)?;
                 result.push_str(&derive_str);

@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::{meets_msrv, msrvs};
 use if_chain::if_chain;
 use rustc_hir as hir;
-use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_lint::{LateContext, LateLintPass};
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::symbol::sym;
@@ -55,7 +55,7 @@ impl_lint_pass!(FromOverInto => [FROM_OVER_INTO]);
 
 impl<'tcx> LateLintPass<'tcx> for FromOverInto {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
-        if !meets_msrv(self.msrv.as_ref(), &msrvs::RE_REBALANCING_COHERENCE) {
+        if !meets_msrv(self.msrv, msrvs::RE_REBALANCING_COHERENCE) {
             return;
         }
 

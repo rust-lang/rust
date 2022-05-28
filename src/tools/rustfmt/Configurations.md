@@ -930,6 +930,8 @@ fn add_one(x: i32) -> i32 {
 
 Format generated files. A file is considered generated
 if any of the first five lines contain a `@generated` comment marker.
+By default, generated files are reformatted, i. e. `@generated` marker is ignored.
+This option is currently ignored for stdin (`@generated` in stdin is ignored.)
 
 - **Default value**: `true`
 - **Possible values**: `true`, `false`
@@ -2198,13 +2200,47 @@ specific version of rustfmt is used in your CI, use this option.
 - **Possible values**: any published version (e.g. `"0.3.8"`)
 - **Stable**: No (tracking issue: [#3386](https://github.com/rust-lang/rustfmt/issues/3386))
 
+## `short_array_element_width_threshold`
+
+The width threshold for an array element to be considered "short".
+
+The layout of an array is dependent on the length of each of its elements. 
+If the length of every element in an array is below this threshold (all elements are "short") then the array can be formatted in the mixed/compressed style, but if any one element has a length that exceeds this threshold then the array elements will have to be formatted vertically.
+
+- **Default value**: `10`
+- **Possible values**: any positive integer that is less than or equal to the value specified for [`max_width`](#max_width)
+- **Stable**: Yes
+
+#### `10` (default):
+```rust
+fn main() {
+    pub const FORMAT_TEST: [u64; 5] = [
+        0x0000000000000000,
+        0xaaaaaaaaaaaaaaaa,
+        0xbbbbbbbbbbbbbbbb,
+        0xcccccccccccccccc,
+        0xdddddddddddddddd,
+    ];
+}
+```
+#### `20`:
+```rust
+fn main() {
+    pub const FORMAT_TEST: [u64; 5] = [
+        0x0000000000000000, 0xaaaaaaaaaaaaaaaa, 0xbbbbbbbbbbbbbbbb, 0xcccccccccccccccc,
+        0xdddddddddddddddd,
+    ];
+}
+```
+See also [`max_width`](#max_width).
+
 ## `skip_children`
 
 Don't reformat out of line modules
 
 - **Default value**: `false`
 - **Possible values**: `true`, `false`
-- **Stable**: No (tracking issue: [#3389](https://github.com/rust-lang/rustfmt/issues/3386))
+- **Stable**: No (tracking issue: [#3389](https://github.com/rust-lang/rustfmt/issues/3389))
 
 ## `single_line_if_else_max_width`
 

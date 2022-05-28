@@ -1,0 +1,21 @@
+error[E0658]: `#[used(linker)]` is currently unstable
+  --> $DIR/feature-gate-used_with_arg.rs:1:1
+   |
+LL | #[used(linker)]
+   | ^^^^^^^^^^^^^^^
+   |
+   = note: see issue #93798 <https://github.com/rust-lang/rust/issues/93798> for more information
+   = help: add `#![feature(used_with_arg)]` to the crate attributes to enable
+
+error[E0658]: `#[used(compiler)]` is currently unstable
+  --> $DIR/feature-gate-used_with_arg.rs:4:1
+   |
+LL | #[used(compiler)]
+   | ^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #93798 <https://github.com/rust-lang/rust/issues/93798> for more information
+   = help: add `#![feature(used_with_arg)]` to the crate attributes to enable
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

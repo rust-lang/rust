@@ -1,5 +1,5 @@
 error: `panic` should not be present in production code
-  --> $DIR/panicking_macros.rs:8:5
+  --> $DIR/panicking_macros.rs:23:5
    |
 LL |     panic!();
    |     ^^^^^^^^
@@ -7,19 +7,19 @@ LL |     panic!();
    = note: `-D clippy::panic` implied by `-D warnings`
 
 error: `panic` should not be present in production code
-  --> $DIR/panicking_macros.rs:9:5
+  --> $DIR/panicking_macros.rs:24:5
    |
 LL |     panic!("message");
    |     ^^^^^^^^^^^^^^^^^
 
 error: `panic` should not be present in production code
-  --> $DIR/panicking_macros.rs:10:5
+  --> $DIR/panicking_macros.rs:25:5
    |
 LL |     panic!("{} {}", "panic with", "multiple arguments");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `todo` should not be present in production code
-  --> $DIR/panicking_macros.rs:16:5
+  --> $DIR/panicking_macros.rs:31:5
    |
 LL |     todo!();
    |     ^^^^^^^
@@ -27,19 +27,19 @@ LL |     todo!();
    = note: `-D clippy::todo` implied by `-D warnings`
 
 error: `todo` should not be present in production code
-  --> $DIR/panicking_macros.rs:17:5
+  --> $DIR/panicking_macros.rs:32:5
    |
 LL |     todo!("message");
    |     ^^^^^^^^^^^^^^^^
 
 error: `todo` should not be present in production code
-  --> $DIR/panicking_macros.rs:18:5
+  --> $DIR/panicking_macros.rs:33:5
    |
 LL |     todo!("{} {}", "panic with", "multiple arguments");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `unimplemented` should not be present in production code
-  --> $DIR/panicking_macros.rs:24:5
+  --> $DIR/panicking_macros.rs:39:5
    |
 LL |     unimplemented!();
    |     ^^^^^^^^^^^^^^^^
@@ -47,19 +47,19 @@ LL |     unimplemented!();
    = note: `-D clippy::unimplemented` implied by `-D warnings`
 
 error: `unimplemented` should not be present in production code
-  --> $DIR/panicking_macros.rs:25:5
+  --> $DIR/panicking_macros.rs:40:5
    |
 LL |     unimplemented!("message");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `unimplemented` should not be present in production code
-  --> $DIR/panicking_macros.rs:26:5
+  --> $DIR/panicking_macros.rs:41:5
    |
 LL |     unimplemented!("{} {}", "panic with", "multiple arguments");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: usage of the `unreachable!` macro
-  --> $DIR/panicking_macros.rs:32:5
+  --> $DIR/panicking_macros.rs:47:5
    |
 LL |     unreachable!();
    |     ^^^^^^^^^^^^^^
@@ -67,37 +67,37 @@ LL |     unreachable!();
    = note: `-D clippy::unreachable` implied by `-D warnings`
 
 error: usage of the `unreachable!` macro
-  --> $DIR/panicking_macros.rs:33:5
+  --> $DIR/panicking_macros.rs:48:5
    |
 LL |     unreachable!("message");
    |     ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: usage of the `unreachable!` macro
-  --> $DIR/panicking_macros.rs:34:5
+  --> $DIR/panicking_macros.rs:49:5
    |
 LL |     unreachable!("{} {}", "panic with", "multiple arguments");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `panic` should not be present in production code
-  --> $DIR/panicking_macros.rs:40:5
+  --> $DIR/panicking_macros.rs:55:5
    |
 LL |     panic!();
    |     ^^^^^^^^
 
 error: `todo` should not be present in production code
-  --> $DIR/panicking_macros.rs:41:5
+  --> $DIR/panicking_macros.rs:56:5
    |
 LL |     todo!();
    |     ^^^^^^^
 
 error: `unimplemented` should not be present in production code
-  --> $DIR/panicking_macros.rs:42:5
+  --> $DIR/panicking_macros.rs:57:5
    |
 LL |     unimplemented!();
    |     ^^^^^^^^^^^^^^^^
 
 error: usage of the `unreachable!` macro
-  --> $DIR/panicking_macros.rs:43:5
+  --> $DIR/panicking_macros.rs:58:5
    |
 LL |     unreachable!();
    |     ^^^^^^^^^^^^^^

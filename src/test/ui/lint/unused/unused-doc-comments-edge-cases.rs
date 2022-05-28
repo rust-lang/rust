@@ -29,4 +29,18 @@ fn doc_comment_on_expr(num: u8) -> bool {
 fn doc_comment_on_generic<#[doc = "x"] T>(val: T) {}
 //~^ ERROR: unused doc comment
 
+fn doc_comment_on_block() {
+    /// unused doc comment
+    //~^ ERROR: unused doc comment
+    {
+        let x = 12;
+    }
+}
+
+/// unused doc comment
+//~^ ERROR: unused doc comment
+extern "C" {
+    fn foo();
+}
+
 fn main() {}

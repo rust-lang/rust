@@ -1,25 +1,7 @@
 use super::*;
 use crate::io::prelude::*;
 use crate::io::{self, ErrorKind, IoSlice, IoSliceMut};
-#[cfg(any(
-    target_os = "android",
-    target_os = "dragonfly",
-    target_os = "emscripten",
-    target_os = "freebsd",
-    target_os = "linux",
-    target_os = "netbsd",
-    target_os = "openbsd",
-))]
-use crate::iter::FromIterator;
-#[cfg(any(
-    target_os = "android",
-    target_os = "dragonfly",
-    target_os = "emscripten",
-    target_os = "freebsd",
-    target_os = "linux",
-    target_os = "netbsd",
-    target_os = "openbsd",
-))]
+#[cfg(any(target_os = "android", target_os = "linux"))]
 use crate::os::unix::io::AsRawFd;
 use crate::sys_common::io::test::tmpdir;
 use crate::thread;
@@ -29,7 +11,7 @@ macro_rules! or_panic {
     ($e:expr) => {
         match $e {
             Ok(e) => e,
-            Err(e) => panic!("{}", e),
+            Err(e) => panic!("{e}"),
         }
     };
 }
@@ -161,19 +143,19 @@ fn long_path() {
     );
     match UnixStream::connect(&socket_path) {
         Err(ref e) if e.kind() == io::ErrorKind::InvalidInput => {}
-        Err(e) => panic!("unexpected error {}", e),
+        Err(e) => panic!("unexpected error {e}"),
         Ok(_) => panic!("unexpected success"),
     }
 
     match UnixListener::bind(&socket_path) {
         Err(ref e) if e.kind() == io::ErrorKind::InvalidInput => {}
-        Err(e) => panic!("unexpected error {}", e),
+        Err(e) => panic!("unexpected error {e}"),
         Ok(_) => panic!("unexpected success"),
     }
 
     match UnixDatagram::bind(&socket_path) {
         Err(ref e) if e.kind() == io::ErrorKind::InvalidInput => {}
-        Err(e) => panic!("unexpected error {}", e),
+        Err(e) => panic!("unexpected error {e}"),
         Ok(_) => panic!("unexpected success"),
     }
 }
@@ -524,7 +506,7 @@ fn test_abstract_namespace_too_long() {
         jklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz",
     ) {
         Err(ref e) if e.kind() == io::ErrorKind::InvalidInput => {}
-        Err(e) => panic!("unexpected error {}", e),
+        Err(e) => panic!("unexpected error {e}"),
         Ok(_) => panic!("unexpected success"),
     }
 }
@@ -564,7 +546,7 @@ fn test_unix_stream_peek() {
     match stream.peek(&mut buf) {
         Ok(_) => panic!("expected error"),
         Err(ref e) if e.kind() == ErrorKind::WouldBlock => {}
-        Err(e) => panic!("unexpected error: {}", e),
+        Err(e) => panic!("unexpected error: {e}"),
     }
 
     or_panic!(txdone.send(()));
@@ -619,15 +601,7 @@ fn test_unix_datagram_peek_from() {
     assert_eq!(msg, &buf[..]);
 }
 
-#[cfg(any(
-    target_os = "android",
-    target_os = "dragonfly",
-    target_os = "emscripten",
-    target_os = "freebsd",
-    target_os = "linux",
-    target_os = "netbsd",
-    target_os = "openbsd",
-))]
+#[cfg(any(target_os = "android", target_os = "linux"))]
 #[test]
 fn test_send_vectored_fds_unix_stream() {
     let (s1, s2) = or_panic!(UnixStream::pair());
@@ -665,7 +639,7 @@ fn test_send_vectored_fds_unix_stream() {
     }
 }
 
-#[cfg(any(target_os = "android", target_os = "emscripten", target_os = "linux",))]
+#[cfg(any(target_os = "android", target_os = "linux",))]
 #[test]
 fn test_send_vectored_with_ancillary_to_unix_datagram() {
     fn getpid() -> libc::pid_t {
@@ -732,15 +706,7 @@ fn test_send_vectored_with_ancillary_to_unix_datagram() {
     }
 }
 
-#[cfg(any(
-    target_os = "android",
-    target_os = "dragonfly",
-    target_os = "emscripten",
-    target_os = "freebsd",
-    target_os = "linux",
-    target_os = "netbsd",
-    target_os = "openbsd",
-))]
+#[cfg(any(target_os = "android", target_os = "linux"))]
 #[test]
 fn test_send_vectored_with_ancillary_unix_datagram() {
     let dir = tmpdir();

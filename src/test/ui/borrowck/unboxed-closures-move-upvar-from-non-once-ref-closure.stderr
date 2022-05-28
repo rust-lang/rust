@@ -6,10 +6,18 @@ LL |       let y = vec![format!("World")];
 LL |       call(|| {
    |  __________-
 LL | |         y.into_iter();
-   | |         ^ move occurs because `y` has type `Vec<String>`, which does not implement the `Copy` trait
+   | |         ^ ----------- `y` moved due to this method call
+   | |         |
+   | |         move occurs because `y` has type `Vec<String>`, which does not implement the `Copy` trait
 LL | |
 LL | |     });
    | |_____- captured by this `Fn` closure
+   |
+note: this function takes ownership of the receiver `self`, which moves `y`
+  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
+   |
+LL |     fn into_iter(self) -> Self::IntoIter;
+   |                  ^^^^
 
 error: aborting due to previous error
 

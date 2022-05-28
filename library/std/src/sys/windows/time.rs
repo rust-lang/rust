@@ -1,5 +1,4 @@
 use crate::cmp::Ordering;
-use crate::convert::TryInto;
 use crate::fmt;
 use crate::mem;
 use crate::sys::c;
@@ -39,14 +38,6 @@ impl Instant {
         // In order to keep unit conversions out of normal interval math, we
         // measure in QPC units and immediately convert to nanoseconds.
         perf_counter::PerformanceCounterInstant::now().into()
-    }
-
-    pub fn actually_monotonic() -> bool {
-        false
-    }
-
-    pub const fn zero() -> Instant {
-        Instant { t: Duration::from_secs(0) }
     }
 
     pub fn checked_sub_instant(&self, other: &Instant) -> Option<Duration> {

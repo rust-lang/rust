@@ -1,9 +1,9 @@
 use super::*;
 
-impl<T: Eq + Hash> TransitiveRelation<T> {
+impl<T: Eq + Hash + Copy> TransitiveRelation<T> {
     /// A "best" parent in some sense. See `parents` and
     /// `postdom_upper_bound` for more details.
-    fn postdom_parent(&self, a: &T) -> Option<&T> {
+    fn postdom_parent(&self, a: T) -> Option<T> {
         self.mutual_immediate_postdominator(self.parents(a))
     }
 }
@@ -13,10 +13,10 @@ fn test_one_step() {
     let mut relation = TransitiveRelation::default();
     relation.add("a", "b");
     relation.add("a", "c");
-    assert!(relation.contains(&"a", &"c"));
-    assert!(relation.contains(&"a", &"b"));
-    assert!(!relation.contains(&"b", &"a"));
-    assert!(!relation.contains(&"a", &"d"));
+    assert!(relation.contains("a", "c"));
+    assert!(relation.contains("a", "b"));
+    assert!(!relation.contains("b", "a"));
+    assert!(!relation.contains("a", "d"));
 }
 
 #[test]
@@ -32,17 +32,17 @@ fn test_many_steps() {
 
     relation.add("e", "g");
 
-    assert!(relation.contains(&"a", &"b"));
-    assert!(relation.contains(&"a", &"c"));
-    assert!(relation.contains(&"a", &"d"));
-    assert!(relation.contains(&"a", &"e"));
-    assert!(relation.contains(&"a", &"f"));
-    assert!(relation.contains(&"a", &"g"));
+    assert!(relation.contains("a", "b"));
+    assert!(relation.contains("a", "c"));
+    assert!(relation.contains("a", "d"));
+    assert!(relation.contains("a", "e"));
+    assert!(relation.contains("a", "f"));
+    assert!(relation.contains("a", "g"));
 
-    assert!(relation.contains(&"b", &"g"));
+    assert!(relation.contains("b", "g"));
 
-    assert!(!relation.contains(&"a", &"x"));
-    assert!(!relation.contains(&"b", &"f"));
+    assert!(!relation.contains("a", "x"));
+    assert!(!relation.contains("b", "f"));
 }
 
 #[test]
@@ -54,9 +54,9 @@ fn mubs_triangle() {
     let mut relation = TransitiveRelation::default();
     relation.add("a", "tcx");
     relation.add("b", "tcx");
-    assert_eq!(relation.minimal_upper_bounds(&"a", &"b"), vec![&"tcx"]);
-    assert_eq!(relation.parents(&"a"), vec![&"tcx"]);
-    assert_eq!(relation.parents(&"b"), vec![&"tcx"]);
+    assert_eq!(relation.minimal_upper_bounds("a", "b"), vec!["tcx"]);
+    assert_eq!(relation.parents("a"), vec!["tcx"]);
+    assert_eq!(relation.parents("b"), vec!["tcx"]);
 }
 
 #[test]
@@ -81,10 +81,10 @@ fn mubs_best_choice1() {
     relation.add("3", "1");
     relation.add("3", "2");
 
-    assert_eq!(relation.minimal_upper_bounds(&"0", &"3"), vec![&"2"]);
-    assert_eq!(relation.parents(&"0"), vec![&"2"]);
-    assert_eq!(relation.parents(&"2"), vec![&"1"]);
-    assert!(relation.parents(&"1").is_empty());
+    assert_eq!(relation.minimal_upper_bounds("0", "3"), vec!["2"]);
+    assert_eq!(relation.parents("0"), vec!["2"]);
+    assert_eq!(relation.parents("2"), vec!["1"]);
+    assert!(relation.parents("1").is_empty());
 }
 
 #[test]
@@ -96,7 +96,7 @@ fn mubs_best_choice2() {
     //
     // mubs(0,3) = [2]
 
-    // Like the precedecing test, but in this case intersection is [2,
+    // Like the preceding test, but in this case intersection is [2,
     // 1], and hence we rely on the first pare down call.
 
     let mut relation = TransitiveRelation::default();
@@ -108,10 +108,10 @@ fn mubs_best_choice2() {
     relation.add("3", "1");
     relation.add("3", "2");
 
-    assert_eq!(relation.minimal_upper_bounds(&"0", &"3"), vec![&"1"]);
-    assert_eq!(relation.parents(&"0"), vec![&"1"]);
-    assert_eq!(relation.parents(&"1"), vec![&"2"]);
-    assert!(relation.parents(&"2").is_empty());
+    assert_eq!(relation.minimal_upper_bounds("0", "3"), vec!["1"]);
+    assert_eq!(relation.parents("0"), vec!["1"]);
+    assert_eq!(relation.parents("1"), vec!["2"]);
+    assert!(relation.parents("2").is_empty());
 }
 
 #[test]
@@ -125,9 +125,9 @@ fn mubs_no_best_choice() {
     relation.add("3", "1");
     relation.add("3", "2");
 
-    assert_eq!(relation.minimal_upper_bounds(&"0", &"3"), vec![&"1", &"2"]);
-    assert_eq!(relation.parents(&"0"), vec![&"1", &"2"]);
-    assert_eq!(relation.parents(&"3"), vec![&"1", &"2"]);
+    assert_eq!(relation.minimal_upper_bounds("0", "3"), vec!["1", "2"]);
+    assert_eq!(relation.parents("0"), vec!["1", "2"]);
+    assert_eq!(relation.parents("3"), vec!["1", "2"]);
 }
 
 #[test]
@@ -145,8 +145,8 @@ fn mubs_best_choice_scc() {
     relation.add("3", "1");
     relation.add("3", "2");
 
-    assert_eq!(relation.minimal_upper_bounds(&"0", &"3"), vec![&"1"]);
-    assert_eq!(relation.parents(&"0"), vec![&"1"]);
+    assert_eq!(relation.minimal_upper_bounds("0", "3"), vec!["1"]);
+    assert_eq!(relation.parents("0"), vec!["1"]);
 }
 
 #[test]
@@ -165,10 +165,10 @@ fn pdub_crisscross() {
     relation.add("a1", "x");
     relation.add("b1", "x");
 
-    assert_eq!(relation.minimal_upper_bounds(&"a", &"b"), vec![&"a1", &"b1"]);
-    assert_eq!(relation.postdom_upper_bound(&"a", &"b"), Some(&"x"));
-    assert_eq!(relation.postdom_parent(&"a"), Some(&"x"));
-    assert_eq!(relation.postdom_parent(&"b"), Some(&"x"));
+    assert_eq!(relation.minimal_upper_bounds("a", "b"), vec!["a1", "b1"]);
+    assert_eq!(relation.postdom_upper_bound("a", "b"), Some("x"));
+    assert_eq!(relation.postdom_parent("a"), Some("x"));
+    assert_eq!(relation.postdom_parent("b"), Some("x"));
 }
 
 #[test]
@@ -195,12 +195,12 @@ fn pdub_crisscross_more() {
     relation.add("a3", "x");
     relation.add("b2", "x");
 
-    assert_eq!(relation.minimal_upper_bounds(&"a", &"b"), vec![&"a1", &"b1"]);
-    assert_eq!(relation.minimal_upper_bounds(&"a1", &"b1"), vec![&"a2", &"b2"]);
-    assert_eq!(relation.postdom_upper_bound(&"a", &"b"), Some(&"x"));
+    assert_eq!(relation.minimal_upper_bounds("a", "b"), vec!["a1", "b1"]);
+    assert_eq!(relation.minimal_upper_bounds("a1", "b1"), vec!["a2", "b2"]);
+    assert_eq!(relation.postdom_upper_bound("a", "b"), Some("x"));
 
-    assert_eq!(relation.postdom_parent(&"a"), Some(&"x"));
-    assert_eq!(relation.postdom_parent(&"b"), Some(&"x"));
+    assert_eq!(relation.postdom_parent("a"), Some("x"));
+    assert_eq!(relation.postdom_parent("b"), Some("x"));
 }
 
 #[test]
@@ -216,13 +216,13 @@ fn pdub_lub() {
     relation.add("a1", "x");
     relation.add("b1", "x");
 
-    assert_eq!(relation.minimal_upper_bounds(&"a", &"b"), vec![&"x"]);
-    assert_eq!(relation.postdom_upper_bound(&"a", &"b"), Some(&"x"));
+    assert_eq!(relation.minimal_upper_bounds("a", "b"), vec!["x"]);
+    assert_eq!(relation.postdom_upper_bound("a", "b"), Some("x"));
 
-    assert_eq!(relation.postdom_parent(&"a"), Some(&"a1"));
-    assert_eq!(relation.postdom_parent(&"b"), Some(&"b1"));
-    assert_eq!(relation.postdom_parent(&"a1"), Some(&"x"));
-    assert_eq!(relation.postdom_parent(&"b1"), Some(&"x"));
+    assert_eq!(relation.postdom_parent("a"), Some("a1"));
+    assert_eq!(relation.postdom_parent("b"), Some("b1"));
+    assert_eq!(relation.postdom_parent("a1"), Some("x"));
+    assert_eq!(relation.postdom_parent("b1"), Some("x"));
 }
 
 #[test]
@@ -238,7 +238,7 @@ fn mubs_intermediate_node_on_one_side_only() {
     relation.add("c", "d");
     relation.add("b", "d");
 
-    assert_eq!(relation.minimal_upper_bounds(&"a", &"b"), vec![&"d"]);
+    assert_eq!(relation.minimal_upper_bounds("a", "b"), vec!["d"]);
 }
 
 #[test]
@@ -259,7 +259,7 @@ fn mubs_scc_1() {
     relation.add("a", "d");
     relation.add("b", "d");
 
-    assert_eq!(relation.minimal_upper_bounds(&"a", &"b"), vec![&"c"]);
+    assert_eq!(relation.minimal_upper_bounds("a", "b"), vec!["c"]);
 }
 
 #[test]
@@ -279,7 +279,7 @@ fn mubs_scc_2() {
     relation.add("b", "d");
     relation.add("b", "c");
 
-    assert_eq!(relation.minimal_upper_bounds(&"a", &"b"), vec![&"c"]);
+    assert_eq!(relation.minimal_upper_bounds("a", "b"), vec!["c"]);
 }
 
 #[test]
@@ -300,7 +300,7 @@ fn mubs_scc_3() {
     relation.add("b", "d");
     relation.add("b", "e");
 
-    assert_eq!(relation.minimal_upper_bounds(&"a", &"b"), vec![&"c"]);
+    assert_eq!(relation.minimal_upper_bounds("a", "b"), vec!["c"]);
 }
 
 #[test]
@@ -322,7 +322,7 @@ fn mubs_scc_4() {
     relation.add("a", "d");
     relation.add("b", "e");
 
-    assert_eq!(relation.minimal_upper_bounds(&"a", &"b"), vec![&"c"]);
+    assert_eq!(relation.minimal_upper_bounds("a", "b"), vec!["c"]);
 }
 
 #[test]
@@ -357,6 +357,6 @@ fn parent() {
         relation.add(a, b);
     }
 
-    let p = relation.postdom_parent(&3);
-    assert_eq!(p, Some(&0));
+    let p = relation.postdom_parent(3);
+    assert_eq!(p, Some(0));
 }

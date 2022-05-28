@@ -423,6 +423,10 @@ pub enum Edition {
     #[doc_hint = "2021"]
     /// Edition 2021.
     Edition2021,
+    #[value = "2024"]
+    #[doc_hint = "2024"]
+    /// Edition 2024.
+    Edition2024,
 }
 
 impl Default for Edition {
@@ -437,6 +441,7 @@ impl From<Edition> for rustc_span::edition::Edition {
             Edition::Edition2015 => Self::Edition2015,
             Edition::Edition2018 => Self::Edition2018,
             Edition::Edition2021 => Self::Edition2021,
+            Edition::Edition2024 => Self::Edition2024,
         }
     }
 }

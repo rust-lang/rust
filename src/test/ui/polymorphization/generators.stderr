@@ -8,11 +8,10 @@ LL | #![feature(generic_const_exprs, generators, generator_trait, rustc_attrs)]
    = note: see issue #76560 <https://github.com/rust-lang/rust/issues/76560> for more information
 
 error: item has unused generic parameters
-  --> $DIR/generators.rs:36:5
+  --> $DIR/generators.rs:35:5
    |
 LL |   pub fn unused_type<T>() -> impl Generator<(), Yield = u32, Return = u32> + Unpin {
    |                      - generic parameter `T` is unused
-LL |
 LL | /     || {
 LL | |
 LL | |         yield 1;
@@ -20,18 +19,17 @@ LL | |         2
 LL | |     }
    | |_____^
 
-error: item has unused generic parameters
-  --> $DIR/generators.rs:34:8
+note: the above error was encountered while instantiating `fn finish::<[generator@$DIR/generators.rs:35:5: 39:6], u32, u32>`
+  --> $DIR/generators.rs:86:5
    |
-LL | pub fn unused_type<T>() -> impl Generator<(), Yield = u32, Return = u32> + Unpin {
-   |        ^^^^^^^^^^^ - generic parameter `T` is unused
+LL |     finish(unused_type::<u32>());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: item has unused generic parameters
-  --> $DIR/generators.rs:62:5
+  --> $DIR/generators.rs:60:5
    |
 LL |   pub fn unused_const<const T: u32>() -> impl Generator<(), Yield = u32, Return = u32> + Unpin {
-   |                             - generic parameter `T` is unused
-LL |
+   |                       ------------ generic parameter `T` is unused
 LL | /     || {
 LL | |
 LL | |         yield 1;
@@ -39,11 +37,11 @@ LL | |         2
 LL | |     }
    | |_____^
 
-error: item has unused generic parameters
-  --> $DIR/generators.rs:60:8
+note: the above error was encountered while instantiating `fn finish::<[generator@$DIR/generators.rs:60:5: 64:6], u32, u32>`
+  --> $DIR/generators.rs:89:5
    |
-LL | pub fn unused_const<const T: u32>() -> impl Generator<(), Yield = u32, Return = u32> + Unpin {
-   |        ^^^^^^^^^^^^       - generic parameter `T` is unused
+LL |     finish(unused_const::<1u32>());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 4 previous errors; 1 warning emitted
+error: aborting due to 2 previous errors; 1 warning emitted
 

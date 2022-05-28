@@ -1,6 +1,11 @@
 // run-rustfix
 #![warn(clippy::needless_for_each)]
-#![allow(unused, clippy::needless_return, clippy::match_single_binding)]
+#![allow(
+    unused,
+    clippy::needless_return,
+    clippy::match_single_binding,
+    clippy::let_unit_value
+)]
 
 use std::collections::HashMap;
 

@@ -30,11 +30,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// It is a bug to call this with a not-fully-simplified pattern.
     pub(super) fn test<'pat>(&mut self, match_pair: &MatchPair<'pat, 'tcx>) -> Test<'tcx> {
         match *match_pair.pattern.kind {
-            PatKind::Variant { ref adt_def, substs: _, variant_index: _, subpatterns: _ } => Test {
+            PatKind::Variant { adt_def, substs: _, variant_index: _, subpatterns: _ } => Test {
                 span: match_pair.pattern.span,
                 kind: TestKind::Switch {
                     adt_def,
-                    variants: BitSet::new_empty(adt_def.variants.len()),
+                    variants: BitSet::new_empty(adt_def.variants().len()),
                 },
             },
 
@@ -59,8 +59,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             },
 
             PatKind::Range(range) => {
-                assert_eq!(range.lo.ty, match_pair.pattern.ty);
-                assert_eq!(range.hi.ty, match_pair.pattern.ty);
+                assert_eq!(range.lo.ty(), match_pair.pattern.ty);
+                assert_eq!(range.hi.ty(), match_pair.pattern.ty);
                 Test { span: match_pair.pattern.span, kind: TestKind::Range(range) }
             }
 
@@ -86,13 +86,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         test_place: &PlaceBuilder<'tcx>,
         candidate: &Candidate<'pat, 'tcx>,
         switch_ty: Ty<'tcx>,
-        options: &mut FxIndexMap<&'tcx ty::Const<'tcx>, u128>,
+        options: &mut FxIndexMap<ConstantKind<'tcx>, u128>,
     ) -> bool {
-        let match_pair = match candidate.match_pairs.iter().find(|mp| mp.place == *test_place) {
-            Some(match_pair) => match_pair,
-            _ => {
-                return false;
-            }
+        let Some(match_pair) = candidate.match_pairs.iter().find(|mp| mp.place == *test_place) else {
+            return false;
         };
 
         match *match_pair.pattern.kind {
@@ -129,11 +126,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         candidate: &Candidate<'pat, 'tcx>,
         variants: &mut BitSet<VariantIdx>,
     ) -> bool {
-        let match_pair = match candidate.match_pairs.iter().find(|mp| mp.place == *test_place) {
-            Some(match_pair) => match_pair,
-            _ => {
-                return false;
-            }
+        let Some(match_pair) = candidate.match_pairs.iter().find(|mp| mp.place == *test_place) else {
+            return false;
         };
 
         match *match_pair.pattern.kind {
@@ -180,7 +174,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             TestKind::Switch { adt_def, ref variants } => {
                 let target_blocks = make_target_blocks(self);
                 // Variants is a BitVec of indexes into adt_def.variants.
-                let num_enum_variants = adt_def.variants.len();
+                let num_enum_variants = adt_def.variants().len();
                 debug_assert_eq!(target_blocks.len(), num_enum_variants + 1);
                 let otherwise_block = *target_blocks.last().unwrap();
                 let tcx = self.tcx;
@@ -207,7 +201,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     otherwise_block,
                 );
                 debug!("num_enum_variants: {}, variants: {:?}", num_enum_variants, variants);
-                let discr_ty = adt_def.repr.discr_type().to_ty(tcx);
+                let discr_ty = adt_def.repr().discr_type().to_ty(tcx);
                 let discr = self.temp(discr_ty, test.span);
                 self.cfg.push_assign(
                     block,
@@ -230,16 +224,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let target_blocks = make_target_blocks(self);
                 let terminator = if *switch_ty.kind() == ty::Bool {
                     assert!(!options.is_empty() && options.len() <= 2);
-                    if let [first_bb, second_bb] = *target_blocks {
-                        let (true_bb, false_bb) = match options[0] {
-                            1 => (first_bb, second_bb),
-                            0 => (second_bb, first_bb),
-                            v => span_bug!(test.span, "expected boolean value but got {:?}", v),
-                        };
-                        TerminatorKind::if_(self.tcx, Operand::Copy(place), true_bb, false_bb)
-                    } else {
+                    let [first_bb, second_bb] = *target_blocks else {
                         bug!("`TestKind::SwitchInt` on `bool` should have two targets")
-                    }
+                    };
+                    let (true_bb, false_bb) = match options[0] {
+                        1 => (first_bb, second_bb),
+                        0 => (second_bb, first_bb),
+                        v => span_bug!(test.span, "expected boolean value but got {:?}", v),
+                    };
+                    TerminatorKind::if_(self.tcx, Operand::Copy(place), true_bb, false_bb)
                 } else {
                     // The switch may be inexhaustive so we have a catch all block
                     debug_assert_eq!(options.len() + 1, target_blocks.len());
@@ -270,7 +263,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         ty,
                     );
                 } else if let [success, fail] = *make_target_blocks(self) {
-                    assert_eq!(value.ty, ty);
+                    assert_eq!(value.ty(), ty);
                     let expect = self.literal_operand(test.span, value);
                     let val = Operand::Copy(place);
                     self.compare(block, success, fail, source_info, BinOp::Eq, expect, val);
@@ -279,7 +272,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
             }
 
-            TestKind::Range(PatRange { ref lo, ref hi, ref end }) => {
+            TestKind::Range(PatRange { lo, hi, ref end }) => {
                 let lower_bound_success = self.cfg.start_new_block();
                 let target_blocks = make_target_blocks(self);
 
@@ -288,24 +281,23 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let hi = self.literal_operand(test.span, hi);
                 let val = Operand::Copy(place);
 
-                if let [success, fail] = *target_blocks {
-                    self.compare(
-                        block,
-                        lower_bound_success,
-                        fail,
-                        source_info,
-                        BinOp::Le,
-                        lo,
-                        val.clone(),
-                    );
-                    let op = match *end {
-                        RangeEnd::Included => BinOp::Le,
-                        RangeEnd::Excluded => BinOp::Lt,
-                    };
-                    self.compare(lower_bound_success, success, fail, source_info, op, val, hi);
-                } else {
+                let [success, fail] = *target_blocks else {
                     bug!("`TestKind::Range` should have two target blocks");
-                }
+                };
+                self.compare(
+                    block,
+                    lower_bound_success,
+                    fail,
+                    source_info,
+                    BinOp::Le,
+                    lo,
+                    val.clone(),
+                );
+                let op = match *end {
+                    RangeEnd::Included => BinOp::Le,
+                    RangeEnd::Excluded => BinOp::Lt,
+                };
+                self.compare(lower_bound_success, success, fail, source_info, op, val, hi);
             }
 
             TestKind::Len { len, op } => {
@@ -320,21 +312,20 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // expected = <N>
                 let expected = self.push_usize(block, source_info, len);
 
-                if let [true_bb, false_bb] = *target_blocks {
-                    // result = actual == expected OR result = actual < expected
-                    // branch based on result
-                    self.compare(
-                        block,
-                        true_bb,
-                        false_bb,
-                        source_info,
-                        op,
-                        Operand::Move(actual),
-                        Operand::Move(expected),
-                    );
-                } else {
+                let [true_bb, false_bb] = *target_blocks else {
                     bug!("`TestKind::Len` should have two target blocks");
-                }
+                };
+                // result = actual == expected OR result = actual < expected
+                // branch based on result
+                self.compare(
+                    block,
+                    true_bb,
+                    false_bb,
+                    source_info,
+                    op,
+                    Operand::Move(actual),
+                    Operand::Move(expected),
+                );
             }
         }
     }
@@ -375,7 +366,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         block: BasicBlock,
         make_target_blocks: impl FnOnce(&mut Self) -> Vec<BasicBlock>,
         source_info: SourceInfo,
-        value: &'tcx ty::Const<'tcx>,
+        value: ConstantKind<'tcx>,
         place: Place<'tcx>,
         mut ty: Ty<'tcx>,
     ) {
@@ -396,14 +387,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             _ => None,
         };
         let opt_ref_ty = unsize(ty);
-        let opt_ref_test_ty = unsize(value.ty);
+        let opt_ref_test_ty = unsize(value.ty());
         match (opt_ref_ty, opt_ref_test_ty) {
             // nothing to do, neither is an array
             (None, None) => {}
             (Some((region, elem_ty, _)), _) | (None, Some((region, elem_ty, _))) => {
                 let tcx = self.tcx;
                 // make both a slice
-                ty = tcx.mk_imm_ref(region, tcx.mk_slice(elem_ty));
+                ty = tcx.mk_imm_ref(*region, tcx.mk_slice(*elem_ty));
                 if opt_ref_ty.is_some() {
                     let temp = self.temp(ty, source_info.span);
                     self.cfg.push_assign(
@@ -427,9 +418,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
         }
 
-        let deref_ty = match *ty.kind() {
-            ty::Ref(_, deref_ty, _) => deref_ty,
-            _ => bug!("non_scalar_compare called on non-reference type: {}", ty),
+        let ty::Ref(_, deref_ty, _) = *ty.kind() else {
+            bug!("non_scalar_compare called on non-reference type: {}", ty);
         };
 
         let eq_def_id = self.tcx.require_lang_item(LangItem::PartialEq, None);
@@ -451,10 +441,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     // Need to experiment.
                     user_ty: None,
 
-                    literal: method.into(),
+                    literal: method,
                 })),
                 args: vec![val, expect],
-                destination: Some((eq_result, eq_block)),
+                destination: eq_result,
+                target: Some(eq_block),
                 cleanup: None,
                 from_hir_call: false,
                 fn_span: source_info.span,
@@ -462,16 +453,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         );
         self.diverge_from(block);
 
-        if let [success_block, fail_block] = *make_target_blocks(self) {
-            // check the result
-            self.cfg.terminate(
-                eq_block,
-                source_info,
-                TerminatorKind::if_(self.tcx, Operand::Move(eq_result), success_block, fail_block),
-            );
-        } else {
+        let [success_block, fail_block] = *make_target_blocks(self) else {
             bug!("`TestKind::Eq` should have two target blocks")
-        }
+        };
+        // check the result
+        self.cfg.terminate(
+            eq_block,
+            source_info,
+            TerminatorKind::if_(self.tcx, Operand::Move(eq_result), success_block, fail_block),
+        );
     }
 
     /// Given that we are performing `test` against `test_place`, this job
@@ -653,7 +643,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                     let tcx = self.tcx;
 
-                    let test_ty = test.lo.ty;
+                    let test_ty = test.lo.ty();
                     let lo = compare_const_vals(tcx, test.lo, pat.hi, self.param_env, test_ty)?;
                     let hi = compare_const_vals(tcx, test.hi, pat.lo, self.param_env, test_ty)?;
 
@@ -744,7 +734,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn candidate_after_variant_switch<'pat>(
         &mut self,
         match_pair_index: usize,
-        adt_def: &'tcx ty::AdtDef,
+        adt_def: ty::AdtDef<'tcx>,
         variant_index: VariantIdx,
         subpatterns: &'pat [FieldPat<'tcx>],
         candidate: &mut Candidate<'pat, 'tcx>,
@@ -755,7 +745,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // we want to create a set of derived match-patterns like
         // `(x as Variant).0 @ P1` and `(x as Variant).1 @ P1`.
         let elem =
-            ProjectionElem::Downcast(Some(adt_def.variants[variant_index].name), variant_index);
+            ProjectionElem::Downcast(Some(adt_def.variant(variant_index).name), variant_index);
         let downcast_place = match_pair.place.project(elem); // `(x as Variant)`
         let consequent_match_pairs = subpatterns.iter().map(|subpattern| {
             // e.g., `(x as Variant).0`
@@ -774,14 +764,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn const_range_contains(
         &self,
         range: PatRange<'tcx>,
-        value: &'tcx ty::Const<'tcx>,
+        value: ConstantKind<'tcx>,
     ) -> Option<bool> {
         use std::cmp::Ordering::*;
 
         let tcx = self.tcx;
 
-        let a = compare_const_vals(tcx, range.lo, value, self.param_env, range.lo.ty)?;
-        let b = compare_const_vals(tcx, value, range.hi, self.param_env, range.lo.ty)?;
+        let a = compare_const_vals(tcx, range.lo, value, self.param_env, range.lo.ty())?;
+        let b = compare_const_vals(tcx, value, range.hi, self.param_env, range.lo.ty())?;
 
         match (b, range.end) {
             (Less, _) | (Equal, RangeEnd::Included) if a != Greater => Some(true),
@@ -792,7 +782,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn values_not_contained_in_range(
         &self,
         range: PatRange<'tcx>,
-        options: &FxIndexMap<&'tcx ty::Const<'tcx>, u128>,
+        options: &FxIndexMap<ConstantKind<'tcx>, u128>,
     ) -> Option<bool> {
         for &val in options.keys() {
             if self.const_range_contains(range, val)? {
@@ -813,7 +803,7 @@ impl Test<'_> {
                 // variants, we have a target for each variant and the
                 // otherwise case, and we make sure that all of the cases not
                 // specified have the same block.
-                adt_def.variants.len() + 1
+                adt_def.variants().len() + 1
             }
             TestKind::SwitchInt { switch_ty, ref options, .. } => {
                 if switch_ty.is_bool() {
@@ -838,7 +828,7 @@ fn trait_method<'tcx>(
     method_name: Symbol,
     self_ty: Ty<'tcx>,
     params: &[GenericArg<'tcx>],
-) -> &'tcx ty::Const<'tcx> {
+) -> ConstantKind<'tcx> {
     let substs = tcx.mk_substs_trait(self_ty, params);
 
     // The unhygienic comparison here is acceptable because this is only
@@ -849,7 +839,8 @@ fn trait_method<'tcx>(
         .find(|item| item.kind == ty::AssocKind::Fn)
         .expect("trait method not found");
 
-    let method_ty = tcx.type_of(item.def_id);
+    let method_ty = tcx.bound_type_of(item.def_id);
     let method_ty = method_ty.subst(tcx, substs);
-    ty::Const::zero_sized(tcx, method_ty)
+
+    ConstantKind::zero_sized(method_ty)
 }

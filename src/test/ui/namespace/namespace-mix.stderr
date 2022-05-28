@@ -18,6 +18,11 @@ LL | use m2::S;
    |
 LL | use xm2::S;
    |
+help: if you import `S`, refer to it directly
+   |
+LL -     check(m1::S);
+LL +     check(S);
+   | 
 
 error[E0423]: expected value, found type alias `xm1::S`
   --> $DIR/namespace-mix.rs:40:11
@@ -41,6 +46,11 @@ LL | use m2::S;
    |
 LL | use xm2::S;
    |
+help: if you import `S`, refer to it directly
+   |
+LL -     check(xm1::S);
+LL +     check(S);
+   | 
 
 error[E0423]: expected value, found struct variant `m7::V`
   --> $DIR/namespace-mix.rs:100:11
@@ -67,6 +77,11 @@ LL | use m8::V;
    |
 LL | use xm8::V;
    |
+help: if you import `V`, refer to it directly
+   |
+LL -     check(m7::V);
+LL +     check(V);
+   | 
 
 error[E0423]: expected value, found struct variant `xm7::V`
   --> $DIR/namespace-mix.rs:106:11
@@ -95,6 +110,11 @@ LL | use m8::V;
    |
 LL | use xm8::V;
    |
+help: if you import `V`, refer to it directly
+   |
+LL -     check(xm7::V);
+LL +     check(V);
+   | 
 
 error[E0277]: the trait bound `c::Item: Impossible` is not satisfied
   --> $DIR/namespace-mix.rs:33:11

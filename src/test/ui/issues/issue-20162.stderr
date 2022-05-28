@@ -9,6 +9,10 @@ note: required by a bound in `slice::<impl [T]>::sort`
    |
 LL |         T: Ord,
    |            ^^^ required by this bound in `slice::<impl [T]>::sort`
+help: consider annotating `X` with `#[derive(Ord)]`
+   |
+LL | #[derive(Ord)]
+   |
 
 error: aborting due to previous error
 

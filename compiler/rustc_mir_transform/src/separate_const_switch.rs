@@ -239,13 +239,10 @@ fn is_likely_const<'tcx>(mut tracked_place: Place<'tcx>, block: &BasicBlockData<
                 }
             }
 
-            // If inline assembly is found, we probably should
-            // not try to analyze the code
-            StatementKind::LlvmInlineAsm(_) => return false,
-
             // These statements have no influence on the place
             // we are interested in
             StatementKind::FakeRead(_)
+            | StatementKind::Deinit(_)
             | StatementKind::StorageLive(_)
             | StatementKind::Retag(_, _)
             | StatementKind::AscribeUserType(_, _)
@@ -312,6 +309,7 @@ fn find_determining_place<'tcx>(
             // These statements have no influence on the place
             // we are interested in
             StatementKind::FakeRead(_)
+            | StatementKind::Deinit(_)
             | StatementKind::StorageLive(_)
             | StatementKind::StorageDead(_)
             | StatementKind::Retag(_, _)
@@ -319,10 +317,6 @@ fn find_determining_place<'tcx>(
             | StatementKind::Coverage(_)
             | StatementKind::CopyNonOverlapping(_)
             | StatementKind::Nop => {}
-
-            // If inline assembly is found, we probably should
-            // not try to analyze the code
-            StatementKind::LlvmInlineAsm(_) => return None,
 
             // If the discriminant is set, it is always set
             // as a constant, so the job is already done.

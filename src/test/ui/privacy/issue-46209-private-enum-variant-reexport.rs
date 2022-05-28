@@ -1,5 +1,3 @@
-#![feature(crate_visibility_modifier)]
-
 #[deny(unused_imports)]
 mod rank {
     pub use self::Professor::*;
@@ -31,7 +29,7 @@ mod rank {
         MasterChief
     }
 
-    crate enum Crewman {
+    pub(crate) enum Crewman {
         Recruit,
         Apprentice,
         Full

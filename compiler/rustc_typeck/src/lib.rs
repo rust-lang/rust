@@ -55,19 +55,24 @@ This API is completely unstable and subject to change.
 
 */
 
+#![allow(rustc::potential_query_instability)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
-#![feature(bool_to_option)]
-#![feature(crate_visibility_modifier)]
+#![feature(box_patterns)]
+#![feature(control_flow_enum)]
+#![feature(drain_filter)]
+#![feature(hash_drain_filter)]
 #![feature(if_let_guard)]
 #![feature(is_sorted)]
+#![feature(iter_intersperse)]
+#![feature(label_break_value)]
+#![feature(let_chains)]
 #![feature(let_else)]
 #![feature(min_specialization)]
-#![feature(nll)]
-#![feature(try_blocks)]
 #![feature(never_type)]
+#![feature(nll)]
+#![feature(once_cell)]
 #![feature(slice_partition_dedup)]
-#![feature(control_flow_enum)]
-#![feature(hash_drain_filter)]
+#![feature(try_blocks)]
 #![recursion_limit = "256"]
 
 #[macro_use]
@@ -94,7 +99,7 @@ mod outlives;
 mod structured_errors;
 mod variance;
 
-use rustc_errors::{struct_span_err, ErrorReported};
+use rustc_errors::{struct_span_err, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{Node, CRATE_HIR_ID};
@@ -121,7 +126,7 @@ use bounds::Bounds;
 fn require_c_abi_if_c_variadic(tcx: TyCtxt<'_>, decl: &hir::FnDecl<'_>, abi: Abi, span: Span) {
     match (decl.c_variadic, abi) {
         // The function has the correct calling convention, or isn't a "C-variadic" function.
-        (false, _) | (true, Abi::C { .. }) | (true, Abi::Cdecl) => {}
+        (false, _) | (true, Abi::C { .. }) | (true, Abi::Cdecl { .. }) => {}
         // The function is a "C-variadic" function with an incorrect calling convention.
         (true, _) => {
             let mut err = struct_span_err!(
@@ -207,7 +212,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
         let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
         match tcx.hir().find(hir_id) {
             Some(Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, ref generics, _), .. })) => {
-                generics.where_clause.span()
+                generics.where_clause_span()
             }
             _ => {
                 span_bug!(tcx.def_span(def_id), "main has a non-function type");
@@ -293,17 +298,12 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
         error = true;
     }
 
-    for attr in tcx.get_attrs(main_def_id) {
-        if attr.has_name(sym::track_caller) {
-            tcx.sess
-                .struct_span_err(
-                    attr.span,
-                    "`main` function is not allowed to be `#[track_caller]`",
-                )
-                .span_label(main_span, "`main` function is not allowed to be `#[track_caller]`")
-                .emit();
-            error = true;
-        }
+    for attr in tcx.get_attrs(main_def_id, sym::track_caller) {
+        tcx.sess
+            .struct_span_err(attr.span, "`main` function is not allowed to be `#[track_caller]`")
+            .span_label(main_span, "`main` function is not allowed to be `#[track_caller]`")
+            .emit();
+        error = true;
     }
 
     if error {
@@ -402,7 +402,7 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
                         .emit();
                         error = true;
                     }
-                    if let Some(sp) = generics.where_clause.span() {
+                    if let Some(sp) = generics.where_clause_span() {
                         struct_span_err!(
                             tcx.sess,
                             sp,
@@ -488,7 +488,7 @@ pub fn provide(providers: &mut Providers) {
     hir_wf_check::provide(providers);
 }
 
-pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorReported> {
+pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
     let _prof_timer = tcx.sess.timer("type_check_crate");
 
     // this ensures that later parts of type checking can assume that items
@@ -534,7 +534,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorReported> {
     check_unused::check_crate(tcx);
     check_for_entry_fn(tcx);
 
-    if tcx.sess.err_count() == 0 { Ok(()) } else { Err(ErrorReported) }
+    if let Some(reported) = tcx.sess.has_errors() { Err(reported) } else { Ok(()) }
 }
 
 /// A quasi-deprecated helper used in rustdoc and clippy to get

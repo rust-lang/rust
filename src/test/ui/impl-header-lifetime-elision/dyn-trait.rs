@@ -1,3 +1,7 @@
+// ignore-compare-mode-nll
+// revisions: base nll
+// [nll]compile-flags: -Zborrowck=mir
+
 // Test that `impl MyTrait<'_> for &i32` is equivalent to `impl<'a,
 // 'b> MyTrait<'a> for &'b i32`.
 
@@ -17,7 +21,9 @@ fn static_val<T: StaticTrait>(_: T) {
 }
 
 fn with_dyn_debug_static<'a>(x: Box<dyn Debug + 'a>) {
-    static_val(x); //~ ERROR E0759
+    static_val(x);
+    //[base]~^ ERROR E0759
+    //[nll]~^^ ERROR borrowed data escapes outside of function
 }
 
 fn not_static_val<T: NotStaticTrait>(_: T) {

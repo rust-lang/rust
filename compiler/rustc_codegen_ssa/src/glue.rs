@@ -74,7 +74,7 @@ pub fn size_and_align_of_dst<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
             // Packed types ignore the alignment of their fields.
             if let ty::Adt(def, _) = t.kind() {
-                if def.repr.packed() {
+                if def.repr().packed() {
                     unsized_align = sized_align;
                 }
             }

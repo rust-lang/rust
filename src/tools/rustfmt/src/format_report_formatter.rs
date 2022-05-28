@@ -20,6 +20,7 @@ impl<'a> FormatReportFormatterBuilder<'a> {
     }
 
     /// Enables colors and formatting in the output.
+    #[must_use]
     pub fn enable_colors(self, enable_colors: bool) -> Self {
         Self {
             enable_colors,

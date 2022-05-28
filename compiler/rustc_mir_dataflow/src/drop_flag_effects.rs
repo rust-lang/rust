@@ -243,9 +243,8 @@ pub(crate) fn on_all_inactive_variants<'tcx>(
     active_variant: VariantIdx,
     mut handle_inactive_variant: impl FnMut(MovePathIndex),
 ) {
-    let enum_mpi = match move_data.rev_lookup.find(enum_place.as_ref()) {
-        LookupResult::Exact(mpi) => mpi,
-        LookupResult::Parent(_) => return,
+    let LookupResult::Exact(enum_mpi) = move_data.rev_lookup.find(enum_place.as_ref()) else {
+        return;
     };
 
     let enum_path = &move_data.move_paths[enum_mpi];
@@ -256,9 +255,8 @@ pub(crate) fn on_all_inactive_variants<'tcx>(
         let (downcast, base_proj) = variant_path.place.projection.split_last().unwrap();
         assert_eq!(enum_place.projection.len(), base_proj.len());
 
-        let variant_idx = match *downcast {
-            mir::ProjectionElem::Downcast(_, idx) => idx,
-            _ => unreachable!(),
+        let mir::ProjectionElem::Downcast(_, variant_idx) = *downcast else {
+            unreachable!();
         };
 
         if variant_idx != active_variant {

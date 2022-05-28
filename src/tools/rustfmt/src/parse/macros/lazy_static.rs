@@ -16,14 +16,14 @@ pub(crate) fn parse_lazy_static(
         ($method:ident $(,)* $($arg:expr),* $(,)*) => {
             match parser.$method($($arg,)*) {
                 Ok(val) => {
-                    if parser.sess.span_diagnostic.has_errors() {
+                    if parser.sess.span_diagnostic.has_errors().is_some() {
                         parser.sess.span_diagnostic.reset_err_count();
                         return None;
                     } else {
                         val
                     }
                 }
-                Err(mut err) => {
+                Err(err) => {
                     err.cancel();
                     parser.sess.span_diagnostic.reset_err_count();
                     return None;

@@ -784,8 +784,8 @@ impl<K: DepKind> DepGraph<K> {
 
             let handle = tcx.dep_context().sess().diagnostic();
 
-            for diagnostic in side_effects.diagnostics {
-                handle.emit_diagnostic(&diagnostic);
+            for mut diagnostic in side_effects.diagnostics {
+                handle.emit_diagnostic(&mut diagnostic);
             }
         }
     }

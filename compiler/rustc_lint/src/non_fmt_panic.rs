@@ -49,9 +49,11 @@ impl<'tcx> LateLintPass<'tcx> for NonPanicFmt {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>) {
         if let hir::ExprKind::Call(f, [arg]) = &expr.kind {
             if let &ty::FnDef(def_id, _) = cx.typeck_results().expr_ty(f).kind() {
+                let f_diagnostic_name = cx.tcx.get_diagnostic_name(def_id);
+
                 if Some(def_id) == cx.tcx.lang_items().begin_panic_fn()
                     || Some(def_id) == cx.tcx.lang_items().panic_fn()
-                    || Some(def_id) == cx.tcx.lang_items().panic_str()
+                    || f_diagnostic_name == Some(sym::panic_str)
                 {
                     if let Some(id) = f.span.ctxt().outer_expn_data().macro_def_id {
                         if matches!(
@@ -59,6 +61,22 @@ impl<'tcx> LateLintPass<'tcx> for NonPanicFmt {
                             Some(sym::core_panic_2015_macro | sym::std_panic_2015_macro)
                         ) {
                             check_panic(cx, f, arg);
+                        }
+                    }
+                } else if f_diagnostic_name == Some(sym::unreachable_display) {
+                    if let Some(id) = f.span.ctxt().outer_expn_data().macro_def_id {
+                        if cx.tcx.is_diagnostic_item(sym::unreachable_2015_macro, id) {
+                            check_panic(
+                                cx,
+                                f,
+                                // This is safe because we checked above that the callee is indeed
+                                // unreachable_display
+                                match &arg.kind {
+                                    // Get the borrowed arg not the borrow
+                                    hir::ExprKind::AddrOf(ast::BorrowKind::Ref, _, arg) => arg,
+                                    _ => bug!("call to unreachable_display without borrow"),
+                                },
+                            );
                         }
                     }
                 }
@@ -85,8 +103,8 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
         return;
     }
 
-    // Find the span of the argument to `panic!()`, before expansion in the
-    // case of `panic!(some_macro!())`.
+    // Find the span of the argument to `panic!()` or `unreachable!`, before expansion in the
+    // case of `panic!(some_macro!())` or `unreachable!(some_macro!())`.
     // We don't use source_callsite(), because this `panic!(..)` might itself
     // be expanded from another macro, in which case we want to stop at that
     // expansion.
@@ -131,7 +149,7 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
                 ty::Ref(_, r, _) if *r.kind() == ty::Str,
             ) || matches!(
                 ty.ty_adt_def(),
-                Some(ty_def) if cx.tcx.is_diagnostic_item(sym::String, ty_def.did),
+                Some(ty_def) if cx.tcx.is_diagnostic_item(sym::String, ty_def.did()),
             );
 
             let (suggest_display, suggest_debug) = cx.tcx.infer_ctxt().enter(|infcx| {
@@ -158,7 +176,7 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
                 l.span_suggestion_verbose(
                     arg_span.shrink_to_lo(),
                     "add a \"{}\" format string to Display the message",
-                    "\"{}\", ".into(),
+                    "\"{}\", ",
                     fmt_applicability,
                 );
             } else if suggest_debug {
@@ -168,7 +186,7 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
                         "add a \"{{:?}}\" format string to use the Debug implementation of `{}`",
                         ty,
                     ),
-                    "\"{:?}\", ".into(),
+                    "\"{:?}\", ",
                     fmt_applicability,
                 );
             }
@@ -236,7 +254,10 @@ fn check_panic_str<'tcx>(
     if n_arguments > 0 && fmt_parser.errors.is_empty() {
         let arg_spans: Vec<_> = match &fmt_parser.arg_places[..] {
             [] => vec![fmt_span],
-            v => v.iter().map(|span| fmt_span.from_inner(*span)).collect(),
+            v => v
+                .iter()
+                .map(|span| fmt_span.from_inner(InnerSpan::new(span.start, span.end)))
+                .collect(),
         };
         cx.struct_span_lint(NON_FMT_PANICS, arg_spans, |lint| {
             let mut l = lint.build(match n_arguments {
@@ -248,13 +269,13 @@ fn check_panic_str<'tcx>(
                 l.span_suggestion(
                     arg.span.shrink_to_hi(),
                     &format!("add the missing argument{}", pluralize!(n_arguments)),
-                    ", ...".into(),
+                    ", ...",
                     Applicability::HasPlaceholders,
                 );
                 l.span_suggestion(
                     arg.span.shrink_to_lo(),
                     "or add a \"{}\" format string to use the message literally",
-                    "\"{}\", ".into(),
+                    "\"{}\", ",
                     Applicability::MachineApplicable,
                 );
             }
@@ -279,7 +300,7 @@ fn check_panic_str<'tcx>(
                 l.span_suggestion(
                     arg.span.shrink_to_lo(),
                     "add a \"{}\" format string to use the message literally",
-                    "\"{}\", ".into(),
+                    "\"{}\", ",
                     Applicability::MachineApplicable,
                 );
             }
@@ -319,6 +340,7 @@ fn panic_call<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>) -> (Span, 
                 | sym::std_panic_macro
                 | sym::assert_macro
                 | sym::debug_assert_macro
+                | sym::unreachable_macro
         ) {
             break;
         }
@@ -336,5 +358,5 @@ fn is_arg_inside_call(arg: Span, call: Span) -> bool {
     // panic call in the source file, to avoid invalid suggestions when macros are involved.
     // We specifically check for the spans to not be identical, as that happens sometimes when
     // proc_macros lie about spans and apply the same span to all the tokens they produce.
-    call.contains(arg) && !call.source_equal(&arg)
+    call.contains(arg) && !call.source_equal(arg)
 }

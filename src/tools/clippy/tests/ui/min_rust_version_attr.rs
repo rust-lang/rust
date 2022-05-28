@@ -99,7 +99,7 @@ pub fn manual_range_contains() {
 }
 
 pub fn use_self() {
-    struct Foo {}
+    struct Foo;
 
     impl Foo {
         fn new() -> Foo {
@@ -145,6 +145,16 @@ fn int_from_bool() -> u8 {
     true as u8
 }
 
+fn err_expect() {
+    let x: Result<u32, &str> = Ok(10);
+    x.err().expect("Testing expect_err");
+}
+
+fn cast_abs_to_unsigned() {
+    let x: i32 = 10;
+    assert_eq!(10u32, x.abs() as u32);
+}
+
 fn main() {
     filter_map_next();
     checked_conversion();
@@ -162,6 +172,8 @@ fn main() {
     missing_const_for_fn();
     unnest_or_patterns();
     int_from_bool();
+    err_expect();
+    cast_abs_to_unsigned();
 }
 
 mod just_under_msrv {

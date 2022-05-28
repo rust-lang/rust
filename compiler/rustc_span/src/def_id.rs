@@ -27,8 +27,8 @@ impl CrateNum {
     }
 
     #[inline]
-    pub fn as_def_id(&self) -> DefId {
-        DefId { krate: *self, index: CRATE_DEF_INDEX }
+    pub fn as_def_id(self) -> DefId {
+        DefId { krate: self, index: CRATE_DEF_INDEX }
     }
 }
 
@@ -47,8 +47,8 @@ impl<E: Encoder> Encodable<E> for CrateNum {
 }
 
 impl<D: Decoder> Decodable<D> for CrateNum {
-    default fn decode(d: &mut D) -> Result<CrateNum, D::Error> {
-        Ok(CrateNum::from_u32(d.read_u32()?))
+    default fn decode(d: &mut D) -> CrateNum {
+        CrateNum::from_u32(d.read_u32())
     }
 }
 
@@ -176,9 +176,9 @@ impl StableCrateId {
         // and no -Cmetadata, symbols from the same crate compiled with different versions of
         // rustc are named the same.
         //
-        // RUSTC_FORCE_INCR_COMP_ARTIFACT_HEADER is used to inject rustc version information
+        // RUSTC_FORCE_RUSTC_VERSION is used to inject rustc version information
         // during testing.
-        if let Some(val) = std::env::var_os("RUSTC_FORCE_INCR_COMP_ARTIFACT_HEADER") {
+        if let Some(val) = std::env::var_os("RUSTC_FORCE_RUSTC_VERSION") {
             hasher.write(val.to_string_lossy().into_owned().as_bytes())
         } else {
             hasher.write(option_env!("CFG_VERSION").unwrap_or("unknown version").as_bytes());
@@ -209,7 +209,7 @@ impl<E: Encoder> Encodable<E> for DefIndex {
 }
 
 impl<D: Decoder> Decodable<D> for DefIndex {
-    default fn decode(_: &mut D) -> Result<DefIndex, D::Error> {
+    default fn decode(_: &mut D) -> DefIndex {
         panic!("cannot decode `DefIndex` with `{}`", std::any::type_name::<D>());
     }
 }
@@ -222,6 +222,7 @@ impl<D: Decoder> Decodable<D> for DefIndex {
 // On below-64 bit systems we can simply use the derived `Hash` impl
 #[cfg_attr(not(target_pointer_width = "64"), derive(Hash))]
 #[repr(C)]
+#[rustc_pass_by_value]
 // We guarantee field order. Note that the order is essential here, see below why.
 pub struct DefId {
     // cfg-ing the order of fields so that the `DefIndex` which is high entropy always ends up in
@@ -278,12 +279,29 @@ impl DefId {
     }
 
     #[inline]
+    #[track_caller]
     pub fn expect_local(self) -> LocalDefId {
-        self.as_local().unwrap_or_else(|| panic!("DefId::expect_local: `{:?}` isn't local", self))
+        // NOTE: `match` below is required to apply `#[track_caller]`,
+        // i.e. don't use closures.
+        match self.as_local() {
+            Some(local_def_id) => local_def_id,
+            None => panic!("DefId::expect_local: `{:?}` isn't local", self),
+        }
     }
 
+    #[inline]
+    pub fn is_crate_root(self) -> bool {
+        self.index == CRATE_DEF_INDEX
+    }
+
+    #[inline]
+    pub fn as_crate_root(self) -> Option<CrateNum> {
+        if self.is_crate_root() { Some(self.krate) } else { None }
+    }
+
+    #[inline]
     pub fn is_top_level_module(self) -> bool {
-        self.is_local() && self.index == CRATE_DEF_INDEX
+        self.is_local() && self.is_crate_root()
     }
 }
 
@@ -298,13 +316,8 @@ impl<E: Encoder> Encodable<E> for DefId {
 }
 
 impl<D: Decoder> Decodable<D> for DefId {
-    default fn decode(d: &mut D) -> Result<DefId, D::Error> {
-        d.read_struct(|d| {
-            Ok(DefId {
-                krate: d.read_struct_field("krate", Decodable::decode)?,
-                index: d.read_struct_field("index", Decodable::decode)?,
-            })
-        })
+    default fn decode(d: &mut D) -> DefId {
+        DefId { krate: Decodable::decode(d), index: Decodable::decode(d) }
     }
 }
 
@@ -361,7 +374,7 @@ impl LocalDefId {
 
     #[inline]
     pub fn is_top_level_module(self) -> bool {
-        self.local_def_index == CRATE_DEF_INDEX
+        self == CRATE_DEF_ID
     }
 }
 
@@ -378,8 +391,8 @@ impl<E: Encoder> Encodable<E> for LocalDefId {
 }
 
 impl<D: Decoder> Decodable<D> for LocalDefId {
-    fn decode(d: &mut D) -> Result<LocalDefId, D::Error> {
-        DefId::decode(d).map(|d| d.expect_local())
+    fn decode(d: &mut D) -> LocalDefId {
+        DefId::decode(d).expect_local()
     }
 }
 

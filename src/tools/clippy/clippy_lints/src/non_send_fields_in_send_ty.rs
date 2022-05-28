@@ -96,7 +96,7 @@ impl<'tcx> LateLintPass<'tcx> for NonSendFieldInSendTy {
                 let mut non_send_fields = Vec::new();
 
                 let hir_map = cx.tcx.hir();
-                for variant in &adt_def.variants {
+                for variant in adt_def.variants() {
                     for field in &variant.fields {
                         if_chain! {
                             if let Some(field_hir_id) = field
@@ -111,7 +111,7 @@ impl<'tcx> LateLintPass<'tcx> for NonSendFieldInSendTy {
                                 non_send_fields.push(NonSendField {
                                     def: field_def,
                                     ty: field_ty,
-                                    generic_params: collect_generic_params(cx, field_ty),
+                                    generic_params: collect_generic_params(field_ty),
                                 })
                             }
                         }
@@ -171,8 +171,8 @@ impl<'tcx> NonSendField<'tcx> {
 
 /// Given a type, collect all of its generic parameters.
 /// Example: `MyStruct<P, Box<Q, R>>` => `vec![P, Q, R]`
-fn collect_generic_params<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Vec<Ty<'tcx>> {
-    ty.walk(cx.tcx)
+fn collect_generic_params(ty: Ty<'_>) -> Vec<Ty<'_>> {
+    ty.walk()
         .filter_map(|inner| match inner.unpack() {
             GenericArgKind::Type(inner_ty) => Some(inner_ty),
             _ => None,
@@ -202,10 +202,10 @@ fn ty_allowed_with_raw_pointer_heuristic<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'t
 
     // The type is known to be `!Send` and `!Copy`
     match ty.kind() {
-        ty::Tuple(_) => ty
-            .tuple_fields()
+        ty::Tuple(fields) => fields
+            .iter()
             .all(|ty| ty_allowed_with_raw_pointer_heuristic(cx, ty, send_trait)),
-        ty::Array(ty, _) | ty::Slice(ty) => ty_allowed_with_raw_pointer_heuristic(cx, ty, send_trait),
+        ty::Array(ty, _) | ty::Slice(ty) => ty_allowed_with_raw_pointer_heuristic(cx, *ty, send_trait),
         ty::Adt(_, substs) => {
             if contains_pointer_like(cx, ty) {
                 // descends only if ADT contains any raw pointers
@@ -226,14 +226,14 @@ fn ty_allowed_with_raw_pointer_heuristic<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'t
 
 /// Checks if the type contains any pointer-like types in substs (including nested ones)
 fn contains_pointer_like<'tcx>(cx: &LateContext<'tcx>, target_ty: Ty<'tcx>) -> bool {
-    for ty_node in target_ty.walk(cx.tcx) {
+    for ty_node in target_ty.walk() {
         if let GenericArgKind::Type(inner_ty) = ty_node.unpack() {
             match inner_ty.kind() {
                 ty::RawPtr(_) => {
                     return true;
                 },
                 ty::Adt(adt_def, _) => {
-                    if match_def_path(cx, adt_def.did, &paths::PTR_NON_NULL) {
+                    if match_def_path(cx, adt_def.did(), &paths::PTR_NON_NULL) {
                         return true;
                     }
                 },

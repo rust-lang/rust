@@ -4,7 +4,8 @@
 //
 // check-pass
 
-#![deny(single_use_lifetimes)]
+// Use forbid to verify that `automatically_derived` is handled correctly.
+#![forbid(single_use_lifetimes)]
 #![allow(dead_code)]
 #![allow(unused_variables)]
 

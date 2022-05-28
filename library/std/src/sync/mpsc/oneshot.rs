@@ -27,15 +27,15 @@ pub use self::UpgradeResult::*;
 
 use crate::cell::UnsafeCell;
 use crate::ptr;
-use crate::sync::atomic::{AtomicUsize, Ordering};
+use crate::sync::atomic::{AtomicPtr, Ordering};
 use crate::sync::mpsc::blocking::{self, SignalToken};
 use crate::sync::mpsc::Receiver;
 use crate::time::Instant;
 
 // Various states you can find a port in.
-const EMPTY: usize = 0; // initial state: no data, no blocked receiver
-const DATA: usize = 1; // data ready for receiver to take
-const DISCONNECTED: usize = 2; // channel is disconnected OR upgraded
+const EMPTY: *mut u8 = ptr::invalid_mut::<u8>(0); // initial state: no data, no blocked receiver
+const DATA: *mut u8 = ptr::invalid_mut::<u8>(1); // data ready for receiver to take
+const DISCONNECTED: *mut u8 = ptr::invalid_mut::<u8>(2); // channel is disconnected OR upgraded
 // Any other value represents a pointer to a SignalToken value. The
 // protocol ensures that when the state moves *to* a pointer,
 // ownership of the token is given to the packet, and when the state
@@ -44,7 +44,7 @@ const DISCONNECTED: usize = 2; // channel is disconnected OR upgraded
 
 pub struct Packet<T> {
     // Internal state of the chan/port pair (stores the blocked thread as well)
-    state: AtomicUsize,
+    state: AtomicPtr<u8>,
     // One-shot data slot location
     data: UnsafeCell<Option<T>>,
     // when used for the second time, a oneshot channel must be upgraded, and
@@ -75,7 +75,7 @@ impl<T> Packet<T> {
         Packet {
             data: UnsafeCell::new(None),
             upgrade: UnsafeCell::new(NothingSent),
-            state: AtomicUsize::new(EMPTY),
+            state: AtomicPtr::new(EMPTY),
         }
     }
 
@@ -108,7 +108,7 @@ impl<T> Packet<T> {
                 // There is a thread waiting on the other end. We leave the 'DATA'
                 // state inside so it'll pick it up on the other end.
                 ptr => {
-                    SignalToken::cast_from_usize(ptr).signal();
+                    SignalToken::from_raw(ptr).signal();
                     Ok(())
                 }
             }
@@ -126,7 +126,7 @@ impl<T> Packet<T> {
         // like we're not empty, then immediately go through to `try_recv`.
         if self.state.load(Ordering::SeqCst) == EMPTY {
             let (wait_token, signal_token) = blocking::tokens();
-            let ptr = unsafe { signal_token.cast_to_usize() };
+            let ptr = unsafe { signal_token.to_raw() };
 
             // race with senders to enter the blocking state
             if self.state.compare_exchange(EMPTY, ptr, Ordering::SeqCst, Ordering::SeqCst).is_ok() {
@@ -142,7 +142,7 @@ impl<T> Packet<T> {
                 }
             } else {
                 // drop the signal token, since we never blocked
-                drop(unsafe { SignalToken::cast_from_usize(ptr) });
+                drop(unsafe { SignalToken::from_raw(ptr) });
             }
         }
 
@@ -218,7 +218,7 @@ impl<T> Packet<T> {
                 }
 
                 // If someone's waiting, we gotta wake them up
-                ptr => UpWoke(SignalToken::cast_from_usize(ptr)),
+                ptr => UpWoke(SignalToken::from_raw(ptr)),
             }
         }
     }
@@ -229,7 +229,7 @@ impl<T> Packet<T> {
 
             // If someone's waiting, we gotta wake them up
             ptr => unsafe {
-                SignalToken::cast_from_usize(ptr).signal();
+                SignalToken::from_raw(ptr).signal();
             },
         }
     }
@@ -301,7 +301,7 @@ impl<T> Packet<T> {
 
             // We woke ourselves up from select.
             ptr => unsafe {
-                drop(SignalToken::cast_from_usize(ptr));
+                drop(SignalToken::from_raw(ptr));
                 Ok(false)
             },
         }

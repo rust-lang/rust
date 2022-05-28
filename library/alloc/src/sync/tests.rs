@@ -335,7 +335,7 @@ fn test_weak_count() {
 #[test]
 fn show_arc() {
     let a = Arc::new(5);
-    assert_eq!(format!("{:?}", a), "5");
+    assert_eq!(format!("{a:?}"), "5");
 }
 
 // Make sure deriving works with Arc<T>
@@ -347,7 +347,7 @@ struct Foo {
 #[test]
 fn test_unsized() {
     let x: Arc<[i32]> = Arc::new([1, 2, 3]);
-    assert_eq!(format!("{:?}", x), "[1, 2, 3]");
+    assert_eq!(format!("{x:?}"), "[1, 2, 3]");
     let y = Arc::downgrade(&x.clone());
     drop(x);
     assert!(y.upgrade().is_none());
@@ -359,7 +359,7 @@ fn test_maybe_thin_unsized() {
     use std::ffi::{CStr, CString};
 
     let x: Arc<CStr> = Arc::from(CString::new("swordfish").unwrap().into_boxed_c_str());
-    assert_eq!(format!("{:?}", x), "\"swordfish\"");
+    assert_eq!(format!("{x:?}"), "\"swordfish\"");
     let y: Weak<CStr> = Arc::downgrade(&x);
     drop(x);
 
@@ -509,7 +509,7 @@ fn test_from_box_trait_zero_sized() {
     let b: Box<dyn Debug> = box ();
     let r: Arc<dyn Debug> = Arc::from(b);
 
-    assert_eq!(format!("{:?}", r), "()");
+    assert_eq!(format!("{r:?}"), "()");
 }
 
 #[test]

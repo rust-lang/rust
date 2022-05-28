@@ -5,10 +5,8 @@ use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext}
 use rustc_ast as ast;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
-use rustc_hir::{
-    GenericArg, HirId, Item, ItemKind, MutTy, Mutability, Node, Path, PathSegment, QPath, Ty,
-    TyKind,
-};
+use rustc_hir::{Expr, ExprKind, GenericArg, Path, PathSegment, QPath};
+use rustc_hir::{HirId, Item, ItemKind, Node, Ty, TyKind};
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
@@ -25,10 +23,7 @@ declare_lint_pass!(DefaultHashTypes => [DEFAULT_HASH_TYPES]);
 
 impl LateLintPass<'_> for DefaultHashTypes {
     fn check_path(&mut self, cx: &LateContext<'_>, path: &Path<'_>, hir_id: HirId) {
-        let def_id = match path.res {
-            Res::Def(rustc_hir::def::DefKind::Struct, id) => id,
-            _ => return,
-        };
+        let Res::Def(rustc_hir::def::DefKind::Struct, def_id) = path.res else { return };
         if matches!(cx.tcx.hir().get(hir_id), Node::Item(Item { kind: ItemKind::Use(..), .. })) {
             // don't lint imports, only actual usages
             return;
@@ -52,16 +47,66 @@ impl LateLintPass<'_> for DefaultHashTypes {
 }
 
 declare_tool_lint! {
-    pub rustc::USAGE_OF_TY_TYKIND,
+    pub rustc::POTENTIAL_QUERY_INSTABILITY,
     Allow,
-    "usage of `ty::TyKind` outside of the `ty::sty` module",
+    "require explicit opt-in when using potentially unstable methods or functions",
     report_in_external_macro: true
 }
 
+declare_lint_pass!(QueryStability => [POTENTIAL_QUERY_INSTABILITY]);
+
+impl LateLintPass<'_> for QueryStability {
+    fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
+        // FIXME(rustdoc): This lint uses typecheck results, causing rustdoc to
+        // error if there are resolution failures.
+        //
+        // As internal lints are currently always run if there are `unstable_options`,
+        // they are added to the lint store of rustdoc. Internal lints are also
+        // not used via the `lint_mod` query. Crate lints run outside of a query
+        // so rustdoc currently doesn't disable them.
+        //
+        // Instead of relying on this, either change crate lints to a query disabled by
+        // rustdoc, only run internal lints if the user is explicitly opting in
+        // or figure out a different way to avoid running lints for rustdoc.
+        if cx.tcx.sess.opts.actually_rustdoc {
+            return;
+        }
+
+        let (span, def_id, substs) = match expr.kind {
+            ExprKind::MethodCall(segment, _, _)
+                if let Some(def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id) =>
+            {
+                (segment.ident.span, def_id, cx.typeck_results().node_substs(expr.hir_id))
+            },
+            _ => {
+                let &ty::FnDef(def_id, substs) =
+                    cx.typeck_results()
+                        .node_type(expr.hir_id)
+                        .kind() else { return };
+                (expr.span, def_id, substs)
+            }
+        };
+        if let Ok(Some(instance)) = ty::Instance::resolve(cx.tcx, cx.param_env, def_id, substs) {
+            let def_id = instance.def_id();
+            if cx.tcx.has_attr(def_id, sym::rustc_lint_query_instability) {
+                cx.struct_span_lint(POTENTIAL_QUERY_INSTABILITY, span, |lint| {
+                    let msg = format!(
+                        "using `{}` can result in unstable query results",
+                        cx.tcx.item_name(def_id)
+                    );
+                    lint.build(&msg)
+                        .note("if you believe this case to be fine, allow this lint and add a comment explaining your rationale")
+                        .emit();
+                })
+            }
+        }
+    }
+}
+
 declare_tool_lint! {
-    pub rustc::TY_PASS_BY_REFERENCE,
+    pub rustc::USAGE_OF_TY_TYKIND,
     Allow,
-    "passing `Ty` or `TyCtxt` by reference",
+    "usage of `ty::TyKind` outside of the `ty::sty` module",
     report_in_external_macro: true
 }
 
@@ -74,7 +119,6 @@ declare_tool_lint! {
 
 declare_lint_pass!(TyTyKind => [
     USAGE_OF_TY_TYKIND,
-    TY_PASS_BY_REFERENCE,
     USAGE_OF_QUALIFIED_TY,
 ]);
 
@@ -119,7 +163,7 @@ impl<'tcx> LateLintPass<'tcx> for TyTyKind {
                                     lint.build(&format!("usage of qualified `ty::{}`", t))
                                         .span_suggestion(
                                             path.span,
-                                            "try using it unqualified",
+                                            "try importing it and using it unqualified",
                                             t,
                                             // The import probably needs to be changed
                                             Applicability::MaybeIncorrect,
@@ -129,26 +173,6 @@ impl<'tcx> LateLintPass<'tcx> for TyTyKind {
                             }
                         }
                     }
-                }
-            }
-            TyKind::Rptr(_, MutTy { ty: inner_ty, mutbl: Mutability::Not }) => {
-                if let Some(impl_did) = cx.tcx.impl_of_method(ty.hir_id.owner.to_def_id()) {
-                    if cx.tcx.impl_trait_ref(impl_did).is_some() {
-                        return;
-                    }
-                }
-                if let Some(t) = is_ty_or_ty_ctxt(cx, &inner_ty) {
-                    cx.struct_span_lint(TY_PASS_BY_REFERENCE, ty.span, |lint| {
-                        lint.build(&format!("passing `{}` by reference", t))
-                            .span_suggestion(
-                                ty.span,
-                                "try passing by value",
-                                t,
-                                // Changing type of function argument
-                                Applicability::MaybeIncorrect,
-                            )
-                            .emit();
-                    })
                 }
             }
             _ => {}
@@ -175,10 +199,10 @@ fn is_ty_or_ty_ctxt(cx: &LateContext<'_>, ty: &Ty<'_>) -> Option<String> {
                 }
             }
             // Only lint on `&Ty` and `&TyCtxt` if it is used outside of a trait.
-            Res::SelfTy(None, Some((did, _))) => {
+            Res::SelfTy { trait_: None, alias_to: Some((did, _)) } => {
                 if let ty::Adt(adt, substs) = cx.tcx.type_of(did).kind() {
                     if let Some(name @ (sym::Ty | sym::TyCtxt)) =
-                        cx.tcx.get_diagnostic_name(adt.did)
+                        cx.tcx.get_diagnostic_name(adt.did())
                     {
                         // NOTE: This path is currently unreachable as `Ty<'tcx>` is
                         // defined as a type alias meaning that `impl<'tcx> Ty<'tcx>`

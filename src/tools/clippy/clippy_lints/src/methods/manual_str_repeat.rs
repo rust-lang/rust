@@ -8,7 +8,7 @@ use rustc_ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, LangItem};
 use rustc_lint::LateContext;
-use rustc_middle::ty::{self, Ty, TyS};
+use rustc_middle::ty::{self, Ty};
 use rustc_span::symbol::sym;
 use std::borrow::Cow;
 
@@ -37,8 +37,8 @@ fn parse_repeat_arg(cx: &LateContext<'_>, e: &Expr<'_>) -> Option<RepeatKind> {
     } else {
         let ty = cx.typeck_results().expr_ty(e);
         if is_type_diagnostic_item(cx, ty, sym::String)
-            || (is_type_lang_item(cx, ty, LangItem::OwnedBox) && get_ty_param(ty).map_or(false, TyS::is_str))
-            || (match_type(cx, ty, &paths::COW) && get_ty_param(ty).map_or(false, TyS::is_str))
+            || (is_type_lang_item(cx, ty, LangItem::OwnedBox) && get_ty_param(ty).map_or(false, Ty::is_str))
+            || (match_type(cx, ty, &paths::COW) && get_ty_param(ty).map_or(false, Ty::is_str))
         {
             Some(RepeatKind::String)
         } else {

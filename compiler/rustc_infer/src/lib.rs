@@ -12,16 +12,17 @@
 //!
 //! This API is completely unstable and subject to change.
 
+#![allow(rustc::potential_query_instability)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
-#![feature(bool_to_option)]
 #![feature(box_patterns)]
-#![feature(derive_default_enum)]
-#![feature(extend_one)]
-#![feature(let_else)]
-#![feature(never_type)]
 #![feature(control_flow_enum)]
-#![feature(min_specialization)]
+#![cfg_attr(bootstrap, feature(derive_default_enum))]
+#![feature(extend_one)]
 #![feature(label_break_value)]
+#![feature(let_chains)]
+#![feature(let_else)]
+#![feature(min_specialization)]
+#![feature(never_type)]
 #![recursion_limit = "512"] // For rustdoc
 
 #[macro_use]

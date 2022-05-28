@@ -171,7 +171,7 @@ impl<'me, 'typeck, 'flow, 'tcx> LivenessResults<'me, 'typeck, 'flow, 'tcx> {
         for (local, location) in drop_used {
             if !live_locals.contains(&local) {
                 let local_ty = self.cx.body.local_decls[local].ty;
-                if local_ty.has_free_regions(self.cx.typeck.tcx()) {
+                if local_ty.has_free_regions() {
                     self.cx.add_drop_live_facts_for(local, local_ty, &[location], &locations);
                 }
             }

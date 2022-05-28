@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/regions-bounded-method-type-parameters.rs:12:9
+  --> $DIR/regions-bounded-method-type-parameters.rs:16:9
    |
 LL | fn caller<'a>(x: &isize) {
    |           -- lifetime `'a` defined here

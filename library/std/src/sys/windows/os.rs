@@ -64,7 +64,7 @@ pub fn error_string(mut errnum: i32) -> String {
         if res == 0 {
             // Sometimes FormatMessageW can fail e.g., system doesn't like langId,
             let fm_err = errno();
-            return format!("OS Error {} (FormatMessageW() returned error {})", errnum, fm_err);
+            return format!("OS Error {errnum} (FormatMessageW() returned error {fm_err})");
         }
 
         match String::from_utf16(&buf[..res]) {
@@ -134,7 +134,7 @@ impl Drop for Env {
 pub fn env() -> Env {
     unsafe {
         let ch = c::GetEnvironmentStringsW();
-        if ch as usize == 0 {
+        if ch.is_null() {
             panic!("failure getting env string from OS: {}", io::Error::last_os_error());
         }
         Env { base: ch, cur: ch }

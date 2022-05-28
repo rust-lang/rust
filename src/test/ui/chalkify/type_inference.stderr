@@ -6,9 +6,9 @@ LL |     only_bar(x);
    |     |
    |     required by a bound introduced by this call
    |
-   = help: the following implementations were found:
-             <i32 as Bar>
-             <u32 as Bar>
+   = help: the following other types implement trait `Bar`:
+             i32
+             u32
 note: required by a bound in `only_bar`
   --> $DIR/type_inference.rs:12:16
    |

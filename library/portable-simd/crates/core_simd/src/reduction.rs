@@ -11,27 +11,31 @@ macro_rules! impl_integer_reductions {
         where
             LaneCount<LANES>: SupportedLaneCount,
         {
-            /// Horizontal wrapping add.  Returns the sum of the lanes of the vector, with wrapping addition.
+            /// Reducing wrapping add.  Returns the sum of the lanes of the vector, with wrapping addition.
             #[inline]
-            pub fn horizontal_sum(self) -> $scalar {
+            pub fn reduce_sum(self) -> $scalar {
+                // Safety: `self` is an integer vector
                 unsafe { simd_reduce_add_ordered(self, 0) }
             }
 
-            /// Horizontal wrapping multiply.  Returns the product of the lanes of the vector, with wrapping multiplication.
+            /// Reducing wrapping multiply.  Returns the product of the lanes of the vector, with wrapping multiplication.
             #[inline]
-            pub fn horizontal_product(self) -> $scalar {
+            pub fn reduce_product(self) -> $scalar {
+                // Safety: `self` is an integer vector
                 unsafe { simd_reduce_mul_ordered(self, 1) }
             }
 
-            /// Horizontal maximum.  Returns the maximum lane in the vector.
+            /// Reducing maximum.  Returns the maximum lane in the vector.
             #[inline]
-            pub fn horizontal_max(self) -> $scalar {
+            pub fn reduce_max(self) -> $scalar {
+                // Safety: `self` is an integer vector
                 unsafe { simd_reduce_max(self) }
             }
 
-            /// Horizontal minimum.  Returns the minimum lane in the vector.
+            /// Reducing minimum.  Returns the minimum lane in the vector.
             #[inline]
-            pub fn horizontal_min(self) -> $scalar {
+            pub fn reduce_min(self) -> $scalar {
+                // Safety: `self` is an integer vector
                 unsafe { simd_reduce_min(self) }
             }
         }
@@ -56,43 +60,47 @@ macro_rules! impl_float_reductions {
             LaneCount<LANES>: SupportedLaneCount,
         {
 
-            /// Horizontal add.  Returns the sum of the lanes of the vector.
+            /// Reducing add.  Returns the sum of the lanes of the vector.
             #[inline]
-            pub fn horizontal_sum(self) -> $scalar {
+            pub fn reduce_sum(self) -> $scalar {
                 // LLVM sum is inaccurate on i586
                 if cfg!(all(target_arch = "x86", not(target_feature = "sse2"))) {
                     self.as_array().iter().sum()
                 } else {
+                    // Safety: `self` is a float vector
                     unsafe { simd_reduce_add_ordered(self, 0.) }
                 }
             }
 
-            /// Horizontal multiply.  Returns the product of the lanes of the vector.
+            /// Reducing multiply.  Returns the product of the lanes of the vector.
             #[inline]
-            pub fn horizontal_product(self) -> $scalar {
+            pub fn reduce_product(self) -> $scalar {
                 // LLVM product is inaccurate on i586
                 if cfg!(all(target_arch = "x86", not(target_feature = "sse2"))) {
                     self.as_array().iter().product()
                 } else {
+                    // Safety: `self` is a float vector
                     unsafe { simd_reduce_mul_ordered(self, 1.) }
                 }
             }
 
-            /// Horizontal maximum.  Returns the maximum lane in the vector.
+            /// Reducing maximum.  Returns the maximum lane in the vector.
             ///
             /// Returns values based on equality, so a vector containing both `0.` and `-0.` may
             /// return either.  This function will not return `NaN` unless all lanes are `NaN`.
             #[inline]
-            pub fn horizontal_max(self) -> $scalar {
+            pub fn reduce_max(self) -> $scalar {
+                // Safety: `self` is a float vector
                 unsafe { simd_reduce_max(self) }
             }
 
-            /// Horizontal minimum.  Returns the minimum lane in the vector.
+            /// Reducing minimum.  Returns the minimum lane in the vector.
             ///
             /// Returns values based on equality, so a vector containing both `0.` and `-0.` may
             /// return either.  This function will not return `NaN` unless all lanes are `NaN`.
             #[inline]
-            pub fn horizontal_min(self) -> $scalar {
+            pub fn reduce_min(self) -> $scalar {
+                // Safety: `self` is a float vector
                 unsafe { simd_reduce_min(self) }
             }
         }
@@ -108,10 +116,10 @@ where
     T: SimdElement + BitAnd<T, Output = T>,
     LaneCount<LANES>: SupportedLaneCount,
 {
-    /// Horizontal bitwise "and".  Returns the cumulative bitwise "and" across the lanes of
+    /// Reducing bitwise "and".  Returns the cumulative bitwise "and" across the lanes of
     /// the vector.
     #[inline]
-    pub fn horizontal_and(self) -> T {
+    pub fn reduce_and(self) -> T {
         unsafe { simd_reduce_and(self) }
     }
 }
@@ -122,10 +130,10 @@ where
     T: SimdElement + BitOr<T, Output = T>,
     LaneCount<LANES>: SupportedLaneCount,
 {
-    /// Horizontal bitwise "or".  Returns the cumulative bitwise "or" across the lanes of
+    /// Reducing bitwise "or".  Returns the cumulative bitwise "or" across the lanes of
     /// the vector.
     #[inline]
-    pub fn horizontal_or(self) -> T {
+    pub fn reduce_or(self) -> T {
         unsafe { simd_reduce_or(self) }
     }
 }
@@ -136,10 +144,10 @@ where
     T: SimdElement + BitXor<T, Output = T>,
     LaneCount<LANES>: SupportedLaneCount,
 {
-    /// Horizontal bitwise "xor".  Returns the cumulative bitwise "xor" across the lanes of
+    /// Reducing bitwise "xor".  Returns the cumulative bitwise "xor" across the lanes of
     /// the vector.
     #[inline]
-    pub fn horizontal_xor(self) -> T {
+    pub fn reduce_xor(self) -> T {
         unsafe { simd_reduce_xor(self) }
     }
 }

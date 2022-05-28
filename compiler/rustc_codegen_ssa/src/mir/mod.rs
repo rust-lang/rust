@@ -1,5 +1,4 @@
 use crate::traits::*;
-use rustc_errors::ErrorReported;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, TyAndLayout};
@@ -61,6 +60,9 @@ pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
 
     /// Cached unreachable block
     unreachable_block: Option<Bx::BasicBlock>,
+
+    /// Cached double unwind guarding block
+    double_unwind_guard: Option<Bx::BasicBlock>,
 
     /// The location where each MIR arg/var/tmp/ret is stored. This is
     /// usually an `PlaceRef` representing an alloca, but not always:
@@ -169,6 +171,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         personality_slot: None,
         cached_llbbs,
         unreachable_block: None,
+        double_unwind_guard: None,
         cleanup_kinds,
         landing_pads: IndexVec::from_elem(None, mir.basic_blocks()),
         funclets: IndexVec::from_fn_n(|_| None, mir.basic_blocks().len()),
@@ -187,7 +190,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             all_consts_ok = false;
             match err {
                 // errored or at least linted
-                ErrorHandled::Reported(ErrorReported) | ErrorHandled::Linted => {}
+                ErrorHandled::Reported(_) | ErrorHandled::Linted => {}
                 ErrorHandled::TooGeneric => {
                     span_bug!(const_.span, "codgen encountered polymorphic constant: {:?}", err)
                 }
@@ -209,7 +212,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         let mut allocate_local = |local| {
             let decl = &mir.local_decls[local];
             let layout = bx.layout_of(fx.monomorphize(decl.ty));
-            assert!(!layout.ty.has_erasable_regions(cx.tcx()));
+            assert!(!layout.ty.has_erasable_regions());
 
             if local == mir::RETURN_PLACE && fx.fn_abi.ret.is_indirect() {
                 debug!("alloc: {:?} (return place) -> place", local);
@@ -241,7 +244,6 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     fx.debug_introduce_locals(&mut bx);
 
     // Codegen the body of each block using reverse postorder
-    // FIXME(eddyb) reuse RPO iterator between `analysis` and this.
     for (bb, _) in traversal::reverse_postorder(&mir) {
         fx.codegen_block(bb);
     }
@@ -281,9 +283,8 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 // individual LLVM function arguments.
 
                 let arg_ty = fx.monomorphize(arg_decl.ty);
-                let tupled_arg_tys = match arg_ty.kind() {
-                    ty::Tuple(tys) => tys,
-                    _ => bug!("spread argument isn't a tuple?!"),
+                let ty::Tuple(tupled_arg_tys) = arg_ty.kind() else {
+                    bug!("spread argument isn't a tuple?!");
                 };
 
                 let place = PlaceRef::alloca(bx, bx.layout_of(arg_ty));

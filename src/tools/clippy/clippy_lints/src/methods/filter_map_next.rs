@@ -14,10 +14,10 @@ pub(super) fn check<'tcx>(
     expr: &'tcx hir::Expr<'_>,
     recv: &'tcx hir::Expr<'_>,
     arg: &'tcx hir::Expr<'_>,
-    msrv: Option<&RustcVersion>,
+    msrv: Option<RustcVersion>,
 ) {
     if is_trait_method(cx, expr, sym::Iterator) {
-        if !meets_msrv(msrv, &msrvs::ITERATOR_FIND_MAP) {
+        if !meets_msrv(msrv, msrvs::ITERATOR_FIND_MAP) {
             return;
         }
 

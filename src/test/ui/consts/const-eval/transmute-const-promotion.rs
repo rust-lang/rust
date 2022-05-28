@@ -1,5 +1,3 @@
-#![feature(const_transmute)]
-
 use std::mem;
 
 fn main() {

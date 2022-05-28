@@ -6,20 +6,20 @@ pub use self::StabilityLevel::*;
 use crate::ty::{self, DefIdTree, TyCtxt};
 use rustc_ast::NodeId;
 use rustc_attr::{self as attr, ConstStability, Deprecation, Stability};
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_errors::{Applicability, DiagnosticBuilder};
+use rustc_data_structures::fx::FxHashMap;
+use rustc_errors::{Applicability, Diagnostic};
 use rustc_feature::GateIssue;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
-use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, CRATE_DEF_INDEX};
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self, HirId};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_session::lint::builtin::{DEPRECATED, DEPRECATED_IN_FUTURE, SOFT_UNSTABLE};
 use rustc_session::lint::{BuiltinLintDiagnostics, Level, Lint, LintBuffer};
 use rustc_session::parse::feature_err_issue;
-use rustc_session::{DiagnosticMessageId, Session};
+use rustc_session::Session;
 use rustc_span::symbol::{sym, Symbol};
-use rustc_span::{MultiSpan, Span};
+use rustc_span::Span;
 use std::num::NonZeroU32;
 
 #[derive(PartialEq, Clone, Copy, Debug)]
@@ -29,7 +29,7 @@ pub enum StabilityLevel {
 }
 
 /// An entry in the `depr_map`.
-#[derive(Clone, HashStable, Debug)]
+#[derive(Copy, Clone, HashStable, Debug, Encodable, Decodable)]
 pub struct DeprecationEntry {
     /// The metadata of the attribute associated with this entry.
     pub attr: Deprecation,
@@ -57,26 +57,20 @@ impl DeprecationEntry {
 
 /// A stability index, giving the stability level for items and methods.
 #[derive(HashStable, Debug)]
-pub struct Index<'tcx> {
+pub struct Index {
     /// This is mostly a cache, except the stabilities of local items
     /// are filled by the annotator.
-    pub stab_map: FxHashMap<LocalDefId, &'tcx Stability>,
-    pub const_stab_map: FxHashMap<LocalDefId, &'tcx ConstStability>,
+    pub stab_map: FxHashMap<LocalDefId, Stability>,
+    pub const_stab_map: FxHashMap<LocalDefId, ConstStability>,
     pub depr_map: FxHashMap<LocalDefId, DeprecationEntry>,
-
-    /// Maps for each crate whether it is part of the staged API.
-    pub staged_api: FxHashMap<CrateNum, bool>,
-
-    /// Features enabled for this crate.
-    pub active_features: FxHashSet<Symbol>,
 }
 
-impl<'tcx> Index<'tcx> {
-    pub fn local_stability(&self, def_id: LocalDefId) -> Option<&'tcx Stability> {
+impl Index {
+    pub fn local_stability(&self, def_id: LocalDefId) -> Option<Stability> {
         self.stab_map.get(&def_id).copied()
     }
 
-    pub fn local_const_stability(&self, def_id: LocalDefId) -> Option<&'tcx ConstStability> {
+    pub fn local_const_stability(&self, def_id: LocalDefId) -> Option<ConstStability> {
         self.const_stab_map.get(&def_id).copied()
     }
 
@@ -100,30 +94,15 @@ pub fn report_unstable(
         None => format!("use of unstable library feature '{}'", &feature),
     };
 
-    let msp: MultiSpan = span.into();
-    let sm = &sess.parse_sess.source_map();
-    let span_key = msp.primary_span().and_then(|sp: Span| {
-        if !sp.is_dummy() {
-            let file = sm.lookup_char_pos(sp.lo()).file;
-            if file.is_imported() { None } else { Some(span) }
-        } else {
-            None
+    if is_soft {
+        soft_handler(SOFT_UNSTABLE, span, &msg)
+    } else {
+        let mut err =
+            feature_err_issue(&sess.parse_sess, feature, span, GateIssue::Library(issue), &msg);
+        if let Some((inner_types, ref msg, sugg, applicability)) = suggestion {
+            err.span_suggestion(inner_types, msg, sugg, applicability);
         }
-    });
-
-    let error_id = (DiagnosticMessageId::StabilityId(issue), span_key, msg.clone());
-    let fresh = sess.one_time_diagnostics.borrow_mut().insert(error_id);
-    if fresh {
-        if is_soft {
-            soft_handler(SOFT_UNSTABLE, span, &msg)
-        } else {
-            let mut err =
-                feature_err_issue(&sess.parse_sess, feature, span, GateIssue::Library(issue), &msg);
-            if let Some((inner_types, ref msg, sugg, applicability)) = suggestion {
-                err.span_suggestion(inner_types, msg, sugg, applicability);
-            }
-            err.emit();
-        }
+        err.emit();
     }
 }
 
@@ -139,8 +118,7 @@ pub fn deprecation_in_effect(depr: &Deprecation) -> bool {
     }
 
     if !is_since_rustc_version {
-        // The `since` field doesn't have semantic purpose in the stable `deprecated`
-        // attribute, only in `rustc_deprecated`.
+        // The `since` field doesn't have semantic purpose without `#![staged_api]`.
         return true;
     }
 
@@ -167,7 +145,7 @@ pub fn deprecation_in_effect(depr: &Deprecation) -> bool {
 }
 
 pub fn deprecation_suggestion(
-    diag: &mut DiagnosticBuilder<'_>,
+    diag: &mut Diagnostic,
     kind: &str,
     suggestion: Option<Symbol>,
     span: Span,
@@ -198,7 +176,7 @@ fn deprecation_message(
     } else {
         let since = since.as_ref().map(Symbol::as_str);
 
-        if since.as_deref() == Some("TBD") {
+        if since == Some("TBD") {
             format!("use of {} `{}` that will be deprecated in a future Rust version", kind, path)
         } else {
             format!(
@@ -264,7 +242,7 @@ fn late_report_deprecation(
             let kind = tcx.def_kind(def_id).descr(def_id);
             deprecation_suggestion(&mut diag, kind, suggestion, method_span);
         }
-        diag.emit()
+        diag.emit();
     });
 }
 
@@ -310,7 +288,7 @@ fn suggestion_for_allocator_api(
     feature: Symbol,
 ) -> Option<(Span, String, String, Applicability)> {
     if feature == sym::allocator_api {
-        if let Some(trait_) = tcx.parent(def_id) {
+        if let Some(trait_) = tcx.opt_parent(def_id) {
             if tcx.is_diagnostic_item(sym::Vec, trait_) {
                 let sm = tcx.sess.parse_sess.source_map();
                 let inner_types = sm.span_extend_to_prev_char(span, '<', true);
@@ -357,7 +335,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 // topmost deprecation. For example, if a struct is deprecated,
                 // the use of a field won't be linted.
                 //
-                // #[rustc_deprecated] however wants to emit down the whole
+                // With #![staged_api], we want to emit down the whole
                 // hierarchy.
                 let depr_attr = &depr_entry.attr;
                 if !skip || depr_attr.is_since_rustc_version {
@@ -367,7 +345,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     let is_in_effect = deprecation_in_effect(depr_attr);
                     let lint = deprecation_lint(is_in_effect);
                     if self.lint_level_at_node(lint, id).0 != Level::Allow {
-                        let def_path = &with_no_trimmed_paths(|| self.def_path_str(def_id));
+                        let def_path = with_no_trimmed_paths!(self.def_path_str(def_id));
                         let def_kind = self.def_kind(def_id).descr(def_id);
 
                         late_report_deprecation(
@@ -377,7 +355,7 @@ impl<'tcx> TyCtxt<'tcx> {
                                 depr_attr.since,
                                 depr_attr.note,
                                 def_kind,
-                                def_path,
+                                &def_path,
                             ),
                             depr_attr.suggestion,
                             lint,
@@ -391,8 +369,7 @@ impl<'tcx> TyCtxt<'tcx> {
             };
         }
 
-        let is_staged_api =
-            self.lookup_stability(DefId { index: CRATE_DEF_INDEX, ..def_id }).is_some();
+        let is_staged_api = self.lookup_stability(def_id.krate.as_def_id()).is_some();
         if !is_staged_api {
             return EvalResult::Allow;
         }
@@ -416,14 +393,14 @@ impl<'tcx> TyCtxt<'tcx> {
         }
 
         match stability {
-            Some(&Stability {
+            Some(Stability {
                 level: attr::Unstable { reason, issue, is_soft }, feature, ..
             }) => {
                 if span.allows_unstable(feature) {
                     debug!("stability: skipping span={:?} since it is internal", span);
                     return EvalResult::Allow;
                 }
-                if self.stability().active_features.contains(&feature) {
+                if self.features().active(feature) {
                     return EvalResult::Allow;
                 }
 
@@ -489,7 +466,7 @@ impl<'tcx> TyCtxt<'tcx> {
     ) {
         let soft_handler = |lint, span, msg: &_| {
             self.struct_span_lint_hir(lint, id.unwrap_or(hir::CRATE_HIR_ID), span, |lint| {
-                lint.build(msg).emit()
+                lint.build(msg).emit();
             })
         };
         match self.eval_stability(def_id, id, span, method_span) {

@@ -1,6 +1,7 @@
 // check-pass
 
 #![feature(negative_impls)]
+#![feature(with_negative_coherence)]
 
 // aux-build: foreign_trait.rs
 
@@ -16,8 +17,8 @@
 extern crate foreign_trait;
 use foreign_trait::ForeignTrait;
 
-trait LocalTrait { }
-impl<T: ForeignTrait> LocalTrait for T { }
-impl LocalTrait for String { }
+trait LocalTrait {}
+impl<T: ForeignTrait> LocalTrait for T {}
+impl LocalTrait for String {}
 
-fn main() { }
+fn main() {}

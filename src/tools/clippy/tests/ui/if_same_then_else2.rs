@@ -138,6 +138,23 @@ fn if_same_then_else2() -> Result<&'static str, ()> {
         let (y, x) = (1, 2);
         return Ok(&foo[x..y]);
     }
+
+    // Issue #7579
+    let _ = if let Some(0) = None { 0 } else { 0 };
+
+    if true {
+        return Err(());
+    } else if let Some(0) = None {
+        return Err(());
+    }
+
+    let _ = if let Some(0) = None {
+        0
+    } else if let Some(1) = None {
+        0
+    } else {
+        0
+    };
 }
 
 fn main() {}

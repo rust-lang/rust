@@ -35,21 +35,21 @@ mod cross_crate {
             i: 0 //~ ERROR use of deprecated field `deprecation_lint::DeprecatedStruct::i`: text
         };
 
-        let _ = DeprecatedUnitStruct; //~ ERROR use of deprecated struct `deprecation_lint::DeprecatedUnitStruct`: text
+        let _ = DeprecatedUnitStruct; //~ ERROR use of deprecated unit struct `deprecation_lint::DeprecatedUnitStruct`: text
 
-        let _ = Enum::DeprecatedVariant; //~ ERROR use of deprecated variant `deprecation_lint::Enum::DeprecatedVariant`: text
+        let _ = Enum::DeprecatedVariant; //~ ERROR use of deprecated unit variant `deprecation_lint::Enum::DeprecatedVariant`: text
 
-        let _ = DeprecatedTupleStruct (1); //~ ERROR use of deprecated struct `deprecation_lint::DeprecatedTupleStruct`: text
+        let _ = DeprecatedTupleStruct (1); //~ ERROR use of deprecated tuple struct `deprecation_lint::DeprecatedTupleStruct`: text
 
         let _ = nested::DeprecatedStruct { //~ ERROR use of deprecated struct `deprecation_lint::nested::DeprecatedStruct`: text
             i: 0 //~ ERROR use of deprecated field `deprecation_lint::nested::DeprecatedStruct::i`: text
         };
 
-        let _ = nested::DeprecatedUnitStruct; //~ ERROR use of deprecated struct `deprecation_lint::nested::DeprecatedUnitStruct`: text
+        let _ = nested::DeprecatedUnitStruct; //~ ERROR use of deprecated unit struct `deprecation_lint::nested::DeprecatedUnitStruct`: text
 
-        let _ = nested::Enum::DeprecatedVariant; //~ ERROR use of deprecated variant `deprecation_lint::nested::Enum::DeprecatedVariant`: text
+        let _ = nested::Enum::DeprecatedVariant; //~ ERROR use of deprecated unit variant `deprecation_lint::nested::Enum::DeprecatedVariant`: text
 
-        let _ = nested::DeprecatedTupleStruct (1); //~ ERROR use of deprecated struct `deprecation_lint::nested::DeprecatedTupleStruct`: text
+        let _ = nested::DeprecatedTupleStruct (1); //~ ERROR use of deprecated tuple struct `deprecation_lint::nested::DeprecatedTupleStruct`: text
 
         // At the moment, the lint checker only checks stability in
         // in the arguments of macros.
@@ -130,7 +130,7 @@ mod cross_crate {
             { .. } = x;
 
         let x = Deprecated2(1, 2, 3);
-        //~^ ERROR use of deprecated struct `deprecation_lint::Deprecated2`: text
+        //~^ ERROR use of deprecated tuple struct `deprecation_lint::Deprecated2`: text
 
         let _ = x.0;
         //~^ ERROR use of deprecated field `deprecation_lint::Deprecated2::0`: text
@@ -140,7 +140,7 @@ mod cross_crate {
         //~^ ERROR use of deprecated field `deprecation_lint::Deprecated2::2`: text
 
         let Deprecated2
-        //~^ ERROR use of deprecated struct `deprecation_lint::Deprecated2`: text
+        //~^ ERROR use of deprecated tuple struct `deprecation_lint::Deprecated2`: text
             (_,
              //~^ ERROR use of deprecated field `deprecation_lint::Deprecated2::0`: text
              _,
@@ -149,7 +149,7 @@ mod cross_crate {
              //~^ ERROR use of deprecated field `deprecation_lint::Deprecated2::2`: text
             = x;
         let Deprecated2
-        //~^ ERROR use of deprecated struct `deprecation_lint::Deprecated2`: text
+        //~^ ERROR use of deprecated tuple struct `deprecation_lint::Deprecated2`: text
             // the patterns are all fine:
             (..) = x;
     }
@@ -260,7 +260,7 @@ mod this_crate {
         <Foo>::trait_deprecated_text(&foo); //~ ERROR use of deprecated associated function `this_crate::Trait::trait_deprecated_text`: text
         <Foo as Trait>::trait_deprecated_text(&foo); //~ ERROR use of deprecated associated function `this_crate::Trait::trait_deprecated_text`: text
 
-        // Future deprecations are only permitted for rustc_deprecated.
+        // Future deprecations are only permitted with `#![feature(staged_api)]`
         deprecated_future(); //~ ERROR use of deprecated function
         deprecated_future_text(); //~ ERROR use of deprecated function
 

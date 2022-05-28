@@ -12,10 +12,12 @@ error: expected `{`, found `bar`
 LL |         if (foo)
    |         -- this `if` expression has a condition, but no block
 LL |             bar;
-   |             ^^^-
-   |             |
-   |             expected `{`
-   |             help: try placing this code inside a block: `{ bar; }`
+   |             ^^^ expected `{`
+   |
+help: try placing this code inside a block
+   |
+LL |             { bar; }
+   |             +      +
 
 error: aborting due to 2 previous errors
 

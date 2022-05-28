@@ -3,7 +3,6 @@
 use crate::io::ErrorKind;
 
 pub use self::rand::hashmap_random_keys;
-pub use libc::strlen;
 
 #[cfg(not(target_os = "espidf"))]
 #[macro_use]
@@ -14,7 +13,6 @@ pub mod android;
 pub mod args;
 #[path = "../unix/cmath.rs"]
 pub mod cmath;
-pub mod condvar;
 pub mod env;
 pub mod fd;
 pub mod fs;
@@ -24,8 +22,8 @@ pub mod io;
 pub mod kernel_copy;
 #[cfg(target_os = "l4re")]
 mod l4re;
+pub mod locks;
 pub mod memchr;
-pub mod mutex;
 #[cfg(not(target_os = "l4re"))]
 pub mod net;
 #[cfg(target_os = "l4re")]
@@ -36,12 +34,12 @@ pub mod path;
 pub mod pipe;
 pub mod process;
 pub mod rand;
-pub mod rwlock;
 pub mod stack_overflow;
 pub mod stdio;
 pub mod thread;
 pub mod thread_local_dtor;
 pub mod thread_local_key;
+pub mod thread_parker;
 pub mod time;
 
 #[cfg(target_os = "espidf")]
@@ -80,6 +78,7 @@ pub unsafe fn init(argc: isize, argv: *const *const u8) {
                 target_os = "macos",
                 target_os = "ios",
                 target_os = "redox",
+                target_os = "l4re",
             )))] {
                 use crate::sys::os::errno;
                 let pfds: &mut [_] = &mut [
@@ -159,7 +158,7 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
         libc::ENOSPC => StorageFull,
         libc::ENOSYS => Unsupported,
         libc::EMLINK => TooManyLinks,
-        libc::ENAMETOOLONG => FilenameTooLong,
+        libc::ENAMETOOLONG => InvalidFilename,
         libc::ENETDOWN => NetworkDown,
         libc::ENETUNREACH => NetworkUnreachable,
         libc::ENOTCONN => NotConnected,
@@ -216,6 +215,7 @@ where
     }
 }
 
+#[allow(dead_code)] // Not used on all platforms.
 pub fn cvt_nz(error: libc::c_int) -> crate::io::Result<()> {
     if error == 0 { Ok(()) } else { Err(crate::io::Error::from_raw_os_error(error)) }
 }
@@ -322,9 +322,6 @@ mod unsupported {
     }
 
     pub fn unsupported_err() -> io::Error {
-        io::Error::new_const(
-            io::ErrorKind::Unsupported,
-            &"operation not supported on this platform",
-        )
+        io::const_io_error!(io::ErrorKind::Unsupported, "operation not supported on this platform",)
     }
 }

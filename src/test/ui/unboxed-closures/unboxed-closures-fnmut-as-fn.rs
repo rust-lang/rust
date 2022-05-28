@@ -2,7 +2,6 @@
 // Fn to be used where FnMut is implemented.
 
 #![feature(fn_traits, unboxed_closures)]
-#![feature(overloaded_calls)]
 
 use std::ops::{Fn,FnMut,FnOnce};
 

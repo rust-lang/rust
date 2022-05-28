@@ -1,4 +1,4 @@
-error: this expression borrows a reference (`&i32`) that is immediately dereferenced by the compiler
+error: this expression creates a reference which is immediately dereferenced by the compiler
   --> $DIR/needless_borrow.rs:9:15
    |
 LL |     let _ = x(&&a); // warn
@@ -6,59 +6,95 @@ LL |     let _ = x(&&a); // warn
    |
    = note: `-D clippy::needless-borrow` implied by `-D warnings`
 
-error: this expression borrows a reference (`&mut i32`) that is immediately dereferenced by the compiler
+error: this expression creates a reference which is immediately dereferenced by the compiler
   --> $DIR/needless_borrow.rs:13:13
    |
 LL |     mut_ref(&mut &mut b); // warn
    |             ^^^^^^^^^^^ help: change this to: `&mut b`
 
-error: this expression borrows a reference (`&i32`) that is immediately dereferenced by the compiler
+error: this expression creates a reference which is immediately dereferenced by the compiler
   --> $DIR/needless_borrow.rs:25:13
    |
 LL |             &&a
    |             ^^^ help: change this to: `&a`
 
-error: this expression borrows a reference (`&i32`) that is immediately dereferenced by the compiler
+error: this expression creates a reference which is immediately dereferenced by the compiler
   --> $DIR/needless_borrow.rs:27:15
    |
 LL |         46 => &&a,
    |               ^^^ help: change this to: `&a`
 
-error: this expression borrows a reference (`&i32`) that is immediately dereferenced by the compiler
+error: this expression creates a reference which is immediately dereferenced by the compiler
   --> $DIR/needless_borrow.rs:33:27
    |
 LL |                     break &ref_a;
    |                           ^^^^^^ help: change this to: `ref_a`
 
-error: this expression borrows a reference (`&i32`) that is immediately dereferenced by the compiler
+error: this expression creates a reference which is immediately dereferenced by the compiler
   --> $DIR/needless_borrow.rs:40:15
    |
 LL |     let _ = x(&&&a);
    |               ^^^^ help: change this to: `&a`
 
-error: this expression borrows a reference (`&i32`) that is immediately dereferenced by the compiler
+error: this expression creates a reference which is immediately dereferenced by the compiler
   --> $DIR/needless_borrow.rs:41:15
    |
 LL |     let _ = x(&mut &&a);
    |               ^^^^^^^^ help: change this to: `&a`
 
-error: this expression borrows a reference (`&mut i32`) that is immediately dereferenced by the compiler
+error: this expression creates a reference which is immediately dereferenced by the compiler
   --> $DIR/needless_borrow.rs:42:15
    |
 LL |     let _ = x(&&&mut b);
    |               ^^^^^^^^ help: change this to: `&mut b`
 
-error: this expression borrows a reference (`&i32`) that is immediately dereferenced by the compiler
+error: this expression creates a reference which is immediately dereferenced by the compiler
   --> $DIR/needless_borrow.rs:43:15
    |
 LL |     let _ = x(&&ref_a);
    |               ^^^^^^^ help: change this to: `ref_a`
 
-error: this expression borrows a reference (`&mut i32`) that is immediately dereferenced by the compiler
+error: this expression creates a reference which is immediately dereferenced by the compiler
   --> $DIR/needless_borrow.rs:46:11
    |
 LL |         x(&b);
    |           ^^ help: change this to: `b`
 
-error: aborting due to 10 previous errors
+error: this expression creates a reference which is immediately dereferenced by the compiler
+  --> $DIR/needless_borrow.rs:53:13
+   |
+LL |     mut_ref(&mut x);
+   |             ^^^^^^ help: change this to: `x`
+
+error: this expression creates a reference which is immediately dereferenced by the compiler
+  --> $DIR/needless_borrow.rs:54:13
+   |
+LL |     mut_ref(&mut &mut x);
+   |             ^^^^^^^^^^^ help: change this to: `x`
+
+error: this expression creates a reference which is immediately dereferenced by the compiler
+  --> $DIR/needless_borrow.rs:55:23
+   |
+LL |     let y: &mut i32 = &mut x;
+   |                       ^^^^^^ help: change this to: `x`
+
+error: this expression creates a reference which is immediately dereferenced by the compiler
+  --> $DIR/needless_borrow.rs:56:23
+   |
+LL |     let y: &mut i32 = &mut &mut x;
+   |                       ^^^^^^^^^^^ help: change this to: `x`
+
+error: this expression borrows a value the compiler would automatically borrow
+  --> $DIR/needless_borrow.rs:72:13
+   |
+LL |     let _ = (&x).0;
+   |             ^^^^ help: change this to: `x`
+
+error: this expression borrows a value the compiler would automatically borrow
+  --> $DIR/needless_borrow.rs:74:22
+   |
+LL |     let _ = unsafe { (&*x).0 };
+   |                      ^^^^^ help: change this to: `(*x)`
+
+error: aborting due to 16 previous errors
 

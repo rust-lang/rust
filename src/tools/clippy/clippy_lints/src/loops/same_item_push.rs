@@ -6,10 +6,9 @@ use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
 use if_chain::if_chain;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
+use rustc_hir::intravisit::{walk_expr, Visitor};
 use rustc_hir::{BindingAnnotation, Block, Expr, ExprKind, HirId, Node, Pat, PatKind, Stmt, StmtKind};
 use rustc_lint::LateContext;
-use rustc_middle::hir::map::Map;
 use rustc_span::symbol::sym;
 use std::iter::Iterator;
 
@@ -49,7 +48,7 @@ pub(super) fn check<'tcx>(
         if same_item_push_visitor.should_lint();
         if let Some((vec, pushed_item)) = same_item_push_visitor.vec_push;
         let vec_ty = cx.typeck_results().expr_ty(vec);
-        let ty = vec_ty.walk(cx.tcx).nth(1).unwrap().expect_ty();
+        let ty = vec_ty.walk().nth(1).unwrap().expect_ty();
         if cx
             .tcx
             .lang_items()
@@ -134,8 +133,6 @@ impl<'a, 'tcx> SameItemPushVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for SameItemPushVisitor<'a, 'tcx> {
-    type Map = Map<'tcx>;
-
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         match &expr.kind {
             // Non-determinism may occur ... don't give a lint
@@ -175,10 +172,6 @@ impl<'a, 'tcx> Visitor<'tcx> for SameItemPushVisitor<'a, 'tcx> {
             }
         }
     }
-
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::None
-    }
 }
 
 // Given some statement, determine if that statement is a push on a Vec. If it is, return
@@ -187,7 +180,7 @@ fn get_vec_push<'tcx>(cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) -> Option<(&
     if_chain! {
             // Extract method being called
             if let StmtKind::Semi(semi_stmt) = &stmt.kind;
-            if let ExprKind::MethodCall(path, _, args, _) = &semi_stmt.kind;
+            if let ExprKind::MethodCall(path, args, _) = &semi_stmt.kind;
             // Figure out the parameters for the method call
             if let Some(self_expr) = args.get(0);
             if let Some(pushed_item) = args.get(1);

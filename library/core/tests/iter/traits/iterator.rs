@@ -496,3 +496,89 @@ fn test_collect() {
     let b: Vec<isize> = a.iter().cloned().collect();
     assert!(a == b);
 }
+
+#[test]
+fn test_try_collect() {
+    use core::ops::ControlFlow::{Break, Continue};
+
+    let u = vec![Some(1), Some(2), Some(3)];
+    let v = u.into_iter().try_collect::<Vec<i32>>();
+    assert_eq!(v, Some(vec![1, 2, 3]));
+
+    let u = vec![Some(1), Some(2), None, Some(3)];
+    let mut it = u.into_iter();
+    let v = it.try_collect::<Vec<i32>>();
+    assert_eq!(v, None);
+    let v = it.try_collect::<Vec<i32>>();
+    assert_eq!(v, Some(vec![3]));
+
+    let u: Vec<Result<i32, ()>> = vec![Ok(1), Ok(2), Ok(3)];
+    let v = u.into_iter().try_collect::<Vec<i32>>();
+    assert_eq!(v, Ok(vec![1, 2, 3]));
+
+    let u = vec![Ok(1), Ok(2), Err(()), Ok(3)];
+    let v = u.into_iter().try_collect::<Vec<i32>>();
+    assert_eq!(v, Err(()));
+
+    let numbers = vec![1, 2, 3, 4, 5];
+    let all_positive = numbers
+        .iter()
+        .cloned()
+        .map(|n| if n > 0 { Some(n) } else { None })
+        .try_collect::<Vec<i32>>();
+    assert_eq!(all_positive, Some(numbers));
+
+    let numbers = vec![-2, -1, 0, 1, 2];
+    let all_positive =
+        numbers.into_iter().map(|n| if n > 0 { Some(n) } else { None }).try_collect::<Vec<i32>>();
+    assert_eq!(all_positive, None);
+
+    let u = [Continue(1), Continue(2), Break(3), Continue(4), Continue(5)];
+    let mut it = u.into_iter();
+
+    let v = it.try_collect::<Vec<_>>();
+    assert_eq!(v, Break(3));
+
+    let v = it.try_collect::<Vec<_>>();
+    assert_eq!(v, Continue(vec![4, 5]));
+}
+
+#[test]
+fn test_collect_into() {
+    let a = vec![1, 2, 3, 4, 5];
+    let mut b = Vec::new();
+    a.iter().cloned().collect_into(&mut b);
+    assert!(a == b);
+}
+
+#[test]
+fn iter_try_collect_uses_try_fold_not_next() {
+    // This makes sure it picks up optimizations, and doesn't use the `&mut I` impl.
+    struct PanicOnNext<I>(I);
+    impl<I: Iterator> Iterator for PanicOnNext<I> {
+        type Item = I::Item;
+        fn next(&mut self) -> Option<Self::Item> {
+            panic!("Iterator::next should not be called!")
+        }
+        fn try_fold<B, F, R>(&mut self, init: B, f: F) -> R
+        where
+            Self: Sized,
+            F: FnMut(B, Self::Item) -> R,
+            R: std::ops::Try<Output = B>,
+        {
+            self.0.try_fold(init, f)
+        }
+    }
+
+    let it = (0..10).map(Some);
+    let _ = PanicOnNext(it).try_collect::<Vec<_>>();
+    // validation is just that it didn't panic.
+}
+
+// just tests by whether or not this compiles
+fn _empty_impl_all_auto_traits<T>() {
+    use std::panic::{RefUnwindSafe, UnwindSafe};
+    fn all_auto_traits<T: Send + Sync + Unpin + UnwindSafe + RefUnwindSafe>() {}
+
+    all_auto_traits::<std::iter::Empty<T>>();
+}

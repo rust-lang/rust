@@ -4,10 +4,10 @@ error: expected identifier, found keyword `return`
 LL |     let return = "foo";
    |         ^^^^^^ expected identifier, found keyword
    |
-help: you can escape reserved keywords to use them as identifiers
+help: escape `return` to use it as an identifier
    |
 LL |     let r#return = "foo";
-   |         ~~~~~~~~
+   |         ++
 
 error: aborting due to previous error
 

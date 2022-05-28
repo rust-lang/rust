@@ -50,3 +50,33 @@ fn skip_out_of_line_nested_inline_within_out_of_line() {
         &["tests/mod-resolver/skip-files-issue-5065/one.rs"],
     );
 }
+
+#[test]
+fn fmt_out_of_line_test_modules() {
+    // See also https://github.com/rust-lang/rustfmt/issues/5119
+    verify_mod_resolution(
+        "tests/mod-resolver/test-submodule-issue-5119/tests/test1.rs",
+        &[
+            "tests/mod-resolver/test-submodule-issue-5119/tests/test1.rs",
+            "tests/mod-resolver/test-submodule-issue-5119/tests/test1/sub1.rs",
+            "tests/mod-resolver/test-submodule-issue-5119/tests/test1/sub2.rs",
+            "tests/mod-resolver/test-submodule-issue-5119/tests/test1/sub3/sub4.rs",
+        ],
+    )
+}
+
+#[test]
+fn fallback_and_try_to_resolve_external_submod_relative_to_current_dir_path() {
+    // See also https://github.com/rust-lang/rustfmt/issues/5198
+    verify_mod_resolution(
+        "tests/mod-resolver/issue-5198/lib.rs",
+        &[
+            "tests/mod-resolver/issue-5198/a.rs",
+            "tests/mod-resolver/issue-5198/lib/b.rs",
+            "tests/mod-resolver/issue-5198/lib/c/mod.rs",
+            "tests/mod-resolver/issue-5198/lib/c/e.rs",
+            "tests/mod-resolver/issue-5198/lib/c/d/f.rs",
+            "tests/mod-resolver/issue-5198/lib/c/d/g/mod.rs",
+        ],
+    )
+}

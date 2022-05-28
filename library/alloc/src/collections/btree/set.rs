@@ -15,7 +15,7 @@ use super::Recover;
 
 // FIXME(conventions): implement bounded iterators
 
-/// A set based on a B-Tree.
+/// An ordered set based on a B-Tree.
 ///
 /// See [`BTreeMap`]'s documentation for a detailed discussion of this collection's performance
 /// benefits and drawbacks.
@@ -26,6 +26,9 @@ use super::Recover;
 /// The behavior resulting from such a logic error is not specified (it could include panics,
 /// incorrect results, aborts, memory leaks, or non-termination) but will not be undefined
 /// behavior.
+///
+/// Iterators returned by [`BTreeSet::iter`] produce their items in order, and take worst-case
+/// logarithmic and amortized constant time per item returned.
 ///
 /// [`Ord`]: core::cmp::Ord
 /// [`Cell`]: core::cell::Cell
@@ -57,7 +60,7 @@ use super::Recover;
 ///
 /// // Iterate over everything.
 /// for book in &books {
-///     println!("{}", book);
+///     println!("{book}");
 /// }
 /// ```
 ///
@@ -281,7 +284,7 @@ impl<T> BTreeSet<T> {
     /// set.insert(5);
     /// set.insert(8);
     /// for &elem in set.range((Included(&4), Included(&8))) {
-    ///     println!("{}", elem);
+    ///     println!("{elem}");
     /// }
     /// assert_eq!(Some(&5), set.range(4..).next());
     /// ```
@@ -870,7 +873,7 @@ impl<T> BTreeSet<T> {
 
     /// Retains only the elements specified by the predicate.
     ///
-    /// In other words, remove all elements `e` such that `f(&e)` returns `false`.
+    /// In other words, remove all elements `e` for which `f(&e)` returns `false`.
     /// The elements are visited in ascending order.
     ///
     /// # Examples
@@ -892,7 +895,7 @@ impl<T> BTreeSet<T> {
         self.drain_filter(|v| !f(v));
     }
 
-    /// Moves all elements from `other` into `Self`, leaving `other` empty.
+    /// Moves all elements from `other` into `self`, leaving `other` empty.
     ///
     /// # Examples
     ///
@@ -1094,6 +1097,8 @@ impl<T: Ord> FromIterator<T> for BTreeSet<T> {
 
 #[stable(feature = "std_collections_from_array", since = "1.56.0")]
 impl<T: Ord, const N: usize> From<[T; N]> for BTreeSet<T> {
+    /// Converts a `[T; N]` into a `BTreeSet<T>`.
+    ///
     /// ```
     /// use std::collections::BTreeSet;
     ///
@@ -1534,7 +1539,7 @@ impl<'a, T: Ord> Iterator for SymmetricDifference<'a, T> {
     fn size_hint(&self) -> (usize, Option<usize>) {
         let (a_len, b_len) = self.0.lens();
         // No checked_add, because even if a and b refer to the same set,
-        // and T is an empty type, the storage overhead of sets limits
+        // and T is a zero-sized type, the storage overhead of sets limits
         // the number of elements to less than half the range of usize.
         (0, Some(a_len + b_len))
     }

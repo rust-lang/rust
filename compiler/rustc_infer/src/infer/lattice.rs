@@ -1,36 +1,43 @@
-//! # Lattice Variables
+//! # Lattice variables
 //!
-//! This file contains generic code for operating on inference variables
-//! that are characterized by an upper- and lower-bound. The logic and
-//! reasoning is explained in detail in the large comment in `infer.rs`.
+//! Generic code for operating on [lattices] of inference variables
+//! that are characterized by an upper- and lower-bound.
 //!
-//! The code in here is defined quite generically so that it can be
+//! The code is defined quite generically so that it can be
 //! applied both to type variables, which represent types being inferred,
 //! and fn variables, which represent function types being inferred.
-//! It may eventually be applied to their types as well, who knows.
+//! (It may eventually be applied to their types as well.)
 //! In some cases, the functions are also generic with respect to the
 //! operation on the lattice (GLB vs LUB).
 //!
-//! Although all the functions are generic, we generally write the
-//! comments in a way that is specific to type variables and the LUB
-//! operation. It's just easier that way.
+//! ## Note
 //!
-//! In general all of the functions are defined parametrically
-//! over a `LatticeValue`, which is a value defined with respect to
-//! a lattice.
+//! Although all the functions are generic, for simplicity, comments in the source code
+//! generally refer to type variables and the LUB operation.
+//!
+//! [lattices]: https://en.wikipedia.org/wiki/Lattice_(order)
 
 use super::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use super::InferCtxt;
 
-use crate::traits::ObligationCause;
+use crate::traits::{ObligationCause, PredicateObligation};
 use rustc_middle::ty::relate::{RelateResult, TypeRelation};
 use rustc_middle::ty::TyVar;
 use rustc_middle::ty::{self, Ty};
 
+/// Trait for returning data about a lattice, and for abstracting
+/// over the "direction" of the lattice operation (LUB/GLB).
+///
+/// GLB moves "down" the lattice (to smaller values); LUB moves
+/// "up" the lattice (to bigger values).
 pub trait LatticeDir<'f, 'tcx>: TypeRelation<'tcx> {
     fn infcx(&self) -> &'f InferCtxt<'f, 'tcx>;
 
     fn cause(&self) -> &ObligationCause<'tcx>;
+
+    fn add_obligations(&mut self, obligations: Vec<PredicateObligation<'tcx>>);
+
+    fn define_opaque_types(&self) -> bool;
 
     // Relates the type `v` to `a` and `b` such that `v` represents
     // the LUB/GLB of `a` and `b` as appropriate.
@@ -41,6 +48,8 @@ pub trait LatticeDir<'f, 'tcx>: TypeRelation<'tcx> {
     fn relate_bound(&mut self, v: Ty<'tcx>, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, ()>;
 }
 
+/// Relates two types using a given lattice.
+#[instrument(skip(this), level = "debug")]
 pub fn super_lattice_tys<'a, 'tcx: 'a, L>(
     this: &mut L,
     a: Ty<'tcx>,
@@ -49,15 +58,17 @@ pub fn super_lattice_tys<'a, 'tcx: 'a, L>(
 where
     L: LatticeDir<'a, 'tcx>,
 {
-    debug!("{}.lattice_tys({:?}, {:?})", this.tag(), a, b);
+    debug!("{}", this.tag());
 
     if a == b {
         return Ok(a);
     }
 
     let infcx = this.infcx();
+
     let a = infcx.inner.borrow_mut().type_variables().replace_if_possible(a);
     let b = infcx.inner.borrow_mut().type_variables().replace_if_possible(b);
+
     match (a.kind(), b.kind()) {
         // If one side is known to be a variable and one is not,
         // create a variable (`v`) to represent the LUB. Make sure to
@@ -72,7 +83,7 @@ where
         // But if we did in reverse order, we would create a `v <:
         // LHS` (or vice versa) constraint and then instantiate
         // `v`. This would require further processing to achieve same
-        // end-result; in partiular, this screws up some of the logic
+        // end-result; in particular, this screws up some of the logic
         // in coercion, which expects LUB to figure out that the LHS
         // is (e.g.) `Box<i32>`. A more obvious solution might be to
         // iterate on the subtype obligations that are returned, but I
@@ -92,6 +103,20 @@ where
             });
             this.relate_bound(v, a, b)?;
             Ok(v)
+        }
+
+        (&ty::Opaque(a_def_id, _), &ty::Opaque(b_def_id, _)) if a_def_id == b_def_id => {
+            infcx.super_combine_tys(this, a, b)
+        }
+        (&ty::Opaque(did, ..), _) | (_, &ty::Opaque(did, ..))
+            if this.define_opaque_types() && did.is_local() =>
+        {
+            this.add_obligations(
+                infcx
+                    .handle_opaque_type(a, b, this.a_is_expected(), this.cause(), this.param_env())?
+                    .obligations,
+            );
+            Ok(a)
         }
 
         _ => infcx.super_combine_tys(this, a, b),

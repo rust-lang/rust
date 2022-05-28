@@ -12,8 +12,8 @@ LL | |
 LL | |             var = Some(NotCopyable);
    | |             ---
    | |             |
+   | |             variable moved due to use in closure
    | |             move occurs because `var` has type `Option<NotCopyable>`, which does not implement the `Copy` trait
-   | |             move occurs due to use in closure
 LL | |         }
 LL | |     });
    | |_____- captured by this `FnMut` closure

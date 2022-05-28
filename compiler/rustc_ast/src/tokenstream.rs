@@ -13,7 +13,9 @@
 //! and a borrowed `TokenStream` is sufficient to build an owned `TokenStream` without taking
 //! ownership of the original.
 
-use crate::token::{self, DelimToken, Token, TokenKind};
+use crate::ast::StmtKind;
+use crate::ast_traits::{HasAttrs, HasSpan, HasTokens};
+use crate::token::{self, Delimiter, Nonterminal, Token, TokenKind};
 use crate::AttrVec;
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -42,13 +44,7 @@ pub enum TokenTree {
     /// A single token.
     Token(Token),
     /// A delimited sequence of token trees.
-    Delimited(DelimSpan, DelimToken, TokenStream),
-}
-
-#[derive(Copy, Clone)]
-pub enum CanSynthesizeMissingTokens {
-    Yes,
-    No,
+    Delimited(DelimSpan, Delimiter, TokenStream),
 }
 
 // Ensure all fields of `TokenTree` is `Send` and `Sync`.
@@ -57,7 +53,7 @@ fn _dummy()
 where
     Token: Send + Sync,
     DelimSpan: Send + Sync,
-    DelimToken: Send + Sync,
+    Delimiter: Send + Sync,
     TokenStream: Send + Sync,
 {
 }
@@ -92,16 +88,6 @@ impl TokenTree {
 
     pub fn token(kind: TokenKind, span: Span) -> TokenTree {
         TokenTree::Token(Token::new(kind, span))
-    }
-
-    /// Returns the opening delimiter as a token tree.
-    pub fn open_tt(span: DelimSpan, delim: DelimToken) -> TokenTree {
-        TokenTree::token(token::OpenDelim(delim), span.open)
-    }
-
-    /// Returns the closing delimiter as a token tree.
-    pub fn close_tt(span: DelimSpan, delim: DelimToken) -> TokenTree {
-        TokenTree::token(token::CloseDelim(delim), span.close)
     }
 
     pub fn uninterpolate(self) -> TokenTree {
@@ -163,7 +149,7 @@ impl<S: Encoder> Encodable<S> for LazyTokenStream {
 }
 
 impl<D: Decoder> Decodable<D> for LazyTokenStream {
-    fn decode(_d: &mut D) -> Result<Self, D::Error> {
+    fn decode(_d: &mut D) -> Self {
         panic!("Attempted to decode LazyTokenStream");
     }
 }
@@ -185,7 +171,7 @@ pub struct AttrAnnotatedTokenStream(pub Lrc<Vec<(AttrAnnotatedTokenTree, Spacing
 #[derive(Clone, Debug, Encodable, Decodable)]
 pub enum AttrAnnotatedTokenTree {
     Token(Token),
-    Delimited(DelimSpan, DelimToken, AttrAnnotatedTokenStream),
+    Delimited(DelimSpan, Delimiter, AttrAnnotatedTokenStream),
     /// Stores the attributes for an attribute target,
     /// along with the tokens for that attribute target.
     /// See `AttributesData` for more information
@@ -295,7 +281,7 @@ impl AttrAnnotatedTokenStream {
 ///
 /// For example, `#[cfg(FALSE)] struct Foo {}` would
 /// have an `attrs` field containing the `#[cfg(FALSE)]` attr,
-/// and a `tokens` field storing the (unparesd) tokens `struct Foo {}`
+/// and a `tokens` field storing the (unparsed) tokens `struct Foo {}`
 #[derive(Clone, Debug, Encodable, Decodable)]
 pub struct AttributesData {
     /// Attributes, both outer and inner.
@@ -452,8 +438,8 @@ impl TokenStream {
         }
     }
 
-    pub fn trees(&self) -> Cursor {
-        self.clone().into_trees()
+    pub fn trees(&self) -> CursorRef<'_> {
+        CursorRef::new(self)
     }
 
     pub fn into_trees(self) -> Cursor {
@@ -481,6 +467,89 @@ impl TokenStream {
                 .collect(),
         ))
     }
+
+    fn opt_from_ast(node: &(impl HasAttrs + HasTokens)) -> Option<TokenStream> {
+        let tokens = node.tokens()?;
+        let attrs = node.attrs();
+        let attr_annotated = if attrs.is_empty() {
+            tokens.create_token_stream()
+        } else {
+            let attr_data = AttributesData { attrs: attrs.to_vec().into(), tokens: tokens.clone() };
+            AttrAnnotatedTokenStream::new(vec![(
+                AttrAnnotatedTokenTree::Attributes(attr_data),
+                Spacing::Alone,
+            )])
+        };
+        Some(attr_annotated.to_tokenstream())
+    }
+
+    pub fn from_ast(node: &(impl HasAttrs + HasSpan + HasTokens + fmt::Debug)) -> TokenStream {
+        TokenStream::opt_from_ast(node)
+            .unwrap_or_else(|| panic!("missing tokens for node at {:?}: {:?}", node.span(), node))
+    }
+
+    pub fn from_nonterminal_ast(nt: &Nonterminal) -> TokenStream {
+        match nt {
+            Nonterminal::NtIdent(ident, is_raw) => {
+                TokenTree::token(token::Ident(ident.name, *is_raw), ident.span).into()
+            }
+            Nonterminal::NtLifetime(ident) => {
+                TokenTree::token(token::Lifetime(ident.name), ident.span).into()
+            }
+            Nonterminal::NtItem(item) => TokenStream::from_ast(item),
+            Nonterminal::NtBlock(block) => TokenStream::from_ast(block),
+            Nonterminal::NtStmt(stmt) if let StmtKind::Empty = stmt.kind => {
+                // FIXME: Properly collect tokens for empty statements.
+                TokenTree::token(token::Semi, stmt.span).into()
+            }
+            Nonterminal::NtStmt(stmt) => TokenStream::from_ast(stmt),
+            Nonterminal::NtPat(pat) => TokenStream::from_ast(pat),
+            Nonterminal::NtTy(ty) => TokenStream::from_ast(ty),
+            Nonterminal::NtMeta(attr) => TokenStream::from_ast(attr),
+            Nonterminal::NtPath(path) => TokenStream::from_ast(path),
+            Nonterminal::NtVis(vis) => TokenStream::from_ast(vis),
+            Nonterminal::NtExpr(expr) | Nonterminal::NtLiteral(expr) => TokenStream::from_ast(expr),
+        }
+    }
+
+    fn flatten_token(token: &Token) -> TokenTree {
+        match &token.kind {
+            token::Interpolated(nt) if let token::NtIdent(ident, is_raw) = **nt => {
+                TokenTree::token(token::Ident(ident.name, is_raw), ident.span)
+            }
+            token::Interpolated(nt) => TokenTree::Delimited(
+                DelimSpan::from_single(token.span),
+                Delimiter::Invisible,
+                TokenStream::from_nonterminal_ast(&nt).flattened(),
+            ),
+            _ => TokenTree::Token(token.clone()),
+        }
+    }
+
+    fn flatten_token_tree(tree: &TokenTree) -> TokenTree {
+        match tree {
+            TokenTree::Token(token) => TokenStream::flatten_token(token),
+            TokenTree::Delimited(span, delim, tts) => {
+                TokenTree::Delimited(*span, *delim, tts.flattened())
+            }
+        }
+    }
+
+    #[must_use]
+    pub fn flattened(&self) -> TokenStream {
+        fn can_skip(stream: &TokenStream) -> bool {
+            stream.trees().all(|tree| match tree {
+                TokenTree::Token(token) => !matches!(token.kind, token::Interpolated(_)),
+                TokenTree::Delimited(_, _, inner) => can_skip(inner),
+            })
+        }
+
+        if can_skip(self) {
+            return self.clone();
+        }
+
+        self.trees().map(|tree| TokenStream::flatten_token_tree(tree)).collect()
+    }
 }
 
 // 99.5%+ of the time we have 1 or 2 elements in this vector.
@@ -497,42 +566,40 @@ impl TokenStreamBuilder {
 
         // If `self` is not empty and the last tree within the last stream is a
         // token tree marked with `Joint`...
-        if let Some(TokenStream(ref mut last_stream_lrc)) = self.0.last_mut() {
-            if let Some((TokenTree::Token(last_token), Spacing::Joint)) = last_stream_lrc.last() {
-                // ...and `stream` is not empty and the first tree within it is
-                // a token tree...
-                let TokenStream(ref mut stream_lrc) = stream;
-                if let Some((TokenTree::Token(token), spacing)) = stream_lrc.first() {
-                    // ...and the two tokens can be glued together...
-                    if let Some(glued_tok) = last_token.glue(&token) {
-                        // ...then do so, by overwriting the last token
-                        // tree in `self` and removing the first token tree
-                        // from `stream`. This requires using `make_mut()`
-                        // on the last stream in `self` and on `stream`,
-                        // and in practice this doesn't cause cloning 99.9%
-                        // of the time.
+        if let Some(TokenStream(ref mut last_stream_lrc)) = self.0.last_mut()
+            && let Some((TokenTree::Token(last_token), Spacing::Joint)) = last_stream_lrc.last()
+            // ...and `stream` is not empty and the first tree within it is
+            // a token tree...
+            && let TokenStream(ref mut stream_lrc) = stream
+            && let Some((TokenTree::Token(token), spacing)) = stream_lrc.first()
+            // ...and the two tokens can be glued together...
+            && let Some(glued_tok) = last_token.glue(&token)
+        {
+            // ...then do so, by overwriting the last token
+            // tree in `self` and removing the first token tree
+            // from `stream`. This requires using `make_mut()`
+            // on the last stream in `self` and on `stream`,
+            // and in practice this doesn't cause cloning 99.9%
+            // of the time.
 
-                        // Overwrite the last token tree with the merged
-                        // token.
-                        let last_vec_mut = Lrc::make_mut(last_stream_lrc);
-                        *last_vec_mut.last_mut().unwrap() = (TokenTree::Token(glued_tok), *spacing);
+            // Overwrite the last token tree with the merged
+            // token.
+            let last_vec_mut = Lrc::make_mut(last_stream_lrc);
+            *last_vec_mut.last_mut().unwrap() = (TokenTree::Token(glued_tok), *spacing);
 
-                        // Remove the first token tree from `stream`. (This
-                        // is almost always the only tree in `stream`.)
-                        let stream_vec_mut = Lrc::make_mut(stream_lrc);
-                        stream_vec_mut.remove(0);
+            // Remove the first token tree from `stream`. (This
+            // is almost always the only tree in `stream`.)
+            let stream_vec_mut = Lrc::make_mut(stream_lrc);
+            stream_vec_mut.remove(0);
 
-                        // Don't push `stream` if it's empty -- that could
-                        // block subsequent token gluing, by getting
-                        // between two token trees that should be glued
-                        // together.
-                        if !stream.is_empty() {
-                            self.0.push(stream);
-                        }
-                        return;
-                    }
-                }
+            // Don't push `stream` if it's empty -- that could
+            // block subsequent token gluing, by getting
+            // between two token trees that should be glued
+            // together.
+            if !stream.is_empty() {
+                self.0.push(stream);
             }
+            return;
         }
         self.0.push(stream);
     }
@@ -550,11 +617,20 @@ pub struct CursorRef<'t> {
 }
 
 impl<'t> CursorRef<'t> {
+    fn new(stream: &'t TokenStream) -> Self {
+        CursorRef { stream, index: 0 }
+    }
+
+    #[inline]
     fn next_with_spacing(&mut self) -> Option<&'t TreeAndSpacing> {
         self.stream.0.get(self.index).map(|tree| {
             self.index += 1;
             tree
         })
+    }
+
+    pub fn look_ahead(&self, n: usize) -> Option<&TokenTree> {
+        self.stream.0[self.index..].get(n).map(|(tree, _)| tree)
     }
 }
 
@@ -587,13 +663,20 @@ impl Cursor {
         Cursor { stream, index: 0 }
     }
 
+    #[inline]
     pub fn next_with_spacing(&mut self) -> Option<TreeAndSpacing> {
-        if self.index < self.stream.len() {
+        self.stream.0.get(self.index).map(|tree| {
             self.index += 1;
-            Some(self.stream.0[self.index - 1].clone())
-        } else {
-            None
-        }
+            tree.clone()
+        })
+    }
+
+    #[inline]
+    pub fn next_with_spacing_ref(&mut self) -> Option<&TreeAndSpacing> {
+        self.stream.0.get(self.index).map(|tree| {
+            self.index += 1;
+            tree
+        })
     }
 
     pub fn index(&self) -> usize {

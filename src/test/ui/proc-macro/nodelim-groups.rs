@@ -3,7 +3,7 @@
 // compile-flags: -Z span-debug
 // edition:2018
 //
-// Tests the pretty-printing behavior of inserting `NoDelim` groups
+// Tests the pretty-printing behavior of inserting `Invisible`-delimited groups
 
 #![no_std] // Don't load unnecessary hygiene information from std
 extern crate std;

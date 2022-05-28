@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
 use rustc_middle::mir::visit::Visitor;
@@ -5,7 +6,7 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::{
     self,
     subst::{GenericArgKind, Subst, SubstsRef},
-    PredicateKind, Ty, TyCtxt, TyS,
+    EarlyBinder, PredicateKind, Ty, TyCtxt,
 };
 use rustc_session::lint::builtin::FUNCTION_ITEM_REFERENCES;
 use rustc_span::{symbol::sym, Span};
@@ -36,59 +37,34 @@ impl<'tcx> Visitor<'tcx> for FunctionItemRefChecker<'_, 'tcx> {
             func,
             args,
             destination: _,
+            target: _,
             cleanup: _,
             from_hir_call: _,
             fn_span: _,
         } = &terminator.kind
         {
             let source_info = *self.body.source_info(location);
-            // Only handle function calls outside macros
-            if !source_info.span.from_expansion() {
-                let func_ty = func.ty(self.body, self.tcx);
-                if let ty::FnDef(def_id, substs_ref) = *func_ty.kind() {
-                    // Handle calls to `transmute`
-                    if self.tcx.is_diagnostic_item(sym::transmute, def_id) {
-                        let arg_ty = args[0].ty(self.body, self.tcx);
-                        for generic_inner_ty in arg_ty.walk(self.tcx) {
-                            if let GenericArgKind::Type(inner_ty) = generic_inner_ty.unpack() {
-                                if let Some((fn_id, fn_substs)) =
-                                    FunctionItemRefChecker::is_fn_ref(inner_ty)
-                                {
-                                    let span = self.nth_arg_span(&args, 0);
-                                    self.emit_lint(fn_id, fn_substs, source_info, span);
-                                }
+            let func_ty = func.ty(self.body, self.tcx);
+            if let ty::FnDef(def_id, substs_ref) = *func_ty.kind() {
+                // Handle calls to `transmute`
+                if self.tcx.is_diagnostic_item(sym::transmute, def_id) {
+                    let arg_ty = args[0].ty(self.body, self.tcx);
+                    for generic_inner_ty in arg_ty.walk() {
+                        if let GenericArgKind::Type(inner_ty) = generic_inner_ty.unpack() {
+                            if let Some((fn_id, fn_substs)) =
+                                FunctionItemRefChecker::is_fn_ref(inner_ty)
+                            {
+                                let span = self.nth_arg_span(&args, 0);
+                                self.emit_lint(fn_id, fn_substs, source_info, span);
                             }
                         }
-                    } else {
-                        self.check_bound_args(def_id, substs_ref, &args, source_info);
                     }
+                } else {
+                    self.check_bound_args(def_id, substs_ref, &args, source_info);
                 }
             }
         }
         self.super_terminator(terminator, location);
-    }
-
-    /// Emits a lint for function references formatted with `fmt::Pointer::fmt` by macros. These
-    /// cases are handled as operands instead of call terminators to avoid any dependence on
-    /// unstable, internal formatting details like whether `fmt` is called directly or not.
-    fn visit_operand(&mut self, operand: &Operand<'tcx>, location: Location) {
-        let source_info = *self.body.source_info(location);
-        if source_info.span.from_expansion() {
-            let op_ty = operand.ty(self.body, self.tcx);
-            if let ty::FnDef(def_id, substs_ref) = *op_ty.kind() {
-                if self.tcx.is_diagnostic_item(sym::pointer_trait_fmt, def_id) {
-                    let param_ty = substs_ref.type_at(0);
-                    if let Some((fn_id, fn_substs)) = FunctionItemRefChecker::is_fn_ref(param_ty) {
-                        // The operand's ctxt wouldn't display the lint since it's inside a macro so
-                        // we have to use the callsite's ctxt.
-                        let callsite_ctxt = source_info.span.source_callsite().ctxt();
-                        let span = source_info.span.with_ctxt(callsite_ctxt);
-                        self.emit_lint(fn_id, fn_substs, source_info, span);
-                    }
-                }
-            }
-        }
-        self.super_operand(operand, location);
     }
 }
 
@@ -110,16 +86,22 @@ impl<'tcx> FunctionItemRefChecker<'_, 'tcx> {
                 let arg_defs = self.tcx.fn_sig(def_id).skip_binder().inputs();
                 for (arg_num, arg_def) in arg_defs.iter().enumerate() {
                     // For all types reachable from the argument type in the fn sig
-                    for generic_inner_ty in arg_def.walk(self.tcx) {
+                    for generic_inner_ty in arg_def.walk() {
                         if let GenericArgKind::Type(inner_ty) = generic_inner_ty.unpack() {
                             // If the inner type matches the type bound by `Pointer`
-                            if TyS::same_type(inner_ty, bound_ty) {
+                            if inner_ty == bound_ty {
                                 // Do a substitution using the parameters from the callsite
-                                let subst_ty = inner_ty.subst(self.tcx, substs_ref);
+                                let subst_ty = EarlyBinder(inner_ty).subst(self.tcx, substs_ref);
                                 if let Some((fn_id, fn_substs)) =
                                     FunctionItemRefChecker::is_fn_ref(subst_ty)
                                 {
-                                    let span = self.nth_arg_span(args, arg_num);
+                                    let mut span = self.nth_arg_span(args, arg_num);
+                                    if span.from_expansion() {
+                                        // The operand's ctxt wouldn't display the lint since it's inside a macro so
+                                        // we have to use the callsite's ctxt.
+                                        let callsite_ctxt = span.source_callsite().ctxt();
+                                        span = span.with_ctxt(callsite_ctxt);
+                                    }
                                     self.emit_lint(fn_id, fn_substs, source_info, span);
                                 }
                             }
@@ -197,7 +179,7 @@ impl<'tcx> FunctionItemRefChecker<'_, 'tcx> {
         let ident = self.tcx.item_name(fn_id).to_ident_string();
         let ty_params = fn_substs.types().map(|ty| format!("{}", ty));
         let const_params = fn_substs.consts().map(|c| format!("{}", c));
-        let params = ty_params.chain(const_params).collect::<Vec<String>>().join(", ");
+        let params = ty_params.chain(const_params).join(", ");
         let num_args = fn_sig.inputs().map_bound(|inputs| inputs.len()).skip_binder();
         let variadic = if fn_sig.c_variadic() { ", ..." } else { "" };
         let ret = if fn_sig.output().skip_binder().is_unit() { "" } else { " -> _" };

@@ -30,16 +30,6 @@ pub fn bar() {}
 /// ```
 pub fn foobar() {}
 
-/// barfoo
-//~^ ERROR
-//~^^ ERROR
-//~^^^ ERROR
-///
-/// ```allow-fail,allowfail,alLow_fail
-/// boo
-/// ```
-pub fn barfoo() {}
-
 /// b
 //~^ ERROR
 //~^^ ERROR

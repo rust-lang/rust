@@ -269,7 +269,9 @@ where
     // Returns the number of elements between pointers `l` (inclusive) and `r` (exclusive).
     fn width<T>(l: *mut T, r: *mut T) -> usize {
         assert!(mem::size_of::<T>() > 0);
-        (r as usize - l as usize) / mem::size_of::<T>()
+        // FIXME: this should *likely* use `offset_from`, but more
+        // investigation is needed (including running tests in miri).
+        (r.addr() - l.addr()) / mem::size_of::<T>()
     }
 
     loop {
@@ -773,7 +775,7 @@ where
                 let mid = partition_equal(v, pivot, is_less);
 
                 // Continue sorting elements greater than the pivot.
-                v = &mut { v }[mid..];
+                v = &mut v[mid..];
                 continue;
             }
         }
@@ -784,7 +786,7 @@ where
         was_partitioned = was_p;
 
         // Split the slice into `left`, `pivot`, and `right`.
-        let (left, right) = { v }.split_at_mut(mid);
+        let (left, right) = v.split_at_mut(mid);
         let (pivot, right) = right.split_at_mut(1);
         let pivot = &pivot[0];
 
@@ -860,7 +862,7 @@ fn partition_at_index_loop<'a, T, F>(
         let (mid, _) = partition(v, pivot, is_less);
 
         // Split the slice into `left`, `pivot`, and `right`.
-        let (left, right) = { v }.split_at_mut(mid);
+        let (left, right) = v.split_at_mut(mid);
         let (pivot, right) = right.split_at_mut(1);
         let pivot = &pivot[0];
 

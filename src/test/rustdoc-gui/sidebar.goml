@@ -1,20 +1,28 @@
+// Checks multiple things on the sidebar display (width of its elements, colors, etc).
 goto: file://|DOC_PATH|/test_docs/index.html
+show-text: true
+local-storage: {"rustdoc-theme": "light"}
+// We reload the page so the local storage settings are being used.
+reload:
+
 assert-text: (".sidebar > .location", "Crate test_docs")
 // In modules, we only have one "location" element.
 assert-count: (".sidebar .location", 1)
-assert-text: (".sidebar-elems > #all-types", "See all test_docs's items")
+assert-text: ("#all-types", "All Items")
+assert-css: ("#all-types", {"color": "rgb(53, 109, 164)"})
 // We check that we have the crates list and that the "current" on is "test_docs".
 assert-text: (".sidebar-elems .crate > ul > li > a.current", "test_docs")
 // And we're also supposed to have the list of items in the current module.
-assert-text: (".sidebar-elems .items > ul > li:nth-child(1)", "Modules")
-assert-text: (".sidebar-elems .items > ul > li:nth-child(2)", "Macros")
-assert-text: (".sidebar-elems .items > ul > li:nth-child(3)", "Structs")
-assert-text: (".sidebar-elems .items > ul > li:nth-child(4)", "Enums")
-assert-text: (".sidebar-elems .items > ul > li:nth-child(5)", "Traits")
-assert-text: (".sidebar-elems .items > ul > li:nth-child(6)", "Functions")
-assert-text: (".sidebar-elems .items > ul > li:nth-child(7)", "Type Definitions")
-assert-text: (".sidebar-elems .items > ul > li:nth-child(8)", "Unions")
-assert-text: (".sidebar-elems .items > ul > li:nth-child(9)", "Keywords")
+assert-text: (".sidebar-elems section ul > li:nth-child(1)", "Re-exports")
+assert-text: (".sidebar-elems section ul > li:nth-child(2)", "Modules")
+assert-text: (".sidebar-elems section ul > li:nth-child(3)", "Macros")
+assert-text: (".sidebar-elems section ul > li:nth-child(4)", "Structs")
+assert-text: (".sidebar-elems section ul > li:nth-child(5)", "Enums")
+assert-text: (".sidebar-elems section ul > li:nth-child(6)", "Traits")
+assert-text: (".sidebar-elems section ul > li:nth-child(7)", "Functions")
+assert-text: (".sidebar-elems section ul > li:nth-child(8)", "Type Definitions")
+assert-text: (".sidebar-elems section ul > li:nth-child(9)", "Unions")
+assert-text: (".sidebar-elems section ul > li:nth-child(10)", "Keywords")
 assert-text: ("#structs + .item-table .item-left > a", "Foo")
 click: "#structs + .item-table .item-left > a"
 
@@ -22,8 +30,16 @@ click: "#structs + .item-table .item-left > a"
 assert-count: (".sidebar .location", 2)
 // We check that there is no crate listed outside of the top level.
 assert-false: ".sidebar-elems > .crate"
+
+click: ".sidebar-elems section .block li > a"
+assert-property-false: ("html", {"scrollTop": "0"})
+
+click: ".sidebar h2.location a"
+assert-property: ("html", {"scrollTop": "0"})
+
 // We now go back to the crate page to click on the "lib2" crate link.
 goto: file://|DOC_PATH|/test_docs/index.html
+assert-css: (".sidebar-elems .crate > ul > li:first-child > a", {"color": "rgb(53, 109, 164)"})
 click: ".sidebar-elems .crate > ul > li:first-child > a"
 
 // PAGE: lib2/index.html
@@ -32,11 +48,11 @@ assert-text: (".sidebar > .location", "Crate lib2")
 // We check that we have the crates list and that the "current" on is now "lib2".
 assert-text: (".sidebar-elems .crate > ul > li > a.current", "lib2")
 // We now go to the "foobar" function page.
-assert-text: (".sidebar-elems > .items > ul > li:nth-child(1)", "Modules")
-assert-text: (".sidebar-elems > .items > ul > li:nth-child(2)", "Structs")
-assert-text: (".sidebar-elems > .items > ul > li:nth-child(3)", "Traits")
-assert-text: (".sidebar-elems > .items > ul > li:nth-child(4)", "Functions")
-assert-text: (".sidebar-elems > .items > ul > li:nth-child(5)", "Type Definitions")
+assert-text: (".sidebar-elems > section .block ul > li:nth-child(1)", "Modules")
+assert-text: (".sidebar-elems > section .block ul > li:nth-child(2)", "Structs")
+assert-text: (".sidebar-elems > section .block ul > li:nth-child(3)", "Traits")
+assert-text: (".sidebar-elems > section .block ul > li:nth-child(4)", "Functions")
+assert-text: (".sidebar-elems > section .block ul > li:nth-child(5)", "Type Definitions")
 assert-text: ("#functions + .item-table .item-left > a", "foobar")
 click: "#functions + .item-table .item-left > a"
 
@@ -44,8 +60,7 @@ click: "#functions + .item-table .item-left > a"
 // In items containing no items (like functions or constants) and in modules, we have one
 // "location" elements.
 assert-count: (".sidebar .location", 1)
-// There is a "<br>" tag between "in" and "lib2", but it doesn't count as a space.
-assert-text: (".sidebar .sidebar-elems .location", "Other items inlib2")
+assert-text: (".sidebar .sidebar-elems .location", "In lib2")
 // We check that we don't have the crate list.
 assert-false: ".sidebar-elems > .crate"
 
@@ -58,5 +73,16 @@ goto: ./sub_module/sub_sub_module/index.html
 assert-text: (".sidebar > .location", "Module sub_sub_module")
 // We check that we don't have the crate list.
 assert-false: ".sidebar-elems .crate"
-assert-text: (".sidebar-elems .items > ul > li:nth-child(1)", "Functions")
+assert-text: (".sidebar-elems > section ul > li:nth-child(1)", "Functions")
 assert-text: ("#functions + .item-table .item-left > a", "foo")
+
+// Links to trait implementations in the sidebar should not wrap even if they are long.
+goto: file://|DOC_PATH|/lib2/struct.HasALongTraitWithParams.html
+assert-property: (".sidebar-elems section .block li > a", {"offsetHeight": 29})
+
+// Test that clicking on of the "In <module>" headings in the sidebar links to the
+// appropriate anchor in index.html.
+goto: file://|DOC_PATH|/test_docs/struct.Foo.html
+click: ".block.mod h3 a"
+// PAGE: index.html
+assert-css: ("#modules", {"background-color": "rgb(253, 255, 211)"})

@@ -275,19 +275,68 @@ mod prim_bool {}
 mod prim_never {}
 
 #[doc(primitive = "char")]
+#[allow(rustdoc::invalid_rust_codeblocks)]
 /// A character type.
 ///
 /// The `char` type represents a single character. More specifically, since
 /// 'character' isn't a well-defined concept in Unicode, `char` is a '[Unicode
-/// scalar value]', which is similar to, but not the same as, a '[Unicode code
-/// point]'.
-///
-/// [Unicode scalar value]: https://www.unicode.org/glossary/#unicode_scalar_value
-/// [Unicode code point]: https://www.unicode.org/glossary/#code_point
+/// scalar value]'.
 ///
 /// This documentation describes a number of methods and trait implementations on the
 /// `char` type. For technical reasons, there is additional, separate
 /// documentation in [the `std::char` module](char/index.html) as well.
+///
+/// # Validity
+///
+/// A `char` is a '[Unicode scalar value]', which is any '[Unicode code point]'
+/// other than a [surrogate code point]. This has a fixed numerical definition:
+/// code points are in the range 0 to 0x10FFFF, inclusive.
+/// Surrogate code points, used by UTF-16, are in the range 0xD800 to 0xDFFF.
+///
+/// No `char` may be constructed, whether as a literal or at runtime, that is not a
+/// Unicode scalar value:
+///
+/// ```compile_fail
+/// // Each of these is a compiler error
+/// ['\u{D800}', '\u{DFFF}', '\u{110000}'];
+/// ```
+///
+/// ```should_panic
+/// // Panics; from_u32 returns None.
+/// char::from_u32(0xDE01).unwrap();
+/// ```
+///
+/// ```no_run
+/// // Undefined behaviour
+/// unsafe { char::from_u32_unchecked(0x110000) };
+/// ```
+///
+/// USVs are also the exact set of values that may be encoded in UTF-8. Because
+/// `char` values are USVs and `str` values are valid UTF-8, it is safe to store
+/// any `char` in a `str` or read any character from a `str` as a `char`.
+///
+/// The gap in valid `char` values is understood by the compiler, so in the
+/// below example the two ranges are understood to cover the whole range of
+/// possible `char` values and there is no error for a [non-exhaustive match].
+///
+/// ```
+/// let c: char = 'a';
+/// match c {
+///     '\0' ..= '\u{D7FF}' => false,
+///     '\u{E000}' ..= '\u{10FFFF}' => true,
+/// };
+/// ```
+///
+/// All USVs are valid `char` values, but not all of them represent a real
+/// character. Many USVs are not currently assigned to a character, but may be
+/// in the future ("reserved"); some will never be a character
+/// ("noncharacters"); and some may be given different meanings by different
+/// users ("private use").
+///
+/// [Unicode code point]: https://www.unicode.org/glossary/#code_point
+/// [Unicode scalar value]: https://www.unicode.org/glossary/#unicode_scalar_value
+/// [non-exhaustive match]: ../book/ch06-02-match.html#matches-are-exhaustive
+/// [surrogate code point]: https://www.unicode.org/glossary/#surrogate_code_point
 ///
 /// # Representation
 ///
@@ -558,7 +607,7 @@ mod prim_pointer {}
 ///
 /// // This loop prints: 0 1 2
 /// for x in array {
-///     print!("{} ", x);
+///     print!("{x} ");
 /// }
 /// ```
 ///
@@ -597,19 +646,19 @@ mod prim_pointer {}
 /// // This creates a slice iterator, producing references to each value.
 /// for item in array.into_iter().enumerate() {
 ///     let (i, x): (usize, &i32) = item;
-///     println!("array[{}] = {}", i, x);
+///     println!("array[{i}] = {x}");
 /// }
 ///
 /// // The `array_into_iter` lint suggests this change for future compatibility:
 /// for item in array.iter().enumerate() {
 ///     let (i, x): (usize, &i32) = item;
-///     println!("array[{}] = {}", i, x);
+///     println!("array[{i}] = {x}");
 /// }
 ///
 /// // You can explicitly iterate an array by value using `IntoIterator::into_iter`
 /// for item in IntoIterator::into_iter(array).enumerate() {
 ///     let (i, x): (usize, i32) = item;
-///     println!("array[{}] = {}", i, x);
+///     println!("array[{i}] = {x}");
 /// }
 /// ```
 ///
@@ -624,13 +673,13 @@ mod prim_pointer {}
 /// // This iterates by reference:
 /// for item in array.iter().enumerate() {
 ///     let (i, x): (usize, &i32) = item;
-///     println!("array[{}] = {}", i, x);
+///     println!("array[{i}] = {x}");
 /// }
 ///
 /// // This iterates by value:
 /// for item in array.into_iter().enumerate() {
 ///     let (i, x): (usize, i32) = item;
-///     println!("array[{}] = {}", i, x);
+///     println!("array[{i}] = {x}");
 /// }
 /// ```
 ///
@@ -653,26 +702,26 @@ mod prim_pointer {}
 /// // This iterates by reference:
 /// for item in array.iter() {
 ///     let x: &i32 = item;
-///     println!("{}", x);
+///     println!("{x}");
 /// }
 ///
 /// // This iterates by value:
 /// for item in IntoIterator::into_iter(array) {
 ///     let x: i32 = item;
-///     println!("{}", x);
+///     println!("{x}");
 /// }
 ///
 /// // This iterates by value:
 /// for item in array {
 ///     let x: i32 = item;
-///     println!("{}", x);
+///     println!("{x}");
 /// }
 ///
 /// // IntoIter can also start a chain.
 /// // This iterates by value:
 /// for item in IntoIterator::into_iter(array).enumerate() {
 ///     let (i, x): (usize, i32) = item;
-///     println!("array[{}] = {}", i, x);
+///     println!("array[{i}] = {x}");
 /// }
 /// ```
 ///
@@ -928,10 +977,35 @@ mod prim_tuple {}
 ///   like `1.0 / 0.0`.
 /// - [NaN (not a number)](#associatedconstant.NAN): this value results from
 ///   calculations like `(-1.0).sqrt()`. NaN has some potentially unexpected
-///   behavior: it is unequal to any float, including itself! It is also neither
-///   smaller nor greater than any float, making it impossible to sort. Lastly,
-///   it is considered infectious as almost all calculations where one of the
-///   operands is NaN will also result in NaN.
+///   behavior:
+///   - It is unequal to any float, including itself! This is the reason `f32`
+///     doesn't implement the `Eq` trait.
+///   - It is also neither smaller nor greater than any float, making it
+///     impossible to sort by the default comparison operation, which is the
+///     reason `f32` doesn't implement the `Ord` trait.
+///   - It is also considered *infectious* as almost all calculations where one
+///     of the operands is NaN will also result in NaN. The explanations on this
+///     page only explicitly document behavior on NaN operands if this default
+///     is deviated from.
+///   - Lastly, there are multiple bit patterns that are considered NaN.
+///     Rust does not currently guarantee that the bit patterns of NaN are
+///     preserved over arithmetic operations, and they are not guaranteed to be
+///     portable or even fully deterministic! This means that there may be some
+///     surprising results upon inspecting the bit patterns,
+///     as the same calculations might produce NaNs with different bit patterns.
+///
+/// When the number resulting from a primitive operation (addition,
+/// subtraction, multiplication, or division) on this type is not exactly
+/// representable as `f32`, it is rounded according to the roundTiesToEven
+/// direction defined in IEEE 754-2008. That means:
+///
+/// - The result is the representable value closest to the true value, if there
+///   is a unique closest representable value.
+/// - If the true value is exactly half-way between two representable values,
+///   the result is the one with an even least-significant binary digit.
+/// - If the true value's magnitude is ≥ `f32::MAX` + 2<sup>(`f32::MAX_EXP` −
+///   `f32::MANTISSA_DIGITS` − 1)</sup>, the result is ∞ or −∞ (preserving the
+///   true value's sign).
 ///
 /// For more information on floating point numbers, see [Wikipedia][wikipedia].
 ///
@@ -1276,6 +1350,32 @@ mod prim_ref {}
 /// The last line shows that `&bar` is not a function pointer either. Rather, it
 /// is a reference to the function-specific ZST. `&bar` is basically never what you
 /// want when `bar` is a function.
+///
+/// ### Casting to and from integers
+///
+/// You cast function pointers directly to integers:
+///
+/// ```rust
+/// let fnptr: fn(i32) -> i32 = |x| x+2;
+/// let fnptr_addr = fnptr as usize;
+/// ```
+///
+/// However, a direct cast back is not possible. You need to use `transmute`:
+///
+/// ```rust
+/// # let fnptr: fn(i32) -> i32 = |x| x+2;
+/// # let fnptr_addr = fnptr as usize;
+/// let fnptr = fnptr_addr as *const ();
+/// let fnptr: fn(i32) -> i32 = unsafe { std::mem::transmute(fnptr) };
+/// assert_eq!(fnptr(40), 42);
+/// ```
+///
+/// Crucially, we `as`-cast to a raw pointer before `transmute`ing to a function pointer.
+/// This avoids an integer-to-pointer `transmute`, which can be problematic.
+/// Transmuting between raw pointers and function pointers (i.e., two pointer types) is fine.
+///
+/// Note that all of this is not portable to platforms where function pointers and data pointers
+/// have different sizes.
 ///
 /// ### Traits
 ///

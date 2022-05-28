@@ -4,8 +4,7 @@ error[E0277]: the trait bound `[(); 0]: Foo` is not satisfied
 LL |     <[(); 0] as Foo>::foo()
    |     ^^^^^^^^^^^^^^^^^^^^^ the trait `Foo` is not implemented for `[(); 0]`
    |
-   = help: the following implementations were found:
-             <[(); 1] as Foo>
+   = help: the trait `Foo` is implemented for `[(); 1]`
 
 error: aborting due to previous error
 

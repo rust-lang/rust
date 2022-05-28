@@ -108,5 +108,57 @@ error: use of `unwrap_or` followed by a function call
 LL |         None.unwrap_or( unsafe { ptr_to_ref(s) }    );
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| unsafe { ptr_to_ref(s) })`
 
-error: aborting due to 18 previous errors
+error: use of `unwrap_or` followed by a call to `new`
+  --> $DIR/or_fun_call.rs:189:14
+   |
+LL |             .unwrap_or(String::new());
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_default()`
+
+error: use of `unwrap_or` followed by a call to `new`
+  --> $DIR/or_fun_call.rs:202:14
+   |
+LL |             .unwrap_or(String::new());
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_default()`
+
+error: use of `unwrap_or` followed by a call to `new`
+  --> $DIR/or_fun_call.rs:208:9
+   |
+LL | /         iter.map(|f: &String| f.to_lowercase())
+LL | |             .reduce(|mut acc, f| {
+LL | |                 let _ = "";
+LL | |                 acc.push_str(&f);
+LL | |                 acc
+LL | |             })
+LL | |             .unwrap_or(String::new());
+   | |_____________________________________^
+   |
+help: try this
+   |
+LL ~         iter.map(|f: &String| f.to_lowercase())
+LL +             .reduce(|mut acc, f| {
+LL +                 let _ = "";
+LL +                 acc.push_str(&f);
+LL +                 acc
+LL ~             }).unwrap_or_default();
+   |
+
+error: use of `unwrap_or` followed by a call to `new`
+  --> $DIR/or_fun_call.rs:221:9
+   |
+LL | /         map.reduce(|mut acc, f| {
+LL | |             acc.push_str(&f);
+LL | |             acc
+LL | |         })
+LL | |         .unwrap_or(String::new());
+   | |_________________________________^
+   |
+help: try this
+   |
+LL ~         map.reduce(|mut acc, f| {
+LL +             acc.push_str(&f);
+LL +             acc
+LL ~         }).unwrap_or_default();
+   |
+
+error: aborting due to 22 previous errors
 

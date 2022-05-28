@@ -19,18 +19,8 @@
 )]
 #![macro_use]
 
-use crate::intrinsics;
-
 /// Arithmetic operations required by bignums.
 pub trait FullOps: Sized {
-    /// Returns `(carry', v')` such that `carry' * 2^W + v' = self + other + carry`,
-    /// where `W` is the number of bits in `Self`.
-    fn full_add(self, other: Self, carry: bool) -> (bool /* carry */, Self);
-
-    /// Returns `(carry', v')` such that `carry' * 2^W + v' = self * other + carry`,
-    /// where `W` is the number of bits in `Self`.
-    fn full_mul(self, other: Self, carry: Self) -> (Self /* carry */, Self);
-
     /// Returns `(carry', v')` such that `carry' * 2^W + v' = self * other + other2 + carry`,
     /// where `W` is the number of bits in `Self`.
     fn full_mul_add(self, other: Self, other2: Self, carry: Self) -> (Self /* carry */, Self);
@@ -45,22 +35,6 @@ macro_rules! impl_full_ops {
     ($($ty:ty: add($addfn:path), mul/div($bigty:ident);)*) => (
         $(
             impl FullOps for $ty {
-                fn full_add(self, other: $ty, carry: bool) -> (bool, $ty) {
-                    // This cannot overflow; the output is between `0` and `2 * 2^nbits - 1`.
-                    // FIXME: will LLVM optimize this into ADC or similar?
-                    let (v, carry1) = intrinsics::add_with_overflow(self, other);
-                    let (v, carry2) = intrinsics::add_with_overflow(v, if carry {1} else {0});
-                    (carry1 || carry2, v)
-                }
-
-                fn full_mul(self, other: $ty, carry: $ty) -> ($ty, $ty) {
-                    // This cannot overflow;
-                    // the output is between `0` and `2^nbits * (2^nbits - 1)`.
-                    // FIXME: will LLVM optimize this into ADC or similar?
-                    let v = (self as $bigty) * (other as $bigty) + (carry as $bigty);
-                    ((v >> <$ty>::BITS) as $ty, v as $ty)
-                }
-
                 fn full_mul_add(self, other: $ty, other2: $ty, carry: $ty) -> ($ty, $ty) {
                     // This cannot overflow;
                     // the output is between `0` and `2^nbits * (2^nbits - 1)`.
@@ -173,12 +147,11 @@ macro_rules! define_bignum {
             pub fn add<'a>(&'a mut self, other: &$name) -> &'a mut $name {
                 use crate::cmp;
                 use crate::iter;
-                use crate::num::bignum::FullOps;
 
                 let mut sz = cmp::max(self.size, other.size);
                 let mut carry = false;
                 for (a, b) in iter::zip(&mut self.base[..sz], &other.base[..sz]) {
-                    let (c, v) = (*a).full_add(*b, carry);
+                    let (v, c) = (*a).carrying_add(*b, carry);
                     *a = v;
                     carry = c;
                 }
@@ -191,13 +164,11 @@ macro_rules! define_bignum {
             }
 
             pub fn add_small(&mut self, other: $ty) -> &mut $name {
-                use crate::num::bignum::FullOps;
-
-                let (mut carry, v) = self.base[0].full_add(other, false);
+                let (v, mut carry) = self.base[0].carrying_add(other, false);
                 self.base[0] = v;
                 let mut i = 1;
                 while carry {
-                    let (c, v) = self.base[i].full_add(0, carry);
+                    let (v, c) = self.base[i].carrying_add(0, carry);
                     self.base[i] = v;
                     carry = c;
                     i += 1;
@@ -212,12 +183,11 @@ macro_rules! define_bignum {
             pub fn sub<'a>(&'a mut self, other: &$name) -> &'a mut $name {
                 use crate::cmp;
                 use crate::iter;
-                use crate::num::bignum::FullOps;
 
                 let sz = cmp::max(self.size, other.size);
                 let mut noborrow = true;
                 for (a, b) in iter::zip(&mut self.base[..sz], &other.base[..sz]) {
-                    let (c, v) = (*a).full_add(!*b, noborrow);
+                    let (v, c) = (*a).carrying_add(!*b, noborrow);
                     *a = v;
                     noborrow = c;
                 }
@@ -229,12 +199,10 @@ macro_rules! define_bignum {
             /// Multiplies itself by a digit-sized `other` and returns its own
             /// mutable reference.
             pub fn mul_small(&mut self, other: $ty) -> &mut $name {
-                use crate::num::bignum::FullOps;
-
                 let mut sz = self.size;
                 let mut carry = 0;
                 for a in &mut self.base[..sz] {
-                    let (c, v) = (*a).full_mul(other, carry);
+                    let (v, c) = (*a).carrying_mul(other, carry);
                     *a = v;
                     carry = c;
                 }

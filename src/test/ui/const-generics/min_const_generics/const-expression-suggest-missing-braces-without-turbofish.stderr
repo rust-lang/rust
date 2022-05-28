@@ -4,7 +4,7 @@ error: comparison operators cannot be chained
 LL |     foo<BAR + 3>();
    |        ^       ^
    |
-help: use `::<...>` instead of `<...>` to specify type or const arguments
+help: use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
    |
 LL |     foo::<BAR + 3>();
    |        ++
@@ -15,7 +15,7 @@ error: comparison operators cannot be chained
 LL |     foo<BAR + BAR>();
    |        ^         ^
    |
-help: use `::<...>` instead of `<...>` to specify type or const arguments
+help: use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
    |
 LL |     foo::<BAR + BAR>();
    |        ++
@@ -26,7 +26,7 @@ error: comparison operators cannot be chained
 LL |     foo<3 + 3>();
    |        ^     ^
    |
-help: use `::<...>` instead of `<...>` to specify type or const arguments
+help: use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
    |
 LL |     foo::<3 + 3>();
    |        ++
@@ -37,7 +37,7 @@ error: comparison operators cannot be chained
 LL |     foo<BAR - 3>();
    |        ^       ^
    |
-help: use `::<...>` instead of `<...>` to specify type or const arguments
+help: use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
    |
 LL |     foo::<BAR - 3>();
    |        ++
@@ -48,7 +48,7 @@ error: comparison operators cannot be chained
 LL |     foo<BAR - BAR>();
    |        ^         ^
    |
-help: use `::<...>` instead of `<...>` to specify type or const arguments
+help: use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
    |
 LL |     foo::<BAR - BAR>();
    |        ++
@@ -59,7 +59,7 @@ error: comparison operators cannot be chained
 LL |     foo<100 - BAR>();
    |        ^         ^
    |
-help: use `::<...>` instead of `<...>` to specify type or const arguments
+help: use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
    |
 LL |     foo::<100 - BAR>();
    |        ++
@@ -70,7 +70,7 @@ error: comparison operators cannot be chained
 LL |     foo<bar<i32>()>();
    |        ^   ^
    |
-help: use `::<...>` instead of `<...>` to specify type or const arguments
+help: use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
    |
 LL |     foo::<bar<i32>()>();
    |        ++
@@ -87,7 +87,7 @@ error: comparison operators cannot be chained
 LL |     foo<bar::<i32>()>();
    |        ^            ^
    |
-help: use `::<...>` instead of `<...>` to specify type or const arguments
+help: use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
    |
 LL |     foo::<bar::<i32>()>();
    |        ++
@@ -98,7 +98,7 @@ error: comparison operators cannot be chained
 LL |     foo<bar::<i32>() + BAR>();
    |        ^                  ^
    |
-help: use `::<...>` instead of `<...>` to specify type or const arguments
+help: use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
    |
 LL |     foo::<bar::<i32>() + BAR>();
    |        ++
@@ -109,7 +109,7 @@ error: comparison operators cannot be chained
 LL |     foo<bar::<i32>() - BAR>();
    |        ^                  ^
    |
-help: use `::<...>` instead of `<...>` to specify type or const arguments
+help: use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
    |
 LL |     foo::<bar::<i32>() - BAR>();
    |        ++
@@ -120,7 +120,7 @@ error: comparison operators cannot be chained
 LL |     foo<BAR - bar::<i32>()>();
    |        ^                  ^
    |
-help: use `::<...>` instead of `<...>` to specify type or const arguments
+help: use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
    |
 LL |     foo::<BAR - bar::<i32>()>();
    |        ++
@@ -131,7 +131,7 @@ error: comparison operators cannot be chained
 LL |     foo<BAR - bar::<i32>()>();
    |        ^                  ^
    |
-help: use `::<...>` instead of `<...>` to specify type or const arguments
+help: use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
    |
 LL |     foo::<BAR - bar::<i32>()>();
    |        ++

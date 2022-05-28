@@ -1,7 +1,6 @@
 #![allow(dead_code)]
 
 use crate::cmp::Ordering;
-use crate::convert::TryInto;
 use crate::sys::hermit::abi;
 use crate::sys::hermit::abi::timespec;
 use crate::sys::hermit::abi::{CLOCK_MONOTONIC, CLOCK_REALTIME, NSEC_PER_SEC};
@@ -113,14 +112,6 @@ impl Instant {
         let _ = unsafe { abi::clock_gettime(CLOCK_MONOTONIC, &mut time.t as *mut timespec) };
 
         Instant { t: time }
-    }
-
-    pub const fn zero() -> Instant {
-        Instant { t: Timespec::zero() }
-    }
-
-    pub fn actually_monotonic() -> bool {
-        true
     }
 
     pub fn checked_sub_instant(&self, other: &Instant) -> Option<Duration> {

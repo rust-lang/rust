@@ -5,9 +5,9 @@ use std::path::{Path, PathBuf};
 use crate::docfs::PathError;
 
 #[derive(Debug)]
-crate struct Error {
-    crate file: PathBuf,
-    crate error: String,
+pub(crate) struct Error {
+    pub(crate) file: PathBuf,
+    pub(crate) error: String,
 }
 
 impl error::Error for Error {}

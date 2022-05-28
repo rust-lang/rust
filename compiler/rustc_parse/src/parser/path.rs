@@ -1,11 +1,11 @@
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
-use super::{Parser, TokenType};
+use super::{Parser, Restrictions, TokenType};
 use crate::maybe_whole;
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, Token};
+use rustc_ast::token::{self, Delimiter, Token};
 use rustc_ast::{
-    self as ast, AngleBracketedArg, AngleBracketedArgs, AnonConst, AssocTyConstraint,
-    AssocTyConstraintKind, BlockCheckMode, GenericArg, GenericArgs, Generics, ParenthesizedArgs,
+    self as ast, AngleBracketedArg, AngleBracketedArgs, AnonConst, AssocConstraint,
+    AssocConstraintKind, BlockCheckMode, GenericArg, GenericArgs, Generics, ParenthesizedArgs,
     Path, PathSegment, QSelf,
 };
 use rustc_errors::{pluralize, Applicability, PResult};
@@ -139,21 +139,45 @@ impl<'a> Parser<'a> {
         style: PathStyle,
         ty_generics: Option<&Generics>,
     ) -> PResult<'a, Path> {
-        maybe_whole!(self, NtPath, |path| {
+        let reject_generics_if_mod_style = |parser: &Parser<'_>, path: &Path| {
+            // Ensure generic arguments don't end up in attribute paths, such as:
+            //
+            //     macro_rules! m {
+            //         ($p:path) => { #[$p] struct S; }
+            //     }
+            //
+            //     m!(inline<u8>); //~ ERROR: unexpected generic arguments in path
+            //
             if style == PathStyle::Mod && path.segments.iter().any(|segment| segment.args.is_some())
             {
-                self.struct_span_err(
-                    path.segments
-                        .iter()
-                        .filter_map(|segment| segment.args.as_ref())
-                        .map(|arg| arg.span())
-                        .collect::<Vec<_>>(),
-                    "unexpected generic arguments in path",
-                )
-                .emit();
+                parser
+                    .struct_span_err(
+                        path.segments
+                            .iter()
+                            .filter_map(|segment| segment.args.as_ref())
+                            .map(|arg| arg.span())
+                            .collect::<Vec<_>>(),
+                        "unexpected generic arguments in path",
+                    )
+                    .emit();
             }
-            path
+        };
+
+        maybe_whole!(self, NtPath, |path| {
+            reject_generics_if_mod_style(self, &path);
+            path.into_inner()
         });
+
+        if let token::Interpolated(nt) = &self.token.kind {
+            if let token::NtTy(ty) = &**nt {
+                if let ast::TyKind::Path(None, path) = &ty.kind {
+                    let path = path.clone();
+                    self.bump();
+                    reject_generics_if_mod_style(self, &path);
+                    return Ok(path);
+                }
+            }
+        }
 
         let lo = self.token.span;
         let mut segments = Vec::new();
@@ -212,14 +236,14 @@ impl<'a> Parser<'a> {
                 token.kind,
                 token::Lt
                     | token::BinOp(token::Shl)
-                    | token::OpenDelim(token::Paren)
+                    | token::OpenDelim(Delimiter::Parenthesis)
                     | token::LArrow
             )
         };
         let check_args_start = |this: &mut Self| {
             this.expected_tokens.extend_from_slice(&[
                 TokenType::Token(token::Lt),
-                TokenType::Token(token::OpenDelim(token::Paren)),
+                TokenType::Token(token::OpenDelim(Delimiter::Parenthesis)),
             ]);
             is_args_start(&this.token)
         };
@@ -248,7 +272,23 @@ impl<'a> Parser<'a> {
                         lo,
                         ty_generics,
                     )?;
-                    self.expect_gt()?;
+                    self.expect_gt().map_err(|mut err| {
+                        // Attempt to find places where a missing `>` might belong.
+                        if let Some(arg) = args
+                            .iter()
+                            .rev()
+                            .skip_while(|arg| matches!(arg, AngleBracketedArg::Constraint(_)))
+                            .next()
+                        {
+                            err.span_suggestion_verbose(
+                                arg.span().shrink_to_hi(),
+                                "you might have meant to end the type parameters here",
+                                ">".to_string(),
+                                Applicability::MaybeIncorrect,
+                            );
+                        }
+                        err
+                    })?;
                     let span = lo.to(self.prev_token.span);
                     AngleBracketedArgs { args, span }.into()
                 } else {
@@ -370,7 +410,7 @@ impl<'a> Parser<'a> {
         debug!("parse_generic_args_with_leading_angle_bracket_recovery: (snapshotting)");
         match self.parse_angle_args(ty_generics) {
             Ok(args) => Ok(args),
-            Err(mut e) if is_first_invocation && self.unmatched_angle_bracket_count > 0 => {
+            Err(e) if is_first_invocation && self.unmatched_angle_bracket_count > 0 => {
                 // Swap `self` with our backup of the parser state before attempting to parse
                 // generic arguments.
                 let snapshot = mem::replace(self, snapshot.unwrap());
@@ -438,6 +478,23 @@ impl<'a> Parser<'a> {
         while let Some(arg) = self.parse_angle_arg(ty_generics)? {
             args.push(arg);
             if !self.eat(&token::Comma) {
+                if self.token.kind == token::Semi
+                    && self.look_ahead(1, |t| t.is_ident() || t.is_lifetime())
+                {
+                    // Add `>` to the list of expected tokens.
+                    self.check(&token::Gt);
+                    // Handle `,` to `;` substitution
+                    let mut err = self.unexpected::<()>().unwrap_err();
+                    self.bump();
+                    err.span_suggestion_verbose(
+                        self.prev_token.span.until(self.token.span),
+                        "use a comma to separate type parameters",
+                        ", ".to_string(),
+                        Applicability::MachineApplicable,
+                    );
+                    err.emit();
+                    continue;
+                }
                 if !self.token.kind.should_end_const_arg() {
                     if self.handle_ambiguous_unbraced_const_arg(&mut args)? {
                         // We've managed to (partially) recover, so continue trying to parse
@@ -461,20 +518,27 @@ impl<'a> Parser<'a> {
         match arg {
             Some(arg) => {
                 if self.check(&token::Colon) | self.check(&token::Eq) {
-                    let (ident, gen_args) = match self.get_ident_from_generic_arg(arg) {
+                    let arg_span = arg.span();
+                    let (binder, ident, gen_args) = match self.get_ident_from_generic_arg(&arg) {
                         Ok(ident_gen_args) => ident_gen_args,
-                        Err(arg) => return Ok(Some(AngleBracketedArg::Arg(arg))),
+                        Err(()) => return Ok(Some(AngleBracketedArg::Arg(arg))),
                     };
+                    if binder.is_some() {
+                        // FIXME(compiler-errors): this could be improved by suggesting lifting
+                        // this up to the trait, at least before this becomes real syntax.
+                        // e.g. `Trait<for<'a> Assoc = Ty>` -> `for<'a> Trait<Assoc = Ty>`
+                        return Err(self.struct_span_err(
+                            arg_span,
+                            "`for<...>` is not allowed on associated type bounds",
+                        ));
+                    }
                     let kind = if self.eat(&token::Colon) {
                         // Parse associated type constraint bound.
 
                         let bounds = self.parse_generic_bounds(Some(self.prev_token.span))?;
-                        AssocTyConstraintKind::Bound { bounds }
+                        AssocConstraintKind::Bound { bounds }
                     } else if self.eat(&token::Eq) {
-                        // Parse associated type equality constraint
-
-                        let ty = self.parse_assoc_equality_term(ident, self.prev_token.span)?;
-                        AssocTyConstraintKind::Equality { ty }
+                        self.parse_assoc_equality_term(ident, self.prev_token.span)?
                     } else {
                         unreachable!();
                     };
@@ -482,11 +546,11 @@ impl<'a> Parser<'a> {
                     let span = lo.to(self.prev_token.span);
 
                     // Gate associated type bounds, e.g., `Iterator<Item: Ord>`.
-                    if let AssocTyConstraintKind::Bound { .. } = kind {
+                    if let AssocConstraintKind::Bound { .. } = kind {
                         self.sess.gated_spans.gate(sym::associated_type_bounds, span);
                     }
                     let constraint =
-                        AssocTyConstraint { id: ast::DUMMY_NODE_ID, ident, gen_args, kind, span };
+                        AssocConstraint { id: ast::DUMMY_NODE_ID, ident, gen_args, kind, span };
                     Ok(Some(AngleBracketedArg::Constraint(constraint)))
                 } else {
                     Ok(Some(AngleBracketedArg::Arg(arg)))
@@ -499,22 +563,25 @@ impl<'a> Parser<'a> {
     /// Parse the term to the right of an associated item equality constraint.
     /// That is, parse `<term>` in `Item = <term>`.
     /// Right now, this only admits types in `<term>`.
-    fn parse_assoc_equality_term(&mut self, ident: Ident, eq: Span) -> PResult<'a, P<ast::Ty>> {
+    fn parse_assoc_equality_term(
+        &mut self,
+        ident: Ident,
+        eq: Span,
+    ) -> PResult<'a, AssocConstraintKind> {
         let arg = self.parse_generic_arg(None)?;
         let span = ident.span.to(self.prev_token.span);
-        match arg {
-            Some(GenericArg::Type(ty)) => return Ok(ty),
-            Some(GenericArg::Const(expr)) => {
-                self.struct_span_err(span, "cannot constrain an associated constant to a value")
-                    .span_label(ident.span, "this associated constant...")
-                    .span_label(expr.value.span, "...cannot be constrained to this value")
-                    .emit();
+        let term = match arg {
+            Some(GenericArg::Type(ty)) => ty.into(),
+            Some(GenericArg::Const(c)) => {
+                self.sess.gated_spans.gate(sym::associated_const_equality, span);
+                c.into()
             }
             Some(GenericArg::Lifetime(lt)) => {
                 self.struct_span_err(span, "associated lifetimes are not supported")
                     .span_label(lt.ident.span, "the lifetime is given here")
                     .help("if you meant to specify a trait object, write `dyn Trait + 'lifetime`")
                     .emit();
+                self.mk_ty(span, ast::TyKind::Err).into()
             }
             None => {
                 let after_eq = eq.shrink_to_hi();
@@ -542,8 +609,8 @@ impl<'a> Parser<'a> {
                 };
                 return Err(err);
             }
-        }
-        Ok(self.mk_ty(span, ast::TyKind::Err))
+        };
+        Ok(AssocConstraintKind::Equality { term })
     }
 
     /// We do not permit arbitrary expressions as const arguments. They must be one of:
@@ -572,7 +639,7 @@ impl<'a> Parser<'a> {
     /// the caller.
     pub(super) fn parse_const_arg(&mut self) -> PResult<'a, AnonConst> {
         // Parse const argument.
-        let value = if let token::OpenDelim(token::Brace) = self.token.kind {
+        let value = if let token::OpenDelim(Delimiter::Brace) = self.token.kind {
             self.parse_block_expr(
                 None,
                 self.token.span,
@@ -600,9 +667,23 @@ impl<'a> Parser<'a> {
             GenericArg::Const(self.parse_const_arg()?)
         } else if self.check_type() {
             // Parse type argument.
+            let is_const_fn =
+                self.look_ahead(1, |t| t.kind == token::OpenDelim(Delimiter::Parenthesis));
+            let mut snapshot = self.create_snapshot_for_diagnostic();
             match self.parse_ty() {
                 Ok(ty) => GenericArg::Type(ty),
                 Err(err) => {
+                    if is_const_fn {
+                        match (*snapshot).parse_expr_res(Restrictions::CONST_EXPR, None) {
+                            Ok(expr) => {
+                                self.restore_snapshot(snapshot);
+                                return Ok(Some(self.dummy_const_arg_needs_braces(err, expr.span)));
+                            }
+                            Err(err) => {
+                                err.cancel();
+                            }
+                        }
+                    }
                     // Try to recover from possible `const` arg without braces.
                     return self.recover_const_arg(start, err).map(Some);
                 }
@@ -610,23 +691,52 @@ impl<'a> Parser<'a> {
         } else if self.token.is_keyword(kw::Const) {
             return self.recover_const_param_declaration(ty_generics);
         } else {
-            return Ok(None);
+            // Fall back by trying to parse a const-expr expression. If we successfully do so,
+            // then we should report an error that it needs to be wrapped in braces.
+            let snapshot = self.create_snapshot_for_diagnostic();
+            match self.parse_expr_res(Restrictions::CONST_EXPR, None) {
+                Ok(expr) => {
+                    return Ok(Some(self.dummy_const_arg_needs_braces(
+                        self.struct_span_err(expr.span, "invalid const generic expression"),
+                        expr.span,
+                    )));
+                }
+                Err(err) => {
+                    self.restore_snapshot(snapshot);
+                    err.cancel();
+                    return Ok(None);
+                }
+            }
         };
         Ok(Some(arg))
     }
 
+    /// Given a arg inside of generics, we try to destructure it as if it were the LHS in
+    /// `LHS = ...`, i.e. an associated type binding.
+    /// This returns (optionally, if they are present) any `for<'a, 'b>` binder args, the
+    /// identifier, and any GAT arguments.
     fn get_ident_from_generic_arg(
         &self,
-        gen_arg: GenericArg,
-    ) -> Result<(Ident, Option<GenericArgs>), GenericArg> {
-        if let GenericArg::Type(ty) = &gen_arg {
-            if let ast::TyKind::Path(qself, path) = &ty.kind {
-                if qself.is_none() && path.segments.len() == 1 {
-                    let seg = &path.segments[0];
-                    return Ok((seg.ident, seg.args.as_deref().cloned()));
-                }
+        gen_arg: &GenericArg,
+    ) -> Result<(Option<Vec<ast::GenericParam>>, Ident, Option<GenericArgs>), ()> {
+        if let GenericArg::Type(ty) = gen_arg {
+            if let ast::TyKind::Path(qself, path) = &ty.kind
+                && qself.is_none()
+                && let [seg] = path.segments.as_slice()
+            {
+                return Ok((None, seg.ident, seg.args.as_deref().cloned()));
+            } else if let ast::TyKind::TraitObject(bounds, ast::TraitObjectSyntax::None) = &ty.kind
+                && let [ast::GenericBound::Trait(trait_ref, ast::TraitBoundModifier::None)] =
+                    bounds.as_slice()
+                && let [seg] = trait_ref.trait_ref.path.segments.as_slice()
+            {
+                return Ok((
+                    Some(trait_ref.bound_generic_params.clone()),
+                    seg.ident,
+                    seg.args.as_deref().cloned(),
+                ));
             }
         }
-        Err(gen_arg)
+        Err(())
     }
 }

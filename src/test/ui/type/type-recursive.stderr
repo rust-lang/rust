@@ -4,14 +4,93 @@ error[E0072]: recursive type `T1` has infinite size
 LL | struct T1 {
    | ^^^^^^^^^ recursive type has infinite size
 LL |     foo: isize,
-LL |     foolish: T1
+LL |     foolish: T1,
    |              -- recursive without indirection
    |
 help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `T1` representable
    |
-LL |     foolish: Box<T1>
+LL |     foolish: Box<T1>,
    |              ++++  +
 
-error: aborting due to previous error
+error[E0072]: recursive type `T2` has infinite size
+  --> $DIR/type-recursive.rs:6:1
+   |
+LL | struct T2 {
+   | ^^^^^^^^^ recursive type has infinite size
+LL |     inner: Option<T2>,
+   |            ---------- recursive without indirection
+   |
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `T2` representable
+   |
+LL |     inner: Option<Box<T2>>,
+   |                   ++++  +
+
+error[E0072]: recursive type `T3` has infinite size
+  --> $DIR/type-recursive.rs:12:1
+   |
+LL | struct T3 {
+   | ^^^^^^^^^ recursive type has infinite size
+LL |     inner: OptionT3,
+   |            -------- recursive without indirection
+   |
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `T3` representable
+   |
+LL |     inner: Box<OptionT3>,
+   |            ++++        +
+
+error[E0072]: recursive type `T4` has infinite size
+  --> $DIR/type-recursive.rs:16:1
+   |
+LL | struct T4(Option<T4>);
+   | ^^^^^^^^^^----------^^
+   | |         |
+   | |         recursive without indirection
+   | recursive type has infinite size
+   |
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `T4` representable
+   |
+LL | struct T4(Option<Box<T4>>);
+   |                  ++++  +
+
+error[E0072]: recursive type `T5` has infinite size
+  --> $DIR/type-recursive.rs:18:1
+   |
+LL | enum T5 {
+   | ^^^^^^^ recursive type has infinite size
+LL |     Variant(Option<T5>),
+   |             ---------- recursive without indirection
+   |
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `T5` representable
+   |
+LL |     Variant(Option<Box<T5>>),
+   |                    ++++  +
+
+error[E0072]: recursive type `T6` has infinite size
+  --> $DIR/type-recursive.rs:22:1
+   |
+LL | enum T6 {
+   | ^^^^^^^ recursive type has infinite size
+LL |     Variant{ field: Option<T6> },
+   |                     ---------- recursive without indirection
+   |
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `T6` representable
+   |
+LL |     Variant{ field: Option<Box<T6>> },
+   |                            ++++  +
+
+error[E0072]: recursive type `T7` has infinite size
+  --> $DIR/type-recursive.rs:26:1
+   |
+LL | struct T7 {
+   | ^^^^^^^^^ recursive type has infinite size
+LL |     foo: std::cell::Cell<Option<T7>>,
+   |          --------------------------- recursive without indirection
+   |
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `T7` representable
+   |
+LL |     foo: Box<std::cell::Cell<Option<T7>>>,
+   |          ++++                           +
+
+error: aborting due to 7 previous errors
 
 For more information about this error, try `rustc --explain E0072`.

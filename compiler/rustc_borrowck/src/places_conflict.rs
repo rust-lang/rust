@@ -14,7 +14,7 @@ use std::iter;
 /// being run in the calling context, the conservative choice is to assume the compared indices
 /// are disjoint (and therefore, do not overlap).
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-crate enum PlaceConflictBias {
+pub(crate) enum PlaceConflictBias {
     Overlap,
     NoOverlap,
 }
@@ -22,7 +22,7 @@ crate enum PlaceConflictBias {
 /// Helper function for checking if places conflict with a mutable borrow and deep access depth.
 /// This is used to check for places conflicting outside of the borrow checking code (such as in
 /// dataflow).
-crate fn places_conflict<'tcx>(
+pub(crate) fn places_conflict<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
     borrow_place: Place<'tcx>,
@@ -60,10 +60,8 @@ pub(super) fn borrow_conflicts_with_place<'tcx>(
 
     // This Local/Local case is handled by the more general code below, but
     // it's so common that it's a speed win to check for it first.
-    if let Some(l1) = borrow_place.as_local() {
-        if let Some(l2) = access_place.as_local() {
-            return l1 == l2;
-        }
+    if let Some(l1) = borrow_place.as_local() && let Some(l2) = access_place.as_local() {
+        return l1 == l2;
     }
 
     place_components_conflict(tcx, body, borrow_place, borrow_kind, access_place, access, bias)

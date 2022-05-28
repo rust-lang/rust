@@ -1,0 +1,14 @@
+error: generic `Self` types are currently not permitted in anonymous constants
+  --> $DIR/forbid-self-no-normalize.rs:12:25
+   |
+LL |     type ArrayTy = [u8; Self::MAX];
+   |                         ^^^^
+   |
+note: not a concrete type
+  --> $DIR/forbid-self-no-normalize.rs:11:27
+   |
+LL | impl<T> BindsParam<T> for <T as AlwaysApplicable>::Assoc {
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

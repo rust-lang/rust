@@ -1,4 +1,4 @@
-#![feature(cfg_target_has_atomic, no_core, intrinsics, lang_items)]
+#![feature(no_core, intrinsics, lang_items)]
 #![crate_type="rlib"]
 #![no_core]
 

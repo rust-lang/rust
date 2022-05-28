@@ -6,6 +6,12 @@ LL |     const VOID: ! = panic!();
    |
    = note: this error originates in the macro `$crate::panic::panic_2015` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to previous error
+error[E0080]: erroneous constant used
+  --> $DIR/panic-assoc-never-type.rs:15:13
+   |
+LL |     let _ = PrintName::VOID;
+   |             ^^^^^^^^^^^^^^^ referenced constant has errors
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0080`.

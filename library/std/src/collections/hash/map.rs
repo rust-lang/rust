@@ -12,7 +12,7 @@ use crate::collections::TryReserveErrorKind;
 use crate::fmt::{self, Debug};
 #[allow(deprecated)]
 use crate::hash::{BuildHasher, Hash, Hasher, SipHasher13};
-use crate::iter::{FromIterator, FusedIterator};
+use crate::iter::FusedIterator;
 use crate::ops::Index;
 use crate::sys;
 
@@ -109,8 +109,8 @@ use crate::sys;
 /// let to_find = ["Pride and Prejudice", "Alice's Adventure in Wonderland"];
 /// for &book in &to_find {
 ///     match book_reviews.get(book) {
-///         Some(review) => println!("{}: {}", book, review),
-///         None => println!("{} is unreviewed.", book)
+///         Some(review) => println!("{book}: {review}"),
+///         None => println!("{book} is unreviewed.")
 ///     }
 /// }
 ///
@@ -119,7 +119,7 @@ use crate::sys;
 ///
 /// // Iterate over everything.
 /// for (book, review) in &book_reviews {
-///     println!("{}: \"{}\"", book, review);
+///     println!("{book}: \"{review}\"");
 /// }
 /// ```
 ///
@@ -136,7 +136,7 @@ use crate::sys;
 /// ]);
 /// ```
 ///
-/// `HashMap` implements an [`Entry API`](#method.entry), which allows
+/// `HashMap` implements an [`Entry` API](#method.entry), which allows
 /// for complex methods of getting, setting, updating and removing keys and
 /// their values:
 ///
@@ -199,7 +199,7 @@ use crate::sys;
 ///
 /// // Use derived implementation to print the status of the vikings.
 /// for (viking, health) in &vikings {
-///     println!("{:?} has {} hp", viking, health);
+///     println!("{viking:?} has {health} hp");
 /// }
 /// ```
 
@@ -341,9 +341,14 @@ impl<K, V, S> HashMap<K, V, S> {
     /// ]);
     ///
     /// for key in map.keys() {
-    ///     println!("{}", key);
+    ///     println!("{key}");
     /// }
     /// ```
+    ///
+    /// # Performance
+    ///
+    /// In the current implementation, iterating over keys takes O(capacity) time
+    /// instead of O(len) because it internally visits empty buckets too.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn keys(&self) -> Keys<'_, K, V> {
         Keys { inner: self.iter() }
@@ -370,7 +375,13 @@ impl<K, V, S> HashMap<K, V, S> {
     /// vec.sort_unstable();
     /// assert_eq!(vec, ["a", "b", "c"]);
     /// ```
+    ///
+    /// # Performance
+    ///
+    /// In the current implementation, iterating over keys takes O(capacity) time
+    /// instead of O(len) because it internally visits empty buckets too.
     #[inline]
+    #[rustc_lint_query_instability]
     #[stable(feature = "map_into_keys_values", since = "1.54.0")]
     pub fn into_keys(self) -> IntoKeys<K, V> {
         IntoKeys { inner: self.into_iter() }
@@ -391,9 +402,14 @@ impl<K, V, S> HashMap<K, V, S> {
     /// ]);
     ///
     /// for val in map.values() {
-    ///     println!("{}", val);
+    ///     println!("{val}");
     /// }
     /// ```
+    ///
+    /// # Performance
+    ///
+    /// In the current implementation, iterating over values takes O(capacity) time
+    /// instead of O(len) because it internally visits empty buckets too.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn values(&self) -> Values<'_, K, V> {
         Values { inner: self.iter() }
@@ -418,9 +434,14 @@ impl<K, V, S> HashMap<K, V, S> {
     /// }
     ///
     /// for val in map.values() {
-    ///     println!("{}", val);
+    ///     println!("{val}");
     /// }
     /// ```
+    ///
+    /// # Performance
+    ///
+    /// In the current implementation, iterating over values takes O(capacity) time
+    /// instead of O(len) because it internally visits empty buckets too.
     #[stable(feature = "map_values_mut", since = "1.10.0")]
     pub fn values_mut(&mut self) -> ValuesMut<'_, K, V> {
         ValuesMut { inner: self.iter_mut() }
@@ -447,7 +468,13 @@ impl<K, V, S> HashMap<K, V, S> {
     /// vec.sort_unstable();
     /// assert_eq!(vec, [1, 2, 3]);
     /// ```
+    ///
+    /// # Performance
+    ///
+    /// In the current implementation, iterating over values takes O(capacity) time
+    /// instead of O(len) because it internally visits empty buckets too.
     #[inline]
+    #[rustc_lint_query_instability]
     #[stable(feature = "map_into_keys_values", since = "1.54.0")]
     pub fn into_values(self) -> IntoValues<K, V> {
         IntoValues { inner: self.into_iter() }
@@ -468,9 +495,15 @@ impl<K, V, S> HashMap<K, V, S> {
     /// ]);
     ///
     /// for (key, val) in map.iter() {
-    ///     println!("key: {} val: {}", key, val);
+    ///     println!("key: {key} val: {val}");
     /// }
     /// ```
+    ///
+    /// # Performance
+    ///
+    /// In the current implementation, iterating over map takes O(capacity) time
+    /// instead of O(len) because it internally visits empty buckets too.
+    #[rustc_lint_query_instability]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter(&self) -> Iter<'_, K, V> {
         Iter { base: self.base.iter() }
@@ -497,9 +530,15 @@ impl<K, V, S> HashMap<K, V, S> {
     /// }
     ///
     /// for (key, val) in &map {
-    ///     println!("key: {} val: {}", key, val);
+    ///     println!("key: {key} val: {val}");
     /// }
     /// ```
+    ///
+    /// # Performance
+    ///
+    /// In the current implementation, iterating over map takes O(capacity) time
+    /// instead of O(len) because it internally visits empty buckets too.
+    #[rustc_lint_query_instability]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter_mut(&mut self) -> IterMut<'_, K, V> {
         IterMut { base: self.base.iter_mut() }
@@ -543,6 +582,10 @@ impl<K, V, S> HashMap<K, V, S> {
     /// Clears the map, returning all key-value pairs as an iterator. Keeps the
     /// allocated memory for reuse.
     ///
+    /// If the returned iterator is dropped before being fully consumed, it
+    /// drops the remaining key-value pairs. The returned iterator keeps a
+    /// mutable borrow on the vector to optimize its implementation.
+    ///
     /// # Examples
     ///
     /// ```
@@ -560,6 +603,7 @@ impl<K, V, S> HashMap<K, V, S> {
     /// assert!(a.is_empty());
     /// ```
     #[inline]
+    #[rustc_lint_query_instability]
     #[stable(feature = "drain", since = "1.6.0")]
     pub fn drain(&mut self) -> Drain<'_, K, V> {
         Drain { base: self.base.drain() }
@@ -601,6 +645,7 @@ impl<K, V, S> HashMap<K, V, S> {
     /// assert_eq!(odds, vec![1, 3, 5, 7]);
     /// ```
     #[inline]
+    #[rustc_lint_query_instability]
     #[unstable(feature = "hash_drain_filter", issue = "59618")]
     pub fn drain_filter<F>(&mut self, pred: F) -> DrainFilter<'_, K, V, F>
     where
@@ -611,7 +656,7 @@ impl<K, V, S> HashMap<K, V, S> {
 
     /// Retains only the elements specified by the predicate.
     ///
-    /// In other words, remove all pairs `(k, v)` such that `f(&k, &mut v)` returns `false`.
+    /// In other words, remove all pairs `(k, v)` for which `f(&k, &mut v)` returns `false`.
     /// The elements are visited in unsorted (and unspecified) order.
     ///
     /// # Examples
@@ -623,7 +668,13 @@ impl<K, V, S> HashMap<K, V, S> {
     /// map.retain(|&k, _| k % 2 == 0);
     /// assert_eq!(map.len(), 4);
     /// ```
+    ///
+    /// # Performance
+    ///
+    /// In the current implementation, this operation takes O(capacity) time
+    /// instead of O(len) because it internally visits empty buckets too.
     #[inline]
+    #[rustc_lint_query_instability]
     #[stable(feature = "retain_hash_collection", since = "1.18.0")]
     pub fn retain<F>(&mut self, f: F)
     where
@@ -1990,6 +2041,7 @@ impl<'a, K, V, S> IntoIterator for &'a HashMap<K, V, S> {
     type IntoIter = Iter<'a, K, V>;
 
     #[inline]
+    #[rustc_lint_query_instability]
     fn into_iter(self) -> Iter<'a, K, V> {
         self.iter()
     }
@@ -2001,6 +2053,7 @@ impl<'a, K, V, S> IntoIterator for &'a mut HashMap<K, V, S> {
     type IntoIter = IterMut<'a, K, V>;
 
     #[inline]
+    #[rustc_lint_query_instability]
     fn into_iter(self) -> IterMut<'a, K, V> {
         self.iter_mut()
     }
@@ -2030,6 +2083,7 @@ impl<K, V, S> IntoIterator for HashMap<K, V, S> {
     /// let vec: Vec<(&str, i32)> = map.into_iter().collect();
     /// ```
     #[inline]
+    #[rustc_lint_query_instability]
     fn into_iter(self) -> IntoIter<K, V> {
         IntoIter { base: self.base.into_iter() }
     }
@@ -2462,6 +2516,7 @@ impl<'a, K, V> Entry<'a, K, V> {
     /// # Examples
     ///
     /// ```
+    /// #![feature(entry_insert)]
     /// use std::collections::HashMap;
     ///
     /// let mut map: HashMap<&str, String> = HashMap::new();
@@ -2470,7 +2525,7 @@ impl<'a, K, V> Entry<'a, K, V> {
     /// assert_eq!(entry.key(), &"poneyland");
     /// ```
     #[inline]
-    #[stable(feature = "entry_insert", since = "1.59.0")]
+    #[unstable(feature = "entry_insert", issue = "65225")]
     pub fn insert_entry(self, value: V) -> OccupiedEntry<'a, K, V> {
         match self {
             Occupied(mut entry) => {
@@ -2804,6 +2859,7 @@ impl<'a, K: 'a, V: 'a> VacantEntry<'a, K, V> {
     /// # Examples
     ///
     /// ```
+    /// #![feature(entry_insert)]
     /// use std::collections::HashMap;
     /// use std::collections::hash_map::Entry;
     ///
@@ -2815,7 +2871,7 @@ impl<'a, K: 'a, V: 'a> VacantEntry<'a, K, V> {
     /// assert_eq!(map["poneyland"], 37);
     /// ```
     #[inline]
-    #[stable(feature = "entry_insert", since = "1.59.0")]
+    #[unstable(feature = "entry_insert", issue = "65225")]
     pub fn insert_entry(self, value: V) -> OccupiedEntry<'a, K, V> {
         let base = self.base.insert_entry(value);
         OccupiedEntry { base }
@@ -2990,9 +3046,17 @@ impl Default for DefaultHasher {
 
 #[stable(feature = "hashmap_default_hasher", since = "1.13.0")]
 impl Hasher for DefaultHasher {
+    // The underlying `SipHasher13` doesn't override the other
+    // `write_*` methods, so it's ok not to forward them here.
+
     #[inline]
     fn write(&mut self, msg: &[u8]) {
         self.0.write(msg)
+    }
+
+    #[inline]
+    fn write_str(&mut self, s: &str) {
+        self.0.write_str(s);
     }
 
     #[inline]

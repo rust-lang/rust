@@ -1,8 +1,9 @@
 // run-pass
 // needs-unwind
 // ignore-wasm32-bare compiled with panic=abort by default
-// revisions: mir thir
+// revisions: mir thir strict
 // [thir]compile-flags: -Zthir-unsafeck
+// [strict]compile-flags: -Zstrict-init-checks
 // ignore-tidy-linelength
 
 // This test checks panic emitted from `mem::{uninitialized,zeroed}`.
@@ -54,6 +55,8 @@ enum LR_NonZero {
     Right(num::NonZeroI64),
 }
 
+struct ZeroSized;
+
 fn test_panic_msg<T>(op: impl (FnOnce() -> T) + panic::UnwindSafe, msg: &str) {
     let err = panic::catch_unwind(op).err();
     assert_eq!(
@@ -102,6 +105,32 @@ fn main() {
         test_panic_msg(
             || MaybeUninit::<Bar>::uninit().assume_init(),
             "attempted to instantiate uninhabited type `Bar`"
+        );
+
+        test_panic_msg(
+            || mem::uninitialized::<[Foo; 2]>(),
+            "attempted to instantiate uninhabited type `[Foo; 2]`"
+        );
+        test_panic_msg(
+            || mem::zeroed::<[Foo; 2]>(),
+            "attempted to instantiate uninhabited type `[Foo; 2]`"
+        );
+        test_panic_msg(
+            || MaybeUninit::<[Foo; 2]>::uninit().assume_init(),
+            "attempted to instantiate uninhabited type `[Foo; 2]`"
+        );
+
+        test_panic_msg(
+            || mem::uninitialized::<[Bar; 2]>(),
+            "attempted to instantiate uninhabited type `[Bar; 2]`"
+        );
+        test_panic_msg(
+            || mem::zeroed::<[Bar; 2]>(),
+            "attempted to instantiate uninhabited type `[Bar; 2]`"
+        );
+        test_panic_msg(
+            || MaybeUninit::<[Bar; 2]>::uninit().assume_init(),
+            "attempted to instantiate uninhabited type `[Bar; 2]`"
         );
 
         // Types that do not like zero-initialziation
@@ -199,12 +228,43 @@ fn main() {
         let _val = mem::zeroed::<OneVariant>();
         let _val = mem::zeroed::<Option<&'static i32>>();
         let _val = mem::zeroed::<MaybeUninit<NonNull<u32>>>();
+        let _val = mem::zeroed::<[!; 0]>();
         let _val = mem::uninitialized::<MaybeUninit<bool>>();
+        let _val = mem::uninitialized::<[!; 0]>();
+        let _val = mem::uninitialized::<()>();
+        let _val = mem::uninitialized::<ZeroSized>();
 
-        // These are UB because they have not been officially blessed, but we await the resolution
-        // of <https://github.com/rust-lang/unsafe-code-guidelines/issues/71> before doing
-        // anything about that.
-        let _val = mem::uninitialized::<i32>();
-        let _val = mem::uninitialized::<*const ()>();
+        if cfg!(strict) {
+            test_panic_msg(
+                || mem::uninitialized::<i32>(),
+                "attempted to leave type `i32` uninitialized, which is invalid"
+            );
+
+            test_panic_msg(
+                || mem::uninitialized::<*const ()>(),
+                "attempted to leave type `*const ()` uninitialized, which is invalid"
+            );
+
+            test_panic_msg(
+                || mem::uninitialized::<[i32; 1]>(),
+                "attempted to leave type `[i32; 1]` uninitialized, which is invalid"
+            );
+
+            test_panic_msg(
+                || mem::zeroed::<NonNull<()>>(),
+                "attempted to zero-initialize type `core::ptr::non_null::NonNull<()>`, which is invalid"
+            );
+
+            test_panic_msg(
+                || mem::zeroed::<[NonNull<()>; 1]>(),
+                "attempted to zero-initialize type `[core::ptr::non_null::NonNull<()>; 1]`, which is invalid"
+            );
+        } else {
+            // These are UB because they have not been officially blessed, but we await the resolution
+            // of <https://github.com/rust-lang/unsafe-code-guidelines/issues/71> before doing
+            // anything about that.
+            let _val = mem::uninitialized::<i32>();
+            let _val = mem::uninitialized::<*const ()>();
+        }
     }
 }

@@ -1,5 +1,5 @@
 error: implementation of `Foo` is not general enough
-  --> $DIR/issue-54302-cases.rs:63:5
+  --> $DIR/issue-54302-cases.rs:67:5
    |
 LL |     <u32 as RefFoo<u32>>::ref_foo(a)
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ implementation of `Foo` is not general enough
@@ -8,7 +8,7 @@ LL |     <u32 as RefFoo<u32>>::ref_foo(a)
    = note: ...but `Foo<'_, u32>` is actually implemented for the type `&'1 u32`, for some specific lifetime `'1`
 
 error: implementation of `Foo` is not general enough
-  --> $DIR/issue-54302-cases.rs:69:5
+  --> $DIR/issue-54302-cases.rs:73:5
    |
 LL |     <i32 as RefFoo<i32>>::ref_foo(a)
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ implementation of `Foo` is not general enough
@@ -17,7 +17,7 @@ LL |     <i32 as RefFoo<i32>>::ref_foo(a)
    = note: ...but `Foo<'_, i32>` is actually implemented for the type `&'1 i32`, for some specific lifetime `'1`
 
 error: implementation of `Foo` is not general enough
-  --> $DIR/issue-54302-cases.rs:75:5
+  --> $DIR/issue-54302-cases.rs:79:5
    |
 LL |     <u64 as RefFoo<u64>>::ref_foo(a)
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ implementation of `Foo` is not general enough
@@ -26,7 +26,7 @@ LL |     <u64 as RefFoo<u64>>::ref_foo(a)
    = note: ...but `Foo<'_, u64>` is actually implemented for the type `&'1 u64`, for some specific lifetime `'1`
 
 error: implementation of `Foo` is not general enough
-  --> $DIR/issue-54302-cases.rs:81:5
+  --> $DIR/issue-54302-cases.rs:85:5
    |
 LL |     <i64 as RefFoo<i64>>::ref_foo(a)
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ implementation of `Foo` is not general enough

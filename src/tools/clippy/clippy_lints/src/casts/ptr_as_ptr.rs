@@ -12,8 +12,8 @@ use rustc_semver::RustcVersion;
 
 use super::PTR_AS_PTR;
 
-pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, msrv: &Option<RustcVersion>) {
-    if !meets_msrv(msrv.as_ref(), &msrvs::POINTER_CAST) {
+pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, msrv: Option<RustcVersion>) {
+    if !meets_msrv(msrv, msrvs::POINTER_CAST) {
         return;
     }
 

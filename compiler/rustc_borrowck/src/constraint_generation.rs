@@ -60,8 +60,8 @@ impl<'cg, 'cx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'cx, 'tcx> {
 
     /// We sometimes have `region` within an rvalue, or within a
     /// call. Make them live at the location where they appear.
-    fn visit_region(&mut self, region: &ty::Region<'tcx>, location: Location) {
-        self.add_regular_live_constraint(*region, location);
+    fn visit_region(&mut self, region: ty::Region<'tcx>, location: Location) {
+        self.add_regular_live_constraint(region, location);
         self.super_region(region);
     }
 
@@ -140,9 +140,7 @@ impl<'cg, 'cx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'cx, 'tcx> {
         // A `Call` terminator's return value can be a local which has borrows,
         // so we need to record those as `killed` as well.
         if let TerminatorKind::Call { destination, .. } = terminator.kind {
-            if let Some((place, _)) = destination {
-                self.record_killed_borrows_for_place(place, location);
-            }
+            self.record_killed_borrows_for_place(destination, location);
         }
 
         self.super_terminator(terminator, location);

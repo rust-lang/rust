@@ -1,0 +1,14 @@
+error: higher kinded lifetime bounds on nested opaque types are not supported yet
+  --> $DIR/issue-67830.rs:21:62
+   |
+LL | fn test() -> impl for<'a> MyFn<&'a A, Output=impl Iterator + 'a> {
+   |                                                              ^^
+   |
+note: lifetime declared here
+  --> $DIR/issue-67830.rs:21:23
+   |
+LL | fn test() -> impl for<'a> MyFn<&'a A, Output=impl Iterator + 'a> {
+   |                       ^^
+
+error: aborting due to previous error
+

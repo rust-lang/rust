@@ -17,8 +17,7 @@ use rustc_middle::ty;
 use rustc_span::source_map::{BytePos, CharPos, Pos, Span, SyntaxContext};
 use rustc_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
 use std::borrow::Cow;
-use std::convert::TryInto;
-use std::fmt::Display;
+use std::fmt::{Display, Write as _};
 use std::iter;
 use std::ops::{Add, Neg, Not, Sub};
 
@@ -50,7 +49,7 @@ impl Display for Sugg<'_> {
     }
 }
 
-#[allow(clippy::wrong_self_convention)] // ok, because of the function `as_ty` method
+#[expect(clippy::wrong_self_convention)] // ok, because of the function `as_ty` method
 impl<'a> Sugg<'a> {
     /// Prepare a suggestion from an expression.
     pub fn hir_opt(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> Option<Self> {
@@ -147,7 +146,6 @@ impl<'a> Sugg<'a> {
             | hir::ExprKind::Field(..)
             | hir::ExprKind::Index(..)
             | hir::ExprKind::InlineAsm(..)
-            | hir::ExprKind::LlvmInlineAsm(..)
             | hir::ExprKind::ConstBlock(..)
             | hir::ExprKind::Lit(..)
             | hir::ExprKind::Loop(..)
@@ -205,7 +203,6 @@ impl<'a> Sugg<'a> {
             | ast::ExprKind::ForLoop(..)
             | ast::ExprKind::Index(..)
             | ast::ExprKind::InlineAsm(..)
-            | ast::ExprKind::LlvmInlineAsm(..)
             | ast::ExprKind::ConstBlock(..)
             | ast::ExprKind::Lit(..)
             | ast::ExprKind::Loop(..)
@@ -216,6 +213,7 @@ impl<'a> Sugg<'a> {
             | ast::ExprKind::Path(..)
             | ast::ExprKind::Repeat(..)
             | ast::ExprKind::Ret(..)
+            | ast::ExprKind::Yeet(..)
             | ast::ExprKind::Struct(..)
             | ast::ExprKind::Try(..)
             | ast::ExprKind::TryBlock(..)
@@ -319,7 +317,6 @@ impl<'a> Sugg<'a> {
 
     /// Convenience method to create the `<lhs>..<rhs>` or `<lhs>...<rhs>`
     /// suggestion.
-    #[allow(dead_code)]
     pub fn range(self, end: &Self, limit: ast::RangeLimits) -> Sugg<'static> {
         match limit {
             ast::RangeLimits::HalfOpen => make_assoc(AssocOp::DotDot, &self, end),
@@ -388,7 +385,7 @@ fn binop_to_string(op: AssocOp, lhs: &str, rhs: &str) -> String {
 }
 
 /// Return `true` if `sugg` is enclosed in parenthesis.
-fn has_enclosing_paren(sugg: impl AsRef<str>) -> bool {
+pub fn has_enclosing_paren(sugg: impl AsRef<str>) -> bool {
     let mut chars = sugg.as_ref().chars();
     if chars.next() == Some('(') {
         let mut depth = 1;
@@ -675,8 +672,8 @@ fn indentation<T: LintContext>(cx: &T, span: Span) -> Option<String> {
         })
 }
 
-/// Convenience extension trait for `DiagnosticBuilder`.
-pub trait DiagnosticBuilderExt<T: LintContext> {
+/// Convenience extension trait for `Diagnostic`.
+pub trait DiagnosticExt<T: LintContext> {
     /// Suggests to add an attribute to an item.
     ///
     /// Correctly handles indentation of the attribute and item.
@@ -723,7 +720,7 @@ pub trait DiagnosticBuilderExt<T: LintContext> {
     fn suggest_remove_item(&mut self, cx: &T, item: Span, msg: &str, applicability: Applicability);
 }
 
-impl<T: LintContext> DiagnosticBuilderExt<T> for rustc_errors::DiagnosticBuilder<'_> {
+impl<T: LintContext> DiagnosticExt<T> for rustc_errors::Diagnostic {
     fn suggest_item_with_attr<D: Display + ?Sized>(
         &mut self,
         cx: &T,
@@ -810,7 +807,7 @@ pub fn deref_closure_args<'tcx>(cx: &LateContext<'_>, closure: &'tcx hir::Expr<'
             closure_arg_is_type_annotated_double_ref,
             next_pos: closure.span.lo(),
             suggestion_start: String::new(),
-            applicability: Applicability::MaybeIncorrect,
+            applicability: Applicability::MachineApplicable,
         };
 
         let fn_def_id = cx.tcx.hir().local_def_id(closure.hir_id);
@@ -865,7 +862,7 @@ impl<'tcx> DerefDelegate<'_, 'tcx> {
     /// indicates whether the function from `parent_expr` takes its args by double reference
     fn func_takes_arg_by_double_ref(&self, parent_expr: &'tcx hir::Expr<'_>, cmt_hir_id: HirId) -> bool {
         let (call_args, inputs) = match parent_expr.kind {
-            ExprKind::MethodCall(_, _, call_args, _) => {
+            ExprKind::MethodCall(_, call_args, _) => {
                 if let Some(method_did) = self.cx.typeck_results().type_dependent_def_id(parent_expr.hir_id) {
                     (call_args, self.cx.tcx.fn_sig(method_did).skip_binder().inputs())
                 } else {
@@ -887,7 +884,6 @@ impl<'tcx> DerefDelegate<'_, 'tcx> {
 impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
     fn consume(&mut self, _: &PlaceWithHirId<'tcx>, _: HirId) {}
 
-    #[allow(clippy::too_many_lines)]
     fn borrow(&mut self, cmt: &PlaceWithHirId<'tcx>, _: HirId, _: ty::BorrowKind) {
         if let PlaceBase::Local(id) = cmt.place.base {
             let map = self.cx.tcx.hir();
@@ -903,7 +899,7 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
             if cmt.place.projections.is_empty() {
                 // handle item without any projection, that needs an explicit borrowing
                 // i.e.: suggest `&x` instead of `x`
-                self.suggestion_start.push_str(&format!("{}&{}", start_snip, ident_str));
+                let _ = write!(self.suggestion_start, "{}&{}", start_snip, ident_str);
             } else {
                 // cases where a parent `Call` or `MethodCall` is using the item
                 // i.e.: suggest `.contains(&x)` for `.find(|x| [1, 2, 3].contains(x)).is_none()`
@@ -917,15 +913,14 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
                     match &parent_expr.kind {
                         // given expression is the self argument and will be handled completely by the compiler
                         // i.e.: `|x| x.is_something()`
-                        ExprKind::MethodCall(_, _, [self_expr, ..], _) if self_expr.hir_id == cmt.hir_id => {
-                            self.suggestion_start
-                                .push_str(&format!("{}{}", start_snip, ident_str_with_proj));
+                        ExprKind::MethodCall(_, [self_expr, ..], _) if self_expr.hir_id == cmt.hir_id => {
+                            let _ = write!(self.suggestion_start, "{}{}", start_snip, ident_str_with_proj);
                             self.next_pos = span.hi();
                             return;
                         },
                         // item is used in a call
                         // i.e.: `Call`: `|x| please(x)` or `MethodCall`: `|x| [1, 2, 3].contains(x)`
-                        ExprKind::Call(_, [call_args @ ..]) | ExprKind::MethodCall(_, _, [_, call_args @ ..], _) => {
+                        ExprKind::Call(_, [call_args @ ..]) | ExprKind::MethodCall(_, [_, call_args @ ..], _) => {
                             let expr = self.cx.tcx.hir().expect_expr(cmt.hir_id);
                             let arg_ty_kind = self.cx.typeck_results().expr_ty(expr).kind();
 
@@ -1027,8 +1022,7 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
                     }
                 }
 
-                self.suggestion_start
-                    .push_str(&format!("{}{}", start_snip, replacement_str));
+                let _ = write!(self.suggestion_start, "{}{}", start_snip, replacement_str);
             }
             self.next_pos = span.hi();
         }
@@ -1036,7 +1030,7 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
 
     fn mutate(&mut self, _: &PlaceWithHirId<'tcx>, _: HirId) {}
 
-    fn fake_read(&mut self, _: rustc_typeck::expr_use_visitor::Place<'tcx>, _: FakeReadCause, _: HirId) {}
+    fn fake_read(&mut self, _: &rustc_typeck::expr_use_visitor::PlaceWithHirId<'tcx>, _: FakeReadCause, _: HirId) {}
 }
 
 #[cfg(test)]

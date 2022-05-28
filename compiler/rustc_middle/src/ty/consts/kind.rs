@@ -1,29 +1,22 @@
 use std::convert::TryInto;
-use std::fmt;
 
 use crate::mir::interpret::{AllocId, ConstValue, Scalar};
 use crate::mir::Promoted;
 use crate::ty::subst::{InternalSubsts, SubstsRef};
 use crate::ty::ParamEnv;
 use crate::ty::{self, TyCtxt, TypeFoldable};
-use rustc_errors::ErrorReported;
+use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::DefId;
 use rustc_macros::HashStable;
 use rustc_target::abi::Size;
 
 use super::ScalarInt;
 /// An unevaluated, potentially generic, constant.
-///
-/// If `substs_` is `None` it means that this anon const
-/// still has its default substs.
-///
-/// We check for all possible substs in `fn default_anon_const_substs`,
-/// so refer to that check for more info.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable, Lift)]
 #[derive(Hash, HashStable)]
 pub struct Unevaluated<'tcx, P = Option<Promoted>> {
     pub def: ty::WithOptConstParam<DefId>,
-    pub substs_: Option<SubstsRef<'tcx>>,
+    pub substs: SubstsRef<'tcx>,
     pub promoted: P,
 }
 
@@ -31,34 +24,21 @@ impl<'tcx> Unevaluated<'tcx> {
     #[inline]
     pub fn shrink(self) -> Unevaluated<'tcx, ()> {
         debug_assert_eq!(self.promoted, None);
-        Unevaluated { def: self.def, substs_: self.substs_, promoted: () }
+        Unevaluated { def: self.def, substs: self.substs, promoted: () }
     }
 }
 
 impl<'tcx> Unevaluated<'tcx, ()> {
     #[inline]
     pub fn expand(self) -> Unevaluated<'tcx> {
-        Unevaluated { def: self.def, substs_: self.substs_, promoted: None }
+        Unevaluated { def: self.def, substs: self.substs, promoted: None }
     }
 }
 
 impl<'tcx, P: Default> Unevaluated<'tcx, P> {
     #[inline]
     pub fn new(def: ty::WithOptConstParam<DefId>, substs: SubstsRef<'tcx>) -> Unevaluated<'tcx, P> {
-        Unevaluated { def, substs_: Some(substs), promoted: Default::default() }
-    }
-}
-
-impl<'tcx, P: Default + PartialEq + fmt::Debug> Unevaluated<'tcx, P> {
-    #[inline]
-    pub fn substs(self, tcx: TyCtxt<'tcx>) -> SubstsRef<'tcx> {
-        self.substs_.unwrap_or_else(|| {
-            // We must not use the parents default substs for promoted constants
-            // as that can result in incorrect substs and calls the `default_anon_const_substs`
-            // for something that might not actually be a constant.
-            debug_assert_eq!(self.promoted, Default::default());
-            tcx.default_anon_const_substs(self.def.did)
-        })
+        Unevaluated { def, substs, promoted: Default::default() }
     }
 }
 
@@ -146,11 +126,12 @@ impl<'tcx> ConstKind<'tcx> {
     #[inline]
     /// Tries to evaluate the constant if it is `Unevaluated`. If that isn't possible or necessary
     /// return `None`.
-    pub(super) fn try_eval(
+    // FIXME(@lcnr): Completely rework the evaluation/normalization system for `ty::Const` once valtrees are merged.
+    pub fn try_eval(
         self,
         tcx: TyCtxt<'tcx>,
         param_env: ParamEnv<'tcx>,
-    ) -> Option<Result<ConstValue<'tcx>, ErrorReported>> {
+    ) -> Option<Result<ConstValue<'tcx>, ErrorGuaranteed>> {
         if let ConstKind::Unevaluated(unevaluated) = self {
             use crate::mir::interpret::ErrorHandled;
 
@@ -173,7 +154,7 @@ impl<'tcx> ConstKind<'tcx> {
             let param_env_and = if param_env_and.needs_infer() {
                 tcx.param_env(unevaluated.def.did).and(ty::Unevaluated {
                     def: unevaluated.def,
-                    substs_: Some(InternalSubsts::identity_for_item(tcx, unevaluated.def.did)),
+                    substs: InternalSubsts::identity_for_item(tcx, unevaluated.def.did),
                     promoted: unevaluated.promoted,
                 })
             } else {

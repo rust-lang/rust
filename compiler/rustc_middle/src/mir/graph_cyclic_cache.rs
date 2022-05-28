@@ -45,8 +45,9 @@ impl<S: serialize::Encoder> serialize::Encodable<S> for GraphIsCyclicCache {
 
 impl<D: serialize::Decoder> serialize::Decodable<D> for GraphIsCyclicCache {
     #[inline]
-    fn decode(d: &mut D) -> Result<Self, D::Error> {
-        serialize::Decodable::decode(d).map(|_v: ()| Self::new())
+    fn decode(d: &mut D) -> Self {
+        let () = serialize::Decodable::decode(d);
+        Self::new()
     }
 }
 

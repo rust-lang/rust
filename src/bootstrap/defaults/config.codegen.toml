@@ -1,4 +1,8 @@
 # These defaults are meant for contributors to the compiler who modify codegen or LLVM
+[build]
+# Contributors working on the compiler will probably expect compiler docs to be generated.
+compiler-docs = true
+
 [llvm]
 # This enables debug-assertions in LLVM,
 # catching logic errors in codegen much earlier in the process.

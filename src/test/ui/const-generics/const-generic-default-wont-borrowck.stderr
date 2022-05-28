@@ -1,0 +1,9 @@
+error[E0381]: borrow of possibly-uninitialized variable: `s`
+  --> $DIR/const-generic-default-wont-borrowck.rs:2:26
+   |
+LL |     let s: &'static str; s.len()
+   |                          ^^^^^^^ use of possibly-uninitialized `*s`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0381`.

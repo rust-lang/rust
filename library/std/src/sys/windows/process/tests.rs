@@ -25,6 +25,31 @@ fn test_raw_args() {
 }
 
 #[test]
+fn test_thread_handle() {
+    use crate::os::windows::io::BorrowedHandle;
+    use crate::os::windows::process::{ChildExt, CommandExt};
+    const CREATE_SUSPENDED: u32 = 0x00000004;
+
+    let p = Command::new("cmd").args(&["/C", "exit 0"]).creation_flags(CREATE_SUSPENDED).spawn();
+    assert!(p.is_ok());
+    let mut p = p.unwrap();
+
+    extern "system" {
+        fn ResumeThread(_: BorrowedHandle<'_>) -> u32;
+    }
+    unsafe {
+        ResumeThread(p.main_thread_handle());
+    }
+
+    crate::thread::sleep(crate::time::Duration::from_millis(100));
+
+    let res = p.try_wait();
+    assert!(res.is_ok());
+    assert!(res.unwrap().is_some());
+    assert!(p.try_wait().unwrap().unwrap().success());
+}
+
+#[test]
 fn test_make_command_line() {
     fn test_wrapper(prog: &str, args: &[&str], force_quotes: bool) -> String {
         let command_line = &make_command_line(
@@ -121,9 +146,7 @@ fn windows_env_unicode_case() {
             assert_eq!(
                 env::var(key).ok(),
                 value.map(|s| s.to_string_lossy().into_owned()),
-                "command environment mismatch: {} {}",
-                a,
-                b
+                "command environment mismatch: {a} {b}",
             );
         }
     }
@@ -135,6 +158,8 @@ fn windows_env_unicode_case() {
 fn windows_exe_resolver() {
     use super::resolve_exe;
     use crate::io;
+    use crate::sys::fs::symlink;
+    use crate::sys_common::io::test::tmpdir;
 
     let env_paths = || env::var_os("PATH");
 
@@ -178,4 +203,20 @@ fn windows_exe_resolver() {
     // The application's directory is also searched.
     let current_exe = env::current_exe().unwrap();
     assert!(resolve_exe(current_exe.file_name().unwrap().as_ref(), empty_paths, None).is_ok());
+
+    // Create a temporary path and add a broken symlink.
+    let temp = tmpdir();
+    let mut exe_path = temp.path().to_owned();
+    exe_path.push("exists.exe");
+
+    // A broken symlink should still be resolved.
+    // Skip this check if not in CI and creating symlinks isn't possible.
+    let is_ci = env::var("CI").is_ok();
+    let result = symlink("<DOES NOT EXIST>".as_ref(), &exe_path);
+    if is_ci || result.is_ok() {
+        result.unwrap();
+        assert!(
+            resolve_exe(OsStr::new("exists.exe"), empty_paths, Some(temp.path().as_ref())).is_ok()
+        );
+    }
 }

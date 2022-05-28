@@ -257,7 +257,7 @@ pub struct Substructure<'a> {
     pub type_ident: Ident,
     /// ident of the method
     pub method_ident: Ident,
-    /// dereferenced access to any [`Self_`] or [`Ptr(Self_, _)][ptr]` arguments
+    /// dereferenced access to any [`Self_`] or [`Ptr(Self_, _)`][ptr] arguments
     ///
     /// [`Self_`]: ty::Ty::Self_
     /// [ptr]: ty::Ty::Ptr
@@ -560,6 +560,11 @@ impl<'a> TraitDef<'a> {
                 kind: ast::AssocItemKind::TyAlias(Box::new(ast::TyAlias {
                     defaultness: ast::Defaultness::Final,
                     generics: Generics::default(),
+                    where_clauses: (
+                        ast::TyAliasWhereClause::default(),
+                        ast::TyAliasWhereClause::default(),
+                    ),
+                    where_predicates_split: 0,
                     bounds: Vec::new(),
                     ty: Some(type_def.to_ty(cx, self.span, type_ident, generics)),
                 })),
@@ -1001,9 +1006,11 @@ impl<'a> MethodDef<'a> {
     ///         }
     ///     }
     /// }
-    ///
-    /// // or if A is repr(packed) - note fields are matched by-value
-    /// // instead of by-reference.
+    /// ```
+    /// or if A is repr(packed) - note fields are matched by-value
+    /// instead of by-reference.
+    /// ```
+    /// # struct A { x: i32, y: i32 }
     /// impl PartialEq for A {
     ///     fn eq(&self, other: &A) -> bool {
     ///         match *self {
@@ -1032,7 +1039,9 @@ impl<'a> MethodDef<'a> {
         let span = trait_.span;
         let mut patterns = Vec::new();
         for i in 0..self_args.len() {
-            let struct_path = cx.path(span, vec![type_ident]);
+            // We could use `type_ident` instead of `Self`, but in the case of a type parameter
+            // shadowing the struct name, that causes a second, unnecessary E0578 error. #97343
+            let struct_path = cx.path(span, vec![Ident::new(kw::SelfUpper, type_ident.span)]);
             let (pat, ident_expr) = trait_.create_struct_pattern(
                 cx,
                 struct_path,
@@ -1121,14 +1130,15 @@ impl<'a> MethodDef<'a> {
     /// // is equivalent to
     ///
     /// impl PartialEq for A {
-    ///     fn eq(&self, other: &A) -> ::bool {
+    ///     fn eq(&self, other: &A) -> bool {
+    ///         use A::*;
     ///         match (&*self, &*other) {
     ///             (&A1, &A1) => true,
     ///             (&A2(ref self_0),
     ///              &A2(ref __arg_1_0)) => (*self_0).eq(&(*__arg_1_0)),
     ///             _ => {
-    ///                 let __self_vi = match *self { A1(..) => 0, A2(..) => 1 };
-    ///                 let __arg_1_vi = match *other { A1(..) => 0, A2(..) => 1 };
+    ///                 let __self_vi = match *self { A1 => 0, A2(..) => 1 };
+    ///                 let __arg_1_vi = match *other { A1 => 0, A2(..) => 1 };
     ///                 false
     ///             }
     ///         }

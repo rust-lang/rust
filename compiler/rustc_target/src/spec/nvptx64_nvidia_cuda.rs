@@ -2,21 +2,21 @@ use crate::spec::{LinkerFlavor, MergeFunctions, PanicStrategy, Target, TargetOpt
 
 pub fn target() -> Target {
     Target {
-        arch: "nvptx64".to_string(),
-        data_layout: "e-i64:64-i128:128-v16:16-v32:32-n16:32:64".to_string(),
-        llvm_target: "nvptx64-nvidia-cuda".to_string(),
+        arch: "nvptx64".into(),
+        data_layout: "e-i64:64-i128:128-v16:16-v32:32-n16:32:64".into(),
+        llvm_target: "nvptx64-nvidia-cuda".into(),
         pointer_width: 64,
 
         options: TargetOptions {
-            os: "cuda".to_string(),
-            vendor: "nvidia".to_string(),
+            os: "cuda".into(),
+            vendor: "nvidia".into(),
             linker_flavor: LinkerFlavor::PtxLinker,
             // The linker can be installed from `crates.io`.
-            linker: Some("rust-ptx-linker".to_string()),
+            linker: Some("rust-ptx-linker".into()),
             linker_is_gnu: false,
 
             // With `ptx-linker` approach, it can be later overridden via link flags.
-            cpu: "sm_30".to_string(),
+            cpu: "sm_30".into(),
 
             // FIXME: create tests for the atomics.
             max_atomic_width: Some(64),
@@ -36,9 +36,9 @@ pub fn target() -> Target {
             obj_is_bitcode: true,
 
             // Convenient and predicable naming scheme.
-            dll_prefix: "".to_string(),
-            dll_suffix: ".ptx".to_string(),
-            exe_suffix: ".ptx".to_string(),
+            dll_prefix: "".into(),
+            dll_suffix: ".ptx".into(),
+            exe_suffix: ".ptx".into(),
 
             // Disable MergeFunctions LLVM optimisation pass because it can
             // produce kernel functions that call other kernel functions.

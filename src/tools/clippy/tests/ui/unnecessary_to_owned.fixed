@@ -2,6 +2,7 @@
 
 #![allow(clippy::ptr_arg)]
 #![warn(clippy::unnecessary_to_owned)]
+#![feature(custom_inner_attributes)]
 
 use std::borrow::Cow;
 use std::ffi::{CStr, CString, OsStr, OsString};
@@ -77,10 +78,10 @@ fn main() {
     require_slice(array.as_ref());
     require_slice(array_ref.as_ref());
     require_slice(slice);
-    require_slice(x_ref);
+    require_slice(&x_ref.to_owned()); // No longer flagged because of #8759.
 
     require_x(&Cow::<X>::Owned(x.clone()));
-    require_x(x_ref);
+    require_x(&x_ref.to_owned()); // No longer flagged because of #8759.
 
     require_deref_c_str(c_str);
     require_deref_os_str(os_str);
@@ -151,6 +152,7 @@ fn main() {
     require_os_str(&OsString::from("x"));
     require_path(&std::path::PathBuf::from("x"));
     require_str(&String::from("x"));
+    require_slice(&[String::from("x")]);
 }
 
 fn require_c_str(_: &CStr) {}
@@ -212,3 +214,118 @@ fn get_file_path(_file_type: &FileType) -> Result<std::path::PathBuf, std::io::E
 }
 
 fn require_string(_: &String) {}
+
+fn _msrv_1_35() {
+    #![clippy::msrv = "1.35"]
+    // `copied` was stabilized in 1.36, so clippy should use `cloned`.
+    let _ = &["x"][..].iter().cloned();
+}
+
+fn _msrv_1_36() {
+    #![clippy::msrv = "1.36"]
+    let _ = &["x"][..].iter().copied();
+}
+
+// https://github.com/rust-lang/rust-clippy/issues/8507
+mod issue_8507 {
+    #![allow(dead_code)]
+
+    struct Opaque<P>(P);
+
+    pub trait Abstracted {}
+
+    impl<P> Abstracted for Opaque<P> {}
+
+    fn build<P>(p: P) -> Opaque<P>
+    where
+        P: AsRef<str>,
+    {
+        Opaque(p)
+    }
+
+    // Should not lint.
+    fn test_str(s: &str) -> Box<dyn Abstracted> {
+        Box::new(build(s.to_string()))
+    }
+
+    // Should not lint.
+    fn test_x(x: super::X) -> Box<dyn Abstracted> {
+        Box::new(build(x))
+    }
+
+    #[derive(Clone, Copy)]
+    struct Y(&'static str);
+
+    impl AsRef<str> for Y {
+        fn as_ref(&self) -> &str {
+            self.0
+        }
+    }
+
+    impl ToString for Y {
+        fn to_string(&self) -> String {
+            self.0.to_string()
+        }
+    }
+
+    // Should lint because Y is copy.
+    fn test_y(y: Y) -> Box<dyn Abstracted> {
+        Box::new(build(y))
+    }
+}
+
+// https://github.com/rust-lang/rust-clippy/issues/8759
+mod issue_8759 {
+    #![allow(dead_code)]
+
+    #[derive(Default)]
+    struct View {}
+
+    impl std::borrow::ToOwned for View {
+        type Owned = View;
+        fn to_owned(&self) -> Self::Owned {
+            View {}
+        }
+    }
+
+    #[derive(Default)]
+    struct RenderWindow {
+        default_view: View,
+    }
+
+    impl RenderWindow {
+        fn default_view(&self) -> &View {
+            &self.default_view
+        }
+        fn set_view(&mut self, _view: &View) {}
+    }
+
+    fn main() {
+        let mut rw = RenderWindow::default();
+        rw.set_view(&rw.default_view().to_owned());
+    }
+}
+
+mod issue_8759_variant {
+    #![allow(dead_code)]
+
+    #[derive(Clone, Default)]
+    struct View {}
+
+    #[derive(Default)]
+    struct RenderWindow {
+        default_view: View,
+    }
+
+    impl RenderWindow {
+        fn default_view(&self) -> &View {
+            &self.default_view
+        }
+        fn set_view(&mut self, _view: &View) {}
+    }
+
+    fn main() {
+        let mut rw = RenderWindow::default();
+        rw.set_view(&rw.default_view().to_owned());
+    }
+}

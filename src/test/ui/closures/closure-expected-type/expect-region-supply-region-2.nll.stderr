@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/expect-region-supply-region-2.rs:14:30
+  --> $DIR/expect-region-supply-region-2.rs:18:30
    |
 LL | fn expect_bound_supply_named<'x>() {
    |                              -- lifetime `'x` defined here
@@ -10,7 +10,7 @@ LL |     closure_expecting_bound(|x: &'x u32| {
    |                              requires that `'1` must outlive `'x`
 
 error: lifetime may not live long enough
-  --> $DIR/expect-region-supply-region-2.rs:14:30
+  --> $DIR/expect-region-supply-region-2.rs:18:30
    |
 LL | fn expect_bound_supply_named<'x>() {
    |                              -- lifetime `'x` defined here

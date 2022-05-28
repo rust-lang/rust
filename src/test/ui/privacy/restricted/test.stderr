@@ -29,7 +29,7 @@ LL |     use pub_restricted::Crate;
    |                         ^^^^^ private struct
    |
 note: the struct `Crate` is defined here
-  --> $DIR/auxiliary/pub_restricted.rs:3:1
+  --> $DIR/auxiliary/pub_restricted.rs:1:1
    |
 LL | pub(crate) struct Crate;
    | ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -88,7 +88,7 @@ error[E0624]: associated function `g` is private
 LL |     u.g();
    |       ^ private associated function
    |
-  ::: $DIR/auxiliary/pub_restricted.rs:14:5
+  ::: $DIR/auxiliary/pub_restricted.rs:12:5
    |
 LL |     pub(crate) fn g(&self) {}
    |     ---------------------- private associated function defined here
@@ -99,10 +99,10 @@ error[E0624]: associated function `h` is private
 LL |     u.h();
    |       ^ private associated function
    |
-  ::: $DIR/auxiliary/pub_restricted.rs:15:5
+  ::: $DIR/auxiliary/pub_restricted.rs:13:5
    |
-LL |     crate fn h(&self) {}
-   |     ----------------- private associated function defined here
+LL |     pub(crate) fn h(&self) {}
+   |     ---------------------- private associated function defined here
 
 error: aborting due to 12 previous errors
 

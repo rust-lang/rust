@@ -2,8 +2,14 @@
 // pointer which is backed by another `&'a mut` can only be done
 // for `'a` (which must be a sublifetime of `'b`).
 
+// revisions: base nll
+// ignore-compare-mode-nll
+//[nll] compile-flags: -Z borrowck=mir
+
 fn copy_borrowed_ptr<'a, 'b>(p: &'a mut &'b mut isize) -> &'b mut isize {
-    &mut **p //~ ERROR lifetime mismatch [E0623]
+    &mut **p
+    //[base]~^ ERROR lifetime mismatch [E0623]
+    //[nll]~^^ ERROR lifetime may not live long enough
 }
 
 fn main() {

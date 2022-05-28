@@ -6,7 +6,7 @@ use rustc_trait_selection::traits::query::normalize::AtExt;
 use rustc_trait_selection::traits::{Normalized, ObligationCause};
 use std::sync::atomic::Ordering;
 
-crate fn provide(p: &mut Providers) {
+pub(crate) fn provide(p: &mut Providers) {
     *p = Providers {
         try_normalize_generic_arg_after_erasing_regions: |tcx, goal| {
             debug!("try_normalize_generic_arg_after_erasing_regions(goal={:#?}", goal);
@@ -39,7 +39,7 @@ fn try_normalize_after_erasing_regions<'tcx, T: TypeFoldable<'tcx> + PartialEq +
                 // always only region relations, and we are about to
                 // erase those anyway:
                 debug_assert_eq!(
-                    normalized_obligations.iter().find(|p| not_outlives_predicate(&p.predicate)),
+                    normalized_obligations.iter().find(|p| not_outlives_predicate(p.predicate)),
                     None,
                 );
 
@@ -57,7 +57,7 @@ fn try_normalize_after_erasing_regions<'tcx, T: TypeFoldable<'tcx> + PartialEq +
     })
 }
 
-fn not_outlives_predicate<'tcx>(p: &ty::Predicate<'tcx>) -> bool {
+fn not_outlives_predicate<'tcx>(p: ty::Predicate<'tcx>) -> bool {
     match p.kind().skip_binder() {
         ty::PredicateKind::RegionOutlives(..) | ty::PredicateKind::TypeOutlives(..) => false,
         ty::PredicateKind::Trait(..)

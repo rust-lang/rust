@@ -26,14 +26,14 @@ pub fn expand(
 
     // Allow using `#[global_allocator]` on an item statement
     // FIXME - if we get deref patterns, use them to reduce duplication here
-    let (item, is_stmt) = match &item {
+    let (item, is_stmt, ty_span) = match &item {
         Annotatable::Item(item) => match item.kind {
-            ItemKind::Static(..) => (item, false),
+            ItemKind::Static(ref ty, ..) => (item, false, ecx.with_def_site_ctxt(ty.span)),
             _ => return not_static(),
         },
         Annotatable::Stmt(stmt) => match &stmt.kind {
             StmtKind::Item(item_) => match item_.kind {
-                ItemKind::Static(..) => (item_, true),
+                ItemKind::Static(ref ty, ..) => (item_, true, ecx.with_def_site_ctxt(ty.span)),
                 _ => return not_static(),
             },
             _ => return not_static(),
@@ -43,13 +43,14 @@ pub fn expand(
 
     // Generate a bunch of new items using the AllocFnFactory
     let span = ecx.with_def_site_ctxt(item.span);
-    let f = AllocFnFactory { span, kind: AllocatorKind::Global, global: item.ident, cx: ecx };
+    let f =
+        AllocFnFactory { span, ty_span, kind: AllocatorKind::Global, global: item.ident, cx: ecx };
 
     // Generate item statements for the allocator methods.
     let stmts = ALLOCATOR_METHODS.iter().map(|method| f.allocator_fn(method)).collect();
 
     // Generate anonymous constant serving as container for the allocator methods.
-    let const_ty = ecx.ty(span, TyKind::Tup(Vec::new()));
+    let const_ty = ecx.ty(ty_span, TyKind::Tup(Vec::new()));
     let const_body = ecx.expr_block(ecx.block(span, stmts));
     let const_item = ecx.item_const(span, Ident::new(kw::Underscore, span), const_ty, const_body);
     let const_item = if is_stmt {
@@ -64,6 +65,7 @@ pub fn expand(
 
 struct AllocFnFactory<'a, 'b> {
     span: Span,
+    ty_span: Span,
     kind: AllocatorKind,
     global: Ident,
     cx: &'b ExtCtxt<'a>,
@@ -97,18 +99,18 @@ impl AllocFnFactory<'_, '_> {
             self.attrs(),
             kind,
         );
-        self.cx.stmt_item(self.span, item)
+        self.cx.stmt_item(self.ty_span, item)
     }
 
     fn call_allocator(&self, method: Symbol, mut args: Vec<P<Expr>>) -> P<Expr> {
         let method = self.cx.std_path(&[sym::alloc, sym::GlobalAlloc, method]);
-        let method = self.cx.expr_path(self.cx.path(self.span, method));
-        let allocator = self.cx.path_ident(self.span, self.global);
+        let method = self.cx.expr_path(self.cx.path(self.ty_span, method));
+        let allocator = self.cx.path_ident(self.ty_span, self.global);
         let allocator = self.cx.expr_path(allocator);
-        let allocator = self.cx.expr_addr_of(self.span, allocator);
+        let allocator = self.cx.expr_addr_of(self.ty_span, allocator);
         args.insert(0, allocator);
 
-        self.cx.expr_call(self.span, method, args)
+        self.cx.expr_call(self.ty_span, method, args)
     }
 
     fn attrs(&self) -> Vec<Attribute> {

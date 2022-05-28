@@ -4,34 +4,45 @@ use clippy_utils::source::snippet_opt;
 use if_chain::if_chain;
 use rustc_ast::{LitFloatType, LitIntType, LitKind};
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, Lit, UnOp};
+use rustc_hir::def::Res;
+use rustc_hir::{Expr, ExprKind, Lit, QPath, TyKind, UnOp};
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, FloatTy, InferTy, Ty};
 
 use super::UNNECESSARY_CAST;
 
-pub(super) fn check(
-    cx: &LateContext<'_>,
-    expr: &Expr<'_>,
-    cast_expr: &Expr<'_>,
-    cast_from: Ty<'_>,
-    cast_to: Ty<'_>,
+pub(super) fn check<'tcx>(
+    cx: &LateContext<'tcx>,
+    expr: &Expr<'tcx>,
+    cast_expr: &Expr<'tcx>,
+    cast_from: Ty<'tcx>,
+    cast_to: Ty<'tcx>,
 ) -> bool {
+    // skip non-primitive type cast
+    if_chain! {
+        if let ExprKind::Cast(_, cast_to) = expr.kind;
+        if let TyKind::Path(QPath::Resolved(_, path)) = &cast_to.kind;
+        if let Res::PrimTy(_) = path.res;
+        then {}
+        else {
+            return false
+        }
+    }
+
     if let Some(lit) = get_numeric_literal(cast_expr) {
         let literal_str = snippet_opt(cx, cast_expr.span).unwrap_or_default();
 
         if_chain! {
             if let LitKind::Int(n, _) = lit.node;
-            if let Some(src) = snippet_opt(cx, lit.span);
+            if let Some(src) = snippet_opt(cx, cast_expr.span);
             if cast_to.is_floating_point();
             if let Some(num_lit) = NumericLiteral::from_lit_kind(&src, &lit.node);
             let from_nbits = 128 - n.leading_zeros();
             let to_nbits = fp_ty_mantissa_nbits(cast_to);
             if from_nbits != 0 && to_nbits != 0 && from_nbits <= to_nbits && num_lit.is_decimal();
             then {
-                let literal_str = if is_unary_neg(cast_expr) { format!("-{}", num_lit.integer) } else { num_lit.integer.into() };
-                lint_unnecessary_cast(cx, expr, &literal_str, cast_from, cast_to);
+                lint_unnecessary_cast(cx, expr, num_lit.integer, cast_from, cast_to);
                 return true
             }
         }
@@ -48,7 +59,7 @@ pub(super) fn check(
             | LitKind::Float(_, LitFloatType::Suffixed(_))
                 if cast_from.kind() == cast_to.kind() =>
             {
-                if let Some(src) = snippet_opt(cx, lit.span) {
+                if let Some(src) = snippet_opt(cx, cast_expr.span) {
                     if let Some(num_lit) = NumericLiteral::from_lit_kind(&src, &lit.node) {
                         lint_unnecessary_cast(cx, expr, num_lit.integer, cast_from, cast_to);
                     }
@@ -112,8 +123,4 @@ fn fp_ty_mantissa_nbits(typ: Ty<'_>) -> u32 {
         ty::Float(FloatTy::F64) | ty::Infer(InferTy::FloatVar(_)) => 52,
         _ => 0,
     }
-}
-
-fn is_unary_neg(expr: &Expr<'_>) -> bool {
-    matches!(expr.kind, ExprKind::Unary(UnOp::Neg, _))
 }

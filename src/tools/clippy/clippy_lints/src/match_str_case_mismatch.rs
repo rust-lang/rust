@@ -2,10 +2,9 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::ty::is_type_diagnostic_item;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
-use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
+use rustc_hir::intravisit::{walk_expr, Visitor};
 use rustc_hir::{Arm, Expr, ExprKind, MatchSource, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::hir::map::Map;
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -86,16 +85,9 @@ struct MatchExprVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for MatchExprVisitor<'a, 'tcx> {
-    type Map = Map<'tcx>;
-
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::None
-    }
-
     fn visit_expr(&mut self, ex: &'tcx Expr<'_>) {
         match ex.kind {
-            ExprKind::MethodCall(segment, _, [receiver], _) if self.case_altered(segment.ident.as_str(), receiver) => {
-            },
+            ExprKind::MethodCall(segment, [receiver], _) if self.case_altered(segment.ident.as_str(), receiver) => {},
             _ => walk_expr(self, ex),
         }
     }

@@ -1,4 +1,4 @@
-# `debug-info-for-profiling
+# `debug-info-for-profiling`
 
 ---
 

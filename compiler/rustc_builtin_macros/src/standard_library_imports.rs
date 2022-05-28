@@ -11,7 +11,6 @@ pub fn inject(
     mut krate: ast::Crate,
     resolver: &mut dyn ResolverExpand,
     sess: &Session,
-    alt_std_name: Option<Symbol>,
 ) -> ast::Crate {
     let edition = sess.parse_sess.edition;
 
@@ -53,7 +52,7 @@ pub fn inject(
                 span,
                 ident,
                 vec![cx.attribute(cx.meta_word(span, sym::macro_use))],
-                ast::ItemKind::ExternCrate(alt_std_name),
+                ast::ItemKind::ExternCrate(None),
             ),
         );
     }
@@ -71,6 +70,7 @@ pub fn inject(
             Edition2015 => sym::rust_2015,
             Edition2018 => sym::rust_2018,
             Edition2021 => sym::rust_2021,
+            Edition2024 => sym::rust_2024,
         }])
         .map(|&symbol| Ident::new(symbol, span))
         .collect();

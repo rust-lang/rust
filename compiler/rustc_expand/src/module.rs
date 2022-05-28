@@ -1,7 +1,7 @@
 use crate::base::ModuleData;
 use rustc_ast::ptr::P;
-use rustc_ast::{token, Attribute, Inline, Item};
-use rustc_errors::{struct_span_err, DiagnosticBuilder};
+use rustc_ast::{token, Attribute, Inline, Item, ModSpans};
+use rustc_errors::{struct_span_err, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_parse::new_parser_from_file;
 use rustc_parse::validate_attr;
 use rustc_session::parse::ParseSess;
@@ -26,9 +26,9 @@ pub struct ModulePathSuccess {
     pub dir_ownership: DirOwnership,
 }
 
-crate struct ParsedExternalMod {
+pub(crate) struct ParsedExternalMod {
     pub items: Vec<P<Item>>,
-    pub inner_span: Span,
+    pub spans: ModSpans,
     pub file_path: PathBuf,
     pub dir_path: PathBuf,
     pub dir_ownership: DirOwnership,
@@ -39,10 +39,10 @@ pub enum ModError<'a> {
     ModInBlock(Option<Ident>),
     FileNotFound(Ident, PathBuf, PathBuf),
     MultipleCandidates(Ident, PathBuf, PathBuf),
-    ParserError(DiagnosticBuilder<'a>),
+    ParserError(DiagnosticBuilder<'a, ErrorGuaranteed>),
 }
 
-crate fn parse_external_mod(
+pub(crate) fn parse_external_mod(
     sess: &Session,
     ident: Ident,
     span: Span, // The span to blame on errors.
@@ -69,16 +69,16 @@ crate fn parse_external_mod(
         (items, inner_span, mp.file_path)
     };
     // (1) ...instead, we return a dummy module.
-    let (items, inner_span, file_path) =
+    let (items, spans, file_path) =
         result.map_err(|err| err.report(sess, span)).unwrap_or_default();
 
     // Extract the directory path for submodules of the module.
     let dir_path = file_path.parent().unwrap_or(&file_path).to_owned();
 
-    ParsedExternalMod { items, inner_span, file_path, dir_path, dir_ownership }
+    ParsedExternalMod { items, spans, file_path, dir_path, dir_ownership }
 }
 
-crate fn mod_dir_path(
+pub(crate) fn mod_dir_path(
     sess: &Session,
     ident: Ident,
     attrs: &[Attribute],
@@ -170,23 +170,20 @@ fn mod_file_path_from_attr(
 ) -> Option<PathBuf> {
     // Extract path string from first `#[path = "path_string"]` attribute.
     let first_path = attrs.iter().find(|at| at.has_name(sym::path))?;
-    let path_sym = match first_path.value_str() {
-        Some(s) => s,
-        None => {
-            // This check is here mainly to catch attempting to use a macro,
-            // such as #[path = concat!(...)]. This isn't currently supported
-            // because otherwise the InvocationCollector would need to defer
-            // loading a module until the #[path] attribute was expanded, and
-            // it doesn't support that (and would likely add a bit of
-            // complexity). Usually bad forms are checked in AstValidator (via
-            // `check_builtin_attribute`), but by the time that runs the macro
-            // is expanded, and it doesn't give an error.
-            validate_attr::emit_fatal_malformed_builtin_attribute(
-                &sess.parse_sess,
-                first_path,
-                sym::path,
-            );
-        }
+    let Some(path_sym) = first_path.value_str() else {
+        // This check is here mainly to catch attempting to use a macro,
+        // such as #[path = concat!(...)]. This isn't currently supported
+        // because otherwise the InvocationCollector would need to defer
+        // loading a module until the #[path] attribute was expanded, and
+        // it doesn't support that (and would likely add a bit of
+        // complexity). Usually bad forms are checked in AstValidator (via
+        // `check_builtin_attribute`), but by the time that runs the macro
+        // is expanded, and it doesn't give an error.
+        validate_attr::emit_fatal_malformed_builtin_attribute(
+            &sess.parse_sess,
+            first_path,
+            sym::path,
+        );
     };
 
     let path_str = path_sym.as_str();
@@ -245,7 +242,7 @@ pub fn default_submod_path<'a>(
 }
 
 impl ModError<'_> {
-    fn report(self, sess: &Session, span: Span) {
+    fn report(self, sess: &Session, span: Span) -> ErrorGuaranteed {
         let diag = &sess.parse_sess.span_diagnostic;
         match self {
             ModError::CircularInclusion(file_paths) => {

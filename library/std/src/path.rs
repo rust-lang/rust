@@ -72,6 +72,7 @@ mod tests;
 
 use crate::borrow::{Borrow, Cow};
 use crate::cmp;
+use crate::collections::TryReserveError;
 use crate::error::Error;
 use crate::fmt;
 use crate::fs;
@@ -84,7 +85,7 @@ use crate::str::FromStr;
 use crate::sync::Arc;
 
 use crate::ffi::{OsStr, OsString};
-
+use crate::sys;
 use crate::sys::path::{is_sep_byte, is_verbatim_sep, parse_prefix, MAIN_SEP_STR};
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -167,8 +168,8 @@ pub enum Prefix<'a> {
 
     /// Device namespace prefix, e.g., `\\.\COM42`.
     ///
-    /// Device namespace prefixes consist of `\\.\` immediately followed by the
-    /// device name.
+    /// Device namespace prefixes consist of `\\.\` (possibly using `/`
+    /// instead of `\`), immediately followed by the device name.
     #[stable(feature = "rust1", since = "1.0.0")]
     DeviceNS(#[stable(feature = "rust1", since = "1.0.0")] &'a OsStr),
 
@@ -192,7 +193,7 @@ impl<'a> Prefix<'a> {
     fn len(&self) -> usize {
         use self::Prefix::*;
         fn os_str_len(s: &OsStr) -> usize {
-            os_str_as_u8_slice(s).len()
+            s.bytes().len()
         }
         match *self {
             Verbatim(x) => 4 + os_str_len(x),
@@ -267,6 +268,12 @@ pub fn is_separator(c: char) -> bool {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const MAIN_SEPARATOR: char = crate::sys::path::MAIN_SEP;
 
+/// The primary separator of path components for the current platform.
+///
+/// For example, `/` on Unix and `\` on Windows.
+#[unstable(feature = "main_separator_str", issue = "94071")]
+pub const MAIN_SEPARATOR_STR: &str = crate::sys::path::MAIN_SEP_STR;
+
 ////////////////////////////////////////////////////////////////////////////////
 // Misc helpers
 ////////////////////////////////////////////////////////////////////////////////
@@ -292,19 +299,17 @@ where
     }
 }
 
-// See note at the top of this module to understand why these are used:
-//
-// These casts are safe as OsStr is internally a wrapper around [u8] on all
-// platforms.
-//
-// Note that currently this relies on the special knowledge that libstd has;
-// these types are single-element structs but are not marked repr(transparent)
-// or repr(C) which would make these casts allowable outside std.
-fn os_str_as_u8_slice(s: &OsStr) -> &[u8] {
-    unsafe { &*(s as *const OsStr as *const [u8]) }
-}
 unsafe fn u8_slice_as_os_str(s: &[u8]) -> &OsStr {
-    // SAFETY: see the comment of `os_str_as_u8_slice`
+    // SAFETY: See note at the top of this module to understand why this and
+    // `OsStr::bytes` are used:
+    //
+    // This casts are safe as OsStr is internally a wrapper around [u8] on all
+    // platforms.
+    //
+    // Note that currently this relies on the special knowledge that libstd has;
+    // these types are single-element structs but are not marked
+    // repr(transparent) or repr(C) which would make these casts not allowable
+    // outside std.
     unsafe { &*(s as *const [u8] as *const OsStr) }
 }
 
@@ -325,7 +330,7 @@ fn has_physical_root(s: &[u8], prefix: Option<Prefix<'_>>) -> bool {
 
 // basic workhorse for splitting stem and extension
 fn rsplit_file_at_dot(file: &OsStr) -> (Option<&OsStr>, Option<&OsStr>) {
-    if os_str_as_u8_slice(file) == b".." {
+    if file.bytes() == b".." {
         return (Some(file), None);
     }
 
@@ -333,7 +338,7 @@ fn rsplit_file_at_dot(file: &OsStr) -> (Option<&OsStr>, Option<&OsStr>) {
     // and back. This is safe to do because (1) we only look at ASCII
     // contents of the encoding and (2) new &OsStr values are produced
     // only from ASCII-bounded slices of existing &OsStr values.
-    let mut iter = os_str_as_u8_slice(file).rsplitn(2, |b| *b == b'.');
+    let mut iter = file.bytes().rsplitn(2, |b| *b == b'.');
     let after = iter.next();
     let before = iter.next();
     if before == Some(b"") {
@@ -344,7 +349,7 @@ fn rsplit_file_at_dot(file: &OsStr) -> (Option<&OsStr>, Option<&OsStr>) {
 }
 
 fn split_file_at_dot(file: &OsStr) -> (&OsStr, Option<&OsStr>) {
-    let slice = os_str_as_u8_slice(file);
+    let slice = file.bytes();
     if slice == b".." {
         return (file, None);
     }
@@ -585,7 +590,7 @@ impl AsRef<Path> for Component<'_> {
 /// let path = Path::new("/tmp/foo/bar.txt");
 ///
 /// for component in path.components() {
-///     println!("{:?}", component);
+///     println!("{component:?}");
 /// }
 /// ```
 ///
@@ -720,7 +725,7 @@ impl<'a> Components<'a> {
         if self.has_root() {
             return false;
         }
-        let mut iter = self.path[self.prefix_len()..].iter();
+        let mut iter = self.path[self.prefix_remaining()..].iter();
         match (iter.next(), iter.next()) {
             (Some(&b'.'), None) => true,
             (Some(&b'.'), Some(&b)) => self.is_sep_byte(b),
@@ -1438,17 +1443,17 @@ impl PathBuf {
     fn _set_extension(&mut self, extension: &OsStr) -> bool {
         let file_stem = match self.file_stem() {
             None => return false,
-            Some(f) => os_str_as_u8_slice(f),
+            Some(f) => f.bytes(),
         };
 
         // truncate until right after the file stem
-        let end_file_stem = file_stem[file_stem.len()..].as_ptr() as usize;
-        let start = os_str_as_u8_slice(&self.inner).as_ptr() as usize;
+        let end_file_stem = file_stem[file_stem.len()..].as_ptr().addr();
+        let start = self.inner.bytes().as_ptr().addr();
         let v = self.as_mut_vec();
         v.truncate(end_file_stem.wrapping_sub(start));
 
         // add the new extension, if any
-        let new = os_str_as_u8_slice(extension);
+        let new = extension.bytes();
         if !new.is_empty() {
             v.reserve_exact(new.len() + 1);
             v.push(b'.');
@@ -1512,6 +1517,15 @@ impl PathBuf {
         self.inner.reserve(additional)
     }
 
+    /// Invokes [`try_reserve`] on the underlying instance of [`OsString`].
+    ///
+    /// [`try_reserve`]: OsString::try_reserve
+    #[unstable(feature = "try_reserve_2", issue = "91789")]
+    #[inline]
+    pub fn try_reserve(&mut self, additional: usize) -> Result<(), TryReserveError> {
+        self.inner.try_reserve(additional)
+    }
+
     /// Invokes [`reserve_exact`] on the underlying instance of [`OsString`].
     ///
     /// [`reserve_exact`]: OsString::reserve_exact
@@ -1519,6 +1533,15 @@ impl PathBuf {
     #[inline]
     pub fn reserve_exact(&mut self, additional: usize) {
         self.inner.reserve_exact(additional)
+    }
+
+    /// Invokes [`try_reserve_exact`] on the underlying instance of [`OsString`].
+    ///
+    /// [`try_reserve_exact`]: OsString::try_reserve_exact
+    #[unstable(feature = "try_reserve_2", issue = "91789")]
+    #[inline]
+    pub fn try_reserve_exact(&mut self, additional: usize) -> Result<(), TryReserveError> {
+        self.inner.try_reserve_exact(additional)
     }
 
     /// Invokes [`shrink_to_fit`] on the underlying instance of [`OsString`].
@@ -1581,7 +1604,7 @@ impl From<Cow<'_, Path>> for Box<Path> {
 
 #[stable(feature = "path_buf_from_box", since = "1.18.0")]
 impl From<Box<Path>> for PathBuf {
-    /// Converts a `Box<Path>` into a `PathBuf`
+    /// Converts a <code>[Box]&lt;[Path]&gt;</code> into a [`PathBuf`].
     ///
     /// This conversion does not allocate or copy memory.
     #[inline]
@@ -1592,7 +1615,7 @@ impl From<Box<Path>> for PathBuf {
 
 #[stable(feature = "box_from_path_buf", since = "1.20.0")]
 impl From<PathBuf> for Box<Path> {
-    /// Converts a `PathBuf` into a `Box<Path>`
+    /// Converts a [`PathBuf`] into a <code>[Box]&lt;[Path]&gt;</code>.
     ///
     /// This conversion currently should not allocate memory,
     /// but this behavior is not guaranteed on all platforms or in all future versions.
@@ -1612,7 +1635,7 @@ impl Clone for Box<Path> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + AsRef<OsStr>> From<&T> for PathBuf {
-    /// Converts a borrowed `OsStr` to a `PathBuf`.
+    /// Converts a borrowed [`OsStr`] to a [`PathBuf`].
     ///
     /// Allocates a [`PathBuf`] and copies the data into it.
     #[inline]
@@ -1766,7 +1789,8 @@ impl<'a> From<Cow<'a, Path>> for PathBuf {
 
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl From<PathBuf> for Arc<Path> {
-    /// Converts a [`PathBuf`] into an [`Arc`] by moving the [`PathBuf`] data into a new [`Arc`] buffer.
+    /// Converts a [`PathBuf`] into an <code>[Arc]<[Path]></code> by moving the [`PathBuf`] data
+    /// into a new [`Arc`] buffer.
     #[inline]
     fn from(s: PathBuf) -> Arc<Path> {
         let arc: Arc<OsStr> = Arc::from(s.into_os_string());
@@ -1786,7 +1810,8 @@ impl From<&Path> for Arc<Path> {
 
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl From<PathBuf> for Rc<Path> {
-    /// Converts a [`PathBuf`] into an [`Rc`] by moving the [`PathBuf`] data into a new `Rc` buffer.
+    /// Converts a [`PathBuf`] into an <code>[Rc]<[Path]></code> by moving the [`PathBuf`] data into
+    /// a new [`Rc`] buffer.
     #[inline]
     fn from(s: PathBuf) -> Rc<Path> {
         let rc: Rc<OsStr> = Rc::from(s.into_os_string());
@@ -1796,7 +1821,7 @@ impl From<PathBuf> for Rc<Path> {
 
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl From<&Path> for Rc<Path> {
-    /// Converts a [`Path`] into an [`Rc`] by copying the [`Path`] data into a new `Rc` buffer.
+    /// Converts a [`Path`] into an [`Rc`] by copying the [`Path`] data into a new [`Rc`] buffer.
     #[inline]
     fn from(s: &Path) -> Rc<Path> {
         let rc: Rc<OsStr> = Rc::from(s.as_os_str());
@@ -1921,7 +1946,7 @@ impl Path {
     }
     // The following (private!) function reveals the byte encoding used for OsStr.
     fn as_u8_slice(&self) -> &[u8] {
-        os_str_as_u8_slice(&self.inner)
+        self.inner.bytes()
     }
 
     /// Directly wraps a string slice as a `Path` slice.
@@ -2709,7 +2734,7 @@ impl Path {
     /// This function will traverse symbolic links to query information about the
     /// destination file. In case of broken symbolic links this will return `Ok(false)`.
     ///
-    /// As opposed to the `exists()` method, this one doesn't silently ignore errors
+    /// As opposed to the [`exists()`] method, this one doesn't silently ignore errors
     /// unrelated to the path not existing. (E.g. it will return `Err(_)` in case of permission
     /// denied on some of the parent directories.)
     ///
@@ -2722,6 +2747,8 @@ impl Path {
     /// assert!(!Path::new("does_not_exist.txt").try_exists().expect("Can't check existence of file does_not_exist.txt"));
     /// assert!(Path::new("/root/secret_file.txt").try_exists().is_err());
     /// ```
+    ///
+    /// [`exists()`]: Self::exists
     // FIXME: stabilization should modify documentation of `exists()` to recommend this method
     // instead.
     #[unstable(feature = "path_try_exists", issue = "83186")]
@@ -2806,7 +2833,7 @@ impl Path {
     /// use std::os::unix::fs::symlink;
     ///
     /// let link_path = Path::new("link");
-    /// symlink("/origin_does_not_exists/", link_path).unwrap();
+    /// symlink("/origin_does_not_exist/", link_path).unwrap();
     /// assert_eq!(link_path.is_symlink(), true);
     /// assert_eq!(link_path.exists(), false);
     /// ```
@@ -2899,12 +2926,12 @@ impl cmp::PartialEq for Path {
 impl Hash for Path {
     fn hash<H: Hasher>(&self, h: &mut H) {
         let bytes = self.as_u8_slice();
-        let prefix_len = match parse_prefix(&self.inner) {
+        let (prefix_len, verbatim) = match parse_prefix(&self.inner) {
             Some(prefix) => {
                 prefix.hash(h);
-                prefix.len()
+                (prefix.len(), prefix.is_verbatim())
             }
-            None => 0,
+            None => (0, false),
         };
         let bytes = &bytes[prefix_len..];
 
@@ -2912,7 +2939,8 @@ impl Hash for Path {
         let mut bytes_hashed = 0;
 
         for i in 0..bytes.len() {
-            if is_sep_byte(bytes[i]) {
+            let is_sep = if verbatim { is_verbatim_sep(bytes[i]) } else { is_sep_byte(bytes[i]) };
+            if is_sep {
                 if i > component_start {
                     let to_hash = &bytes[component_start..i];
                     h.write(to_hash);
@@ -2920,11 +2948,18 @@ impl Hash for Path {
                 }
 
                 // skip over separator and optionally a following CurDir item
-                // since components() would normalize these away
-                component_start = i + match bytes[i..] {
-                    [_, b'.', b'/', ..] | [_, b'.'] => 2,
-                    _ => 1,
-                };
+                // since components() would normalize these away.
+                component_start = i + 1;
+
+                let tail = &bytes[component_start..];
+
+                if !verbatim {
+                    component_start += match tail {
+                        [b'.'] => 1,
+                        [b'.', sep @ _, ..] if is_sep_byte(*sep) => 1,
+                        _ => 0,
+                    };
+                }
             }
         }
 
@@ -3139,5 +3174,81 @@ impl Error for StripPrefixError {
     #[allow(deprecated)]
     fn description(&self) -> &str {
         "prefix not found"
+    }
+}
+
+/// Makes the path absolute without accessing the filesystem.
+///
+/// If the path is relative, the current directory is used as the base directory.
+/// All intermediate components will be resolved according to platforms-specific
+/// rules but unlike [`canonicalize`][crate::fs::canonicalize] this does not
+/// resolve symlinks and may succeed even if the path does not exist.
+///
+/// If the `path` is empty or getting the
+/// [current directory][crate::env::current_dir] fails then an error will be
+/// returned.
+///
+/// # Examples
+///
+/// ## Posix paths
+///
+/// ```
+/// #![feature(absolute_path)]
+/// # #[cfg(unix)]
+/// fn main() -> std::io::Result<()> {
+///   use std::path::{self, Path};
+///
+///   // Relative to absolute
+///   let absolute = path::absolute("foo/./bar")?;
+///   assert!(absolute.ends_with("foo/bar"));
+///
+///   // Absolute to absolute
+///   let absolute = path::absolute("/foo//test/.././bar.rs")?;
+///   assert_eq!(absolute, Path::new("/foo/test/../bar.rs"));
+///   Ok(())
+/// }
+/// # #[cfg(not(unix))]
+/// # fn main() {}
+/// ```
+///
+/// The path is resolved using [POSIX semantics][posix-semantics] except that
+/// it stops short of resolving symlinks. This means it will keep `..`
+/// components and trailing slashes.
+///
+/// ## Windows paths
+///
+/// ```
+/// #![feature(absolute_path)]
+/// # #[cfg(windows)]
+/// fn main() -> std::io::Result<()> {
+///   use std::path::{self, Path};
+///
+///   // Relative to absolute
+///   let absolute = path::absolute("foo/./bar")?;
+///   assert!(absolute.ends_with(r"foo\bar"));
+///
+///   // Absolute to absolute
+///   let absolute = path::absolute(r"C:\foo//test\..\./bar.rs")?;
+///
+///   assert_eq!(absolute, Path::new(r"C:\foo\bar.rs"));
+///   Ok(())
+/// }
+/// # #[cfg(not(windows))]
+/// # fn main() {}
+/// ```
+///
+/// For verbatim paths this will simply return the path as given. For other
+/// paths this is currently equivalent to calling [`GetFullPathNameW`][windows-path]
+/// This may change in the future.
+///
+/// [posix-semantics]: https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap04.html#tag_04_13
+/// [windows-path]: https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getfullpathnamew
+#[unstable(feature = "absolute_path", issue = "92750")]
+pub fn absolute<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
+    let path = path.as_ref();
+    if path.as_os_str().is_empty() {
+        Err(io::const_io_error!(io::ErrorKind::InvalidInput, "cannot make an empty path absolute",))
+    } else {
+        sys::path::absolute(path)
     }
 }

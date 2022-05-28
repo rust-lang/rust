@@ -39,7 +39,9 @@ impl<'tcx> MirPass<'tcx> for ConstGoto {
         opt_finder.visit_body(body);
         let should_simplify = !opt_finder.optimizations.is_empty();
         for opt in opt_finder.optimizations {
-            let terminator = body.basic_blocks_mut()[opt.bb_with_goto].terminator_mut();
+            let block = &mut body.basic_blocks_mut()[opt.bb_with_goto];
+            block.statements.extend(opt.stmts_move_up);
+            let terminator = block.terminator_mut();
             let new_goto = TerminatorKind::Goto { target: opt.target_to_use_in_goto };
             debug!("SUCCESS: replacing `{:?}` with `{:?}`", terminator.kind, new_goto);
             terminator.kind = new_goto;
@@ -68,12 +70,15 @@ impl<'tcx> Visitor<'tcx> for ConstGotoOptimizationFinder<'_, 'tcx> {
                 // Now check that the target of this Goto switches on this place.
                 let target_bb = &self.body.basic_blocks()[target];
 
-                // FIXME(simonvandel): We are conservative here when we don't allow
-                // any statements in the target basic block.
-                // This could probably be relaxed to allow `StorageDead`s which could be
-                // copied to the predecessor of this block.
-                if !target_bb.statements.is_empty() {
-                    None?
+                // The `StorageDead(..)` statement does not affect the functionality of mir.
+                // We can move this part of the statement up to the predecessor.
+                let mut stmts_move_up = Vec::new();
+                for stmt in &target_bb.statements {
+                    if let StatementKind::StorageDead(..) = stmt.kind {
+                        stmts_move_up.push(stmt.clone())
+                    } else {
+                        None?;
+                    }
                 }
 
                 let target_bb_terminator = target_bb.terminator();
@@ -87,6 +92,7 @@ impl<'tcx> Visitor<'tcx> for ConstGotoOptimizationFinder<'_, 'tcx> {
                     self.optimizations.push(OptimizationToApply {
                         bb_with_goto: location.block,
                         target_to_use_in_goto,
+                        stmts_move_up,
                     });
                 }
             }
@@ -97,14 +103,15 @@ impl<'tcx> Visitor<'tcx> for ConstGotoOptimizationFinder<'_, 'tcx> {
     }
 }
 
-struct OptimizationToApply {
+struct OptimizationToApply<'tcx> {
     bb_with_goto: BasicBlock,
     target_to_use_in_goto: BasicBlock,
+    stmts_move_up: Vec<Statement<'tcx>>,
 }
 
 pub struct ConstGotoOptimizationFinder<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     body: &'a Body<'tcx>,
     param_env: ParamEnv<'tcx>,
-    optimizations: Vec<OptimizationToApply>,
+    optimizations: Vec<OptimizationToApply<'tcx>>,
 }

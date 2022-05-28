@@ -7,6 +7,7 @@
 use crate::hir;
 use crate::{Item, ItemKind, TraitItem, TraitItemKind};
 
+use crate::def::DefKind;
 use std::fmt::{self, Display};
 
 #[derive(Copy, Clone, PartialEq, Debug)]
@@ -86,7 +87,11 @@ impl Display for Target {
                 Target::Statement => "statement",
                 Target::Arm => "match arm",
                 Target::AssocConst => "associated const",
-                Target::Method(_) => "method",
+                Target::Method(kind) => match kind {
+                    MethodKind::Inherent => "inherent method",
+                    MethodKind::Trait { body: false } => "required trait method",
+                    MethodKind::Trait { body: true } => "provided trait method",
+                },
                 Target::AssocTy => "associated type",
                 Target::ForeignFn => "foreign function",
                 Target::ForeignStatic => "foreign static item",
@@ -123,6 +128,30 @@ impl Target {
             ItemKind::Trait(..) => Target::Trait,
             ItemKind::TraitAlias(..) => Target::TraitAlias,
             ItemKind::Impl { .. } => Target::Impl,
+        }
+    }
+
+    // FIXME: For now, should only be used with def_kinds from ItemIds
+    pub fn from_def_kind(def_kind: DefKind) -> Target {
+        match def_kind {
+            DefKind::ExternCrate => Target::ExternCrate,
+            DefKind::Use => Target::Use,
+            DefKind::Static(..) => Target::Static,
+            DefKind::Const => Target::Const,
+            DefKind::Fn => Target::Fn,
+            DefKind::Macro(..) => Target::MacroDef,
+            DefKind::Mod => Target::Mod,
+            DefKind::ForeignMod => Target::ForeignMod,
+            DefKind::GlobalAsm => Target::GlobalAsm,
+            DefKind::TyAlias => Target::TyAlias,
+            DefKind::OpaqueTy => Target::OpaqueTy,
+            DefKind::Enum => Target::Enum,
+            DefKind::Struct => Target::Struct,
+            DefKind::Union => Target::Union,
+            DefKind::Trait => Target::Trait,
+            DefKind::TraitAlias => Target::TraitAlias,
+            DefKind::Impl => Target::Impl,
+            _ => panic!("impossible case reached"),
         }
     }
 

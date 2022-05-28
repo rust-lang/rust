@@ -1,6 +1,7 @@
 use super::debug::term_type;
 use super::graph::{BasicCoverageBlock, BasicCoverageBlockData, CoverageGraph, START_BCB};
 
+use itertools::Itertools;
 use rustc_data_structures::graph::WithNumNodes;
 use rustc_middle::mir::spanview::source_range_no_file;
 use rustc_middle::mir::{
@@ -27,7 +28,7 @@ impl CoverageStatement {
                 let stmt = &mir_body[bb].statements[stmt_index];
                 format!(
                     "{}: @{}[{}]: {:?}",
-                    source_range_no_file(tcx, &span),
+                    source_range_no_file(tcx, span),
                     bb.index(),
                     stmt_index,
                     stmt
@@ -37,7 +38,7 @@ impl CoverageStatement {
                 let term = mir_body[bb].terminator();
                 format!(
                     "{}: @{}.{}: {:?}",
-                    source_range_no_file(tcx, &span),
+                    source_range_no_file(tcx, span),
                     bb.index(),
                     term_type(&term.kind),
                     term.kind
@@ -46,9 +47,9 @@ impl CoverageStatement {
         }
     }
 
-    pub fn span(&self) -> &Span {
+    pub fn span(&self) -> Span {
         match self {
-            Self::Statement(_, span, _) | Self::Terminator(_, span) => span,
+            Self::Statement(_, span, _) | Self::Terminator(_, span) => *span,
         }
     }
 }
@@ -154,7 +155,7 @@ impl CoverageSpan {
     pub fn format<'tcx>(&self, tcx: TyCtxt<'tcx>, mir_body: &mir::Body<'tcx>) -> String {
         format!(
             "{}\n    {}",
-            source_range_no_file(tcx, &self.span),
+            source_range_no_file(tcx, self.span),
             self.format_coverage_statements(tcx, mir_body).replace('\n', "\n    "),
         )
     }
@@ -169,11 +170,7 @@ impl CoverageSpan {
             CoverageStatement::Statement(bb, _, index) => (bb, index),
             CoverageStatement::Terminator(bb, _) => (bb, usize::MAX),
         });
-        sorted_coverage_statements
-            .iter()
-            .map(|covstmt| covstmt.format(tcx, mir_body))
-            .collect::<Vec<_>>()
-            .join("\n")
+        sorted_coverage_statements.iter().map(|covstmt| covstmt.format(tcx, mir_body)).join("\n")
     }
 
     /// If the span is part of a macro, returns the macro name symbol.
@@ -194,16 +191,13 @@ impl CoverageSpan {
     /// If the span is part of a macro, and the macro is visible (expands directly to the given
     /// body_span), returns the macro name symbol.
     pub fn visible_macro(&self, body_span: Span) -> Option<Symbol> {
-        if let Some(current_macro) = self.current_macro() {
-            if self
-                .expn_span
-                .parent_callsite()
-                .unwrap_or_else(|| bug!("macro must have a parent"))
-                .ctxt()
-                == body_span.ctxt()
-            {
-                return Some(current_macro);
-            }
+        if let Some(current_macro) = self.current_macro() && self
+            .expn_span
+            .parent_callsite()
+            .unwrap_or_else(|| bug!("macro must have a parent"))
+            .ctxt() == body_span.ctxt()
+        {
+            return Some(current_macro);
         }
         None
     }
@@ -491,7 +485,7 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
             }) {
                 let merged_prefix_len = self.curr_original_span.lo() - self.curr().span.lo();
                 let after_macro_bang =
-                    merged_prefix_len + BytePos(visible_macro.as_str().bytes().count() as u32 + 1);
+                    merged_prefix_len + BytePos(visible_macro.as_str().len() as u32 + 1);
                 let mut macro_name_cov = self.curr().clone();
                 self.curr_mut().span =
                     self.curr().span.with_lo(self.curr().span.lo() + after_macro_bang);
@@ -587,21 +581,19 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
     /// In either case, no more spans will match the span of `pending_dups`, so
     /// add the `pending_dups` if they don't overlap `curr`, and clear the list.
     fn check_pending_dups(&mut self) {
-        if let Some(dup) = self.pending_dups.last() {
-            if dup.span != self.prev().span {
-                debug!(
-                    "    SAME spans, but pending_dups are NOT THE SAME, so BCBs matched on \
-                    previous iteration, or prev started a new disjoint span"
-                );
-                if dup.span.hi() <= self.curr().span.lo() {
-                    let pending_dups = self.pending_dups.split_off(0);
-                    for dup in pending_dups.into_iter() {
-                        debug!("    ...adding at least one pending={:?}", dup);
-                        self.push_refined_span(dup);
-                    }
-                } else {
-                    self.pending_dups.clear();
+        if let Some(dup) = self.pending_dups.last() && dup.span != self.prev().span {
+            debug!(
+                "    SAME spans, but pending_dups are NOT THE SAME, so BCBs matched on \
+                previous iteration, or prev started a new disjoint span"
+            );
+            if dup.span.hi() <= self.curr().span.lo() {
+                let pending_dups = self.pending_dups.split_off(0);
+                for dup in pending_dups.into_iter() {
+                    debug!("    ...adding at least one pending={:?}", dup);
+                    self.push_refined_span(dup);
                 }
+            } else {
+                self.pending_dups.clear();
             }
         }
     }
@@ -702,7 +694,7 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
     /// If prev.span() was split off to the right of a closure, prev.span().lo() will be
     /// greater than prev_original_span.lo(). The actual span of `prev_original_span` is
     /// not as important as knowing that `prev()` **used to have the same span** as `curr(),
-    /// which means their sort order is still meaningful for determinating the dominator
+    /// which means their sort order is still meaningful for determining the dominator
     /// relationship.
     ///
     /// When two `CoverageSpan`s have the same `Span`, dominated spans can be discarded; but if
@@ -734,7 +726,7 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
                 self.prev()
             );
             self.cutoff_prev_at_overlapping_curr();
-        // If one span dominates the other, assocate the span with the code from the dominated
+        // If one span dominates the other, associate the span with the code from the dominated
         // block only (`curr`), and discard the overlapping portion of the `prev` span. (Note
         // that if `prev.span` is wider than `prev_original_span`, a `CoverageSpan` will still
         // be created for `prev`s block, for the non-overlapping portion, left of `curr.span`.)
@@ -835,7 +827,7 @@ pub(super) fn filtered_statement_span(statement: &Statement<'_>) -> Option<Span>
         | StatementKind::CopyNonOverlapping(..)
         | StatementKind::Assign(_)
         | StatementKind::SetDiscriminant { .. }
-        | StatementKind::LlvmInlineAsm(_)
+        | StatementKind::Deinit(..)
         | StatementKind::Retag(_, _)
         | StatementKind::AscribeUserType(_, _) => {
             Some(statement.source_info.span)

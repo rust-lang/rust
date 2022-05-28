@@ -4,10 +4,10 @@ error: expected identifier, found keyword `if`
 LL |     let if = "foo";
    |         ^^ expected identifier, found keyword
    |
-help: you can escape reserved keywords to use them as identifiers
+help: escape `if` to use it as an identifier
    |
 LL |     let r#if = "foo";
-   |         ~~~~
+   |         ++
 
 error: aborting due to previous error
 

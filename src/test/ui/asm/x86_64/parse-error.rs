@@ -29,7 +29,7 @@ fn main() {
         asm!("{}", in(reg) foo => bar);
         //~^ ERROR expected one of `!`, `,`, `.`, `::`, `?`, `{`, or an operator, found `=>`
         asm!("{}", sym foo + bar);
-        //~^ ERROR argument to `sym` must be a path expression
+        //~^ ERROR expected a path for argument to `sym`
         asm!("", options(foo));
         //~^ ERROR expected one of
         asm!("", options(nomem foo));

@@ -1,7 +1,7 @@
 use std::fmt::{self, Display};
 use std::iter;
 
-use rustc_errors::DiagnosticBuilder;
+use rustc_errors::Diagnostic;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_middle::ty::print::RegionHighlightMode;
@@ -15,18 +15,18 @@ use crate::{nll::ToRegionVid, universal_regions::DefiningTy, MirBorrowckCtxt};
 /// A name for a particular region used in emitting diagnostics. This name could be a generated
 /// name like `'1`, a name used by the user like `'a`, or a name like `'static`.
 #[derive(Debug, Clone)]
-crate struct RegionName {
+pub(crate) struct RegionName {
     /// The name of the region (interned).
-    crate name: Symbol,
+    pub(crate) name: Symbol,
     /// Where the region comes from.
-    crate source: RegionNameSource,
+    pub(crate) source: RegionNameSource,
 }
 
 /// Denotes the source of a region that is named by a `RegionName`. For example, a free region that
 /// was named by the user would get `NamedFreeRegion` and `'static` lifetime would get `Static`.
 /// This helps to print the right kinds of diagnostics.
 #[derive(Debug, Clone)]
-crate enum RegionNameSource {
+pub(crate) enum RegionNameSource {
     /// A bound (not free) region that was substituted at the def site (not an HRTB).
     NamedEarlyBoundRegion(Span),
     /// A free region that the user has a name (`'a`) for.
@@ -50,7 +50,7 @@ crate enum RegionNameSource {
 /// Describes what to highlight to explain to the user that we're giving an anonymous region a
 /// synthesized name, and how to highlight it.
 #[derive(Debug, Clone)]
-crate enum RegionNameHighlight {
+pub(crate) enum RegionNameHighlight {
     /// The anonymous region corresponds to a reference that was found by traversing the type in the HIR.
     MatchedHirTy(Span),
     /// The anonymous region corresponds to a `'_` in the generics list of a struct/enum/union.
@@ -65,7 +65,7 @@ crate enum RegionNameHighlight {
 }
 
 impl RegionName {
-    crate fn was_named(&self) -> bool {
+    pub(crate) fn was_named(&self) -> bool {
         match self.source {
             RegionNameSource::NamedEarlyBoundRegion(..)
             | RegionNameSource::NamedFreeRegion(..)
@@ -79,7 +79,7 @@ impl RegionName {
         }
     }
 
-    crate fn span(&self) -> Option<Span> {
+    pub(crate) fn span(&self) -> Option<Span> {
         match self.source {
             RegionNameSource::Static => None,
             RegionNameSource::NamedEarlyBoundRegion(span)
@@ -98,31 +98,28 @@ impl RegionName {
         }
     }
 
-    crate fn highlight_region_name(&self, diag: &mut DiagnosticBuilder<'_>) {
+    pub(crate) fn highlight_region_name(&self, diag: &mut Diagnostic) {
         match &self.source {
             RegionNameSource::NamedFreeRegion(span)
             | RegionNameSource::NamedEarlyBoundRegion(span) => {
-                diag.span_label(*span, format!("lifetime `{}` defined here", self));
+                diag.span_label(*span, format!("lifetime `{self}` defined here"));
             }
             RegionNameSource::SynthesizedFreeEnvRegion(span, note) => {
-                diag.span_label(
-                    *span,
-                    format!("lifetime `{}` represents this closure's body", self),
-                );
-                diag.note(&note);
+                diag.span_label(*span, format!("lifetime `{self}` represents this closure's body"));
+                diag.note(note);
             }
             RegionNameSource::AnonRegionFromArgument(RegionNameHighlight::CannotMatchHirTy(
                 span,
                 type_name,
             )) => {
-                diag.span_label(*span, format!("has type `{}`", type_name));
+                diag.span_label(*span, format!("has type `{type_name}`"));
             }
             RegionNameSource::AnonRegionFromArgument(RegionNameHighlight::MatchedHirTy(span))
             | RegionNameSource::AnonRegionFromOutput(RegionNameHighlight::MatchedHirTy(span), _)
             | RegionNameSource::AnonRegionFromAsyncFn(span) => {
                 diag.span_label(
                     *span,
-                    format!("let's call the lifetime of this reference `{}`", self),
+                    format!("let's call the lifetime of this reference `{self}`"),
                 );
             }
             RegionNameSource::AnonRegionFromArgument(
@@ -132,7 +129,7 @@ impl RegionName {
                 RegionNameHighlight::MatchedAdtAndSegment(span),
                 _,
             ) => {
-                diag.span_label(*span, format!("let's call this `{}`", self));
+                diag.span_label(*span, format!("let's call this `{self}`"));
             }
             RegionNameSource::AnonRegionFromArgument(RegionNameHighlight::Occluded(
                 span,
@@ -140,7 +137,7 @@ impl RegionName {
             )) => {
                 diag.span_label(
                     *span,
-                    format!("lifetime `{}` appears in the type {}", self, type_name),
+                    format!("lifetime `{self}` appears in the type {type_name}"),
                 );
             }
             RegionNameSource::AnonRegionFromOutput(
@@ -150,25 +147,24 @@ impl RegionName {
                 diag.span_label(
                     *span,
                     format!(
-                        "return type{} `{}` contains a lifetime `{}`",
-                        mir_description, type_name, self
+                        "return type{mir_description} `{type_name}` contains a lifetime `{self}`"
                     ),
                 );
             }
             RegionNameSource::AnonRegionFromUpvar(span, upvar_name) => {
                 diag.span_label(
                     *span,
-                    format!("lifetime `{}` appears in the type of `{}`", self, upvar_name),
+                    format!("lifetime `{self}` appears in the type of `{upvar_name}`"),
                 );
             }
             RegionNameSource::AnonRegionFromOutput(
                 RegionNameHighlight::CannotMatchHirTy(span, type_name),
                 mir_description,
             ) => {
-                diag.span_label(*span, format!("return type{} is {}", mir_description, type_name));
+                diag.span_label(*span, format!("return type{mir_description} is {type_name}"));
             }
             RegionNameSource::AnonRegionFromYieldTy(span, type_name) => {
-                diag.span_label(*span, format!("yield type is {}", type_name));
+                diag.span_label(*span, format!("yield type is {type_name}"));
             }
             RegionNameSource::Static => {}
         }
@@ -182,11 +178,11 @@ impl Display for RegionName {
 }
 
 impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
-    crate fn mir_def_id(&self) -> hir::def_id::LocalDefId {
+    pub(crate) fn mir_def_id(&self) -> hir::def_id::LocalDefId {
         self.body.source.def_id().as_local().unwrap()
     }
 
-    crate fn mir_hir_id(&self) -> hir::HirId {
+    pub(crate) fn mir_hir_id(&self) -> hir::HirId {
         self.infcx.tcx.hir().local_def_id_to_hir_id(self.mir_def_id())
     }
 
@@ -214,7 +210,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
     /// Suppose we are trying to give a name to the lifetime of the
     /// reference `x`:
     ///
-    /// ```
+    /// ```ignore (pseudo-rust)
     /// fn foo(x: &u32) { .. }
     /// ```
     ///
@@ -226,7 +222,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
     /// ```
     ///
     /// and then return the name `'1` for us to use.
-    crate fn give_region_a_name(&self, fr: RegionVid) -> Option<RegionName> {
+    pub(crate) fn give_region_a_name(&self, fr: RegionVid) -> Option<RegionName> {
         debug!(
             "give_region_a_name(fr={:?}, counter={:?})",
             fr,
@@ -264,7 +260,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         let tcx = self.infcx.tcx;
 
         debug!("give_region_a_name: error_region = {:?}", error_region);
-        match error_region {
+        match *error_region {
             ty::ReEarlyBound(ebr) => {
                 if ebr.has_name() {
                     let span = tcx.hir().span_if_local(ebr.def_id).unwrap_or(DUMMY_SP);
@@ -311,43 +307,39 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                 ty::BoundRegionKind::BrEnv => {
                     let def_ty = self.regioncx.universal_regions().defining_ty;
 
-                    if let DefiningTy::Closure(_, substs) = def_ty {
-                        let args_span = if let hir::ExprKind::Closure(_, _, _, span, _) =
-                            tcx.hir().expect_expr(self.mir_hir_id()).kind
-                        {
-                            span
-                        } else {
-                            bug!("Closure is not defined by a closure expr");
-                        };
-                        let region_name = self.synthesize_region_name();
-
-                        let closure_kind_ty = substs.as_closure().kind_ty();
-                        let note = match closure_kind_ty.to_opt_closure_kind() {
-                            Some(ty::ClosureKind::Fn) => {
-                                "closure implements `Fn`, so references to captured variables \
-                                 can't escape the closure"
-                            }
-                            Some(ty::ClosureKind::FnMut) => {
-                                "closure implements `FnMut`, so references to captured variables \
-                                 can't escape the closure"
-                            }
-                            Some(ty::ClosureKind::FnOnce) => {
-                                bug!("BrEnv in a `FnOnce` closure");
-                            }
-                            None => bug!("Closure kind not inferred in borrow check"),
-                        };
-
-                        Some(RegionName {
-                            name: region_name,
-                            source: RegionNameSource::SynthesizedFreeEnvRegion(
-                                args_span,
-                                note.to_string(),
-                            ),
-                        })
-                    } else {
+                    let DefiningTy::Closure(_, substs) = def_ty else {
                         // Can't have BrEnv in functions, constants or generators.
                         bug!("BrEnv outside of closure.");
-                    }
+                    };
+                    let hir::ExprKind::Closure(_, _, _, args_span, _) =
+                        tcx.hir().expect_expr(self.mir_hir_id()).kind else {
+                        bug!("Closure is not defined by a closure expr");
+                    };
+                    let region_name = self.synthesize_region_name();
+
+                    let closure_kind_ty = substs.as_closure().kind_ty();
+                    let note = match closure_kind_ty.to_opt_closure_kind() {
+                        Some(ty::ClosureKind::Fn) => {
+                            "closure implements `Fn`, so references to captured variables \
+                                can't escape the closure"
+                        }
+                        Some(ty::ClosureKind::FnMut) => {
+                            "closure implements `FnMut`, so references to captured variables \
+                                can't escape the closure"
+                        }
+                        Some(ty::ClosureKind::FnOnce) => {
+                            bug!("BrEnv in a `FnOnce` closure");
+                        }
+                        None => bug!("Closure kind not inferred in borrow check"),
+                    };
+
+                    Some(RegionName {
+                        name: region_name,
+                        source: RegionNameSource::SynthesizedFreeEnvRegion(
+                            args_span,
+                            note.to_string(),
+                        ),
+                    })
                 }
 
                 ty::BoundRegionKind::BrAnon(_) => None,
@@ -437,7 +429,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         span: Span,
         counter: usize,
     ) -> RegionNameHighlight {
-        let mut highlight = RegionHighlightMode::default();
+        let mut highlight = RegionHighlightMode::new(self.infcx.tcx);
         highlight.highlighting_region_vid(needle_fr, counter);
         let type_name =
             self.infcx.extract_inference_diagnostics_data(ty.into(), Some(highlight)).name;
@@ -446,7 +438,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
             "highlight_if_we_cannot_match_hir_ty: type_name={:?} needle_fr={:?}",
             type_name, needle_fr
         );
-        if type_name.contains(&format!("'{}", counter)) {
+        if type_name.contains(&format!("'{counter}")) {
             // Only add a label if we can confirm that a region was labelled.
             RegionNameHighlight::CannotMatchHirTy(span, type_name)
         } else {
@@ -484,7 +476,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         let search_stack: &mut Vec<(Ty<'tcx>, &hir::Ty<'_>)> = &mut vec![(ty, hir_ty)];
 
         while let Some((ty, hir_ty)) = search_stack.pop() {
-            match (&ty.kind(), &hir_ty.kind) {
+            match (ty.kind(), &hir_ty.kind) {
                 // Check if the `ty` is `&'X ..` where `'X`
                 // is the region we are looking for -- if so, and we have a `&T`
                 // on the RHS, then we want to highlight the `&` like so:
@@ -504,7 +496,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                     }
 
                     // Otherwise, let's descend into the referent types.
-                    search_stack.push((referent_ty, &referent_hir_ty.ty));
+                    search_stack.push((*referent_ty, &referent_hir_ty.ty));
                 }
 
                 // Match up something like `Foo<'1>`
@@ -536,14 +528,13 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                 // The following cases don't have lifetimes, so we
                 // just worry about trying to match up the rustc type
                 // with the HIR types:
-                (ty::Tuple(elem_tys), hir::TyKind::Tup(elem_hir_tys)) => {
-                    search_stack
-                        .extend(iter::zip(elem_tys.iter().map(|k| k.expect_ty()), *elem_hir_tys));
+                (&ty::Tuple(elem_tys), hir::TyKind::Tup(elem_hir_tys)) => {
+                    search_stack.extend(iter::zip(elem_tys, *elem_hir_tys));
                 }
 
                 (ty::Slice(elem_ty), hir::TyKind::Slice(elem_hir_ty))
                 | (ty::Array(elem_ty, _), hir::TyKind::Array(elem_hir_ty, _)) => {
-                    search_stack.push((elem_ty, elem_hir_ty));
+                    search_stack.push((*elem_ty, elem_hir_ty));
                 }
 
                 (ty::RawPtr(mut_ty), hir::TyKind::Ptr(mut_hir_ty)) => {
@@ -584,7 +575,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                 Some(RegionNameHighlight::MatchedAdtAndSegment(lifetime_span))
             }
 
-            hir::LifetimeName::ImplicitObjectLifetimeDefault | hir::LifetimeName::Implicit(_) => {
+            hir::LifetimeName::ImplicitObjectLifetimeDefault | hir::LifetimeName::Implicit => {
                 // In this case, the user left off the lifetime; so
                 // they wrote something like:
                 //
@@ -755,7 +746,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
     /// e.g. given the function:
     ///
     /// ```
-    /// async fn foo() -> i32 {}
+    /// async fn foo() -> i32 { 2 }
     /// ```
     ///
     /// this function, given the lowered return type of `foo`, an [`OpaqueDef`] that implements `Future<Output=i32>`,
@@ -765,44 +756,44 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
     fn get_future_inner_return_ty(&self, hir_ty: &'tcx hir::Ty<'tcx>) -> &'tcx hir::Ty<'tcx> {
         let hir = self.infcx.tcx.hir();
 
-        if let hir::TyKind::OpaqueDef(id, _) = hir_ty.kind {
-            let opaque_ty = hir.item(id);
-            if let hir::ItemKind::OpaqueTy(hir::OpaqueTy {
-                bounds:
-                    [
-                        hir::GenericBound::LangItemTrait(
-                            hir::LangItem::Future,
-                            _,
-                            _,
-                            hir::GenericArgs {
-                                bindings:
-                                    [
-                                        hir::TypeBinding {
-                                            ident: Ident { name: sym::Output, .. },
-                                            kind: hir::TypeBindingKind::Equality { ty },
-                                            ..
-                                        },
-                                    ],
-                                ..
-                            },
-                        ),
-                    ],
-                ..
-            }) = opaque_ty.kind
-            {
-                ty
-            } else {
-                span_bug!(
-                    hir_ty.span,
-                    "bounds from lowered return type of async fn did not match expected format: {:?}",
-                    opaque_ty
-                );
-            }
-        } else {
+        let hir::TyKind::OpaqueDef(id, _) = hir_ty.kind else {
             span_bug!(
                 hir_ty.span,
                 "lowered return type of async fn is not OpaqueDef: {:?}",
                 hir_ty
+            );
+        };
+        let opaque_ty = hir.item(id);
+        if let hir::ItemKind::OpaqueTy(hir::OpaqueTy {
+            bounds:
+                [
+                    hir::GenericBound::LangItemTrait(
+                        hir::LangItem::Future,
+                        _,
+                        _,
+                        hir::GenericArgs {
+                            bindings:
+                                [
+                                    hir::TypeBinding {
+                                        ident: Ident { name: sym::Output, .. },
+                                        kind:
+                                            hir::TypeBindingKind::Equality { term: hir::Term::Ty(ty) },
+                                        ..
+                                    },
+                                ],
+                            ..
+                        },
+                    ),
+                ],
+            ..
+        }) = opaque_ty.kind
+        {
+            ty
+        } else {
+            span_bug!(
+                hir_ty.span,
+                "bounds from lowered return type of async fn did not match expected format: {:?}",
+                opaque_ty
             );
         }
     }
@@ -814,7 +805,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         // Note: generators from `async fn` yield `()`, so we don't have to
         // worry about them here.
         let yield_ty = self.regioncx.universal_regions().yield_ty?;
-        debug!("give_name_if_anonymous_region_appears_in_yield_ty: yield_ty = {:?}", yield_ty,);
+        debug!("give_name_if_anonymous_region_appears_in_yield_ty: yield_ty = {:?}", yield_ty);
 
         let tcx = self.infcx.tcx;
 
@@ -822,7 +813,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
             return None;
         }
 
-        let mut highlight = RegionHighlightMode::default();
+        let mut highlight = RegionHighlightMode::new(tcx);
         highlight.highlighting_region_vid(fr, *self.next_region_name.try_borrow().unwrap());
         let type_name =
             self.infcx.extract_inference_diagnostics_data(yield_ty.into(), Some(highlight)).name;

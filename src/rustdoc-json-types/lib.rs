@@ -3,10 +3,13 @@
 //! These types are the public API exposed through the `--output-format json` flag. The [`Crate`]
 //! struct is the root of the JSON blob and all other items are contained within.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
+
+/// rustdoc format-version.
+pub const FORMAT_VERSION: u32 = 15;
 
 /// A `Crate` is the root of the emitted JSON blob. It contains all type/documentation information
 /// about the language items in the local crate, as well as info about external items to allow
@@ -142,13 +145,14 @@ pub struct Constant {
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct TypeBinding {
     pub name: String,
+    pub args: GenericArgs,
     pub binding: TypeBindingKind,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum TypeBindingKind {
-    Equality(Type),
+    Equality(Term),
     Constraint(Vec<GenericBound>),
 }
 
@@ -230,6 +234,7 @@ pub enum ItemEnum {
         default: Option<String>,
     },
     AssocType {
+        generics: Generics,
         bounds: Vec<GenericBound>,
         /// e.g. `type X = usize;`
         default: Option<Type>,
@@ -284,29 +289,45 @@ pub enum StructType {
     Unit,
 }
 
-#[non_exhaustive]
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
-#[serde(rename_all = "snake_case")]
-pub enum Qualifiers {
-    Const,
-    Unsafe,
-    Async,
+pub struct Header {
+    #[serde(rename = "const")]
+    pub const_: bool,
+    #[serde(rename = "unsafe")]
+    pub unsafe_: bool,
+    #[serde(rename = "async")]
+    pub async_: bool,
+    pub abi: Abi,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
+pub enum Abi {
+    // We only have a concrete listing here for stable ABI's because their are so many
+    // See rustc_ast_passes::feature_gate::PostExpansionVisitor::check_abi for the list
+    Rust,
+    C { unwind: bool },
+    Cdecl { unwind: bool },
+    Stdcall { unwind: bool },
+    Fastcall { unwind: bool },
+    Aapcs { unwind: bool },
+    Win64 { unwind: bool },
+    SysV64 { unwind: bool },
+    System { unwind: bool },
+    Other(String),
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Function {
     pub decl: FnDecl,
     pub generics: Generics,
-    pub header: HashSet<Qualifiers>,
-    pub abi: String,
+    pub header: Header,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Method {
     pub decl: FnDecl,
     pub generics: Generics,
-    pub header: HashSet<Qualifiers>,
-    pub abi: String,
+    pub header: Header,
     pub has_body: bool,
 }
 
@@ -325,17 +346,68 @@ pub struct GenericParamDef {
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum GenericParamDefKind {
-    Lifetime { outlives: Vec<String> },
-    Type { bounds: Vec<GenericBound>, default: Option<Type> },
-    Const { ty: Type, default: Option<String> },
+    Lifetime {
+        outlives: Vec<String>,
+    },
+    Type {
+        bounds: Vec<GenericBound>,
+        default: Option<Type>,
+        /// This is normally `false`, which means that this generic parameter is
+        /// declared in the Rust source text.
+        ///
+        /// If it is `true`, this generic parameter has been introduced by the
+        /// compiler behind the scenes.
+        ///
+        /// # Example
+        ///
+        /// Consider
+        ///
+        /// ```ignore (pseudo-rust)
+        /// pub fn f(_: impl Trait) {}
+        /// ```
+        ///
+        /// The compiler will transform this behind the scenes to
+        ///
+        /// ```ignore (pseudo-rust)
+        /// pub fn f<impl Trait: Trait>(_: impl Trait) {}
+        /// ```
+        ///
+        /// In this example, the generic parameter named `impl Trait` (and which
+        /// is bound by `Trait`) is synthetic, because it was not originally in
+        /// the Rust source text.
+        synthetic: bool,
+    },
+    Const {
+        #[serde(rename = "type")]
+        type_: Type,
+        default: Option<String>,
+    },
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum WherePredicate {
-    BoundPredicate { ty: Type, bounds: Vec<GenericBound> },
-    RegionPredicate { lifetime: String, bounds: Vec<GenericBound> },
-    EqPredicate { lhs: Type, rhs: Type },
+    BoundPredicate {
+        #[serde(rename = "type")]
+        type_: Type,
+        bounds: Vec<GenericBound>,
+        /// Used for Higher-Rank Trait Bounds (HRTBs)
+        /// ```plain
+        /// where for<'a> &'a T: Iterator,"
+        ///       ^^^^^^^
+        ///       |
+        ///       this part
+        /// ```
+        generic_params: Vec<GenericParamDef>,
+    },
+    RegionPredicate {
+        lifetime: String,
+        bounds: Vec<GenericBound>,
+    },
+    EqPredicate {
+        lhs: Type,
+        rhs: Term,
+    },
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
@@ -344,7 +416,13 @@ pub enum GenericBound {
     TraitBound {
         #[serde(rename = "trait")]
         trait_: Type,
-        /// Used for HRTBs
+        /// Used for Higher-Rank Trait Bounds (HRTBs)
+        /// ```plain
+        /// where F: for<'a, 'b> Fn(&'a u8, &'b u8)
+        ///          ^^^^^^^^^^^
+        ///          |
+        ///          this part
+        /// ```
         generic_params: Vec<GenericParamDef>,
         modifier: TraitBoundModifier,
     },
@@ -357,6 +435,13 @@ pub enum TraitBoundModifier {
     None,
     Maybe,
     MaybeConst,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum Term {
+    Type(Type),
+    Constant(Constant),
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
@@ -406,6 +491,7 @@ pub enum Type {
     /// `<Type as Trait>::Name` or associated types like `T::Item` where `T: Iterator`
     QualifiedPath {
         name: String,
+        args: Box<GenericArgs>,
         self_type: Box<Type>,
         #[serde(rename = "trait")]
         trait_: Box<Type>,
@@ -415,9 +501,15 @@ pub enum Type {
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct FunctionPointer {
     pub decl: FnDecl,
+    /// Used for Higher-Rank Trait Bounds (HRTBs)
+    /// ```plain
+    /// for<'c> fn(val: &'c i32) -> i32
+    /// ^^^^^^^
+    ///       |
+    ///       this part
+    /// ```
     pub generic_params: Vec<GenericParamDef>,
-    pub header: HashSet<Qualifiers>,
-    pub abi: String,
+    pub header: Header,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
@@ -434,7 +526,7 @@ pub struct Trait {
     pub items: Vec<Id>,
     pub generics: Generics,
     pub bounds: Vec<GenericBound>,
-    pub implementors: Vec<Id>,
+    pub implementations: Vec<Id>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
@@ -509,9 +601,6 @@ pub struct Static {
     pub mutable: bool,
     pub expr: String,
 }
-
-/// rustdoc format-version.
-pub const FORMAT_VERSION: u32 = 9;
 
 #[cfg(test)]
 mod tests;

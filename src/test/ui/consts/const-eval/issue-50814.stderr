@@ -16,6 +16,12 @@ error[E0080]: evaluation of `foo::<i32>` failed
 LL |     &Sum::<U8,U8>::MAX
    |      ^^^^^^^^^^^^^^^^^ referenced constant has errors
 
+note: the above error was encountered while instantiating `fn foo::<i32>`
+  --> $DIR/issue-50814.rs:26:5
+   |
+LL |     foo(0);
+   |     ^^^^^^
+
 error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0080`.

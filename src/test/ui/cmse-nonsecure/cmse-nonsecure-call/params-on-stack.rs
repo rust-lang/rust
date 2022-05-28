@@ -7,6 +7,7 @@
 pub trait Sized { }
 #[lang="copy"]
 pub trait Copy { }
+impl Copy for u32 {}
 
 extern "rust-intrinsic" {
     pub fn transmute<T, U>(e: T) -> U;

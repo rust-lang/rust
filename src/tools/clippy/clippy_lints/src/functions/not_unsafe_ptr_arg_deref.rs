@@ -1,6 +1,6 @@
 use rustc_hir::{self as hir, intravisit, HirIdSet};
 use rustc_lint::LateContext;
-use rustc_middle::{hir::map::Map, ty};
+use rustc_middle::ty;
 use rustc_span::def_id::LocalDefId;
 
 use clippy_utils::diagnostics::span_lint;
@@ -17,8 +17,8 @@ pub(super) fn check_fn<'tcx>(
     hir_id: hir::HirId,
 ) {
     let unsafety = match kind {
-        intravisit::FnKind::ItemFn(_, _, hir::FnHeader { unsafety, .. }, _) => unsafety,
-        intravisit::FnKind::Method(_, sig, _) => sig.header.unsafety,
+        intravisit::FnKind::ItemFn(_, _, hir::FnHeader { unsafety, .. }) => unsafety,
+        intravisit::FnKind::Method(_, sig) => sig.header.unsafety,
         intravisit::FnKind::Closure => return,
     };
 
@@ -42,8 +42,7 @@ fn check_raw_ptr<'tcx>(
     let expr = &body.value;
     if unsafety == hir::Unsafety::Normal && cx.access_levels.is_exported(def_id) {
         let raw_ptrs = iter_input_pats(decl, body)
-            .zip(decl.inputs.iter())
-            .filter_map(|(arg, ty)| raw_ptr_arg(arg, ty))
+            .filter_map(|arg| raw_ptr_arg(cx, arg))
             .collect::<HirIdSet>();
 
         if !raw_ptrs.is_empty() {
@@ -59,8 +58,12 @@ fn check_raw_ptr<'tcx>(
     }
 }
 
-fn raw_ptr_arg(arg: &hir::Param<'_>, ty: &hir::Ty<'_>) -> Option<hir::HirId> {
-    if let (&hir::PatKind::Binding(_, id, _, _), &hir::TyKind::Ptr(_)) = (&arg.pat.kind, &ty.kind) {
+fn raw_ptr_arg(cx: &LateContext<'_>, arg: &hir::Param<'_>) -> Option<hir::HirId> {
+    if let (&hir::PatKind::Binding(_, id, _, _), Some(&ty::RawPtr(_))) = (
+        &arg.pat.kind,
+        cx.maybe_typeck_results()
+            .map(|typeck_results| typeck_results.pat_ty(arg.pat).kind()),
+    ) {
         Some(id)
     } else {
         None
@@ -74,8 +77,6 @@ struct DerefVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> intravisit::Visitor<'tcx> for DerefVisitor<'a, 'tcx> {
-    type Map = Map<'tcx>;
-
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'_>) {
         match expr.kind {
             hir::ExprKind::Call(f, args) => {
@@ -87,7 +88,7 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for DerefVisitor<'a, 'tcx> {
                     }
                 }
             },
-            hir::ExprKind::MethodCall(_, _, args, _) => {
+            hir::ExprKind::MethodCall(_, args, _) => {
                 let def_id = self.typeck_results.type_dependent_def_id(expr.hir_id).unwrap();
                 let base_type = self.cx.tcx.type_of(def_id);
 
@@ -102,10 +103,6 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for DerefVisitor<'a, 'tcx> {
         }
 
         intravisit::walk_expr(self, expr);
-    }
-
-    fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
-        intravisit::NestedVisitorMap::None
     }
 }
 

@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::fn_def_id;
+use clippy_utils::{fn_def_id, get_parent_expr, path_def_id};
 
-use rustc_hir::{def::Res, def_id::DefIdMap, Expr};
+use rustc_hir::{def::Res, def_id::DefIdMap, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 
@@ -77,14 +77,22 @@ impl<'tcx> LateLintPass<'tcx> for DisallowedMethods {
     fn check_crate(&mut self, cx: &LateContext<'_>) {
         for (index, conf) in self.conf_disallowed.iter().enumerate() {
             let segs: Vec<_> = conf.path().split("::").collect();
-            if let Res::Def(_, id) = clippy_utils::path_to_res(cx, &segs) {
+            if let Res::Def(_, id) = clippy_utils::def_path_res(cx, &segs) {
                 self.disallowed.insert(id, index);
             }
         }
     }
 
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        let def_id = match fn_def_id(cx, expr) {
+        let uncalled_path = if let Some(parent) = get_parent_expr(cx, expr)
+            && let ExprKind::Call(receiver, _) = parent.kind
+            && receiver.hir_id == expr.hir_id
+        {
+            None
+        } else {
+            path_def_id(cx, expr)
+        };
+        let def_id = match uncalled_path.or_else(|| fn_def_id(cx, expr)) {
             Some(def_id) => def_id,
             None => return,
         };

@@ -6,7 +6,7 @@
 pub fn deprecated_future() {}
 
 fn test() {
-    deprecated_future(); // ok; deprecated_in_future only applies to rustc_deprecated
+    deprecated_future(); // ok; deprecated_in_future only applies with `#![feature(staged_api)]`
     //~^ WARNING use of deprecated function `deprecated_future`: text [deprecated]
 }
 

@@ -10,8 +10,8 @@ use core::fmt::Write;
 use rustc_errors::Applicability;
 use rustc_hir::{
     hir_id::HirIdSet,
-    intravisit::{walk_expr, ErasedMap, NestedVisitorMap, Visitor},
-    Block, Expr, ExprKind, Guard, HirId, Pat, Stmt, StmtKind, UnOp,
+    intravisit::{walk_expr, Visitor},
+    Block, Expr, ExprKind, Guard, HirId, Let, Pat, Stmt, StmtKind, UnOp,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -63,7 +63,7 @@ declare_clippy_lint! {
 declare_lint_pass!(HashMapPass => [MAP_ENTRY]);
 
 impl<'tcx> LateLintPass<'tcx> for HashMapPass {
-    #[allow(clippy::too_many_lines)]
+    #[expect(clippy::too_many_lines)]
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         let (cond_expr, then_expr, else_expr) = match higher::If::hir(expr) {
             Some(higher::If { cond, then, r#else }) => (cond, then, r#else),
@@ -245,7 +245,6 @@ fn try_parse_contains<'tcx>(cx: &LateContext<'_>, expr: &'tcx Expr<'_>) -> Optio
     match expr.kind {
         ExprKind::MethodCall(
             _,
-            _,
             [
                 map,
                 Expr {
@@ -281,7 +280,7 @@ struct InsertExpr<'tcx> {
     value: &'tcx Expr<'tcx>,
 }
 fn try_parse_insert<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<InsertExpr<'tcx>> {
-    if let ExprKind::MethodCall(_, _, [map, key, value], _) = expr.kind {
+    if let ExprKind::MethodCall(_, [map, key, value], _) = expr.kind {
         let id = cx.typeck_results().type_dependent_def_id(expr.hir_id)?;
         if match_def_path(cx, id, &paths::BTREEMAP_INSERT) || match_def_path(cx, id, &paths::HASHMAP_INSERT) {
             Some(InsertExpr { map, key, value })
@@ -320,7 +319,7 @@ struct Insertion<'tcx> {
 ///   `or_insert_with`.
 /// * Determine if there's any sub-expression that can't be placed in a closure.
 /// * Determine if there's only a single insert statement. `or_insert` can be used in this case.
-#[allow(clippy::struct_excessive_bools)]
+#[expect(clippy::struct_excessive_bools)]
 struct InsertSearcher<'cx, 'tcx> {
     cx: &'cx LateContext<'tcx>,
     /// The map expression used in the contains call.
@@ -370,11 +369,6 @@ impl<'tcx> InsertSearcher<'_, 'tcx> {
     }
 }
 impl<'tcx> Visitor<'tcx> for InsertSearcher<'_, 'tcx> {
-    type Map = ErasedMap<'tcx>;
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::None
-    }
-
     fn visit_stmt(&mut self, stmt: &'tcx Stmt<'_>) {
         match stmt.kind {
             StmtKind::Semi(e) => {
@@ -484,7 +478,7 @@ impl<'tcx> Visitor<'tcx> for InsertSearcher<'_, 'tcx> {
                     let mut is_map_used = self.is_map_used;
                     for arm in arms {
                         self.visit_pat(arm.pat);
-                        if let Some(Guard::If(guard) | Guard::IfLet(_, guard)) = arm.guard {
+                        if let Some(Guard::If(guard) | Guard::IfLet(&Let { init: guard, .. })) = arm.guard {
                             self.visit_non_tail_expr(guard);
                         }
                         is_map_used |= self.visit_cond_arm(arm.body);
@@ -504,7 +498,7 @@ impl<'tcx> Visitor<'tcx> for InsertSearcher<'_, 'tcx> {
                     self.loops.pop();
                 },
                 ExprKind::Block(block, _) => self.visit_block(block),
-                ExprKind::InlineAsm(_) | ExprKind::LlvmInlineAsm(_) => {
+                ExprKind::InlineAsm(_) => {
                     self.can_use_entry = false;
                 },
                 _ => {

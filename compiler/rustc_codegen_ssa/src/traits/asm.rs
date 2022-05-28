@@ -3,7 +3,6 @@ use crate::mir::operand::OperandRef;
 use crate::mir::place::PlaceRef;
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_hir::def_id::DefId;
-use rustc_hir::LlvmInlineAsmInner;
 use rustc_middle::ty::Instance;
 use rustc_span::Span;
 use rustc_target::asm::InlineAsmRegOrRegClass;
@@ -37,20 +36,13 @@ pub enum InlineAsmOperandRef<'tcx, B: BackendTypes + ?Sized> {
 }
 
 #[derive(Debug)]
-pub enum GlobalAsmOperandRef {
+pub enum GlobalAsmOperandRef<'tcx> {
     Const { string: String },
+    SymFn { instance: Instance<'tcx> },
+    SymStatic { def_id: DefId },
 }
 
 pub trait AsmBuilderMethods<'tcx>: BackendTypes {
-    /// Take an inline assembly expression and splat it out via LLVM
-    fn codegen_llvm_inline_asm(
-        &mut self,
-        ia: &LlvmInlineAsmInner,
-        outputs: Vec<PlaceRef<'tcx, Self::Value>>,
-        inputs: Vec<Self::Value>,
-        span: Span,
-    ) -> bool;
-
     /// Take an inline assembly expression and splat it out via LLVM
     fn codegen_inline_asm(
         &mut self,
@@ -63,11 +55,11 @@ pub trait AsmBuilderMethods<'tcx>: BackendTypes {
     );
 }
 
-pub trait AsmMethods {
+pub trait AsmMethods<'tcx> {
     fn codegen_global_asm(
         &self,
         template: &[InlineAsmTemplatePiece],
-        operands: &[GlobalAsmOperandRef],
+        operands: &[GlobalAsmOperandRef<'tcx>],
         options: InlineAsmOptions,
         line_spans: &[Span],
     );

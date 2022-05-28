@@ -19,7 +19,7 @@ pub enum Enum4 {
     A(i32),
     B(i32),
 }
-// CHECK: %"Enum4::A" = type { [1 x i32], i32 }
+// No Aggregate type, and hence nothing in LLVM IR.
 
 pub enum Enum64 {
     A(Align64),

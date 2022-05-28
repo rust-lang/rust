@@ -2,7 +2,7 @@ use super::OverlapError;
 
 use crate::traits;
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty::fast_reject::{self, SimplifiedType, SimplifyParams, StripReferences};
+use rustc_middle::ty::fast_reject::{self, SimplifiedType, TreatParams};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, TyCtxt, TypeFoldable};
 
@@ -41,6 +41,7 @@ trait ChildrenExt<'tcx> {
         tcx: TyCtxt<'tcx>,
         impl_def_id: DefId,
         simplified_self: Option<SimplifiedType>,
+        overlap_mode: OverlapMode,
     ) -> Result<Inserted, OverlapError>;
 }
 
@@ -48,12 +49,8 @@ impl ChildrenExt<'_> for Children {
     /// Insert an impl into this set of children without comparing to any existing impls.
     fn insert_blindly(&mut self, tcx: TyCtxt<'_>, impl_def_id: DefId) {
         let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
-        if let Some(st) = fast_reject::simplify_type(
-            tcx,
-            trait_ref.self_ty(),
-            SimplifyParams::No,
-            StripReferences::No,
-        ) {
+        if let Some(st) = fast_reject::simplify_type(tcx, trait_ref.self_ty(), TreatParams::AsInfer)
+        {
             debug!("insert_blindly: impl_def_id={:?} st={:?}", impl_def_id, st);
             self.non_blanket_impls.entry(st).or_default().push(impl_def_id)
         } else {
@@ -68,12 +65,8 @@ impl ChildrenExt<'_> for Children {
     fn remove_existing(&mut self, tcx: TyCtxt<'_>, impl_def_id: DefId) {
         let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
         let vec: &mut Vec<DefId>;
-        if let Some(st) = fast_reject::simplify_type(
-            tcx,
-            trait_ref.self_ty(),
-            SimplifyParams::No,
-            StripReferences::No,
-        ) {
+        if let Some(st) = fast_reject::simplify_type(tcx, trait_ref.self_ty(), TreatParams::AsInfer)
+        {
             debug!("remove_existing: impl_def_id={:?} st={:?}", impl_def_id, st);
             vec = self.non_blanket_impls.get_mut(&st).unwrap();
         } else {
@@ -92,6 +85,7 @@ impl ChildrenExt<'_> for Children {
         tcx: TyCtxt<'_>,
         impl_def_id: DefId,
         simplified_self: Option<SimplifiedType>,
+        overlap_mode: OverlapMode,
     ) -> Result<Inserted, OverlapError> {
         let mut last_lint = None;
         let mut replace_children = Vec::new();
@@ -114,7 +108,7 @@ impl ChildrenExt<'_> for Children {
                 let self_ty = trait_ref.self_ty();
 
                 // FIXME: should postpone string formatting until we decide to actually emit.
-                with_no_trimmed_paths(|| {
+                with_no_trimmed_paths!({
                     OverlapError {
                         with_impl: possible_sibling,
                         trait_desc: trait_ref.print_only_trait_path().to_string(),
@@ -142,6 +136,7 @@ impl ChildrenExt<'_> for Children {
                     possible_sibling,
                     impl_def_id,
                     traits::SkipLeakCheck::default(),
+                    overlap_mode,
                     |_| true,
                     || false,
                 );
@@ -166,6 +161,7 @@ impl ChildrenExt<'_> for Children {
                 possible_sibling,
                 impl_def_id,
                 traits::SkipLeakCheck::Yes,
+                overlap_mode,
                 |overlap| {
                     if let Some(overlap_kind) =
                         tcx.impls_are_allowed_to_overlap(impl_def_id, possible_sibling)
@@ -273,6 +269,7 @@ pub trait GraphExt {
         &mut self,
         tcx: TyCtxt<'_>,
         impl_def_id: DefId,
+        overlap_mode: OverlapMode,
     ) -> Result<Option<FutureCompatOverlapError>, OverlapError>;
 
     /// Insert cached metadata mapping from a child impl back to its parent.
@@ -287,6 +284,7 @@ impl GraphExt for Graph {
         &mut self,
         tcx: TyCtxt<'_>,
         impl_def_id: DefId,
+        overlap_mode: OverlapMode,
     ) -> Result<Option<FutureCompatOverlapError>, OverlapError> {
         assert!(impl_def_id.is_local());
 
@@ -316,19 +314,18 @@ impl GraphExt for Graph {
 
         let mut parent = trait_def_id;
         let mut last_lint = None;
-        let simplified = fast_reject::simplify_type(
-            tcx,
-            trait_ref.self_ty(),
-            SimplifyParams::No,
-            StripReferences::No,
-        );
+        let simplified = fast_reject::simplify_type(tcx, trait_ref.self_ty(), TreatParams::AsInfer);
 
         // Descend the specialization tree, where `parent` is the current parent node.
         loop {
             use self::Inserted::*;
 
-            let insert_result =
-                self.children.entry(parent).or_default().insert(tcx, impl_def_id, simplified)?;
+            let insert_result = self.children.entry(parent).or_default().insert(
+                tcx,
+                impl_def_id,
+                simplified,
+                overlap_mode,
+            )?;
 
             match insert_result {
                 BecameNewSibling(opt_lint) => {

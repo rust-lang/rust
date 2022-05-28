@@ -13,13 +13,12 @@ pub fn fetch_latest() {
     let directory = Path::new(UNICODE_DIRECTORY);
     if directory.exists() {
         eprintln!(
-            "Not refetching unicode data, already exists, please delete {:?} to regenerate",
-            directory
+            "Not refetching unicode data, already exists, please delete {directory:?} to regenerate",
         );
         return;
     }
     if let Err(e) = std::fs::create_dir_all(directory) {
-        panic!("Failed to create {:?}: {}", UNICODE_DIRECTORY, e);
+        panic!("Failed to create {UNICODE_DIRECTORY:?}: {e}");
     }
     let output = Command::new("curl").arg(URL_PREFIX.to_owned() + README).output().unwrap();
     if !output.status.success() {

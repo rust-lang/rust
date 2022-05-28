@@ -90,7 +90,7 @@ impl<'ll, 'tcx> CoverageInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     /// call. Since the function is never called, all other `CodeRegion`s can be
     /// added as `unreachable_region`s.
     fn define_unused_fn(&self, def_id: DefId) {
-        let instance = declare_unused_fn(self, &def_id);
+        let instance = declare_unused_fn(self, def_id);
         codegen_unused_fn_and_counter(self, instance);
         add_unused_function_coverage(self, instance, def_id);
     }
@@ -184,12 +184,12 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
     }
 }
 
-fn declare_unused_fn<'tcx>(cx: &CodegenCx<'_, 'tcx>, def_id: &DefId) -> Instance<'tcx> {
+fn declare_unused_fn<'tcx>(cx: &CodegenCx<'_, 'tcx>, def_id: DefId) -> Instance<'tcx> {
     let tcx = cx.tcx;
 
     let instance = Instance::new(
-        *def_id,
-        InternalSubsts::for_item(tcx, *def_id, |param, _| {
+        def_id,
+        InternalSubsts::for_item(tcx, def_id, |param, _| {
             if let ty::GenericParamDefKind::Lifetime = param.kind {
                 tcx.lifetimes.re_erased.into()
             } else {

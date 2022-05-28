@@ -1,4 +1,4 @@
-# Command-line arguments
+# Command-line Arguments
 
 Here's a list of command-line arguments to `rustc` and what they do.
 
@@ -37,6 +37,8 @@ KIND=PATH` where `KIND` may be one of:
 <a id="option-l-link-lib"></a>
 ## `-l`: link the generated crate to a native library
 
+Syntax: `-l [KIND[:MODIFIERS]=]NAME[:RENAME]`.
+
 This flag allows you to specify linking to a specific native library when building
 a crate.
 
@@ -47,7 +49,14 @@ where `KIND` may be one of:
 - `static` — A native static library (such as a `.a` archive).
 - `framework` — A macOS framework.
 
-The kind of library can be specified in a [`#[link]`
+If the kind is specified, then linking modifiers can be attached to it.
+Modifiers are specified as a comma-delimited string with each modifier prefixed with
+either a `+` or `-` to indicate that the modifier is enabled or disabled, respectively.
+Specifying multiple `modifiers` arguments in a single `link` attribute,
+or multiple identical modifiers in the same `modifiers` argument is not currently supported. \
+Example: `-l static:+whole-archive=mylib`.
+
+The kind of library and the modifiers can also be specified in a [`#[link]`
 attribute][link-attribute]. If the kind is not specified in the `link`
 attribute or on the command-line, it will link a dynamic library if available,
 otherwise it will use a static library. If the kind is specified on the
@@ -58,6 +67,22 @@ ATTR_NAME:LINK_NAME` where `ATTR_NAME` is the name in the `link` attribute,
 and `LINK_NAME` is the name of the actual library that will be linked.
 
 [link-attribute]: ../reference/items/external-blocks.html#the-link-attribute
+
+### Linking modifiers: `whole-archive`
+
+This modifier is only compatible with the `static` linking kind.
+Using any other kind will result in a compiler error.
+
+`+whole-archive` means that the static library is linked as a whole archive
+without throwing any object files away.
+
+This modifier translates to `--whole-archive` for `ld`-like linkers,
+to `/WHOLEARCHIVE` for `link.exe`, and to `-force_load` for `ld64`.
+The modifier does nothing for linkers that don't support it.
+
+The default for this modifier is `-whole-archive`. \
+NOTE: The default may currently be different in some cases for backward compatibility,
+but it is not guaranteed. If you need whole archive semantics use `+whole-archive` explicitly.
 
 <a id="option-crate-type"></a>
 ## `--crate-type`: a list of types of crates for the compiler to emit
@@ -118,7 +143,7 @@ The valid emit kinds are:
 - `llvm-ir` — Generates a file containing [LLVM IR]. The default output
   filename is `CRATE_NAME.ll`.
 - `metadata` — Generates a file containing metadata about the crate. The
-  default output filename is `CRATE_NAME.rmeta`.
+  default output filename is `libCRATE_NAME.rmeta`.
 - `mir` — Generates a file containing rustc's mid-level intermediate
   representation. The default output filename is `CRATE_NAME.mir`.
 - `obj` — Generates a native object file. The default output filename is
@@ -170,6 +195,12 @@ The valid types of print values are:
   include a diagnostic note that indicates the linker flags to use when
   linking the resulting static library. The note starts with the text
   `native-static-libs:` to make it easier to fetch the output.
+- `link-args` — This flag does not disable the `--emit` step. When linking,
+  this flag causes `rustc` to print the full linker invocation in a
+  human-readable form. This can be useful when debugging linker options. The
+  exact format of this debugging output is not a stable guarantee, other than
+  that it will include the linker executable and the text of each command-line
+  argument passed to the linker.
 
 [conditional compilation]: ../reference/conditional-compilation.html
 
@@ -377,6 +408,9 @@ to customize the output:
   is emitted. An artifact corresponds to a request from the [`--emit` CLI
   argument](#option-emit), and as soon as the artifact is available on the
   filesystem a notification will be emitted.
+
+- `future-incompat` - includes a JSON message that contains a report if the
+  crate contains any code that may fail to compile in the future.
 
 Note that it is invalid to combine the `--json` argument with the
 [`--color`](#option-color) argument, and it is required to combine `--json`

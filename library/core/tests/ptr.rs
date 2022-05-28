@@ -1,4 +1,5 @@
 use core::cell::RefCell;
+use core::num::NonZeroUsize;
 use core::ptr;
 use core::ptr::*;
 use std::fmt::{Debug, Display};
@@ -92,6 +93,18 @@ fn test_is_null() {
 
     let nmi: *mut dyn ToString = null_mut::<isize>();
     assert!(nmi.is_null());
+
+    #[cfg(not(bootstrap))]
+    {
+        extern "C" {
+            type Extern;
+        }
+        let ec: *const Extern = null::<Extern>();
+        assert!(ec.is_null());
+
+        let em: *mut Extern = null_mut::<Extern>();
+        assert!(em.is_null());
+    }
 }
 
 #[test]
@@ -251,7 +264,6 @@ fn test_set_memory() {
 }
 
 #[test]
-#[cfg(not(bootstrap))]
 fn test_set_memory_const() {
     const XS: [u8; 20] = {
         let mut xs = [0u8; 20];
@@ -275,16 +287,33 @@ fn test_unsized_nonnull() {
 }
 
 #[test]
-#[allow(warnings)]
-// Have a symbol for the test below. It doesn’t need to be an actual variadic function, match the
-// ABI, or even point to an actual executable code, because the function itself is never invoked.
-#[no_mangle]
+fn test_const_nonnull_new() {
+    const {
+        assert!(NonNull::new(core::ptr::null_mut::<()>()).is_none());
+
+        let value = &mut 0u32;
+        let mut ptr = NonNull::new(value).unwrap();
+        unsafe { *ptr.as_mut() = 42 };
+
+        let reference = unsafe { &*ptr.as_ref() };
+        assert!(*reference == *value);
+        assert!(*reference == 42);
+    };
+}
+
+#[test]
+#[cfg(unix)] // printf may not be available on other platforms
+#[allow(deprecated)] // For SipHasher
 pub fn test_variadic_fnptr() {
+    use core::ffi;
     use core::hash::{Hash, SipHasher};
     extern "C" {
-        fn test_variadic_fnptr(_: u64, ...) -> f64;
+        // This needs to use the correct function signature even though it isn't called as some
+        // codegen backends make it UB to declare a function with multiple conflicting signatures
+        // (like LLVM) while others straight up return an error (like Cranelift).
+        fn printf(_: *const ffi::c_char, ...) -> ffi::c_int;
     }
-    let p: unsafe extern "C" fn(u64, ...) -> f64 = test_variadic_fnptr;
+    let p: unsafe extern "C" fn(*const ffi::c_char, ...) -> ffi::c_int = printf;
     let q = p.clone();
     assert_eq!(p, q);
     assert!(!(p < q));
@@ -474,11 +503,11 @@ fn ptr_metadata() {
     let vtable_5: DynMetadata<dyn Display> =
         metadata(&Pair(true, 7_u32) as &Pair<bool, dyn Display>);
     unsafe {
-        let address_1: usize = std::mem::transmute(vtable_1);
-        let address_2: usize = std::mem::transmute(vtable_2);
-        let address_3: usize = std::mem::transmute(vtable_3);
-        let address_4: usize = std::mem::transmute(vtable_4);
-        let address_5: usize = std::mem::transmute(vtable_5);
+        let address_1: *const () = std::mem::transmute(vtable_1);
+        let address_2: *const () = std::mem::transmute(vtable_2);
+        let address_3: *const () = std::mem::transmute(vtable_3);
+        let address_4: *const () = std::mem::transmute(vtable_4);
+        let address_5: *const () = std::mem::transmute(vtable_5);
         // Different trait => different vtable pointer
         assert_ne!(address_1, address_2);
         // Different erased type => different vtable pointer
@@ -536,7 +565,7 @@ fn dyn_metadata() {
     assert_eq!(meta.align_of(), std::mem::align_of::<Something>());
     assert_eq!(meta.layout(), std::alloc::Layout::new::<Something>());
 
-    assert!(format!("{:?}", meta).starts_with("DynMetadata(0x"));
+    assert!(format!("{meta:?}").starts_with("DynMetadata(0x"));
 }
 
 #[test]
@@ -672,6 +701,83 @@ fn thin_box() {
                 drop_in_place::<T>(&mut **self);
                 dealloc(self.ptr.cast().as_ptr(), layout);
             }
+        }
+    }
+}
+
+#[test]
+fn nonnull_tagged_pointer_with_provenance() {
+    let raw_pointer = Box::into_raw(Box::new(10));
+
+    let mut p = TaggedPointer::new(raw_pointer).unwrap();
+    assert_eq!(p.tag(), 0);
+
+    p.set_tag(1);
+    assert_eq!(p.tag(), 1);
+    assert_eq!(unsafe { *p.pointer().as_ptr() }, 10);
+
+    p.set_tag(3);
+    assert_eq!(p.tag(), 3);
+    assert_eq!(unsafe { *p.pointer().as_ptr() }, 10);
+
+    unsafe { Box::from_raw(p.pointer().as_ptr()) };
+
+    /// A non-null pointer type which carries several bits of metadata and maintains provenance.
+    #[repr(transparent)]
+    pub struct TaggedPointer<T>(NonNull<T>);
+
+    impl<T> Clone for TaggedPointer<T> {
+        fn clone(&self) -> Self {
+            Self(self.0)
+        }
+    }
+
+    impl<T> Copy for TaggedPointer<T> {}
+
+    impl<T> TaggedPointer<T> {
+        /// The ABI-required minimum alignment of the `P` type.
+        pub const ALIGNMENT: usize = core::mem::align_of::<T>();
+        /// A mask for data-carrying bits of the address.
+        pub const DATA_MASK: usize = !Self::ADDRESS_MASK;
+        /// Number of available bits of storage in the address.
+        pub const NUM_BITS: u32 = Self::ALIGNMENT.trailing_zeros();
+        /// A mask for the non-data-carrying bits of the address.
+        pub const ADDRESS_MASK: usize = usize::MAX << Self::NUM_BITS;
+
+        /// Create a new tagged pointer from a possibly null pointer.
+        pub fn new(pointer: *mut T) -> Option<TaggedPointer<T>> {
+            Some(TaggedPointer(NonNull::new(pointer)?))
+        }
+
+        /// Consume this tagged pointer and produce a raw mutable pointer to the
+        /// memory location.
+        pub fn pointer(self) -> NonNull<T> {
+            // SAFETY: The `addr` guaranteed to have bits set in the Self::ADDRESS_MASK, so the result will be non-null.
+            self.0.map_addr(|addr| unsafe {
+                NonZeroUsize::new_unchecked(addr.get() & Self::ADDRESS_MASK)
+            })
+        }
+
+        /// Consume this tagged pointer and produce the data it carries.
+        pub fn tag(&self) -> usize {
+            self.0.addr().get() & Self::DATA_MASK
+        }
+
+        /// Update the data this tagged pointer carries to a new value.
+        pub fn set_tag(&mut self, data: usize) {
+            assert_eq!(
+                data & Self::ADDRESS_MASK,
+                0,
+                "cannot set more data beyond the lowest NUM_BITS"
+            );
+            let data = data & Self::DATA_MASK;
+
+            // SAFETY: This value will always be non-zero because the upper bits (from
+            // ADDRESS_MASK) will always be non-zero. This a property of the type and its
+            // construction.
+            self.0 = self.0.map_addr(|addr| unsafe {
+                NonZeroUsize::new_unchecked((addr.get() & Self::ADDRESS_MASK) | data)
+            })
         }
     }
 }

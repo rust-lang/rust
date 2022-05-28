@@ -237,17 +237,16 @@ impl Direction for Backward {
                 // Apply terminator-specific edge effects.
                 //
                 // FIXME(ecstaticmorse): Avoid cloning the exit state unconditionally.
-                mir::TerminatorKind::Call { destination: Some((return_place, dest)), .. }
-                    if dest == bb =>
-                {
+                mir::TerminatorKind::Call { destination, target: Some(dest), .. } if dest == bb => {
                     let mut tmp = exit_state.clone();
                     analysis.apply_call_return_effect(
                         &mut tmp,
                         pred,
-                        CallReturnPlaces::Call(return_place),
+                        CallReturnPlaces::Call(destination),
                     );
                     propagate(pred, &tmp);
                 }
+
                 mir::TerminatorKind::InlineAsm {
                     destination: Some(dest), ref operands, ..
                 } if dest == bb => {
@@ -264,6 +263,23 @@ impl Direction for Backward {
                     let mut tmp = exit_state.clone();
                     analysis.apply_yield_resume_effect(&mut tmp, resume, resume_arg);
                     propagate(pred, &tmp);
+                }
+
+                mir::TerminatorKind::SwitchInt { targets: _, ref discr, switch_ty: _ } => {
+                    let mut applier = BackwardSwitchIntEdgeEffectsApplier {
+                        body,
+                        pred,
+                        exit_state,
+                        bb,
+                        propagate: &mut propagate,
+                        effects_applied: false,
+                    };
+
+                    analysis.apply_switch_int_edge_effects(pred, discr, &mut applier);
+
+                    if !applier.effects_applied {
+                        propagate(pred, exit_state)
+                    }
                 }
 
                 // Ignore dead unwinds.
@@ -283,6 +299,38 @@ impl Direction for Backward {
                 _ => propagate(pred, exit_state),
             }
         }
+    }
+}
+
+struct BackwardSwitchIntEdgeEffectsApplier<'a, 'tcx, D, F> {
+    body: &'a mir::Body<'tcx>,
+    pred: BasicBlock,
+    exit_state: &'a mut D,
+    bb: BasicBlock,
+    propagate: &'a mut F,
+
+    effects_applied: bool,
+}
+
+impl<D, F> super::SwitchIntEdgeEffects<D> for BackwardSwitchIntEdgeEffectsApplier<'_, '_, D, F>
+where
+    D: Clone,
+    F: FnMut(BasicBlock, &D),
+{
+    fn apply(&mut self, mut apply_edge_effect: impl FnMut(&mut D, SwitchIntTarget)) {
+        assert!(!self.effects_applied);
+
+        let values = &self.body.switch_sources()[&(self.bb, self.pred)];
+        let targets = values.iter().map(|&value| SwitchIntTarget { value, target: self.bb });
+
+        let mut tmp = None;
+        for target in targets {
+            let tmp = opt_clone_from_or_clone(&mut tmp, self.exit_state);
+            apply_edge_effect(tmp, target);
+            (self.propagate)(self.pred, tmp);
+        }
+
+        self.effects_applied = true;
     }
 }
 
@@ -482,20 +530,28 @@ impl Direction for Forward {
                 propagate(target, exit_state);
             }
 
-            Call { cleanup, destination, func: _, args: _, from_hir_call: _, fn_span: _ } => {
+            Call {
+                cleanup,
+                destination,
+                target,
+                func: _,
+                args: _,
+                from_hir_call: _,
+                fn_span: _,
+            } => {
                 if let Some(unwind) = cleanup {
                     if dead_unwinds.map_or(true, |dead| !dead.contains(bb)) {
                         propagate(unwind, exit_state);
                     }
                 }
 
-                if let Some((dest_place, target)) = destination {
+                if let Some(target) = target {
                     // N.B.: This must be done *last*, otherwise the unwind path will see the call
                     // return effect.
                     analysis.apply_call_return_effect(
                         exit_state,
                         bb,
-                        CallReturnPlaces::Call(dest_place),
+                        CallReturnPlaces::Call(destination),
                     );
                     propagate(target, exit_state);
                 }
@@ -528,7 +584,7 @@ impl Direction for Forward {
             }
 
             SwitchInt { ref targets, ref discr, switch_ty: _ } => {
-                let mut applier = SwitchIntEdgeEffectApplier {
+                let mut applier = ForwardSwitchIntEdgeEffectsApplier {
                     exit_state,
                     targets,
                     propagate,
@@ -537,8 +593,11 @@ impl Direction for Forward {
 
                 analysis.apply_switch_int_edge_effects(bb, discr, &mut applier);
 
-                let SwitchIntEdgeEffectApplier {
-                    exit_state, mut propagate, effects_applied, ..
+                let ForwardSwitchIntEdgeEffectsApplier {
+                    exit_state,
+                    mut propagate,
+                    effects_applied,
+                    ..
                 } = applier;
 
                 if !effects_applied {
@@ -551,7 +610,7 @@ impl Direction for Forward {
     }
 }
 
-struct SwitchIntEdgeEffectApplier<'a, D, F> {
+struct ForwardSwitchIntEdgeEffectsApplier<'a, D, F> {
     exit_state: &'a mut D,
     targets: &'a SwitchTargets,
     propagate: F,
@@ -559,7 +618,7 @@ struct SwitchIntEdgeEffectApplier<'a, D, F> {
     effects_applied: bool,
 }
 
-impl<D, F> super::SwitchIntEdgeEffects<D> for SwitchIntEdgeEffectApplier<'_, D, F>
+impl<D, F> super::SwitchIntEdgeEffects<D> for ForwardSwitchIntEdgeEffectsApplier<'_, D, F>
 where
     D: Clone,
     F: FnMut(BasicBlock, &D),

@@ -125,7 +125,7 @@ where
     }
 
     fn target(&self, edge: &Self::Edge) -> Self::Node {
-        self.body[edge.source].terminator().successors().nth(edge.index).copied().unwrap()
+        self.body[edge.source].terminator().successors().nth(edge.index).unwrap()
     }
 }
 
@@ -218,7 +218,7 @@ where
         self.results.seek_to_block_end(block);
         if self.results.get() != &block_start_state || A::Direction::is_backward() {
             let after_terminator_name = match terminator.kind {
-                mir::TerminatorKind::Call { destination: Some(_), .. } => "(on unwind)",
+                mir::TerminatorKind::Call { target: Some(_), .. } => "(on unwind)",
                 _ => "(on end)",
             };
 
@@ -231,14 +231,14 @@ where
         // for the basic block itself. That way, we could display terminator-specific effects for
         // backward dataflow analyses as well as effects for `SwitchInt` terminators.
         match terminator.kind {
-            mir::TerminatorKind::Call { destination: Some((return_place, _)), .. } => {
+            mir::TerminatorKind::Call { destination, .. } => {
                 self.write_row(w, "", "(on successful return)", |this, w, fmt| {
                     let state_on_unwind = this.results.get().clone();
                     this.results.apply_custom_effect(|analysis, state| {
                         analysis.apply_call_return_effect(
                             state,
                             block,
-                            CallReturnPlaces::Call(return_place),
+                            CallReturnPlaces::Call(destination),
                         );
                     });
 
@@ -628,9 +628,8 @@ where
         ret
     });
 
-    let mut html_diff = match html_diff {
-        Cow::Borrowed(_) => return raw_diff,
-        Cow::Owned(s) => s,
+    let Cow::Owned(mut html_diff) = html_diff else {
+        return raw_diff;
     };
 
     if inside_font_tag {

@@ -67,9 +67,9 @@ and resolved paths.
 
 [`T-AST`] issues will generally need you to match against a predefined syntax structure.
 To figure out how this syntax structure is encoded in the AST, it is recommended to run
-`rustc -Z ast-json` on an example of the structure and compare with the [nodes in the AST docs].
+`rustc -Z unpretty=ast-tree` on an example of the structure and compare with the [nodes in the AST docs].
 Usually the lint will end up to be a nested series of matches and ifs, [like so][deep-nesting].
-But we can make it nest-less by using [if_chain] macro, [like this][nest-less].
+But we can make it nest-less by using [let chains], [like this][nest-less].
 
 [`E-medium`] issues are generally pretty easy too, though it's recommended you work on an [`good-first-issue`]
 first. Sometimes they are only somewhat involved code wise, but not difficult per-se.
@@ -87,9 +87,9 @@ an AST expression). `match_def_path()` in Clippy's `utils` module can also be us
 [`E-medium`]: https://github.com/rust-lang/rust-clippy/labels/E-medium
 [`ty`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty
 [nodes in the AST docs]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/ast/
-[deep-nesting]: https://github.com/rust-lang/rust-clippy/blob/557f6848bd5b7183f55c1e1522a326e9e1df6030/clippy_lints/src/mem_forget.rs#L29-L43
-[if_chain]: https://docs.rs/if_chain/*/if_chain
-[nest-less]: https://github.com/rust-lang/rust-clippy/blob/557f6848bd5b7183f55c1e1522a326e9e1df6030/clippy_lints/src/bit_mask.rs#L124-L150
+[deep-nesting]: https://github.com/rust-lang/rust-clippy/blob/5e4f0922911536f80d9591180fa604229ac13939/clippy_lints/src/mem_forget.rs#L31-L45
+[let chains]: https://github.com/rust-lang/rust/pull/94927
+[nest-less]: https://github.com/rust-lang/rust-clippy/blob/5e4f0922911536f80d9591180fa604229ac13939/clippy_lints/src/bit_mask.rs#L133-L159
 
 ## Writing code
 

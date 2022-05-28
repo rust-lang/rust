@@ -333,7 +333,7 @@ impl Duration {
     ///
     /// [`subsec_nanos`]: Duration::subsec_nanos
     #[stable(feature = "duration", since = "1.3.0")]
-    #[rustc_const_stable(feature = "duration", since = "1.32.0")]
+    #[rustc_const_stable(feature = "duration_consts", since = "1.32.0")]
     #[must_use]
     #[inline]
     pub const fn as_secs(&self) -> u64 {
@@ -356,7 +356,7 @@ impl Duration {
     /// assert_eq!(duration.subsec_millis(), 432);
     /// ```
     #[stable(feature = "duration_extras", since = "1.27.0")]
-    #[rustc_const_stable(feature = "duration_extras", since = "1.32.0")]
+    #[rustc_const_stable(feature = "duration_consts", since = "1.32.0")]
     #[must_use]
     #[inline]
     pub const fn subsec_millis(&self) -> u32 {
@@ -379,7 +379,7 @@ impl Duration {
     /// assert_eq!(duration.subsec_micros(), 234_567);
     /// ```
     #[stable(feature = "duration_extras", since = "1.27.0")]
-    #[rustc_const_stable(feature = "duration_extras", since = "1.32.0")]
+    #[rustc_const_stable(feature = "duration_consts", since = "1.32.0")]
     #[must_use]
     #[inline]
     pub const fn subsec_micros(&self) -> u32 {
@@ -402,7 +402,7 @@ impl Duration {
     /// assert_eq!(duration.subsec_nanos(), 10_000_000);
     /// ```
     #[stable(feature = "duration", since = "1.3.0")]
-    #[rustc_const_stable(feature = "duration", since = "1.32.0")]
+    #[rustc_const_stable(feature = "duration_consts", since = "1.32.0")]
     #[must_use]
     #[inline]
     pub const fn subsec_nanos(&self) -> u32 {
@@ -711,14 +711,28 @@ impl Duration {
     /// as `f64`.
     ///
     /// # Panics
-    /// This constructor will panic if `secs` is not finite, negative or overflows `Duration`.
+    /// This constructor will panic if `secs` is negative, overflows `Duration` or not finite.
     ///
     /// # Examples
     /// ```
     /// use std::time::Duration;
     ///
-    /// let dur = Duration::from_secs_f64(2.7);
-    /// assert_eq!(dur, Duration::new(2, 700_000_000));
+    /// let res = Duration::from_secs_f64(0.0);
+    /// assert_eq!(res, Duration::new(0, 0));
+    /// let res = Duration::from_secs_f64(1e-20);
+    /// assert_eq!(res, Duration::new(0, 0));
+    /// let res = Duration::from_secs_f64(4.2e-7);
+    /// assert_eq!(res, Duration::new(0, 420));
+    /// let res = Duration::from_secs_f64(2.7);
+    /// assert_eq!(res, Duration::new(2, 700_000_000));
+    /// let res = Duration::from_secs_f64(3e10);
+    /// assert_eq!(res, Duration::new(30_000_000_000, 0));
+    /// // subnormal float
+    /// let res = Duration::from_secs_f64(f64::from_bits(1));
+    /// assert_eq!(res, Duration::new(0, 0));
+    /// // conversion uses rounding
+    /// let res = Duration::from_secs_f64(0.999e-9);
+    /// assert_eq!(res, Duration::new(0, 1));
     /// ```
     #[stable(feature = "duration_float", since = "1.38.0")]
     #[must_use]
@@ -731,55 +745,32 @@ impl Duration {
         }
     }
 
-    /// The checked version of [`from_secs_f64`].
-    ///
-    /// [`from_secs_f64`]: Duration::from_secs_f64
-    ///
-    /// This constructor will return an `Err` if `secs` is not finite, negative or overflows `Duration`.
-    ///
-    /// # Examples
-    /// ```
-    /// #![feature(duration_checked_float)]
-    /// use std::time::Duration;
-    ///
-    /// let dur = Duration::try_from_secs_f64(2.7);
-    /// assert_eq!(dur, Ok(Duration::new(2, 700_000_000)));
-    ///
-    /// let negative = Duration::try_from_secs_f64(-5.0);
-    /// assert!(negative.is_err());
-    /// ```
-    #[unstable(feature = "duration_checked_float", issue = "83400")]
-    #[inline]
-    pub const fn try_from_secs_f64(secs: f64) -> Result<Duration, FromSecsError> {
-        const MAX_NANOS_F64: f64 = ((u64::MAX as u128 + 1) * (NANOS_PER_SEC as u128)) as f64;
-        let nanos = secs * (NANOS_PER_SEC as f64);
-        if !nanos.is_finite() {
-            Err(FromSecsError { kind: FromSecsErrorKind::NonFinite })
-        } else if nanos >= MAX_NANOS_F64 {
-            Err(FromSecsError { kind: FromSecsErrorKind::Overflow })
-        } else if nanos < 0.0 {
-            Err(FromSecsError { kind: FromSecsErrorKind::Negative })
-        } else {
-            let nanos = nanos as u128;
-            Ok(Duration {
-                secs: (nanos / (NANOS_PER_SEC as u128)) as u64,
-                nanos: (nanos % (NANOS_PER_SEC as u128)) as u32,
-            })
-        }
-    }
-
     /// Creates a new `Duration` from the specified number of seconds represented
     /// as `f32`.
     ///
     /// # Panics
-    /// This constructor will panic if `secs` is not finite, negative or overflows `Duration`.
+    /// This constructor will panic if `secs` is negative, overflows `Duration` or not finite.
     ///
     /// # Examples
     /// ```
     /// use std::time::Duration;
     ///
-    /// let dur = Duration::from_secs_f32(2.7);
-    /// assert_eq!(dur, Duration::new(2, 700_000_000));
+    /// let res = Duration::from_secs_f32(0.0);
+    /// assert_eq!(res, Duration::new(0, 0));
+    /// let res = Duration::from_secs_f32(1e-20);
+    /// assert_eq!(res, Duration::new(0, 0));
+    /// let res = Duration::from_secs_f32(4.2e-7);
+    /// assert_eq!(res, Duration::new(0, 420));
+    /// let res = Duration::from_secs_f32(2.7);
+    /// assert_eq!(res, Duration::new(2, 700_000_048));
+    /// let res = Duration::from_secs_f32(3e10);
+    /// assert_eq!(res, Duration::new(30_000_001_024, 0));
+    /// // subnormal float
+    /// let res = Duration::from_secs_f32(f32::from_bits(1));
+    /// assert_eq!(res, Duration::new(0, 0));
+    /// // conversion uses rounding
+    /// let res = Duration::from_secs_f32(0.999e-9);
+    /// assert_eq!(res, Duration::new(0, 1));
     /// ```
     #[stable(feature = "duration_float", since = "1.38.0")]
     #[must_use]
@@ -792,47 +783,10 @@ impl Duration {
         }
     }
 
-    /// The checked version of [`from_secs_f32`].
-    ///
-    /// [`from_secs_f32`]: Duration::from_secs_f32
-    ///
-    /// This constructor will return an `Err` if `secs` is not finite, negative or overflows `Duration`.
-    ///
-    /// # Examples
-    /// ```
-    /// #![feature(duration_checked_float)]
-    /// use std::time::Duration;
-    ///
-    /// let dur = Duration::try_from_secs_f32(2.7);
-    /// assert_eq!(dur, Ok(Duration::new(2, 700_000_000)));
-    ///
-    /// let negative = Duration::try_from_secs_f32(-5.0);
-    /// assert!(negative.is_err());
-    /// ```
-    #[unstable(feature = "duration_checked_float", issue = "83400")]
-    #[inline]
-    pub const fn try_from_secs_f32(secs: f32) -> Result<Duration, FromSecsError> {
-        const MAX_NANOS_F32: f32 = ((u64::MAX as u128 + 1) * (NANOS_PER_SEC as u128)) as f32;
-        let nanos = secs * (NANOS_PER_SEC as f32);
-        if !nanos.is_finite() {
-            Err(FromSecsError { kind: FromSecsErrorKind::NonFinite })
-        } else if nanos >= MAX_NANOS_F32 {
-            Err(FromSecsError { kind: FromSecsErrorKind::Overflow })
-        } else if nanos < 0.0 {
-            Err(FromSecsError { kind: FromSecsErrorKind::Negative })
-        } else {
-            let nanos = nanos as u128;
-            Ok(Duration {
-                secs: (nanos / (NANOS_PER_SEC as u128)) as u64,
-                nanos: (nanos % (NANOS_PER_SEC as u128)) as u32,
-            })
-        }
-    }
-
     /// Multiplies `Duration` by `f64`.
     ///
     /// # Panics
-    /// This method will panic if result is not finite, negative or overflows `Duration`.
+    /// This method will panic if result is negative, overflows `Duration` or not finite.
     ///
     /// # Examples
     /// ```
@@ -854,17 +808,15 @@ impl Duration {
     /// Multiplies `Duration` by `f32`.
     ///
     /// # Panics
-    /// This method will panic if result is not finite, negative or overflows `Duration`.
+    /// This method will panic if result is negative, overflows `Duration` or not finite.
     ///
     /// # Examples
     /// ```
     /// use std::time::Duration;
     ///
     /// let dur = Duration::new(2, 700_000_000);
-    /// // note that due to rounding errors result is slightly different
-    /// // from 8.478 and 847800.0
-    /// assert_eq!(dur.mul_f32(3.14), Duration::new(8, 478_000_640));
-    /// assert_eq!(dur.mul_f32(3.14e5), Duration::new(847799, 969_120_256));
+    /// assert_eq!(dur.mul_f32(3.14), Duration::new(8, 478_000_641));
+    /// assert_eq!(dur.mul_f32(3.14e5), Duration::new(847800, 0));
     /// ```
     #[stable(feature = "duration_float", since = "1.38.0")]
     #[must_use = "this returns the result of the operation, \
@@ -878,7 +830,7 @@ impl Duration {
     /// Divide `Duration` by `f64`.
     ///
     /// # Panics
-    /// This method will panic if result is not finite, negative or overflows `Duration`.
+    /// This method will panic if result is negative, overflows `Duration` or not finite.
     ///
     /// # Examples
     /// ```
@@ -886,8 +838,7 @@ impl Duration {
     ///
     /// let dur = Duration::new(2, 700_000_000);
     /// assert_eq!(dur.div_f64(3.14), Duration::new(0, 859_872_611));
-    /// // note that truncation is used, not rounding
-    /// assert_eq!(dur.div_f64(3.14e5), Duration::new(0, 8_598));
+    /// assert_eq!(dur.div_f64(3.14e5), Duration::new(0, 8_599));
     /// ```
     #[stable(feature = "duration_float", since = "1.38.0")]
     #[must_use = "this returns the result of the operation, \
@@ -901,7 +852,7 @@ impl Duration {
     /// Divide `Duration` by `f32`.
     ///
     /// # Panics
-    /// This method will panic if result is not finite, negative or overflows `Duration`.
+    /// This method will panic if result is negative, overflows `Duration` or not finite.
     ///
     /// # Examples
     /// ```
@@ -910,9 +861,8 @@ impl Duration {
     /// let dur = Duration::new(2, 700_000_000);
     /// // note that due to rounding errors result is slightly
     /// // different from 0.859_872_611
-    /// assert_eq!(dur.div_f32(3.14), Duration::new(0, 859_872_576));
-    /// // note that truncation is used, not rounding
-    /// assert_eq!(dur.div_f32(3.14e5), Duration::new(0, 8_598));
+    /// assert_eq!(dur.div_f32(3.14), Duration::new(0, 859_872_580));
+    /// assert_eq!(dur.div_f32(3.14e5), Duration::new(0, 8_599));
     /// ```
     #[stable(feature = "duration_float", since = "1.38.0")]
     #[must_use = "this returns the result of the operation, \
@@ -1262,38 +1212,269 @@ impl fmt::Debug for Duration {
 /// use std::time::Duration;
 ///
 /// if let Err(e) = Duration::try_from_secs_f32(-1.0) {
-///     println!("Failed conversion to Duration: {}", e);
+///     println!("Failed conversion to Duration: {e}");
 /// }
 /// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[unstable(feature = "duration_checked_float", issue = "83400")]
-pub struct FromSecsError {
-    kind: FromSecsErrorKind,
+pub struct FromFloatSecsError {
+    kind: FromFloatSecsErrorKind,
 }
 
-impl FromSecsError {
+impl FromFloatSecsError {
     const fn description(&self) -> &'static str {
         match self.kind {
-            FromSecsErrorKind::NonFinite => "non-finite value when converting float to duration",
-            FromSecsErrorKind::Overflow => "overflow when converting float to duration",
-            FromSecsErrorKind::Negative => "negative value when converting float to duration",
+            FromFloatSecsErrorKind::Negative => {
+                "can not convert float seconds to Duration: value is negative"
+            }
+            FromFloatSecsErrorKind::OverflowOrNan => {
+                "can not convert float seconds to Duration: value is either too big or NaN"
+            }
         }
     }
 }
 
 #[unstable(feature = "duration_checked_float", issue = "83400")]
-impl fmt::Display for FromSecsError {
+impl fmt::Display for FromFloatSecsError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(self.description(), f)
+        self.description().fmt(f)
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-enum FromSecsErrorKind {
-    // Value is not a finite value (either + or - infinity or NaN).
-    NonFinite,
-    // Value is too large to store in a `Duration`.
-    Overflow,
+enum FromFloatSecsErrorKind {
     // Value is negative.
     Negative,
+    // Value is either too big to be represented as `Duration` or `NaN`.
+    OverflowOrNan,
+}
+
+macro_rules! try_from_secs {
+    (
+        secs = $secs: expr,
+        mantissa_bits = $mant_bits: literal,
+        exponent_bits = $exp_bits: literal,
+        offset = $offset: literal,
+        bits_ty = $bits_ty:ty,
+        double_ty = $double_ty:ty,
+    ) => {{
+        const MIN_EXP: i16 = 1 - (1i16 << $exp_bits) / 2;
+        const MANT_MASK: $bits_ty = (1 << $mant_bits) - 1;
+        const EXP_MASK: $bits_ty = (1 << $exp_bits) - 1;
+
+        if $secs.is_sign_negative() {
+            return Err(FromFloatSecsError { kind: FromFloatSecsErrorKind::Negative });
+        }
+
+        let bits = $secs.to_bits();
+        let mant = (bits & MANT_MASK) | (MANT_MASK + 1);
+        let exp = ((bits >> $mant_bits) & EXP_MASK) as i16 + MIN_EXP;
+
+        let (secs, nanos) = if exp < -31 {
+            // the input represents less than 1ns and can not be rounded to it
+            (0u64, 0u32)
+        } else if exp < 0 {
+            // the input is less than 1 second
+            let t = <$double_ty>::from(mant) << ($offset + exp);
+            let nanos_offset = $mant_bits + $offset;
+            let nanos_tmp = u128::from(NANOS_PER_SEC) * u128::from(t);
+            let nanos = (nanos_tmp >> nanos_offset) as u32;
+
+            let rem_mask = (1 << nanos_offset) - 1;
+            let rem_msb_mask = 1 << (nanos_offset - 1);
+            let rem = nanos_tmp & rem_mask;
+            let is_tie = rem == rem_msb_mask;
+            let is_even = (nanos & 1) == 0;
+            let rem_msb = nanos_tmp & rem_msb_mask == 0;
+            let add_ns = !(rem_msb || (is_even && is_tie));
+
+            // f32 does not have enough presicion to trigger the second branch
+            // since it can not represent numbers between 0.999_999_940_395 and 1.0.
+            let nanos = nanos + add_ns as u32;
+            if ($mant_bits == 23) || (nanos != NANOS_PER_SEC) { (0, nanos) } else { (1, 0) }
+        } else if exp < $mant_bits {
+            let secs = u64::from(mant >> ($mant_bits - exp));
+            let t = <$double_ty>::from((mant << exp) & MANT_MASK);
+            let nanos_offset = $mant_bits;
+            let nanos_tmp = <$double_ty>::from(NANOS_PER_SEC) * t;
+            let nanos = (nanos_tmp >> nanos_offset) as u32;
+
+            let rem_mask = (1 << nanos_offset) - 1;
+            let rem_msb_mask = 1 << (nanos_offset - 1);
+            let rem = nanos_tmp & rem_mask;
+            let is_tie = rem == rem_msb_mask;
+            let is_even = (nanos & 1) == 0;
+            let rem_msb = nanos_tmp & rem_msb_mask == 0;
+            let add_ns = !(rem_msb || (is_even && is_tie));
+
+            // f32 does not have enough presicion to trigger the second branch.
+            // For example, it can not represent numbers between 1.999_999_880...
+            // and 2.0. Bigger values result in even smaller presicion of the
+            // fractional part.
+            let nanos = nanos + add_ns as u32;
+            if ($mant_bits == 23) || (nanos != NANOS_PER_SEC) {
+                (secs, nanos)
+            } else {
+                (secs + 1, 0)
+            }
+        } else if exp < 64 {
+            // the input has no fractional part
+            let secs = u64::from(mant) << (exp - $mant_bits);
+            (secs, 0)
+        } else {
+            return Err(FromFloatSecsError { kind: FromFloatSecsErrorKind::OverflowOrNan });
+        };
+
+        Ok(Duration { secs, nanos })
+    }};
+}
+
+impl Duration {
+    /// The checked version of [`from_secs_f32`].
+    ///
+    /// [`from_secs_f32`]: Duration::from_secs_f32
+    ///
+    /// This constructor will return an `Err` if `secs` is negative, overflows `Duration` or not finite.
+    ///
+    /// # Examples
+    /// ```
+    /// #![feature(duration_checked_float)]
+    ///
+    /// use std::time::Duration;
+    ///
+    /// let res = Duration::try_from_secs_f32(0.0);
+    /// assert_eq!(res, Ok(Duration::new(0, 0)));
+    /// let res = Duration::try_from_secs_f32(1e-20);
+    /// assert_eq!(res, Ok(Duration::new(0, 0)));
+    /// let res = Duration::try_from_secs_f32(4.2e-7);
+    /// assert_eq!(res, Ok(Duration::new(0, 420)));
+    /// let res = Duration::try_from_secs_f32(2.7);
+    /// assert_eq!(res, Ok(Duration::new(2, 700_000_048)));
+    /// let res = Duration::try_from_secs_f32(3e10);
+    /// assert_eq!(res, Ok(Duration::new(30_000_001_024, 0)));
+    /// // subnormal float:
+    /// let res = Duration::try_from_secs_f32(f32::from_bits(1));
+    /// assert_eq!(res, Ok(Duration::new(0, 0)));
+    ///
+    /// let res = Duration::try_from_secs_f32(-5.0);
+    /// assert!(res.is_err());
+    /// let res = Duration::try_from_secs_f32(f32::NAN);
+    /// assert!(res.is_err());
+    /// let res = Duration::try_from_secs_f32(2e19);
+    /// assert!(res.is_err());
+    ///
+    /// // the conversion uses rounding with tie resolution to even
+    /// let res = Duration::try_from_secs_f32(0.999e-9);
+    /// assert_eq!(res, Ok(Duration::new(0, 1)));
+    ///
+    /// // this float represents exactly 976562.5e-9
+    /// let val = f32::from_bits(0x3A80_0000);
+    /// let res = Duration::try_from_secs_f32(val);
+    /// assert_eq!(res, Ok(Duration::new(0, 976_562)));
+    ///
+    /// // this float represents exactly 2929687.5e-9
+    /// let val = f32::from_bits(0x3B40_0000);
+    /// let res = Duration::try_from_secs_f32(val);
+    /// assert_eq!(res, Ok(Duration::new(0, 2_929_688)));
+    ///
+    /// // this float represents exactly 1.000_976_562_5
+    /// let val = f32::from_bits(0x3F802000);
+    /// let res = Duration::try_from_secs_f32(val);
+    /// assert_eq!(res, Ok(Duration::new(1, 976_562)));
+    ///
+    /// // this float represents exactly 1.002_929_687_5
+    /// let val = f32::from_bits(0x3F806000);
+    /// let res = Duration::try_from_secs_f32(val);
+    /// assert_eq!(res, Ok(Duration::new(1, 2_929_688)));
+    /// ```
+    #[unstable(feature = "duration_checked_float", issue = "83400")]
+    #[inline]
+    pub const fn try_from_secs_f32(secs: f32) -> Result<Duration, FromFloatSecsError> {
+        try_from_secs!(
+            secs = secs,
+            mantissa_bits = 23,
+            exponent_bits = 8,
+            offset = 41,
+            bits_ty = u32,
+            double_ty = u64,
+        )
+    }
+
+    /// The checked version of [`from_secs_f64`].
+    ///
+    /// [`from_secs_f64`]: Duration::from_secs_f64
+    ///
+    /// This constructor will return an `Err` if `secs` is negative, overflows `Duration` or not finite.
+    ///
+    /// # Examples
+    /// ```
+    /// #![feature(duration_checked_float)]
+    ///
+    /// use std::time::Duration;
+    ///
+    /// let res = Duration::try_from_secs_f64(0.0);
+    /// assert_eq!(res, Ok(Duration::new(0, 0)));
+    /// let res = Duration::try_from_secs_f64(1e-20);
+    /// assert_eq!(res, Ok(Duration::new(0, 0)));
+    /// let res = Duration::try_from_secs_f64(4.2e-7);
+    /// assert_eq!(res, Ok(Duration::new(0, 420)));
+    /// let res = Duration::try_from_secs_f64(2.7);
+    /// assert_eq!(res, Ok(Duration::new(2, 700_000_000)));
+    /// let res = Duration::try_from_secs_f64(3e10);
+    /// assert_eq!(res, Ok(Duration::new(30_000_000_000, 0)));
+    /// // subnormal float
+    /// let res = Duration::try_from_secs_f64(f64::from_bits(1));
+    /// assert_eq!(res, Ok(Duration::new(0, 0)));
+    ///
+    /// let res = Duration::try_from_secs_f64(-5.0);
+    /// assert!(res.is_err());
+    /// let res = Duration::try_from_secs_f64(f64::NAN);
+    /// assert!(res.is_err());
+    /// let res = Duration::try_from_secs_f64(2e19);
+    /// assert!(res.is_err());
+    ///
+    /// // the conversion uses rounding with tie resolution to even
+    /// let res = Duration::try_from_secs_f64(0.999e-9);
+    /// assert_eq!(res, Ok(Duration::new(0, 1)));
+    /// let res = Duration::try_from_secs_f64(0.999_999_999_499);
+    /// assert_eq!(res, Ok(Duration::new(0, 999_999_999)));
+    /// let res = Duration::try_from_secs_f64(0.999_999_999_501);
+    /// assert_eq!(res, Ok(Duration::new(1, 0)));
+    /// let res = Duration::try_from_secs_f64(42.999_999_999_499);
+    /// assert_eq!(res, Ok(Duration::new(42, 999_999_999)));
+    /// let res = Duration::try_from_secs_f64(42.999_999_999_501);
+    /// assert_eq!(res, Ok(Duration::new(43, 0)));
+    ///
+    /// // this float represents exactly 976562.5e-9
+    /// let val = f64::from_bits(0x3F50_0000_0000_0000);
+    /// let res = Duration::try_from_secs_f64(val);
+    /// assert_eq!(res, Ok(Duration::new(0, 976_562)));
+    ///
+    /// // this float represents exactly 2929687.5e-9
+    /// let val = f64::from_bits(0x3F68_0000_0000_0000);
+    /// let res = Duration::try_from_secs_f64(val);
+    /// assert_eq!(res, Ok(Duration::new(0, 2_929_688)));
+    ///
+    /// // this float represents exactly 1.000_976_562_5
+    /// let val = f64::from_bits(0x3FF0_0400_0000_0000);
+    /// let res = Duration::try_from_secs_f64(val);
+    /// assert_eq!(res, Ok(Duration::new(1, 976_562)));
+    ///
+    /// // this float represents exactly 1.002_929_687_5
+    /// let val = f64::from_bits(0x3_FF00_C000_0000_000);
+    /// let res = Duration::try_from_secs_f64(val);
+    /// assert_eq!(res, Ok(Duration::new(1, 2_929_688)));
+    /// ```
+    #[unstable(feature = "duration_checked_float", issue = "83400")]
+    #[inline]
+    pub const fn try_from_secs_f64(secs: f64) -> Result<Duration, FromFloatSecsError> {
+        try_from_secs!(
+            secs = secs,
+            mantissa_bits = 52,
+            exponent_bits = 11,
+            offset = 44,
+            bits_ty = u64,
+            double_ty = u128,
+        )
+    }
 }

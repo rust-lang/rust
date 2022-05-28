@@ -1,3 +1,4 @@
+use std::fmt::Write as _;
 use std::fs::{create_dir_all, read_to_string, File};
 use std::io::prelude::*;
 use std::path::Path;
@@ -35,7 +36,7 @@ fn extract_leading_metadata(s: &str) -> (Vec<&str>, &str) {
 
 /// Render `input` (e.g., "foo.md") into an HTML file in `output`
 /// (e.g., output = "bar" => "bar/foo.html").
-crate fn render<P: AsRef<Path>>(
+pub(crate) fn render<P: AsRef<Path>>(
     input: P,
     options: RenderOptions,
     edition: Edition,
@@ -51,8 +52,8 @@ crate fn render<P: AsRef<Path>>(
 
     let mut css = String::new();
     for name in &options.markdown_css {
-        let s = format!("<link rel=\"stylesheet\" type=\"text/css\" href=\"{}\">\n", name);
-        css.push_str(&s)
+        write!(css, r#"<link rel="stylesheet" type="text/css" href="{name}">"#)
+            .expect("Writing to a String can't fail");
     }
 
     let input_str = read_to_string(input).map_err(|err| format!("{}: {}", input.display(), err))?;
@@ -126,7 +127,7 @@ crate fn render<P: AsRef<Path>>(
 }
 
 /// Runs any tests/code examples in the markdown file `input`.
-crate fn test(options: Options) -> Result<(), String> {
+pub(crate) fn test(options: Options) -> Result<(), String> {
     let input_str = read_to_string(&options.input)
         .map_err(|err| format!("{}: {}", options.input.display(), err))?;
     let mut opts = GlobalTestOptions::default();

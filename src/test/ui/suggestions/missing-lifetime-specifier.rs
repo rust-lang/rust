@@ -45,10 +45,12 @@ thread_local! {
     //~| ERROR this union takes 2 lifetime arguments but 1 lifetime argument was supplied
     //~| ERROR this union takes 2 lifetime arguments but 1 lifetime argument was supplied
     //~| ERROR this union takes 2 lifetime arguments but 1 lifetime argument was supplied
+    //~| ERROR this union takes 2 lifetime arguments but 1 lifetime argument was supplied
 }
 thread_local! {
     static f: RefCell<HashMap<i32, Vec<Vec<&Tar<'static, i32>>>>> = RefCell::new(HashMap::new());
     //~^ ERROR this trait takes 2 lifetime arguments but 1 lifetime argument was supplied
+    //~| ERROR this trait takes 2 lifetime arguments but 1 lifetime argument was supplied
     //~| ERROR this trait takes 2 lifetime arguments but 1 lifetime argument was supplied
     //~| ERROR this trait takes 2 lifetime arguments but 1 lifetime argument was supplied
     //~| ERROR this trait takes 2 lifetime arguments but 1 lifetime argument was supplied

@@ -56,8 +56,11 @@ LL |     struct_().await.method();
    |               ++++++
 
 error[E0308]: mismatched types
-  --> $DIR/issue-61076.rs:90:9
+  --> $DIR/issue-61076.rs:91:9
    |
+LL |     match tuple() {
+   |           ------- this expression has type `impl Future<Output = Tuple>`
+LL |
 LL |         Tuple(_) => {}
    |         ^^^^^^^^ expected opaque type, found struct `Tuple`
    |

@@ -1,8 +1,8 @@
 pub trait Foo {
     // @has assoc_consts/trait.Foo.html '//*[@class="rust trait"]' \
-    //      'const FOO: usize;'
+    //      'const FOO: usize = 13usize;'
     // @has - '//*[@id="associatedconstant.FOO"]' 'const FOO: usize'
-    const FOO: usize = 12;
+    const FOO: usize = 12 + 1;
     // @has - '//*[@id="associatedconstant.FOO_NO_DEFAULT"]' 'const FOO_NO_DEFAULT: bool'
     const FOO_NO_DEFAULT: bool;
     // @!has - FOO_HIDDEN

@@ -1,4 +1,4 @@
-# Codegen options
+# Codegen Options
 
 All of these options are passed to `rustc` via the `-C` flag, short for "codegen." You can see
 a version of this list for your exact compiler by running `rustc -C help`.
@@ -176,6 +176,15 @@ The default depends on the [opt-level](#opt-level):
 | 3         | 275 |
 | s         | 75 |
 | z         | 25 |
+
+## instrument-coverage
+
+This option enables instrumentation-based code coverage support. See the
+chapter on [instrumentation-based code coverage] for more information.
+
+Note that while the `-C instrument-coverage` option is stable, the profile data
+format produced by the resulting instrumentation may change, and may not work
+with coverage tools other than those built and shipped with the compiler.
 
 ## link-arg
 
@@ -541,6 +550,21 @@ Supported values for this option are:
 - `symbols` - same as `debuginfo`, but the rest of the symbol table section is
   stripped as well if the linker supports it.
 
+## symbol-mangling-version
+
+This option controls the [name mangling] format for encoding Rust item names
+for the purpose of generating object code and linking.
+
+Supported values for this option are:
+
+* `v0` — The "v0" mangling scheme. The specific format is not specified at
+  this time.
+
+The default if not specified will use a compiler-chosen default which may
+change in the future.
+
+[name mangling]: https://en.wikipedia.org/wiki/Name_mangling
+
 ## target-cpu
 
 This instructs `rustc` to generate code specifically for a particular processor.
@@ -597,5 +621,6 @@ effective only for x86 targets.
 
 [option-emit]: ../command-line-arguments.md#option-emit
 [option-o-optimize]: ../command-line-arguments.md#option-o-optimize
+[instrumentation-based code coverage]: ../instrument-coverage.md
 [profile-guided optimization]: ../profile-guided-optimization.md
 [option-g-debug]: ../command-line-arguments.md#option-g-debug

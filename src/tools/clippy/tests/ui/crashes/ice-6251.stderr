@@ -1,10 +1,8 @@
 error[E0601]: `main` function not found in crate `ice_6251`
-  --> $DIR/ice-6251.rs:4:1
+  --> $DIR/ice-6251.rs:6:2
    |
-LL | / fn bug<T>() -> impl Iterator<Item = [(); { |x: [u8]| x }]> {
-LL | |     std::iter::empty()
-LL | | }
-   | |_^ consider adding a `main` function to `$DIR/ice-6251.rs`
+LL | }
+   |  ^ consider adding a `main` function to `$DIR/ice-6251.rs`
 
 error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
   --> $DIR/ice-6251.rs:4:45

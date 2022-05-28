@@ -18,13 +18,13 @@ macro_rules! bug {
 
 // Any expressions containing macro call `X` that's more complex than `X` itself.
 // Parentheses will work.
-bug!((column!())); //~ ERROR unexpected token: `(7u32)`
+bug!((column!())); //~ ERROR unexpected expression: `(7u32)`
 
 // Original test case.
 
 macro_rules! bug {
     () => {
-        bug!("bug" + stringify!(found)); //~ ERROR unexpected token: `"bug" + "found"`
+        bug!("bug" + stringify!(found)); //~ ERROR unexpected expression: `"bug" + "found"`
     };
     ($test:expr) => {
         #[doc = $test]
@@ -46,7 +46,7 @@ macro_rules! doc_comment {
 macro_rules! some_macro {
     ($t1: ty) => {
         doc_comment! {format!("{coor}", coor = stringify!($t1)).as_str()}
-        //~^ ERROR unexpected token: `{
+        //~^ ERROR unexpected expression: `{
     };
 }
 

@@ -2,13 +2,15 @@
 //! where one region is named and the other is anonymous.
 use crate::infer::error_reporting::nice_region_error::find_anon_type::find_anon_type;
 use crate::infer::error_reporting::nice_region_error::NiceRegionError;
-use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
+use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_middle::ty;
 
 impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     /// When given a `ConcreteFailure` for a function with parameters containing a named region and
     /// an anonymous region, emit an descriptive diagnostic error.
-    pub(super) fn try_report_named_anon_conflict(&self) -> Option<DiagnosticBuilder<'tcx>> {
+    pub(super) fn try_report_named_anon_conflict(
+        &self,
+    ) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>> {
         let (span, sub, sup) = self.regions()?;
 
         debug!(
@@ -48,7 +50,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
 
         // Suggesting to add a `'static` lifetime to a parameter is nearly always incorrect,
         // and can steer users down the wrong path.
-        if *named == ty::ReStatic {
+        if named.is_static() {
             return None;
         }
 

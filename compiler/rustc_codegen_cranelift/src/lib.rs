@@ -1,5 +1,5 @@
-#![feature(rustc_private, decl_macro)]
-#![cfg_attr(feature = "jit", feature(never_type, vec_into_raw_parts, once_cell))]
+#![feature(rustc_private)]
+// Note: please avoid adding other feature gates where possible
 #![warn(rust_2018_idioms)]
 #![warn(unused_lifetimes)]
 #![warn(unreachable_pub)]
@@ -29,7 +29,7 @@ use std::cell::Cell;
 
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_codegen_ssa::CodegenResults;
-use rustc_errors::ErrorReported;
+use rustc_errors::ErrorGuaranteed;
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_session::config::OutputFilenames;
@@ -105,7 +105,6 @@ mod prelude {
     pub(crate) use crate::common::*;
     pub(crate) use crate::debuginfo::{DebugContext, UnwindContext};
     pub(crate) use crate::pointer::Pointer;
-    pub(crate) use crate::trap::*;
     pub(crate) use crate::value_and_place::{CPlace, CPlaceInner, CValue};
 }
 
@@ -196,7 +195,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
             CodegenMode::Aot => driver::aot::run_aot(tcx, config, metadata, need_metadata_module),
             CodegenMode::Jit | CodegenMode::JitLazy => {
                 #[cfg(feature = "jit")]
-                let _: ! = driver::jit::run_jit(tcx, config);
+                driver::jit::run_jit(tcx, config);
 
                 #[cfg(not(feature = "jit"))]
                 tcx.sess.fatal("jit support was disabled when compiling rustc_codegen_cranelift");
@@ -209,7 +208,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
         ongoing_codegen: Box<dyn Any>,
         _sess: &Session,
         _outputs: &OutputFilenames,
-    ) -> Result<(CodegenResults, FxHashMap<WorkProductId, WorkProduct>), ErrorReported> {
+    ) -> Result<(CodegenResults, FxHashMap<WorkProductId, WorkProduct>), ErrorGuaranteed> {
         Ok(*ongoing_codegen
             .downcast::<(CodegenResults, FxHashMap<WorkProductId, WorkProduct>)>()
             .unwrap())
@@ -220,7 +219,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
         sess: &Session,
         codegen_results: CodegenResults,
         outputs: &OutputFilenames,
-    ) -> Result<(), ErrorReported> {
+    ) -> Result<(), ErrorGuaranteed> {
         use rustc_codegen_ssa::back::link::link_binary;
 
         link_binary::<crate::archive::ArArchiveBuilder<'_>>(sess, &codegen_results, outputs)
@@ -256,8 +255,6 @@ fn build_isa(sess: &Session, backend_config: &BackendConfig) -> Box<dyn isa::Tar
     flags_builder.set("enable_simd", "true").unwrap();
 
     flags_builder.set("enable_llvm_abi_extensions", "true").unwrap();
-
-    flags_builder.set("regalloc", &backend_config.regalloc).unwrap();
 
     use rustc_session::config::OptLevel;
     match sess.opts.optimize {
@@ -301,7 +298,10 @@ fn build_isa(sess: &Session, backend_config: &BackendConfig) -> Box<dyn isa::Tar
         }
     };
 
-    isa_builder.finish(flags)
+    match isa_builder.finish(flags) {
+        Ok(target_isa) => target_isa,
+        Err(err) => sess.fatal(&format!("failed to build TargetIsa: {}", err)),
+    }
 }
 
 /// This is the entrypoint for a hot plugged rustc_codegen_cranelift

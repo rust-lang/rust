@@ -23,7 +23,7 @@ pub enum LitError {
 
 impl LitKind {
     /// Converts literal token into a semantic literal.
-    fn from_lit_token(lit: token::Lit) -> Result<LitKind, LitError> {
+    pub fn from_lit_token(lit: token::Lit) -> Result<LitKind, LitError> {
         let token::Lit { kind, symbol, suffix } = lit;
         if suffix.is_some() && !kind.may_have_suffix() {
             return Err(LitError::InvalidSuffix);
@@ -56,25 +56,30 @@ impl LitKind {
                 // new symbol because the string in the LitKind is different to the
                 // string in the token.
                 let s = symbol.as_str();
-                let symbol =
-                    if s.contains(&['\\', '\r']) {
-                        let mut buf = String::with_capacity(s.len());
-                        let mut error = Ok(());
-                        unescape_literal(&s, Mode::Str, &mut |_, unescaped_char| {
-                            match unescaped_char {
-                                Ok(c) => buf.push(c),
-                                Err(err) => {
-                                    if err.is_fatal() {
-                                        error = Err(LitError::LexerError);
-                                    }
+                let symbol = if s.contains(&['\\', '\r']) {
+                    let mut buf = String::with_capacity(s.len());
+                    let mut error = Ok(());
+                    // Force-inlining here is aggressive but the closure is
+                    // called on every char in the string, so it can be
+                    // hot in programs with many long strings.
+                    unescape_literal(
+                        &s,
+                        Mode::Str,
+                        &mut #[inline(always)]
+                        |_, unescaped_char| match unescaped_char {
+                            Ok(c) => buf.push(c),
+                            Err(err) => {
+                                if err.is_fatal() {
+                                    error = Err(LitError::LexerError);
                                 }
                             }
-                        });
-                        error?;
-                        Symbol::intern(&buf)
-                    } else {
-                        symbol
-                    };
+                        },
+                    );
+                    error?;
+                    Symbol::intern(&buf)
+                } else {
+                    symbol
+                };
                 LitKind::Str(symbol, ast::StrStyle::Cooked)
             }
             token::StrRaw(n) => {
@@ -217,10 +222,10 @@ impl Lit {
             }
             token::Literal(lit) => lit,
             token::Interpolated(ref nt) => {
-                if let token::NtExpr(expr) | token::NtLiteral(expr) = &**nt {
-                    if let ast::ExprKind::Lit(lit) = &expr.kind {
-                        return Ok(lit.clone());
-                    }
+                if let token::NtExpr(expr) | token::NtLiteral(expr) = &**nt
+                    && let ast::ExprKind::Lit(lit) = &expr.kind
+                {
+                    return Ok(lit.clone());
                 }
                 return Err(LitError::NotLiteral);
             }
