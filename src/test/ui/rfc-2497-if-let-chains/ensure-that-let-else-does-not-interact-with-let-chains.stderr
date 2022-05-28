@@ -20,23 +20,41 @@ help: wrap the expression in parentheses
 LL |     let Some(n) = (opt && let another = n) else {
    |                   +                      +
 
-error: missing condition for `if` expression
-  --> $DIR/ensure-that-let-else-does-not-interact-with-let-chains.rs:23:7
+error: this `if` expression is missing a block after the condition
+  --> $DIR/ensure-that-let-else-does-not-interact-with-let-chains.rs:23:5
    |
 LL |     if let Some(n) = opt else {
-   |       ^ expected if condition here
+   |     ^^
+   |
+help: add a block here
+  --> $DIR/ensure-that-let-else-does-not-interact-with-let-chains.rs:23:25
+   |
+LL |     if let Some(n) = opt else {
+   |                         ^
 
-error: missing condition for `if` expression
-  --> $DIR/ensure-that-let-else-does-not-interact-with-let-chains.rs:27:7
+error: this `if` expression is missing a block after the condition
+  --> $DIR/ensure-that-let-else-does-not-interact-with-let-chains.rs:27:5
    |
 LL |     if let Some(n) = opt && n == 1 else {
-   |       ^ expected if condition here
+   |     ^^
+   |
+help: add a block here
+  --> $DIR/ensure-that-let-else-does-not-interact-with-let-chains.rs:27:35
+   |
+LL |     if let Some(n) = opt && n == 1 else {
+   |                                   ^
 
-error: missing condition for `if` expression
-  --> $DIR/ensure-that-let-else-does-not-interact-with-let-chains.rs:31:7
+error: this `if` expression is missing a block after the condition
+  --> $DIR/ensure-that-let-else-does-not-interact-with-let-chains.rs:31:5
    |
 LL |     if let Some(n) = opt && let another = n else {
-   |       ^ expected if condition here
+   |     ^^
+   |
+help: add a block here
+  --> $DIR/ensure-that-let-else-does-not-interact-with-let-chains.rs:31:44
+   |
+LL |     if let Some(n) = opt && let another = n else {
+   |                                            ^
 
 error: expected `{`, found keyword `else`
   --> $DIR/ensure-that-let-else-does-not-interact-with-let-chains.rs:37:33

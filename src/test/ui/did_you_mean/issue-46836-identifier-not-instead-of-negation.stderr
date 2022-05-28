@@ -25,10 +25,16 @@ LL |         println!("Then when?");
 error: expected `{`, found `;`
   --> $DIR/issue-46836-identifier-not-instead-of-negation.rs:20:31
    |
-LL |     if not  // lack of braces is [sic]
-   |     -- this `if` expression has a condition, but no block
 LL |         println!("Then when?");
    |                               ^ expected `{`
+   |
+note: the `if` expression is missing a block after this condition
+  --> $DIR/issue-46836-identifier-not-instead-of-negation.rs:19:8
+   |
+LL |       if not  // lack of braces is [sic]
+   |  ________^
+LL | |         println!("Then when?");
+   | |______________________________^
 
 error: unexpected `2` after identifier
   --> $DIR/issue-46836-identifier-not-instead-of-negation.rs:26:24
