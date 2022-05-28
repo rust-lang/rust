@@ -1,31 +1,31 @@
 // run-rustfix
 #[warn(clippy::invisible_characters)]
 fn zero() {
-    print!("Here >​< is a ZWS, and ​another");
+    print!("Here >\u{200B}< is a ZWS, and \u{200B}another");
     print!("This\u{200B}is\u{200B}fine");
-    print!("Here >­< is a SHY, and ­another");
+    print!("Here >\u{AD}< is a SHY, and \u{AD}another");
     print!("This\u{ad}is\u{ad}fine");
-    print!("Here >⁠< is a WJ, and ⁠another");
+    print!("Here >\u{2060}< is a WJ, and \u{2060}another");
     print!("This\u{2060}is\u{2060}fine");
 }
 
 #[warn(clippy::unicode_not_nfc)]
 fn canon() {
-    print!("̀àh?");
+    print!("̀àh?");
     print!("a\u{0300}h?"); // also ok
 }
 
 #[warn(clippy::non_ascii_literal)]
 fn uni() {
-    print!("Üben!");
+    print!("\u{dc}ben!");
     print!("\u{DC}ben!"); // this is ok
 }
 
 // issue 8013
 #[warn(clippy::non_ascii_literal)]
 fn single_quote() {
-    const _EMPTY_BLOCK: char = '▱';
-    const _FULL_BLOCK: char = '▰';
+    const _EMPTY_BLOCK: char = '\u{25b1}';
+    const _FULL_BLOCK: char = '\u{25b0}';
 }
 
 fn main() {

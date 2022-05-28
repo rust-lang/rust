@@ -5,9 +5,9 @@
 fn ref_pats() {
     {
         let v = &Some(0);
-        match v {
-            &Some(v) => println!("{:?}", v),
-            &None => println!("none"),
+        match *v {
+            Some(v) => println!("{:?}", v),
+            None => println!("none"),
         }
         match v {
             // This doesn't trigger; we have a different pattern.
@@ -22,9 +22,9 @@ fn ref_pats() {
     }
     // Special case: using `&` both in expr and pats.
     let w = Some(0);
-    match &w {
-        &Some(v) => println!("{:?}", v),
-        &None => println!("none"),
+    match w {
+        Some(v) => println!("{:?}", v),
+        None => println!("none"),
     }
     // False positive: only wildcard pattern.
     let w = Some(0);
@@ -34,12 +34,12 @@ fn ref_pats() {
     }
 
     let a = &Some(0);
-    if let &None = a {
+    if a.is_none() {
         println!("none");
     }
 
     let b = Some(0);
-    if let &None = &b {
+    if b.is_none() {
         println!("none");
     }
 }
@@ -99,10 +99,10 @@ mod issue_7740 {
 
     fn issue_7740() {
         // Issue #7740
-        match foobar_variant!(0) {
-            &FooBar::Foo => println!("Foo"),
-            &FooBar::Bar => println!("Bar"),
-            &FooBar::FooBar => println!("FooBar"),
+        match *foobar_variant!(0) {
+            FooBar::Foo => println!("Foo"),
+            FooBar::Bar => println!("Bar"),
+            FooBar::FooBar => println!("FooBar"),
             _ => println!("Wild"),
         }
 
