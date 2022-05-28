@@ -32,7 +32,6 @@ fn num_to_digit(_1: char) -> u32 {
         StorageLive(_2);                 // scope 0 at $DIR/issue-59352.rs:14:8: 14:11
         _2 = _1;                         // scope 0 at $DIR/issue-59352.rs:14:8: 14:11
         StorageLive(_5);                 // scope 0 at $DIR/issue-59352.rs:14:8: 14:23
-        _5 = const 8_u32;                // scope 0 at $DIR/issue-59352.rs:14:8: 14:23
         StorageLive(_6);                 // scope 1 at $SRC_DIR/core/src/char/methods.rs:LL:COL
         StorageLive(_7);                 // scope 1 at $SRC_DIR/core/src/char/methods.rs:LL:COL
         StorageLive(_8);                 // scope 1 at $SRC_DIR/core/src/char/methods.rs:LL:COL

@@ -49,6 +49,7 @@ mod const_goto;
 mod const_prop;
 mod const_prop_lint;
 mod coverage;
+mod dead_store_elimination;
 mod deaggregator;
 mod deduplicate_blocks;
 mod deref_separator;
@@ -481,17 +482,18 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &const_prop::ConstProp,
             //
             // Const-prop runs unconditionally, but doesn't mutate the MIR at mir-opt-level=0.
+            &const_debuginfo::ConstDebugInfo,
             &o1(simplify_branches::SimplifyConstCondition::new("after-const-prop")),
             &early_otherwise_branch::EarlyOtherwiseBranch,
             &simplify_comparison_integral::SimplifyComparisonIntegral,
             &simplify_try::SimplifyArmIdentity,
             &simplify_try::SimplifyBranchSame,
+            &dead_store_elimination::DeadStoreElimination,
             &dest_prop::DestinationPropagation,
             &o1(simplify_branches::SimplifyConstCondition::new("final")),
             &o1(remove_noop_landing_pads::RemoveNoopLandingPads),
             &o1(simplify::SimplifyCfg::new("final")),
             &nrvo::RenameReturnPlace,
-            &const_debuginfo::ConstDebugInfo,
             &simplify::SimplifyLocals,
             &multiple_return_terminators::MultipleReturnTerminators,
             &deduplicate_blocks::DeduplicateBlocks,

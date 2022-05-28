@@ -47,10 +47,6 @@
 -         StorageLive(_9);                 // scope 1 at $DIR/simplify-locals-removes-unused-consts.rs:16:12: 16:34
 -         StorageLive(_10);                // scope 1 at $DIR/simplify-locals-removes-unused-consts.rs:16:12: 16:30
 -         StorageLive(_11);                // scope 1 at $DIR/simplify-locals-removes-unused-consts.rs:16:12: 16:28
--         Deinit(_11);                     // scope 1 at $DIR/simplify-locals-removes-unused-consts.rs:16:12: 16:28
--         (_11.0: u8) = const 40_u8;       // scope 1 at $DIR/simplify-locals-removes-unused-consts.rs:16:12: 16:28
--         _10 = const 40_u8;               // scope 1 at $DIR/simplify-locals-removes-unused-consts.rs:16:12: 16:30
--         _9 = const 42_u8;                // scope 1 at $DIR/simplify-locals-removes-unused-consts.rs:16:12: 16:34
 -         StorageDead(_10);                // scope 1 at $DIR/simplify-locals-removes-unused-consts.rs:16:33: 16:34
 -         _8 = use_u8(const 42_u8) -> bb2; // scope 1 at $DIR/simplify-locals-removes-unused-consts.rs:16:5: 16:35
 +         StorageDead(_1);                 // scope 1 at $DIR/simplify-locals-removes-unused-consts.rs:14:22: 14:23

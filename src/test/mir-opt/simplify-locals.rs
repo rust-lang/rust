@@ -1,4 +1,4 @@
-// compile-flags: -C overflow-checks=off
+// unit-test: SimplifyLocals
 
 #![feature(box_syntax)]
 #![feature(thread_local)]
