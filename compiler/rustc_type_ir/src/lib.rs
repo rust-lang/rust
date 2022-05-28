@@ -8,7 +8,6 @@ extern crate rustc_macros;
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::unify::{EqUnifyValue, UnifyKey};
-//use rustc_serialize::{Decodable, Encodable};
 use smallvec::SmallVec;
 use std::fmt;
 use std::fmt::Debug;

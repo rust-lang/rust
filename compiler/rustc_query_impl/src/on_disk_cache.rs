@@ -11,7 +11,7 @@ use rustc_middle::mir::interpret::{AllocDecodingSession, AllocDecodingState};
 use rustc_middle::mir::{self, interpret};
 use rustc_middle::thir;
 use rustc_middle::ty::codec::{RefDecodable, TyDecoder, TyEncoder};
-use rustc_middle::ty::{self, Ty, TyCtxt, TyInterner};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_query_system::dep_graph::DepContext;
 use rustc_query_system::query::{QueryCache, QueryContext, QuerySideEffects};
 use rustc_serialize::{
@@ -548,12 +548,12 @@ where
 }
 
 impl<'a, 'tcx> TyDecoder for CacheDecoder<'a, 'tcx> {
-    type I = TyInterner<'tcx>;
+    type I = TyCtxt<'tcx>;
     const CLEAR_CROSS_CRATE: bool = false;
 
     #[inline]
-    fn interner(&self) -> TyInterner<'tcx> {
-        TyInterner { tcx: self.tcx }
+    fn interner(&self) -> TyCtxt<'tcx> {
+        self.tcx
     }
 
     #[inline]
@@ -932,7 +932,7 @@ impl<'a, 'tcx, E> TyEncoder for CacheEncoder<'a, 'tcx, E>
 where
     E: 'a + OpaqueEncoder,
 {
-    type I = TyInterner<'tcx>;
+    type I = TyCtxt<'tcx>;
     const CLEAR_CROSS_CRATE: bool = false;
 
     fn position(&self) -> usize {

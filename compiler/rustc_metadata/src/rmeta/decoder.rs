@@ -24,8 +24,8 @@ use rustc_middle::mir::interpret::{AllocDecodingSession, AllocDecodingState};
 use rustc_middle::thir;
 use rustc_middle::ty::codec::TyDecoder;
 use rustc_middle::ty::fast_reject::SimplifiedType;
+use rustc_middle::ty::GeneratorDiagnosticData;
 use rustc_middle::ty::{self, ParameterizedOverTcx, Ty, TyCtxt, Visibility};
-use rustc_middle::ty::{GeneratorDiagnosticData, TyInterner};
 use rustc_serialize::{opaque, Decodable, Decoder};
 use rustc_session::cstore::{
     CrateSource, ExternCrate, ForeignModule, LinkagePreference, NativeLib,
@@ -380,11 +380,11 @@ impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
 impl<'a, 'tcx> TyDecoder for DecodeContext<'a, 'tcx> {
     const CLEAR_CROSS_CRATE: bool = true;
 
-    type I = TyInterner<'tcx>;
+    type I = TyCtxt<'tcx>;
 
     #[inline]
     fn interner(&self) -> Self::I {
-        TyInterner { tcx: self.tcx() }
+        self.tcx()
     }
 
     #[inline]

@@ -13,6 +13,7 @@ use crate::UintTy;
 
 use self::TyKind::*;
 
+use rustc_data_structures::stable_hasher::HashStable;
 use rustc_serialize::{Decodable, Encodable};
 
 /// Defines the kinds of types used by the type system.
@@ -198,7 +199,10 @@ impl<I: Interner> TyKind<I> {
     }
 }
 
-fn discriminant<I: Interner>(value: &TyKind<I>) -> usize {
+// This is manually implemented for `TyKind` because `std::mem::discriminant`
+// returns an opaque value that is `PartialEq` but not `PartialOrd`
+#[inline]
+const fn discriminant<I: Interner>(value: &TyKind<I>) -> usize {
     match value {
         Bool => 0,
         Char => 1,
@@ -230,6 +234,7 @@ fn discriminant<I: Interner>(value: &TyKind<I>) -> usize {
     }
 }
 
+// This is manually implemented because a derive would require `I: Clone`
 impl<I: Interner> Clone for TyKind<I> {
     fn clone(&self) -> Self {
         match self {
@@ -264,6 +269,7 @@ impl<I: Interner> Clone for TyKind<I> {
     }
 }
 
+// This is manually implemented because a derive would require `I: PartialEq`
 impl<I: Interner> PartialEq for TyKind<I> {
     #[inline]
     fn eq(&self, other: &TyKind<I>) -> bool {
@@ -324,8 +330,10 @@ impl<I: Interner> PartialEq for TyKind<I> {
     }
 }
 
+// This is manually implemented because a derive would require `I: Eq`
 impl<I: Interner> Eq for TyKind<I> {}
 
+// This is manually implemented because a derive would require `I: PartialOrd`
 impl<I: Interner> PartialOrd for TyKind<I> {
     #[inline]
     fn partial_cmp(&self, other: &TyKind<I>) -> Option<Ordering> {
@@ -333,6 +341,7 @@ impl<I: Interner> PartialOrd for TyKind<I> {
     }
 }
 
+// This is manually implemented because a derive would require `I: Ord`
 impl<I: Interner> Ord for TyKind<I> {
     #[inline]
     fn cmp(&self, other: &TyKind<I>) -> Ordering {
@@ -430,6 +439,7 @@ impl<I: Interner> Ord for TyKind<I> {
     }
 }
 
+// This is manually implemented because a derive would require `I: Hash`
 impl<I: Interner> hash::Hash for TyKind<I> {
     fn hash<__H: hash::Hasher>(&self, state: &mut __H) -> () {
         match (&*self,) {
@@ -541,6 +551,7 @@ impl<I: Interner> hash::Hash for TyKind<I> {
     }
 }
 
+// This is manually implemented because a derive would require `I: Debug`
 impl<I: Interner> fmt::Debug for TyKind<I> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match (&*self,) {
@@ -678,6 +689,7 @@ impl<I: Interner> fmt::Debug for TyKind<I> {
     }
 }
 
+// This is manually implemented because a derive would require `I: Encodable`
 impl<I: Interner, E: TyEncoder> Encodable<E> for TyKind<I>
 where
     I::DelaySpanBugEmitted: Encodable<E>,
@@ -819,6 +831,7 @@ where
     }
 }
 
+// This is manually implemented because a derive would require `I: Decodable`
 impl<I: Interner, D: TyDecoder<I = I>> Decodable<D> for TyKind<I>
 where
     I::DelaySpanBugEmitted: Decodable<D>,
@@ -902,6 +915,126 @@ where
                     "TyKind", 27,
                 )
             ),
+        }
+    }
+}
+
+// This is not a derived impl because a derive would require `I: HashStable`
+#[allow(rustc::usage_of_ty_tykind)]
+impl<CTX, I: Interner> HashStable<CTX> for TyKind<I>
+where
+    I::AdtDef: HashStable<CTX>,
+    I::DefId: HashStable<CTX>,
+    I::SubstsRef: HashStable<CTX>,
+    I::Ty: HashStable<CTX>,
+    I::Const: HashStable<CTX>,
+    I::TypeAndMut: HashStable<CTX>,
+    I::PolyFnSig: HashStable<CTX>,
+    I::ListBinderExistentialPredicate: HashStable<CTX>,
+    I::Region: HashStable<CTX>,
+    I::Movability: HashStable<CTX>,
+    I::Mutability: HashStable<CTX>,
+    I::BinderListTy: HashStable<CTX>,
+    I::ListTy: HashStable<CTX>,
+    I::ProjectionTy: HashStable<CTX>,
+    I::BoundTy: HashStable<CTX>,
+    I::ParamTy: HashStable<CTX>,
+    I::PlaceholderType: HashStable<CTX>,
+    I::InferTy: HashStable<CTX>,
+    I::DelaySpanBugEmitted: HashStable<CTX>,
+{
+    #[inline]
+    fn hash_stable(
+        &self,
+        __hcx: &mut CTX,
+        __hasher: &mut rustc_data_structures::stable_hasher::StableHasher,
+    ) {
+        std::mem::discriminant(self).hash_stable(__hcx, __hasher);
+        match self {
+            Bool => {}
+            Char => {}
+            Int(i) => {
+                i.hash_stable(__hcx, __hasher);
+            }
+            Uint(u) => {
+                u.hash_stable(__hcx, __hasher);
+            }
+            Float(f) => {
+                f.hash_stable(__hcx, __hasher);
+            }
+            Adt(adt, substs) => {
+                adt.hash_stable(__hcx, __hasher);
+                substs.hash_stable(__hcx, __hasher);
+            }
+            Foreign(def_id) => {
+                def_id.hash_stable(__hcx, __hasher);
+            }
+            Str => {}
+            Array(t, c) => {
+                t.hash_stable(__hcx, __hasher);
+                c.hash_stable(__hcx, __hasher);
+            }
+            Slice(t) => {
+                t.hash_stable(__hcx, __hasher);
+            }
+            RawPtr(tam) => {
+                tam.hash_stable(__hcx, __hasher);
+            }
+            Ref(r, t, m) => {
+                r.hash_stable(__hcx, __hasher);
+                t.hash_stable(__hcx, __hasher);
+                m.hash_stable(__hcx, __hasher);
+            }
+            FnDef(def_id, substs) => {
+                def_id.hash_stable(__hcx, __hasher);
+                substs.hash_stable(__hcx, __hasher);
+            }
+            FnPtr(polyfnsig) => {
+                polyfnsig.hash_stable(__hcx, __hasher);
+            }
+            Dynamic(l, r) => {
+                l.hash_stable(__hcx, __hasher);
+                r.hash_stable(__hcx, __hasher);
+            }
+            Closure(def_id, substs) => {
+                def_id.hash_stable(__hcx, __hasher);
+                substs.hash_stable(__hcx, __hasher);
+            }
+            Generator(def_id, substs, m) => {
+                def_id.hash_stable(__hcx, __hasher);
+                substs.hash_stable(__hcx, __hasher);
+                m.hash_stable(__hcx, __hasher);
+            }
+            GeneratorWitness(b) => {
+                b.hash_stable(__hcx, __hasher);
+            }
+            Never => {}
+            Tuple(substs) => {
+                substs.hash_stable(__hcx, __hasher);
+            }
+            Projection(p) => {
+                p.hash_stable(__hcx, __hasher);
+            }
+            Opaque(def_id, substs) => {
+                def_id.hash_stable(__hcx, __hasher);
+                substs.hash_stable(__hcx, __hasher);
+            }
+            Param(p) => {
+                p.hash_stable(__hcx, __hasher);
+            }
+            Bound(d, b) => {
+                d.hash_stable(__hcx, __hasher);
+                b.hash_stable(__hcx, __hasher);
+            }
+            Placeholder(p) => {
+                p.hash_stable(__hcx, __hasher);
+            }
+            Infer(i) => {
+                i.hash_stable(__hcx, __hasher);
+            }
+            Error(d) => {
+                d.hash_stable(__hcx, __hasher);
+            }
         }
     }
 }

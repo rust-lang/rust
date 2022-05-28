@@ -26,7 +26,7 @@ use rustc_middle::traits::specialization_graph;
 use rustc_middle::ty::codec::TyEncoder;
 use rustc_middle::ty::fast_reject::{self, SimplifiedType, TreatParams};
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::{self, SymbolName, Ty, TyCtxt, TyInterner};
+use rustc_middle::ty::{self, SymbolName, Ty, TyCtxt};
 use rustc_serialize::{opaque, Encodable, Encoder};
 use rustc_session::config::CrateType;
 use rustc_session::cstore::{ForeignModule, LinkagePreference, NativeLib};
@@ -316,7 +316,7 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for Span {
 impl<'a, 'tcx> TyEncoder for EncodeContext<'a, 'tcx> {
     const CLEAR_CROSS_CRATE: bool = true;
 
-    type I = TyInterner<'tcx>;
+    type I = TyCtxt<'tcx>;
 
     fn position(&self) -> usize {
         self.opaque.position()

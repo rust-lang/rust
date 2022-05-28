@@ -677,8 +677,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         operand_ty: Ty<'tcx>,
         op: hir::UnOp,
     ) -> Ty<'tcx> {
-        use rustc_type_ir::sty::TyKind::*;
-
         assert!(op.is_by_value());
         match self.lookup_op_method(operand_ty, None, None, Op::Unary(op, ex.span)) {
             Ok(method) => {

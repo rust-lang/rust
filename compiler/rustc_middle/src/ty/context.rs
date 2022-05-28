@@ -90,12 +90,8 @@ pub trait OnDiskCache<'tcx>: rustc_data_structures::sync::Sync {
     fn serialize(&self, tcx: TyCtxt<'tcx>, encoder: &mut FileEncoder) -> FileEncodeResult;
 }
 
-pub struct TyInterner<'tcx> {
-    pub tcx: TyCtxt<'tcx>,
-}
-
 #[allow(rustc::usage_of_ty_tykind)]
-impl<'tcx> Interner for TyInterner<'tcx> {
+impl<'tcx> Interner for TyCtxt<'tcx> {
     type AdtDef = ty::AdtDef<'tcx>;
     type SubstsRef = ty::SubstsRef<'tcx>;
     type DefId = DefId;
@@ -1103,11 +1099,6 @@ pub struct GlobalCtxt<'tcx> {
 }
 
 impl<'tcx> TyCtxt<'tcx> {
-    #[inline]
-    pub fn interner(self) -> TyInterner<'tcx> {
-        TyInterner { tcx: self }
-    }
-
     /// Expects a body and returns its codegen attributes.
     ///
     /// Unlike `codegen_fn_attrs`, this returns `CodegenFnAttrs::EMPTY` for

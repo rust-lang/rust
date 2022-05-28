@@ -37,7 +37,7 @@ use rustc_data_structures::graph::WithSuccessors;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::mir::coverage::CoverageKind;
 use rustc_middle::mir::*;
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::{self, BytePos, Pos, Span, DUMMY_SP};
 
 // All `TEMP_BLOCK` targets should be replaced before calling `to_body() -> mir::Body`.
@@ -56,7 +56,7 @@ impl<'tcx> MockBlocks<'tcx> {
             blocks: IndexVec::new(),
             dummy_place: Place { local: RETURN_PLACE, projection: ty::List::empty() },
             next_local: 0,
-            bool_ty: ty::leak_bool_ty_for_unit_testing(),
+            bool_ty: TyCtxt::BOOL_TY_FOR_UNIT_TESTING,
         }
     }
 

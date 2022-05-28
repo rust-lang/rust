@@ -32,7 +32,7 @@ use rustc_type_ir::TyKind as IrTyKind;
 
 // Re-export the `TyKind` from `rustc_type_ir` here for convenience
 #[rustc_diagnostic_item = "TyKind"]
-pub type TyKind<'tcx> = IrTyKind<ty::TyInterner<'tcx>>;
+pub type TyKind<'tcx> = IrTyKind<TyCtxt<'tcx>>;
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, TyEncodable, TyDecodable)]
 #[derive(HashStable, TypeFoldable, Lift)]

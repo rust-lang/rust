@@ -68,8 +68,8 @@ pub use self::consts::{
 pub use self::context::{
     tls, CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations,
     CtxtInterners, DelaySpanBugEmitted, FreeRegionInfo, GeneratorDiagnosticData,
-    GeneratorInteriorTypeCause, GlobalCtxt, Lift, OnDiskCache, TyCtxt, TyInterner, TypeckResults,
-    UserType, UserTypeAnnotationIndex,
+    GeneratorInteriorTypeCause, GlobalCtxt, Lift, OnDiskCache, TyCtxt, TypeckResults, UserType,
+    UserTypeAnnotationIndex,
 };
 pub use self::instance::{Instance, InstanceDef};
 pub use self::list::List;
@@ -463,30 +463,17 @@ static_assert_size!(WithStableHash<TyS<'_>>, 56);
 #[rustc_pass_by_value]
 pub struct Ty<'tcx>(Interned<'tcx, WithStableHash<TyS<'tcx>>>);
 
-static LEAKED_BOOL_TY_ALREADY: std::sync::atomic::AtomicBool =
-    std::sync::atomic::AtomicBool::new(false);
-
-/// "Static" bool only used for internal testing.
-///
-/// FIXME(rustc_type_ir): This really should be replaced with something that doesn't leak.
-/// however, since it's used for testing, it's not _that_ bad.
-pub fn leak_bool_ty_for_unit_testing<'tcx>() -> Ty<'tcx> {
-    use std::sync::atomic::*;
-
-    if LEAKED_BOOL_TY_ALREADY.load(Ordering::Acquire) {
-        panic!("Can only leak one bool type, since its equality depends on its address");
-    } else {
-        LEAKED_BOOL_TY_ALREADY.store(true, Ordering::Release);
-    }
-
-    Ty(Interned::new_unchecked(Box::leak(Box::new(WithStableHash {
+impl<'tcx> TyCtxt<'tcx> {
+    /// A "bool" type used in rustc_mir_transform unit tests when we
+    /// have not spun up a TyCtxt.
+    pub const BOOL_TY_FOR_UNIT_TESTING: Ty<'tcx> = Ty(Interned::new_unchecked(&WithStableHash {
         internee: TyS {
             kind: ty::Bool,
             flags: TypeFlags::empty(),
             outer_exclusive_binder: DebruijnIndex::from_usize(0),
         },
         stable_hash: Fingerprint::ZERO,
-    }))))
+    }));
 }
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for TyS<'tcx> {
