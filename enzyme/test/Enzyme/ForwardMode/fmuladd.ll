@@ -1,0 +1,28 @@
+; RUN: %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -gvn -simplifycfg -instcombine -S | FileCheck %s
+
+; Function Attrs: nounwind readnone uwtable
+define double @tester(double %x, double %y, double %z) {
+entry:
+  %0 = tail call fast double @llvm.fmuladd.f64(double %x, double %y, double %z)
+  ret double %0
+}
+
+define double @test_derivative(double %x, double %y, double %z) {
+entry:
+  %0 = tail call double (double (double, double, double)*, ...) @__enzyme_fwddiff(double (double, double, double)* nonnull @tester, double %x, double %x, double %y, double %y, double %z, double %z)
+  ret double %0
+}
+
+declare double @llvm.fmuladd.f64(double %a, double %b, double %c)
+
+; Function Attrs: nounwind
+declare double @__enzyme_fwddiff(double (double, double, double)*, ...)
+
+; CHECK: define internal double @fwddiffetester(double %x, double %"x'", double %y, double %"y'", double %z, double %"z'")
+; CHECK-NEXT: entry:
+; CHECK-NEXT:   %0 = fmul fast double %y, %"x'"
+; CHECK-NEXT:   %1 = fmul fast double %x, %"y'"
+; CHECK-NEXT:   %2 = fadd fast double %1, %0
+; CHECK-NEXT:   %3 = fadd fast double %2, %"x'"
+; CHECK-NEXT:   ret double %3
+; CHECK-NEXT: }

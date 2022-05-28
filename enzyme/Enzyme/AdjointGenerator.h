@@ -3792,8 +3792,8 @@ public:
         if (gutils->isConstantInstruction(&I))
           return;
 
+        Value *op0 = gutils->getNewFromOriginal(orig_ops[0]);
         Value *op1 = gutils->getNewFromOriginal(orig_ops[1]);
-        Value *op2 = gutils->getNewFromOriginal(orig_ops[2]);
 
         Type *opType0 = gutils->getShadowType(orig_ops[0]->getType());
         Type *opType1 = gutils->getShadowType(orig_ops[1]->getType());
@@ -3810,8 +3810,8 @@ public:
                           : diffe(orig_ops[2], Builder2);
 
         auto rule = [&](Value *dif0, Value *dif1, Value *dif2) {
-          Value *dif = Builder2.CreateFAdd(Builder2.CreateFMul(op1, dif2),
-                                           Builder2.CreateFMul(dif1, op2));
+          Value *dif = Builder2.CreateFAdd(Builder2.CreateFMul(op0, dif1),
+                                           Builder2.CreateFMul(op1, dif0));
           return Builder2.CreateFAdd(dif, dif0);
         };
 
