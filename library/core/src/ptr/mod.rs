@@ -26,6 +26,7 @@
 //!   some memory happens to exist at that address and gets deallocated. This corresponds to writing
 //!   your own allocator: allocating zero-sized objects is not very hard. The canonical way to
 //!   obtain a pointer that is valid for zero-sized accesses is [`NonNull::dangling`].
+//FIXME: mention `ptr::invalid` above, once it is stable.
 //! * All accesses performed by functions in this module are *non-atomic* in the sense
 //!   of [atomic operations] used to synchronize between threads. This means it is
 //!   undefined behavior to perform two concurrent accesses to the same location from different
@@ -557,8 +558,8 @@ pub const fn null_mut<T>() -> *mut T {
 
 /// Creates an invalid pointer with the given address.
 ///
-/// This is *currently* equivalent to `addr as *const T` but it expresses the intended semantic
-/// more clearly, and may become important under future memory models.
+/// This is different from `addr as *const T`, which creates a pointer that picks up a previously
+/// exposed provenance. See [`from_exposed_addr`] for more details on that operation.
 ///
 /// The module's top-level documentation discusses the precise meaning of an "invalid"
 /// pointer but essentially this expresses that the pointer is not associated
@@ -566,7 +567,7 @@ pub const fn null_mut<T>() -> *mut T {
 ///
 /// This pointer will have no provenance associated with it and is therefore
 /// UB to read/write/offset. This mostly exists to facilitate things
-/// like ptr::null and NonNull::dangling which make invalid pointers.
+/// like `ptr::null` and `NonNull::dangling` which make invalid pointers.
 ///
 /// (Standard "Zero-Sized-Types get to cheat and lie" caveats apply, although it
 /// may be desirable to give them their own API just to make that 100% clear.)
@@ -588,8 +589,8 @@ pub const fn invalid<T>(addr: usize) -> *const T {
 
 /// Creates an invalid mutable pointer with the given address.
 ///
-/// This is *currently* equivalent to `addr as *mut T` but it expresses the intended semantic
-/// more clearly, and may become important under future memory models.
+/// This is different from `addr as *mut T`, which creates a pointer that picks up a previously
+/// exposed provenance. See [`from_exposed_addr_mut`] for more details on that operation.
 ///
 /// The module's top-level documentation discusses the precise meaning of an "invalid"
 /// pointer but essentially this expresses that the pointer is not associated
@@ -597,7 +598,7 @@ pub const fn invalid<T>(addr: usize) -> *const T {
 ///
 /// This pointer will have no provenance associated with it and is therefore
 /// UB to read/write/offset. This mostly exists to facilitate things
-/// like ptr::null and NonNull::dangling which make invalid pointers.
+/// like `ptr::null` and `NonNull::dangling` which make invalid pointers.
 ///
 /// (Standard "Zero-Sized-Types get to cheat and lie" caveats apply, although it
 /// may be desirable to give them their own API just to make that 100% clear.)
