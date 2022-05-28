@@ -1,5 +1,5 @@
 //! Inlining pass for MIR functions
-
+use crate::deref_separator::deref_finder;
 use rustc_attr::InlineAttr;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::Idx;
@@ -53,6 +53,7 @@ impl<'tcx> MirPass<'tcx> for Inline {
             debug!("running simplify cfg on {:?}", body.source);
             CfgSimplifier::new(body).simplify();
             remove_dead_blocks(tcx, body);
+            deref_finder(tcx, body);
         }
     }
 }

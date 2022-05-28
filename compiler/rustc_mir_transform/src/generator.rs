@@ -49,6 +49,7 @@
 //! For generators with state 1 (returned) and state 2 (poisoned) it does nothing.
 //! Otherwise it drops all the values in scope at the last suspension point.
 
+use crate::deref_separator::deref_finder;
 use crate::simplify;
 use crate::util::expand_aggregate;
 use crate::MirPass;
@@ -1368,6 +1369,9 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
 
         // Create the Generator::resume function
         create_generator_resume_function(tcx, transform, body, can_return);
+
+        // Run derefer to fix Derefs that are not in the first place
+        deref_finder(tcx, body);
     }
 }
 
