@@ -161,7 +161,7 @@ impl OutlivesSuggestionBuilder {
     pub(crate) fn intermediate_suggestion(
         &mut self,
         mbcx: &MirBorrowckCtxt<'_, '_>,
-        errci: &ErrorConstraintInfo,
+        errci: &ErrorConstraintInfo<'_>,
         diag: &mut Diagnostic,
     ) {
         // Emit an intermediate note.

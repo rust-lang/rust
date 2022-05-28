@@ -87,7 +87,7 @@ pub struct RegionInferenceContext<'tcx> {
 
     /// Map closure bounds to a `Span` that should be used for error reporting.
     closure_bounds_mapping:
-        FxHashMap<Location, FxHashMap<(RegionVid, RegionVid), (ConstraintCategory, Span)>>,
+        FxHashMap<Location, FxHashMap<(RegionVid, RegionVid), (ConstraintCategory<'tcx>, Span)>>,
 
     /// Map universe indexes to information on why we created it.
     universe_causes: FxHashMap<ty::UniverseIndex, UniverseInfo<'tcx>>,
@@ -259,7 +259,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         member_constraints_in: MemberConstraintSet<'tcx, RegionVid>,
         closure_bounds_mapping: FxHashMap<
             Location,
-            FxHashMap<(RegionVid, RegionVid), (ConstraintCategory, Span)>,
+            FxHashMap<(RegionVid, RegionVid), (ConstraintCategory<'tcx>, Span)>,
         >,
         universe_causes: FxHashMap<ty::UniverseIndex, UniverseInfo<'tcx>>,
         type_tests: Vec<TypeTest<'tcx>>,
@@ -1772,7 +1772,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         fr1: RegionVid,
         fr1_origin: NllRegionVariableOrigin,
         fr2: RegionVid,
-    ) -> (ConstraintCategory, ObligationCause<'tcx>) {
+    ) -> (ConstraintCategory<'tcx>, ObligationCause<'tcx>) {
         let BlameConstraint { category, cause, .. } =
             self.best_blame_constraint(body, fr1, fr1_origin, |r| {
                 self.provides_universal_region(r, fr1, fr2)
@@ -2270,7 +2270,7 @@ impl<'tcx> ClosureRegionRequirementsExt<'tcx> for ClosureRegionRequirements<'tcx
 
 #[derive(Clone, Debug)]
 pub struct BlameConstraint<'tcx> {
-    pub category: ConstraintCategory,
+    pub category: ConstraintCategory<'tcx>,
     pub from_closure: bool,
     pub cause: ObligationCause<'tcx>,
     pub variance_info: ty::VarianceDiagInfo<'tcx>,

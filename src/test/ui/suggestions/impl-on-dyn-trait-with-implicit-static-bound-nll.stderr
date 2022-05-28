@@ -10,6 +10,18 @@ LL |         val.use_self::<T>()
    |         |
    |         `val` escapes the function body here
    |         argument requires that `'a` must outlive `'static`
+   |
+note: the used `impl` has a `'static` requirement
+  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound-nll.rs:19:32
+   |
+LL |     impl<T> MyTrait<T> for dyn ObjectTrait<T> {
+   |                                ^^^^^^^^^^^^^^ this has an implicit `'static` lifetime requirement
+LL |         fn use_self<K>(&self) -> &() { panic!() }
+   |            -------- calling this method introduces the `impl`'s 'static` requirement
+help: consider relaxing the implicit `'static` requirement
+   |
+LL |     impl<T> MyTrait<T> for dyn ObjectTrait<T> + '_ {
+   |                                               ++++
 
 error[E0521]: borrowed data escapes outside of function
   --> $DIR/impl-on-dyn-trait-with-implicit-static-bound-nll.rs:74:9
@@ -23,6 +35,18 @@ LL |         val.use_self()
    |         |
    |         `val` escapes the function body here
    |         argument requires that `'a` must outlive `'static`
+   |
+note: the used `impl` has a `'static` requirement
+  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound-nll.rs:69:14
+   |
+LL |     impl dyn ObjectTrait {
+   |              ^^^^^^^^^^^ this has an implicit `'static` lifetime requirement
+LL |         fn use_self(&self) -> &() { panic!() }
+   |            -------- calling this method introduces the `impl`'s 'static` requirement
+help: consider relaxing the implicit `'static` requirement
+   |
+LL |     impl dyn ObjectTrait + '_ {
+   |                          ++++
 
 error[E0521]: borrowed data escapes outside of function
   --> $DIR/impl-on-dyn-trait-with-implicit-static-bound-nll.rs:94:9
@@ -36,6 +60,19 @@ LL |         val.use_self()
    |         |
    |         `val` escapes the function body here
    |         argument requires that `'a` must outlive `'static`
+   |
+note: the used `impl` has a `'static` requirement
+  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound-nll.rs:91:26
+   |
+LL |         fn use_self(&self) -> &() { panic!() }
+   |            -------- calling this method introduces the `impl`'s 'static` requirement
+...
+LL |     impl MyTrait for dyn ObjectTrait {}
+   |                          ^^^^^^^^^^^ this has an implicit `'static` lifetime requirement
+help: consider relaxing the implicit `'static` requirement
+   |
+LL |     impl MyTrait for dyn ObjectTrait + '_ {}
+   |                                      ++++
 
 error[E0521]: borrowed data escapes outside of function
   --> $DIR/impl-on-dyn-trait-with-implicit-static-bound-nll.rs:114:9
@@ -49,6 +86,19 @@ LL |         MyTrait::use_self(val)
    |         |
    |         `val` escapes the function body here
    |         argument requires that `'a` must outlive `'static`
+   |
+note: the used `impl` has a `'static` requirement
+  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound-nll.rs:110:26
+   |
+LL |         fn use_self(&self) -> &() { panic!() }
+   |            -------- calling this method introduces the `impl`'s 'static` requirement
+...
+LL |     impl MyTrait for dyn ObjectTrait {}
+   |                          ^^^^^^^^^^^ this has an implicit `'static` lifetime requirement
+help: consider relaxing the implicit `'static` requirement
+   |
+LL |     impl MyTrait for dyn ObjectTrait + '_ {}
+   |                                      ++++
 
 error: aborting due to 4 previous errors
 

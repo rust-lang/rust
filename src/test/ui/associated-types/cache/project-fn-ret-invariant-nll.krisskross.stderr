@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/project-fn-ret-invariant-nll.rs:63:5
+  --> $DIR/project-fn-ret-invariant-nll.rs:64:5
    |
 LL | fn transmute<'a, 'b>(x: Type<'a>, y: Type<'b>) -> (Type<'a>, Type<'b>) {
    |              --  -- lifetime `'b` defined here
@@ -15,7 +15,7 @@ LL |     (a, b)
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
-  --> $DIR/project-fn-ret-invariant-nll.rs:63:5
+  --> $DIR/project-fn-ret-invariant-nll.rs:64:5
    |
 LL | fn transmute<'a, 'b>(x: Type<'a>, y: Type<'b>) -> (Type<'a>, Type<'b>) {
    |              --  -- lifetime `'b` defined here
