@@ -1,4 +1,7 @@
+// revisions: default miropt
 // check-pass
+//[miropt]compile-flags: -Z mir-opt-level=3
+// -^ This flag is for #96395 as a regression test.
 
 mod convenience_operators {
     use crate::{Op, Relation};
