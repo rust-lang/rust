@@ -20,9 +20,9 @@ declare double @__enzyme_fwddiff(double (double, double, double)*, ...)
 
 ; CHECK: define internal double @fwddiffetester(double %x, double %"x'", double %y, double %"y'", double %z, double %"z'")
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = fmul fast double %y, %"x'"
-; CHECK-NEXT:   %1 = fmul fast double %x, %"y'"
-; CHECK-NEXT:   %2 = fadd fast double %1, %0
+; CHECK-DAG:   %[[i0:.+]] = fmul fast double %y, %"x'"
+; CHECK-DAG:   %[[i1:.+]] = fmul fast double %x, %"y'"
+; CHECK-NEXT:   %2 = fadd fast double %[[i1]], %[[i0]]
 ; CHECK-NEXT:   %3 = fadd fast double %2, %"x'"
 ; CHECK-NEXT:   ret double %3
 ; CHECK-NEXT: }

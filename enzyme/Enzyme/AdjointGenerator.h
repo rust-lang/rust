@@ -2814,6 +2814,13 @@ public:
         vd = TypeTree(BaseType::Pointer).Only(0);
         goto known;
       }
+      if (CustomErrorHandler) {
+        std::string str;
+        raw_string_ostream ss(str);
+        ss << "Cannot deduce type of copy " << MTI;
+        CustomErrorHandler(str.c_str(), wrap(&MTI), ErrorType::NoType,
+                           &TR.analyzer);
+      }
       EmitFailure("CannotDeduceType", MTI.getDebugLoc(), &MTI,
                   "failed to deduce type of copy ", MTI);
 

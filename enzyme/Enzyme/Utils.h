@@ -69,7 +69,8 @@ class ScalarEvolution;
 enum class ErrorType {
   NoDerivative = 0,
   NoShadow = 1,
-  IllegalTypeAnalysis = 2
+  IllegalTypeAnalysis = 2,
+  NoType = 3
 };
 
 extern "C" {
