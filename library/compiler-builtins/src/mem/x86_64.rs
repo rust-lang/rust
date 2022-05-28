@@ -116,7 +116,8 @@ pub unsafe fn compare_bytes(a: *const u8, b: *const u8, n: usize) -> i32 {
 
         // This should be equivalent to division with power-of-two sizes, except the former
         // somehow still leaves a call to panic because ??
-        for _ in 0..n >> mem::size_of::<T>().trailing_zeros() {
+        let end = a.add(n >> mem::size_of::<T>().trailing_zeros());
+        while a != end {
             if a.read_unaligned() != b.read_unaligned() {
                 return f(a.cast(), b.cast(), mem::size_of::<T>());
             }
