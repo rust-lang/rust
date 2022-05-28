@@ -139,6 +139,7 @@ use crate::require_c_abi_if_c_variadic;
 use crate::util::common::indenter;
 
 use self::coercion::DynamicCoerceMany;
+use self::region::region_scope_tree;
 pub use self::Expectation::*;
 
 #[macro_export]
@@ -256,6 +257,7 @@ pub fn provide(providers: &mut Providers) {
         check_trait_item_well_formed,
         check_impl_item_well_formed,
         check_mod_item_types,
+        region_scope_tree,
         ..*providers
     };
 }

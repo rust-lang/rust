@@ -1044,6 +1044,12 @@ rustc_queries! {
         desc { "reachability" }
     }
 
+    /// Per-body `region::ScopeTree`. The `DefId` should be the owner `DefId` for the body;
+    /// in the case of closures, this will be redirected to the enclosing function.
+    query region_scope_tree(def_id: DefId) -> &'tcx crate::middle::region::ScopeTree {
+        desc { |tcx| "computing drop scopes for `{}`", tcx.def_path_str(def_id) }
+    }
+
     /// Generates a MIR body for the shim.
     query mir_shims(key: ty::InstanceDef<'tcx>) -> mir::Body<'tcx> {
         storage(ArenaCacheSelector<'tcx>)

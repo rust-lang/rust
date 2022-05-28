@@ -184,7 +184,7 @@ pub fn resolve_interior<'a, 'tcx>(
     let mut visitor = InteriorVisitor {
         fcx,
         types: FxIndexSet::default(),
-        region_scope_tree: &typeck_results.region_scope_tree,
+        region_scope_tree: fcx.tcx.region_scope_tree(def_id),
         rvalue_scopes: &typeck_results.rvalue_scopes,
         expr_count: 0,
         kind,
@@ -195,7 +195,7 @@ pub fn resolve_interior<'a, 'tcx>(
     intravisit::walk_body(&mut visitor, body);
 
     // Check that we visited the same amount of expressions as the RegionResolutionVisitor
-    let region_expr_count = typeck_results.region_scope_tree.body_expr_count(body_id).unwrap();
+    let region_expr_count = fcx.tcx.region_scope_tree(def_id).body_expr_count(body_id).unwrap();
     assert_eq!(region_expr_count, visitor.expr_count);
 
     // The types are already kept in insertion order.

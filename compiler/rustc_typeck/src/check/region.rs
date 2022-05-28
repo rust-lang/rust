@@ -797,14 +797,19 @@ impl<'tcx> Visitor<'tcx> for RegionResolutionVisitor<'tcx> {
 
 /// Per-body `region::ScopeTree`. The `DefId` should be the owner `DefId` for the body;
 /// in the case of closures, this will be redirected to the enclosing function.
-pub fn region_scope_tree(tcx: TyCtxt<'_>, def_id: DefId) -> ScopeTree {
+///
+/// Performance: This is a query rather than a simple function to enable
+/// re-use in incremental scenarios. We may sometimes need to rerun the
+/// type checker even when the HIR hasn't changed, and in those cases
+/// we can avoid reconstructing the region scope tree.
+pub fn region_scope_tree(tcx: TyCtxt<'_>, def_id: DefId) -> &ScopeTree {
     let typeck_root_def_id = tcx.typeck_root_def_id(def_id);
     if typeck_root_def_id != def_id {
-        return region_scope_tree(tcx, typeck_root_def_id);
+        return tcx.region_scope_tree(typeck_root_def_id);
     }
 
     let id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
-    if let Some(body_id) = tcx.hir().maybe_body_owned_by(id) {
+    let scope_tree = if let Some(body_id) = tcx.hir().maybe_body_owned_by(id) {
         let mut visitor = RegionResolutionVisitor {
             tcx,
             scope_tree: ScopeTree::default(),
@@ -821,5 +826,7 @@ pub fn region_scope_tree(tcx: TyCtxt<'_>, def_id: DefId) -> ScopeTree {
         visitor.scope_tree
     } else {
         ScopeTree::default()
-    }
+    };
+
+    tcx.arena.alloc(scope_tree)
 }

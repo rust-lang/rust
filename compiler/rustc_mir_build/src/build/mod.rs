@@ -398,6 +398,7 @@ struct Builder<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     infcx: &'a InferCtxt<'a, 'tcx>,
     typeck_results: &'tcx TypeckResults<'tcx>,
+    region_scope_tree: &'tcx region::ScopeTree,
     param_env: ty::ParamEnv<'tcx>,
 
     thir: &'a Thir<'tcx>,
@@ -880,6 +881,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             tcx,
             infcx,
             typeck_results: tcx.typeck_opt_const_arg(def),
+            region_scope_tree: tcx.region_scope_tree(def.did),
             param_env,
             def_id: def.did.to_def_id(),
             hir_id,

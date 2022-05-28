@@ -42,7 +42,7 @@ pub fn compute_drop_ranges<'a, 'tcx>(
         let consumed_borrowed_places = find_consumed_and_borrowed(fcx, def_id, body);
 
         let typeck_results = &fcx.typeck_results.borrow();
-        let num_exprs = typeck_results.region_scope_tree.body_expr_count(body.id()).unwrap_or(0);
+        let num_exprs = fcx.tcx.region_scope_tree(def_id).body_expr_count(body.id()).unwrap_or(0);
         let (mut drop_ranges, borrowed_temporaries) = build_control_flow_graph(
             fcx.tcx.hir(),
             fcx.tcx,
