@@ -17,18 +17,6 @@ impl IntoDiagnosticArg for ExitCode {
 }
 
 #[derive(Diagnostic)]
-#[diag(codegen_gcc_ranlib_failure)]
-pub(crate) struct RanlibFailure {
-    exit_code: ExitCode,
-}
-
-impl RanlibFailure {
-    pub fn new(exit_code: Option<i32>) -> Self {
-        RanlibFailure { exit_code: ExitCode(exit_code) }
-    }
-}
-
-#[derive(Diagnostic)]
 #[diag(codegen_gcc_invalid_monomorphization_basic_integer, code = "E0511")]
 pub(crate) struct InvalidMonomorphizationBasicInteger<'a> {
     #[primary_span]
@@ -227,7 +215,7 @@ pub(crate) struct InvalidMonomorphizationUnsupportedOperation<'a> {
 #[diag(codegen_gcc_linkage_const_or_mut_type)]
 pub(crate) struct LinkageConstOrMutType {
     #[primary_span]
-    pub span: Span
+    pub span: Span,
 }
 
 #[derive(Diagnostic)]
@@ -238,5 +226,5 @@ pub(crate) struct LTONotSupported;
 #[diag(codegen_gcc_unwinding_inline_asm)]
 pub(crate) struct UnwindingInlineAsm {
     #[primary_span]
-    pub span: Span
+    pub span: Span,
 }
