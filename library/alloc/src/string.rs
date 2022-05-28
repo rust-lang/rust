@@ -1612,6 +1612,81 @@ impl String {
         &mut self.vec
     }
 
+    /// Returns a raw pointer to the string's buffer.
+    ///
+    /// The caller must ensure that the string outlives the pointer this
+    /// function returns, or else it will end up pointing to garbage.
+    /// Modifying the string may cause its buffer to be reallocated,
+    /// which would also make any pointers to it invalid.
+    ///
+    /// The caller must also ensure that the memory the pointer (non-transitively) points to
+    /// is never written to (except inside an `UnsafeCell`) using this pointer or any pointer
+    /// derived from it. If you need to mutate the contents of the slice, use [`as_mut_ptr`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let x = "012".to_string();
+    /// let x_ptr = x.as_ptr();
+    ///
+    /// unsafe {
+    ///     for i in 0..x.len() {
+    ///         assert_eq!(*x_ptr.add(i), b'0' + u8::try_from(i).unwrap());
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// [`as_mut_ptr`]: String::as_mut_ptr
+    #[stable(feature = "string_as_ptr", since = "1.63.0")]
+    #[inline]
+    pub fn as_ptr(&self) -> *const u8 {
+        // We shadow the str method of the same name to avoid going through
+        // `deref`, which creates an intermediate reference.
+        self.vec.as_ptr()
+    }
+
+    /// Returns an unsafe mutable pointer to the string's buffer.
+    ///
+    /// The caller must ensure that the string outlives the pointer this
+    /// function returns, or else it will end up pointing to garbage.
+    /// Modifying the string may cause its buffer to be reallocated,
+    /// which would also make any pointers to it invalid.
+    ///
+    /// The caller must also guarantee to not write invalid UTF-8 to the
+    /// initialized part of the buffer.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use core::mem::ManuallyDrop;
+    ///
+    /// // Allocate String big enough for 4 elements.
+    /// let size = 4;
+    /// // use a ManuallyDrop to avoid a double free
+    /// let mut x = ManuallyDrop::new(String::with_capacity(size));
+    /// let x_ptr = x.as_mut_ptr();
+    ///
+    /// // Initialize elements via raw pointer writes.
+    /// unsafe {
+    ///     for i in 0..size {
+    ///         *x_ptr.add(i) = b'A';
+    ///     }
+    /// }
+    ///
+    /// // Create a new String from the ptr
+    /// unsafe {
+    ///     let y = String::from_utf8_unchecked(Vec::from_raw_parts(x_ptr, size, size));
+    ///     assert_eq!(y.as_str(), "AAAA");
+    /// }
+    /// ```
+    #[stable(feature = "string_as_ptr", since = "1.63.0")]
+    #[inline]
+    pub fn as_mut_ptr(&mut self) -> *mut u8 {
+        // We shadow the str method of the same name to avoid going through
+        // `deref_mut`, which creates an intermediate reference.
+        self.vec.as_mut_ptr()
+    }
+
     /// Returns the length of this `String`, in bytes, not [`char`]s or
     /// graphemes. In other words, it might not be what a human considers the
     /// length of the string.

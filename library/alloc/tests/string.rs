@@ -874,3 +874,22 @@ fn test_str_concat() {
     let s: String = format!("{a}{b}");
     assert_eq!(s.as_bytes()[9], 'd' as u8);
 }
+
+#[test]
+fn test_string_as_mut_ptr_roundtrip() {
+    // Allocate String big enough for 4 elements.
+    let cap = 4;
+    // use a ManuallyDrop to avoid a double free
+    let mut x = std::mem::ManuallyDrop::new(String::with_capacity(cap));
+    let x_ptr = x.as_mut_ptr();
+
+    // Create a new String from the ptr
+    // Because as_mut_ptr goes through Vec::as_mut_ptr, it has provenance for the entire allocation
+    let mut y = unsafe { String::from_utf8_unchecked(Vec::from_raw_parts(x_ptr, 0, cap)) };
+    // We have provenance to write to the empty capacity
+    y.push_str("uwu");
+    assert_eq!(y.as_str(), "uwu");
+
+    y.push('!');
+    assert_eq!(y.as_str(), "uwu!");
+}
