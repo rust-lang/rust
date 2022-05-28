@@ -8562,6 +8562,60 @@ public:
         llvm_unreachable("unhandled openmp function");
       }
 
+      if (funcName == "log1p" || funcName == "log1pf" || funcName == "log1pl") {
+        if (gutils->knownRecomputeHeuristic.find(orig) !=
+            gutils->knownRecomputeHeuristic.end()) {
+          if (!gutils->knownRecomputeHeuristic[orig]) {
+            gutils->cacheForReverse(BuilderZ, newCall,
+                                    getIndex(orig, CacheType::Self));
+          }
+        }
+        eraseIfUnused(*orig);
+        if (gutils->isConstantInstruction(orig))
+          return;
+
+        switch (Mode) {
+        case DerivativeMode::ForwardModeSplit:
+        case DerivativeMode::ForwardMode: {
+          IRBuilder<> Builder2(&call);
+          getForwardBuilder(Builder2);
+          Value *x = gutils->getNewFromOriginal(orig->getArgOperand(0));
+          Value *onePx =
+              Builder2.CreateFAdd(ConstantFP::get(x->getType(), 1.0), x);
+
+          Value *op = diffe(orig->getArgOperand(0), Builder2);
+
+          auto rule = [&](Value *op) { return Builder2.CreateFDiv(op, onePx); };
+          Value *dif0 = applyChainRule(call.getType(), Builder2, rule, op);
+          setDiffe(orig, dif0, Builder2);
+          return;
+        }
+        case DerivativeMode::ReverseModeGradient:
+        case DerivativeMode::ReverseModeCombined: {
+          IRBuilder<> Builder2(call.getParent());
+          getReverseBuilder(Builder2);
+          Value *x = lookup(gutils->getNewFromOriginal(orig->getArgOperand(0)),
+                            Builder2);
+          Value *onePx =
+              Builder2.CreateFAdd(ConstantFP::get(x->getType(), 1.0), x);
+
+          auto rule = [&](Value *dorig) {
+            return Builder2.CreateFDiv(dorig, onePx);
+          };
+
+          Value *dorig = diffe(orig, Builder2);
+          Value *dif0 = applyChainRule(orig->getArgOperand(0)->getType(),
+                                       Builder2, rule, dorig);
+
+          addToDiffe(orig->getArgOperand(0), dif0, Builder2, x->getType());
+          return;
+        }
+        case DerivativeMode::ReverseModePrimal: {
+          return;
+        }
+        }
+      }
+
       if (funcName == "asin" || funcName == "asinf" || funcName == "asinl") {
         if (gutils->knownRecomputeHeuristic.find(orig) !=
             gutils->knownRecomputeHeuristic.end()) {
