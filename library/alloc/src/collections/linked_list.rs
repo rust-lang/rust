@@ -791,7 +791,7 @@ impl<T> LinkedList<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn push_front(&mut self, elt: T) {
-        self.push_front_node(box Node::new(elt));
+        self.push_front_node(Box::new(Node::new(elt)));
     }
 
     /// Removes the first element and returns it, or `None` if the list is
@@ -834,7 +834,7 @@ impl<T> LinkedList<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn push_back(&mut self, elt: T) {
-        self.push_back_node(box Node::new(elt));
+        self.push_back_node(Box::new(Node::new(elt)));
     }
 
     /// Removes the last element from a list and returns it, or `None` if
