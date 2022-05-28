@@ -1390,7 +1390,8 @@ pub fn hash<T: ?Sized, S: hash::Hasher>(hashee: *const T, into: &mut S) {
 
 // Impls for function pointers
 macro_rules! fnptr_impls_safety_abi {
-    ($FnTy: ty, $($Arg: ident),*) => {
+    ($(#[$Meta:meta])? $FnTy: ty, $($Arg: ident),*) => {
+        $(#[$Meta])?
         #[stable(feature = "fnptr_impls", since = "1.4.0")]
         impl<Ret, $($Arg),*> PartialEq for $FnTy {
             #[inline]
@@ -1399,9 +1400,11 @@ macro_rules! fnptr_impls_safety_abi {
             }
         }
 
+        $(#[$Meta])?
         #[stable(feature = "fnptr_impls", since = "1.4.0")]
         impl<Ret, $($Arg),*> Eq for $FnTy {}
 
+        $(#[$Meta])?
         #[stable(feature = "fnptr_impls", since = "1.4.0")]
         impl<Ret, $($Arg),*> PartialOrd for $FnTy {
             #[inline]
@@ -1410,6 +1413,7 @@ macro_rules! fnptr_impls_safety_abi {
             }
         }
 
+        $(#[$Meta])?
         #[stable(feature = "fnptr_impls", since = "1.4.0")]
         impl<Ret, $($Arg),*> Ord for $FnTy {
             #[inline]
@@ -1418,6 +1422,7 @@ macro_rules! fnptr_impls_safety_abi {
             }
         }
 
+        $(#[$Meta])?
         #[stable(feature = "fnptr_impls", since = "1.4.0")]
         impl<Ret, $($Arg),*> hash::Hash for $FnTy {
             fn hash<HH: hash::Hasher>(&self, state: &mut HH) {
@@ -1425,6 +1430,7 @@ macro_rules! fnptr_impls_safety_abi {
             }
         }
 
+        $(#[$Meta])?
         #[stable(feature = "fnptr_impls", since = "1.4.0")]
         impl<Ret, $($Arg),*> fmt::Pointer for $FnTy {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -1437,6 +1443,7 @@ macro_rules! fnptr_impls_safety_abi {
             }
         }
 
+        $(#[$Meta])?
         #[stable(feature = "fnptr_impls", since = "1.4.0")]
         impl<Ret, $($Arg),*> fmt::Debug for $FnTy {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -1451,7 +1458,17 @@ macro_rules! fnptr_impls_safety_abi {
     }
 }
 
+// #[doc(hidden)] is applied by default due to how many permutations are made.
+// Without this, the documentation page for `fn` becomes 14 MB.
+// In the future, this could be replaced by having rustdoc collapse repetitive ABI impls.
 macro_rules! fnptr_impl_for_abi {
+    ($Abi:tt, $($Arg: ident),*) => {
+        fnptr_impls_safety_abi! { #[doc(hidden)] extern $Abi fn($($Arg),*) -> Ret, $($Arg),* }
+        fnptr_impls_safety_abi! { #[doc(hidden)] unsafe extern $Abi fn($($Arg),*) -> Ret, $($Arg),* }
+    };
+}
+
+macro_rules! fnptr_impl_for_abi_with_docs {
     ($Abi:tt, $($Arg: ident),*) => {
         fnptr_impls_safety_abi! { extern $Abi fn($($Arg),*) -> Ret, $($Arg),* }
         fnptr_impls_safety_abi! { unsafe extern $Abi fn($($Arg),*) -> Ret, $($Arg),* }
@@ -1468,42 +1485,40 @@ macro_rules! fnptr_impl_for_abi_variadic_support {
     ($Abi:tt, $($Arg: ident),*) => {
         fnptr_impl_for_abi! { $Abi, $($Arg),* }
 
-        fnptr_impls_safety_abi! { extern $Abi fn($($Arg),*, ...) -> Ret, $($Arg),* }
-        fnptr_impls_safety_abi! { unsafe extern $Abi fn($($Arg),*, ...) -> Ret, $($Arg),* }
+        fnptr_impls_safety_abi! { #[doc(hidden)] extern $Abi fn($($Arg),*, ...) -> Ret, $($Arg),* }
+        fnptr_impls_safety_abi! { #[doc(hidden)] unsafe extern $Abi fn($($Arg),*, ...) -> Ret, $($Arg),* }
     }
 }
 
 macro_rules! fnptr_impls_args {
     ($($Arg: ident),*) => {
-        fnptr_impl_for_abi! { "Rust", $($Arg),* }
-        fnptr_impl_for_abi! { "stdcall", $($Arg),* }
-        fnptr_impl_for_abi! { "fastcall", $($Arg),* }
-        fnptr_impl_for_abi! { "aapcs", $($Arg),* }
-        fnptr_impl_for_abi! { "win64", $($Arg),* }
-        fnptr_impl_for_abi! { "sysv64", $($Arg),* }
-        fnptr_impl_for_abi! { "system", $($Arg),* }
-        fnptr_impl_for_abi! { "rust-intrinsic", $($Arg),* }
-        fnptr_impl_for_abi! { "rust-call", $($Arg),* }
-        fnptr_impl_for_abi! { "platform-intrinsic", $($Arg),* }
-        fnptr_impl_for_abi! { "unadjusted", $($Arg),* }
+        fnptr_impl_for_abi_with_docs! { "Rust", $($Arg),* }
 
+        fnptr_impl_for_abi! { "C-cmse-nonsecure-call", $($Arg),* }
         fnptr_impl_for_abi! { "C-unwind", $($Arg),* }
-        fnptr_impl_for_abi! { "stdcall-unwind", $($Arg),* }
-        fnptr_impl_for_abi! { "vectorcall", $($Arg),* }
-        fnptr_impl_for_abi! { "thiscall", $($Arg),* }
-        fnptr_impl_for_abi! { "thiscall-unwind", $($Arg),* }
-
-        fnptr_impl_for_abi! { "ptx-kernel", $($Arg),* }
-        fnptr_impl_for_abi! { "msp430-interrupt", $($Arg),* }
-        fnptr_impl_for_abi! { "x86-interrupt", $($Arg),* }
+        fnptr_impl_for_abi! { "aapcs", $($Arg),* }
         fnptr_impl_for_abi! { "amdgpu-kernel", $($Arg),* }
-        fnptr_impl_for_abi! { "efiapi", $($Arg),* }
         fnptr_impl_for_abi! { "avr-interrupt", $($Arg),* }
         fnptr_impl_for_abi! { "avr-non-blocking-interrupt", $($Arg),* }
-        fnptr_impl_for_abi! { "C-cmse-nonsecure-call", $($Arg),* }
-        fnptr_impl_for_abi! { "wasm", $($Arg),* }
-
+        fnptr_impl_for_abi! { "efiapi", $($Arg),* }
+        fnptr_impl_for_abi! { "fastcall", $($Arg),* }
+        fnptr_impl_for_abi! { "msp430-interrupt", $($Arg),* }
+        fnptr_impl_for_abi! { "platform-intrinsic", $($Arg),* }
+        fnptr_impl_for_abi! { "ptx-kernel", $($Arg),* }
+        fnptr_impl_for_abi! { "rust-call", $($Arg),* }
+        fnptr_impl_for_abi! { "rust-intrinsic", $($Arg),* }
+        fnptr_impl_for_abi! { "stdcall", $($Arg),* }
+        fnptr_impl_for_abi! { "stdcall-unwind", $($Arg),* }
+        fnptr_impl_for_abi! { "system", $($Arg),* }
         fnptr_impl_for_abi! { "system-unwind", $($Arg),* }
+        fnptr_impl_for_abi! { "sysv64", $($Arg),* }
+        fnptr_impl_for_abi! { "thiscall", $($Arg),* }
+        fnptr_impl_for_abi! { "thiscall-unwind", $($Arg),* }
+        fnptr_impl_for_abi! { "unadjusted", $($Arg),* }
+        fnptr_impl_for_abi! { "vectorcall", $($Arg),* }
+        fnptr_impl_for_abi! { "wasm", $($Arg),* }
+        fnptr_impl_for_abi! { "win64", $($Arg),* }
+        fnptr_impl_for_abi! { "x86-interrupt", $($Arg),* }
 
         fnptr_impl_for_abi_variadic_support! { "C", $($Arg),* }
         fnptr_impl_for_abi_variadic_support! { "cdecl", $($Arg),* }

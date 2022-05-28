@@ -1294,8 +1294,9 @@ mod prim_ref {}
 /// [`Pointer`]: fmt::Pointer
 ///
 /// Due to a temporary restriction in Rust's type system, these traits are only implemented on
-/// functions that take 12 arguments or less, with the `"Rust"` and `"C"` ABIs. In the future, this
-/// may change.
+/// functions that take 12 arguments or less. In the future, this may change.
+///
+/// These traits are implemented on all available ABIs, though the documentation hides them.
 ///
 /// In addition, function pointers of *any* signature, ABI, or safety are [`Copy`], and all *safe*
 /// function pointers implement [`Fn`], [`FnMut`], and [`FnOnce`]. This works because these traits
