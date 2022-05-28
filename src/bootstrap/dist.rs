@@ -897,29 +897,6 @@ impl Step for PlainSourceTarball {
     }
 }
 
-// We have to run a few shell scripts, which choke quite a bit on both `\`
-// characters and on `C:\` paths, so normalize both of them away.
-pub fn sanitize_sh(path: &Path) -> String {
-    let path = path.to_str().unwrap().replace("\\", "/");
-    return change_drive(unc_to_lfs(&path)).unwrap_or(path);
-
-    fn unc_to_lfs(s: &str) -> &str {
-        s.strip_prefix("//?/").unwrap_or(s)
-    }
-
-    fn change_drive(s: &str) -> Option<String> {
-        let mut ch = s.chars();
-        let drive = ch.next().unwrap_or('C');
-        if ch.next() != Some(':') {
-            return None;
-        }
-        if ch.next() != Some('/') {
-            return None;
-        }
-        Some(format!("/{}/{}", drive, &s[drive.len_utf8() + 2..]))
-    }
-}
-
 #[derive(Debug, PartialOrd, Ord, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Cargo {
     pub compiler: Compiler,

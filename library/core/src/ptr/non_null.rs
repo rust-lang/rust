@@ -499,14 +499,15 @@ impl<T> NonNull<[T]> {
     /// # Examples
     ///
     /// ```rust
-    /// #![feature(slice_ptr_len, nonnull_slice_from_raw_parts)]
+    /// #![feature(nonnull_slice_from_raw_parts)]
     /// use std::ptr::NonNull;
     ///
     /// let slice: NonNull<[i8]> = NonNull::slice_from_raw_parts(NonNull::dangling(), 3);
     /// assert_eq!(slice.len(), 3);
     /// ```
-    #[unstable(feature = "slice_ptr_len", issue = "71146")]
-    #[rustc_const_unstable(feature = "const_slice_ptr_len", issue = "71146")]
+    #[stable(feature = "slice_ptr_len_nonnull", since = "1.63.0")]
+    #[rustc_const_stable(feature = "const_slice_ptr_len_nonnull", since = "1.63.0")]
+    #[rustc_allow_const_fn_unstable(const_slice_ptr_len)]
     #[must_use]
     #[inline]
     pub const fn len(self) -> usize {
