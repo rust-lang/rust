@@ -192,7 +192,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     ///
-    /// // or
+    /// or
     ///
     /// ```rust
     /// # let res: Result<i32, std::io::Error> = Ok(1);

@@ -203,7 +203,7 @@ declare_clippy_lint! {
     /// opt.expect("more helpful message");
     /// ```
     ///
-    /// // or
+    /// or
     ///
     /// ```rust
     /// # let res: Result<usize, ()> = Ok(1);
@@ -245,7 +245,7 @@ declare_clippy_lint! {
     /// opt?;
     /// ```
     ///
-    /// // or
+    /// or
     ///
     /// ```rust
     /// # let res: Result<usize, ()> = Ok(1);
@@ -440,7 +440,7 @@ declare_clippy_lint! {
     /// x.map_or(0, |a| a + 1);
     /// ```
     ///
-    /// // or
+    /// or
     ///
     /// ```rust
     /// # let x: Result<usize, ()> = Ok(1);

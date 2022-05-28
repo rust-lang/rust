@@ -29,7 +29,7 @@ declare_clippy_lint! {
     /// if true { /* ... */ }
     /// ```
     ///
-    /// // or
+    /// or
     ///
     /// ```rust
     /// # fn somefunc() -> bool { true };

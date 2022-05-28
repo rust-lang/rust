@@ -23,12 +23,11 @@ declare_clippy_lint! {
     ///
     ///
     /// ### Example
-    /// Bad:
     /// ```rust
     /// enum Test {}
     /// ```
     ///
-    /// Good:
+    /// Use instead:
     /// ```rust
     /// #![feature(never_type)]
     ///

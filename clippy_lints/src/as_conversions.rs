@@ -29,7 +29,7 @@ declare_clippy_lint! {
     /// f(a as u16);
     /// ```
     ///
-    /// Usually better represents the semantics you expect:
+    /// Use instead:
     /// ```rust,ignore
     /// f(a.try_into()?);
     /// ```

@@ -46,7 +46,7 @@ declare_clippy_lint! {
     ///     map.insert(k, v);
     /// }
     /// ```
-    /// can both be rewritten as:
+    /// Use instead:
     /// ```rust
     /// # use std::collections::HashMap;
     /// # let mut map = HashMap::new();
