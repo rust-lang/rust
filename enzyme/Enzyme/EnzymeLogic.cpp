@@ -2318,7 +2318,7 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
         }
 #if LLVM_VERSION_MAJOR >= 14
         malloccall->addDereferenceableRetAttr(size->getLimitedValue());
-#ifndef FLANG
+#if !defined(FLANG) && !defined(ROCM)
         AttrBuilder B(malloccall->getContext());
 #else
         AttrBuilder B;

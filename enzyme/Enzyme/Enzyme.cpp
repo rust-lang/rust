@@ -1801,7 +1801,7 @@ public:
       // dead internal functions, which invalidates Enzyme's cache
       // code left here to re-enable upon Attributor patch
 
-#if LLVM_VERSION_MAJOR >= 13 && !defined(FLANG)
+#if LLVM_VERSION_MAJOR >= 13 && !defined(FLANG) && !defined(ROCM)
 
       AnalysisGetter AG(Logic.PPC.FAM);
       SetVector<Function *> Functions;

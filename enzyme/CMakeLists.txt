@@ -128,6 +128,11 @@ if (ENZYME_FLANG)
   add_definitions(-DFLANG=1)
 endif()
 
+option(ENZYME_ROCM "Build for non-version compliant ROCM" OFF)
+if (ENZYME_ROCM)
+  add_definitions(-DROCM=1)
+endif()
+
 # Offer the user the choice of overriding the installation directories
 set(INSTALL_INCLUDE_DIR include CACHE PATH "Installation directory for header files")
 if(WIN32 AND NOT CYGWIN)

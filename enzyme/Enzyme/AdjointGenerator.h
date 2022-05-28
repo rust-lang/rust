@@ -10487,7 +10487,7 @@ public:
 #if LLVM_VERSION_MAJOR >= 14
                     cast<CallInst>(anti)->addDereferenceableRetAttr(derefBytes);
                     cal->addDereferenceableRetAttr(derefBytes);
-#ifndef FLANG
+#if !defined(FLANG) && !defined(ROCM)
                     AttrBuilder B(called->getContext());
 #else
                     AttrBuilder B;

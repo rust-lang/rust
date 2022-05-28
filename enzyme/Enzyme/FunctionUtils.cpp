@@ -319,7 +319,7 @@ static inline void UpgradeAllocasToMallocs(Function *NewF,
 #if LLVM_VERSION_MAJOR >= 14
     if (ConstantInt *size = dyn_cast<ConstantInt>(CI->getOperand(0))) {
       CI->addDereferenceableRetAttr(size->getLimitedValue());
-#ifndef FLANG
+#if !defined(FLANG) && !defined(ROCM)
       AttrBuilder B(CI->getContext());
 #else
       AttrBuilder B;
