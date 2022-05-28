@@ -8303,7 +8303,16 @@ public:
         if (ifound != gutils->invertedPointers.end()) {
           //! We only need the shadow pointer for non-forward Mode if it is used
           //! in a non return setting
-          hasNonReturnUse = subretType == DIFFE_TYPE::DUP_ARG;
+          if (!gutils->isConstantValue(orig)) {
+            if (!orig->getType()->isFPOrFPVectorTy() &&
+                TR.query(orig).Inner0().isPossiblePointer()) {
+              if (is_value_needed_in_reverse<ValueType::Shadow>(
+                      TR, gutils, orig, DerivativeMode::ReverseModePrimal,
+                      oldUnreachable)) {
+                hasNonReturnUse = true;
+              }
+            }
+          }
           if (hasNonReturnUse)
             invertedReturn = cast<PHINode>(&*ifound->second);
         }
