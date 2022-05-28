@@ -1039,6 +1039,7 @@ declare_clippy_lint! {
     ///
     /// // Good
     /// _.split('x');
+    /// ```
     #[clippy::version = "pre 1.29.0"]
     pub SINGLE_CHAR_PATTERN,
     perf,

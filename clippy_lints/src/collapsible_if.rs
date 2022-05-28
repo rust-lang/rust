@@ -32,20 +32,20 @@ declare_clippy_lint! {
     /// makes code look more complex than it really is.
     ///
     /// ### Example
-    /// ```rust,ignore
+    /// ```rust
+    /// # let (x, y) = (true, true);
     /// if x {
     ///     if y {
-    ///         …
+    ///         // …
     ///     }
     /// }
-    ///
     /// ```
     ///
     /// Use instead:
-    ///
-    /// ```rust,ignore
+    /// ```rust
+    /// # let (x, y) = (true, true);
     /// if x && y {
-    ///     …
+    ///     // …
     /// }
     /// ```
     #[clippy::version = "pre 1.29.0"]

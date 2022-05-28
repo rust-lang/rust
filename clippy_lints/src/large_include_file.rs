@@ -22,10 +22,11 @@ declare_clippy_lint! {
     /// let included_bytes = include_bytes!("very_large_file.txt");
     /// ```
     ///
-    /// Instead, you can load the file at runtime:
+    /// Use instead:
     /// ```rust,ignore
     /// use std::fs;
     ///
+    /// // You can load the file at runtime
     /// let string = fs::read_to_string("very_large_file.txt")?;
     /// let bytes = fs::read("very_large_file.txt")?;
     /// ```

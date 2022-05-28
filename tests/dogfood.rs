@@ -21,7 +21,7 @@ fn dogfood_clippy() {
 
     // "" is the root package
     for package in &["", "clippy_dev", "clippy_lints", "clippy_utils", "rustc_tools_util"] {
-        run_clippy_for_package(package, &[]);
+        run_clippy_for_package(package, &["-D", "clippy::all", "-D", "clippy::pedantic"]);
     }
 }
 
@@ -77,8 +77,6 @@ fn run_clippy_for_package(project: &str, args: &[&str]) {
         .arg("--all-features")
         .arg("--")
         .args(args)
-        .args(&["-D", "clippy::all"])
-        .args(&["-D", "clippy::pedantic"])
         .arg("-Cdebuginfo=0"); // disable debuginfo to generate less data in the target dir
 
     if cfg!(feature = "internal") {
