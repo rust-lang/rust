@@ -65,3 +65,9 @@ assert-local-storage: {"rustdoc-disable-shortcuts": "true"}
 goto: file://|DOC_PATH|/settings.html
 wait-for: "#settings"
 assert-css: (".setting-line .toggle .slider", {"width": "45px", "margin-right": "20px"})
+
+// We now check the display with JS disabled.
+assert-false: "noscript section"
+javascript: false
+reload:
+assert-css: ("noscript section", {"display": "block"})
