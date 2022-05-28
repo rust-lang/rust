@@ -514,7 +514,7 @@ impl<'a> ExtCtxt<'a> {
         }
     }
 
-    // FIXME: unused `self`
+    // `self` is unused but keep it as method for the convenience use.
     pub fn fn_decl(&self, inputs: Vec<ast::Param>, output: ast::FnRetTy) -> P<ast::FnDecl> {
         P(ast::FnDecl { inputs, output })
     }
