@@ -10,7 +10,6 @@ use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability,
 };
 use rustc_middle::ty::fold::TypeFolder;
-use rustc_middle::ty::TyKind::{Adt, Array, Char, FnDef, Never, Ref, Str, Tuple, Uint};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeVisitor};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{sym, Ident};
@@ -18,6 +17,7 @@ use rustc_span::Span;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::error_reporting::suggestions::InferCtxtExt as _;
 use rustc_trait_selection::traits::{FulfillmentError, TraitEngine, TraitEngineExt};
+use rustc_type_ir::sty::TyKind::*;
 
 use std::ops::ControlFlow;
 

@@ -4,7 +4,7 @@ use crate::mir;
 use crate::ty::codec::{TyDecoder, TyEncoder};
 use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder, TypeVisitor};
 use crate::ty::sty::{ClosureSubsts, GeneratorSubsts, InlineConstSubsts};
-use crate::ty::{self, EarlyBinder, Lift, List, ParamConst, Ty, TyCtxt};
+use crate::ty::{self, Lift, List, ParamConst, Ty, TyCtxt};
 
 use rustc_data_structures::intern::{Interned, WithStableHash};
 use rustc_hir::def_id::DefId;
@@ -79,17 +79,17 @@ impl<'tcx> GenericArgKind<'tcx> {
         let (tag, ptr) = match self {
             GenericArgKind::Lifetime(lt) => {
                 // Ensure we can use the tag bits.
-                assert_eq!(mem::align_of_val(lt.0.0) & TAG_MASK, 0);
+                assert_eq!(mem::align_of_val(&*lt.0.0) & TAG_MASK, 0);
                 (REGION_TAG, lt.0.0 as *const ty::RegionKind as usize)
             }
             GenericArgKind::Type(ty) => {
                 // Ensure we can use the tag bits.
-                assert_eq!(mem::align_of_val(ty.0.0) & TAG_MASK, 0);
+                assert_eq!(mem::align_of_val(&*ty.0.0) & TAG_MASK, 0);
                 (TYPE_TAG, ty.0.0 as *const WithStableHash<ty::TyS<'tcx>> as usize)
             }
             GenericArgKind::Const(ct) => {
                 // Ensure we can use the tag bits.
-                assert_eq!(mem::align_of_val(ct.0.0) & TAG_MASK, 0);
+                assert_eq!(mem::align_of_val(&*ct.0.0) & TAG_MASK, 0);
                 (CONST_TAG, ct.0.0 as *const ty::ConstS<'tcx> as usize)
             }
         };
@@ -216,13 +216,13 @@ impl<'tcx> TypeFoldable<'tcx> for GenericArg<'tcx> {
     }
 }
 
-impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for GenericArg<'tcx> {
+impl<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>> Encodable<E> for GenericArg<'tcx> {
     fn encode(&self, e: &mut E) -> Result<(), E::Error> {
         self.unpack().encode(e)
     }
 }
 
-impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for GenericArg<'tcx> {
+impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for GenericArg<'tcx> {
     fn decode(d: &mut D) -> GenericArg<'tcx> {
         GenericArgKind::decode(d).pack()
     }
@@ -506,7 +506,7 @@ pub trait Subst<'tcx>: Sized {
     fn subst(self, tcx: TyCtxt<'tcx>, substs: &[GenericArg<'tcx>]) -> Self::Inner;
 }
 
-impl<'tcx, T: TypeFoldable<'tcx>> Subst<'tcx> for EarlyBinder<T> {
+impl<'tcx, T: TypeFoldable<'tcx>> Subst<'tcx> for ty::EarlyBinder<T> {
     type Inner = T;
 
     fn subst(self, tcx: TyCtxt<'tcx>, substs: &[GenericArg<'tcx>]) -> Self::Inner {

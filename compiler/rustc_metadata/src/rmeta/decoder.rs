@@ -377,12 +377,14 @@ impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> TyDecoder<'tcx> for DecodeContext<'a, 'tcx> {
+impl<'a, 'tcx> TyDecoder for DecodeContext<'a, 'tcx> {
     const CLEAR_CROSS_CRATE: bool = true;
 
+    type I = TyCtxt<'tcx>;
+
     #[inline]
-    fn tcx(&self) -> TyCtxt<'tcx> {
-        self.tcx.expect("missing TyCtxt in DecodeContext")
+    fn interner(&self) -> Self::I {
+        self.tcx()
     }
 
     #[inline]

@@ -207,10 +207,10 @@ pub struct DeepRejectCtxt {
 }
 
 impl DeepRejectCtxt {
-    pub fn generic_args_may_unify(
+    pub fn generic_args_may_unify<'tcx>(
         self,
-        obligation_arg: ty::GenericArg<'_>,
-        impl_arg: ty::GenericArg<'_>,
+        obligation_arg: ty::GenericArg<'tcx>,
+        impl_arg: ty::GenericArg<'tcx>,
     ) -> bool {
         match (obligation_arg.unpack(), impl_arg.unpack()) {
             // We don't fast reject based on regions for now.
@@ -225,7 +225,7 @@ impl DeepRejectCtxt {
         }
     }
 
-    pub fn types_may_unify(self, obligation_ty: Ty<'_>, impl_ty: Ty<'_>) -> bool {
+    pub fn types_may_unify<'tcx>(self, obligation_ty: Ty<'tcx>, impl_ty: Ty<'tcx>) -> bool {
         match impl_ty.kind() {
             // Start by checking whether the type in the impl may unify with
             // pretty much everything. Just return `true` in that case.

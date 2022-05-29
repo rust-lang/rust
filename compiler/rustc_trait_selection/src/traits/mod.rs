@@ -32,9 +32,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::{InternalSubsts, SubstsRef};
-use rustc_middle::ty::{
-    self, GenericParamDefKind, ToPredicate, Ty, TyCtxt, VtblEntry, COMMON_VTABLE_ENTRIES,
-};
+use rustc_middle::ty::{self, GenericParamDefKind, ToPredicate, Ty, TyCtxt, VtblEntry};
 use rustc_span::{sym, Span};
 use smallvec::SmallVec;
 
@@ -695,7 +693,7 @@ fn vtable_entries<'tcx>(
     let vtable_segment_callback = |segment| -> ControlFlow<()> {
         match segment {
             VtblSegment::MetadataDSA => {
-                entries.extend(COMMON_VTABLE_ENTRIES);
+                entries.extend(TyCtxt::COMMON_VTABLE_ENTRIES);
             }
             VtblSegment::TraitOwnEntries { trait_ref, emit_vptr } => {
                 let existential_trait_ref = trait_ref
@@ -785,7 +783,7 @@ fn vtable_trait_first_method_offset<'tcx>(
         move |segment| {
             match segment {
                 VtblSegment::MetadataDSA => {
-                    vtable_base += COMMON_VTABLE_ENTRIES.len();
+                    vtable_base += TyCtxt::COMMON_VTABLE_ENTRIES.len();
                 }
                 VtblSegment::TraitOwnEntries { trait_ref, emit_vptr } => {
                     if tcx.erase_regions(trait_ref) == trait_to_be_found_erased {

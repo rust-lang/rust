@@ -1,7 +1,6 @@
 //! Diagnostics related methods for `Ty`.
 
 use crate::ty::subst::{GenericArg, GenericArgKind};
-use crate::ty::TyKind::*;
 use crate::ty::{
     ConstKind, DefIdTree, ExistentialPredicate, ExistentialProjection, ExistentialTraitRef,
     InferTy, ProjectionTy, Term, Ty, TyCtxt, TypeAndMut,
@@ -13,6 +12,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::WherePredicate;
 use rustc_span::Span;
+use rustc_type_ir::sty::TyKind::*;
 
 impl<'tcx> IntoDiagnosticArg for Ty<'tcx> {
     fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {

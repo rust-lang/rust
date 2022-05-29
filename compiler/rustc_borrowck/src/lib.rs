@@ -98,7 +98,11 @@ struct Upvar<'tcx> {
     by_ref: bool,
 }
 
-const DEREF_PROJECTION: &[PlaceElem<'_>; 1] = &[ProjectionElem::Deref];
+/// Associate some local constants with the `'tcx` lifetime
+struct TyCtxtConsts<'tcx>(TyCtxt<'tcx>);
+impl<'tcx> TyCtxtConsts<'tcx> {
+    const DEREF_PROJECTION: &'tcx [PlaceElem<'tcx>; 1] = &[ProjectionElem::Deref];
+}
 
 pub fn provide(providers: &mut Providers) {
     *providers = Providers {
@@ -1443,7 +1447,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 // Thread-locals might be dropped after the function exits
                 // We have to dereference the outer reference because
                 // borrows don't conflict behind shared references.
-                root_place.projection = DEREF_PROJECTION;
+                root_place.projection = TyCtxtConsts::DEREF_PROJECTION;
                 (true, true)
             } else {
                 (false, self.locals_are_invalidated_at_exit)

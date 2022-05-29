@@ -2489,7 +2489,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
             ty: Ty<'tcx>,
             init: InitKind,
         ) -> Option<InitError> {
-            use rustc_middle::ty::TyKind::*;
+            use rustc_type_ir::sty::TyKind::*;
             match ty.kind() {
                 // Primitive types that don't like 0 as a value.
                 Ref(..) => Some(("references must be non-null".to_string(), None)),
@@ -2801,7 +2801,7 @@ impl ClashingExternDeclarations {
                 true
             } else {
                 // Do a full, depth-first comparison between the two.
-                use rustc_middle::ty::TyKind::*;
+                use rustc_type_ir::sty::TyKind::*;
                 let a_kind = a.kind();
                 let b_kind = b.kind();
 

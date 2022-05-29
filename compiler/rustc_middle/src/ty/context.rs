@@ -16,7 +16,6 @@ use crate::thir::Thir;
 use crate::traits;
 use crate::ty::query::{self, TyCtxtAt};
 use crate::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, Subst, SubstsRef, UserSubsts};
-use crate::ty::TyKind::*;
 use crate::ty::{
     self, AdtDef, AdtDefData, AdtKind, Binder, BindingMode, BoundVar, CanonicalPolyFnSig,
     ClosureSizeProfileData, Const, ConstS, ConstVid, DefIdTree, ExistentialPredicate, FloatTy,
@@ -60,9 +59,9 @@ use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{Layout, LayoutS, TargetDataLayout, VariantIdx};
 use rustc_target::spec::abi;
+use rustc_type_ir::sty::TyKind::*;
+use rustc_type_ir::{InternAs, InternIteratorElement, Interner, TypeFlags};
 
-use rustc_type_ir::TypeFlags;
-use smallvec::SmallVec;
 use std::any::Any;
 use std::borrow::Borrow;
 use std::cmp::Ordering;
@@ -89,6 +88,31 @@ pub trait OnDiskCache<'tcx>: rustc_data_structures::sync::Sync {
     fn drop_serialized_data(&self, tcx: TyCtxt<'tcx>);
 
     fn serialize(&self, tcx: TyCtxt<'tcx>, encoder: &mut FileEncoder) -> FileEncodeResult;
+}
+
+#[allow(rustc::usage_of_ty_tykind)]
+impl<'tcx> Interner for TyCtxt<'tcx> {
+    type AdtDef = ty::AdtDef<'tcx>;
+    type SubstsRef = ty::SubstsRef<'tcx>;
+    type DefId = DefId;
+    type Ty = Ty<'tcx>;
+    type Const = ty::Const<'tcx>;
+    type Region = Region<'tcx>;
+    type TypeAndMut = TypeAndMut<'tcx>;
+    type Mutability = hir::Mutability;
+    type Movability = hir::Movability;
+    type PolyFnSig = PolyFnSig<'tcx>;
+    type ListBinderExistentialPredicate = &'tcx List<Binder<'tcx, ExistentialPredicate<'tcx>>>;
+    type BinderListTy = Binder<'tcx, &'tcx List<Ty<'tcx>>>;
+    type ListTy = &'tcx List<Ty<'tcx>>;
+    type ProjectionTy = ty::ProjectionTy<'tcx>;
+    type ParamTy = ParamTy;
+    type BoundTy = ty::BoundTy;
+    type PlaceholderType = ty::PlaceholderType;
+    type InferTy = InferTy;
+    type DelaySpanBugEmitted = DelaySpanBugEmitted;
+    type PredicateKind = ty::PredicateKind<'tcx>;
+    type AllocId = crate::mir::interpret::AllocId;
 }
 
 /// A type that is not publicly constructable. This prevents people from making [`TyKind::Error`]s
@@ -1677,7 +1701,7 @@ macro_rules! nop_lift {
         impl<'a, 'tcx> Lift<'tcx> for $ty {
             type Lifted = $lifted;
             fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
-                if tcx.interners.$set.contains_pointer_to(&InternedInSet(self.0.0)) {
+                if tcx.interners.$set.contains_pointer_to(&InternedInSet(&*self.0.0)) {
                     // SAFETY: `self` is interned and therefore valid
                     // for the entire lifetime of the `TyCtxt`.
                     Some(unsafe { mem::transmute(self) })
@@ -2845,108 +2869,6 @@ impl<'tcx> TyCtxtAt<'tcx> {
     #[track_caller]
     pub fn ty_error_with_message(self, msg: &str) -> Ty<'tcx> {
         self.tcx.ty_error_with_message(self.span, msg)
-    }
-}
-
-pub trait InternAs<T: ?Sized, R> {
-    type Output;
-    fn intern_with<F>(self, f: F) -> Self::Output
-    where
-        F: FnOnce(&T) -> R;
-}
-
-impl<I, T, R, E> InternAs<[T], R> for I
-where
-    E: InternIteratorElement<T, R>,
-    I: Iterator<Item = E>,
-{
-    type Output = E::Output;
-    fn intern_with<F>(self, f: F) -> Self::Output
-    where
-        F: FnOnce(&[T]) -> R,
-    {
-        E::intern_with(self, f)
-    }
-}
-
-pub trait InternIteratorElement<T, R>: Sized {
-    type Output;
-    fn intern_with<I: Iterator<Item = Self>, F: FnOnce(&[T]) -> R>(iter: I, f: F) -> Self::Output;
-}
-
-impl<T, R> InternIteratorElement<T, R> for T {
-    type Output = R;
-    fn intern_with<I: Iterator<Item = Self>, F: FnOnce(&[T]) -> R>(
-        mut iter: I,
-        f: F,
-    ) -> Self::Output {
-        // This code is hot enough that it's worth specializing for the most
-        // common length lists, to avoid the overhead of `SmallVec` creation.
-        // Lengths 0, 1, and 2 typically account for ~95% of cases. If
-        // `size_hint` is incorrect a panic will occur via an `unwrap` or an
-        // `assert`.
-        match iter.size_hint() {
-            (0, Some(0)) => {
-                assert!(iter.next().is_none());
-                f(&[])
-            }
-            (1, Some(1)) => {
-                let t0 = iter.next().unwrap();
-                assert!(iter.next().is_none());
-                f(&[t0])
-            }
-            (2, Some(2)) => {
-                let t0 = iter.next().unwrap();
-                let t1 = iter.next().unwrap();
-                assert!(iter.next().is_none());
-                f(&[t0, t1])
-            }
-            _ => f(&iter.collect::<SmallVec<[_; 8]>>()),
-        }
-    }
-}
-
-impl<'a, T, R> InternIteratorElement<T, R> for &'a T
-where
-    T: Clone + 'a,
-{
-    type Output = R;
-    fn intern_with<I: Iterator<Item = Self>, F: FnOnce(&[T]) -> R>(iter: I, f: F) -> Self::Output {
-        // This code isn't hot.
-        f(&iter.cloned().collect::<SmallVec<[_; 8]>>())
-    }
-}
-
-impl<T, R, E> InternIteratorElement<T, R> for Result<T, E> {
-    type Output = Result<R, E>;
-    fn intern_with<I: Iterator<Item = Self>, F: FnOnce(&[T]) -> R>(
-        mut iter: I,
-        f: F,
-    ) -> Self::Output {
-        // This code is hot enough that it's worth specializing for the most
-        // common length lists, to avoid the overhead of `SmallVec` creation.
-        // Lengths 0, 1, and 2 typically account for ~95% of cases. If
-        // `size_hint` is incorrect a panic will occur via an `unwrap` or an
-        // `assert`, unless a failure happens first, in which case the result
-        // will be an error anyway.
-        Ok(match iter.size_hint() {
-            (0, Some(0)) => {
-                assert!(iter.next().is_none());
-                f(&[])
-            }
-            (1, Some(1)) => {
-                let t0 = iter.next().unwrap()?;
-                assert!(iter.next().is_none());
-                f(&[t0])
-            }
-            (2, Some(2)) => {
-                let t0 = iter.next().unwrap()?;
-                let t1 = iter.next().unwrap()?;
-                assert!(iter.next().is_none());
-                f(&[t0, t1])
-            }
-            _ => f(&iter.collect::<Result<SmallVec<[_; 8]>, _>>()?),
-        })
     }
 }
 

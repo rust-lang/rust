@@ -2,8 +2,8 @@ use std::convert::TryFrom;
 
 use rustc_middle::mir::interpret::{InterpResult, Pointer, PointerArithmetic};
 use rustc_middle::ty::{
-    self, Ty, COMMON_VTABLE_ENTRIES, COMMON_VTABLE_ENTRIES_ALIGN,
-    COMMON_VTABLE_ENTRIES_DROPINPLACE, COMMON_VTABLE_ENTRIES_SIZE,
+    self, Ty, TyCtxt, COMMON_VTABLE_ENTRIES_ALIGN, COMMON_VTABLE_ENTRIES_DROPINPLACE,
+    COMMON_VTABLE_ENTRIES_SIZE,
 };
 use rustc_target::abi::{Align, Size};
 
@@ -38,7 +38,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     }
 
     /// Resolves the function at the specified slot in the provided
-    /// vtable. Currently an index of '3' (`COMMON_VTABLE_ENTRIES.len()`)
+    /// vtable. Currently an index of '3' (`TyCtxt::COMMON_VTABLE_ENTRIES.len()`)
     /// corresponds to the first method declared in the trait of the provided vtable.
     pub fn get_vtable_slot(
         &self,
@@ -64,7 +64,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let vtable = self
             .get_ptr_alloc(
                 vtable,
-                pointer_size * u64::try_from(COMMON_VTABLE_ENTRIES.len()).unwrap(),
+                pointer_size * u64::try_from(TyCtxt::COMMON_VTABLE_ENTRIES.len()).unwrap(),
                 self.tcx.data_layout.pointer_align.abi,
             )?
             .expect("cannot be a ZST");
@@ -99,7 +99,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let vtable = self
             .get_ptr_alloc(
                 vtable,
-                pointer_size * u64::try_from(COMMON_VTABLE_ENTRIES.len()).unwrap(),
+                pointer_size * u64::try_from(TyCtxt::COMMON_VTABLE_ENTRIES.len()).unwrap(),
                 self.tcx.data_layout.pointer_align.abi,
             )?
             .expect("cannot be a ZST");

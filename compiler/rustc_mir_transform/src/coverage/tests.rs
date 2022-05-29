@@ -37,7 +37,7 @@ use rustc_data_structures::graph::WithSuccessors;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::mir::coverage::CoverageKind;
 use rustc_middle::mir::*;
-use rustc_middle::ty::{self, BOOL_TY};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::{self, BytePos, Pos, Span, DUMMY_SP};
 
 // All `TEMP_BLOCK` targets should be replaced before calling `to_body() -> mir::Body`.
@@ -47,6 +47,7 @@ struct MockBlocks<'tcx> {
     blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
     dummy_place: Place<'tcx>,
     next_local: usize,
+    bool_ty: Ty<'tcx>,
 }
 
 impl<'tcx> MockBlocks<'tcx> {
@@ -55,6 +56,7 @@ impl<'tcx> MockBlocks<'tcx> {
             blocks: IndexVec::new(),
             dummy_place: Place { local: RETURN_PLACE, projection: ty::List::empty() },
             next_local: 0,
+            bool_ty: TyCtxt::BOOL_TY_FOR_UNIT_TESTING,
         }
     }
 
@@ -155,7 +157,7 @@ impl<'tcx> MockBlocks<'tcx> {
     fn switchint(&mut self, some_from_block: Option<BasicBlock>) -> BasicBlock {
         let switchint_kind = TerminatorKind::SwitchInt {
             discr: Operand::Move(Place::from(self.new_temp())),
-            switch_ty: BOOL_TY, // just a dummy value
+            switch_ty: self.bool_ty, // just a dummy value
             targets: SwitchTargets::static_if(0, TEMP_BLOCK, TEMP_BLOCK),
         };
         self.add_block_from(some_from_block, switchint_kind)

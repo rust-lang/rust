@@ -4,7 +4,7 @@ use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_index::vec::Idx;
 use rustc_middle::ty::layout::{LayoutError, SizeSkeleton};
-use rustc_middle::ty::{self, FloatTy, InferTy, IntTy, Ty, TyCtxt, TypeFoldable, UintTy};
+use rustc_middle::ty::{self, Article, FloatTy, InferTy, IntTy, Ty, TyCtxt, TypeFoldable, UintTy};
 use rustc_session::lint;
 use rustc_span::{Span, Symbol, DUMMY_SP};
 use rustc_target::abi::{Pointer, VariantIdx};

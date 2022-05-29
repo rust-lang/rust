@@ -12,7 +12,7 @@ use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::{self, AssocItem, Ty, TypeAndMut};
+use rustc_middle::ty::{self, Article, AssocItem, Ty, TypeAndMut};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{BytePos, Span};
 
