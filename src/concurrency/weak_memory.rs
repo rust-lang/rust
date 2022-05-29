@@ -35,7 +35,8 @@
 //! (such as accessing the top 16 bits of an AtomicU32). These senarios are generally undiscussed in formalisations of C++ memory model.
 //! In Rust, these operations can only be done through a `&mut AtomicFoo` reference or one derived from it, therefore these operations
 //! can only happen after all previous accesses on the same locations. This implementation is adapted to allow these operations.
-//! A mixed size/atomicity read that races with writes, or a write that races with reads or writes will still cause UBs to be thrown.
+//! A mixed atomicity read that races with writes, or a write that races with reads or writes will still cause UBs to be thrown.
+//! Mixed size atomic accesses must not race with any other atomic access, whether read or write, or a UB will be thrown.
 //! You can refer to test cases in weak_memory/extra_cpp.rs and weak_memory/extra_cpp_unsafe.rs for examples of these operations.
 
 // Our and the author's own implementation (tsan11) of the paper have some deviations from the provided operational semantics in §5.3:
@@ -403,9 +404,9 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
     crate::MiriEvalContextExt<'mir, 'tcx>
 {
     // If weak memory emulation is enabled, check if this atomic op imperfectly overlaps with a previous
-    // atomic write. If it does, then we require it to be ordered (non-racy) with all previous atomic
-    // writes on all the bytes in range
-    fn validate_overlapping_atomic_read(&self, place: &MPlaceTy<'tcx, Tag>) -> InterpResult<'tcx> {
+    // atomic read or write. If it does, then we require it to be ordered (non-racy) with all previous atomic
+    // accesses on all the bytes in range
+    fn validate_overlapping_atomic(&self, place: &MPlaceTy<'tcx, Tag>) -> InterpResult<'tcx> {
         let this = self.eval_context_ref();
         let (alloc_id, base_offset, ..) = this.ptr_get_alloc_id(place.ptr)?;
         if let crate::AllocExtra {
@@ -417,37 +418,9 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
             let range = alloc_range(base_offset, place.layout.size);
             if alloc_buffers.is_overlapping(range)
                 && !alloc_clocks
-                    .read_race_free_with_atomic(range, this.machine.data_race.as_ref().unwrap())
+                    .race_free_with_atomic(range, this.machine.data_race.as_ref().unwrap())
             {
-                throw_ub_format!(
-                    "racy imperfectly overlapping atomic access is not possible in the C++20 memory model"
-                );
-            }
-        }
-        Ok(())
-    }
-
-    // Same as above but needs to be ordered with all previous atomic read or writes
-    fn validate_overlapping_atomic_write(
-        &mut self,
-        place: &MPlaceTy<'tcx, Tag>,
-    ) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
-        let (alloc_id, base_offset, ..) = this.ptr_get_alloc_id(place.ptr)?;
-        if let (
-            crate::AllocExtra {
-                weak_memory: Some(alloc_buffers),
-                data_race: Some(alloc_clocks),
-                ..
-            },
-            crate::Evaluator { data_race: Some(global), .. },
-        ) = this.get_alloc_extra_mut(alloc_id)?
-        {
-            let range = alloc_range(base_offset, place.layout.size);
-            if alloc_buffers.is_overlapping(range)
-                && !alloc_clocks.write_race_free_with_atomic(range, global)
-            {
-                throw_ub_format!("racy imperfectly overlapping atomic access");
+                throw_ub_format!("racy imperfectly overlapping atomic access is not possible in the C++20 memory model");
             }
         }
         Ok(())

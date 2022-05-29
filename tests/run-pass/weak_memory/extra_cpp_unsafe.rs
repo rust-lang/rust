@@ -18,10 +18,6 @@ fn static_atomic(val: u32) -> &'static AtomicU32 {
     ret
 }
 
-fn split_u32_ptr(dword: *const u32) -> *const [u16; 2] {
-    unsafe { std::mem::transmute::<*const u32, *const [u16; 2]>(dword) }
-}
-
 // We allow non-atomic and atomic reads to race
 fn racing_mixed_atomicity_read() {
     let x = static_atomic(0);
@@ -41,58 +37,6 @@ fn racing_mixed_atomicity_read() {
     assert_eq!(r2, 42);
 }
 
-// We allow mixed-size atomic reads to race
-fn racing_mixed_size_read() {
-    let x = static_atomic(0);
-
-    let j1 = spawn(move || {
-        x.load(Relaxed);
-    });
-
-    let j2 = spawn(move || {
-        let x_ptr = x as *const AtomicU32 as *const u32;
-        let x_split = split_u32_ptr(x_ptr);
-        unsafe {
-            let hi = &(*x_split)[0] as *const u16;
-            std::intrinsics::atomic_load_relaxed(hi);
-        }
-    });
-
-    j1.join().unwrap();
-    j2.join().unwrap();
-}
-
-// And we allow the combination of both of the above.
-fn racing_mixed_atomicity_and_size_read() {
-    let x = static_atomic(u32::from_be(0xabbafafa));
-
-    let j1 = spawn(move || {
-        x.load(Relaxed);
-    });
-
-    let j2 = spawn(move || {
-        let x_ptr = x as *const AtomicU32 as *const u32;
-        unsafe { *x_ptr };
-    });
-
-    let j3 = spawn(move || {
-        let x_ptr = x as *const AtomicU32 as *const u32;
-        let x_split = split_u32_ptr(x_ptr);
-        unsafe {
-            let hi = &(*x_split)[0] as *const u16;
-            std::intrinsics::atomic_load_relaxed(hi)
-        }
-    });
-
-    j1.join().unwrap();
-    j2.join().unwrap();
-    let r3 = j3.join().unwrap();
-
-    assert_eq!(r3, u16::from_be(0xabba));
-}
-
 pub fn main() {
     racing_mixed_atomicity_read();
-    racing_mixed_size_read();
-    racing_mixed_atomicity_and_size_read();
 }

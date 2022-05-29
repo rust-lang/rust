@@ -287,18 +287,13 @@ impl MemoryCellClocks {
         Ok(())
     }
 
-    /// Checks if the memory cell write races with any prior atomic read or write
-    fn write_race_free_with_atomic(&mut self, clocks: &ThreadClockSet) -> bool {
+    /// Checks if the memory cell access is ordered with all prior atomic reads and writes
+    fn race_free_with_atomic(&self, clocks: &ThreadClockSet) -> bool {
         if let Some(atomic) = self.atomic() {
             atomic.read_vector <= clocks.clock && atomic.write_vector <= clocks.clock
         } else {
             true
         }
-    }
-
-    /// Checks if the memory cell read races with any prior atomic write
-    fn read_race_free_with_atomic(&self, clocks: &ThreadClockSet) -> bool {
-        if let Some(atomic) = self.atomic() { atomic.write_vector <= clocks.clock } else { true }
     }
 
     /// Update memory cell data-race tracking for atomic
@@ -528,7 +523,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         // the *value* (including the associated provenance if this is an AtomicPtr) at this location.
         // Only metadata on the location itself is used.
         let scalar = this.allow_data_races_ref(move |this| this.read_scalar(&place.into()))?;
-        this.validate_overlapping_atomic_read(place)?;
+        this.validate_overlapping_atomic(place)?;
         this.buffered_atomic_read(place, atomic, scalar, || {
             this.validate_atomic_load(place, atomic)
         })
@@ -542,7 +537,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         atomic: AtomicWriteOp,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        this.validate_overlapping_atomic_write(dest)?;
+        this.validate_overlapping_atomic(dest)?;
         this.allow_data_races_mut(move |this| this.write_scalar(val, &(*dest).into()))?;
         this.validate_atomic_store(dest, atomic)?;
         // FIXME: it's not possible to get the value before write_scalar. A read_scalar will cause
@@ -563,7 +558,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx, ImmTy<'tcx, Tag>> {
         let this = self.eval_context_mut();
 
-        this.validate_overlapping_atomic_write(place)?;
+        this.validate_overlapping_atomic(place)?;
         let old = this.allow_data_races_mut(|this| this.read_immediate(&place.into()))?;
 
         // Atomics wrap around on overflow.
@@ -592,7 +587,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx, ScalarMaybeUninit<Tag>> {
         let this = self.eval_context_mut();
 
-        this.validate_overlapping_atomic_write(place)?;
+        this.validate_overlapping_atomic(place)?;
         let old = this.allow_data_races_mut(|this| this.read_scalar(&place.into()))?;
         this.allow_data_races_mut(|this| this.write_scalar(new, &(*place).into()))?;
 
@@ -613,7 +608,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx, ImmTy<'tcx, Tag>> {
         let this = self.eval_context_mut();
 
-        this.validate_overlapping_atomic_write(place)?;
+        this.validate_overlapping_atomic(place)?;
         let old = this.allow_data_races_mut(|this| this.read_immediate(&place.into()))?;
         let lt = this.binary_op(mir::BinOp::Lt, &old, &rhs)?.to_scalar()?.to_bool()?;
 
@@ -656,7 +651,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         use rand::Rng as _;
         let this = self.eval_context_mut();
 
-        this.validate_overlapping_atomic_write(place)?;
+        this.validate_overlapping_atomic(place)?;
         // Failure ordering cannot be stronger than success ordering, therefore first attempt
         // to read with the failure ordering and if successful then try again with the success
         // read ordering and write in the success case.
@@ -706,7 +701,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         atomic: AtomicReadOp,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_ref();
-        this.validate_overlapping_atomic_read(place)?;
+        this.validate_overlapping_atomic(place)?;
         this.validate_atomic_op(
             place,
             atomic,
@@ -729,7 +724,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         atomic: AtomicWriteOp,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        this.validate_overlapping_atomic_write(place)?;
+        this.validate_overlapping_atomic(place)?;
         this.validate_atomic_op(
             place,
             atomic,
@@ -755,7 +750,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         let acquire = matches!(atomic, Acquire | AcqRel | SeqCst);
         let release = matches!(atomic, Release | AcqRel | SeqCst);
         let this = self.eval_context_mut();
-        this.validate_overlapping_atomic_write(place)?;
+        this.validate_overlapping_atomic(place)?;
         this.validate_atomic_op(place, atomic, "Atomic RMW", move |memory, clocks, index, _| {
             if acquire {
                 memory.load_acquire(clocks, index)?;
@@ -941,9 +936,9 @@ impl VClockAlloc {
         )
     }
 
-    /// Detect racing atomic writes (not data races)
+    /// Detect racing atomic read and writes (not data races)
     /// on every byte of the current access range
-    pub(super) fn read_race_free_with_atomic<'tcx>(
+    pub(super) fn race_free_with_atomic<'tcx>(
         &self,
         range: AllocRange,
         global: &GlobalState,
@@ -952,26 +947,7 @@ impl VClockAlloc {
             let (_, clocks) = global.current_thread_state();
             let alloc_ranges = self.alloc_ranges.borrow();
             for (_, range) in alloc_ranges.iter(range.start, range.size) {
-                if !range.read_race_free_with_atomic(&clocks) {
-                    return false;
-                }
-            }
-        }
-        true
-    }
-
-    /// Detect racing atomic read and writes (not data races)
-    /// on every byte of the current access range
-    pub(super) fn write_race_free_with_atomic<'tcx>(
-        &mut self,
-        range: AllocRange,
-        global: &GlobalState,
-    ) -> bool {
-        if global.race_detecting() {
-            let (_, clocks) = global.current_thread_state();
-            let alloc_ranges = self.alloc_ranges.get_mut();
-            for (_, range) in alloc_ranges.iter_mut(range.start, range.size) {
-                if !range.write_race_free_with_atomic(&clocks) {
+                if !range.race_free_with_atomic(&clocks) {
                     return false;
                 }
             }

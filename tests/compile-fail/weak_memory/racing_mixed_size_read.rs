@@ -6,7 +6,7 @@ use std::sync::atomic::AtomicU32;
 use std::sync::atomic::Ordering::*;
 use std::thread::spawn;
 
-fn static_atomic_u32(val: u32) -> &'static AtomicU32 {
+fn static_atomic(val: u32) -> &'static AtomicU32 {
     let ret = Box::leak(Box::new(AtomicU32::new(val)));
     ret
 }
@@ -15,13 +15,14 @@ fn split_u32_ptr(dword: *const u32) -> *const [u16; 2] {
     unsafe { std::mem::transmute::<*const u32, *const [u16; 2]>(dword) }
 }
 
-// Wine's SRWLock implementation does this, which is definitely undefined in C++ memory model
-// https://github.com/wine-mirror/wine/blob/303f8042f9db508adaca02ef21f8de4992cb9c03/dlls/ntdll/sync.c#L543-L566
-// Though it probably works just fine on x86
+// Racing mixed size reads may cause two loads to read-from
+// the same store but observe different values, which doesn't make
+// sense under the formal model so we forbade this.
 pub fn main() {
-    let x = static_atomic_u32(0);
+    let x = static_atomic(0);
+
     let j1 = spawn(move || {
-        x.store(1, Relaxed);
+        x.load(Relaxed);
     });
 
     let j2 = spawn(move || {
