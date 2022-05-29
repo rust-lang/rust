@@ -73,7 +73,6 @@
 #![feature(iterator_try_reduce)]
 #![feature(const_mut_refs)]
 #![feature(const_pin)]
-#![feature(const_slice_from_raw_parts)]
 #![feature(never_type)]
 #![feature(unwrap_infallible)]
 #![feature(result_into_ok_or_err)]

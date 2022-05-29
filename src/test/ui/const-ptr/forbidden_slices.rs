@@ -3,7 +3,6 @@
 // normalize-stderr-test "a[0-9]+\+0x" -> "A_ID+0x"
 // error-pattern: could not evaluate static initializer
 #![feature(
-    const_slice_from_raw_parts,
     slice_from_ptr_range,
     const_slice_from_ptr_range,
     pointer_byte_offsets,
