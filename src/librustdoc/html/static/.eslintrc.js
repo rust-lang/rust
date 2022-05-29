@@ -63,5 +63,12 @@ module.exports = {
             }
         ],
         "eqeqeq": "error",
+        "no-const-assign": "error",
+        "no-debugger": "error",
+        "no-dupe-args": "error",
+        "no-dupe-else-if": "error",
+        "no-dupe-keys": "error",
+        "no-duplicate-case": "error",
+        "no-ex-assign": "error",
     }
 };

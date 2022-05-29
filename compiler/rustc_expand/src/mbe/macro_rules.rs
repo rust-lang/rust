@@ -204,7 +204,7 @@ fn trace_macros_note(cx_expansions: &mut FxHashMap<Span, Vec<String>>, sp: Span,
 
 /// Expands the rules based macro defined by `lhses` and `rhses` for a given
 /// input `arg`.
-fn expand_macro<'cx, 'tt>(
+fn expand_macro<'cx>(
     cx: &'cx mut ExtCtxt<'_>,
     sp: Span,
     def_span: Span,
@@ -212,8 +212,8 @@ fn expand_macro<'cx, 'tt>(
     name: Ident,
     transparency: Transparency,
     arg: TokenStream,
-    lhses: &'tt [Vec<MatcherLoc>],
-    rhses: &'tt [mbe::TokenTree],
+    lhses: &[Vec<MatcherLoc>],
+    rhses: &[mbe::TokenTree],
 ) -> Box<dyn MacResult + 'cx> {
     let sess = &cx.sess.parse_sess;
     // Macros defined in the current crate have a real node id,
