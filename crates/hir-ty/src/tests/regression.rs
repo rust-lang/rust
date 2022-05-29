@@ -1620,3 +1620,30 @@ pub trait Destruct {}
 "#,
     );
 }
+
+#[test]
+fn tuple_struct_pattern_with_unmatched_args_crash() {
+    check_infer(
+        r#"
+struct S(usize);
+fn main() {
+    let S(.., a, b) = S(1);
+    let (.., a, b) = (1,);
+}
+        "#,
+        expect![[r#"
+        27..85 '{     ...1,); }': ()
+        37..48 'S(.., a, b)': S
+        43..44 'a': usize
+        46..47 'b': {unknown}
+        51..52 'S': S(usize) -> S
+        51..55 'S(1)': S
+        53..54 '1': usize
+        65..75 '(.., a, b)': (i32, {unknown})
+        70..71 'a': i32
+        73..74 'b': {unknown}
+        78..82 '(1,)': (i32,)
+        79..80 '1': i32
+        "#]],
+    );
+}
