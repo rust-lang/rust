@@ -66,5 +66,6 @@ module.exports = {
         "no-const-assign": "error",
         "no-debugger": "error",
         "no-dupe-args": "error",
+        "no-dupe-else-if": "error",
     }
 };
