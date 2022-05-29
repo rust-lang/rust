@@ -135,20 +135,22 @@ impl StoreBufferAlloc {
 
     /// When a non-atomic access happens on a location that has been atomically accessed
     /// before without data race, we can determine that the non-atomic access fully happens
-    /// before all the prior atomic accesses so the location no longer needs to exhibit
+    /// after all the prior atomic accesses so the location no longer needs to exhibit
     /// any weak memory behaviours until further atomic accesses.
-    pub fn destroy_atomicity<'tcx>(&self, range: AllocRange) {
-        let mut buffers = self.store_buffers.borrow_mut();
-        let access_type = buffers.access_type(range);
-        match access_type {
-            AccessType::PerfectlyOverlapping(pos) => {
-                buffers.remove_from_pos(pos);
-            }
-            AccessType::ImperfectlyOverlapping(pos_range) => {
-                buffers.remove_pos_range(pos_range);
-            }
-            AccessType::Empty(_) => {
-                // Do nothing
+    pub fn memory_accessed<'tcx>(&self, range: AllocRange, global: &GlobalState) {
+        if !global.ongoing_atomic_access() {
+            let mut buffers = self.store_buffers.borrow_mut();
+            let access_type = buffers.access_type(range);
+            match access_type {
+                AccessType::PerfectlyOverlapping(pos) => {
+                    buffers.remove_from_pos(pos);
+                }
+                AccessType::ImperfectlyOverlapping(pos_range) => {
+                    buffers.remove_pos_range(pos_range);
+                }
+                AccessType::Empty(_) => {
+                    // The range had no weak behaivours attached, do nothing
+                }
             }
         }
     }
