@@ -63,5 +63,6 @@ module.exports = {
             }
         ],
         "eqeqeq": "error",
+        "no-const-assign": "error",
     }
 };
