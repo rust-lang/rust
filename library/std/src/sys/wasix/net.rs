@@ -220,10 +220,23 @@ impl Socket
         Ok(ret.0)
     }
 
+    pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
+        self.recv(buf)
+    }
+
     pub fn peek(&self, buf: &mut [u8]) -> io::Result<usize> {
         let mut data = [ IoSliceMut::new(buf) ];
         let ret = self.recv_with_flags(&mut data, MSG_PEEK as u16)?;
         Ok(ret.0)
+    }
+
+    pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
+        self.recv_vectored(bufs)
+    }
+
+    #[inline]
+    pub fn is_read_vectored(&self) -> bool {
+        self.is_recv_vectored()
     }
 
     pub fn recv_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
@@ -291,6 +304,19 @@ impl Socket
     #[inline]
     pub fn is_send_vectored(&self) -> bool {
         true
+    }
+
+    pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
+        self.send(buf)
+    }
+
+    pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        self.send_vectored(bufs)
+    }
+
+    #[inline]
+    pub fn is_write_vectored(&self) -> bool {
+        self.is_send_vectored()
     }
 
     fn send_to_with_flags(
