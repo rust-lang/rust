@@ -143,36 +143,40 @@ pub fn completions(
     db: &RootDatabase,
     config: &CompletionConfig,
     position: FilePosition,
+    trigger_character: Option<&str>,
 ) -> Option<Completions> {
     let ctx = &CompletionContext::new(db, position, config)?;
     let mut acc = Completions::default();
 
     {
         let acc = &mut acc;
-        completions::attribute::complete_attribute(acc, ctx);
-        completions::attribute::complete_derive(acc, ctx);
-        completions::attribute::complete_known_attribute_input(acc, ctx);
-        completions::dot::complete_dot(acc, ctx);
-        completions::expr::complete_expr_path(acc, ctx);
-        completions::extern_abi::complete_extern_abi(acc, ctx);
-        completions::flyimport::import_on_the_fly(acc, ctx);
-        completions::fn_param::complete_fn_param(acc, ctx);
-        completions::format_string::format_string(acc, ctx);
-        completions::item_list::complete_item_list(acc, ctx);
-        completions::keyword::complete_expr_keyword(acc, ctx);
-        completions::lifetime::complete_label(acc, ctx);
-        completions::lifetime::complete_lifetime(acc, ctx);
-        completions::mod_::complete_mod(acc, ctx);
-        completions::pattern::complete_pattern(acc, ctx);
-        completions::postfix::complete_postfix(acc, ctx);
-        completions::record::complete_record_literal(acc, ctx);
-        completions::record::complete_record(acc, ctx);
-        completions::snippet::complete_expr_snippet(acc, ctx);
-        completions::snippet::complete_item_snippet(acc, ctx);
-        completions::trait_impl::complete_trait_impl(acc, ctx);
-        completions::r#type::complete_type_path(acc, ctx);
-        completions::r#type::complete_inferred_type(acc, ctx);
-        completions::use_::complete_use_tree(acc, ctx);
+        // prevent `(` from triggering unwanted completion noise
+        if trigger_character != Some("(") {
+            completions::attribute::complete_attribute(acc, ctx);
+            completions::attribute::complete_derive(acc, ctx);
+            completions::attribute::complete_known_attribute_input(acc, ctx);
+            completions::dot::complete_dot(acc, ctx);
+            completions::expr::complete_expr_path(acc, ctx);
+            completions::extern_abi::complete_extern_abi(acc, ctx);
+            completions::flyimport::import_on_the_fly(acc, ctx);
+            completions::fn_param::complete_fn_param(acc, ctx);
+            completions::format_string::format_string(acc, ctx);
+            completions::item_list::complete_item_list(acc, ctx);
+            completions::keyword::complete_expr_keyword(acc, ctx);
+            completions::lifetime::complete_label(acc, ctx);
+            completions::lifetime::complete_lifetime(acc, ctx);
+            completions::mod_::complete_mod(acc, ctx);
+            completions::pattern::complete_pattern(acc, ctx);
+            completions::postfix::complete_postfix(acc, ctx);
+            completions::record::complete_record_literal(acc, ctx);
+            completions::record::complete_record(acc, ctx);
+            completions::snippet::complete_expr_snippet(acc, ctx);
+            completions::snippet::complete_item_snippet(acc, ctx);
+            completions::trait_impl::complete_trait_impl(acc, ctx);
+            completions::r#type::complete_type_path(acc, ctx);
+            completions::r#type::complete_inferred_type(acc, ctx);
+            completions::use_::complete_use_tree(acc, ctx);
+        }
         completions::vis::complete_vis_path(acc, ctx);
     }
 

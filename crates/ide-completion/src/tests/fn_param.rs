@@ -1,10 +1,15 @@
 use expect_test::{expect, Expect};
 
-use crate::tests::completion_list;
+use crate::tests::{completion_list, completion_list_with_trigger_character};
 
 fn check(ra_fixture: &str, expect: Expect) {
     let actual = completion_list(ra_fixture);
     expect.assert_eq(&actual);
+}
+
+fn check_with_trigger_character(ra_fixture: &str, trigger_character: Option<&str>, expect: Expect) {
+    let actual = completion_list_with_trigger_character(ra_fixture, trigger_character);
+    expect.assert_eq(&actual)
 }
 
 #[test]
@@ -110,6 +115,17 @@ fn outer(text: &str) {
             kw mut
             kw ref
         "#]],
+    )
+}
+
+#[test]
+fn trigger_by_l_paren() {
+    check_with_trigger_character(
+        r#"
+fn foo($0)
+"#,
+        Some("("),
+        expect![[]],
     )
 }
 
