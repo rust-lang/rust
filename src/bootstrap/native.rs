@@ -738,6 +738,10 @@ impl Step for Lld {
             .define("LLVM_CONFIG_PATH", llvm_config_shim)
             .define("LLVM_INCLUDE_TESTS", "OFF");
 
+        if builder.config.llvm_allow_old_toolchain {
+            cfg.define("LLVM_TEMPORARILY_ALLOW_OLD_TOOLCHAIN", "YES");
+        }
+
         // While we're using this horrible workaround to shim the execution of
         // llvm-config, let's just pile on more. I can't seem to figure out how
         // to build LLD as a standalone project and also cross-compile it at the

@@ -13,9 +13,7 @@
 // CHECK-LABEL: @is_zero_slice_long
 #[no_mangle]
 pub fn is_zero_slice_long(data: &[u8; 456]) -> bool {
-    // CHECK: :
-    // CHECK-NEXT: %{{.+}} = getelementptr {{.+}}
-    // CHECK-NEXT: %[[BCMP:.+]] = tail call i32 @{{bcmp|memcmp}}({{.+}})
+    // CHECK: %[[BCMP:.+]] = tail call i32 @{{bcmp|memcmp}}({{.+}})
     // CHECK-NEXT: %[[EQ:.+]] = icmp eq i32 %[[BCMP]], 0
     // CHECK-NEXT: ret i1 %[[EQ]]
     &data[..] == [0; 456]
@@ -24,9 +22,7 @@ pub fn is_zero_slice_long(data: &[u8; 456]) -> bool {
 // CHECK-LABEL: @is_zero_slice_short
 #[no_mangle]
 pub fn is_zero_slice_short(data: &[u8; 4]) -> bool {
-    // CHECK: :
-    // CHECK-NEXT: %[[PTR:.+]] = bitcast [4 x i8]* {{.+}} to i32*
-    // CHECK-NEXT: %[[LOAD:.+]] = load i32, i32* %[[PTR]], align 1
+    // CHECK: %[[LOAD:.+]] = load i32, {{i32\*|ptr}} %{{.+}}, align 1
     // CHECK-NEXT: %[[EQ:.+]] = icmp eq i32 %[[LOAD]], 0
     // CHECK-NEXT: ret i1 %[[EQ]]
     &data[..] == [0; 4]
@@ -35,9 +31,7 @@ pub fn is_zero_slice_short(data: &[u8; 4]) -> bool {
 // CHECK-LABEL: @is_zero_array
 #[no_mangle]
 pub fn is_zero_array(data: &[u8; 4]) -> bool {
-    // CHECK: start:
-    // CHECK-NEXT: %[[PTR:.+]] = bitcast [4 x i8]* {{.+}} to i32*
-    // CHECK-NEXT: %[[LOAD:.+]] = load i32, i32* %[[PTR]], align 1
+    // CHECK: %[[LOAD:.+]] = load i32, {{i32\*|ptr}} %{{.+}}, align 1
     // CHECK-NEXT: %[[EQ:.+]] = icmp eq i32 %[[LOAD]], 0
     // CHECK-NEXT: ret i1 %[[EQ]]
     *data == [0; 4]
