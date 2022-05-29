@@ -16,6 +16,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         clk_id_op: &OpTy<'tcx, Tag>,
         tp_op: &OpTy<'tcx, Tag>,
     ) -> InterpResult<'tcx, i32> {
+        // This clock support is deliberately minimal because a lot of clock types have fiddly
+        // properties (is it possible for Miri to be suspended independently of the host?). If you
+        // have a use for another clock type, please open an issue.
+
         let this = self.eval_context_mut();
 
         this.assert_target_os("linux", "clock_gettime");
@@ -23,11 +27,21 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let clk_id = this.read_scalar(clk_id_op)?.to_i32()?;
 
-        let duration = if clk_id == this.eval_libc_i32("CLOCK_REALTIME")? {
+        // Linux has two main kinds of clocks. REALTIME clocks return the actual time since the
+        // Unix epoch, including effects which may cause time to move backwards such as NTP.
+        // Linux further distinguishes regular and "coarse" clocks, but the "coarse" version
+        // is just specified to be "faster and less precise", so we implement both the same way.
+        let absolute_clocks =
+            [this.eval_libc_i32("CLOCK_REALTIME")?, this.eval_libc_i32("CLOCK_REALTIME_COARSE")?];
+        // The second kind is MONOTONIC clocks for which 0 is an arbitrary time point, but they are
+        // never allowed to go backwards. We don't need to do any additonal monotonicity
+        // enforcement because std::time::Instant already guarantees that it is monotonic.
+        let relative_clocks =
+            [this.eval_libc_i32("CLOCK_MONOTONIC")?, this.eval_libc_i32("CLOCK_MONOTONIC_COARSE")?];
+
+        let duration = if absolute_clocks.contains(&clk_id) {
             system_time_to_duration(&SystemTime::now())?
-        } else if clk_id == this.eval_libc_i32("CLOCK_MONOTONIC")? {
-            // Absolute time does not matter, only relative time does, so we can just
-            // use our own time anchor here.
+        } else if relative_clocks.contains(&clk_id) {
             Instant::now().duration_since(this.machine.time_anchor)
         } else {
             let einval = this.eval_libc("EINVAL")?;
