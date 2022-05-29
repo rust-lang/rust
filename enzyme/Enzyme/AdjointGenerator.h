@@ -778,6 +778,56 @@ public:
   }
 
   void visitAtomicRMWInst(llvm::AtomicRMWInst &I) {
+    if (Mode == DerivativeMode::ForwardMode) {
+      IRBuilder<> BuilderZ(&I);
+      getForwardBuilder(BuilderZ);
+      switch (I.getOperation()) {
+      case AtomicRMWInst::FAdd:
+      case AtomicRMWInst::FSub: {
+        auto rule = [&](Value *ptr, Value *dif) -> Value * {
+          if (!gutils->isConstantInstruction(&I)) {
+            assert(ptr);
+            AtomicRMWInst *rmw = nullptr;
+#if LLVM_VERSION_MAJOR >= 13
+            rmw = BuilderZ.CreateAtomicRMW(I.getOperation(), ptr, dif,
+                                           I.getAlign(), I.getOrdering(),
+                                           I.getSyncScopeID());
+#elif LLVM_VERSION_MAJOR >= 11
+            rmw = BuilderZ.CreateAtomicRMW(I.getOperation(), ptr, dif,
+                                           I.getOrdering(), I.getSyncScopeID());
+            rmw->setAlignment(I.getAlign());
+#else
+                               rmw = BuilderZ.CreateAtomicRMW(
+                                   I.getOperation(), ptr, dif, I.getOrdering(),
+                                   I.getSyncScopeID());
+#endif
+            rmw->setVolatile(I.isVolatile());
+            if (gutils->isConstantValue(&I))
+              return Constant::getNullValue(dif->getType());
+            else
+              return rmw;
+          } else {
+            assert(gutils->isConstantValue(&I));
+            return Constant::getNullValue(dif->getType());
+          }
+        };
+
+        Value *diff = applyChainRule(
+            I.getType(), BuilderZ, rule,
+            gutils->isConstantValue(I.getPointerOperand())
+                ? nullptr
+                : gutils->invertPointerM(I.getPointerOperand(), BuilderZ),
+            gutils->isConstantValue(I.getValOperand())
+                ? Constant::getNullValue(I.getType())
+                : gutils->invertPointerM(I.getValOperand(), BuilderZ));
+        if (!gutils->isConstantValue(&I))
+          setDiffe(&I, diff, BuilderZ);
+        return;
+      }
+      default:
+        break;
+      }
+    }
     if (!gutils->isConstantInstruction(&I) || !gutils->isConstantValue(&I)) {
       TR.dump();
       llvm::errs() << "oldFunc: " << *gutils->newFunc << "\n";
@@ -11083,7 +11133,8 @@ public:
           auto rule = [&args](Value *tofree) { args.push_back(tofree); };
           applyChainRule(Builder2, rule, tofree);
 
-          Builder2.CreateCall(free->getFunctionType(), free, args);
+          auto frees = Builder2.CreateCall(free->getFunctionType(), free, args);
+          frees->setDebugLoc(gutils->getNewFromOriginal(orig->getDebugLoc()));
 
           return;
         }
