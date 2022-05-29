@@ -18,7 +18,7 @@ fn static_atomic(val: u32) -> &'static AtomicU32 {
     ret
 }
 
-// We allow non-atomic and atomic reads to race
+// We allow perfectly overlapping non-atomic and atomic reads to race
 fn racing_mixed_atomicity_read() {
     let x = static_atomic(0);
     x.store(42, Relaxed);
