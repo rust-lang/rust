@@ -1376,6 +1376,8 @@ fn check_enum<'tcx>(
     }
 
     let mut disr_vals: Vec<Discr<'tcx>> = Vec::with_capacity(vs.len());
+    // This tracks the previous variant span (in the loop) incase we need it for diagnostics
+    let mut prev_variant_span: Span = DUMMY_SP;
     for ((_, discr), v) in iter::zip(def.discriminants(tcx), vs) {
         // Check for duplicate discriminant values
         if let Some(i) = disr_vals.iter().position(|&x| x.val == discr.val) {
@@ -1390,42 +1392,59 @@ fn check_enum<'tcx>(
                 Some(ref expr) => tcx.hir().span(expr.hir_id),
                 None => v.span,
             };
-            let display_discr = display_discriminant_value(tcx, v, discr.val);
-            let display_discr_i = display_discriminant_value(tcx, variant_i, disr_vals[i].val);
-            struct_span_err!(
+            let display_discr = format_discriminant_overflow(tcx, v, discr);
+            let display_discr_i = format_discriminant_overflow(tcx, variant_i, disr_vals[i]);
+            let no_disr = v.disr_expr.is_none();
+            let mut err = struct_span_err!(
                 tcx.sess,
-                span,
+                sp,
                 E0081,
-                "discriminant value `{}` already exists",
-                discr.val,
-            )
-            .span_label(i_span, format!("first use of {display_discr_i}"))
-            .span_label(span, format!("enum already has {display_discr}"))
-            .emit();
+                "discriminant value `{}` assigned more than once",
+                discr,
+            );
+
+            err.span_label(i_span, format!("first assignment of {display_discr_i}"));
+            err.span_label(span, format!("second assignment of {display_discr}"));
+
+            if no_disr {
+                err.span_label(
+                    prev_variant_span,
+                    format!(
+                        "assigned discriminant for `{}` was incremented from this discriminant",
+                        v.ident
+                    ),
+                );
+            }
+            err.emit();
         }
+
         disr_vals.push(discr);
+        prev_variant_span = v.span;
     }
 
     check_representable(tcx, sp, def_id);
     check_transparent(tcx, sp, def);
 }
 
-/// Format an enum discriminant value for use in a diagnostic message.
-fn display_discriminant_value<'tcx>(
+/// In the case that a discriminant is both a duplicate and an overflowing literal,
+/// we insert both the assigned discriminant and the literal it overflowed from into the formatted
+/// output. Otherwise we format the discriminant normally.
+fn format_discriminant_overflow<'tcx>(
     tcx: TyCtxt<'tcx>,
     variant: &hir::Variant<'_>,
-    evaluated: u128,
+    dis: Discr<'tcx>,
 ) -> String {
     if let Some(expr) = &variant.disr_expr {
         let body = &tcx.hir().body(expr.body).value;
         if let hir::ExprKind::Lit(lit) = &body.kind
             && let rustc_ast::LitKind::Int(lit_value, _int_kind) = &lit.node
-            && evaluated != *lit_value
+            && dis.val != *lit_value
         {
-                    return format!("`{evaluated}` (overflowed from `{lit_value}`)");
+                    return format!("`{dis}` (overflowed from `{lit_value}`)");
         }
     }
-    format!("`{}`", evaluated)
+
+    format!("`{dis}`")
 }
 
 pub(super) fn check_type_params_are_used<'tcx>(
