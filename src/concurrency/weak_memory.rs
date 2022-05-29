@@ -139,7 +139,7 @@ impl StoreBufferAlloc {
     /// after all the prior atomic accesses so the location no longer needs to exhibit
     /// any weak memory behaviours until further atomic accesses.
     pub fn memory_accessed<'tcx>(&self, range: AllocRange, global: &GlobalState) {
-        if !global.ongoing_atomic_access() {
+        if !global.ongoing_action_data_race_free() {
             let mut buffers = self.store_buffers.borrow_mut();
             let access_type = buffers.access_type(range);
             match access_type {
@@ -420,7 +420,9 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                 && !alloc_clocks
                     .race_free_with_atomic(range, this.machine.data_race.as_ref().unwrap())
             {
-                throw_ub_format!("racy imperfectly overlapping atomic access is not possible in the C++20 memory model");
+                throw_ub_format!(
+                    "racy imperfectly overlapping atomic access is not possible in the C++20 memory model"
+                );
             }
         }
         Ok(())

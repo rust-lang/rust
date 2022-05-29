@@ -455,11 +455,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
     fn allow_data_races_ref<R>(&self, op: impl FnOnce(&MiriEvalContext<'mir, 'tcx>) -> R) -> R {
         let this = self.eval_context_ref();
         if let Some(data_race) = &this.machine.data_race {
-            data_race.ongoing_atomic_access.set(true);
+            data_race.ongoing_action_data_race_free.set(true);
         }
         let result = op(this);
         if let Some(data_race) = &this.machine.data_race {
-            data_race.ongoing_atomic_access.set(false);
+            data_race.ongoing_action_data_race_free.set(false);
         }
         result
     }
@@ -474,11 +474,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
     ) -> R {
         let this = self.eval_context_mut();
         if let Some(data_race) = &this.machine.data_race {
-            data_race.ongoing_atomic_access.set(true);
+            data_race.ongoing_action_data_race_free.set(true);
         }
         let result = op(this);
         if let Some(data_race) = &this.machine.data_race {
-            data_race.ongoing_atomic_access.set(false);
+            data_race.ongoing_action_data_race_free.set(false);
         }
         result
     }
@@ -1151,8 +1151,9 @@ pub struct GlobalState {
     multi_threaded: Cell<bool>,
 
     /// A flag to mark we are currently performing
-    /// an atomic access to supress data race detection
-    ongoing_atomic_access: Cell<bool>,
+    /// a data race free action (such as atomic access)
+    /// to supress the race detector
+    ongoing_action_data_race_free: Cell<bool>,
 
     /// Mapping of a vector index to a known set of thread
     /// clocks, this is not directly mapping from a thread id
@@ -1205,7 +1206,7 @@ impl GlobalState {
     pub fn new() -> Self {
         let mut global_state = GlobalState {
             multi_threaded: Cell::new(false),
-            ongoing_atomic_access: Cell::new(false),
+            ongoing_action_data_race_free: Cell::new(false),
             vector_clocks: RefCell::new(IndexVec::new()),
             vector_info: RefCell::new(IndexVec::new()),
             thread_info: RefCell::new(IndexVec::new()),
@@ -1232,14 +1233,14 @@ impl GlobalState {
     }
 
     // We perform data race detection when there are more than 1 active thread
-    // and we are not currently in the middle of an atomic acces where data race
-    // is impossible
+    // and we have not temporarily disabled race detection to perform something
+    // data race free
     fn race_detecting(&self) -> bool {
-        self.multi_threaded.get() && !self.ongoing_atomic_access.get()
+        self.multi_threaded.get() && !self.ongoing_action_data_race_free.get()
     }
 
-    pub fn ongoing_atomic_access(&self) -> bool {
-        self.ongoing_atomic_access.get()
+    pub fn ongoing_action_data_race_free(&self) -> bool {
+        self.ongoing_action_data_race_free.get()
     }
 
     // Try to find vector index values that can potentially be re-used
