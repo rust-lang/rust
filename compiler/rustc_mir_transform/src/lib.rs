@@ -9,6 +9,7 @@
 #![feature(option_get_or_insert_default)]
 #![feature(trusted_step)]
 #![feature(try_blocks)]
+#![feature(yeet_expr)]
 #![recursion_limit = "256"]
 
 #[macro_use]
