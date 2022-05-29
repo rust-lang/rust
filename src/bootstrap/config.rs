@@ -1486,6 +1486,7 @@ fn maybe_download_rustfmt(builder: &Builder<'_>) -> Option<PathBuf> {
     #[derive(Deserialize)]
     struct Stage0Metadata {
         dist_server: String,
+        checksums_sha256: HashMap<String, String>,
         rustfmt: Option<RustfmtMetadata>,
     }
     #[derive(Deserialize)]
@@ -1495,10 +1496,11 @@ fn maybe_download_rustfmt(builder: &Builder<'_>) -> Option<PathBuf> {
     }
 
     let stage0_json = builder.read(&builder.src.join("src").join("stage0.json"));
-    let metadata = t!(serde_json::from_str::<Stage0Metadata>(&stage0_json));
-    let RustfmtMetadata { date, version } = metadata.rustfmt?;
+    let Stage0Metadata { dist_server, checksums_sha256, rustfmt } =
+        t!(serde_json::from_str::<Stage0Metadata>(&stage0_json));
+    let RustfmtMetadata { date, version } = rustfmt?;
     let channel = format!("{version}-{date}");
-    let mut dist_server = env::var("RUSTUP_DIST_SERVER").unwrap_or(metadata.dist_server);
+    let mut dist_server = env::var("RUSTUP_DIST_SERVER").unwrap_or(dist_server);
     dist_server.push_str("/dist");
 
     let host = builder.config.build;
@@ -1510,8 +1512,15 @@ fn maybe_download_rustfmt(builder: &Builder<'_>) -> Option<PathBuf> {
     }
 
     let filename = format!("rustfmt-{version}-{build}.tar.xz", build = host.triple);
-    download_component(builder, &dist_server, filename, "rustfmt-preview", &date, "stage0");
-    assert!(rustfmt_path.exists());
+    download_component(
+        builder,
+        &dist_server,
+        filename,
+        "rustfmt-preview",
+        &date,
+        "stage0",
+        Some(checksums_sha256),
+    );
 
     builder.fix_bin_or_dylib(&bin_root.join("bin").join("rustfmt"));
     builder.fix_bin_or_dylib(&bin_root.join("bin").join("cargo-fmt"));
@@ -1564,6 +1573,7 @@ fn download_ci_component(builder: &Builder<'_>, filename: String, prefix: &str, 
         prefix,
         commit,
         "ci-rustc",
+        None,
     )
 }
 
@@ -1574,6 +1584,7 @@ fn download_component(
     prefix: &str,
     key: &str,
     destination: &str,
+    checksums: Option<HashMap<String, String>>,
 ) {
     let cache_dst = builder.out.join("cache");
     let cache_dir = cache_dst.join(key);
@@ -1581,10 +1592,47 @@ fn download_component(
         t!(fs::create_dir_all(&cache_dir));
     }
 
-    let tarball = cache_dir.join(&filename);
-    if !tarball.exists() {
-        builder.download_component(base_url, &format!("{key}/{filename}"), &tarball, "");
-    }
     let bin_root = builder.out.join(builder.config.build.triple).join(destination);
-    builder.unpack(&tarball, &bin_root, prefix)
+    let tarball = cache_dir.join(&filename);
+    let url = format!("{key}/{filename}");
+
+    // For the beta compiler, put special effort into ensuring the checksums are valid.
+    // FIXME: maybe we should do this for download-rustc as well? but it would be a pain to update
+    // this on each and every nightly ...
+    let checksum = if let Some(checksums) = &checksums {
+        let error = format!(
+            "src/stage0.json doesn't contain a checksum for {url}. \
+            Pre-built artifacts might not be available for this \
+            target at this time, see https://doc.rust-lang.org/nightly\
+            /rustc/platform-support.html for more information."
+        );
+        // TODO: add an enum { Commit, Published } so we don't have to hardcode `dist` in two places
+        let sha256 = checksums.get(&format!("dist/{url}")).expect(&error);
+        if tarball.exists() {
+            if builder.verify(&tarball, sha256) {
+                builder.unpack(&tarball, &bin_root, prefix);
+                return;
+            } else {
+                builder.verbose(&format!(
+                    "ignoring cached file {} due to failed verification",
+                    tarball.display()
+                ));
+                builder.remove(&tarball);
+            }
+        }
+        Some(sha256)
+    } else if tarball.exists() {
+        return;
+    } else {
+        None
+    };
+
+    builder.download_component(base_url, &url, &tarball, "");
+    if let Some(sha256) = checksum {
+        if !builder.verify(&tarball, sha256) {
+            panic!("failed to verify {}", tarball.display());
+        }
+    }
+
+    builder.unpack(&tarball, &bin_root, prefix);
 }
