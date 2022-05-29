@@ -129,7 +129,6 @@
 #![feature(maybe_uninit_slice)]
 #![feature(maybe_uninit_uninit_array)]
 #![cfg_attr(test, feature(new_uninit))]
-#![feature(nonnull_slice_from_raw_parts)]
 #![feature(pattern)]
 #![feature(pointer_byte_offsets)]
 #![feature(provide_any)]
