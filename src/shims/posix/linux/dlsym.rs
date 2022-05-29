@@ -8,7 +8,7 @@ pub enum Dlsym {}
 impl Dlsym {
     // Returns an error for unsupported symbols, and None if this symbol
     // should become a NULL pointer (pretend it does not exist).
-    pub fn from_str(name: &str) -> InterpResult<'static, Option<Dlsym>> {
+    pub fn from_str<'tcx>(name: &str) -> InterpResult<'tcx, Option<Dlsym>> {
         Ok(match &*name {
             "__pthread_get_minstack" => None,
             "getrandom" => None, // std falls back to syscall(SYS_getrandom, ...) when this is NULL.

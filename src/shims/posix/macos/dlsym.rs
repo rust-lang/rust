@@ -14,7 +14,7 @@ pub enum Dlsym {
 impl Dlsym {
     // Returns an error for unsupported symbols, and None if this symbol
     // should become a NULL pointer (pretend it does not exist).
-    pub fn from_str(name: &str) -> InterpResult<'static, Option<Dlsym>> {
+    pub fn from_str<'tcx>(name: &str) -> InterpResult<'tcx, Option<Dlsym>> {
         Ok(match name {
             "getentropy" => Some(Dlsym::getentropy),
             _ => throw_unsup_format!("unsupported macOS dlsym: {}", name),
