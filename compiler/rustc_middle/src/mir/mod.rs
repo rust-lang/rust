@@ -1767,6 +1767,8 @@ pub enum RetagKind {
     Raw,
     /// A "normal" retag.
     Default,
+    /// Retagging for the lhs of an assignment: `this_place = val;`
+    Assign,
 }
 
 /// The `FakeReadCause` describes the type of pattern why a FakeRead statement exists.
@@ -1838,6 +1840,7 @@ impl Debug for Statement<'_> {
                     RetagKind::TwoPhase => "[2phase] ",
                     RetagKind::Raw => "[raw] ",
                     RetagKind::Default => "",
+                    RetagKind::Assign => "[assign]",
                 },
                 place,
             ),

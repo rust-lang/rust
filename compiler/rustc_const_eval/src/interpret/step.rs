@@ -8,16 +8,6 @@ use rustc_middle::ty::layout::LayoutOf;
 
 use super::{InterpCx, Machine};
 
-/// Classify whether an operator is "left-homogeneous", i.e., the LHS has the
-/// same type as the result.
-#[inline]
-fn binop_left_homogeneous(op: mir::BinOp) -> bool {
-    use rustc_middle::mir::BinOp::*;
-    match op {
-        Add | Sub | Mul | Div | Rem | BitXor | BitAnd | BitOr | Offset | Shl | Shr => true,
-        Eq | Ne | Lt | Le | Gt | Ge => false,
-    }
-}
 /// Classify whether an operator is "right-homogeneous", i.e., the RHS has the
 /// same type as the LHS.
 #[inline]
@@ -157,26 +147,29 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         rvalue: &mir::Rvalue<'tcx>,
         place: mir::Place<'tcx>,
     ) -> InterpResult<'tcx> {
-        let dest = self.eval_place(place)?;
-
         use rustc_middle::mir::Rvalue::*;
         match *rvalue {
             ThreadLocalRef(did) => {
+                let dest = self.eval_place(place)?;
                 let ptr = M::thread_local_static_base_pointer(self, did)?;
                 self.write_pointer(ptr, &dest)?;
             }
 
             Use(ref operand) => {
+                // FIXME: Here, in `Aggregate`, and in `Repeat`, the various `dest = eval_place`s
+                // should also be retagging the pointer to ensure that it does not overlap with the
+                // RHS.
+                let dest = self.eval_place(place)?;
                 // Avoid recomputing the layout
                 let op = self.eval_operand(operand, Some(dest.layout))?;
                 self.copy_op(&op, &dest)?;
             }
 
             BinaryOp(bin_op, box (ref left, ref right)) => {
-                let layout = binop_left_homogeneous(bin_op).then_some(dest.layout);
-                let left = self.read_immediate(&self.eval_operand(left, layout)?)?;
+                let left = self.read_immediate(&self.eval_operand(left, None)?)?;
                 let layout = binop_right_homogeneous(bin_op).then_some(left.layout);
                 let right = self.read_immediate(&self.eval_operand(right, layout)?)?;
+                let dest = self.eval_place(place)?;
                 self.binop_ignore_overflow(bin_op, &left, &right, &dest)?;
             }
 
@@ -185,19 +178,22 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let left = self.read_immediate(&self.eval_operand(left, None)?)?;
                 let layout = binop_right_homogeneous(bin_op).then_some(left.layout);
                 let right = self.read_immediate(&self.eval_operand(right, layout)?)?;
+                let dest = self.eval_place(place)?;
                 self.binop_with_overflow(bin_op, &left, &right, &dest)?;
             }
 
             UnaryOp(un_op, ref operand) => {
                 // The operand always has the same type as the result.
-                let val = self.read_immediate(&self.eval_operand(operand, Some(dest.layout))?)?;
+                let val = self.read_immediate(&self.eval_operand(operand, None)?)?;
                 let val = self.unary_op(un_op, &val)?;
+                let dest = self.eval_place(place)?;
                 assert_eq!(val.layout, dest.layout, "layout mismatch for result of {:?}", un_op);
                 self.write_immediate(*val, &dest)?;
             }
 
             Aggregate(box ref kind, ref operands) => {
                 assert!(matches!(kind, mir::AggregateKind::Array(..)));
+                let dest = self.eval_place(place)?;
 
                 for (field_index, operand) in operands.iter().enumerate() {
                     let op = self.eval_operand(operand, None)?;
@@ -207,6 +203,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
 
             Repeat(ref operand, _) => {
+                let dest = self.eval_place(place)?;
                 let src = self.eval_operand(operand, None)?;
                 assert!(!src.layout.is_unsized());
                 let dest = self.force_allocation(&dest)?;
@@ -242,17 +239,19 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 }
             }
 
-            Len(place) => {
-                let src = self.eval_place(place)?;
+            Len(src_place) => {
+                let src = self.eval_place(src_place)?;
                 let mplace = self.force_allocation(&src)?;
                 let len = mplace.len(self)?;
+                let dest = self.eval_place(place)?;
                 self.write_scalar(Scalar::from_machine_usize(len, self), &dest)?;
             }
 
-            AddressOf(_, place) | Ref(_, _, place) => {
-                let src = self.eval_place(place)?;
-                let place = self.force_allocation(&src)?;
-                self.write_immediate(place.to_ref(self), &dest)?;
+            AddressOf(_, src_place) | Ref(_, _, src_place) => {
+                let src_place = self.eval_place(src_place)?;
+                let src_place = self.force_allocation(&src_place)?;
+                let dest = self.eval_place(place)?;
+                self.write_immediate(src_place.to_ref(self), &dest)?;
             }
 
             NullaryOp(null_op, ty) => {
@@ -270,12 +269,14 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     mir::NullOp::SizeOf => layout.size.bytes(),
                     mir::NullOp::AlignOf => layout.align.abi.bytes(),
                 };
+                let dest = self.eval_place(place)?;
                 self.write_scalar(Scalar::from_machine_usize(val, self), &dest)?;
             }
 
             ShallowInitBox(ref operand, _) => {
                 let src = self.eval_operand(operand, None)?;
                 let v = self.read_immediate(&src)?;
+                let dest = self.eval_place(place)?;
                 self.write_immediate(*v, &dest)?;
             }
 
@@ -283,17 +284,17 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let src = self.eval_operand(operand, None)?;
                 let cast_ty =
                     self.subst_from_current_frame_and_normalize_erasing_regions(cast_ty)?;
+                let dest = self.eval_place(place)?;
                 self.cast(&src, cast_kind, cast_ty, &dest)?;
             }
 
-            Discriminant(place) => {
-                let op = self.eval_place_to_op(place, None)?;
+            Discriminant(src_place) => {
+                let op = self.eval_place_to_op(src_place, None)?;
                 let discr_val = self.read_discriminant(&op)?.0;
+                let dest = self.eval_place(place)?;
                 self.write_scalar(discr_val, &dest)?;
             }
         }
-
-        trace!("{:?}", self.dump_place(*dest));
 
         Ok(())
     }

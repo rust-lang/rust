@@ -240,6 +240,27 @@ impl<'tcx> Rvalue<'tcx> {
 
         false
     }
+
+    /// Returns true if evaluation of the rvalue is left to right.
+    ///
+    /// See [`StatementKind::Asssign`](crate::mir::StatementKind::Assign) for details.
+    #[inline]
+    pub fn is_left_to_right(&self) -> bool {
+        match self {
+            Rvalue::Use(_) | Rvalue::Repeat(..) | Rvalue::Aggregate(..) => true,
+            Rvalue::Ref(..)
+            | Rvalue::ThreadLocalRef(..)
+            | Rvalue::AddressOf(..)
+            | Rvalue::Len(..)
+            | Rvalue::Cast(..)
+            | Rvalue::BinaryOp(..)
+            | Rvalue::CheckedBinaryOp(..)
+            | Rvalue::NullaryOp(..)
+            | Rvalue::UnaryOp(..)
+            | Rvalue::Discriminant(..)
+            | Rvalue::ShallowInitBox(..) => false,
+        }
+    }
 }
 
 impl<'tcx> Operand<'tcx> {
