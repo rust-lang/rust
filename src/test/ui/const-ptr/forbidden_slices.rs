@@ -1,3 +1,4 @@
+// stderr-per-bitwidth
 // error-pattern: could not evaluate static initializer
 #![feature(
     const_slice_from_raw_parts,
