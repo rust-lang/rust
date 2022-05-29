@@ -34,7 +34,6 @@ use rustc_hir::weak_lang_items;
 use rustc_hir::{GenericParamKind, HirId, Node};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
-use rustc_middle::middle::resolve_lifetime::ObjectLifetimeDefault;
 use rustc_middle::mir::mono::Linkage;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::subst::InternalSubsts;
@@ -1598,7 +1597,6 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
                         pure_wrt_drop: false,
                         kind: ty::GenericParamDefKind::Type {
                             has_default: false,
-                            object_lifetime_default: ObjectLifetimeDefault::Empty,
                             synthetic: false,
                         },
                     });
@@ -1642,8 +1640,6 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
         kind: ty::GenericParamDefKind::Lifetime,
     }));
 
-    let object_lifetime_defaults = tcx.object_lifetime_defaults(hir_id.owner);
-
     // Now create the real type and const parameters.
     let type_start = own_start - has_self as u32 + params.len() as u32;
     let mut i = 0;
@@ -1668,13 +1664,7 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
                 }
             }
 
-            let kind = ty::GenericParamDefKind::Type {
-                has_default: default.is_some(),
-                object_lifetime_default: object_lifetime_defaults
-                    .as_ref()
-                    .map_or(ObjectLifetimeDefault::Empty, |o| o[i]),
-                synthetic,
-            };
+            let kind = ty::GenericParamDefKind::Type { has_default: default.is_some(), synthetic };
 
             let param_def = ty::GenericParamDef {
                 index: type_start + i as u32,
@@ -1726,11 +1716,7 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
             name: Symbol::intern(arg),
             def_id,
             pure_wrt_drop: false,
-            kind: ty::GenericParamDefKind::Type {
-                has_default: false,
-                object_lifetime_default: ObjectLifetimeDefault::Empty,
-                synthetic: false,
-            },
+            kind: ty::GenericParamDefKind::Type { has_default: false, synthetic: false },
         }));
     }
 
@@ -1743,11 +1729,7 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
                 name: Symbol::intern("<const_ty>"),
                 def_id,
                 pure_wrt_drop: false,
-                kind: ty::GenericParamDefKind::Type {
-                    has_default: false,
-                    object_lifetime_default: ObjectLifetimeDefault::Empty,
-                    synthetic: false,
-                },
+                kind: ty::GenericParamDefKind::Type { has_default: false, synthetic: false },
             });
         }
     }
