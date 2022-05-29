@@ -262,7 +262,9 @@ environment variable. We first document the most relevant and most commonly used
 * `-Zmiri-compare-exchange-weak-failure-rate=<rate>` changes the failure rate of
   `compare_exchange_weak` operations. The default is `0.8` (so 4 out of 5 weak ops will fail).
   You can change it to any value between `0.0` and `1.0`, where `1.0` means it
-  will always fail and `0.0` means it will never fail.
+  will always fail and `0.0` means it will never fail. Note than setting it to
+  `1.0` will likely cause hangs, since it means programs using
+  `compare_exchange_weak` cannot make progress.
 * `-Zmiri-disable-isolation` disables host isolation.  As a consequence,
   the program has access to host resources such as environment variables, file
   systems, and randomness.
