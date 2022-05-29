@@ -374,7 +374,7 @@ pub struct Client<I, O> {
     // a wrapper `fn` pointer, once `const fn` can reference `static`s.
     pub(super) get_handle_counters: extern "C" fn() -> &'static HandleCounters,
 
-    pub(super) run: extern "C" fn(Bridge<'_>) -> Buffer,
+    pub(super) run: extern "C" fn(Bridge<'_>) -> Buffer<u8>,
 
     pub(super) _marker: PhantomData<fn(I) -> O>,
 }
@@ -392,7 +392,7 @@ impl<I, O> Clone for Client<I, O> {
 fn run_client<A: for<'a, 's> DecodeMut<'a, 's, ()>, R: Encode<()>>(
     mut bridge: Bridge<'_>,
     f: impl FnOnce(A) -> R,
-) -> Buffer {
+) -> Buffer<u8> {
     // The initial `cached_buffer` contains the input.
     let mut buf = bridge.cached_buffer.take();
 
