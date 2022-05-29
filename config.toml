@@ -198,7 +198,7 @@ changelog-seen = 2
 #
 # Defaults to just the build triple.
 #host = ["x86_64-unknown-linux-gnu"] (as an example)
-host = ["x86_64-unknown-linux-gnu"]
+#host = ["x86_64-unknown-linux-gnu"]
 
 # Which triples to build libraries (core/alloc/std/test/proc_macro) for. Each of
 # these triples will be bootstrapped from the build triple themselves.
@@ -207,7 +207,7 @@ host = ["x86_64-unknown-linux-gnu"]
 # host triples to this list as well in order for those host toolchains to be
 # able to compile programs for their native target.
 #target = ["x86_64-unknown-linux-gnu"] (as an example)
-target = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown", "wasm64-unknown-unknown", "wasm32-wasi", "wasm64-wasi"]
+target = ["wasm32-wasi", "wasm64-wasi"]
 
 # Use this directory to store build artifacts.
 # You can use "$ROOT" to indicate the root of the git repository.
