@@ -1618,7 +1618,8 @@ impl Target {
             | PlatformIntrinsic
             | Unadjusted
             | Cdecl { .. }
-            | EfiApi => true,
+            | EfiApi
+            | RustCold => true,
             X86Interrupt => ["x86", "x86_64"].contains(&&self.arch[..]),
             Aapcs { .. } => "arm" == self.arch,
             CCmseNonSecureCall => ["arm", "aarch64"].contains(&&self.arch[..]),

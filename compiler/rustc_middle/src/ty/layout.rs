@@ -2971,7 +2971,7 @@ pub fn fn_can_unwind<'tcx>(tcx: TyCtxt<'tcx>, fn_def_id: Option<DefId>, abi: Spe
         | RustIntrinsic
         | PlatformIntrinsic
         | Unadjusted => false,
-        Rust | RustCall => tcx.sess.panic_strategy() == PanicStrategy::Unwind,
+        Rust | RustCall | RustCold => tcx.sess.panic_strategy() == PanicStrategy::Unwind,
     }
 }
 
@@ -2980,6 +2980,7 @@ pub fn conv_from_spec_abi(tcx: TyCtxt<'_>, abi: SpecAbi) -> Conv {
     use rustc_target::spec::abi::Abi::*;
     match tcx.sess.target.adjust_abi(abi) {
         RustIntrinsic | PlatformIntrinsic | Rust | RustCall => Conv::Rust,
+        RustCold => Conv::RustCold,
 
         // It's the ABI's job to select this, not ours.
         System { .. } => bug!("system abi should be selected elsewhere"),

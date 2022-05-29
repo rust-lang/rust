@@ -113,6 +113,14 @@ impl<'a> PostExpansionVisitor<'a> {
                     "rust-call ABI is subject to change"
                 );
             }
+            "rust-cold" => {
+                gate_feature_post!(
+                    &self,
+                    rust_cold_cc,
+                    span,
+                    "rust-cold is experimental and subject to change"
+                );
+            }
             "ptx-kernel" => {
                 gate_feature_post!(
                     &self,
