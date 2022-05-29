@@ -1728,7 +1728,8 @@ impl<'a> Builder<'a> {
             }
         }
 
-        if self.config.rust_optimize {
+        // Most bootstrap tools are fast to run. Compile them in debug mode to speed up compile times.
+        if self.config.rust_optimize && mode != Mode::ToolBootstrap {
             // FIXME: cargo bench/install do not accept `--release`
             if cmd != "bench" && cmd != "install" {
                 cargo.arg("--release");

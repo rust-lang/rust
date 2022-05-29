@@ -762,8 +762,8 @@ impl Build {
 
     /// Component directory that Cargo will produce output into (e.g.
     /// release/debug)
-    fn cargo_dir(&self) -> &'static str {
-        if self.config.rust_optimize { "release" } else { "debug" }
+    fn cargo_dir(&self, mode: Mode) -> &'static str {
+        if self.config.rust_optimize && mode != Mode::ToolBootstrap { "release" } else { "debug" }
     }
 
     fn tools_dir(&self, compiler: Compiler) -> PathBuf {
@@ -794,7 +794,7 @@ impl Build {
     /// running a particular compiler, whether or not we're building the
     /// standard library, and targeting the specified architecture.
     fn cargo_out(&self, compiler: Compiler, mode: Mode, target: TargetSelection) -> PathBuf {
-        self.stage_out(compiler, mode).join(&*target.triple).join(self.cargo_dir())
+        self.stage_out(compiler, mode).join(&*target.triple).join(self.cargo_dir(mode))
     }
 
     /// Root output directory for LLVM compiled for `target`
@@ -1425,7 +1425,7 @@ impl Build {
             return;
         }
         let _ = fs::remove_file(&dst);
-        let metadata = t!(src.symlink_metadata());
+        let metadata = t!(src.symlink_metadata(), src.display());
         if metadata.file_type().is_symlink() {
             let link = t!(fs::read_link(src));
             t!(symlink_file(link, dst));
