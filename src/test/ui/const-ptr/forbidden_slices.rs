@@ -1,3 +1,4 @@
+// error-pattern: could not evaluate static initializer
 #![feature(
     const_slice_from_raw_parts,
     slice_from_ptr_range,
