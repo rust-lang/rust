@@ -3,6 +3,7 @@
 #![allow(
     unused,
     clippy::assign_op_pattern,
+    clippy::blocks_in_if_conditions,
     clippy::let_and_return,
     clippy::let_unit_value,
     clippy::nonminimal_bool
@@ -16,6 +17,22 @@ impl std::ops::Drop for SignificantDrop {
     fn drop(&mut self) {
         println!("dropped");
     }
+}
+
+fn simple() {
+    let a;
+    a = "zero";
+
+    let b;
+    let c;
+    b = 1;
+    c = 2;
+
+    let d: usize;
+    d = 1;
+
+    let e;
+    e = format!("{}", d);
 }
 
 fn main() {
@@ -237,22 +254,20 @@ fn does_not_lint() {
     x = SignificantDrop;
 }
 
-mod fixable {
-    #![allow(dead_code)]
-
-    fn main() {
-        let a;
-        a = "zero";
-
-        let b;
-        let c;
-        b = 1;
-        c = 2;
-
-        let d: usize;
-        d = 1;
-
-        let e;
-        e = format!("{}", d);
+#[rustfmt::skip]
+fn issue8911() -> u32 {
+    let x;
+    match 1 {
+        _ if { x = 1; false } => return 1,
+        _ => return 2,
     }
+
+    let x;
+    if { x = 1; true } {
+        return 1;
+    } else {
+        return 2;
+    }
+
+    3
 }
