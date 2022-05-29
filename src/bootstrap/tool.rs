@@ -516,7 +516,7 @@ impl Step for Rustdoc {
         builder.ensure(compile::Rustc { compiler: build_compiler, target: target_compiler.host });
         // NOTE: this implies that `download-rustc` is pretty useless when compiling with the stage0
         // compiler, since you do just as much work.
-        if !builder.config.dry_run && builder.config.download_rustc && build_compiler.stage == 0 {
+        if !builder.config.dry_run && builder.download_rustc() && build_compiler.stage == 0 {
             println!(
                 "warning: `download-rustc` does nothing when building stage1 tools; consider using `--stage 2` instead"
             );

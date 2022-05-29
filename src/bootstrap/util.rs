@@ -115,6 +115,14 @@ impl Drop for TimeIt {
     }
 }
 
+/// Used for download caching
+pub(crate) fn program_out_of_date(stamp: &Path, key: &str) -> bool {
+    if !stamp.exists() {
+        return true;
+    }
+    t!(fs::read_to_string(stamp)) != key
+}
+
 /// Symlinks two directories, using junctions on Windows and normal symlinks on
 /// Unix.
 pub fn symlink_dir(config: &Config, src: &Path, dest: &Path) -> io::Result<()> {

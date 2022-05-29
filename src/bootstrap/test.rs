@@ -2058,7 +2058,7 @@ impl Step for CrateRustdoc {
         let test_kind = self.test_kind;
         let target = self.host;
 
-        let compiler = if builder.config.download_rustc {
+        let compiler = if builder.download_rustc() {
             builder.compiler(builder.top_stage, target)
         } else {
             // Use the previous stage compiler to reuse the artifacts that are
@@ -2127,7 +2127,7 @@ impl Step for CrateRustdoc {
         // with.
         //
         // Note that this set the host libdir for `download_rustc`, which uses a normal rust distribution.
-        let libdir = if builder.config.download_rustc {
+        let libdir = if builder.download_rustc() {
             builder.rustc_libdir(compiler)
         } else {
             builder.sysroot_libdir(compiler, target).to_path_buf()

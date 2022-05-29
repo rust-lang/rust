@@ -2,13 +2,14 @@ use std::any::{type_name, Any};
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeSet;
 use std::env;
-use std::ffi::OsStr;
+use std::ffi::{OsStr, OsString};
 use std::fmt::{Debug, Write};
-use std::fs;
+use std::fs::{self, File};
 use std::hash::Hash;
+use std::io::{BufRead, BufReader, ErrorKind};
 use std::ops::Deref;
 use std::path::{Component, Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
 use crate::cache::{Cache, Interned, INTERNER};
@@ -29,7 +30,8 @@ use crate::{Build, CLang, DocTests, GitRepo, Mode};
 
 pub use crate::Compiler;
 // FIXME: replace with std::lazy after it gets stabilized and reaches beta
-use once_cell::sync::Lazy;
+use once_cell::sync::{Lazy, OnceCell};
+use xz2::bufread::XzDecoder;
 
 pub struct Builder<'a> {
     pub build: &'a Build,
@@ -758,6 +760,207 @@ impl<'a> Builder<'a> {
         StepDescription::run(v, self, paths);
     }
 
+    /// Modifies the interpreter section of 'fname' to fix the dynamic linker,
+    /// or the RPATH section, to fix the dynamic library search path
+    ///
+    /// This is only required on NixOS and uses the PatchELF utility to
+    /// change the interpreter/RPATH of ELF executables.
+    ///
+    /// Please see https://nixos.org/patchelf.html for more information
+    pub(crate) fn fix_bin_or_dylib(&self, fname: &Path) {
+        // FIXME: cache NixOS detection?
+        match Command::new("uname").arg("-s").stderr(Stdio::inherit()).output() {
+            Err(_) => return,
+            Ok(output) if !output.status.success() => return,
+            Ok(output) => {
+                let mut s = output.stdout;
+                if s.last() == Some(&b'\n') {
+                    s.pop();
+                }
+                if s != b"Linux" {
+                    return;
+                }
+            }
+        }
+
+        // If the user has asked binaries to be patched for Nix, then
+        // don't check for NixOS or `/lib`, just continue to the patching.
+        // NOTE: this intentionally comes after the Linux check:
+        // - patchelf only works with ELF files, so no need to run it on Mac or Windows
+        // - On other Unix systems, there is no stable syscall interface, so Nix doesn't manage the global libc.
+        if !self.config.patch_binaries_for_nix {
+            // Use `/etc/os-release` instead of `/etc/NIXOS`.
+            // The latter one does not exist on NixOS when using tmpfs as root.
+            const NIX_IDS: &[&str] = &["ID=nixos", "ID='nixos'", "ID=\"nixos\""];
+            let os_release = match File::open("/etc/os-release") {
+                Err(e) if e.kind() == ErrorKind::NotFound => return,
+                Err(e) => panic!("failed to access /etc/os-release: {}", e),
+                Ok(f) => f,
+            };
+            if !BufReader::new(os_release).lines().any(|l| NIX_IDS.contains(&t!(l).trim())) {
+                return;
+            }
+            if Path::new("/lib").exists() {
+                return;
+            }
+        }
+
+        // At this point we're pretty sure the user is running NixOS or using Nix
+        println!("info: you seem to be using Nix. Attempting to patch {}", fname.display());
+
+        // Only build `.nix-deps` once.
+        static NIX_DEPS_DIR: OnceCell<PathBuf> = OnceCell::new();
+        let mut nix_build_succeeded = true;
+        let nix_deps_dir = NIX_DEPS_DIR.get_or_init(|| {
+            // Run `nix-build` to "build" each dependency (which will likely reuse
+            // the existing `/nix/store` copy, or at most download a pre-built copy).
+            //
+            // Importantly, we create a gc-root called `.nix-deps` in the `build/`
+            // directory, but still reference the actual `/nix/store` path in the rpath
+            // as it makes it significantly more robust against changes to the location of
+            // the `.nix-deps` location.
+            //
+            // bintools: Needed for the path of `ld-linux.so` (via `nix-support/dynamic-linker`).
+            // zlib: Needed as a system dependency of `libLLVM-*.so`.
+            // patchelf: Needed for patching ELF binaries (see doc comment above).
+            let nix_deps_dir = self.out.join(".nix-deps");
+            const NIX_EXPR: &str = "
+            with (import <nixpkgs> {});
+            symlinkJoin {
+                name = \"rust-stage0-dependencies\";
+                paths = [
+                    zlib
+                    patchelf
+                    stdenv.cc.bintools
+                ];
+            }
+            ";
+            nix_build_succeeded = self.try_run(Command::new("nix-build").args(&[
+                Path::new("-E"),
+                Path::new(NIX_EXPR),
+                Path::new("-o"),
+                &nix_deps_dir,
+            ]));
+            nix_deps_dir
+        });
+        if !nix_build_succeeded {
+            return;
+        }
+
+        let mut patchelf = Command::new(nix_deps_dir.join("bin/patchelf"));
+        let rpath_entries = {
+            // ORIGIN is a relative default, all binary and dynamic libraries we ship
+            // appear to have this (even when `../lib` is redundant).
+            // NOTE: there are only two paths here, delimited by a `:`
+            let mut entries = OsString::from("$ORIGIN/../lib:");
+            entries.push(t!(fs::canonicalize(nix_deps_dir)));
+            entries.push("/lib");
+            entries
+        };
+        patchelf.args(&[OsString::from("--set-rpath"), rpath_entries]);
+        if !fname.extension().map_or(false, |ext| ext == "so") {
+            // Finally, set the corret .interp for binaries
+            let dynamic_linker_path = nix_deps_dir.join("nix-support/dynamic-linker");
+            // FIXME: can we support utf8 here? `args` doesn't accept Vec<u8>, only OsString ...
+            let dynamic_linker = t!(String::from_utf8(t!(fs::read(dynamic_linker_path))));
+            patchelf.args(&["--set-interpreter", dynamic_linker.trim_end()]);
+        }
+
+        self.try_run(patchelf.arg(fname));
+    }
+
+    pub(crate) fn download_component(&self, base: &str, url: &str, dest_path: &Path) {
+        // Use a temporary file in case we crash while downloading, to avoid a corrupt download in cache/.
+        let tempfile = self.tempdir().join(dest_path.file_name().unwrap());
+        // FIXME: support `do_verify` (only really needed for nightly rustfmt)
+        self.download_with_retries(&tempfile, &format!("{}/{}", base, url));
+        t!(std::fs::rename(&tempfile, dest_path));
+    }
+
+    fn download_with_retries(&self, tempfile: &Path, url: &str) {
+        println!("downloading {}", url);
+        // Try curl. If that fails and we are on windows, fallback to PowerShell.
+        let mut curl = Command::new("curl");
+        curl.args(&[
+            "-#",
+            "-y",
+            "30",
+            "-Y",
+            "10", // timeout if speed is < 10 bytes/sec for > 30 seconds
+            "--connect-timeout",
+            "30", // timeout if cannot connect within 30 seconds
+            "--retry",
+            "3",
+            "-Sf",
+            "-o",
+        ]);
+        curl.arg(tempfile);
+        curl.arg(url);
+        if !self.check_run(&mut curl) {
+            if self.build.build.contains("windows-msvc") {
+                println!("Fallback to PowerShell");
+                for _ in 0..3 {
+                    if self.try_run(Command::new("PowerShell.exe").args(&[
+                        "/nologo",
+                        "-Command",
+                        "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12;",
+                        &format!(
+                            "(New-Object System.Net.WebClient).DownloadFile('{}', '{}')",
+                            url, tempfile.to_str().expect("invalid UTF-8 not supported with powershell downloads"),
+                        ),
+                    ])) {
+                        return;
+                    }
+                    println!("\nspurious failure, trying again");
+                }
+            }
+            std::process::exit(1);
+        }
+    }
+
+    pub(crate) fn unpack(&self, tarball: &Path, dst: &Path, pattern: &str) {
+        println!("extracting {} to {}", tarball.display(), dst.display());
+        if !dst.exists() {
+            t!(fs::create_dir_all(dst));
+        }
+
+        // `tarball` ends with `.tar.xz`; strip that suffix
+        // example: `rust-dev-nightly-x86_64-unknown-linux-gnu`
+        let uncompressed_filename =
+            Path::new(tarball.file_name().expect("missing tarball filename")).file_stem().unwrap();
+        let directory_prefix = Path::new(Path::new(uncompressed_filename).file_stem().unwrap());
+
+        // decompress the file
+        let data = t!(File::open(tarball));
+        let decompressor = XzDecoder::new(BufReader::new(data));
+
+        let mut tar = tar::Archive::new(decompressor);
+        for member in t!(tar.entries()) {
+            let mut member = t!(member);
+            let original_path = t!(member.path()).into_owned();
+            // skip the top-level directory
+            if original_path == directory_prefix {
+                continue;
+            }
+            let mut short_path = t!(original_path.strip_prefix(directory_prefix));
+            if !short_path.starts_with(pattern) {
+                continue;
+            }
+            short_path = t!(short_path.strip_prefix(pattern));
+            let dst_path = dst.join(short_path);
+            self.verbose(&format!("extracting {} to {}", original_path.display(), dst.display()));
+            if !t!(member.unpack_in(dst)) {
+                panic!("path traversal attack ??");
+            }
+            let src_path = dst.join(original_path);
+            if src_path.is_dir() && dst_path.exists() {
+                continue;
+            }
+            t!(fs::rename(src_path, dst_path));
+        }
+        t!(fs::remove_dir_all(dst.join(directory_prefix)));
+    }
+
     /// Obtain a compiler at a given stage and for a given host. Explicitly does
     /// not take `Compiler` since all `Compiler` instances are meant to be
     /// obtained through this function, since it ensures that they are valid
@@ -819,7 +1022,7 @@ impl<'a> Builder<'a> {
                     .join("lib");
                 // Avoid deleting the rustlib/ directory we just copied
                 // (in `impl Step for Sysroot`).
-                if !builder.config.download_rustc {
+                if !builder.download_rustc() {
                     let _ = fs::remove_dir_all(&sysroot);
                     t!(fs::create_dir_all(&sysroot));
                 }
@@ -974,6 +1177,10 @@ impl<'a> Builder<'a> {
     /// Convenience wrapper to allow `builder.llvm_link_shared()` instead of `builder.config.llvm_link_shared(&builder)`.
     pub(crate) fn llvm_link_shared(&self) -> bool {
         Config::llvm_link_shared(self)
+    }
+
+    pub(crate) fn download_rustc(&self) -> bool {
+        Config::download_rustc(self)
     }
 
     /// Prepares an invocation of `cargo` to be run.
