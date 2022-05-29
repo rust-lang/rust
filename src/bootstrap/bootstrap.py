@@ -63,31 +63,30 @@ def support_xz():
     except tarfile.CompressionError:
         return False
 
-def get(base, url, path, checksums, verbose=False, do_verify=True):
+def get(base, url, path, checksums, verbose=False):
     with tempfile.NamedTemporaryFile(delete=False) as temp_file:
         temp_path = temp_file.name
 
     try:
-        if do_verify:
-            if url not in checksums:
-                raise RuntimeError(("src/stage0.json doesn't contain a checksum for {}. "
-                                    "Pre-built artifacts might not available for this "
-                                    "target at this time, see https://doc.rust-lang.org/nightly"
-                                    "/rustc/platform-support.html for more information.")
-                                   .format(url))
-            sha256 = checksums[url]
-            if os.path.exists(path):
-                if verify(path, sha256, False):
-                    if verbose:
-                        print("using already-download file", path)
-                    return
-                else:
-                    if verbose:
-                        print("ignoring already-download file",
-                            path, "due to failed verification")
-                    os.unlink(path)
+        if url not in checksums:
+            raise RuntimeError(("src/stage0.json doesn't contain a checksum for {}. "
+                                "Pre-built artifacts might not be available for this "
+                                "target at this time, see https://doc.rust-lang.org/nightly"
+                                "/rustc/platform-support.html for more information.")
+                                .format(url))
+        sha256 = checksums[url]
+        if os.path.exists(path):
+            if verify(path, sha256, False):
+                if verbose:
+                    print("using already-download file", path)
+                return
+            else:
+                if verbose:
+                    print("ignoring already-download file",
+                        path, "due to failed verification")
+                os.unlink(path)
         download(temp_path, "{}/{}".format(base, url), True, verbose)
-        if do_verify and not verify(temp_path, sha256, verbose):
+        if not verify(temp_path, sha256, verbose):
             raise RuntimeError("failed verification")
         if verbose:
             print("moving {} to {}".format(temp_path, path))
@@ -430,7 +429,6 @@ class RustBuild(object):
     def __init__(self):
         self.checksums_sha256 = {}
         self.stage0_compiler = None
-        self.stage0_rustfmt = None
         self._download_url = ''
         self.build = ''
         self.build_dir = ''
@@ -484,31 +482,10 @@ class RustBuild(object):
             with output(self.rustc_stamp()) as rust_stamp:
                 rust_stamp.write(key)
 
-        if self.rustfmt() and self.rustfmt().startswith(bin_root) and (
-            not os.path.exists(self.rustfmt())
-            or self.program_out_of_date(
-                self.rustfmt_stamp(),
-                "" if self.stage0_rustfmt is None else self.stage0_rustfmt.channel()
-            )
-        ):
-            if self.stage0_rustfmt is not None:
-                tarball_suffix = '.tar.xz' if support_xz() else '.tar.gz'
-                filename = "rustfmt-{}-{}{}".format(
-                    self.stage0_rustfmt.version, self.build, tarball_suffix,
-                )
-                self._download_component_helper(
-                    filename, "rustfmt-preview", tarball_suffix, key=self.stage0_rustfmt.date
-                )
-                self.fix_bin_or_dylib("{}/bin/rustfmt".format(bin_root))
-                self.fix_bin_or_dylib("{}/bin/cargo-fmt".format(bin_root))
-                with output(self.rustfmt_stamp()) as rustfmt_stamp:
-                    rustfmt_stamp.write(self.stage0_rustfmt.channel())
-
     def _download_component_helper(
-        self, filename, pattern, tarball_suffix, key=None
+        self, filename, pattern, tarball_suffix,
     ):
-        if key is None:
-            key = self.stage0_compiler.date
+        key = self.stage0_compiler.date
         cache_dst = os.path.join(self.build_dir, "cache")
         rustc_cache = os.path.join(cache_dst, key)
         if not os.path.exists(rustc_cache):
@@ -524,7 +501,6 @@ class RustBuild(object):
                 tarball,
                 self.checksums_sha256,
                 verbose=self.verbose,
-                do_verify=True,
             )
         unpack(tarball, tarball_suffix, self.bin_root(), match=pattern, verbose=self.verbose)
 
@@ -634,16 +610,6 @@ class RustBuild(object):
         """
         return os.path.join(self.bin_root(), '.rustc-stamp')
 
-    def rustfmt_stamp(self):
-        """Return the path for .rustfmt-stamp
-
-        >>> rb = RustBuild()
-        >>> rb.build_dir = "build"
-        >>> rb.rustfmt_stamp() == os.path.join("build", "stage0", ".rustfmt-stamp")
-        True
-        """
-        return os.path.join(self.bin_root(), '.rustfmt-stamp')
-
     def program_out_of_date(self, stamp_path, key):
         """Check if the given program stamp is out of date"""
         if not os.path.exists(stamp_path) or self.clean:
@@ -716,12 +682,6 @@ class RustBuild(object):
     def rustc(self):
         """Return config path for rustc"""
         return self.program_config('rustc')
-
-    def rustfmt(self):
-        """Return config path for rustfmt"""
-        if self.stage0_rustfmt is None:
-            return None
-        return self.program_config('rustfmt')
 
     def program_config(self, program):
         """Return config path for the given program at the given stage
@@ -1082,8 +1042,6 @@ def bootstrap(help_triggered):
         data = json.load(f)
     build.checksums_sha256 = data["checksums_sha256"]
     build.stage0_compiler = Stage0Toolchain(data["compiler"])
-    if data.get("rustfmt") is not None:
-        build.stage0_rustfmt = Stage0Toolchain(data["rustfmt"])
 
     build.set_dist_environment(data["dist_server"])
 

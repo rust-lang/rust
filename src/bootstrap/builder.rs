@@ -728,7 +728,8 @@ impl<'a> Builder<'a> {
             Subcommand::Dist { ref paths } => (Kind::Dist, &paths[..]),
             Subcommand::Install { ref paths } => (Kind::Install, &paths[..]),
             Subcommand::Run { ref paths } => (Kind::Run, &paths[..]),
-            Subcommand::Format { .. } | Subcommand::Clean { .. } | Subcommand::Setup { .. } => {
+            Subcommand::Format { .. } => (Kind::Format, &[][..]),
+            Subcommand::Clean { .. } | Subcommand::Setup { .. } => {
                 panic!()
             }
         };
@@ -1190,6 +1191,10 @@ impl<'a> Builder<'a> {
 
     pub(crate) fn download_rustc(&self) -> bool {
         Config::download_rustc(self)
+    }
+
+    pub(crate) fn initial_rustfmt(&self) -> Option<PathBuf> {
+        Config::initial_rustfmt(self)
     }
 
     /// Prepares an invocation of `cargo` to be run.

@@ -1010,7 +1010,7 @@ impl Step for Tidy {
 
         if builder.config.channel == "dev" || builder.config.channel == "nightly" {
             builder.info("fmt check");
-            if builder.config.initial_rustfmt.is_none() {
+            if builder.initial_rustfmt().is_none() {
                 let inferred_rustfmt_dir = builder.config.initial_rustc.parent().unwrap();
                 eprintln!(
                     "\
@@ -1023,7 +1023,7 @@ help: to skip test's attempt to check tidiness, pass `--exclude src/tools/tidy` 
                 );
                 std::process::exit(1);
             }
-            crate::format::format(&builder.build, !builder.config.cmd.bless(), &[]);
+            crate::format::format(&builder, !builder.config.cmd.bless(), &[]);
         }
     }
 

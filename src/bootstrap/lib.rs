@@ -661,7 +661,7 @@ impl Build {
         self.maybe_update_submodules();
 
         if let Subcommand::Format { check, paths } = &self.config.cmd {
-            return format::format(self, *check, &paths);
+            return format::format(&builder::Builder::new(&self), *check, &paths);
         }
 
         if let Subcommand::Clean { all } = self.config.cmd {

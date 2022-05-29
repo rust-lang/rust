@@ -1,7 +1,7 @@
 //! Runs rustfmt on the repository.
 
+use crate::builder::Builder;
 use crate::util::{output, t};
-use crate::Build;
 use ignore::WalkBuilder;
 use std::collections::VecDeque;
 use std::path::{Path, PathBuf};
@@ -42,7 +42,7 @@ struct RustfmtConfig {
     ignore: Vec<String>,
 }
 
-pub fn format(build: &Build, check: bool, paths: &[PathBuf]) {
+pub fn format(build: &Builder<'_>, check: bool, paths: &[PathBuf]) {
     if build.config.dry_run {
         return;
     }
@@ -112,15 +112,11 @@ pub fn format(build: &Build, check: bool, paths: &[PathBuf]) {
     }
     let ignore_fmt = ignore_fmt.build().unwrap();
 
-    let rustfmt_path = build
-        .config
-        .initial_rustfmt
-        .as_ref()
-        .unwrap_or_else(|| {
-            eprintln!("./x.py fmt is not supported on this channel");
-            std::process::exit(1);
-        })
-        .to_path_buf();
+    let rustfmt_path = build.initial_rustfmt().unwrap_or_else(|| {
+        eprintln!("./x.py fmt is not supported on this channel");
+        std::process::exit(1);
+    });
+    assert!(rustfmt_path.exists(), "{}", rustfmt_path.display());
     let src = build.src.clone();
     let (tx, rx): (SyncSender<PathBuf>, _) = std::sync::mpsc::sync_channel(128);
     let walker = match paths.get(0) {
