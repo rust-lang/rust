@@ -227,11 +227,11 @@ impl GlobalStateInner {
 }
 
 /// Error reporting
-pub fn err_sb_ub(
+pub fn err_sb_ub<'tcx>(
     msg: String,
     help: Option<String>,
     history: Option<TagHistory>,
-) -> InterpError<'static> {
+) -> InterpError<'tcx> {
     err_machine_stop!(TerminationInfo::ExperimentalUb {
         msg,
         help,

@@ -14,7 +14,7 @@ pub enum Dlsym {
 impl Dlsym {
     // Returns an error for unsupported symbols, and None if this symbol
     // should become a NULL pointer (pretend it does not exist).
-    pub fn from_str(name: &str, target_os: &str) -> InterpResult<'static, Option<Dlsym>> {
+    pub fn from_str<'tcx>(name: &str, target_os: &str) -> InterpResult<'tcx, Option<Dlsym>> {
         Ok(match target_os {
             "linux" => linux::Dlsym::from_str(name)?.map(Dlsym::Linux),
             "macos" => macos::Dlsym::from_str(name)?.map(Dlsym::MacOs),

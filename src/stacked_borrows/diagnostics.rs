@@ -195,7 +195,7 @@ impl AllocHistory {
     }
 
     /// Report a descriptive error when `new` could not be granted from `derived_from`.
-    pub fn grant_error(
+    pub fn grant_error<'tcx>(
         &self,
         derived_from: SbTag,
         new: Item,
@@ -203,7 +203,7 @@ impl AllocHistory {
         alloc_range: AllocRange,
         error_offset: Size,
         stack: &Stack,
-    ) -> InterpError<'static> {
+    ) -> InterpError<'tcx> {
         let action = format!(
             "trying to reborrow {:?} for {:?} permission at {}[{:#x}]",
             derived_from,
@@ -219,7 +219,7 @@ impl AllocHistory {
     }
 
     /// Report a descriptive error when `access` is not permitted based on `tag`.
-    pub fn access_error(
+    pub fn access_error<'tcx>(
         &self,
         access: AccessKind,
         tag: SbTag,
@@ -227,7 +227,7 @@ impl AllocHistory {
         alloc_range: AllocRange,
         error_offset: Size,
         stack: &Stack,
-    ) -> InterpError<'static> {
+    ) -> InterpError<'tcx> {
         let action = format!(
             "attempting a {} using {:?} at {}[{:#x}]",
             access,

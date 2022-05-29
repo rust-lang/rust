@@ -849,7 +849,7 @@ where
     throw_ub_format!("incorrect number of arguments: got {}, expected {}", args.len(), N)
 }
 
-pub fn isolation_abort_error(name: &str) -> InterpResult<'static> {
+pub fn isolation_abort_error<'tcx>(name: &str) -> InterpResult<'tcx> {
     throw_machine_stop!(TerminationInfo::UnsupportedInIsolation(format!(
         "{} not available when isolation is enabled",
         name,
