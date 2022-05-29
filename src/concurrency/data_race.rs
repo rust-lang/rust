@@ -544,6 +544,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         // side effects from a read the program did not perform. So we have to initialise
         // the store buffer with the value currently being written
         // ONCE this is fixed please remove the hack in buffered_atomic_write() in weak_memory.rs
+        // https://github.com/rust-lang/miri/issues/2164
         this.buffered_atomic_write(val, dest, atomic, val)
     }
 

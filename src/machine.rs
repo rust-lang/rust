@@ -638,8 +638,6 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
             None
         };
         let buffer_alloc = if ecx.machine.weak_memory {
-            // FIXME: if this is an atomic obejct, we want to supply its initial value
-            // while allocating the store buffer here.
             Some(weak_memory::AllocExtra::new_allocation())
         } else {
             None

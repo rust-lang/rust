@@ -508,6 +508,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
             // UGLY HACK: in write_scalar_atomic() we don't know the value before our write,
             // so init == val always. If the buffer is fresh then we would've duplicated an entry,
             // so we need to remove it.
+            // See https://github.com/rust-lang/miri/issues/2164
             let was_empty = matches!(
                 alloc_buffers
                     .store_buffers

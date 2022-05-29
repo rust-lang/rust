@@ -25,6 +25,7 @@ fn reads_value(loc: &AtomicUsize, val: usize) -> usize {
 fn static_atomic(val: usize) -> &'static AtomicUsize {
     let ret = Box::leak(Box::new(AtomicUsize::new(val)));
     // A workaround to put the initialization value in the store buffer.
+    // See https://github.com/rust-lang/miri/issues/2164
     ret.load(Relaxed);
     ret
 }
