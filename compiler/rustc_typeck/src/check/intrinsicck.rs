@@ -9,6 +9,7 @@ use rustc_session::lint;
 use rustc_span::{Span, Symbol, DUMMY_SP};
 use rustc_target::abi::{Pointer, VariantIdx};
 use rustc_target::asm::{InlineAsmReg, InlineAsmRegClass, InlineAsmRegOrRegClass, InlineAsmType};
+use rustc_trait_selection::infer::InferCtxtExt;
 
 use super::FnCtxt;
 
@@ -210,7 +211,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Check that the type implements Copy. The only case where this can
         // possibly fail is for SIMD types which don't #[derive(Copy)].
-        if !ty.is_copy_modulo_regions(self.tcx.at(DUMMY_SP), self.param_env) {
+        if !self.infcx.type_is_copy_modulo_regions(self.param_env, ty, DUMMY_SP) {
             let msg = "arguments for inline assembly must be copyable";
             let mut err = self.tcx.sess.struct_span_err(expr.span, msg);
             err.note(&format!("`{ty}` does not implement the Copy trait"));
