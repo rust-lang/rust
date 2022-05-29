@@ -217,6 +217,10 @@ impl<'a> ExtCtxt<'a> {
         self.expr_ident(span, Ident::with_dummy_span(kw::SelfLower))
     }
 
+    pub fn expr_assign(&self, sp: Span, lhs: P<ast::Expr>, rhs: P<ast::Expr>) -> P<ast::Expr> {
+        self.expr(sp, ast::ExprKind::Assign(lhs, rhs, sp))
+    }
+
     pub fn expr_binary(
         &self,
         sp: Span,
@@ -233,6 +237,10 @@ impl<'a> ExtCtxt<'a> {
 
     pub fn expr_addr_of(&self, sp: Span, e: P<ast::Expr>) -> P<ast::Expr> {
         self.expr(sp, ast::ExprKind::AddrOf(ast::BorrowKind::Ref, ast::Mutability::Not, e))
+    }
+
+    pub fn expr_addr_of_mut(&self, sp: Span, e: P<ast::Expr>) -> P<ast::Expr> {
+        self.expr(sp, ast::ExprKind::AddrOf(ast::BorrowKind::Ref, ast::Mutability::Mut, e))
     }
 
     pub fn expr_call(

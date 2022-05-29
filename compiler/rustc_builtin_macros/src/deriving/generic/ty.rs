@@ -5,11 +5,13 @@ pub use PtrTy::*;
 pub use Ty::*;
 
 use rustc_ast::ptr::P;
-use rustc_ast::{self as ast, Expr, GenericArg, GenericParamKind, Generics, SelfKind};
+use rustc_ast::{self as ast, GenericArg, GenericParamKind, Generics, SelfKind};
 use rustc_expand::base::ExtCtxt;
 use rustc_span::source_map::{respan, DUMMY_SP};
 use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::Span;
+
+use super::SelfArg;
 
 /// The types of pointers
 #[derive(Clone)]
@@ -104,12 +106,19 @@ pub enum Ty {
 pub fn borrowed_ptrty() -> PtrTy {
     Borrowed(None, ast::Mutability::Not)
 }
+pub fn borrowed_mut_ptrty() -> PtrTy {
+    Borrowed(None, ast::Mutability::Mut)
+}
+
 pub fn borrowed(ty: Box<Ty>) -> Ty {
     Ptr(ty, borrowed_ptrty())
 }
 
 pub fn borrowed_explicit_self() -> Option<Option<PtrTy>> {
     Some(Some(borrowed_ptrty()))
+}
+pub fn borrowed_explicit_mut_self() -> Option<Option<PtrTy>> {
+    Some(Some(borrowed_mut_ptrty()))
 }
 
 pub fn borrowed_self() -> Ty {
@@ -249,24 +258,28 @@ pub fn get_explicit_self(
     cx: &ExtCtxt<'_>,
     span: Span,
     self_ptr: &Option<PtrTy>,
-) -> (P<Expr>, ast::ExplicitSelf) {
+) -> (SelfArg, ast::ExplicitSelf) {
     // this constructs a fresh `self` path
-    let self_path = cx.expr_self(span);
+    let self_path = Ident::with_dummy_span(kw::SelfLower); //cx.expr_self(span);
     match *self_ptr {
-        None => (self_path, respan(span, SelfKind::Value(ast::Mutability::Not))),
+        None => (
+            SelfArg { modifier: None, ident: self_path },
+            respan(span, SelfKind::Value(ast::Mutability::Not)),
+        ),
         Some(ref ptr) => {
+            let mutbl;
             let self_ty = respan(
                 span,
                 match *ptr {
-                    Borrowed(ref lt, mutbl) => {
+                    Borrowed(ref lt, mutbl_) => {
+                        mutbl = mutbl_;
                         let lt = lt.map(|s| cx.lifetime(span, s));
-                        SelfKind::Region(lt, mutbl)
+                        SelfKind::Region(lt, mutbl_)
                     }
                     Raw(_) => cx.span_bug(span, "attempted to use *self in deriving definition"),
                 },
             );
-            let self_expr = cx.expr_deref(span, self_path);
-            (self_expr, self_ty)
+            (SelfArg { modifier: Some(mutbl), ident: self_path }, self_ty)
         }
     }
 }

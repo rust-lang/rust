@@ -174,6 +174,7 @@
 //!                 (<ident of C1>, <span of C1>, Named(vec![(<ident of x>, <span of x>)]))])
 //! ```
 
+use ast::Mutability;
 pub use StaticFields::*;
 pub use SubstructureFields::*;
 
@@ -185,7 +186,6 @@ use rustc_ast::ptr::P;
 use rustc_ast::{self as ast, BinOpKind, EnumDef, Expr, Generics, PatKind};
 use rustc_ast::{GenericArg, GenericParamKind, VariantData};
 use rustc_attr as attr;
-use rustc_data_structures::map_in_place::MapInPlace;
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
@@ -261,7 +261,7 @@ pub struct Substructure<'a> {
     ///
     /// [`Self_`]: ty::Ty::Self_
     /// [ptr]: ty::Ty::Ptr
-    pub self_args: &'a [P<Expr>],
+    pub self_args: &'a [SelfArg],
     /// verbatim access to any other arguments
     pub nonself_args: &'a [P<Expr>],
     pub fields: &'a SubstructureFields<'a>,
@@ -323,8 +323,8 @@ pub type CombineSubstructureFunc<'a> =
 /// variants since they have been collapsed together) and the identifiers
 /// holding the variant index value for each of the `Self` arguments. The
 /// last argument is all the non-`Self` args of the method being derived.
-pub type EnumNonMatchCollapsedFunc<'a> =
-    Box<dyn FnMut(&mut ExtCtxt<'_>, Span, (&[Ident], &[Ident]), &[P<Expr>]) -> P<Expr> + 'a>;
+pub type EnumNonMatchCollapsedFunc<'a, B> =
+    Box<dyn FnMut(&mut ExtCtxt<'_>, Span, (&[Ident], &[Ident]), &[P<Expr>]) -> B + 'a>;
 
 pub fn combine_substructure(
     f: CombineSubstructureFunc<'_>,
@@ -829,7 +829,7 @@ impl<'a> TraitDef<'a> {
                         self,
                         enum_def,
                         type_ident,
-                        self_args,
+                        &self_args,
                         &nonself_args,
                     )
                 };
@@ -842,13 +842,28 @@ impl<'a> TraitDef<'a> {
     }
 }
 
+pub struct SelfArg {
+    modifier: Option<Mutability>,
+    ident: Ident,
+}
+
+impl SelfArg {
+    pub fn expr(&self, cx: &mut ExtCtxt<'_>) -> P<Expr> {
+        let ident = cx.expr_ident(self.ident.span, self.ident.clone());
+        match self.modifier {
+            Some(_) => cx.expr_deref(ident.span, ident),
+            None => ident,
+        }
+    }
+}
+
 impl<'a> MethodDef<'a> {
     fn call_substructure_method(
         &self,
         cx: &mut ExtCtxt<'_>,
         trait_: &TraitDef<'_>,
         type_ident: Ident,
-        self_args: &[P<Expr>],
+        self_args: &[SelfArg],
         nonself_args: &[P<Expr>],
         fields: &SubstructureFields<'_>,
     ) -> P<Expr> {
@@ -885,7 +900,7 @@ impl<'a> MethodDef<'a> {
         trait_: &TraitDef<'_>,
         type_ident: Ident,
         generics: &Generics,
-    ) -> (Option<ast::ExplicitSelf>, Vec<P<Expr>>, Vec<P<Expr>>, Vec<(Ident, P<ast::Ty>)>) {
+    ) -> (Option<ast::ExplicitSelf>, Vec<SelfArg>, Vec<P<Expr>>, Vec<(Ident, P<ast::Ty>)>) {
         let mut self_args = Vec::new();
         let mut nonself_args = Vec::new();
         let mut arg_tys = Vec::new();
@@ -906,19 +921,21 @@ impl<'a> MethodDef<'a> {
             let ident = Ident::new(*name, span);
             arg_tys.push((ident, ast_ty));
 
-            let arg_expr = cx.expr_ident(span, ident);
-
             match *ty {
                 // for static methods, just treat any Self
                 // arguments as a normal arg
                 Self_ if nonstatic => {
-                    self_args.push(arg_expr);
+                    self_args.push(SelfArg { modifier: None, ident });
                 }
-                Ptr(ref ty, _) if matches!(**ty, Self_) && nonstatic => {
-                    self_args.push(cx.expr_deref(span, arg_expr))
+                Ptr(ref ty, ref ptr) if matches!(**ty, Self_) && nonstatic => {
+                    let mutbl = match *ptr {
+                        PtrTy::Borrowed(.., m) => m,
+                        PtrTy::Raw(_) => Mutability::Not,
+                    };
+                    self_args.push(SelfArg { modifier: Some(mutbl), ident })
                 }
                 _ => {
-                    nonself_args.push(arg_expr);
+                    nonself_args.push(cx.expr_ident(span, ident));
                 }
             }
         }
@@ -1031,14 +1048,14 @@ impl<'a> MethodDef<'a> {
         trait_: &TraitDef<'b>,
         struct_def: &'b VariantData,
         type_ident: Ident,
-        self_args: &[P<Expr>],
+        self_args: &[SelfArg],
         nonself_args: &[P<Expr>],
         use_temporaries: bool,
     ) -> P<Expr> {
         let mut raw_fields = Vec::new(); // Vec<[fields of self], [fields of next Self arg], [etc]>
         let span = trait_.span;
         let mut patterns = Vec::new();
-        for i in 0..self_args.len() {
+        for (i, self_arg) in self_args.iter().enumerate() {
             // We could use `type_ident` instead of `Self`, but in the case of a type parameter
             // shadowing the struct name, that causes a second, unnecessary E0578 error. #97343
             let struct_path = cx.path(span, vec![Ident::new(kw::SelfUpper, type_ident.span)]);
@@ -1047,7 +1064,7 @@ impl<'a> MethodDef<'a> {
                 struct_path,
                 struct_def,
                 &format!("__self_{}", i),
-                ast::Mutability::Not,
+                self_arg.modifier.unwrap_or(Mutability::Not),
                 use_temporaries,
             );
             patterns.push(pat);
@@ -1091,8 +1108,9 @@ impl<'a> MethodDef<'a> {
         // make a series of nested matches, to destructure the
         // structs. This is actually right-to-left, but it shouldn't
         // matter.
-        for (arg_expr, pat) in iter::zip(self_args, patterns) {
-            body = cx.expr_match(span, arg_expr.clone(), vec![cx.arm(span, pat.clone(), body)])
+        for (self_arg, pat) in iter::zip(self_args, patterns) {
+            let self_expr = self_arg.expr(cx);
+            body = cx.expr_match(span, self_expr, vec![cx.arm(span, pat.clone(), body)])
         }
 
         body
@@ -1104,7 +1122,7 @@ impl<'a> MethodDef<'a> {
         trait_: &TraitDef<'_>,
         struct_def: &VariantData,
         type_ident: Ident,
-        self_args: &[P<Expr>],
+        self_args: &[SelfArg],
         nonself_args: &[P<Expr>],
     ) -> P<Expr> {
         let summary = trait_.summarise_struct(cx, struct_def);
@@ -1156,7 +1174,7 @@ impl<'a> MethodDef<'a> {
         trait_: &TraitDef<'b>,
         enum_def: &'b EnumDef,
         type_ident: Ident,
-        self_args: Vec<P<Expr>>,
+        self_args: &[SelfArg],
         nonself_args: &[P<Expr>],
     ) -> P<Expr> {
         self.build_enum_match_tuple(cx, trait_, enum_def, type_ident, self_args, nonself_args)
@@ -1200,7 +1218,7 @@ impl<'a> MethodDef<'a> {
         trait_: &TraitDef<'b>,
         enum_def: &'b EnumDef,
         type_ident: Ident,
-        mut self_args: Vec<P<Expr>>,
+        self_args: &[SelfArg],
         nonself_args: &[P<Expr>],
     ) -> P<Expr> {
         let span = trait_.span;
@@ -1250,15 +1268,15 @@ impl<'a> MethodDef<'a> {
             .enumerate()
             .filter(|&(_, v)| !(self.unify_fieldless_variants && v.data.fields().is_empty()))
             .map(|(index, variant)| {
-                let mk_self_pat = |cx: &mut ExtCtxt<'_>, self_arg_name: &str| {
+                let mk_self_pat = |cx: &mut ExtCtxt<'_>, self_arg_name: &str, mutbl: Mutability| {
                     let (p, idents) = trait_.create_enum_variant_pattern(
                         cx,
                         type_ident,
                         variant,
                         self_arg_name,
-                        ast::Mutability::Not,
+                        mutbl,
                     );
-                    (cx.pat(span, PatKind::Ref(p, ast::Mutability::Not)), idents)
+                    (cx.pat(span, PatKind::Ref(p, mutbl)), idents)
                 };
 
                 // A single arm has form (&VariantK, &VariantK, ...) => BodyK
@@ -1266,12 +1284,20 @@ impl<'a> MethodDef<'a> {
                 let mut subpats = Vec::with_capacity(self_arg_names.len());
                 let mut self_pats_idents = Vec::with_capacity(self_arg_names.len() - 1);
                 let first_self_pat_idents = {
-                    let (p, idents) = mk_self_pat(cx, &self_arg_names[0]);
+                    let (p, idents) = mk_self_pat(
+                        cx,
+                        &self_arg_names[0],
+                        self_args[0].modifier.unwrap_or(Mutability::Not),
+                    );
                     subpats.push(p);
                     idents
                 };
-                for self_arg_name in &self_arg_names[1..] {
-                    let (p, idents) = mk_self_pat(cx, &self_arg_name);
+                for (self_arg_name, self_arg) in self_arg_names[1..].iter().zip(&self_args[1..]) {
+                    let (p, idents) = mk_self_pat(
+                        cx,
+                        &self_arg_name,
+                        self_arg.modifier.unwrap_or(Mutability::Not),
+                    );
                     subpats.push(p);
                     self_pats_idents.push(idents);
                 }
@@ -1405,8 +1431,9 @@ impl<'a> MethodDef<'a> {
             let mut discriminant_test = cx.expr_bool(span, true);
 
             let mut first_ident = None;
-            for (&ident, self_arg) in iter::zip(&vi_idents, &self_args) {
-                let self_addr = cx.expr_addr_of(span, self_arg.clone());
+            for (&ident, self_arg) in iter::zip(&vi_idents, self_args) {
+                let self_expr = self_arg.expr(cx);
+                let self_addr = cx.expr_addr_of(span, self_expr);
                 let variant_value =
                     deriving::call_intrinsic(cx, span, sym::discriminant_value, vec![self_addr]);
                 let let_stmt = cx.stmt_let(span, false, ident, variant_value);
@@ -1440,8 +1467,18 @@ impl<'a> MethodDef<'a> {
             // them when they are fed as r-values into a tuple
             // expression; here add a layer of borrowing, turning
             // `(*self, *__arg_0, ...)` into `(&*self, &*__arg_0, ...)`.
-            self_args.map_in_place(|self_arg| cx.expr_addr_of(span, self_arg));
-            let match_arg = cx.expr(span, ast::ExprKind::Tup(self_args));
+            let args = self_args
+                .iter()
+                .map(|self_arg| {
+                    let self_expr = self_arg.expr(cx);
+                    if self_arg.modifier == Some(Mutability::Mut) {
+                        cx.expr_addr_of_mut(span, self_expr)
+                    } else {
+                        cx.expr_addr_of(span, self_expr)
+                    }
+                })
+                .collect();
+            let match_arg = cx.expr(span, ast::ExprKind::Tup(args));
 
             // Lastly we create an expression which branches on all discriminants being equal
             //  if discriminant_test {
@@ -1516,8 +1553,18 @@ impl<'a> MethodDef<'a> {
             // them when they are fed as r-values into a tuple
             // expression; here add a layer of borrowing, turning
             // `(*self, *__arg_0, ...)` into `(&*self, &*__arg_0, ...)`.
-            self_args.map_in_place(|self_arg| cx.expr_addr_of(span, self_arg));
-            let match_arg = cx.expr(span, ast::ExprKind::Tup(self_args));
+            let args = self_args
+                .iter()
+                .map(|self_arg| {
+                    let self_expr = self_arg.expr(cx);
+                    if self_arg.modifier == Some(Mutability::Mut) {
+                        cx.expr_addr_of_mut(span, self_expr)
+                    } else {
+                        cx.expr_addr_of(span, self_expr)
+                    }
+                })
+                .collect();
+            let match_arg = cx.expr(span, ast::ExprKind::Tup(args));
             cx.expr_match(span, match_arg, match_arms)
         }
     }
@@ -1528,7 +1575,7 @@ impl<'a> MethodDef<'a> {
         trait_: &TraitDef<'_>,
         enum_def: &EnumDef,
         type_ident: Ident,
-        self_args: &[P<Expr>],
+        self_args: &[SelfArg],
         nonself_args: &[P<Expr>],
     ) -> P<Expr> {
         let summary = enum_def
@@ -1665,15 +1712,15 @@ impl<'a> TraitDef<'a> {
 
 // helpful premade recipes
 
-pub fn cs_fold_fields<'a, F>(
+pub fn cs_fold_fields<'a, F, B>(
     use_foldl: bool,
     mut f: F,
-    base: P<Expr>,
+    base: B,
     cx: &mut ExtCtxt<'_>,
     all_fields: &[FieldInfo<'a>],
-) -> P<Expr>
+) -> B
 where
-    F: FnMut(&mut ExtCtxt<'_>, Span, P<Expr>, P<Expr>, &[P<Expr>]) -> P<Expr>,
+    F: FnMut(&mut ExtCtxt<'_>, Span, B, P<Expr>, &[P<Expr>]) -> B,
 {
     if use_foldl {
         all_fields
@@ -1687,12 +1734,12 @@ where
     }
 }
 
-pub fn cs_fold_enumnonmatch(
-    mut enum_nonmatch_f: EnumNonMatchCollapsedFunc<'_>,
+pub fn cs_fold_enumnonmatch<B>(
+    mut enum_nonmatch_f: EnumNonMatchCollapsedFunc<'_, B>,
     cx: &mut ExtCtxt<'_>,
     trait_span: Span,
     substructure: &Substructure<'_>,
-) -> P<Expr> {
+) -> B {
     match *substructure.fields {
         EnumNonMatchingCollapsed(ref all_args, _, tuple) => {
             enum_nonmatch_f(cx, trait_span, (&all_args[..], tuple), substructure.nonself_args)
@@ -1701,23 +1748,23 @@ pub fn cs_fold_enumnonmatch(
     }
 }
 
-pub fn cs_fold_static(cx: &mut ExtCtxt<'_>, trait_span: Span) -> P<Expr> {
+pub fn cs_fold_static(cx: &mut ExtCtxt<'_>, trait_span: Span) -> ! {
     cx.span_bug(trait_span, "static function in `derive`")
 }
 
 /// Fold the fields. `use_foldl` controls whether this is done
 /// left-to-right (`true`) or right-to-left (`false`).
-pub fn cs_fold<F>(
+pub fn cs_fold<F, B>(
     use_foldl: bool,
     f: F,
-    base: P<Expr>,
-    enum_nonmatch_f: EnumNonMatchCollapsedFunc<'_>,
+    base: B,
+    enum_nonmatch_f: EnumNonMatchCollapsedFunc<'_, B>,
     cx: &mut ExtCtxt<'_>,
     trait_span: Span,
     substructure: &Substructure<'_>,
-) -> P<Expr>
+) -> B
 where
-    F: FnMut(&mut ExtCtxt<'_>, Span, P<Expr>, P<Expr>, &[P<Expr>]) -> P<Expr>,
+    F: FnMut(&mut ExtCtxt<'_>, Span, B, P<Expr>, &[P<Expr>]) -> B,
 {
     match *substructure.fields {
         EnumMatching(.., ref all_fields) | Struct(_, ref all_fields) => {
@@ -1739,18 +1786,18 @@ where
 /// When the `substructure` is an `EnumNonMatchingCollapsed`, the result of `enum_nonmatch_f`
 /// is returned. Statics may not be folded over.
 /// See `cs_op` in `partial_ord.rs` for a model example.
-pub fn cs_fold1<F, B>(
+pub fn cs_fold1<F, B, R>(
     use_foldl: bool,
     f: F,
     mut b: B,
-    enum_nonmatch_f: EnumNonMatchCollapsedFunc<'_>,
+    enum_nonmatch_f: EnumNonMatchCollapsedFunc<'_, R>,
     cx: &mut ExtCtxt<'_>,
     trait_span: Span,
     substructure: &Substructure<'_>,
-) -> P<Expr>
+) -> R
 where
-    F: FnMut(&mut ExtCtxt<'_>, Span, P<Expr>, P<Expr>, &[P<Expr>]) -> P<Expr>,
-    B: FnMut(&mut ExtCtxt<'_>, Option<(Span, P<Expr>, &[P<Expr>])>) -> P<Expr>,
+    F: FnMut(&mut ExtCtxt<'_>, Span, R, P<Expr>, &[P<Expr>]) -> R,
+    B: FnMut(&mut ExtCtxt<'_>, Option<(Span, P<Expr>, &[P<Expr>])>) -> R,
 {
     match *substructure.fields {
         EnumMatching(.., ref all_fields) | Struct(_, ref all_fields) => {

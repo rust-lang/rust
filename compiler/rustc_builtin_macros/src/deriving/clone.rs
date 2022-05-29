@@ -75,6 +75,37 @@ pub fn expand_deriving_clone(
 
     let inline = cx.meta_word(span, sym::inline);
     let attrs = vec![cx.attribute(inline)];
+    let mut methods = vec![MethodDef {
+        name: sym::clone,
+        generics: Bounds::empty(),
+        explicit_self: borrowed_explicit_self(),
+        args: Vec::new(),
+        ret_ty: Self_,
+        attributes: attrs,
+        is_unsafe: false,
+        unify_fieldless_variants: false,
+        combine_substructure: substructure,
+    }];
+
+    if !is_shallow {
+        let substructure =
+            combine_substructure(Box::new(|c, s, sub| cs_clone_from("Clone", c, s, sub)));
+
+        let inline = cx.meta_word(span, sym::inline);
+        let attrs = vec![cx.attribute(inline)];
+        methods.push(MethodDef {
+            name: sym::clone_from,
+            generics: Bounds::empty(),
+            explicit_self: borrowed_explicit_mut_self(),
+            args: vec![(borrowed_self(), sym::other)],
+            ret_ty: nil_ty(),
+            attributes: attrs,
+            is_unsafe: false,
+            unify_fieldless_variants: true,
+            combine_substructure: substructure,
+        });
+    }
+
     let trait_def = TraitDef {
         span,
         attributes: Vec::new(),
@@ -83,17 +114,7 @@ pub fn expand_deriving_clone(
         generics: Bounds::empty(),
         is_unsafe: false,
         supports_unions: true,
-        methods: vec![MethodDef {
-            name: sym::clone,
-            generics: Bounds::empty(),
-            explicit_self: borrowed_explicit_self(),
-            args: Vec::new(),
-            ret_ty: Self_,
-            attributes: attrs,
-            is_unsafe: false,
-            unify_fieldless_variants: false,
-            combine_substructure: substructure,
-        }],
+        methods,
         associated_types: Vec::new(),
     };
 
@@ -216,4 +237,42 @@ fn cs_clone(
         }
         VariantData::Unit(..) => cx.expr_path(ctor_path),
     }
+}
+
+fn cs_clone_from(
+    _name: &str,
+    cx: &mut ExtCtxt<'_>,
+    trait_span: Span,
+    substr: &Substructure<'_>,
+) -> P<Expr> {
+    let block = cs_fold(
+        true,
+        |cx, span, mut block, self_f, other_fs| {
+            let [other_f] = other_fs else {
+                cx.span_bug(span, "not exactly 2 arguments in `derive(Clone)`");
+            };
+
+            let fn_path = cx.std_path(&[sym::clone, sym::Clone, sym::clone_from]);
+            let args =
+                vec![cx.expr_addr_of_mut(span, self_f), cx.expr_addr_of(span, other_f.clone())];
+            let new = cx.expr_call_global(span, fn_path, args);
+            block.stmts.push(cx.stmt_expr(new));
+            block
+        },
+        cx.block(trait_span, vec![]),
+        Box::new(|cx, span, _, _| {
+            let self_ = substr.self_args[0].expr(cx);
+            let other = substr.self_args[1].expr(cx);
+
+            let clone_path = cx.std_path(&[sym::clone, sym::Clone, sym::clone]);
+            let cloned = cx.expr_call_global(span, clone_path, vec![cx.expr_addr_of(span, other)]);
+
+            let assign = cx.expr_assign(span, self_, cloned);
+            cx.block(trait_span, vec![cx.stmt_expr(assign)])
+        }),
+        cx,
+        trait_span,
+        substr,
+    );
+    cx.expr_block(block)
 }
