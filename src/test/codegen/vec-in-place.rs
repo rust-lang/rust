@@ -53,16 +53,18 @@ pub fn vec_iterator_cast_unwrap(vec: Vec<Wrapper<u8>>) -> Vec<u8> {
 // CHECK-LABEL: @vec_iterator_cast_aggregate
 #[no_mangle]
 pub fn vec_iterator_cast_aggregate(vec: Vec<[u64; 4]>) -> Vec<Foo> {
-    // CHECK-NOT: loop
-    // CHECK-NOT: call
+    // FIXME These checks should be the same as other functions.
+    // CHECK-NOT: @__rust_alloc
+    // CHECK-NOT: @__rust_alloc
     vec.into_iter().map(|e| unsafe { std::mem::transmute(e) }).collect()
 }
 
 // CHECK-LABEL: @vec_iterator_cast_deaggregate
 #[no_mangle]
 pub fn vec_iterator_cast_deaggregate(vec: Vec<Bar>) -> Vec<[u64; 4]> {
-    // CHECK-NOT: loop
-    // CHECK-NOT: call
+    // FIXME These checks should be the same as other functions.
+    // CHECK-NOT: @__rust_alloc
+    // CHECK-NOT: @__rust_alloc
 
     // Safety: For the purpose of this test we assume that Bar layout matches [u64; 4].
     // This currently is not guaranteed for repr(Rust) types, but it happens to work here and
