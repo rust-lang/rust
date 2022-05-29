@@ -2728,6 +2728,13 @@ void createInvertedTerminator(TypeResults &TR, DiffeGradientUtils *gutils,
       }
     }
     if (!PNfloatType) {
+      if (CustomErrorHandler) {
+        std::string str;
+        raw_string_ostream ss(str);
+        ss << "Cannot deduce type of phi " << *orig;
+        CustomErrorHandler(str.c_str(), wrap(orig), ErrorType::NoType,
+                           &TR.analyzer);
+      }
       llvm::errs() << *gutils->oldFunc->getParent() << "\n";
       llvm::errs() << *gutils->oldFunc << "\n";
       llvm::errs() << " for orig " << *orig << " saw "

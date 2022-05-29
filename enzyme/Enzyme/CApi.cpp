@@ -227,6 +227,10 @@ void *EnzymeAnalyzeTypes(EnzymeTypeAnalysisRef TAR, CFnTypeInfo CTI,
   return (void *)&((TypeAnalysis *)TAR)->analyzeFunction(FTI).analyzer;
 }
 
+void *EnzymeGradientUtilsTypeAnalyzer(GradientUtils *G) {
+  return (void *)&G->my_TR->analyzer;
+}
+
 void EnzymeRegisterAllocationHandler(char *Name, CustomShadowAlloc AHandle,
                                      CustomShadowFree FHandle) {
   shadowHandlers[std::string(Name)] =
