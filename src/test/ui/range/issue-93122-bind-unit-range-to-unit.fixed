@@ -1,0 +1,9 @@
+// run-rustfix
+
+fn main() {
+    let () = (()..).start; //~ ERROR: mismatched types
+    let () = (..()).end; //~ ERROR: mismatched types
+    let () = (..=()).end; //~ ERROR: mismatched types
+    let () = (()..()).start; //~ ERROR: mismatched types
+    let () = (()..=()).start(); //~ ERROR: mismatched types
+}

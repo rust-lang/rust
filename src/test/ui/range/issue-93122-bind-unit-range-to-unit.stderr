@@ -1,0 +1,78 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-93122-bind-unit-range-to-unit.rs:4:9
+   |
+LL |     let () = ()..;
+   |         ^^   ---- this expression has type `RangeFrom<()>`
+   |         |
+   |         expected struct `RangeFrom`, found `()`
+   |
+   = note: expected struct `RangeFrom<()>`
+           found unit type `()`
+help: you might have meant to use field `start` whose type is `()`
+   |
+LL |     let () = (()..).start;
+   |              ~~~~~~~~~~~~
+
+error[E0308]: mismatched types
+  --> $DIR/issue-93122-bind-unit-range-to-unit.rs:5:9
+   |
+LL |     let () = ..();
+   |         ^^   ---- this expression has type `RangeTo<()>`
+   |         |
+   |         expected struct `RangeTo`, found `()`
+   |
+   = note: expected struct `RangeTo<()>`
+           found unit type `()`
+help: you might have meant to use field `end` whose type is `()`
+   |
+LL |     let () = (..()).end;
+   |              ~~~~~~~~~~
+
+error[E0308]: mismatched types
+  --> $DIR/issue-93122-bind-unit-range-to-unit.rs:6:9
+   |
+LL |     let () = ..=();
+   |         ^^   ----- this expression has type `RangeToInclusive<()>`
+   |         |
+   |         expected struct `RangeToInclusive`, found `()`
+   |
+   = note: expected struct `RangeToInclusive<()>`
+           found unit type `()`
+help: you might have meant to use field `end` whose type is `()`
+   |
+LL |     let () = (..=()).end;
+   |              ~~~~~~~~~~~
+
+error[E0308]: mismatched types
+  --> $DIR/issue-93122-bind-unit-range-to-unit.rs:7:9
+   |
+LL |     let () = ()..();
+   |         ^^   ------ this expression has type `std::ops::Range<()>`
+   |         |
+   |         expected struct `std::ops::Range`, found `()`
+   |
+   = note: expected struct `std::ops::Range<()>`
+           found unit type `()`
+help: you might have meant to use field `start` whose type is `()`
+   |
+LL |     let () = (()..()).start;
+   |              ~~~~~~~~~~~~~~
+
+error[E0308]: mismatched types
+  --> $DIR/issue-93122-bind-unit-range-to-unit.rs:8:9
+   |
+LL |     let () = ()..=();
+   |         ^^   ------- this expression has type `RangeInclusive<()>`
+   |         |
+   |         expected struct `RangeInclusive`, found `()`
+   |
+   = note: expected struct `RangeInclusive<()>`
+           found unit type `()`
+help: you might have meant to use field `start` whose type is `()`
+   |
+LL |     let () = (()..=()).start();
+   |              ~~~~~~~~~~~~~~~~~
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0308`.
