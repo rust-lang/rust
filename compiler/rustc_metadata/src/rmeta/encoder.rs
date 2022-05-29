@@ -2144,6 +2144,7 @@ fn prefetch_mir(tcx: TyCtxt<'_>) {
 // generated regardless of trailing bytes that end up in it.
 
 pub struct EncodedMetadata {
+    // The declaration order matters because `mmap` should be dropped before `_temp_dir`.
     mmap: Option<Mmap>,
     // We need to carry MaybeTempDir to avoid deleting the temporary
     // directory while accessing the Mmap.
