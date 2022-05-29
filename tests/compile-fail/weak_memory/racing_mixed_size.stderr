@@ -1,11 +1,11 @@
 warning: thread support is experimental: the scheduler is not preemptive, and can get stuck in spin loops.
          (see https://github.com/rust-lang/miri/issues/1388)
 
-error: Undefined Behavior: racy imperfectly overlapping atomic access
+error: Undefined Behavior: racy imperfectly overlapping atomic access is not possible in the C++20 memory model
   --> $DIR/racing_mixed_size.rs:LL:CC
    |
 LL |             std::intrinsics::atomic_load_relaxed(hi);
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ racy imperfectly overlapping atomic access
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ racy imperfectly overlapping atomic access is not possible in the C++20 memory model
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

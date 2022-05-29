@@ -62,7 +62,7 @@ fn racing_mixed_size_read() {
     j2.join().unwrap();
 }
 
-// And the combination of both of above
+// And we allow the combination of both of the above.
 fn racing_mixed_atomicity_and_size_read() {
     let x = static_atomic(u32::from_be(0xabbafafa));
 

@@ -417,7 +417,9 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                 && !alloc_clocks
                     .read_race_free_with_atomic(range, this.machine.data_race.as_ref().unwrap())
             {
-                throw_ub_format!("racy imperfectly overlapping atomic access");
+                throw_ub_format!(
+                    "racy imperfectly overlapping atomic access is not possible in the C++20 memory model"
+                );
             }
         }
         Ok(())
