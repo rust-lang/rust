@@ -1764,7 +1764,7 @@ fn print_sidebar(cx: &Context<'_>, it: &clean::Item, buffer: &mut Buffer) {
             write!(buffer, "<li class=\"version\">Version {}</li>", Escape(version));
         }
         write!(buffer, "<li><a id=\"all-types\" href=\"all.html\">All Items</a></li>");
-        buffer.write_str("</div></ul>");
+        buffer.write_str("</ul></div>");
     }
 
     match *it.kind {
