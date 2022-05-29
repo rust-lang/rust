@@ -733,7 +733,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         assert_eq!(total_bytes, computed_total_bytes);
 
         if tcx.sess.meta_stats() {
-            self.opaque.flush().unwrap();
+            self.opaque.flush();
 
             let pos_before_rewind = self.opaque.file().stream_position().unwrap();
             let mut zero_bytes = 0;
@@ -2225,10 +2225,8 @@ fn encode_metadata_impl(tcx: TyCtxt<'_>, path: &Path) {
         .unwrap_or_else(|err| tcx.sess.fatal(&format!("failed to create file encoder: {}", err)));
     encoder.emit_raw_bytes(METADATA_HEADER);
 
-    // Though we had holded the root position historically in this place, we moved it to the end
-    // of all emitted bytes by #96544. Therefore, now these 4 bytes are just a dummy to avoid the
-    // breaking change.
-    encoder.emit_raw_bytes(&[0, 0, 0, 0]).unwrap();
+    // Will be filled with the root position after encoding everything.
+    encoder.emit_raw_bytes(&[0, 0, 0, 0]);
 
     let source_map_files = tcx.sess.source_map().files();
     let source_file_cache = (source_map_files[0].clone(), 0);
@@ -2259,20 +2257,25 @@ fn encode_metadata_impl(tcx: TyCtxt<'_>, path: &Path) {
     // culminating in the `CrateRoot` which points to all of it.
     let root = ecx.encode_crate_root();
 
+    ecx.opaque.flush();
+    let mut file = std::fs::OpenOptions::new()
+        .write(true)
+        .open(path)
+        .unwrap_or_else(|err| tcx.sess.fatal(&format!("failed to open the file: {}", err)));
+
     // Encode the root position.
+    let header = METADATA_HEADER.len();
+    file.seek(std::io::SeekFrom::Start(header as u64))
+        .unwrap_or_else(|err| tcx.sess.fatal(&format!("failed to seek the file: {}", err)));
     let pos = root.position.get();
-    ecx.opaque.emit_raw_bytes(&[
-        (pos >> 24) as u8,
-        (pos >> 16) as u8,
-        (pos >> 8) as u8,
-        (pos >> 0) as u8,
-    ]);
+    file.write_all(&[(pos >> 24) as u8, (pos >> 16) as u8, (pos >> 8) as u8, (pos >> 0) as u8])
+        .unwrap_or_else(|err| tcx.sess.fatal(&format!("failed to write to the file: {}", err)));
 
     // Record metadata size for self-profiling
     tcx.prof.artifact_size(
         "crate_metadata",
         "crate_metadata",
-        ecx.opaque.file().metadata().unwrap().len() as u64,
+        file.metadata().unwrap().len() as u64,
     );
 }
 

@@ -688,7 +688,7 @@ impl MetadataBlob {
 
     pub(crate) fn get_root(&self) -> CrateRoot {
         let slice = &self.blob()[..];
-        let offset = slice.len() - 4;
+        let offset = METADATA_HEADER.len();
         let pos = (((slice[offset + 0] as u32) << 24)
             | ((slice[offset + 1] as u32) << 16)
             | ((slice[offset + 2] as u32) << 8)
