@@ -42,7 +42,7 @@ impl<'a> InferenceContext<'a> {
             Some(idx) => subpats.split_at(idx),
             None => (subpats, &[][..]),
         };
-        let post_idx_offset = field_tys.iter().count() - post.len();
+        let post_idx_offset = field_tys.iter().count().saturating_sub(post.len());
 
         let pre_iter = pre.iter().enumerate();
         let post_iter = (post_idx_offset..).zip(post.iter());
