@@ -19,7 +19,7 @@ impl Thread {
     pub fn set_name(_name: &CStr) {}
 
     pub fn sleep(dur: Duration) {
-        use crate::arch::wasm32;
+        use crate::arch::wasm;
         use crate::cmp;
 
         // Use an atomic wait to block the current thread artificially with a

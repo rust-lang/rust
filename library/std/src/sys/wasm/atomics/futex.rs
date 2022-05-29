@@ -1,4 +1,4 @@
-use crate::arch::wasm32;
+use crate::arch::wasm;
 use crate::sync::atomic::AtomicU32;
 use crate::time::Duration;
 

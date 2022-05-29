@@ -5,13 +5,13 @@ use std::ops::Deref;
 use crate::owning_ref::StableAddress;
 
 /// A trivial wrapper for [`memmap2::Mmap`] that implements [`StableAddress`].
-#[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
+#[cfg(not(target_family = "wasm"))]
 pub struct Mmap(memmap2::Mmap);
 
-#[cfg(any(target_arch = "wasm32", target_arch = "wasm64"))]
+#[cfg(target_family = "wasm")]
 pub struct Mmap(Vec<u8>);
 
-#[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
+#[cfg(not(target_family = "wasm"))]
 impl Mmap {
     #[inline]
     pub unsafe fn map(file: File) -> io::Result<Self> {
@@ -19,7 +19,7 @@ impl Mmap {
     }
 }
 
-#[cfg(any(target_arch = "wasm32", target_arch = "wasm64"))]
+#[cfg(target_family = "wasm")]
 impl Mmap {
     #[inline]
     pub unsafe fn map(mut file: File) -> io::Result<Self> {
