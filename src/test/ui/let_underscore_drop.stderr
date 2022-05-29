@@ -1,0 +1,12 @@
+warning: non-binding let on a type that implements `Drop`
+  --> $DIR/let_underscore_drop.rs:12:5
+   |
+LL |     let _ = NontrivialDrop;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(let_underscore_drop)]` on by default
+   = help: consider binding to an unused variable
+   = help: consider explicitly droping with `std::mem::drop`
+
+warning: 1 warning emitted
+
