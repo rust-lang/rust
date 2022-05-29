@@ -8,7 +8,7 @@ use serde::ser::{Serialize, SerializeStruct, Serializer};
 
 use crate::clean;
 use crate::clean::types::{FnRetTy, Function, GenericBound, Generics, Type, WherePredicate};
-use crate::formats::cache::Cache;
+use crate::formats::cache::{Cache, OrphanImplItem};
 use crate::formats::item_type::ItemType;
 use crate::html::format::join_with_double_colon;
 use crate::html::markdown::short_markdown_summary;
@@ -25,8 +25,8 @@ pub(crate) fn build_index<'tcx>(
 
     // Attach all orphan items to the type's definition if the type
     // has since been learned.
-    for &(did, ref item) in &cache.orphan_impl_items {
-        if let Some(&(ref fqp, _)) = cache.paths.get(&did) {
+    for &OrphanImplItem { parent, ref item, ref impl_generics } in &cache.orphan_impl_items {
+        if let Some(&(ref fqp, _)) = cache.paths.get(&parent) {
             let desc = item
                 .doc_value()
                 .map_or_else(String::new, |s| short_markdown_summary(&s, &item.link_names(cache)));
@@ -35,9 +35,9 @@ pub(crate) fn build_index<'tcx>(
                 name: item.name.unwrap().to_string(),
                 path: join_with_double_colon(&fqp[..fqp.len() - 1]),
                 desc,
-                parent: Some(did),
+                parent: Some(parent),
                 parent_idx: None,
-                search_type: get_function_type_for_search(item, tcx, cache),
+                search_type: get_function_type_for_search(item, tcx, impl_generics.as_ref(), cache),
                 aliases: item.attrs.get_doc_aliases(),
             });
         }
@@ -192,12 +192,13 @@ pub(crate) fn build_index<'tcx>(
 pub(crate) fn get_function_type_for_search<'tcx>(
     item: &clean::Item,
     tcx: TyCtxt<'tcx>,
+    impl_generics: Option<&(clean::Type, clean::Generics)>,
     cache: &Cache,
 ) -> Option<IndexItemFunctionType> {
     let (mut inputs, mut output) = match *item.kind {
-        clean::FunctionItem(ref f) => get_fn_inputs_and_outputs(f, tcx, cache),
-        clean::MethodItem(ref m, _) => get_fn_inputs_and_outputs(m, tcx, cache),
-        clean::TyMethodItem(ref m) => get_fn_inputs_and_outputs(m, tcx, cache),
+        clean::FunctionItem(ref f) => get_fn_inputs_and_outputs(f, tcx, impl_generics, cache),
+        clean::MethodItem(ref m, _) => get_fn_inputs_and_outputs(m, tcx, impl_generics, cache),
+        clean::TyMethodItem(ref m) => get_fn_inputs_and_outputs(m, tcx, impl_generics, cache),
         _ => return None,
     };
 
@@ -247,9 +248,10 @@ fn get_index_type_name(clean_type: &clean::Type) -> Option<Symbol> {
 /// Important note: It goes through generics recursively. So if you have
 /// `T: Option<Result<(), ()>>`, it'll go into `Option` and then into `Result`.
 #[instrument(level = "trace", skip(tcx, res, cache))]
-fn add_generics_and_bounds_as_types<'tcx>(
+fn add_generics_and_bounds_as_types<'tcx, 'a>(
+    self_: Option<&'a Type>,
     generics: &Generics,
-    arg: &Type,
+    arg: &'a Type,
     tcx: TyCtxt<'tcx>,
     recurse: usize,
     res: &mut Vec<TypeWithKind>,
@@ -334,6 +336,17 @@ fn add_generics_and_bounds_as_types<'tcx>(
         return;
     }
 
+    // First, check if it's "Self".
+    let arg = if let Some(self_) = self_ {
+        match &*arg {
+            Type::BorrowedRef { type_, .. } if type_.is_self_type() => self_,
+            type_ if type_.is_self_type() => self_,
+            arg => arg,
+        }
+    } else {
+        arg
+    };
+
     // If this argument is a type parameter and not a trait bound or a type, we need to look
     // for its bounds.
     if let Type::Generic(arg_s) = *arg {
@@ -350,6 +363,7 @@ fn add_generics_and_bounds_as_types<'tcx>(
                         match &param_def.kind {
                             clean::GenericParamDefKind::Type { default: Some(ty), .. } => {
                                 add_generics_and_bounds_as_types(
+                                    self_,
                                     generics,
                                     ty,
                                     tcx,
@@ -372,6 +386,7 @@ fn add_generics_and_bounds_as_types<'tcx>(
                 if let Some(path) = bound.get_trait_path() {
                     let ty = Type::Path { path };
                     add_generics_and_bounds_as_types(
+                        self_,
                         generics,
                         &ty,
                         tcx,
@@ -393,6 +408,7 @@ fn add_generics_and_bounds_as_types<'tcx>(
         if let Some(arg_generics) = arg.generics() {
             for gen in arg_generics.iter() {
                 add_generics_and_bounds_as_types(
+                    self_,
                     generics,
                     gen,
                     tcx,
@@ -413,18 +429,33 @@ fn add_generics_and_bounds_as_types<'tcx>(
 fn get_fn_inputs_and_outputs<'tcx>(
     func: &Function,
     tcx: TyCtxt<'tcx>,
+    impl_generics: Option<&(clean::Type, clean::Generics)>,
     cache: &Cache,
 ) -> (Vec<TypeWithKind>, Vec<TypeWithKind>) {
     let decl = &func.decl;
-    let generics = &func.generics;
+
+    let combined_generics;
+    let (self_, generics) = if let Some(&(ref impl_self, ref impl_generics)) = impl_generics {
+        match (impl_generics.is_empty(), func.generics.is_empty()) {
+            (true, _) => (Some(impl_self), &func.generics),
+            (_, true) => (Some(impl_self), impl_generics),
+            (false, false) => {
+                let mut params = func.generics.params.clone();
+                params.extend(impl_generics.params.clone());
+                let mut where_predicates = func.generics.where_predicates.clone();
+                where_predicates.extend(impl_generics.where_predicates.clone());
+                combined_generics = clean::Generics { params, where_predicates };
+                (Some(impl_self), &combined_generics)
+            }
+        }
+    } else {
+        (None, &func.generics)
+    };
 
     let mut all_types = Vec::new();
     for arg in decl.inputs.values.iter() {
-        if arg.type_.is_self_type() {
-            continue;
-        }
         let mut args = Vec::new();
-        add_generics_and_bounds_as_types(generics, &arg.type_, tcx, 0, &mut args, cache);
+        add_generics_and_bounds_as_types(self_, generics, &arg.type_, tcx, 0, &mut args, cache);
         if !args.is_empty() {
             all_types.extend(args);
         } else {
@@ -437,7 +468,15 @@ fn get_fn_inputs_and_outputs<'tcx>(
     let mut ret_types = Vec::new();
     match decl.output {
         FnRetTy::Return(ref return_type) => {
-            add_generics_and_bounds_as_types(generics, return_type, tcx, 0, &mut ret_types, cache);
+            add_generics_and_bounds_as_types(
+                self_,
+                generics,
+                return_type,
+                tcx,
+                0,
+                &mut ret_types,
+                cache,
+            );
             if ret_types.is_empty() {
                 if let Some(kind) = return_type.def_id(cache).map(|did| tcx.def_kind(did).into()) {
                     ret_types.push(TypeWithKind::from((get_index_type(return_type, vec![]), kind)));
