@@ -20,6 +20,7 @@ use crate::channel::GitInfo;
 pub use crate::flags::Subcommand;
 use crate::flags::{Color, Flags};
 use crate::util::{exe, output, program_out_of_date, t};
+use crate::RustfmtMetadata;
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Deserializer};
 
@@ -1483,25 +1484,8 @@ fn download_ci_rustc_commit(download_rustc: Option<StringOrBool>, verbose: bool)
 }
 
 fn maybe_download_rustfmt(builder: &Builder<'_>) -> Option<PathBuf> {
-    #[derive(Deserialize)]
-    struct Stage0Metadata {
-        dist_server: String,
-        checksums_sha256: HashMap<String, String>,
-        rustfmt: Option<RustfmtMetadata>,
-    }
-    #[derive(Deserialize)]
-    struct RustfmtMetadata {
-        date: String,
-        version: String,
-    }
-
-    let stage0_json = builder.read(&builder.src.join("src").join("stage0.json"));
-    let Stage0Metadata { dist_server, checksums_sha256, rustfmt } =
-        t!(serde_json::from_str::<Stage0Metadata>(&stage0_json));
-    let RustfmtMetadata { date, version } = rustfmt?;
+    let RustfmtMetadata { date, version } = builder.stage0_metadata.rustfmt.as_ref()?;
     let channel = format!("{version}-{date}");
-    let mut dist_server = env::var("RUSTUP_DIST_SERVER").unwrap_or(dist_server);
-    dist_server.push_str("/dist");
 
     let host = builder.config.build;
     let rustfmt_path = builder.config.initial_rustc.with_file_name(exe("rustfmt", host));
@@ -1512,15 +1496,7 @@ fn maybe_download_rustfmt(builder: &Builder<'_>) -> Option<PathBuf> {
     }
 
     let filename = format!("rustfmt-{version}-{build}.tar.xz", build = host.triple);
-    download_component(
-        builder,
-        &dist_server,
-        filename,
-        "rustfmt-preview",
-        &date,
-        "stage0",
-        Some(checksums_sha256),
-    );
+    download_component(builder, DownloadSource::Dist, filename, "rustfmt-preview", &date, "stage0");
 
     builder.fix_bin_or_dylib(&bin_root.join("bin").join("rustfmt"));
     builder.fix_bin_or_dylib(&bin_root.join("bin").join("cargo-fmt"));
@@ -1563,28 +1539,24 @@ fn download_ci_rustc(builder: &Builder<'_>, commit: &str) {
     }
 }
 
+pub(crate) enum DownloadSource {
+    CI,
+    Dist,
+}
+
 /// Download a single component of a CI-built toolchain (not necessarily a published nightly).
 // NOTE: intentionally takes an owned string to avoid downloading multiple times by accident
 fn download_ci_component(builder: &Builder<'_>, filename: String, prefix: &str, commit: &str) {
-    download_component(
-        builder,
-        "https://ci-artifacts.rust-lang.org/rustc-builds",
-        filename,
-        prefix,
-        commit,
-        "ci-rustc",
-        None,
-    )
+    download_component(builder, DownloadSource::CI, filename, prefix, commit, "ci-rustc")
 }
 
 fn download_component(
     builder: &Builder<'_>,
-    base_url: &str,
+    mode: DownloadSource,
     filename: String,
     prefix: &str,
     key: &str,
     destination: &str,
-    checksums: Option<HashMap<String, String>>,
 ) {
     let cache_dst = builder.out.join("cache");
     let cache_dir = cache_dst.join(key);
@@ -1594,20 +1566,31 @@ fn download_component(
 
     let bin_root = builder.out.join(builder.config.build.triple).join(destination);
     let tarball = cache_dir.join(&filename);
-    let url = format!("{key}/{filename}");
+    let (base_url, url, should_verify) = match mode {
+        DownloadSource::CI => (
+            "https://ci-artifacts.rust-lang.org/rustc-builds".to_string(),
+            format!("{key}/{filename}"),
+            false,
+        ),
+        DownloadSource::Dist => {
+            let dist_server = env::var("RUSTUP_DIST_SERVER")
+                .unwrap_or(builder.stage0_metadata.dist_server.to_string());
+            // NOTE: make `dist` part of the URL because that's how it's stored in src/stage0.json
+            (dist_server, format!("dist/{key}/{filename}"), true)
+        }
+    };
 
     // For the beta compiler, put special effort into ensuring the checksums are valid.
     // FIXME: maybe we should do this for download-rustc as well? but it would be a pain to update
     // this on each and every nightly ...
-    let checksum = if let Some(checksums) = &checksums {
+    let checksum = if should_verify {
         let error = format!(
             "src/stage0.json doesn't contain a checksum for {url}. \
             Pre-built artifacts might not be available for this \
             target at this time, see https://doc.rust-lang.org/nightly\
             /rustc/platform-support.html for more information."
         );
-        // TODO: add an enum { Commit, Published } so we don't have to hardcode `dist` in two places
-        let sha256 = checksums.get(&format!("dist/{url}")).expect(&error);
+        let sha256 = builder.stage0_metadata.checksums_sha256.get(&url).expect(&error);
         if tarball.exists() {
             if builder.verify(&tarball, sha256) {
                 builder.unpack(&tarball, &bin_root, prefix);
@@ -1627,7 +1610,7 @@ fn download_component(
         None
     };
 
-    builder.download_component(base_url, &url, &tarball, "");
+    builder.download_component(&base_url, &url, &tarball, "");
     if let Some(sha256) = checksum {
         if !builder.verify(&tarball, sha256) {
             panic!("failed to verify {}", tarball.display());
