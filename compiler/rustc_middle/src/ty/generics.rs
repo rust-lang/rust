@@ -1,4 +1,3 @@
-use crate::middle::resolve_lifetime::ObjectLifetimeDefault;
 use crate::ty;
 use crate::ty::subst::{Subst, SubstsRef};
 use crate::ty::EarlyBinder;
@@ -13,7 +12,7 @@ use super::{EarlyBoundRegion, InstantiatedPredicates, ParamConst, ParamTy, Predi
 #[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable)]
 pub enum GenericParamDefKind {
     Lifetime,
-    Type { has_default: bool, object_lifetime_default: ObjectLifetimeDefault, synthetic: bool },
+    Type { has_default: bool, synthetic: bool },
     Const { has_default: bool },
 }
 
