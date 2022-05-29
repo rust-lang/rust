@@ -549,7 +549,7 @@ impl Build {
         ];
         for s in rust_submodules {
             build.update_submodule(Path::new(s));
-        } 
+        }
 
         build.verbose("learning about cargo");
         metadata::build(&mut build);
