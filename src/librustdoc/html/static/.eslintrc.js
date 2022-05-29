@@ -68,5 +68,6 @@ module.exports = {
         "no-dupe-args": "error",
         "no-dupe-else-if": "error",
         "no-dupe-keys": "error",
+        "no-duplicate-case": "error",
     }
 };
