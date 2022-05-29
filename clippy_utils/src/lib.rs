@@ -1443,7 +1443,7 @@ pub fn is_refutable(cx: &LateContext<'_>, pat: &Pat<'_>) -> bool {
         },
         PatKind::Tuple(pats, _) => are_refutable(cx, pats),
         PatKind::Struct(ref qpath, fields, _) => {
-            is_enum_variant(cx, qpath, pat.hir_id) || are_refutable(cx, fields.iter().map(|field| &*field.pat))
+            is_enum_variant(cx, qpath, pat.hir_id) || are_refutable(cx, fields.iter().map(|field| field.pat))
         },
         PatKind::TupleStruct(ref qpath, pats, _) => is_enum_variant(cx, qpath, pat.hir_id) || are_refutable(cx, pats),
         PatKind::Slice(head, middle, tail) => {
@@ -1658,7 +1658,7 @@ pub fn if_sequence<'tcx>(mut expr: &'tcx Expr<'tcx>) -> (Vec<&'tcx Expr<'tcx>>, 
     let mut blocks: Vec<&Block<'_>> = Vec::new();
 
     while let Some(higher::IfOrIfLet { cond, then, r#else }) = higher::IfOrIfLet::hir(expr) {
-        conds.push(&*cond);
+        conds.push(cond);
         if let ExprKind::Block(block, _) = then.kind {
             blocks.push(block);
         } else {

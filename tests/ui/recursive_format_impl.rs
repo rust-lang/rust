@@ -2,7 +2,8 @@
 #![allow(
     clippy::inherent_to_string_shadow_display,
     clippy::to_string_in_format_args,
-    clippy::deref_addrof
+    clippy::deref_addrof,
+    clippy::borrow_deref_ref
 )]
 
 use std::fmt;
