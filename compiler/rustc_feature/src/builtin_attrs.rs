@@ -399,7 +399,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
 
     // RFC #3191: #[debugger_visualizer] support
     gated!(
-        debugger_visualizer, Normal, template!(List: r#"natvis_file = "...""#),
+        debugger_visualizer, Normal, template!(List: r#"natvis_file = "...", gdb_script_file = "...""#),
         DuplicatesOk, experimental!(debugger_visualizer)
     ),
 

@@ -31,11 +31,13 @@ use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_session::cgu_reuse_tracker::CguReuse;
-use rustc_session::config::{self, EntryFnType, OutputType};
+use rustc_session::config::{self, CrateType, EntryFnType, OutputType};
 use rustc_session::Session;
 use rustc_span::symbol::sym;
+use rustc_span::{DebuggerVisualizerFile, DebuggerVisualizerType};
 use rustc_target::abi::{Align, VariantIdx};
 
+use std::collections::BTreeSet;
 use std::convert::TryFrom;
 use std::ops::{Deref, DerefMut};
 use std::time::{Duration, Instant};
@@ -487,6 +489,29 @@ fn get_argc_argv<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     }
 }
 
+/// This function returns all of the debugger visualizers specified for the
+/// current crate as well as all upstream crates transitively that match the
+/// `visualizer_type` specified.
+pub fn collect_debugger_visualizers_transitive(
+    tcx: TyCtxt<'_>,
+    visualizer_type: DebuggerVisualizerType,
+) -> BTreeSet<DebuggerVisualizerFile> {
+    tcx.debugger_visualizers(LOCAL_CRATE)
+        .iter()
+        .chain(
+            tcx.crates(())
+                .iter()
+                .filter(|&cnum| {
+                    let used_crate_source = tcx.used_crate_source(*cnum);
+                    used_crate_source.rlib.is_some() || used_crate_source.rmeta.is_some()
+                })
+                .flat_map(|&cnum| tcx.debugger_visualizers(cnum)),
+        )
+        .filter(|visualizer| visualizer.visualizer_type == visualizer_type)
+        .cloned()
+        .collect::<BTreeSet<_>>()
+}
+
 pub fn codegen_crate<B: ExtraBackendMethods>(
     backend: B,
     tcx: TyCtxt<'_>,
@@ -838,13 +863,8 @@ impl CrateInfo {
             missing_lang_items: Default::default(),
             dependency_formats: tcx.dependency_formats(()).clone(),
             windows_subsystem,
-            debugger_visualizers: Default::default(),
+            natvis_debugger_visualizers: Default::default(),
         };
-        let debugger_visualizers = tcx.debugger_visualizers(LOCAL_CRATE).clone();
-        if !debugger_visualizers.is_empty() {
-            info.debugger_visualizers.insert(LOCAL_CRATE, debugger_visualizers);
-        }
-
         let lang_items = tcx.lang_items();
 
         let crates = tcx.crates(());
@@ -882,14 +902,29 @@ impl CrateInfo {
             let missing =
                 missing.iter().cloned().filter(|&l| lang_items::required(tcx, l)).collect();
             info.missing_lang_items.insert(cnum, missing);
+        }
 
-            // Only include debugger visualizer files from crates that will be statically linked.
-            if used_crate_source.rlib.is_some() || used_crate_source.rmeta.is_some() {
-                let debugger_visualizers = tcx.debugger_visualizers(cnum).clone();
-                if !debugger_visualizers.is_empty() {
-                    info.debugger_visualizers.insert(cnum, debugger_visualizers);
-                }
+        let embed_visualizers = tcx.sess.crate_types().iter().any(|&crate_type| match crate_type {
+            CrateType::Executable | CrateType::Dylib | CrateType::Cdylib => {
+                // These are crate types for which we invoke the linker and can embed
+                // NatVis visualizers.
+                true
             }
+            CrateType::ProcMacro => {
+                // We could embed NatVis for proc macro crates too (to improve the debugging
+                // experience for them) but it does not seem like a good default, since
+                // this is a rare use case and we don't want to slow down the common case.
+                false
+            }
+            CrateType::Staticlib | CrateType::Rlib => {
+                // We don't invoke the linker for these, so we don't need to collect the NatVis for them.
+                false
+            }
+        });
+
+        if tcx.sess.target.is_like_msvc && embed_visualizers {
+            info.natvis_debugger_visualizers =
+                collect_debugger_visualizers_transitive(tcx, DebuggerVisualizerType::Natvis);
         }
 
         info
