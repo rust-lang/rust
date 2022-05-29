@@ -63,7 +63,7 @@ def support_xz():
     except tarfile.CompressionError:
         return False
 
-def get(base, url, path, checksums, verbose=False, do_verify=True, help_on_error=None):
+def get(base, url, path, checksums, verbose=False, do_verify=True):
     with tempfile.NamedTemporaryFile(delete=False) as temp_file:
         temp_path = temp_file.name
 
@@ -86,7 +86,7 @@ def get(base, url, path, checksums, verbose=False, do_verify=True, help_on_error
                         print("ignoring already-download file",
                             path, "due to failed verification")
                     os.unlink(path)
-        download(temp_path, "{}/{}".format(base, url), True, verbose, help_on_error=help_on_error)
+        download(temp_path, "{}/{}".format(base, url), True, verbose)
         if do_verify and not verify(temp_path, sha256, verbose):
             raise RuntimeError("failed verification")
         if verbose:
@@ -99,17 +99,17 @@ def get(base, url, path, checksums, verbose=False, do_verify=True, help_on_error
             os.unlink(temp_path)
 
 
-def download(path, url, probably_big, verbose, help_on_error=None):
+def download(path, url, probably_big, verbose):
     for _ in range(0, 4):
         try:
-            _download(path, url, probably_big, verbose, True, help_on_error=help_on_error)
+            _download(path, url, probably_big, verbose, True)
             return
         except RuntimeError:
             print("\nspurious failure, trying again")
-    _download(path, url, probably_big, verbose, False, help_on_error=help_on_error)
+    _download(path, url, probably_big, verbose, False)
 
 
-def _download(path, url, probably_big, verbose, exception, help_on_error=None):
+def _download(path, url, probably_big, verbose, exception):
     # Try to use curl (potentially available on win32
     #    https://devblogs.microsoft.com/commandline/tar-and-curl-come-to-windows/)
     # If an error occurs:
@@ -134,7 +134,7 @@ def _download(path, url, probably_big, verbose, exception, help_on_error=None):
              "--retry", "3", "-Sf", "-o", path, url],
             verbose=verbose,
             exception=True, # Will raise RuntimeError on failure
-            help_on_error=help_on_error)
+        )
     except (subprocess.CalledProcessError, OSError, RuntimeError):
         # see http://serverfault.com/questions/301128/how-to-download
         if platform_is_win32:
@@ -186,7 +186,7 @@ def unpack(tarball, tarball_suffix, dst, verbose=False, match=None):
     shutil.rmtree(os.path.join(dst, fname))
 
 
-def run(args, verbose=False, exception=False, is_bootstrap=False, help_on_error=None, **kwargs):
+def run(args, verbose=False, exception=False, is_bootstrap=False, **kwargs):
     """Run a child program in a new process"""
     if verbose:
         print("running: " + ' '.join(args))
@@ -197,8 +197,6 @@ def run(args, verbose=False, exception=False, is_bootstrap=False, help_on_error=
     code = ret.wait()
     if code != 0:
         err = "failed to run: " + ' '.join(args)
-        if help_on_error is not None:
-            err += "\n" + help_on_error
         if verbose or exception:
             raise RuntimeError(err)
         # For most failures, we definitely do want to print this error, or the user will have no

@@ -179,7 +179,15 @@ fn download_ci_llvm(builder: &Builder<'_>, llvm_sha: &str) {
     let filename = format!("rust-dev-nightly-{}.tar.xz", builder.build.build.triple);
     let tarball = rustc_cache.join(&filename);
     if !tarball.exists() {
-        builder.download_component(base, &format!("{}/{}", url, filename), &tarball);
+        let help_on_error = "error: failed to download llvm from ci\n
+\nhelp: old builds get deleted after a certain time
+\nhelp: if trying to compile an old commit of rustc, disable `download-ci-llvm` in config.toml:
+\n
+\n[llvm]
+\ndownload-ci-llvm = false
+\n
+";
+        builder.download_component(base, &format!("{}/{}", url, filename), &tarball, help_on_error);
     }
     let llvm_root = builder.config.ci_llvm_root();
     builder.unpack(&tarball, &llvm_root, "rust-dev");
