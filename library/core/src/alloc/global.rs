@@ -194,11 +194,11 @@ pub unsafe trait GlobalAlloc {
     unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
         let size = layout.size();
         // SAFETY: the safety contract for `alloc` must be upheld by the caller.
-        let ptr = unsafe { self.alloc(layout) };
+        let ptr = self.alloc(layout);
         if !ptr.is_null() {
             // SAFETY: as allocation succeeded, the region from `ptr`
             // of size `size` is guaranteed to be valid for writes.
-            unsafe { ptr::write_bytes(ptr, 0, size) };
+            ptr::write_bytes(ptr, 0, size);
         }
         ptr
     }
