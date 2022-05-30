@@ -46,7 +46,7 @@
 
 #![allow(non_camel_case_types)]
 #![unstable(feature = "thread_local_internals", issue = "none")]
-#![allow(dead_code)] // sys isn't exported yet
+#![allow(dead_code)]
 
 #[cfg(test)]
 mod tests;

@@ -32,7 +32,7 @@ fn test_simple_clone() {
 
 #[test]
 fn test_destructor() {
-    let x: Rc<Box<_>> = Rc::new(box 5);
+    let x: Rc<Box<_>> = Rc::new(Box::new(5));
     assert_eq!(**x, 5);
 }
 
@@ -153,7 +153,7 @@ fn try_unwrap() {
 
 #[test]
 fn into_from_raw() {
-    let x = Rc::new(box "hello");
+    let x = Rc::new(Box::new("hello"));
     let y = x.clone();
 
     let x_ptr = Rc::into_raw(x);
@@ -192,7 +192,7 @@ fn test_into_from_raw_unsized() {
 
 #[test]
 fn into_from_weak_raw() {
-    let x = Rc::new(box "hello");
+    let x = Rc::new(Box::new("hello"));
     let y = Rc::downgrade(&x);
 
     let y_ptr = Weak::into_raw(y);
@@ -409,7 +409,7 @@ fn test_clone_from_slice_panic() {
 
 #[test]
 fn test_from_box() {
-    let b: Box<u32> = box 123;
+    let b: Box<u32> = Box::new(123);
     let r: Rc<u32> = Rc::from(b);
 
     assert_eq!(*r, 123);
@@ -438,7 +438,7 @@ fn test_from_box_trait() {
     use std::fmt::Display;
     use std::string::ToString;
 
-    let b: Box<dyn Display> = box 123;
+    let b: Box<dyn Display> = Box::new(123);
     let r: Rc<dyn Display> = Rc::from(b);
 
     assert_eq!(r.to_string(), "123");
@@ -448,7 +448,7 @@ fn test_from_box_trait() {
 fn test_from_box_trait_zero_sized() {
     use std::fmt::Debug;
 
-    let b: Box<dyn Debug> = box ();
+    let b: Box<dyn Debug> = Box::new(());
     let r: Rc<dyn Debug> = Rc::from(b);
 
     assert_eq!(format!("{r:?}"), "()");

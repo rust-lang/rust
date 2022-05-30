@@ -369,7 +369,8 @@ impl<T> Rc<T> {
         // if the weak pointer is stored inside the strong one.
         unsafe {
             Self::from_inner(
-                Box::leak(box RcBox { strong: Cell::new(1), weak: Cell::new(1), value }).into(),
+                Box::leak(Box::new(RcBox { strong: Cell::new(1), weak: Cell::new(1), value }))
+                    .into(),
             )
         }
     }
@@ -433,11 +434,11 @@ impl<T> Rc<T> {
     {
         // Construct the inner in the "uninitialized" state with a single
         // weak reference.
-        let uninit_ptr: NonNull<_> = Box::leak(box RcBox {
+        let uninit_ptr: NonNull<_> = Box::leak(Box::new(RcBox {
             strong: Cell::new(0),
             weak: Cell::new(1),
             value: mem::MaybeUninit::<T>::uninit(),
-        })
+        }))
         .into();
 
         let init_ptr: NonNull<RcBox<T>> = uninit_ptr.cast();
