@@ -316,7 +316,6 @@ macro_rules! nonzero_unsigned_operations {
                 /// # Examples
                 ///
                 /// ```
-                /// #![feature(nonzero_ops)]
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 ///
                 /// # fn main() { test().unwrap(); }
@@ -331,7 +330,8 @@ macro_rules! nonzero_unsigned_operations {
                 /// # Some(())
                 /// # }
                 /// ```
-                #[unstable(feature = "nonzero_ops", issue = "84186")]
+                #[stable(feature = "nonzero_checked_ops", since = "1.63.0")]
+                #[rustc_const_unstable(feature = "const_nonzero_checked_ops", issue = "97547")]
                 #[must_use = "this returns the result of the operation, \
                               without modifying the original"]
                 #[inline]
@@ -351,7 +351,6 @@ macro_rules! nonzero_unsigned_operations {
                 /// # Examples
                 ///
                 /// ```
-                /// #![feature(nonzero_ops)]
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 ///
                 /// # fn main() { test().unwrap(); }
@@ -366,7 +365,8 @@ macro_rules! nonzero_unsigned_operations {
                 /// # Some(())
                 /// # }
                 /// ```
-                #[unstable(feature = "nonzero_ops", issue = "84186")]
+                #[stable(feature = "nonzero_checked_ops", since = "1.63.0")]
+                #[rustc_const_unstable(feature = "const_nonzero_checked_ops", issue = "97547")]
                 #[must_use = "this returns the result of the operation, \
                               without modifying the original"]
                 #[inline]
@@ -415,7 +415,6 @@ macro_rules! nonzero_unsigned_operations {
                 /// # Examples
                 ///
                 /// ```
-                /// #![feature(nonzero_ops)]
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 ///
                 /// # fn main() { test().unwrap(); }
@@ -432,7 +431,8 @@ macro_rules! nonzero_unsigned_operations {
                 /// # Some(())
                 /// # }
                 /// ```
-                #[unstable(feature = "nonzero_ops", issue = "84186")]
+                #[stable(feature = "nonzero_checked_ops", since = "1.63.0")]
+                #[rustc_const_unstable(feature = "const_nonzero_checked_ops", issue = "97547")]
                 #[must_use = "this returns the result of the operation, \
                               without modifying the original"]
                 #[inline]
@@ -521,7 +521,6 @@ macro_rules! nonzero_signed_operations {
                 /// # Example
                 ///
                 /// ```
-                /// #![feature(nonzero_ops)]
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 ///
                 /// # fn main() { test().unwrap(); }
@@ -534,7 +533,8 @@ macro_rules! nonzero_signed_operations {
                 /// # Some(())
                 /// # }
                 /// ```
-                #[unstable(feature = "nonzero_ops", issue = "84186")]
+                #[stable(feature = "nonzero_checked_ops", since = "1.63.0")]
+                #[rustc_const_unstable(feature = "const_nonzero_checked_ops", issue = "97547")]
                 #[must_use = "this returns the result of the operation, \
                               without modifying the original"]
                 #[inline]
@@ -551,7 +551,6 @@ macro_rules! nonzero_signed_operations {
                 /// # Example
                 ///
                 /// ```
-                /// #![feature(nonzero_ops)]
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 ///
                 /// # fn main() { test().unwrap(); }
@@ -566,7 +565,8 @@ macro_rules! nonzero_signed_operations {
                 /// # Some(())
                 /// # }
                 /// ```
-                #[unstable(feature = "nonzero_ops", issue = "84186")]
+                #[stable(feature = "nonzero_checked_ops", since = "1.63.0")]
+                #[rustc_const_unstable(feature = "const_nonzero_checked_ops", issue = "97547")]
                 #[must_use = "this returns the result of the operation, \
                               without modifying the original"]
                 #[inline]
@@ -586,7 +586,6 @@ macro_rules! nonzero_signed_operations {
                 /// # Example
                 ///
                 /// ```
-                /// #![feature(nonzero_ops)]
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 ///
                 /// # fn main() { test().unwrap(); }
@@ -602,7 +601,8 @@ macro_rules! nonzero_signed_operations {
                 /// # Some(())
                 /// # }
                 /// ```
-                #[unstable(feature = "nonzero_ops", issue = "84186")]
+                #[stable(feature = "nonzero_checked_ops", since = "1.63.0")]
+                #[rustc_const_unstable(feature = "const_nonzero_checked_ops", issue = "97547")]
                 #[must_use = "this returns the result of the operation, \
                               without modifying the original"]
                 #[inline]
@@ -621,7 +621,6 @@ macro_rules! nonzero_signed_operations {
                 /// # Example
                 ///
                 /// ```
-                /// #![feature(nonzero_ops)]
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 ///
                 /// # fn main() { test().unwrap(); }
@@ -642,7 +641,8 @@ macro_rules! nonzero_signed_operations {
                 /// # Some(())
                 /// # }
                 /// ```
-                #[unstable(feature = "nonzero_ops", issue = "84186")]
+                #[stable(feature = "nonzero_checked_ops", since = "1.63.0")]
+                #[rustc_const_unstable(feature = "const_nonzero_checked_ops", issue = "97547")]
                 #[must_use = "this returns the result of the operation, \
                               without modifying the original"]
                 #[inline]
@@ -657,7 +657,6 @@ macro_rules! nonzero_signed_operations {
                 /// # Example
                 ///
                 /// ```
-                /// #![feature(nonzero_ops)]
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 ///
                 /// # fn main() { test().unwrap(); }
@@ -677,7 +676,8 @@ macro_rules! nonzero_signed_operations {
                 /// # Some(())
                 /// # }
                 /// ```
-                #[unstable(feature = "nonzero_ops", issue = "84186")]
+                #[stable(feature = "nonzero_checked_ops", since = "1.63.0")]
+                #[rustc_const_unstable(feature = "const_nonzero_checked_ops", issue = "97547")]
                 #[must_use = "this returns the result of the operation, \
                               without modifying the original"]
                 #[inline]
@@ -692,7 +692,6 @@ macro_rules! nonzero_signed_operations {
                 /// # Example
                 ///
                 /// ```
-                /// #![feature(nonzero_ops)]
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 #[doc = concat!("# use std::num::", stringify!($Uty), ";")]
                 ///
@@ -712,7 +711,8 @@ macro_rules! nonzero_signed_operations {
                 /// # Some(())
                 /// # }
                 /// ```
-                #[unstable(feature = "nonzero_ops", issue = "84186")]
+                #[stable(feature = "nonzero_checked_ops", since = "1.63.0")]
+                #[rustc_const_unstable(feature = "const_nonzero_checked_ops", issue = "97547")]
                 #[must_use = "this returns the result of the operation, \
                               without modifying the original"]
                 #[inline]
@@ -746,7 +746,6 @@ macro_rules! nonzero_unsigned_signed_operations {
                 /// # Examples
                 ///
                 /// ```
-                /// #![feature(nonzero_ops)]
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 ///
                 /// # fn main() { test().unwrap(); }
@@ -761,7 +760,8 @@ macro_rules! nonzero_unsigned_signed_operations {
                 /// # Some(())
                 /// # }
                 /// ```
-                #[unstable(feature = "nonzero_ops", issue = "84186")]
+                #[stable(feature = "nonzero_checked_ops", since = "1.63.0")]
+                #[rustc_const_unstable(feature = "const_nonzero_checked_ops", issue = "97547")]
                 #[must_use = "this returns the result of the operation, \
                               without modifying the original"]
                 #[inline]
@@ -782,7 +782,6 @@ macro_rules! nonzero_unsigned_signed_operations {
                 /// # Examples
                 ///
                 /// ```
-                /// #![feature(nonzero_ops)]
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 ///
                 /// # fn main() { test().unwrap(); }
@@ -797,7 +796,8 @@ macro_rules! nonzero_unsigned_signed_operations {
                 /// # Some(())
                 /// # }
                 /// ```
-                #[unstable(feature = "nonzero_ops", issue = "84186")]
+                #[stable(feature = "nonzero_checked_ops", since = "1.63.0")]
+                #[rustc_const_unstable(feature = "const_nonzero_checked_ops", issue = "97547")]
                 #[must_use = "this returns the result of the operation, \
                               without modifying the original"]
                 #[inline]
@@ -855,7 +855,6 @@ macro_rules! nonzero_unsigned_signed_operations {
                 /// # Examples
                 ///
                 /// ```
-                /// #![feature(nonzero_ops)]
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 ///
                 /// # fn main() { test().unwrap(); }
@@ -870,7 +869,8 @@ macro_rules! nonzero_unsigned_signed_operations {
                 /// # Some(())
                 /// # }
                 /// ```
-                #[unstable(feature = "nonzero_ops", issue = "84186")]
+                #[stable(feature = "nonzero_checked_ops", since = "1.63.0")]
+                #[rustc_const_unstable(feature = "const_nonzero_checked_ops", issue = "97547")]
                 #[must_use = "this returns the result of the operation, \
                               without modifying the original"]
                 #[inline]
@@ -899,7 +899,6 @@ macro_rules! nonzero_unsigned_signed_operations {
                 /// # Examples
                 ///
                 /// ```
-                /// #![feature(nonzero_ops)]
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 ///
                 /// # fn main() { test().unwrap(); }
@@ -914,7 +913,8 @@ macro_rules! nonzero_unsigned_signed_operations {
                 /// # Some(())
                 /// # }
                 /// ```
-                #[unstable(feature = "nonzero_ops", issue = "84186")]
+                #[stable(feature = "nonzero_checked_ops", since = "1.63.0")]
+                #[rustc_const_unstable(feature = "const_nonzero_checked_ops", issue = "97547")]
                 #[must_use = "this returns the result of the operation, \
                               without modifying the original"]
                 #[inline]
