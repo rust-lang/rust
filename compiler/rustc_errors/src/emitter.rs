@@ -1261,16 +1261,23 @@ impl EmitterWriter {
             return 0;
         };
 
+        let will_be_emitted = |span: Span| {
+            !span.is_dummy() && {
+                let file = sm.lookup_source_file(span.hi());
+                sm.ensure_source_file_source_present(file)
+            }
+        };
+
         let mut max = 0;
         for primary_span in msp.primary_spans() {
-            if !primary_span.is_dummy() {
+            if will_be_emitted(*primary_span) {
                 let hi = sm.lookup_char_pos(primary_span.hi());
                 max = (hi.line).max(max);
             }
         }
         if !self.short_message {
             for span_label in msp.span_labels() {
-                if !span_label.span.is_dummy() {
+                if will_be_emitted(span_label.span) {
                     let hi = sm.lookup_char_pos(span_label.span.hi());
                     max = (hi.line).max(max);
                 }
