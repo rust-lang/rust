@@ -292,6 +292,7 @@ store.register_group(true, "clippy::all", Some("clippy_all"), vec![
     LintId::of(suspicious_trait_impl::SUSPICIOUS_OP_ASSIGN_IMPL),
     LintId::of(swap::ALMOST_SWAPPED),
     LintId::of(swap::MANUAL_SWAP),
+    LintId::of(swap_ptr_to_ref::SWAP_PTR_TO_REF),
     LintId::of(tabs_in_doc_comments::TABS_IN_DOC_COMMENTS),
     LintId::of(temporary_assignment::TEMPORARY_ASSIGNMENT),
     LintId::of(to_digit_is_some::TO_DIGIT_IS_SOME),
