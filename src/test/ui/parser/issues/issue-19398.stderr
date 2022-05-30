@@ -4,15 +4,10 @@ error: expected `{`, found keyword `unsafe`
 LL | trait T {
    |         - while parsing this item list starting here
 LL |     extern "Rust" unsafe fn foo();
-   |     --------------^^^^^^
-   |     |             |
-   |     |             expected `{`
-   |     help: `unsafe` must come before `extern "Rust"`: `unsafe extern "Rust"`
+   |                   ^^^^^^ expected `{`
 LL |
 LL | }
    | - the item list ends here
-   |
-   = note: keyword order for functions declaration is `pub`, `default`, `const`, `async`, `unsafe`, `extern`
 
 error: aborting due to previous error
 
