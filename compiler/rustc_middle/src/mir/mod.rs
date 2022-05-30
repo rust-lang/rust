@@ -2170,6 +2170,58 @@ impl<'tcx> Place<'tcx> {
 
         Place { local: self.local, projection: tcx.intern_place_elems(new_projections) }
     }
+
+    /// If this returns true, then: If `self` and `other` are evaluated immediately in succession,
+    /// then the places that result from the evaluation are non-overlapping.
+    ///
+    /// Gives no information if it returns false.
+    ///
+    /// This places passed to this function must obey the derefered invariant, ie only the first
+    /// projection may be a deref projection.
+    pub fn is_disjoint(self, other: Place<'tcx>) -> bool {
+        use ProjectionElem::*;
+        let indirect_a = self.projection.get(0) == Some(&Deref);
+        let indirect_b = other.projection.get(0) == Some(&Deref);
+        if self.local != other.local {
+            // If the places are based on different locals, and neither of them is indirect, then
+            // they must each refer to memory inside their locals, which must be disjoint.
+            return !(indirect_a || indirect_b);
+        }
+
+        // We already know that the locals are the same. If both are indirect, then the result of
+        // dereferencing both must be the same. If neither are indirect, then the result of
+        // derefencing neither must be the same. If just one is indirect, we can't know. This also
+        // removes the deref projection, if it's there.
+        let (proj_a, proj_b) = match (indirect_a, indirect_b) {
+            (true, true) => (&self.projection[1..], &other.projection[1..]),
+            (false, false) => (&self.projection[..], &other.projection[..]),
+            _ => return false,
+        };
+
+        if let Some(pair) = std::iter::zip(proj_a, proj_b).find(|(a, b)| a != b) {
+            // Because we are interested in the places when they are evaluated immediately in
+            // succession, equal projections means equal places, even if there are indexing
+            // projections. Furthermore, there are no more derefs involved, since we removed those
+            // above.
+            match pair {
+                // The fields are different and different fields are disjoint
+                (Field(a, _), Field(b, _)) if a != b => true,
+                // The indexes are different, so the places are disjoint
+                (
+                    ConstantIndex { offset: offset_a, from_end: from_end_a, .. },
+                    ConstantIndex { offset: offset_b, from_end: from_end_b, .. },
+                ) if offset_a != offset_b && from_end_a == from_end_b => true,
+                // The subranges are disjoint
+                (
+                    Subslice { from: from_a, to: to_a, from_end: false },
+                    Subslice { from: from_b, to: to_b, from_end: false },
+                ) if to_a <= from_b || to_b <= from_a => true,
+                _ => false,
+            }
+        } else {
+            false
+        }
+    }
 }
 
 impl From<Local> for Place<'_> {

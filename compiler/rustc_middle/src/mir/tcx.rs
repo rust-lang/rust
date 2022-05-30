@@ -261,6 +261,52 @@ impl<'tcx> Rvalue<'tcx> {
             | Rvalue::ShallowInitBox(..) => false,
         }
     }
+
+    /// Ensures that an assignment statement obeys the rules for the left and right hand side being
+    /// non-overlapping.
+    ///
+    /// This function accepts as input the sides of an assignment statement. It will then decide if
+    /// a temporary needs to be inserted, and if so insert that temporary by modifying the
+    /// assignment statement and returning a new statement to be inserted immediately after the
+    /// current one.
+    pub fn expand_assign(
+        stmt: &mut (Place<'tcx>, Rvalue<'tcx>),
+        source: SourceInfo,
+        locals: &mut LocalDecls<'tcx>,
+        tcx: TyCtxt<'tcx>,
+    ) -> Option<Statement<'tcx>> {
+        let is_op_disjoint =
+            |op: &Operand<'tcx>| op.place().map(|p| p.is_disjoint(stmt.0)).unwrap_or(true);
+        let ok_as_is = match &stmt.1 {
+            Rvalue::Use(op) | Rvalue::Repeat(op, _) => is_op_disjoint(op),
+            Rvalue::Aggregate(_, ops) => ops.iter().all(|op| is_op_disjoint(op)),
+            Rvalue::Ref(..)
+            | Rvalue::ThreadLocalRef(..)
+            | Rvalue::AddressOf(..)
+            | Rvalue::Len(..)
+            | Rvalue::Cast(..)
+            | Rvalue::BinaryOp(..)
+            | Rvalue::CheckedBinaryOp(..)
+            | Rvalue::NullaryOp(..)
+            | Rvalue::UnaryOp(..)
+            | Rvalue::Discriminant(..)
+            | Rvalue::ShallowInitBox(..) => true,
+        };
+
+        if !ok_as_is {
+            // We need to introduce a temporary
+            let new_decl = LocalDecl::new(stmt.0.ty(locals, tcx).ty, source.span);
+            let temp: Place<'tcx> = locals.push(new_decl).into();
+            let new_statement = Statement {
+                source_info: source,
+                kind: StatementKind::Assign(Box::new((stmt.0, Rvalue::Use(Operand::Move(temp))))),
+            };
+            stmt.0 = temp;
+            Some(new_statement)
+        } else {
+            None
+        }
+    }
 }
 
 impl<'tcx> Operand<'tcx> {
