@@ -89,7 +89,7 @@ pub fn run_tests(config: Config) {
                     // Ignore file if only/ignore rules do (not) apply
                     if ignore_file(&comments, &target) {
                         ignored.fetch_add(1, Ordering::Relaxed);
-                        eprintln!("{} ... {}", path.display(), "ignored".yellow());
+                        eprintln!("{} ... {}", path.display(), "ignored (in-test comment)".yellow());
                         continue;
                     }
                     // Run the test for all revisions
