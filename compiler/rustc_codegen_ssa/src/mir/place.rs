@@ -136,13 +136,14 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
             };
 
             // If this field is a primitive type of a newtype, propogate the scalar valid range
-            let scalar_valid_range = if let (0, Variants::Single { .. }, Abi::Scalar(_)) =
-                (offset.bytes(), &self.layout.variants, field.abi)
-            {
-                self.scalar_valid_range
-            } else {
-                field.abi.scalar_valid_range(bx)
-            };
+            let scalar_valid_range =
+                if let (0, Variants::Single { .. }, Abi::Scalar(_) | Abi::ScalarPair(..)) =
+                    (offset.bytes(), &self.layout.variants, field.abi)
+                {
+                    self.scalar_valid_range
+                } else {
+                    field.abi.scalar_valid_range(bx)
+                };
 
             PlaceRef {
                 // HACK(eddyb): have to bitcast pointers until LLVM removes pointee types.

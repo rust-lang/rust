@@ -15,9 +15,14 @@ pub struct NonNull3 {
     ptr: *const (),
 }
 
+trait Foo {}
+
+#[rustc_layout_scalar_valid_range_start(1)]
+pub struct NonNull4(*const dyn Foo);
+
 // CHECK: define void @test_nonnull_load
 #[no_mangle]
-pub fn test_nonnull_load(p1: &NonNull1, p2: &NonNull2, p3: &NonNull3) {
+pub fn test_nonnull_load(p1: &NonNull1, p2: &NonNull2, p3: &NonNull3, p4: &NonNull4) {
     // CHECK: %[[P1:[0-9]+]] = bitcast i8** %p1 to {}**
     // CHECK: load {}*, {}** %[[P1]], align 8, !nonnull
     std::hint::black_box(p1.0);
@@ -29,6 +34,13 @@ pub fn test_nonnull_load(p1: &NonNull1, p2: &NonNull2, p3: &NonNull3) {
     // CHECK: %[[P3:[0-9]+]] = bitcast i8** %p3 to {}**
     // CHECK: load {}*, {}** %[[P3]], align 8, !nonnull
     std::hint::black_box(p3.ptr);
+
+    // CHECK: %[[P4_PTR:[0-9]+]] = bitcast { i8*, i64* }* %p4 to {}**
+    // CHECK: load {}*, {}** %[[P4_PTR]], align 8, !nonnull
+    // CHECK: %[[P4_VTABLE:[0-9]+]] = getelementptr inbounds { i8*, i64* }, { i8*, i64* }* %p4, i64 0, i32 1
+    // CHECK: %[[P4_VTABLE_PTR:[0-9]+]] = bitcast i64** %[[P4_VTABLE]] to [3 x i64]**
+    // CHECK: load [3 x i64]*, [3 x i64]** %[[P4_VTABLE_PTR]], align 8, !nonnull
+    std::hint::black_box(p4.0);
 }
 
 #[rustc_layout_scalar_valid_range_start(16)]
