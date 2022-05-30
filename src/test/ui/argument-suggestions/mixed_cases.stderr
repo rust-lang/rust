@@ -76,10 +76,10 @@ error[E0308]: arguments to this function are incorrect
   --> $DIR/mixed_cases.rs:20:3
    |
 LL |   three_args("", X {}, 1);
-   |   ^^^^^^^^^^ --  ----  - expected `&str`,found `{integer}`
+   |   ^^^^^^^^^^ --  ----  - expected `&str`, found `{integer}`
    |              |   |
    |              |   expected `f32`, found struct `X`
-   |              expected `i32`,found `&'static str`
+   |              expected `i32`, found `&'static str`
    |
 note: function defined here
   --> $DIR/mixed_cases.rs:6:4
@@ -98,8 +98,8 @@ LL |   three_args("", 1);
    |   ^^^^^^^^^^ --  -
    |              |   |
    |              |   an argument of type `f32` is missing
-   |              |   expected `&str`,found `{integer}`
-   |              expected `i32`,found `&'static str`
+   |              |   expected `&str`, found `{integer}`
+   |              expected `i32`, found `&'static str`
    |
 note: function defined here
   --> $DIR/mixed_cases.rs:6:4

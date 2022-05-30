@@ -867,7 +867,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let first_expected_ty =
                             self.resolve_vars_if_possible(expected_input_tys[arg_idx]);
                         let first_provided_ty = if let Some((ty, _)) = final_arg_types[input_idx] {
-                            format!(",found `{}`", ty)
+                            format!(", found `{}`", ty)
                         } else {
                             String::new()
                         };
@@ -879,7 +879,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             self.resolve_vars_if_possible(expected_input_tys[other_arg_idx]);
                         let other_provided_ty =
                             if let Some((ty, _)) = final_arg_types[other_input_idx] {
-                                format!(",found `{}`", ty)
+                                format!(", found `{}`", ty)
                             } else {
                                 String::new()
                             };
@@ -897,7 +897,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             let expected_ty =
                                 self.resolve_vars_if_possible(expected_input_tys[dst_arg]);
                             let provided_ty = if let Some((ty, _)) = final_arg_types[dest_input] {
-                                format!(",found `{}`", ty)
+                                format!(", found `{}`", ty)
                             } else {
                                 String::new()
                             };

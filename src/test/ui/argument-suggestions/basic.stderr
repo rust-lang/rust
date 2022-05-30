@@ -48,9 +48,9 @@ error[E0308]: arguments to this function are incorrect
   --> $DIR/basic.rs:23:5
    |
 LL |     swapped("", 1);
-   |     ^^^^^^^ --  - expected `&str`,found `{integer}`
+   |     ^^^^^^^ --  - expected `&str`, found `{integer}`
    |             |
-   |             expected `u32`,found `&'static str`
+   |             expected `u32`, found `&'static str`
    |
 note: function defined here
   --> $DIR/basic.rs:16:4
@@ -66,10 +66,10 @@ error[E0308]: arguments to this function are incorrect
   --> $DIR/basic.rs:24:5
    |
 LL |     permuted(Y {}, Z {}, X {});
-   |     ^^^^^^^^ ----  ----  ---- expected `Z`,found `X`
+   |     ^^^^^^^^ ----  ----  ---- expected `Z`, found `X`
    |              |     |
-   |              |     expected `Y`,found `Z`
-   |              expected `X`,found `Y`
+   |              |     expected `Y`, found `Z`
+   |              expected `X`, found `Y`
    |
 note: function defined here
   --> $DIR/basic.rs:17:4
