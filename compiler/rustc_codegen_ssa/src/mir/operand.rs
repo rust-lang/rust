@@ -137,7 +137,13 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
             OperandValue::Ref(..) => bug!("Deref of by-Ref operand {:?}", self),
         };
         let layout = cx.layout_of(projected_ty);
-        PlaceRef { llval: llptr, llextra, layout, align: layout.align.abi }
+        PlaceRef {
+            llval: llptr,
+            llextra,
+            layout,
+            align: layout.align.abi,
+            scalar_valid_range: layout.abi.scalar_valid_range(cx),
+        }
     }
 
     /// If this operand is a `Pair`, we return an aggregate with the two values.

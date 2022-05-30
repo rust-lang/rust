@@ -1038,6 +1038,34 @@ impl AddressSpace {
     pub const DATA: Self = AddressSpace(0);
 }
 
+/// Inclusive wrap-around range of valid values for a single Scalar or ScalarPair.
+#[derive(Copy, Clone, Debug)]
+pub enum ScalarRanges {
+    /// Valid range for a single Scalar.
+    Single(WrappingRange),
+
+    /// Valid ranges for a ScalarPair.
+    Pair(WrappingRange, WrappingRange),
+}
+
+impl ScalarRanges {
+    /// Optionally returns the valid range for a single Scalar.
+    pub fn single(self) -> Option<WrappingRange> {
+        match self {
+            ScalarRanges::Single(valid_range) => Some(valid_range),
+            ScalarRanges::Pair(_, _) => None,
+        }
+    }
+
+    /// Optionally returns a tuple of valid ranges for a ScalarPair.
+    pub fn pair(self) -> Option<(WrappingRange, WrappingRange)> {
+        match self {
+            ScalarRanges::Single(_) => None,
+            ScalarRanges::Pair(s1, s2) => Some((s1, s2)),
+        }
+    }
+}
+
 /// Describes how values of the type are passed by target ABIs,
 /// in terms of categories of C types there are ABI rules for.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
@@ -1087,6 +1115,17 @@ impl Abi {
     #[inline]
     pub fn is_scalar(&self) -> bool {
         matches!(*self, Abi::Scalar(_))
+    }
+
+    /// Returns the range of valid values if this is a scalar type
+    pub fn scalar_valid_range(&self, cx: &impl HasDataLayout) -> Option<ScalarRanges> {
+        match self {
+            Abi::Scalar(scalar) => Some(ScalarRanges::Single(scalar.valid_range(cx))),
+            Abi::ScalarPair(s1, s2) => {
+                Some(ScalarRanges::Pair(s1.valid_range(cx), s2.valid_range(cx)))
+            }
+            _ => None,
+        }
     }
 }
 

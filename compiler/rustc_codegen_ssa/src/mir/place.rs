@@ -10,7 +10,7 @@ use rustc_middle::mir;
 use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Ty};
-use rustc_target::abi::{Abi, Align, FieldsShape, Int, TagEncoding};
+use rustc_target::abi::{Abi, Align, FieldsShape, Int, ScalarRanges, TagEncoding};
 use rustc_target::abi::{VariantIdx, Variants};
 
 #[derive(Copy, Clone, Debug)]
@@ -26,21 +26,30 @@ pub struct PlaceRef<'tcx, V> {
 
     /// The alignment we know for this place.
     pub align: Align,
+
+    /// If the place refers to a `Scalar` value, this represents the range
+    /// of valid values.
+    pub scalar_valid_range: Option<ScalarRanges>,
 }
 
 impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
-    pub fn new_sized(llval: V, layout: TyAndLayout<'tcx>) -> PlaceRef<'tcx, V> {
-        assert!(!layout.is_unsized());
-        PlaceRef { llval, llextra: None, layout, align: layout.align.abi }
+    pub fn new_sized(
+        cx: &impl HasTyCtxt<'tcx>,
+        llval: V,
+        layout: TyAndLayout<'tcx>,
+    ) -> PlaceRef<'tcx, V> {
+        Self::new_sized_aligned(cx, llval, layout, layout.align.abi)
     }
 
     pub fn new_sized_aligned(
+        cx: &impl HasTyCtxt<'tcx>,
         llval: V,
         layout: TyAndLayout<'tcx>,
         align: Align,
     ) -> PlaceRef<'tcx, V> {
         assert!(!layout.is_unsized());
-        PlaceRef { llval, llextra: None, layout, align }
+        let scalar_valid_range = layout.abi.scalar_valid_range(cx);
+        PlaceRef { llval, llextra: None, layout, align, scalar_valid_range }
     }
 
     // FIXME(eddyb) pass something else for the name so no work is done
@@ -51,7 +60,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
     ) -> Self {
         assert!(!layout.is_unsized(), "tried to statically allocate unsized place");
         let tmp = bx.alloca(bx.cx().backend_type(layout), layout.align.abi);
-        Self::new_sized(tmp, layout)
+        Self::new_sized(bx, tmp, layout)
     }
 
     /// Returns a place for an indirect reference to an unsized place.
@@ -131,6 +140,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
                 llextra: if bx.cx().type_has_metadata(field.ty) { self.llextra } else { None },
                 layout: field,
                 align: effective_field_align,
+                scalar_valid_range: field.abi.scalar_valid_range(bx),
             }
         };
 
@@ -200,6 +210,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
             llextra: self.llextra,
             layout: field,
             align: effective_field_align,
+            scalar_valid_range: field.abi.scalar_valid_range(bx),
         }
     }
 
@@ -392,6 +403,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
             llextra: None,
             layout,
             align: self.align.restrict_for_offset(offset),
+            scalar_valid_range: layout.abi.scalar_valid_range(bx),
         }
     }
 
@@ -402,6 +414,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
     ) -> Self {
         let mut downcast = *self;
         downcast.layout = self.layout.for_variant(bx.cx(), variant_index);
+        downcast.scalar_valid_range = downcast.layout.abi.scalar_valid_range(bx);
 
         // Cast to the appropriate variant struct type.
         let variant_ty = bx.cx().backend_type(downcast.layout);

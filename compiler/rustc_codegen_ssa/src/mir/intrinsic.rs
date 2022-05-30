@@ -70,7 +70,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let name_str = name.as_str();
 
         let llret_ty = bx.backend_type(bx.layout_of(ret_ty));
-        let result = PlaceRef::new_sized(llresult, fn_abi.ret.layout);
+        let result = PlaceRef::new_sized(bx, llresult, fn_abi.ret.layout);
 
         let llval = match name {
             sym::assume => {
