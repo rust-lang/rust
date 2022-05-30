@@ -1412,6 +1412,7 @@ impl<T: ?Sized> *mut T {
     /// See [`ptr::write_bytes`] for safety concerns and examples.
     ///
     /// [`ptr::write_bytes`]: crate::ptr::write_bytes()
+    #[doc(alias = "memset")]
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[rustc_const_unstable(feature = "const_ptr_write", issue = "86302")]
     #[inline(always)]
