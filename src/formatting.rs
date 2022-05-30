@@ -13,7 +13,6 @@ use self::newline_style::apply_newline_style;
 use crate::comment::{CharClasses, FullCodeCharKind};
 use crate::config::{Config, FileName, Verbosity};
 use crate::formatting::generated::is_generated_file;
-use crate::issues::BadIssueSeeker;
 use crate::modules::Module;
 use crate::parse::parser::{DirectoryOwnership, Parser, ParserError};
 use crate::parse::session::ParseSess;
@@ -332,7 +331,6 @@ impl FormattingError {
             ErrorKind::LineOverflow(found, max) => (max, found - max),
             ErrorKind::TrailingWhitespace
             | ErrorKind::DeprecatedAttr
-            | ErrorKind::BadIssue(_)
             | ErrorKind::BadAttr
             | ErrorKind::LostComment
             | ErrorKind::LicenseCheck => {
@@ -483,11 +481,9 @@ struct FormatLines<'a> {
     cur_line: usize,
     newline_count: usize,
     errors: Vec<FormattingError>,
-    issue_seeker: BadIssueSeeker,
     line_buffer: String,
     current_line_contains_string_literal: bool,
     format_line: bool,
-    allow_issue_seek: bool,
     config: &'a Config,
 }
 
@@ -497,7 +493,6 @@ impl<'a> FormatLines<'a> {
         skipped_range: &'a [(usize, usize)],
         config: &'a Config,
     ) -> FormatLines<'a> {
-        let issue_seeker = BadIssueSeeker::new();
         FormatLines {
             name,
             skipped_range,
@@ -506,8 +501,6 @@ impl<'a> FormatLines<'a> {
             cur_line: 1,
             newline_count: 0,
             errors: vec![],
-            allow_issue_seek: !issue_seeker.is_disabled(),
-            issue_seeker,
             line_buffer: String::with_capacity(config.max_width() * 2),
             current_line_contains_string_literal: false,
             format_line: config.file_lines().contains_line(name, 1),
@@ -534,13 +527,6 @@ impl<'a> FormatLines<'a> {
         for (kind, c) in CharClasses::new(text.chars()) {
             if c == '\r' {
                 continue;
-            }
-
-            if self.allow_issue_seek && self.format_line {
-                // Add warnings for bad fixmes
-                if let Some(issue) = self.issue_seeker.inspect(c) {
-                    self.push_err(ErrorKind::BadIssue(issue), false, false);
-                }
             }
 
             if c == '\n' {

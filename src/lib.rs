@@ -39,7 +39,6 @@ use thiserror::Error;
 use crate::comment::LineClasses;
 use crate::emitter::Emitter;
 use crate::formatting::{FormatErrorMap, FormattingError, ReportedErrors, SourceFile};
-use crate::issues::Issue;
 use crate::modules::ModuleResolutionError;
 use crate::parse::parser::DirectoryOwnership;
 use crate::shape::Indent;
@@ -69,7 +68,6 @@ mod format_report_formatter;
 pub(crate) mod formatting;
 mod ignore_path;
 mod imports;
-mod issues;
 mod items;
 mod lists;
 mod macros;
@@ -110,9 +108,6 @@ pub enum ErrorKind {
     /// Line ends in whitespace.
     #[error("left behind trailing whitespace")]
     TrailingWhitespace,
-    /// TODO or FIXME item without an issue number.
-    #[error("found {0}")]
-    BadIssue(Issue),
     /// License check has failed.
     #[error("license check failed")]
     LicenseCheck,
@@ -236,8 +231,7 @@ impl FormatReport {
                 ErrorKind::LostComment => {
                     errs.has_unformatted_code_errors = true;
                 }
-                ErrorKind::BadIssue(_)
-                | ErrorKind::LicenseCheck
+                ErrorKind::LicenseCheck
                 | ErrorKind::DeprecatedAttr
                 | ErrorKind::BadAttr
                 | ErrorKind::VersionMismatch => {

@@ -146,6 +146,6 @@ fn error_kind_to_snippet_annotation_type(error_kind: &ErrorKind) -> AnnotationTy
         | ErrorKind::BadAttr
         | ErrorKind::InvalidGlobPattern(_)
         | ErrorKind::VersionMismatch => AnnotationType::Error,
-        ErrorKind::BadIssue(_) | ErrorKind::DeprecatedAttr => AnnotationType::Warning,
+        ErrorKind::DeprecatedAttr => AnnotationType::Warning,
     }
 }
