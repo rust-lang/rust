@@ -56,8 +56,7 @@ pub fn array_eq_zero_short(x: [u16; 3]) -> bool {
 #[no_mangle]
 pub fn array_eq_zero_mid(x: [u16; 8]) -> bool {
     // CHECK-NEXT: start:
-    // CHECK: %[[LOAD:.+]] = load i128,
-    // CHECK-NEXT: %[[EQ:.+]] = icmp eq i128 %[[LOAD]], 0
+    // CHECK-NEXT: %[[EQ:.+]] = icmp eq i128 %0, 0
     // CHECK-NEXT: ret i1 %[[EQ]]
     x == [0; 8]
 }
