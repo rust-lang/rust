@@ -108,9 +108,6 @@ pub enum ErrorKind {
     /// Line ends in whitespace.
     #[error("left behind trailing whitespace")]
     TrailingWhitespace,
-    /// License check has failed.
-    #[error("license check failed")]
-    LicenseCheck,
     /// Used deprecated skip attribute.
     #[error("`rustfmt_skip` is deprecated; use `rustfmt::skip`")]
     DeprecatedAttr,
@@ -231,10 +228,7 @@ impl FormatReport {
                 ErrorKind::LostComment => {
                     errs.has_unformatted_code_errors = true;
                 }
-                ErrorKind::LicenseCheck
-                | ErrorKind::DeprecatedAttr
-                | ErrorKind::BadAttr
-                | ErrorKind::VersionMismatch => {
+                ErrorKind::DeprecatedAttr | ErrorKind::BadAttr | ErrorKind::VersionMismatch => {
                     errs.has_check_errors = true;
                 }
                 _ => {}

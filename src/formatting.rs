@@ -332,8 +332,7 @@ impl FormattingError {
             ErrorKind::TrailingWhitespace
             | ErrorKind::DeprecatedAttr
             | ErrorKind::BadAttr
-            | ErrorKind::LostComment
-            | ErrorKind::LicenseCheck => {
+            | ErrorKind::LostComment => {
                 let trailing_ws_start = self
                     .line_buffer
                     .rfind(|c: char| !c.is_whitespace())
@@ -365,7 +364,7 @@ pub(crate) struct ReportedErrors {
     // Code contains macro call that was unable to format.
     pub(crate) has_macro_format_failure: bool,
 
-    // Failed a check, such as the license check or other opt-in checking.
+    // Failed an opt-in checking.
     pub(crate) has_check_errors: bool,
 
     /// Formatted code differs from existing code (--check only).
@@ -461,7 +460,6 @@ fn format_lines(
     report: &FormatReport,
 ) {
     let mut formatter = FormatLines::new(name, skipped_range, config);
-    formatter.check_license(text);
     formatter.iterate(text);
 
     if formatter.newline_count > 1 {
@@ -505,20 +503,6 @@ impl<'a> FormatLines<'a> {
             current_line_contains_string_literal: false,
             format_line: config.file_lines().contains_line(name, 1),
             config,
-        }
-    }
-
-    fn check_license(&mut self, text: &mut String) {
-        if let Some(ref license_template) = self.config.license_template {
-            if !license_template.is_match(text) {
-                self.errors.push(FormattingError {
-                    line: self.cur_line,
-                    kind: ErrorKind::LicenseCheck,
-                    is_comment: false,
-                    is_string: false,
-                    line_buffer: String::new(),
-                });
-            }
         }
     }
 

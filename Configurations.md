@@ -1473,26 +1473,6 @@ use core::slice;
 #[cfg(feature = "alloc")] use core::slice;
 ```
 
-## `license_template_path`
-
-Check whether beginnings of files match a license template.
-
-- **Default value**: `""`
-- **Possible values**: path to a license template file
-- **Stable**: No (tracking issue: [#3352](https://github.com/rust-lang/rustfmt/issues/3352))
-
-A license template is a plain text file which is matched literally against the
-beginning of each source file, except for `{}`-delimited blocks, which are
-matched as regular expressions. The following license template therefore
-matches strings like `// Copyright 2017 The Rust Project Developers.`, `//
-Copyright 2018 The Rust Project Developers.`, etc.:
-
-```
-// Copyright {\d+} The Rust Project Developers.
-```
-
-`\{`, `\}` and `\\` match literal braces / backslashes.
-
 ## `match_arm_blocks`
 
 Controls whether arm bodies are wrapped in cases where the first line of the body cannot fit on the same line as the `=>` operator.
