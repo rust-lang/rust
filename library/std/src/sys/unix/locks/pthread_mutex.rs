@@ -16,7 +16,6 @@ pub unsafe fn raw(m: &Mutex) -> *mut libc::pthread_mutex_t {
 unsafe impl Send for Mutex {}
 unsafe impl Sync for Mutex {}
 
-#[allow(dead_code)] // sys isn't exported yet
 impl Mutex {
     pub const fn new() -> Mutex {
         // Might be moved to a different address, so it is better to avoid
