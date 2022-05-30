@@ -487,7 +487,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 
             match (vr, scalar.primitive()) {
                 (Some(vr), abi::Int(..)) => {
-                    if !scalar.is_always_valid(bx) {
+                    if !vr.is_full_for(scalar.size(bx)) {
                         bx.range_metadata(load, vr);
                     }
                 }

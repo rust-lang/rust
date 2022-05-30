@@ -134,13 +134,23 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
                     bx.struct_gep(ty, self.llval, bx.cx().backend_field_index(self.layout, ix))
                 }
             };
+
+            // If this field is a primitive type of a newtype, propogate the scalar valid range
+            let scalar_valid_range = if let (0, Variants::Single { .. }, Abi::Scalar(_)) =
+                (offset.bytes(), &self.layout.variants, field.abi)
+            {
+                self.scalar_valid_range
+            } else {
+                field.abi.scalar_valid_range(bx)
+            };
+
             PlaceRef {
                 // HACK(eddyb): have to bitcast pointers until LLVM removes pointee types.
                 llval: bx.pointercast(llval, bx.cx().type_ptr_to(bx.cx().backend_type(field))),
                 llextra: if bx.cx().type_has_metadata(field.ty) { self.llextra } else { None },
                 layout: field,
                 align: effective_field_align,
-                scalar_valid_range: field.abi.scalar_valid_range(bx),
+                scalar_valid_range,
             }
         };
 

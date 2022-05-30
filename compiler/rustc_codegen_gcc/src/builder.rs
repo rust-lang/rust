@@ -678,7 +678,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         fn scalar_load_metadata<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, load: RValue<'gcc>, scalar: &abi::Scalar, vr: Option<WrappingRange>) {
             match (vr, scalar.primitive()) {
                 (Some(vr), abi::Int(..)) => {
-                    if !scalar.is_always_valid(bx) {
+                    if !vr.is_full_for(scalar.size(bx)) {
                         bx.range_metadata(load, vr);
                     }
                 }
