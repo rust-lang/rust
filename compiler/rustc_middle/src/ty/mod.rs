@@ -2303,6 +2303,11 @@ impl<'tcx> TyCtxt<'tcx> {
         matches!(self.def_kind(def_id), DefKind::Fn | DefKind::AssocFn | DefKind::Ctor(..))
             && self.impl_constness(def_id) == hir::Constness::Const
     }
+
+    #[inline]
+    pub fn is_const_default_method(self, def_id: DefId) -> bool {
+        matches!(self.trait_of_item(def_id), Some(trait_id) if self.has_attr(trait_id, sym::const_trait))
+    }
 }
 
 /// Yields the parent function's `LocalDefId` if `def_id` is an `impl Trait` definition.

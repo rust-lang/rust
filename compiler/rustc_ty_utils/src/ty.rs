@@ -5,7 +5,7 @@ use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{
     self, Binder, EarlyBinder, Predicate, PredicateKind, ToPredicate, Ty, TyCtxt,
 };
-use rustc_span::{sym, Span};
+use rustc_span::Span;
 use rustc_trait_selection::traits;
 
 fn sized_constraint_for_ty<'tcx>(
@@ -153,7 +153,7 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
     let constness = match hir_id {
         Some(hir_id) => match tcx.hir().get(hir_id) {
             hir::Node::TraitItem(hir::TraitItem { kind: hir::TraitItemKind::Fn(..), .. })
-                if tcx.has_attr(def_id, sym::default_method_body_is_const) =>
+                if tcx.is_const_default_method(def_id) =>
             {
                 hir::Constness::Const
             }

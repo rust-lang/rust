@@ -473,9 +473,10 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
     // RFC 2632
     gated!(
-        default_method_body_is_const, Normal, template!(Word), WarnFollowing, const_trait_impl,
-        "`default_method_body_is_const` is a temporary placeholder for declaring default bodies \
-        as `const`, which may be removed or renamed in the future."
+        const_trait, Normal, template!(Word), WarnFollowing, const_trait_impl,
+        "`const` is a temporary placeholder for marking a trait that is suitable for `const` \
+        `impls` and all default bodies as `const`, which may be removed or renamed in the \
+        future."
     ),
     // lang-team MCP 147
     gated!(

@@ -122,9 +122,7 @@ impl CheckAttrVisitor<'_> {
                 | sym::rustc_if_this_changed
                 | sym::rustc_then_this_would_need => self.check_rustc_dirty_clean(&attr),
                 sym::cmse_nonsecure_entry => self.check_cmse_nonsecure_entry(attr, span, target),
-                sym::default_method_body_is_const => {
-                    self.check_default_method_body_is_const(attr, span, target)
-                }
+                sym::const_trait => self.check_const_trait(attr, span, target),
                 sym::must_not_suspend => self.check_must_not_suspend(&attr, span, target),
                 sym::must_use => self.check_must_use(hir_id, &attr, span, target),
                 sym::rustc_pass_by_value => self.check_pass_by_value(&attr, span, target),
@@ -2097,23 +2095,14 @@ impl CheckAttrVisitor<'_> {
         }
     }
 
-    /// default_method_body_is_const should only be applied to trait methods with default bodies.
-    fn check_default_method_body_is_const(
-        &self,
-        attr: &Attribute,
-        span: Span,
-        target: Target,
-    ) -> bool {
+    /// `#[const_trait]` only applies to traits.
+    fn check_const_trait(&self, attr: &Attribute, _span: Span, target: Target) -> bool {
         match target {
-            Target::Method(MethodKind::Trait { body: true }) => true,
+            Target::Trait => true,
             _ => {
                 self.tcx
                     .sess
-                    .struct_span_err(
-                        attr.span,
-                        "attribute should be applied to a trait method with body",
-                    )
-                    .span_label(span, "not a trait method or missing a body")
+                    .struct_span_err(attr.span, "attribute should be applied to a trait")
                     .emit();
                 false
             }
@@ -2207,6 +2196,8 @@ impl CheckAttrVisitor<'_> {
                 "attribute `{}` without any lints has no effect",
                 attr.name_or_empty()
             )
+        } else if attr.name_or_empty() == sym::default_method_body_is_const {
+            format!("`default_method_body_is_const` has been replaced with `#[const_trait]` on traits")
         } else {
             return;
         };
