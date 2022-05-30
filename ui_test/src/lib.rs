@@ -30,8 +30,8 @@ pub struct Config {
     pub mode: Mode,
     pub program: PathBuf,
     pub output_conflict_handling: OutputConflictHandling,
-    /// Only run tests with this string in their path/name
-    pub path_filter: Option<String>,
+    /// Only run tests with one of these strings in their path/name
+    pub path_filter: Vec<String>,
 }
 
 #[derive(Debug)]
@@ -77,12 +77,13 @@ pub fn run_tests(config: Config) {
                     if !path.extension().map(|ext| ext == "rs").unwrap_or(false) {
                         continue;
                     }
-                    if let Some(path_filter) = &config.path_filter {
-                        if !path.display().to_string().contains(path_filter) {
+                    if !config.path_filter.is_empty() {
+                        let path_display = path.display().to_string();
+                        if !config.path_filter.iter().any(|filter| path_display.contains(filter)) {
                             ignored.fetch_add(1, Ordering::Relaxed);
                             eprintln!(
                                 "{} .. {}",
-                                path.display(),
+                                path_display,
                                 "ignored (command line filter)".yellow()
                             );
                             continue;

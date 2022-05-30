@@ -47,7 +47,8 @@ fn run_tests(mode: Mode, path: &str, target: Option<String>) {
         (true, true) => panic!("cannot use MIRI_BLESS and MIRI_SKIP_UI_CHECKS at the same time"),
     };
 
-    let path_filter = std::env::args().skip(1).next();
+    // Pass on all arguments as filters.
+    let path_filter = std::env::args().skip(1);
 
     let config = Config {
         args: flags,
@@ -56,7 +57,7 @@ fn run_tests(mode: Mode, path: &str, target: Option<String>) {
         stdout_filters: STDOUT.clone(),
         root_dir: PathBuf::from(path),
         mode,
-        path_filter,
+        path_filter: path_filter.collect(),
         program: miri_path(),
         output_conflict_handling,
     };

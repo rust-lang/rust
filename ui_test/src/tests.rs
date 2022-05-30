@@ -10,7 +10,7 @@ fn config() -> Config {
         stdout_filters: vec![],
         root_dir: PathBuf::from("."),
         mode: Mode::Fail,
-        path_filter: None,
+        path_filter: vec![],
         program: PathBuf::from("cake"),
         output_conflict_handling: OutputConflictHandling::Error,
     }
