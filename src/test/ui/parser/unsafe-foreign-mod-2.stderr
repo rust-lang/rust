@@ -1,0 +1,28 @@
+error: expected `{`, found keyword `unsafe`
+  --> $DIR/unsafe-foreign-mod-2.rs:1:12
+   |
+LL | extern "C" unsafe {
+   |            ^^^^^^ expected `{`
+
+error: extern block cannot be declared unsafe
+  --> $DIR/unsafe-foreign-mod-2.rs:1:12
+   |
+LL | extern "C" unsafe {
+   |            ^^^^^^
+
+error: functions in `extern` blocks cannot have qualifiers
+  --> $DIR/unsafe-foreign-mod-2.rs:4:15
+   |
+LL | extern "C" unsafe {
+   | ----------------- in this `extern` block
+...
+LL |     unsafe fn foo();
+   |               ^^^
+   |
+help: remove the qualifiers
+   |
+LL |     fn foo();
+   |     ~~
+
+error: aborting due to 3 previous errors
+
