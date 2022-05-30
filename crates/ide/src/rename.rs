@@ -973,7 +973,7 @@ mod fo$0o;
                                 anchor: FileId(
                                     1,
                                 ),
-                                path: "foo",
+                                path: "../foo",
                             },
                             src_id: FileId(
                                 1,
@@ -982,7 +982,7 @@ mod fo$0o;
                                 anchor: FileId(
                                     1,
                                 ),
-                                path: "foo2",
+                                path: "../foo2",
                             },
                         },
                     ],
@@ -1158,6 +1158,17 @@ mod quux;
                         },
                     },
                     file_system_edits: [
+                        MoveFile {
+                            src: FileId(
+                                1,
+                            ),
+                            dst: AnchoredPathBuf {
+                                anchor: FileId(
+                                    1,
+                                ),
+                                path: "foo2.rs",
+                            },
+                        },
                         MoveDir {
                             src: AnchoredPathBuf {
                                 anchor: FileId(
