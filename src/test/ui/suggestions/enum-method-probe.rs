@@ -1,4 +1,6 @@
+// compile-flags: --edition=2021
 // run-rustfix
+
 #![allow(unused)]
 
 struct Foo;
@@ -17,11 +19,26 @@ fn test_result_in_result() -> Result<(), ()> {
     Ok(())
 }
 
-fn test_result_in_plain() {
+async fn async_test_result_in_result() -> Result<(), ()> {
     let res: Result<_, ()> = Ok(Foo);
     res.get();
     //~^ ERROR no method named `get` found for enum `Result` in the current scope
-    //~| HELP consider using `Result::expect` to unwrap the `Foo` value, panicking if the value is an `Err`
+    //~| HELP use the `?` operator
+    Ok(())
+}
+
+fn test_result_in_unit_return() {
+    let res: Result<_, ()> = Ok(Foo);
+    res.get();
+    //~^ ERROR no method named `get` found for enum `Result` in the current scope
+    //~| HELP consider using `Result::expect` to unwrap the `Foo` value, panicking if the value is a `Result::Err`
+}
+
+async fn async_test_result_in_unit_return() {
+    let res: Result<_, ()> = Ok(Foo);
+    res.get();
+    //~^ ERROR no method named `get` found for enum `Result` in the current scope
+    //~| HELP consider using `Result::expect` to unwrap the `Foo` value, panicking if the value is a `Result::Err`
 }
 
 fn test_option_in_option() -> Option<()> {
@@ -32,11 +49,11 @@ fn test_option_in_option() -> Option<()> {
     Some(())
 }
 
-fn test_option_in_plain() {
+fn test_option_in_unit_return() {
     let res: Option<_> = Some(Foo);
     res.get();
     //~^ ERROR no method named `get` found for enum `Option` in the current scope
-    //~| HELP consider using `Option::expect` to unwrap the `Foo` value, panicking if the value is `None`
+    //~| HELP consider using `Option::expect` to unwrap the `Foo` value, panicking if the value is an `Option::None`
 }
 
 fn main() {}

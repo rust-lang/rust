@@ -1375,22 +1375,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let matching_variants: Vec<_> = kind
             .variants()
             .iter()
-            .filter_map(|variant| {
+            .flat_map(|variant| {
                 let [field] = &variant.fields[..] else { return None; };
                 let field_ty = field.ty(tcx, substs);
 
                 // Skip `_`, since that'll just lead to ambiguity.
-                if matches!(self.resolve_vars_if_possible(field_ty).kind(), ty::Infer(_)) {
+                if self.resolve_vars_if_possible(field_ty).is_ty_var() {
                     return None;
                 }
 
-                if let Ok(pick) =
-                    self.lookup_probe(span, item_name, field_ty, call_expr, ProbeScope::AllTraits)
-                {
-                    Some((variant, field, pick))
-                } else {
-                    None
-                }
+                self.lookup_probe(span, item_name, field_ty, call_expr, ProbeScope::AllTraits)
+                    .ok()
+                    .map(|pick| (variant, field, pick))
             })
             .collect();
 
@@ -1409,45 +1405,37 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         match &matching_variants[..] {
-            [(_, field, pick)] if Some(kind.did()) == tcx.get_diagnostic_item(sym::Result) => {
+            [(_, field, pick)] => {
                 let self_ty = field.ty(tcx, substs);
                 err.span_note(
                     tcx.def_span(pick.item.def_id),
                     &format!("the method `{item_name}` exists on the type `{self_ty}`"),
                 );
-                if ret_ty_matches(sym::Result) {
+                let (article, kind, variant, question) =
+                    if Some(kind.did()) == tcx.get_diagnostic_item(sym::Result) {
+                        ("a", "Result", "Err", ret_ty_matches(sym::Result))
+                    } else if Some(kind.did()) == tcx.get_diagnostic_item(sym::Option) {
+                        ("an", "Option", "None", ret_ty_matches(sym::Option))
+                    } else {
+                        return;
+                    };
+                if question {
                     err.span_suggestion_verbose(
                         expr.span.shrink_to_hi(),
-                        format!("use the `?` operator to extract the `{self_ty}` value, propagating a `Result::Err` value to the caller"),
+                        format!(
+                            "use the `?` operator to extract the `{self_ty}` value, propagating \
+                            {article} `{kind}::{variant}` value to the caller"
+                        ),
                         "?".to_owned(),
                         Applicability::MachineApplicable,
                     );
                 } else {
                     err.span_suggestion_verbose(
                         expr.span.shrink_to_hi(),
-                        format!("consider using `Result::expect` to unwrap the `{self_ty}` value, panicking if the value is an `Err`"),
-                        ".expect(\"REASON\")".to_owned(),
-                        Applicability::HasPlaceholders,
-                    );
-                }
-            }
-            [(_, field, pick)] if Some(kind.did()) == tcx.get_diagnostic_item(sym::Option) => {
-                let self_ty = field.ty(tcx, substs);
-                err.span_note(
-                    tcx.def_span(pick.item.def_id),
-                    &format!("the method `{item_name}` exists on the type `{self_ty}`"),
-                );
-                if ret_ty_matches(sym::Option) {
-                    err.span_suggestion_verbose(
-                        expr.span.shrink_to_hi(),
-                        format!("use the `?` operator to extract the `{self_ty}` value, propagating a `None` to the caller"),
-                        "?".to_owned(),
-                        Applicability::MachineApplicable,
-                    );
-                } else {
-                    err.span_suggestion_verbose(
-                        expr.span.shrink_to_hi(),
-                        format!("consider using `Option::expect` to unwrap the `{self_ty}` value, panicking if the value is `None`"),
+                        format!(
+                            "consider using `{kind}::expect` to unwrap the `{self_ty}` value, \
+                             panicking if the value is {article} `{kind}::{variant}`"
+                        ),
                         ".expect(\"REASON\")".to_owned(),
                         Applicability::HasPlaceholders,
                     );
