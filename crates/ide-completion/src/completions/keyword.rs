@@ -51,7 +51,7 @@ pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
         return;
     }
 
-    if !ctx.has_visibility_prev_sibling()
+    if ctx.qualifier_ctx.vis_node.is_none()
         && (expects_item || ctx.expects_non_trait_assoc_item() || ctx.expect_field())
     {
         add_keyword("pub(crate)", "pub(crate)");
@@ -67,7 +67,7 @@ pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
     }
 
     if expects_item || has_block_expr_parent {
-        if !ctx.has_visibility_prev_sibling() {
+        if ctx.qualifier_ctx.vis_node.is_none() {
             add_keyword("impl", "impl $1 {\n    $0\n}");
             add_keyword("extern", "extern $0");
         }

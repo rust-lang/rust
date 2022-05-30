@@ -92,10 +92,7 @@ fn after_struct_name() {
     check(
         r"struct Struct $0",
         expect![[r#"
-            ma makro!(…)           macro_rules! makro
-            md module
             kw const
-            kw crate::
             kw enum
             kw extern
             kw fn
@@ -104,18 +101,13 @@ fn after_struct_name() {
             kw pub
             kw pub(crate)
             kw pub(super)
-            kw self::
             kw static
             kw struct
-            kw super::
             kw trait
             kw type
             kw union
             kw unsafe
             kw use
-            sn macro_rules
-            sn tfn (Test function)
-            sn tmod (Test module)
         "#]],
     );
 }
@@ -126,10 +118,7 @@ fn after_fn_name() {
     check(
         r"fn func() $0",
         expect![[r#"
-            ma makro!(…)           macro_rules! makro
-            md module
             kw const
-            kw crate::
             kw enum
             kw extern
             kw fn
@@ -138,18 +127,13 @@ fn after_fn_name() {
             kw pub
             kw pub(crate)
             kw pub(super)
-            kw self::
             kw static
             kw struct
-            kw super::
             kw trait
             kw type
             kw union
             kw unsafe
             kw use
-            sn macro_rules
-            sn tfn (Test function)
-            sn tmod (Test module)
         "#]],
     );
 }

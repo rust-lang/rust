@@ -75,6 +75,18 @@ pub(super) enum ItemListKind {
     ExternBlock,
 }
 
+#[derive(Debug, Default)]
+pub(super) struct QualifierCtx {
+    pub(super) unsafe_tok: Option<SyntaxToken>,
+    pub(super) vis_node: Option<ast::Visibility>,
+}
+
+impl QualifierCtx {
+    pub(super) fn none(&self) -> bool {
+        self.unsafe_tok.is_none() && self.vis_node.is_none()
+    }
+}
+
 #[derive(Debug)]
 pub(crate) struct PathCompletionCtx {
     /// If this is a call with () already there (or {} in case of record patterns)
@@ -253,6 +265,7 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) ident_ctx: IdentContext,
 
     pub(super) pattern_ctx: Option<PatternContext>,
+    pub(super) qualifier_ctx: QualifierCtx,
 
     pub(super) existing_derives: FxHashSet<hir::Macro>,
 
@@ -363,17 +376,13 @@ impl<'a> CompletionContext<'a> {
         matches!(self.prev_sibling, Some(ImmediatePrevSibling::ImplDefType))
     }
 
-    pub(crate) fn has_visibility_prev_sibling(&self) -> bool {
-        matches!(self.prev_sibling, Some(ImmediatePrevSibling::Visibility))
-    }
-
     pub(crate) fn after_if(&self) -> bool {
         matches!(self.prev_sibling, Some(ImmediatePrevSibling::IfExpr))
     }
 
     // FIXME: This shouldn't exist
     pub(crate) fn is_path_disallowed(&self) -> bool {
-        self.previous_token_is(T![unsafe])
+        !self.qualifier_ctx.none()
             || matches!(self.prev_sibling, Some(ImmediatePrevSibling::Visibility))
             || (matches!(self.name_ctx(), Some(NameContext { .. })) && self.pattern_ctx.is_none())
             || matches!(self.pattern_ctx, Some(PatternContext { record_pat: Some(_), .. }))
@@ -555,6 +564,7 @@ impl<'a> CompletionContext<'a> {
             // dummy value, will be overwritten
             ident_ctx: IdentContext::UnexpandedAttrTT { fake_attribute_under_caret: None },
             pattern_ctx: None,
+            qualifier_ctx: Default::default(),
             existing_derives: Default::default(),
             locals,
         };
@@ -865,7 +875,7 @@ impl<'a> CompletionContext<'a> {
         offset: TextSize,
         derive_ctx: Option<(SyntaxNode, SyntaxNode, TextSize, ast::Attr)>,
     ) -> Option<()> {
-        let fake_ident_token = file_with_fake_ident.token_at_offset(offset).right_biased().unwrap();
+        let fake_ident_token = file_with_fake_ident.token_at_offset(offset).right_biased()?;
         let syntax_element = NodeOrToken::Token(fake_ident_token);
         if is_in_token_of_for_loop(syntax_element.clone()) {
             // for pat $0
@@ -967,7 +977,49 @@ impl<'a> CompletionContext<'a> {
             ast::NameLike::NameRef(name_ref) => {
                 let parent = name_ref.syntax().parent()?;
                 let (nameref_ctx, pat_ctx) =
-                    Self::classify_name_ref(&self.sema, &original_file, name_ref, parent);
+                    Self::classify_name_ref(&self.sema, &original_file, name_ref, parent.clone());
+
+                // Extract qualifiers
+                if let Some(path_ctx) = &nameref_ctx.path_ctx {
+                    if path_ctx.qualifier.is_none() {
+                        let top = match path_ctx.kind {
+                            PathKind::Expr { in_block_expr: true, .. } => parent
+                                .ancestors()
+                                .find(|it| ast::PathExpr::can_cast(it.kind()))
+                                .and_then(|p| {
+                                    let parent = p.parent()?;
+                                    if ast::StmtList::can_cast(parent.kind()) {
+                                        Some(p)
+                                    } else if ast::ExprStmt::can_cast(parent.kind()) {
+                                        Some(parent)
+                                    } else {
+                                        None
+                                    }
+                                }),
+                            PathKind::Item { .. } => {
+                                parent.ancestors().find(|it| ast::MacroCall::can_cast(it.kind()))
+                            }
+                            _ => None,
+                        };
+                        if let Some(top) = top {
+                            if let Some(NodeOrToken::Node(error_node)) =
+                                syntax::algo::non_trivia_sibling(
+                                    top.into(),
+                                    syntax::Direction::Prev,
+                                )
+                            {
+                                if error_node.kind() == SyntaxKind::ERROR {
+                                    self.qualifier_ctx.unsafe_tok = error_node
+                                        .children_with_tokens()
+                                        .filter_map(NodeOrToken::into_token)
+                                        .find(|it| it.kind() == T![unsafe]);
+                                    self.qualifier_ctx.vis_node =
+                                        error_node.children().find_map(ast::Visibility::cast);
+                                }
+                            }
+                        }
+                    }
+                }
                 self.ident_ctx = IdentContext::NameRef(nameref_ctx);
                 self.pattern_ctx = pat_ctx;
             }
@@ -1145,12 +1197,54 @@ impl<'a> CompletionContext<'a> {
             }
         };
 
+        // We do not want to generate path completions when we are sandwiched between an item decl signature and its body.
+        // ex. trait Foo $0 {}
+        // in these cases parser recovery usually kicks in for our inserted identifier, causing it
+        // to either be parsed as an ExprStmt or a MacroCall, depending on whether it is in a block
+        // expression or an item list.
+        // The following code checks if the body is missing, if it is we either cut off the body
+        // from the item or it was missing in the first place
+        let inbetween_body_and_decl_check = |node: SyntaxNode| {
+            if let Some(NodeOrToken::Node(n)) =
+                syntax::algo::non_trivia_sibling(node.into(), syntax::Direction::Prev)
+            {
+                if let Some(item) = ast::Item::cast(n) {
+                    match item {
+                        ast::Item::Const(it) => it.body().is_none(),
+                        ast::Item::Enum(it) => it.variant_list().is_none(),
+                        ast::Item::ExternBlock(it) => it.extern_item_list().is_none(),
+                        ast::Item::Fn(it) => it.body().is_none(),
+                        ast::Item::Impl(it) => it.assoc_item_list().is_none(),
+                        ast::Item::Module(it) => it.item_list().is_none(),
+                        ast::Item::Static(it) => it.body().is_none(),
+                        ast::Item::Struct(it) => it.field_list().is_none(),
+                        ast::Item::Trait(it) => it.assoc_item_list().is_none(),
+                        ast::Item::TypeAlias(it) => it.ty().is_none(),
+                        ast::Item::Union(it) => it.record_field_list().is_none(),
+                        _ => false,
+                    }
+                } else {
+                    false
+                }
+            } else {
+                false
+            }
+        };
+
         let kind = path.syntax().ancestors().find_map(|it| {
             // using Option<Option<PathKind>> as extra controlflow
             let kind = match_ast! {
                 match it {
                     ast::PathType(_) => Some(PathKind::Type),
                     ast::PathExpr(it) => {
+                        if let Some(p) = it.syntax().parent() {
+                            if ast::ExprStmt::can_cast(p.kind()) {
+                                if inbetween_body_and_decl_check(p) {
+                                    return Some(None);
+                                }
+                            }
+                        }
+
                         fill_record_expr(it.syntax());
 
                         path_ctx.has_call_parens = it.syntax().parent().map_or(false, |it| ast::CallExpr::can_cast(it.kind()));
@@ -1173,6 +1267,10 @@ impl<'a> CompletionContext<'a> {
                         Some(PathKind::Pat)
                     },
                     ast::MacroCall(it) => {
+                        if inbetween_body_and_decl_check(it.syntax().clone()) {
+                            return Some(None);
+                        }
+
                         path_ctx.has_macro_bang = it.excl_token().is_some();
                         let parent = it.syntax().parent();
                         match parent.as_ref().map(|it| it.kind()) {

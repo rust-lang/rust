@@ -2,7 +2,6 @@
 
 use hir::Documentation;
 use ide_db::{imports::insert_use::ImportScope, SnippetCap};
-use syntax::T;
 
 use crate::{
     context::{ItemListKind, PathCompletionCtx, PathKind},
@@ -52,10 +51,10 @@ pub(crate) fn complete_item_snippet(acc: &mut Completions, ctx: &CompletionConte
         }) => kind,
         _ => return,
     };
-    if ctx.previous_token_is(T![unsafe]) || ctx.has_unfinished_impl_or_trait_prev_sibling() {
+    if !ctx.qualifier_ctx.none() {
         return;
     }
-    if ctx.has_visibility_prev_sibling() {
+    if ctx.qualifier_ctx.vis_node.is_some() {
         return; // technically we could do some of these snippet completions if we were to put the
                 // attributes before the vis node.
     }
