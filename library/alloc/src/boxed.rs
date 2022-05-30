@@ -129,7 +129,7 @@
 //! currently implemented in the compiler.**
 //!
 //! The aliasing rules for `Box<T>` are the same as for `&mut T`. `Box<T>`
-//! asserts uniqeness over its content. Using raw pointers derived from a box
+//! asserts uniqueness over its content. Using raw pointers derived from a box
 //! after that box has been mutated through, moved or borrowed as `&mut T`
 //! is not allowed. For more guidance on working with box from unsafe code, see
 //! [rust-lang/unsafe-code-guidelines#326][ucg#326].
