@@ -4070,6 +4070,43 @@ impl<K, V, S, A: Allocator + Clone> Debug for RawEntryBuilder<'_, K, V, S, A> {
 ///
 /// [`HashMap`]: struct.HashMap.html
 /// [`entry`]: struct.HashMap.html#method.entry
+///
+/// # Examples
+///
+/// ```
+/// use hashbrown::hash_map::{HashMap, Entry, OccupiedEntry};
+///
+/// let mut map = HashMap::new();
+/// map.extend([('a', 1), ('b', 2), ('c', 3)]);
+/// assert_eq!(map.len(), 3);
+///
+/// // Existing key (insert)
+/// let entry: Entry<_, _, _> = map.entry('a');
+/// let _raw_o: OccupiedEntry<_, _, _> = entry.insert(10);
+/// assert_eq!(map.len(), 3);
+/// // Nonexistent key (insert)
+/// map.entry('d').insert(40);
+///
+/// // Existing key (or_insert)
+/// let v = map.entry('b').or_insert(20);
+/// assert_eq!(std::mem::replace(v, 20), 2);
+/// // Nonexistent key (or_insert)
+/// map.entry('e').or_insert(50);
+///
+/// // Existing key (or_insert_with)
+/// let v = map.entry('c').or_insert_with(|| 30);
+/// assert_eq!(std::mem::replace(v, 30), 3);
+/// // Nonexistent key (or_insert_with)
+/// map.entry('f').or_insert_with(|| 60);
+///
+/// println!("Our HashMap: {:?}", map);
+///
+/// let mut vec: Vec<_> = map.iter().map(|(&k, &v)| (k, v)).collect();
+/// // The `Iter` iterator produces items in arbitrary order, so the
+/// // items must be sorted to test them against a sorted array.
+/// vec.sort_unstable();
+/// assert_eq!(vec, [('a', 10), ('b', 20), ('c', 30), ('d', 40), ('e', 50), ('f', 60)]);
+/// ```
 pub enum Entry<'a, K, V, S, A = Global>
 where
     A: Allocator + Clone,
@@ -5908,6 +5945,41 @@ where
     S: BuildHasher,
     A: Allocator + Clone,
 {
+    /// Inserts all new key-values from the iterator to existing `HashMap<K, V, S, A>`.
+    /// Replace values with existing keys with new values returned from the iterator.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::hash_map::HashMap;
+    ///
+    /// let mut map = HashMap::new();
+    /// map.insert(1, 100);
+    ///
+    /// let some_iter = [(1, 1), (2, 2)].into_iter();
+    /// map.extend(some_iter);
+    /// // Replace values with existing keys with new values returned from the iterator.
+    /// // So that the map.get_key1(&1) doesn't return Some(&100).
+    /// assert_eq!(map.get(&1), Some(&1));
+    ///
+    /// let some_vec: Vec<_> = vec![(3, 3), (4, 4)];
+    /// map.extend(some_vec);
+    ///
+    /// let some_arr = [(5, 5), (6, 6)];
+    /// map.extend(some_arr);
+    /// let old_map_len = map.len();
+    ///
+    /// // You can also extend from another HashMap
+    /// let mut new_map = HashMap::new();
+    /// new_map.extend(map);
+    /// assert_eq!(new_map.len(), old_map_len);
+    ///
+    /// let mut vec: Vec<_> = new_map.into_iter().collect();
+    /// // The `IntoIter` iterator produces items in arbitrary order, so the
+    /// // items must be sorted to test them against a sorted array.
+    /// vec.sort_unstable();
+    /// assert_eq!(vec, [(1, 1), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6)]);
+    /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     fn extend<T: IntoIterator<Item = (K, V)>>(&mut self, iter: T) {
         // Keys may be already present or show multiple times in the iterator.
@@ -5948,6 +6020,8 @@ where
     }
 }
 
+/// Inserts all new key-values from the iterator and replaces values with existing
+/// keys with new values returned from the iterator.
 impl<'a, K, V, S, A> Extend<(&'a K, &'a V)> for HashMap<K, V, S, A>
 where
     K: Eq + Hash + Copy,
@@ -5955,6 +6029,44 @@ where
     S: BuildHasher,
     A: Allocator + Clone,
 {
+    /// Inserts all new key-values from the iterator to existing `HashMap<K, V, S, A>`.
+    /// Replace values with existing keys with new values returned from the iterator.
+    /// The keys and values must implement [`Copy`] trait.
+    ///
+    /// [`Copy`]: https://doc.rust-lang.org/core/marker/trait.Copy.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::hash_map::HashMap;
+    ///
+    /// let mut map = HashMap::new();
+    /// map.insert(1, 100);
+    ///
+    /// let arr = [(1, 1), (2, 2)];
+    /// let some_iter = arr.iter().map(|&(k, v)| (k, v));
+    /// map.extend(some_iter);
+    /// // Replace values with existing keys with new values returned from the iterator.
+    /// // So that the map.get_key1(&1) doesn't return Some(&100).
+    /// assert_eq!(map.get(&1), Some(&1));
+    ///
+    /// let some_vec: Vec<_> = vec![(3, 3), (4, 4)];
+    /// map.extend(some_vec.iter().map(|&(k, v)| (k, v)));
+    ///
+    /// let some_arr = [(5, 5), (6, 6)];
+    /// map.extend(some_arr.iter().map(|&(k, v)| (k, v)));
+    ///
+    /// // You can also extend from another HashMap
+    /// let mut new_map = HashMap::new();
+    /// new_map.extend(&map);
+    /// assert_eq!(new_map, map);
+    ///
+    /// let mut vec: Vec<_> = new_map.into_iter().collect();
+    /// // The `IntoIter` iterator produces items in arbitrary order, so the
+    /// // items must be sorted to test them against a sorted array.
+    /// vec.sort_unstable();
+    /// assert_eq!(vec, [(1, 1), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6)]);
+    /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     fn extend<T: IntoIterator<Item = (&'a K, &'a V)>>(&mut self, iter: T) {
         self.extend(iter.into_iter().map(|(&key, &value)| (key, value)));
