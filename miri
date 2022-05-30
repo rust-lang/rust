@@ -115,7 +115,7 @@ install|install-debug)
     ;;
 check|check-debug)
     # Check, and let caller control flags.
-    cargo check $CARGO_BUILD_FLAGS --manifest-path "$MIRIDIR"/Cargo.toml "$@"
+    cargo check $CARGO_BUILD_FLAGS --manifest-path "$MIRIDIR"/Cargo.toml --all-targets "$@"
     cargo check $CARGO_BUILD_FLAGS --manifest-path "$MIRIDIR"/cargo-miri/Cargo.toml "$@"
     ;;
 build|build-debug)

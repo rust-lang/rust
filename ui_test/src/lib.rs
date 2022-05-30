@@ -98,7 +98,7 @@ pub fn run_tests(config: Config) {
                     {
                         let (m, errors) = run_test(&path, &config, &target, &revision, &comments);
 
-                        // Using `format` to prevent messages from threads from getting intermingled.
+                        // Using a single `eprintln!` to prevent messages from threads from getting intermingled.
                         let mut msg = format!("{} ", path.display());
                         if !revision.is_empty() {
                             write!(msg, "(revision `{revision}`) ").unwrap();
