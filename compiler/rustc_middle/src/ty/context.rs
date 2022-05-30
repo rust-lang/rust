@@ -180,6 +180,7 @@ impl<'tcx> CtxtInterners<'tcx> {
         sess: &Session,
         definitions: &rustc_hir::definitions::Definitions,
         cstore: &CrateStoreDyn,
+        source_span: &IndexVec<LocalDefId, Span>,
     ) -> Ty<'tcx> {
         Ty(Interned::new_unchecked(
             self.type_
@@ -194,7 +195,12 @@ impl<'tcx> CtxtInterners<'tcx> {
                         Fingerprint::ZERO
                     } else {
                         let mut hasher = StableHasher::new();
-                        let mut hcx = StableHashingContext::ignore_spans(sess, definitions, cstore);
+                        let mut hcx = StableHashingContext::ignore_spans(
+                            sess,
+                            definitions,
+                            cstore,
+                            source_span,
+                        );
                         kind.hash_stable(&mut hcx, &mut hasher);
                         hasher.finish()
                     };
@@ -934,8 +940,9 @@ impl<'tcx> CommonTypes<'tcx> {
         sess: &Session,
         definitions: &rustc_hir::definitions::Definitions,
         cstore: &CrateStoreDyn,
+        source_span: &IndexVec<LocalDefId, Span>,
     ) -> CommonTypes<'tcx> {
-        let mk = |ty| interners.intern_ty(ty, sess, definitions, cstore);
+        let mk = |ty| interners.intern_ty(ty, sess, definitions, cstore, source_span);
 
         CommonTypes {
             unit: mk(Tuple(List::empty())),
@@ -1235,7 +1242,14 @@ impl<'tcx> TyCtxt<'tcx> {
             s.fatal(&err);
         });
         let interners = CtxtInterners::new(arena);
-        let common_types = CommonTypes::new(&interners, s, &definitions, &*cstore);
+        let common_types = CommonTypes::new(
+            &interners,
+            s,
+            &definitions,
+            &*cstore,
+            // This is only used to create a stable hashing context.
+            &untracked_resolutions.source_span,
+        );
         let common_lifetimes = CommonLifetimes::new(&interners);
         let common_consts = CommonConsts::new(&interners, &common_types);
 
@@ -1452,14 +1466,31 @@ impl<'tcx> TyCtxt<'tcx> {
         &self.definitions
     }
 
+    /// Note that this is *untracked* and should only be used within the query
+    /// system if the result is otherwise tracked through queries
+    #[inline]
+    pub fn source_span_untracked(self, def_id: LocalDefId) -> Span {
+        self.untracked_resolutions.source_span.get(def_id).copied().unwrap_or(DUMMY_SP)
+    }
+
     #[inline(always)]
     pub fn create_stable_hashing_context(self) -> StableHashingContext<'tcx> {
-        StableHashingContext::new(self.sess, &self.definitions, &*self.cstore)
+        StableHashingContext::new(
+            self.sess,
+            &self.definitions,
+            &*self.cstore,
+            &self.untracked_resolutions.source_span,
+        )
     }
 
     #[inline(always)]
     pub fn create_no_span_stable_hashing_context(self) -> StableHashingContext<'tcx> {
-        StableHashingContext::ignore_spans(self.sess, &self.definitions, &*self.cstore)
+        StableHashingContext::ignore_spans(
+            self.sess,
+            &self.definitions,
+            &*self.cstore,
+            &self.untracked_resolutions.source_span,
+        )
     }
 
     pub fn serialize_query_result_cache(self, encoder: FileEncoder) -> FileEncodeResult {
@@ -2250,7 +2281,14 @@ impl<'tcx> TyCtxt<'tcx> {
     #[allow(rustc::usage_of_ty_tykind)]
     #[inline]
     pub fn mk_ty(self, st: TyKind<'tcx>) -> Ty<'tcx> {
-        self.interners.intern_ty(st, self.sess, &self.definitions, &*self.cstore)
+        self.interners.intern_ty(
+            st,
+            self.sess,
+            &self.definitions,
+            &*self.cstore,
+            // This is only used to create a stable hashing context.
+            &self.untracked_resolutions.source_span,
+        )
     }
 
     #[inline]

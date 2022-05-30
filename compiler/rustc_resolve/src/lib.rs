@@ -872,6 +872,10 @@ pub struct Resolver<'a> {
     session: &'a Session,
 
     definitions: Definitions,
+    /// Item with a given `LocalDefId` was defined during macro expansion with ID `ExpnId`.
+    expn_that_defined: FxHashMap<LocalDefId, ExpnId>,
+    /// Reference span for definitions.
+    source_span: IndexVec<LocalDefId, Span>,
 
     graph_root: Module<'a>,
 
@@ -1146,7 +1150,17 @@ impl Resolver<'_> {
             self.definitions.def_key(self.node_id_to_def_id[&node_id]),
         );
 
-        let def_id = self.definitions.create_def(parent, data, expn_id, span);
+        let def_id = self.definitions.create_def(parent, data);
+
+        // Create the definition.
+        if expn_id != ExpnId::root() {
+            self.expn_that_defined.insert(def_id, expn_id);
+        }
+
+        // A relative span's parent must be an absolute span.
+        debug_assert_eq!(span.data_untracked().parent, None);
+        let _id = self.source_span.push(span);
+        debug_assert_eq!(_id, def_id);
 
         // Some things for which we allocate `LocalDefId`s don't correspond to
         // anything in the AST, so they don't have a `NodeId`. For these cases
@@ -1196,7 +1210,7 @@ impl<'a> Resolver<'a> {
             &mut FxHashMap::default(),
         );
 
-        let definitions = Definitions::new(session.local_stable_crate_id(), krate.spans.inner_span);
+        let definitions = Definitions::new(session.local_stable_crate_id());
 
         let mut visibilities = FxHashMap::default();
         visibilities.insert(CRATE_DEF_ID, ty::Visibility::Public);
@@ -1208,6 +1222,10 @@ impl<'a> Resolver<'a> {
 
         let mut invocation_parents = FxHashMap::default();
         invocation_parents.insert(LocalExpnId::ROOT, (CRATE_DEF_ID, ImplTraitContext::Existential));
+
+        let mut source_span = IndexVec::default();
+        let _id = source_span.push(krate.spans.inner_span);
+        debug_assert_eq!(_id, CRATE_DEF_ID);
 
         let mut extern_prelude: FxHashMap<Ident, ExternPreludeEntry<'_>> = session
             .opts
@@ -1233,6 +1251,8 @@ impl<'a> Resolver<'a> {
             session,
 
             definitions,
+            expn_that_defined: Default::default(),
+            source_span,
 
             // The outermost module has def ID 0; this is not reflected in the
             // AST.
@@ -1376,6 +1396,8 @@ impl<'a> Resolver<'a> {
         let proc_macros = self.proc_macros.iter().map(|id| self.local_def_id(*id)).collect();
         let definitions = self.definitions;
         let cstore = Box::new(self.crate_loader.into_cstore());
+        let source_span = self.source_span;
+        let expn_that_defined = self.expn_that_defined;
         let visibilities = self.visibilities;
         let has_pub_restricted = self.has_pub_restricted;
         let extern_crate_map = self.extern_crate_map;
@@ -1387,6 +1409,8 @@ impl<'a> Resolver<'a> {
         let confused_type_with_std_module = self.confused_type_with_std_module;
         let access_levels = self.access_levels;
         let resolutions = ResolverOutputs {
+            source_span,
+            expn_that_defined,
             visibilities,
             has_pub_restricted,
             access_levels,
@@ -1426,6 +1450,8 @@ impl<'a> Resolver<'a> {
         let definitions = self.definitions.clone();
         let cstore = Box::new(self.cstore().clone());
         let resolutions = ResolverOutputs {
+            source_span: self.source_span.clone(),
+            expn_that_defined: self.expn_that_defined.clone(),
             visibilities: self.visibilities.clone(),
             has_pub_restricted: self.has_pub_restricted,
             extern_crate_map: self.extern_crate_map.clone(),
@@ -1461,7 +1487,12 @@ impl<'a> Resolver<'a> {
     }
 
     fn create_stable_hashing_context(&self) -> StableHashingContext<'_> {
-        StableHashingContext::new(self.session, &self.definitions, self.crate_loader.cstore())
+        StableHashingContext::new(
+            self.session,
+            &self.definitions,
+            self.crate_loader.cstore(),
+            &self.source_span,
+        )
     }
 
     pub fn cstore(&self) -> &CStore {
@@ -1892,7 +1923,7 @@ impl<'a> Resolver<'a> {
     /// Retrieves the span of the given `DefId` if `DefId` is in the local crate.
     #[inline]
     pub fn opt_span(&self, def_id: DefId) -> Option<Span> {
-        def_id.as_local().map(|def_id| self.definitions.def_span(def_id))
+        def_id.as_local().map(|def_id| self.source_span[def_id])
     }
 
     /// Checks if an expression refers to a function marked with

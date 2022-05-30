@@ -13,7 +13,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::*;
 use rustc_query_system::ich::StableHashingContext;
-use rustc_span::DUMMY_SP;
+use rustc_span::{ExpnId, DUMMY_SP};
 
 /// Top-level HIR node for current owner. This only contains the node for which
 /// `HirId::local_id == 0`, and excludes bodies.
@@ -117,7 +117,8 @@ pub fn provide(providers: &mut Providers) {
     };
     providers.hir_attrs =
         |tcx, id| tcx.hir_crate(()).owners[id].as_owner().map_or(AttributeMap::EMPTY, |o| &o.attrs);
-    providers.source_span = |tcx, def_id| tcx.definitions_untracked().def_span(def_id);
+    providers.source_span =
+        |tcx, def_id| tcx.resolutions(()).source_span.get(def_id).copied().unwrap_or(DUMMY_SP);
     providers.def_span = |tcx, def_id| {
         let def_id = def_id.expect_local();
         let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
@@ -147,7 +148,7 @@ pub fn provide(providers: &mut Providers) {
     providers.all_local_trait_impls = |tcx, ()| &tcx.resolutions(()).trait_impls;
     providers.expn_that_defined = |tcx, id| {
         let id = id.expect_local();
-        tcx.definitions_untracked().expansion_that_defined(id)
+        tcx.resolutions(()).expn_that_defined.get(&id).copied().unwrap_or(ExpnId::root())
     };
     providers.in_scope_traits_map =
         |tcx, id| tcx.hir_crate(()).owners[id].as_owner().map(|owner_info| &owner_info.trait_map);

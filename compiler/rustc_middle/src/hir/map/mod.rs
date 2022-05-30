@@ -1078,6 +1078,8 @@ pub(super) fn crate_hash(tcx: TyCtxt<'_>, crate_num: CrateNum) -> Svh {
 
     let upstream_crates = upstream_crates(tcx);
 
+    let resolutions = tcx.resolutions(());
+
     // We hash the final, remapped names of all local source files so we
     // don't have to include the path prefix remapping commandline args.
     // If we included the full mapping in the SVH, we could only have
@@ -1107,7 +1109,7 @@ pub(super) fn crate_hash(tcx: TyCtxt<'_>, crate_num: CrateNum) -> Svh {
             .filter_map(|(def_id, info)| {
                 let _ = info.as_owner()?;
                 let def_path_hash = definitions.def_path_hash(def_id);
-                let span = definitions.def_span(def_id);
+                let span = resolutions.source_span[def_id];
                 debug_assert_eq!(span.parent(), None);
                 Some((def_path_hash, span))
             })
@@ -1118,7 +1120,6 @@ pub(super) fn crate_hash(tcx: TyCtxt<'_>, crate_num: CrateNum) -> Svh {
     tcx.sess.opts.dep_tracking_hash(true).hash_stable(&mut hcx, &mut stable_hasher);
     tcx.sess.local_stable_crate_id().hash_stable(&mut hcx, &mut stable_hasher);
     // Hash visibility information since it does not appear in HIR.
-    let resolutions = tcx.resolutions(());
     resolutions.visibilities.hash_stable(&mut hcx, &mut stable_hasher);
     resolutions.has_pub_restricted.hash_stable(&mut hcx, &mut stable_hasher);
 

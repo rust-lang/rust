@@ -689,8 +689,7 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for Span {
             let dlo = u32::decode(decoder);
             let dto = u32::decode(decoder);
 
-            let enclosing =
-                decoder.tcx.definitions_untracked().def_span(parent.unwrap()).data_untracked();
+            let enclosing = decoder.tcx.source_span_untracked(parent.unwrap()).data_untracked();
             let span = Span::new(
                 enclosing.lo + BytePos::from_u32(dlo),
                 enclosing.lo + BytePos::from_u32(dto),
@@ -887,7 +886,7 @@ where
         }
 
         if let Some(parent) = span_data.parent {
-            let enclosing = s.tcx.definitions_untracked().def_span(parent).data_untracked();
+            let enclosing = s.tcx.source_span(parent).data_untracked();
             if enclosing.contains(span_data) {
                 TAG_RELATIVE_SPAN.encode(s);
                 (span_data.lo - enclosing.lo).to_u32().encode(s);

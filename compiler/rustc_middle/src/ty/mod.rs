@@ -43,7 +43,7 @@ use rustc_macros::HashStable;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::Span;
+use rustc_span::{ExpnId, Span};
 use rustc_target::abi::{Align, VariantIdx};
 pub use subst::*;
 pub use vtable::*;
@@ -138,6 +138,10 @@ pub struct ResolverOutputs {
     pub visibilities: FxHashMap<LocalDefId, Visibility>,
     /// This field is used to decide whether we should make `PRIVATE_IN_PUBLIC` a hard error.
     pub has_pub_restricted: bool,
+    /// Item with a given `LocalDefId` was defined during macro expansion with ID `ExpnId`.
+    pub expn_that_defined: FxHashMap<LocalDefId, ExpnId>,
+    /// Reference span for definitions.
+    pub source_span: IndexVec<LocalDefId, Span>,
     pub access_levels: AccessLevels,
     pub extern_crate_map: FxHashMap<LocalDefId, CrateNum>,
     pub maybe_unused_trait_imports: FxIndexSet<LocalDefId>,

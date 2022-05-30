@@ -31,7 +31,6 @@ rustc_queries! {
     /// This span is meant for dep-tracking rather than diagnostics. It should not be used outside
     /// of rustc_middle::hir::source_map.
     query source_span(key: LocalDefId) -> Span {
-        eval_always
         desc { "get the source span" }
     }
 
@@ -272,8 +271,6 @@ rustc_queries! {
     }
 
     query expn_that_defined(key: DefId) -> rustc_span::ExpnId {
-        // This query reads from untracked data in definitions.
-        eval_always
         desc { |tcx| "expansion that defined `{}`", tcx.def_path_str(key) }
         separate_provide_extern
     }

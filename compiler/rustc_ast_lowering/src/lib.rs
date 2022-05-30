@@ -61,7 +61,7 @@ use rustc_query_system::ich::StableHashingContext;
 use rustc_session::cstore::CrateStoreDyn;
 use rustc_session::parse::feature_err;
 use rustc_session::Session;
-use rustc_span::hygiene::{ExpnId, MacroKind};
+use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::DesugaringKind;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
@@ -391,6 +391,7 @@ fn compute_hir_hash(
     sess: &Session,
     definitions: &Definitions,
     cstore: &CrateStoreDyn,
+    resolver: &ResolverOutputs,
     owners: &IndexVec<LocalDefId, hir::MaybeOwner<&hir::OwnerInfo<'_>>>,
 ) -> Fingerprint {
     let mut hir_body_nodes: Vec<_> = owners
@@ -404,7 +405,7 @@ fn compute_hir_hash(
     hir_body_nodes.sort_unstable_by_key(|bn| bn.0);
 
     let mut stable_hasher = StableHasher::new();
-    let mut hcx = StableHashingContext::new(sess, definitions, cstore);
+    let mut hcx = StableHashingContext::new(sess, definitions, cstore, &resolver.source_span);
     hir_body_nodes.hash_stable(&mut hcx, &mut stable_hasher);
     stable_hasher.finish()
 }
@@ -437,7 +438,7 @@ pub fn lower_crate<'hir>(
         .lower_node(def_id);
     }
 
-    let hir_hash = compute_hir_hash(sess, definitions, cstore, &owners);
+    let hir_hash = compute_hir_hash(sess, definitions, cstore, resolver, &owners);
     let krate = hir::Crate { owners, hir_hash };
     arena.alloc(krate)
 }
@@ -459,7 +460,12 @@ enum ParenthesizedGenericArgs {
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn create_stable_hashing_context(&self) -> StableHashingContext<'_> {
-        StableHashingContext::new(self.sess, self.definitions, self.cstore)
+        StableHashingContext::new(
+            self.sess,
+            self.definitions,
+            self.cstore,
+            &self.resolver.source_span,
+        )
     }
 
     fn create_def(
@@ -467,8 +473,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         parent: LocalDefId,
         node_id: ast::NodeId,
         data: DefPathData,
-        expn_id: ExpnId,
-        span: Span,
     ) -> LocalDefId {
         assert!(
             self.opt_local_def_id(node_id).is_none(),
@@ -478,7 +482,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             self.definitions.def_key(self.local_def_id(node_id)),
         );
 
-        let def_id = self.definitions.create_def(parent, data, expn_id, span);
+        let def_id = self.definitions.create_def(parent, data);
 
         // Some things for which we allocate `LocalDefId`s don't correspond to
         // anything in the AST, so they don't have a `NodeId`. For these cases
@@ -998,13 +1002,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
                     let parent_def_id = self.current_hir_id_owner;
                     let impl_trait_node_id = self.next_node_id();
-                    self.create_def(
-                        parent_def_id,
-                        impl_trait_node_id,
-                        DefPathData::ImplTrait,
-                        ExpnId::root(),
-                        constraint.span,
-                    );
+                    self.create_def(parent_def_id, impl_trait_node_id, DefPathData::ImplTrait);
 
                     self.with_dyn_type_scope(false, |this| {
                         let node_id = this.next_node_id();
@@ -1110,13 +1108,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                 let node_id = self.next_node_id();
 
                                 // Add a definition for the in-band const def.
-                                self.create_def(
-                                    parent_def_id,
-                                    node_id,
-                                    DefPathData::AnonConst,
-                                    ExpnId::root(),
-                                    ty.span,
-                                );
+                                self.create_def(parent_def_id, node_id, DefPathData::AnonConst);
 
                                 let span = self.lower_span(ty.span);
                                 let path_expr = Expr {
@@ -1624,13 +1616,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             let inner_node_id = self.next_node_id();
 
             // Add a definition for the in scope lifetime def.
-            self.create_def(
-                opaque_ty_def_id,
-                inner_node_id,
-                DefPathData::LifetimeNs(name),
-                ExpnId::root(),
-                span.with_parent(None),
-            );
+            self.create_def(opaque_ty_def_id, inner_node_id, DefPathData::LifetimeNs(name));
 
             let (p_name, inner_res) = match outer_res {
                 // Input lifetime like `'a`:
@@ -1824,8 +1810,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                     captured_lifetimes.parent_def_id,
                                     p_id,
                                     DefPathData::LifetimeNs(p_name.ident().name),
-                                    ExpnId::root(),
-                                    span.with_parent(None),
                                 );
 
                                 v.insert((span, p_id, p_name, res));
@@ -1850,8 +1834,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                     captured_lifetimes.parent_def_id,
                                     p_id,
                                     DefPathData::LifetimeNs(kw::UnderscoreLifetime),
-                                    ExpnId::root(),
-                                    span.with_parent(None),
                                 );
 
                                 v.insert((span, p_id, ParamName::Fresh, res));
@@ -1873,8 +1855,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             captured_lifetimes.parent_def_id,
                             p_id,
                             DefPathData::LifetimeNs(kw::UnderscoreLifetime),
-                            ExpnId::root(),
-                            span.with_parent(None),
                         );
                         captured_lifetimes
                             .captures
