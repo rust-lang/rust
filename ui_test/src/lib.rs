@@ -12,6 +12,8 @@ use regex::Regex;
 use crate::comments::Comments;
 
 mod comments;
+#[cfg(test)]
+mod tests;
 
 #[derive(Debug)]
 pub struct Config {
@@ -28,6 +30,8 @@ pub struct Config {
     pub mode: Mode,
     pub program: PathBuf,
     pub output_conflict_handling: OutputConflictHandling,
+    /// Only run tests with this string in their path/name
+    pub path_filter: Option<String>,
 }
 
 #[derive(Debug)]
@@ -73,7 +77,18 @@ pub fn run_tests(config: Config) {
                     if !path.extension().map(|ext| ext == "rs").unwrap_or(false) {
                         continue;
                     }
-                    let comments = Comments::parse(&path);
+                    if let Some(path_filter) = &config.path_filter {
+                        if !path.display().to_string().contains(path_filter) {
+                            ignored.fetch_add(1, Ordering::Relaxed);
+                            eprintln!(
+                                "{} .. {}",
+                                path.display(),
+                                "ignored (command line filter)".yellow()
+                            );
+                            continue;
+                        }
+                    }
+                    let comments = Comments::parse_file(&path);
                     // Ignore file if only/ignore rules do (not) apply
                     if ignore_file(&comments, &target) {
                         ignored.fetch_add(1, Ordering::Relaxed);
@@ -129,7 +144,7 @@ pub fn run_tests(config: Config) {
                         eprintln!("`{pattern}` {} in stderr output", "not found".red());
                         eprintln!(
                             "expected because of pattern here: {}:{definition_line}",
-                            path.display()
+                            path.display().to_string().bold()
                         );
                         dump_stderr = Some(stderr.clone())
                     }
@@ -257,6 +272,9 @@ fn check_annotations(
     comments: &Comments,
 ) {
     let unnormalized_stderr = std::str::from_utf8(unnormalized_stderr).unwrap();
+    // erase annotations from the stderr so they don't match themselves
+    let annotations = Regex::new(r"\s*//~.*").unwrap();
+    let unnormalized_stderr = annotations.replace(unnormalized_stderr, "");
     let mut found_annotation = false;
     if let Some((ref error_pattern, definition_line)) = comments.error_pattern {
         if !unnormalized_stderr.contains(error_pattern) {

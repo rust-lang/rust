@@ -16,6 +16,6 @@ fn main() {
         // Overwrite the data part of `ptr` so it points to `buf`.
         unsafe { (&mut ptr as *mut _ as *mut *const u8).write(&buf as *const _ as *const u8); }
         // Re-borrow that. This should be UB.
-        let _ptr = &*ptr; //~ERROR alignment ALIGN is required
+        let _ptr = &*ptr; //~ERROR alignment 256 is required
     }
 }

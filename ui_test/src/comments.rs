@@ -2,11 +2,14 @@ use std::path::Path;
 
 use regex::Regex;
 
+#[cfg(test)]
+mod tests;
+
 /// This crate supports various magic comments that get parsed as file-specific
 /// configuration values. This struct parses them all in one go and then they
 /// get processed by their respective use sites.
-#[derive(Default)]
-pub struct Comments {
+#[derive(Default, Debug)]
+pub(crate) struct Comments {
     /// List of revision names to execute. Can only be speicified once
     pub revisions: Option<Vec<String>>,
     /// Don't run this test if any of these filters apply
@@ -26,16 +29,23 @@ pub struct Comments {
     pub error_matches: Vec<ErrorMatch>,
 }
 
-pub struct ErrorMatch {
+#[derive(Debug)]
+pub(crate) struct ErrorMatch {
     pub matched: String,
     pub revision: Option<String>,
     pub definition_line: usize,
 }
 
 impl Comments {
-    pub fn parse(path: &Path) -> Self {
-        let mut this = Self::default();
+    pub(crate) fn parse_file(path: &Path) -> Self {
         let content = std::fs::read_to_string(path).unwrap();
+        Self::parse(path, &content)
+    }
+
+    /// Parse comments in `content`.
+    /// `path` is only used to emit diagnostics if parsing fails.
+    pub(crate) fn parse(path: &Path, content: &str) -> Self {
+        let mut this = Self::default();
         let error_pattern_regex =
             Regex::new(r"//(\[(?P<revision>[^\]]+)\])?~[|^]*\s*(ERROR|HELP|WARN)?:?(?P<text>.*)")
                 .unwrap();
