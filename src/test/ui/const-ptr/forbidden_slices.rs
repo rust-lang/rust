@@ -1,4 +1,5 @@
 // stderr-per-bitwidth
+// normalize-stderr-test "alloc[0-9]+" -> "ALLOC_ID"
 // error-pattern: could not evaluate static initializer
 #![feature(
     const_slice_from_raw_parts,
