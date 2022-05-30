@@ -1,3 +1,4 @@
+// compile-flags: -Zmiri-disable-validation
 #![feature(generators, generator_trait)]
 
 use std::{

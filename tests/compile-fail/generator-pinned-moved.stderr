@@ -8,12 +8,12 @@ LL |         *num += 1;
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
            
    = note: inside closure at $DIR/generator-pinned-moved.rs:LL:CC
-note: inside `<GeneratorIteratorAdapter<[static generator@$DIR/generator-pinned-moved.rs:LL:CC: 15:6]> as std::iter::Iterator>::next` at $DIR/generator-pinned-moved.rs:LL:CC
+note: inside `<GeneratorIteratorAdapter<[static generator@$DIR/generator-pinned-moved.rs:LL:CC: 16:6]> as std::iter::Iterator>::next` at $DIR/generator-pinned-moved.rs:LL:CC
   --> $DIR/generator-pinned-moved.rs:LL:CC
    |
 LL |         match me.resume(()) {
    |               ^^^^^^^^^^^^^
-   = note: inside `<std::boxed::Box<GeneratorIteratorAdapter<[static generator@$DIR/generator-pinned-moved.rs:LL:CC: 15:6]>> as std::iter::Iterator>::next` at rustc_src/src/boxed.rs:LL:CC
+   = note: inside `<std::boxed::Box<GeneratorIteratorAdapter<[static generator@$DIR/generator-pinned-moved.rs:LL:CC: 16:6]>> as std::iter::Iterator>::next` at rustc_src/src/boxed.rs:LL:CC
 note: inside `main` at $DIR/generator-pinned-moved.rs:LL:CC
   --> $DIR/generator-pinned-moved.rs:LL:CC
    |
