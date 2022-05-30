@@ -81,7 +81,8 @@ pub use crate::{
     highlight_related::{HighlightRelatedConfig, HighlightedRange},
     hover::{HoverAction, HoverConfig, HoverDocFormat, HoverGotoTypeData, HoverResult},
     inlay_hints::{
-        InlayHint, InlayHintsConfig, InlayKind, InlayTooltip, LifetimeElisionHints, ReborrowHints,
+        ClosureReturnTypeHints, InlayHint, InlayHintsConfig, InlayKind, InlayTooltip,
+        LifetimeElisionHints, ReborrowHints,
     },
     join_lines::JoinLinesConfig,
     markup::Markup,

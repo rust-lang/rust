@@ -811,9 +811,19 @@
                     "minimum": 0
                 },
                 "rust-analyzer.inlayHints.closureReturnTypeHints.enable": {
-                    "markdownDescription": "Whether to show inlay type hints for return types of closures with blocks.",
-                    "default": false,
-                    "type": "boolean"
+                    "markdownDescription": "Whether to show inlay type hints for return types of closures.",
+                    "default": "never",
+                    "type": "string",
+                    "enum": [
+                        "always",
+                        "never",
+                        "with_block"
+                    ],
+                    "enumDescriptions": [
+                        "Always show type hints for return types of closures.",
+                        "Never show type hints for return types of closures.",
+                        "Only show type hints for return types of closures with blocks."
+                    ]
                 },
                 "rust-analyzer.inlayHints.lifetimeElisionHints.enable": {
                     "markdownDescription": "Whether to show inlay type hints for elided lifetimes in function signatures.",

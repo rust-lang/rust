@@ -264,8 +264,8 @@ config_data! {
         /// Minimum number of lines required before the `}` until the hint is shown (set to 0 or 1
         /// to always show them).
         inlayHints_closingBraceHints_minLines: usize               = "25",
-        /// Whether to show inlay type hints for return types of closures with blocks.
-        inlayHints_closureReturnTypeHints_enable: bool             = "false",
+        /// Whether to show inlay type hints for return types of closures.
+        inlayHints_closureReturnTypeHints_enable: ClosureReturnTypeHintsDef  = "\"never\"",
         /// Whether to show inlay type hints for elided lifetimes in function signatures.
         inlayHints_lifetimeElisionHints_enable: LifetimeElisionDef = "\"never\"",
         /// Whether to prefer using parameter names as the name for elided lifetime hints if possible.
@@ -1014,7 +1014,11 @@ impl Config {
             type_hints: self.data.inlayHints_typeHints_enable,
             parameter_hints: self.data.inlayHints_parameterHints_enable,
             chaining_hints: self.data.inlayHints_chainingHints_enable,
-            closure_return_type_hints: self.data.inlayHints_closureReturnTypeHints_enable,
+            closure_return_type_hints: match self.data.inlayHints_closureReturnTypeHints_enable {
+                ClosureReturnTypeHintsDef::Always => ide::ClosureReturnTypeHints::Always,
+                ClosureReturnTypeHintsDef::Never => ide::ClosureReturnTypeHints::Never,
+                ClosureReturnTypeHintsDef::WithBlock => ide::ClosureReturnTypeHints::WithBlock,
+            },
             lifetime_elision_hints: match self.data.inlayHints_lifetimeElisionHints_enable {
                 LifetimeElisionDef::Always => ide::LifetimeElisionHints::Always,
                 LifetimeElisionDef::Never => ide::LifetimeElisionHints::Never,
@@ -1342,6 +1346,7 @@ mod de_unit_v {
     named_unit_variant!(all);
     named_unit_variant!(skip_trivial);
     named_unit_variant!(mutable);
+    named_unit_variant!(with_block);
 }
 
 #[derive(Deserialize, Debug, Clone, Copy)]
@@ -1452,6 +1457,17 @@ enum LifetimeElisionDef {
     Never,
     #[serde(deserialize_with = "de_unit_v::skip_trivial")]
     SkipTrivial,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[serde(untagged)]
+enum ClosureReturnTypeHintsDef {
+    #[serde(deserialize_with = "true_or_always")]
+    Always,
+    #[serde(deserialize_with = "false_or_never")]
+    Never,
+    #[serde(deserialize_with = "de_unit_v::with_block")]
+    WithBlock,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -1738,6 +1754,19 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
                 "Always show lifetime elision hints.",
                 "Never show lifetime elision hints.",
                 "Only show lifetime elision hints if a return type is involved."
+            ]
+        },
+        "ClosureReturnTypeHintsDef" => set! {
+            "type": "string",
+            "enum": [
+                "always",
+                "never",
+                "with_block"
+            ],
+            "enumDescriptions": [
+                "Always show type hints for return types of closures.",
+                "Never show type hints for return types of closures.",
+                "Only show type hints for return types of closures with blocks."
             ]
         },
         "ReborrowHintsDef" => set! {
