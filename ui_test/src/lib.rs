@@ -61,6 +61,7 @@ pub fn run_tests(config: Config) {
     let failures = Mutex::new(vec![]);
     let succeeded = AtomicUsize::default();
     let ignored = AtomicUsize::default();
+    let filtered = AtomicUsize::default();
 
     crossbeam::scope(|s| {
         for _ in 0..std::thread::available_parallelism().unwrap().get() {
@@ -80,12 +81,7 @@ pub fn run_tests(config: Config) {
                     if !config.path_filter.is_empty() {
                         let path_display = path.display().to_string();
                         if !config.path_filter.iter().any(|filter| path_display.contains(filter)) {
-                            ignored.fetch_add(1, Ordering::Relaxed);
-                            eprintln!(
-                                "{} .. {}",
-                                path_display,
-                                "ignored (command line filter)".yellow()
-                            );
+                            filtered.fetch_add(1, Ordering::Relaxed);
                             continue;
                         }
                     }
@@ -93,7 +89,7 @@ pub fn run_tests(config: Config) {
                     // Ignore file if only/ignore rules do (not) apply
                     if ignore_file(&comments, &target) {
                         ignored.fetch_add(1, Ordering::Relaxed);
-                        eprintln!("{} .. {}", path.display(), "ignored".yellow());
+                        eprintln!("{} ... {}", path.display(), "ignored".yellow());
                         continue;
                     }
                     // Run the test for all revisions
@@ -126,6 +122,7 @@ pub fn run_tests(config: Config) {
     let failures = failures.into_inner().unwrap();
     let succeeded = succeeded.load(Ordering::Relaxed);
     let ignored = ignored.load(Ordering::Relaxed);
+    let filtered = filtered.load(Ordering::Relaxed);
     if !failures.is_empty() {
         for (path, miri, revision, errors) in &failures {
             eprintln!();
@@ -169,19 +166,22 @@ pub fn run_tests(config: Config) {
             }
         }
         eprintln!(
-            "{} tests failed, {} tests passed, {} ignored",
+            "test result: {}. {} tests failed, {} tests passed, {} ignored, {} filtered out",
+            "FAIL".red(),
             failures.len().to_string().red().bold(),
             succeeded.to_string().green(),
-            ignored.to_string().yellow()
+            ignored.to_string().yellow(),
+            filtered.to_string().yellow(),
         );
         std::process::exit(1);
     }
     eprintln!();
     eprintln!(
-        "test result: {}. {} tests passed, {} ignored",
+        "test result: {}. {} tests passed, {} ignored, {} filtered out",
         "ok".green(),
         succeeded.to_string().green(),
-        ignored.to_string().yellow()
+        ignored.to_string().yellow(),
+        filtered.to_string().yellow(),
     );
     eprintln!();
 }
