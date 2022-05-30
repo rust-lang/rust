@@ -2,7 +2,7 @@ error[E0061]: this function takes 0 arguments but 1 argument was supplied
   --> $DIR/method-call-err-msg.rs:13:7
    |
 LL |     x.zero(0)
-   |       ^^^^ - argument unexpected
+   |       ^^^^ - argument of type `{integer}` unexpected
    |
 note: associated function defined here
   --> $DIR/method-call-err-msg.rs:5:8

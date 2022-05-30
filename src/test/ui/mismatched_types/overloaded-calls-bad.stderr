@@ -32,7 +32,7 @@ error[E0057]: this function takes 1 argument but 2 arguments were supplied
   --> $DIR/overloaded-calls-bad.rs:31:15
    |
 LL |     let ans = s("burma", "shave");
-   |               ^ -------  ------- argument unexpected
+   |               ^ -------  ------- argument of type `&'static str` unexpected
    |                 |
    |                 expected `isize`, found `&str`
    |
