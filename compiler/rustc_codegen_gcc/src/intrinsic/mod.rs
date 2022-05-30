@@ -91,7 +91,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
         let name_str = name.as_str();
 
         let llret_ty = self.layout_of(ret_ty).gcc_type(self, true);
-        let result = PlaceRef::new_sized(llresult, fn_abi.ret.layout);
+        let result = PlaceRef::new_sized(self, llresult, fn_abi.ret.layout);
 
         let simple = get_simple_intrinsic(self, name);
         let llval =

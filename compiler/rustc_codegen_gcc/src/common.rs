@@ -239,7 +239,7 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                 let value = self.context.new_array_access(None, array, self.const_usize(offset.bytes())).get_address(None);
                 self.const_bitcast(value, ty)
             };
-        PlaceRef::new_sized(value, layout)
+        PlaceRef::new_sized(self, value, layout)
     }
 
     fn const_ptrcast(&self, val: RValue<'gcc>, ty: Type<'gcc>) -> RValue<'gcc> {

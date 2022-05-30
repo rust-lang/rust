@@ -747,7 +747,8 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
 
         self.switch_to_block(body_bb);
         let align = dest.align.restrict_for_offset(dest.layout.field(self.cx(), 0).size);
-        cg_elem.val.store(&mut self, PlaceRef::new_sized_aligned(current_val, cg_elem.layout, align));
+        let dest = PlaceRef::new_sized_aligned(self.cx(), current_val, cg_elem.layout, align);
+        cg_elem.val.store(&mut self, dest);
 
         let next = self.inbounds_gep(self.backend_type(cg_elem.layout), current.to_rvalue(), &[self.const_usize(1)]);
         self.llbb().add_assignment(None, current, next);
