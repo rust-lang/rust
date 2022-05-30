@@ -19,7 +19,6 @@ use log::debug;
 
 use rustc_data_structures::sync::Lrc;
 use rustc_driver::Compilation;
-use rustc_errors::emitter::{ColorConfig, HumanReadableErrorType};
 use rustc_hir::{self as hir, def_id::LOCAL_CRATE, Node};
 use rustc_interface::interface::Config;
 use rustc_middle::{
@@ -28,7 +27,7 @@ use rustc_middle::{
     },
     ty::{query::ExternProviders, TyCtxt},
 };
-use rustc_session::{config::ErrorOutputType, search_paths::PathKind, CtfeBacktrace};
+use rustc_session::{search_paths::PathKind, CtfeBacktrace};
 
 use miri::{BacktraceStyle, ProvenanceMode};
 
@@ -64,13 +63,7 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
             let (entry_def_id, entry_type) = if let Some(entry_def) = tcx.entry_fn(()) {
                 entry_def
             } else {
-                let output_ty = ErrorOutputType::HumanReadable(HumanReadableErrorType::Default(
-                    ColorConfig::Auto,
-                ));
-                rustc_session::early_error(
-                    output_ty,
-                    "miri can only run programs that have a main function",
-                );
+                tcx.sess.fatal("miri can only run programs that have a main function");
             };
             let mut config = self.miri_config.clone();
 

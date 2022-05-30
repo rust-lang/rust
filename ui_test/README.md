@@ -11,9 +11,9 @@ Note that the space after `//`, when it is present, is *not* optional -- it must
 * `// stderr-per-bitwidth` produces one stderr file per bitwidth, as they may differ significantly sometimes
 * `// error-pattern: XXX` make sure the stderr output contains `XXX`
 * `//~ ERROR: XXX` make sure the stderr output contains `XXX` for an error in the line where this comment is written
-    * NOTE: it is not checked at present that it is actually in the line where the error occurred, or that it is truly an ERROR/WARNING/HELP/NOTE, but you should treat it as such until that becomes true.
-    * Also supports `HELP` or `WARN` for different kind of message
-    * if the all caps note is left out, any message is matched
+    * Also supports `HELP`, `WARN` or `NOTE` for different kind of message
+        * if one of those levels is specified explicitly, *all* diagnostics of this level or higher need an annotation. If you want to avoid this, just leave out the all caps level note entirely.
+    * If the all caps note is left out, a message of any level is matched. Leaving it out is not allowed for `ERROR` levels.
     * This checks the output *before* normalization, so you can check things that get normalized away, but need to
       be careful not to accidentally have a pattern that differs between platforms.
 * `// revisions: XXX YYY` runs the test once for each space separated name in the list
