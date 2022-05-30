@@ -1,7 +1,7 @@
 //! Definitions of integer that is known not to equal zero.
 
 use crate::fmt;
-use crate::ops::{BitOr, BitOrAssign, Div, Rem};
+use crate::ops::{BitOr, BitOrAssign, Div, Neg, Rem};
 use crate::str::FromStr;
 
 use super::from_str_radix;
@@ -513,6 +513,41 @@ nonzero_unsigned_operations! {
 macro_rules! nonzero_signed_operations {
     ( $( $Ty: ident($Int: ty) -> $Uty: ident($Uint: ty); )+ ) => {
         $(
+            #[stable(feature = "nonzero_checked_ops", since = "1.63.0")]
+            impl Neg for $Ty {
+                type Output = Self;
+                /// Negate the non-zero value.
+                /// The overflow behaviour of
+                #[doc = concat!("[`", stringify!($Ty), "::neg`]")]
+                /// is the same as
+                #[doc = concat!("[`", stringify!($Int), "::neg`].")]
+                /// In particular, overflowing to a zero value
+                #[doc = concat!("with [`", stringify!($Ty), "::neg`]")]
+                /// remains impossible.
+                ///
+                ///
+                /// # Example
+                ///
+                /// ```
+                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
+                ///
+                /// # fn main() { test().unwrap(); }
+                /// # fn test() -> Option<()> {
+                #[doc = concat!("let pos = ", stringify!($Ty), "::new(1)?;")]
+                #[doc = concat!("let neg = ", stringify!($Ty), "::new(-1)?;")]
+                ///
+                /// assert_eq!(-pos, neg);
+                /// assert_eq!(-neg, pos);
+                /// # Some(())
+                /// # }
+                /// ```
+                #[inline]
+                fn neg(self) -> Self {
+                    // SAFETY: input is nonzero and result cannot overflow to zero.
+                    unsafe { $Ty::new_unchecked(self.get().neg()) }
+                }
+            }
+
             impl $Ty {
                 /// Computes the absolute value of self.
                 #[doc = concat!("See [`", stringify!($Int), "::abs`]")]
