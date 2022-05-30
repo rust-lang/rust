@@ -88,7 +88,7 @@ pub(crate) fn completion_list_no_kw(ra_fixture: &str) -> String {
 
 pub(crate) fn completion_list_with_trigger_character(
     ra_fixture: &str,
-    trigger_character: Option<&str>,
+    trigger_character: Option<char>,
 ) -> String {
     completion_list_with_config(TEST_CONFIG, ra_fixture, true, trigger_character)
 }
@@ -97,7 +97,7 @@ fn completion_list_with_config(
     config: CompletionConfig,
     ra_fixture: &str,
     include_keywords: bool,
-    trigger_character: Option<&str>,
+    trigger_character: Option<char>,
 ) -> String {
     // filter out all but one builtintype completion for smaller test outputs
     let items = get_all_items(config, ra_fixture, trigger_character);
@@ -225,7 +225,7 @@ pub(crate) fn check_pattern_is_applicable(code: &str, check: impl FnOnce(SyntaxE
 pub(crate) fn get_all_items(
     config: CompletionConfig,
     code: &str,
-    trigger_character: Option<&str>,
+    trigger_character: Option<char>,
 ) -> Vec<CompletionItem> {
     let (db, position) = position(code);
     let res = crate::completions(&db, &config, position, trigger_character)

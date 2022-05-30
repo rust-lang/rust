@@ -548,7 +548,7 @@ impl Analysis {
         &self,
         config: &CompletionConfig,
         position: FilePosition,
-        trigger_character: Option<&str>,
+        trigger_character: Option<char>,
     ) -> Cancellable<Option<Vec<CompletionItem>>> {
         self.with_db(|db| {
             ide_completion::completions(db, config, position, trigger_character).map(Into::into)

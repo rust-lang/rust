@@ -7,8 +7,8 @@ fn check(ra_fixture: &str, expect: Expect) {
     expect.assert_eq(&actual);
 }
 
-fn check_with_trigger_character(ra_fixture: &str, trigger_character: Option<&str>, expect: Expect) {
-    let actual = completion_list_with_trigger_character(ra_fixture, trigger_character);
+fn check_with_trigger_character(ra_fixture: &str, trigger_character: char, expect: Expect) {
+    let actual = completion_list_with_trigger_character(ra_fixture, Some(trigger_character));
     expect.assert_eq(&actual)
 }
 
@@ -124,7 +124,7 @@ fn trigger_by_l_paren() {
         r#"
 fn foo($0)
 "#,
-        Some("("),
+        '(',
         expect![[]],
     )
 }
