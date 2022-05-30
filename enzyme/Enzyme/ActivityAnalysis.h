@@ -120,11 +120,11 @@ public:
   /// Return whether this instruction is known not to propagate adjoints
   /// Note that instructions could return an active pointer, but
   /// do not propagate adjoints themselves
-  bool isConstantInstruction(TypeResults &TR, llvm::Instruction *inst);
+  bool isConstantInstruction(TypeResults const &TR, llvm::Instruction *inst);
 
   /// Return whether this values is known not to contain derivative
   // information, either directly or as a pointer to
-  bool isConstantValue(TypeResults &TR, llvm::Value *val);
+  bool isConstantValue(TypeResults const &TR, llvm::Value *val);
 
 private:
   llvm::DenseMap<llvm::Instruction *, llvm::SmallPtrSet<llvm::Value *, 4>>
@@ -135,8 +135,8 @@ private:
   llvm::DenseMap<llvm::Value *, llvm::SmallPtrSet<llvm::Instruction *, 4>>
       ReEvaluateInstIfInactiveValue;
 
-  void InsertConstantInstruction(TypeResults &TR, llvm::Instruction *I);
-  void InsertConstantValue(TypeResults &TR, llvm::Value *V);
+  void InsertConstantInstruction(TypeResults const &TR, llvm::Instruction *I);
+  void InsertConstantValue(TypeResults const &TR, llvm::Value *V);
 
   /// Create a new analyzer starting from an existing Analyzer
   /// This is used to perform inductive assumptions
@@ -154,7 +154,8 @@ private:
   }
 
   /// Import known constants from an existing analyzer
-  void insertConstantsFrom(TypeResults &TR, ActivityAnalyzer &Hypothesis) {
+  void insertConstantsFrom(TypeResults const &TR,
+                           ActivityAnalyzer &Hypothesis) {
     for (auto I : Hypothesis.ConstantInstructions) {
       InsertConstantInstruction(TR, I);
     }
@@ -164,7 +165,7 @@ private:
   }
 
   /// Import known data from an existing analyzer
-  void insertAllFrom(TypeResults &TR, ActivityAnalyzer &Hypothesis,
+  void insertAllFrom(TypeResults const &TR, ActivityAnalyzer &Hypothesis,
                      llvm::Value *Orig) {
     insertConstantsFrom(TR, Hypothesis);
     for (auto I : Hypothesis.ActiveInstructions) {
@@ -185,7 +186,7 @@ private:
   bool isFunctionArgumentConstant(llvm::CallInst *CI, llvm::Value *val);
 
   /// Is the instruction guaranteed to be inactive because of its operands
-  bool isInstructionInactiveFromOrigin(TypeResults &TR, llvm::Value *val);
+  bool isInstructionInactiveFromOrigin(TypeResults const &TR, llvm::Value *val);
 
 public:
   enum class UseActivity {
@@ -199,12 +200,12 @@ public:
     OnlyStores = 2
   };
   /// Is the value free of any active uses
-  bool isValueInactiveFromUsers(TypeResults &TR, llvm::Value *val,
+  bool isValueInactiveFromUsers(TypeResults const &TR, llvm::Value *val,
                                 UseActivity UA,
                                 llvm::Instruction **FoundInst = nullptr);
 
   /// Is the value potentially actively returned or stored
-  bool isValueActivelyStoredOrReturned(TypeResults &TR, llvm::Value *val,
+  bool isValueActivelyStoredOrReturned(TypeResults const &TR, llvm::Value *val,
                                        bool outside = false);
 
 private:

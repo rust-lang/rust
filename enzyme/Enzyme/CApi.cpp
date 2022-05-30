@@ -228,7 +228,7 @@ void *EnzymeAnalyzeTypes(EnzymeTypeAnalysisRef TAR, CFnTypeInfo CTI,
 }
 
 void *EnzymeGradientUtilsTypeAnalyzer(GradientUtils *G) {
-  return (void *)&G->my_TR->analyzer;
+  return (void *)&G->TR.analyzer;
 }
 
 void EnzymeRegisterAllocationHandler(char *Name, CustomShadowAlloc AHandle,
@@ -371,15 +371,13 @@ LLVMBasicBlockRef EnzymeGradientUtilsAllocationBlock(GradientUtils *gutils) {
 CTypeTreeRef EnzymeGradientUtilsAllocAndGetTypeTree(GradientUtils *gutils,
                                                     LLVMValueRef val) {
   auto v = unwrap(val);
-  assert(gutils->my_TR);
-  TypeTree TT = gutils->my_TR->query(v);
+  TypeTree TT = gutils->TR.query(v);
   TypeTree *pTT = new TypeTree(TT);
   return (CTypeTreeRef)pTT;
 }
 
 void EnzymeGradientUtilsDumpTypeResults(GradientUtils *gutils) {
-  assert(gutils->my_TR);
-  gutils->my_TR->dump();
+  gutils->TR.dump();
 }
 
 void EnzymeGradientUtilsSubTransferHelper(

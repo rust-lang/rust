@@ -595,7 +595,7 @@ public:
   // (for use) as a structure which carries data.
   ValueMap<Value *, ShadowRematerializer> backwardsOnlyShadows;
 
-  void computeForwardingProperties(Instruction *V, TypeResults &TR) {
+  void computeForwardingProperties(Instruction *V) {
     if (!EnzymeRematerialize)
       return;
     SmallVector<LoadInst *, 1> loads;
@@ -911,15 +911,14 @@ public:
   }
 
   void computeGuaranteedFrees(
-      const llvm::SmallPtrSetImpl<BasicBlock *> &oldUnreachable,
-      TypeResults &TR) {
+      const llvm::SmallPtrSetImpl<BasicBlock *> &oldUnreachable) {
     SmallPtrSet<CallInst *, 2> allocsToPromote;
     for (auto &BB : *oldFunc) {
       if (oldUnreachable.count(&BB))
         continue;
       for (auto &I : BB) {
         if (auto AI = dyn_cast<AllocaInst>(&I))
-          computeForwardingProperties(AI, TR);
+          computeForwardingProperties(AI);
 
         auto CI = dyn_cast<CallInst>(&I);
         if (!CI)
@@ -978,7 +977,7 @@ public:
       // the derivative of store needs to redo the store,
       // isValueNeededInReverse needs to know to preserve the
       // store operands in this case, etc
-      computeForwardingProperties(V, TR);
+      computeForwardingProperties(V);
     }
   }
 
@@ -1161,6 +1160,7 @@ public:
 public:
   AAResults &OrigAA;
   TypeAnalysis &TA;
+  TypeResults TR;
   bool omp;
 
 private:
@@ -1171,7 +1171,7 @@ public:
 
 public:
   GradientUtils(EnzymeLogic &Logic, Function *newFunc_, Function *oldFunc_,
-                TargetLibraryInfo &TLI_, TypeAnalysis &TA_,
+                TargetLibraryInfo &TLI_, TypeAnalysis &TA_, TypeResults TR_,
                 ValueToValueMapTy &invertedPointers_,
                 const SmallPtrSetImpl<Value *> &constantvalues_,
                 const SmallPtrSetImpl<Value *> &activevals_,
@@ -1191,8 +1191,8 @@ public:
                                  notForAnalysis, TLI_, constantvalues_,
                                  activevals_, ReturnActivity)),
         tid(nullptr), numThreads(nullptr),
-        OrigAA(Logic.PPC.getAAResultsFromFunction(oldFunc_)), TA(TA_), omp(omp),
-        width(width) {
+        OrigAA(Logic.PPC.getAAResultsFromFunction(oldFunc_)), TA(TA_), TR(TR_),
+        omp(omp), width(width) {
     if (oldFunc_->getSubprogram()) {
       assert(originalToNewFn_.hasMD());
     }
@@ -1255,7 +1255,8 @@ public:
 public:
   static GradientUtils *
   CreateFromClone(EnzymeLogic &Logic, unsigned width, Function *todiff,
-                  TargetLibraryInfo &TLI, TypeAnalysis &TA, DIFFE_TYPE retType,
+                  TargetLibraryInfo &TLI, TypeAnalysis &TA,
+                  FnTypeInfo &oldTypeInfo, DIFFE_TYPE retType,
                   const std::vector<DIFFE_TYPE> &constant_args, bool returnUsed,
                   bool shadowReturnUsed,
                   std::map<AugmentedStruct, int> &returnMapping, bool omp);
@@ -1345,8 +1346,7 @@ public:
   void forceContexts();
 
   void
-  computeMinCache(TypeResults &TR,
-                  const SmallPtrSetImpl<BasicBlock *> &guaranteedUnreachable);
+  computeMinCache(const SmallPtrSetImpl<BasicBlock *> &guaranteedUnreachable);
 
   bool isOriginalBlock(const BasicBlock &BB) const {
     for (auto A : originalBlocks) {
@@ -1403,9 +1403,7 @@ public:
     }
   }
 
-  TypeResults *my_TR;
-  void forceActiveDetection(TypeResults &TR) {
-    my_TR = &TR;
+  void forceActiveDetection() {
     for (auto &Arg : oldFunc->args()) {
       ATA->isConstantValue(TR, &Arg);
     }
@@ -1425,12 +1423,12 @@ public:
   bool isConstantValue(Value *val) const {
     if (auto inst = dyn_cast<Instruction>(val)) {
       assert(inst->getParent()->getParent() == oldFunc);
-      return ATA->isConstantValue(*my_TR, val);
+      return ATA->isConstantValue(TR, val);
     }
 
     if (auto arg = dyn_cast<Argument>(val)) {
       assert(arg->getParent() == oldFunc);
-      return ATA->isConstantValue(*my_TR, val);
+      return ATA->isConstantValue(TR, val);
     }
 
     //! Functions must be false so we can replace function with augmentation,
@@ -1438,7 +1436,7 @@ public:
     if (isa<Function>(val) || isa<InlineAsm>(val) || isa<Constant>(val) ||
         isa<UndefValue>(val) || isa<MetadataAsValue>(val)) {
       // llvm::errs() << "calling icv on: " << *val << "\n";
-      return ATA->isConstantValue(*my_TR, val);
+      return ATA->isConstantValue(TR, val);
     }
 
     if (auto gv = dyn_cast<GlobalVariable>(val)) {
@@ -1472,7 +1470,7 @@ public:
 
   bool isConstantInstruction(const Instruction *inst) const {
     assert(inst->getParent()->getParent() == oldFunc);
-    return ATA->isConstantInstruction(*my_TR, const_cast<Instruction *>(inst));
+    return ATA->isConstantInstruction(TR, const_cast<Instruction *>(inst));
   }
 
   bool getContext(llvm::BasicBlock *BB, LoopContext &lc) {
@@ -1481,7 +1479,6 @@ public:
   }
 
   void forceAugmentedReturns(
-      TypeResults &TR,
       const SmallPtrSetImpl<BasicBlock *> &guaranteedUnreachable) {
     assert(TR.getFunction() == oldFunc);
 
@@ -1911,13 +1908,13 @@ public:
 
 class DiffeGradientUtils : public GradientUtils {
   DiffeGradientUtils(EnzymeLogic &Logic, Function *newFunc_, Function *oldFunc_,
-                     TargetLibraryInfo &TLI, TypeAnalysis &TA,
+                     TargetLibraryInfo &TLI, TypeAnalysis &TA, TypeResults TR,
                      ValueToValueMapTy &invertedPointers_,
                      const SmallPtrSetImpl<Value *> &constantvalues_,
                      const SmallPtrSetImpl<Value *> &returnvals_,
                      DIFFE_TYPE ActiveReturn, ValueToValueMapTy &origToNew_,
                      DerivativeMode mode, unsigned width, bool omp)
-      : GradientUtils(Logic, newFunc_, oldFunc_, TLI, TA, invertedPointers_,
+      : GradientUtils(Logic, newFunc_, oldFunc_, TLI, TA, TR, invertedPointers_,
                       constantvalues_, returnvals_, ActiveReturn, origToNew_,
                       mode, width, omp) {
     assert(reverseBlocks.size() == 0);
@@ -1943,7 +1940,8 @@ public:
   static DiffeGradientUtils *
   CreateFromClone(EnzymeLogic &Logic, DerivativeMode mode, unsigned width,
                   Function *todiff, TargetLibraryInfo &TLI, TypeAnalysis &TA,
-                  DIFFE_TYPE retType, bool diffeReturnArg,
+                  FnTypeInfo &oldTypeInfo, DIFFE_TYPE retType,
+                  bool diffeReturnArg,
                   const std::vector<DIFFE_TYPE> &constant_args,
                   ReturnType returnValue, Type *additionalArg, bool omp);
 

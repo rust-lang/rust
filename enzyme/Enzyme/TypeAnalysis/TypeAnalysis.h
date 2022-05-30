@@ -153,32 +153,32 @@ public:
 public:
   TypeResults(TypeAnalyzer &analyzer);
   ConcreteType intType(size_t num, llvm::Value *val, bool errIfNotFound = true,
-                       bool pointerIntSame = false);
-  llvm::Type *addingType(size_t num, llvm::Value *val);
+                       bool pointerIntSame = false) const;
+  llvm::Type *addingType(size_t num, llvm::Value *val) const;
 
   /// Returns whether in the first num bytes there is pointer, int, float, or
   /// none If pointerIntSame is set to true, then consider either as the same
   /// (and thus mergable)
   ConcreteType firstPointer(size_t num, llvm::Value *val,
                             bool errIfNotFound = true,
-                            bool pointerIntSame = false);
+                            bool pointerIntSame = false) const;
 
   /// The TypeTree of a particular Value
-  TypeTree query(llvm::Value *val);
+  TypeTree query(llvm::Value *val) const;
 
   /// The TypeInfo calling convention
-  FnTypeInfo getAnalyzedTypeInfo();
+  FnTypeInfo getAnalyzedTypeInfo() const;
 
   /// The Type of the return
-  TypeTree getReturnAnalysis();
+  TypeTree getReturnAnalysis() const;
 
   /// Prints all known information
-  void dump();
+  void dump() const;
 
   /// The set of values val will take on during this program
   std::set<int64_t> knownIntegralValues(llvm::Value *val) const;
 
-  FnTypeInfo getCallInfo(llvm::CallInst &CI, llvm::Function &fn);
+  FnTypeInfo getCallInfo(llvm::CallInst &CI, llvm::Function &fn) const;
 
   llvm::Function *getFunction() const;
 };

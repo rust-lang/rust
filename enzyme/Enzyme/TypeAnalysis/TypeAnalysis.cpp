@@ -4838,7 +4838,7 @@ TypeResults TypeAnalysis::analyzeFunction(const FnTypeInfo &fn) {
 
 TypeResults::TypeResults(TypeAnalyzer &analyzer) : analyzer(analyzer) {}
 
-FnTypeInfo TypeResults::getAnalyzedTypeInfo() {
+FnTypeInfo TypeResults::getAnalyzedTypeInfo() const {
   FnTypeInfo res(analyzer.fntypeinfo.Function);
   for (auto &arg : analyzer.fntypeinfo.Function->args()) {
     res.Arguments.insert(std::pair<Argument *, TypeTree>(&arg, query(&arg)));
@@ -4848,11 +4848,11 @@ FnTypeInfo TypeResults::getAnalyzedTypeInfo() {
   return res;
 }
 
-FnTypeInfo TypeResults::getCallInfo(CallInst &CI, Function &fn) {
+FnTypeInfo TypeResults::getCallInfo(CallInst &CI, Function &fn) const {
   return analyzer.getCallInfo(CI, fn);
 }
 
-TypeTree TypeResults::query(Value *val) {
+TypeTree TypeResults::query(Value *val) const {
   if (auto inst = dyn_cast<Instruction>(val)) {
     assert(inst->getParent()->getParent() == analyzer.fntypeinfo.Function);
   }
@@ -4862,10 +4862,10 @@ TypeTree TypeResults::query(Value *val) {
   return analyzer.getAnalysis(val);
 }
 
-void TypeResults::dump() { analyzer.dump(); }
+void TypeResults::dump() const { analyzer.dump(); }
 
 ConcreteType TypeResults::intType(size_t num, Value *val, bool errIfNotFound,
-                                  bool pointerIntSame) {
+                                  bool pointerIntSame) const {
   assert(val);
   assert(val->getType());
   auto q = query(val);
@@ -4896,7 +4896,7 @@ ConcreteType TypeResults::intType(size_t num, Value *val, bool errIfNotFound,
   return dt;
 }
 
-Type *TypeResults::addingType(size_t num, Value *val) {
+Type *TypeResults::addingType(size_t num, Value *val) const {
   assert(val);
   assert(val->getType());
   auto q = query(val).PurgeAnything();
@@ -4917,7 +4917,7 @@ Type *TypeResults::addingType(size_t num, Value *val) {
 
 ConcreteType TypeResults::firstPointer(size_t num, Value *val,
                                        bool errIfNotFound,
-                                       bool pointerIntSame) {
+                                       bool pointerIntSame) const {
   assert(val);
   assert(val->getType());
   auto q = query(val).Data0();
@@ -5011,7 +5011,7 @@ Function *TypeResults::getFunction() const {
   return analyzer.fntypeinfo.Function;
 }
 
-TypeTree TypeResults::getReturnAnalysis() {
+TypeTree TypeResults::getReturnAnalysis() const {
   return analyzer.getReturnAnalysis();
 }
 

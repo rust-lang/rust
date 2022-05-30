@@ -306,15 +306,13 @@ extern llvm::cl::opt<bool> nonmarkedglobals_inactiveloads;
 };
 
 class GradientUtils;
-bool shouldAugmentCall(llvm::CallInst *op, const GradientUtils *gutils,
-                       TypeResults &TR);
+bool shouldAugmentCall(llvm::CallInst *op, const GradientUtils *gutils);
 
 bool legalCombinedForwardReverse(
     llvm::CallInst *origop,
     const std::map<llvm::ReturnInst *, llvm::StoreInst *> &replacedReturns,
     std::vector<llvm::Instruction *> &postCreate,
     std::vector<llvm::Instruction *> &userReplace, GradientUtils *gutils,
-    TypeResults &TR,
     const llvm::SmallPtrSetImpl<const llvm::Instruction *>
         &unnecessaryInstructions,
     const llvm::SmallPtrSetImpl<llvm::BasicBlock *> &oldUnreachable,

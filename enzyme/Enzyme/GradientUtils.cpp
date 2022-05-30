@@ -2296,7 +2296,7 @@ BasicBlock *GradientUtils::getReverseOrLatchMerge(BasicBlock *BB,
               Seen[UsageKey(pair.first, ValueType::Primal)] = false;
 
           if (is_value_needed_in_reverse<ValueType::Primal>(
-                  *my_TR, this, pair.first, mode, Seen, notForAnalysis)) {
+                  this, pair.first, mode, Seen, notForAnalysis)) {
             rematerialized = true;
           }
           if (rematerialized) {
@@ -2525,9 +2525,9 @@ BasicBlock *GradientUtils::getReverseOrLatchMerge(BasicBlock *BB,
                     FT = valType->getScalarType();
                   } else if (!valType->isPointerTy()) {
                     if (looseTypeAnalysis) {
-                      auto fp = my_TR->firstPointer(storeSize, orig_ptr,
-                                                    /*errifnotfound*/ false,
-                                                    /*pointerIntSame*/ true);
+                      auto fp = TR.firstPointer(storeSize, orig_ptr,
+                                                /*errifnotfound*/ false,
+                                                /*pointerIntSame*/ true);
                       if (fp.isKnown()) {
                         FT = fp.isFloat();
                       } else if (isa<ConstantInt>(orig_val) ||
@@ -2537,18 +2537,17 @@ BasicBlock *GradientUtils::getReverseOrLatchMerge(BasicBlock *BB,
                             << "\n";
                         FT = nullptr;
                       } else {
-                        my_TR->firstPointer(storeSize, orig_ptr,
-                                            /*errifnotfound*/ true,
-                                            /*pointerIntSame*/ true);
+                        TR.firstPointer(storeSize, orig_ptr,
+                                        /*errifnotfound*/ true,
+                                        /*pointerIntSame*/ true);
                         llvm::errs()
                             << "cannot deduce type of store " << I << "\n";
                         assert(0 && "cannot deduce");
                       }
                     } else {
-                      FT = my_TR
-                               ->firstPointer(storeSize, orig_ptr,
-                                              /*errifnotfound*/ true,
-                                              /*pointerIntSame*/ true)
+                      FT = TR.firstPointer(storeSize, orig_ptr,
+                                           /*errifnotfound*/ true,
+                                           /*pointerIntSame*/ true)
                                .isFloat();
                     }
                   }
@@ -3319,11 +3318,12 @@ bool GradientUtils::shouldRecompute(const Value *val,
 
 GradientUtils *GradientUtils::CreateFromClone(
     EnzymeLogic &Logic, unsigned width, Function *todiff,
-    TargetLibraryInfo &TLI, TypeAnalysis &TA, DIFFE_TYPE retType,
-    const std::vector<DIFFE_TYPE> &constant_args, bool returnUsed,
-    bool shadowReturnUsed, std::map<AugmentedStruct, int> &returnMapping,
-    bool omp) {
+    TargetLibraryInfo &TLI, TypeAnalysis &TA, FnTypeInfo &oldTypeInfo,
+    DIFFE_TYPE retType, const std::vector<DIFFE_TYPE> &constant_args,
+    bool returnUsed, bool shadowReturnUsed,
+    std::map<AugmentedStruct, int> &returnMapping, bool omp) {
   assert(!todiff->empty());
+  Function *oldFunc = todiff;
 
   // Since this is forward pass this should always return the tape (at index 0)
   returnMapping[AugmentedStruct::Tape] = 0;
@@ -3371,15 +3371,45 @@ GradientUtils *GradientUtils::CreateFromClone(
     prefix += std::to_string(width);
   prefix += "_";
   prefix += todiff->getName().str();
+
   auto newFunc = Logic.PPC.CloneFunctionWithReturns(
-      DerivativeMode::ReverseModePrimal, /* width */ width, todiff,
+      DerivativeMode::ReverseModePrimal, /* width */ width, oldFunc,
       invertedPointers, constant_args, constant_values, nonconstant_values,
       returnvals,
       /*returnValue*/ returnValue, retType, prefix, &originalToNew,
       /*diffeReturnArg*/ false, /*additionalArg*/ nullptr);
 
+  // Convert uncacheable args from the input function to the preprocessed
+  // function
+
+  FnTypeInfo typeInfo(oldFunc);
+  {
+    auto toarg = todiff->arg_begin();
+    auto olarg = oldFunc->arg_begin();
+    for (; toarg != todiff->arg_end(); ++toarg, ++olarg) {
+
+      {
+        auto fd = oldTypeInfo.Arguments.find(toarg);
+        assert(fd != oldTypeInfo.Arguments.end());
+        typeInfo.Arguments.insert(
+            std::pair<Argument *, TypeTree>(olarg, fd->second));
+      }
+
+      {
+        auto cfd = oldTypeInfo.KnownValues.find(toarg);
+        assert(cfd != oldTypeInfo.KnownValues.end());
+        typeInfo.KnownValues.insert(
+            std::pair<Argument *, std::set<int64_t>>(olarg, cfd->second));
+      }
+    }
+    typeInfo.Return = oldTypeInfo.Return;
+  }
+
+  TypeResults TR = TA.analyzeFunction(typeInfo);
+  assert(TR.getFunction() == oldFunc);
+
   auto res = new GradientUtils(
-      Logic, newFunc, todiff, TLI, TA, invertedPointers, constant_values,
+      Logic, newFunc, oldFunc, TLI, TA, TR, invertedPointers, constant_values,
       nonconstant_values, retType, originalToNew,
       DerivativeMode::ReverseModePrimal, /* width */ width, omp);
   return res;
@@ -3387,10 +3417,12 @@ GradientUtils *GradientUtils::CreateFromClone(
 
 DiffeGradientUtils *DiffeGradientUtils::CreateFromClone(
     EnzymeLogic &Logic, DerivativeMode mode, unsigned width, Function *todiff,
-    TargetLibraryInfo &TLI, TypeAnalysis &TA, DIFFE_TYPE retType,
-    bool diffeReturnArg, const std::vector<DIFFE_TYPE> &constant_args,
-    ReturnType returnValue, Type *additionalArg, bool omp) {
+    TargetLibraryInfo &TLI, TypeAnalysis &TA, FnTypeInfo &oldTypeInfo,
+    DIFFE_TYPE retType, bool diffeReturnArg,
+    const std::vector<DIFFE_TYPE> &constant_args, ReturnType returnValue,
+    Type *additionalArg, bool omp) {
   assert(!todiff->empty());
+  Function *oldFunc = todiff;
   assert(mode == DerivativeMode::ReverseModeGradient ||
          mode == DerivativeMode::ReverseModeCombined ||
          mode == DerivativeMode::ForwardMode ||
@@ -3423,13 +3455,44 @@ DiffeGradientUtils *DiffeGradientUtils::CreateFromClone(
     prefix += std::to_string(width);
 
   auto newFunc = Logic.PPC.CloneFunctionWithReturns(
-      mode, width, todiff, invertedPointers, constant_args, constant_values,
+      mode, width, oldFunc, invertedPointers, constant_args, constant_values,
       nonconstant_values, returnvals, returnValue, retType,
-      prefix + todiff->getName(), &originalToNew,
+      prefix + oldFunc->getName(), &originalToNew,
       /*diffeReturnArg*/ diffeReturnArg, additionalArg);
+
+  // Convert uncacheable args from the input function to the preprocessed
+  // function
+
+  FnTypeInfo typeInfo(oldFunc);
+  {
+    auto toarg = todiff->arg_begin();
+    auto olarg = oldFunc->arg_begin();
+    for (; toarg != todiff->arg_end(); ++toarg, ++olarg) {
+
+      {
+        auto fd = oldTypeInfo.Arguments.find(toarg);
+        assert(fd != oldTypeInfo.Arguments.end());
+        typeInfo.Arguments.insert(
+            std::pair<Argument *, TypeTree>(olarg, fd->second));
+      }
+
+      {
+        auto cfd = oldTypeInfo.KnownValues.find(toarg);
+        assert(cfd != oldTypeInfo.KnownValues.end());
+        typeInfo.KnownValues.insert(
+            std::pair<Argument *, std::set<int64_t>>(olarg, cfd->second));
+      }
+    }
+    typeInfo.Return = oldTypeInfo.Return;
+  }
+
+  TypeResults TR = TA.analyzeFunction(typeInfo);
+  assert(TR.getFunction() == oldFunc);
+
   auto res = new DiffeGradientUtils(
-      Logic, newFunc, todiff, TLI, TA, invertedPointers, constant_values,
+      Logic, newFunc, oldFunc, TLI, TA, TR, invertedPointers, constant_values,
       nonconstant_values, retType, originalToNew, mode, width, omp);
+
   return res;
 }
 
@@ -3814,8 +3877,7 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
     // Nulling the shadow for a constant is only necessary if any of the data
     // could contain a float (e.g. should not be applied to pointers).
     if (nullShadow) {
-      assert(my_TR);
-      auto CT = my_TR->query(oval)[{-1}];
+      auto CT = TR.query(oval)[{-1}];
       if (!CT.isKnown() || CT.isFloat()) {
         return Constant::getNullValue(getShadowType(oval->getType()));
       }
@@ -3889,8 +3951,7 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
       if ((mode == DerivativeMode::ReverseModeCombined ||
            mode == DerivativeMode::ForwardMode) &&
           arg->getType()->getPointerAddressSpace() == 0) {
-        assert(my_TR);
-        auto CT = my_TR->query(arg)[{-1, -1}];
+        auto CT = TR.query(arg)[{-1, -1}];
         // Can only localy replace a global variable if it is
         // known not to contain a pointer, which may be initialized
         // outside of this function to contain other memory which
@@ -6311,7 +6372,6 @@ nofast:;
 }
 
 void GradientUtils::computeMinCache(
-    TypeResults &TR,
     const SmallPtrSetImpl<BasicBlock *> &guaranteedUnreachable) {
   if (EnzymeMinCutCache) {
     SmallPtrSet<Value *, 4> Recomputes;
@@ -6445,10 +6505,10 @@ void GradientUtils::computeMinCache(
 
         if (!legalRecompute(&I, Available2, nullptr)) {
           if (is_value_needed_in_reverse<ValueType::Primal>(
-                  TR, this, &I, minCutMode, FullSeen, guaranteedUnreachable)) {
+                  this, &I, minCutMode, FullSeen, guaranteedUnreachable)) {
             bool oneneed = is_value_needed_in_reverse<ValueType::Primal,
                                                       /*OneLevel*/ true>(
-                TR, this, &I, minCutMode, OneLevelSeen, guaranteedUnreachable);
+                this, &I, minCutMode, OneLevelSeen, guaranteedUnreachable);
             if (oneneed) {
               knownRecomputeHeuristic[&I] = false;
             } else
@@ -6471,7 +6531,7 @@ void GradientUtils::computeMinCache(
       if (Intermediates.count(V))
         continue;
       if (!is_value_needed_in_reverse<ValueType::Primal>(
-              TR, this, V, minCutMode, FullSeen, guaranteedUnreachable)) {
+              this, V, minCutMode, FullSeen, guaranteedUnreachable)) {
         continue;
       }
       if (!Recomputes.count(V)) {
@@ -6492,7 +6552,7 @@ void GradientUtils::computeMinCache(
       }
       Intermediates.insert(V);
       if (is_value_needed_in_reverse<ValueType::Primal, /*OneLevel*/ true>(
-              TR, this, V, minCutMode, OneLevelSeen, guaranteedUnreachable)) {
+              this, V, minCutMode, OneLevelSeen, guaranteedUnreachable)) {
         Required.insert(V);
       } else {
         for (auto V2 : V->users()) {

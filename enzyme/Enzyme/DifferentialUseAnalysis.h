@@ -34,9 +34,9 @@ typedef std::pair<const Value *, ValueType> UsageKey;
 // Determine if a value is needed directly to compute the adjoint
 // of the given instruction user
 static inline bool is_use_directly_needed_in_reverse(
-    TypeResults &TR, const GradientUtils *gutils, const Value *val,
-    const Instruction *user,
+    const GradientUtils *gutils, const Value *val, const Instruction *user,
     const SmallPtrSetImpl<BasicBlock *> &oldUnreachable) {
+  TypeResults const &TR = gutils->TR;
   if (auto ainst = dyn_cast<Instruction>(val)) {
     assert(ainst->getParent()->getParent() == gutils->oldFunc);
   }
@@ -230,9 +230,10 @@ static inline bool is_use_directly_needed_in_reverse(
 
 template <ValueType VT, bool OneLevel = false>
 static inline bool is_value_needed_in_reverse(
-    TypeResults &TR, const GradientUtils *gutils, const Value *inst,
-    DerivativeMode mode, std::map<UsageKey, bool> &seen,
+    const GradientUtils *gutils, const Value *inst, DerivativeMode mode,
+    std::map<UsageKey, bool> &seen,
     const SmallPtrSetImpl<BasicBlock *> &oldUnreachable) {
+  TypeResults const &TR = gutils->TR;
   static_assert(VT == ValueType::Primal || VT == ValueType::Shadow);
   auto idx = UsageKey(inst, VT);
   if (seen.find(idx) != seen.end())
@@ -418,7 +419,7 @@ static inline bool is_value_needed_in_reverse(
         continue;
 
       if (!OneLevel && is_value_needed_in_reverse<ValueType::Shadow>(
-                           TR, gutils, user, mode, seen, oldUnreachable)) {
+                           gutils, user, mode, seen, oldUnreachable)) {
         return seen[idx] = true;
       }
       continue;
@@ -427,8 +428,8 @@ static inline bool is_value_needed_in_reverse(
     assert(VT == ValueType::Primal);
 
     // If a sub user needs, we need
-    if (!OneLevel && is_value_needed_in_reverse<VT>(TR, gutils, user, mode,
-                                                    seen, oldUnreachable)) {
+    if (!OneLevel && is_value_needed_in_reverse<VT>(gutils, user, mode, seen,
+                                                    oldUnreachable)) {
       return seen[idx] = true;
     }
 
@@ -445,16 +446,15 @@ static inline bool is_value_needed_in_reverse(
           // loads.
           if (pair.second.stores.count(user)) {
             for (LoadInst *L : pair.second.loads)
-              if (is_value_needed_in_reverse<VT>(TR, gutils, L, mode, seen,
+              if (is_value_needed_in_reverse<VT>(gutils, L, mode, seen,
                                                  oldUnreachable)) {
                 return seen[idx] = true;
               }
             for (auto &pair : pair.second.loadLikeCalls)
-              if (is_use_directly_needed_in_reverse(TR, gutils, pair.operand,
-                                                    pair.loadCall,
-                                                    oldUnreachable) ||
-                  is_value_needed_in_reverse<VT>(TR, gutils, pair.loadCall,
-                                                 mode, seen, oldUnreachable)) {
+              if (is_use_directly_needed_in_reverse(
+                      gutils, pair.operand, pair.loadCall, oldUnreachable) ||
+                  is_value_needed_in_reverse<VT>(gutils, pair.loadCall, mode,
+                                                 seen, oldUnreachable)) {
                 return seen[idx] = true;
               }
           }
@@ -524,13 +524,13 @@ static inline bool is_value_needed_in_reverse(
               .Inner0()
               .isPossiblePointer()) {
         if (is_value_needed_in_reverse<ValueType::Shadow>(
-                TR, gutils, user, mode, seen, oldUnreachable)) {
+                gutils, user, mode, seen, oldUnreachable)) {
           return seen[idx] = true;
         }
       }
 
-    bool direct = is_use_directly_needed_in_reverse(TR, gutils, inst, user,
-                                                    oldUnreachable);
+    bool direct =
+        is_use_directly_needed_in_reverse(gutils, inst, user, oldUnreachable);
     if (!direct)
       continue;
 
@@ -546,11 +546,11 @@ static inline bool is_value_needed_in_reverse(
 
 template <ValueType VT>
 static inline bool is_value_needed_in_reverse(
-    TypeResults &TR, const GradientUtils *gutils, const Value *inst,
-    DerivativeMode mode, const SmallPtrSetImpl<BasicBlock *> &oldUnreachable) {
+    const GradientUtils *gutils, const Value *inst, DerivativeMode mode,
+    const SmallPtrSetImpl<BasicBlock *> &oldUnreachable) {
   static_assert(VT == ValueType::Primal || VT == ValueType::Shadow);
   std::map<UsageKey, bool> seen;
-  return is_value_needed_in_reverse<VT>(TR, gutils, inst, mode, seen,
+  return is_value_needed_in_reverse<VT>(gutils, inst, mode, seen,
                                         oldUnreachable);
 }
 
