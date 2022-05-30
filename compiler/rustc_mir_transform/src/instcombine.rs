@@ -19,16 +19,31 @@ impl<'tcx> MirPass<'tcx> for InstCombine {
         let (basic_blocks, local_decls) = body.basic_blocks_and_local_decls_mut();
         let ctx = InstCombineContext { tcx, local_decls };
         for block in basic_blocks.iter_mut() {
-            for statement in block.statements.iter_mut() {
-                match statement.kind {
-                    StatementKind::Assign(box (_place, ref mut rvalue)) => {
-                        ctx.combine_bool_cmp(&statement.source_info, rvalue);
-                        ctx.combine_ref_deref(&statement.source_info, rvalue);
-                        ctx.combine_len(&statement.source_info, rvalue);
+            let mut new_statements = Vec::new();
+            for mut statement in std::mem::take(&mut block.statements) {
+                let extra_statement = match &mut statement.kind {
+                    StatementKind::Assign(assign) => {
+                        let rvalue = &mut assign.1;
+                        let changed = ctx.combine_bool_cmp(&statement.source_info, rvalue)
+                            || ctx.combine_ref_deref(&statement.source_info, rvalue)
+                            || ctx.combine_len(&statement.source_info, rvalue);
+                        if changed {
+                            Rvalue::expand_assign(
+                                assign,
+                                statement.source_info,
+                                ctx.local_decls,
+                                tcx,
+                            )
+                        } else {
+                            None
+                        }
                     }
-                    _ => {}
-                }
+                    _ => None,
+                };
+                new_statements.push(statement);
+                new_statements.extend(extra_statement);
             }
+            block.statements = new_statements;
 
             ctx.combine_primitive_clone(
                 &mut block.terminator.as_mut().unwrap(),
@@ -40,7 +55,7 @@ impl<'tcx> MirPass<'tcx> for InstCombine {
 
 struct InstCombineContext<'tcx, 'a> {
     tcx: TyCtxt<'tcx>,
-    local_decls: &'a LocalDecls<'tcx>,
+    local_decls: &'a mut LocalDecls<'tcx>,
 }
 
 impl<'tcx> InstCombineContext<'tcx, '_> {
@@ -51,7 +66,7 @@ impl<'tcx> InstCombineContext<'tcx, '_> {
     }
 
     /// Transform boolean comparisons into logical operations.
-    fn combine_bool_cmp(&self, source_info: &SourceInfo, rvalue: &mut Rvalue<'tcx>) {
+    fn combine_bool_cmp(&self, source_info: &SourceInfo, rvalue: &mut Rvalue<'tcx>) -> bool {
         match rvalue {
             Rvalue::BinaryOp(op @ (BinOp::Eq | BinOp::Ne), box (a, b)) => {
                 let new = match (op, self.try_eval_bool(a), self.try_eval_bool(b)) {
@@ -84,10 +99,13 @@ impl<'tcx> InstCombineContext<'tcx, '_> {
 
                 if let Some(new) = new && self.should_combine(source_info, rvalue) {
                     *rvalue = new;
+                    true
+                } else {
+                    false
                 }
             }
 
-            _ => {}
+            _ => false,
         }
     }
 
@@ -97,7 +115,7 @@ impl<'tcx> InstCombineContext<'tcx, '_> {
     }
 
     /// Transform "&(*a)" ==> "a".
-    fn combine_ref_deref(&self, source_info: &SourceInfo, rvalue: &mut Rvalue<'tcx>) {
+    fn combine_ref_deref(&self, source_info: &SourceInfo, rvalue: &mut Rvalue<'tcx>) -> bool {
         if let Rvalue::Ref(_, _, place) = rvalue {
             if let Some((base, ProjectionElem::Deref)) = place.as_ref().last_projection() {
                 if let ty::Ref(_, _, Mutability::Not) =
@@ -105,35 +123,39 @@ impl<'tcx> InstCombineContext<'tcx, '_> {
                 {
                     // The dereferenced place must have type `&_`, so that we don't copy `&mut _`.
                 } else {
-                    return;
+                    return false;
                 }
 
                 if !self.should_combine(source_info, rvalue) {
-                    return;
+                    return false;
                 }
 
                 *rvalue = Rvalue::Use(Operand::Copy(Place {
                     local: base.local,
                     projection: self.tcx.intern_place_elems(base.projection),
                 }));
+                return true;
             }
         }
+        false
     }
 
     /// Transform "Len([_; N])" ==> "N".
-    fn combine_len(&self, source_info: &SourceInfo, rvalue: &mut Rvalue<'tcx>) {
+    fn combine_len(&self, source_info: &SourceInfo, rvalue: &mut Rvalue<'tcx>) -> bool {
         if let Rvalue::Len(ref place) = *rvalue {
             let place_ty = place.ty(self.local_decls, self.tcx).ty;
             if let ty::Array(_, len) = *place_ty.kind() {
                 if !self.should_combine(source_info, rvalue) {
-                    return;
+                    return false;
                 }
 
                 let constant =
                     Constant { span: source_info.span, literal: len.into(), user_ty: None };
                 *rvalue = Rvalue::Use(Operand::Constant(Box::new(constant)));
+                return true;
             }
         }
+        false
     }
 
     fn combine_primitive_clone(
