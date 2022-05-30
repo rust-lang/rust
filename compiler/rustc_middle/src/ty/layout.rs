@@ -14,8 +14,7 @@ use rustc_session::{config::OptLevel, DataTypeKind, FieldInfo, SizeKind, Variant
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::call::{
-    ArgAbi, ArgAttribute, ArgAttributes, ArgExtension, Conv, FnAbi, HomogeneousAggregate, PassMode,
-    Reg, RegKind,
+    ArgAbi, ArgAttribute, ArgAttributes, ArgExtension, Conv, FnAbi, PassMode, Reg, RegKind,
 };
 use rustc_target::abi::*;
 use rustc_target::spec::{abi::Abi as SpecAbi, HasTargetSpec, PanicStrategy, Target};
@@ -3341,6 +3340,17 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         Ok(self.tcx.arena.alloc(fn_abi))
     }
 
+    /// Small heuristic for determining if layout has any float primitive
+    fn has_all_float(&self, layout: &'_ TyAndLayout<'tcx>) -> bool {
+        match layout.abi {
+            Abi::Uninhabited | Abi::Vector { .. } => false,
+            Abi::Scalar(scalar) => matches!(scalar.primitive(), Primitive::F32 | Primitive::F64),
+            Abi::ScalarPair(..) | Abi::Aggregate { .. } => {
+                (0..layout.fields.count()).all(|i| self.has_all_float(&layout.field(self, i)))
+            }
+        }
+    }
+
     fn fn_abi_adjust_for_abi(
         &self,
         fn_abi: &mut FnAbi<'tcx, Ty<'tcx>>,
@@ -3370,11 +3380,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
 
                         if arg.layout.is_unsized() || size > max_by_val_size {
                             arg.make_indirect();
-                        } else if let Ok(HomogeneousAggregate::Homogeneous(Reg {
-                            kind: RegKind::Float,
-                            ..
-                        })) = arg.layout.homogeneous_aggregate(self)
-                        {
+                        } else if unlikely!(self.has_all_float(&arg.layout)) {
                             // We don't want to aggregate floats as an aggregates of Integer
                             // because this will hurt the generated assembly (#93490)
                             //
