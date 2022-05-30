@@ -1,5 +1,6 @@
 // This test ensures that the settings menu display is working as expected.
 goto: file://|DOC_PATH|/test_docs/index.html
+show-text: true // needed when we check for colors below.
 // First, we check that the settings page doesn't exist.
 assert-false: "#settings"
 // We now click on the settings button.
@@ -42,6 +43,65 @@ assert: ".setting-line.hidden #preferred-light-theme"
 
 // We check that the correct theme is selected.
 assert-property: ("#theme .choices #theme-dark", {"checked": "true"})
+
+// Some style checks...
+// First we check the "default" display.
+assert-css: (
+    "#theme-dark",
+    {
+        "border-color": "rgb(221, 221, 221)",
+        "box-shadow": "rgb(53, 53, 53) 0px 0px 0px 3px inset",
+    },
+)
+assert-css: ("#theme-light", {"border-color": "rgb(221, 221, 221)", "box-shadow": "none"})
+// Let's start with the hover.
+move-cursor-to: "#theme-dark"
+assert-css: (
+    "#theme-dark",
+    {
+        "border-color": "rgb(33, 150, 243)",
+        "box-shadow": "rgb(53, 53, 53) 0px 0px 0px 3px inset",
+    },
+)
+move-cursor-to: "#theme-light"
+assert-css: ("#theme-light", {"border-color": "rgb(33, 150, 243)", "box-shadow": "none"})
+move-cursor-to: "#theme-ayu"
+// Let's now check with the focus.
+focus: "#theme-dark"
+assert-css: (
+    "#theme-dark",
+    {
+        "border-color": "rgb(221, 221, 221)",
+        "box-shadow": "rgb(53, 53, 53) 0px 0px 0px 3px inset, rgb(33, 150, 243) 0px 0px 2px 2px",
+    },
+)
+focus: "#theme-light"
+assert-css: (
+    "#theme-light",
+    {
+        "border-color": "rgb(221, 221, 221)",
+        "box-shadow": "rgb(33, 150, 243) 0px 0px 1px 1px",
+    },
+)
+// Now we check we both focus and hover.
+move-cursor-to: "#theme-dark"
+focus: "#theme-dark"
+assert-css: (
+    "#theme-dark",
+    {
+        "border-color": "rgb(33, 150, 243)",
+        "box-shadow": "rgb(53, 53, 53) 0px 0px 0px 3px inset, rgb(33, 150, 243) 0px 0px 2px 2px",
+    },
+)
+move-cursor-to: "#theme-light"
+focus: "#theme-light"
+assert-css: (
+    "#theme-light",
+    {
+        "border-color": "rgb(33, 150, 243)",
+        "box-shadow": "rgb(33, 150, 243) 0px 0px 1px 1px",
+    },
+)
 
 // We now switch the display.
 click: "#use-system-theme"
