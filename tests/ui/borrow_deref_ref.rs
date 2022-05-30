@@ -1,3 +1,7 @@
+// run-rustfix
+
+#![allow(dead_code, unused_variables)]
+
 fn main() {}
 
 mod should_lint {
