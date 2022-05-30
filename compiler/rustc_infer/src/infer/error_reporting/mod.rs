@@ -609,7 +609,14 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 if !matches!(ty.kind(), ty::Infer(ty::InferTy::TyVar(_) | ty::InferTy::FreshTy(_)))
                 {
                     // don't show type `_`
-                    err.span_label(span, format!("this expression has type `{}`", ty));
+                    if span.desugaring_kind() == Some(DesugaringKind::ForLoop)
+                    && let ty::Adt(def, substs) = ty.kind()
+                    && Some(def.did()) == self.tcx.get_diagnostic_item(sym::Option)
+                    {
+                        err.span_label(span, format!("this is an iterator with items of type `{}`", substs.type_at(0)));
+                    } else {
+                        err.span_label(span, format!("this expression has type `{}`", ty));
+                    }
                 }
                 if let Some(ty::error::ExpectedFound { found, .. }) = exp_found
                     && ty.is_box() && ty.boxed_ty() == found
