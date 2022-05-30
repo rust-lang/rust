@@ -1149,7 +1149,7 @@ fn line_span<T: LintContext>(cx: &T, span: Span) -> Span {
     let span = original_sp(span, DUMMY_SP);
     let source_map_and_line = cx.sess().source_map().lookup_line(span.lo()).unwrap();
     let line_no = source_map_and_line.line;
-    let line_start = source_map_and_line.sf.lines[line_no];
+    let line_start = source_map_and_line.sf.lines(|lines| lines[line_no]);
     span.with_lo(line_start)
 }
 
