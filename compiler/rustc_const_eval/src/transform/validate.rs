@@ -4,6 +4,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_index::bit_set::BitSet;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::interpret::Scalar;
+use rustc_middle::mir::visit::NonUseContext::VarDebugInfo;
 use rustc_middle::mir::visit::{PlaceContext, Visitor};
 use rustc_middle::mir::{
     traversal, AggregateKind, BasicBlock, BinOp, Body, BorrowKind, Local, Location, MirPass,
@@ -302,9 +303,17 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
         self.super_projection_elem(local, proj_base, elem, context, location);
     }
 
-    fn visit_place(&mut self, place: &Place<'tcx>, _: PlaceContext, _: Location) {
+    fn visit_place(&mut self, place: &Place<'tcx>, cntxt: PlaceContext, location: Location) {
         // Set off any `bug!`s in the type computation code
         let _ = place.ty(&self.body.local_decls, self.tcx);
+
+        if self.mir_phase >= MirPhase::Derefered
+            && place.projection.len() > 1
+            && cntxt != PlaceContext::NonUse(VarDebugInfo)
+            && place.projection[1..].contains(&ProjectionElem::Deref)
+        {
+            self.fail(location, format!("{:?}, has deref at the wrong place", place));
+        }
     }
 
     fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {

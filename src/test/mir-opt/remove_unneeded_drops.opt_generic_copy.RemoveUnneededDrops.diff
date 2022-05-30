@@ -22,6 +22,10 @@
           StorageDead(_2);                 // scope 0 at $DIR/remove_unneeded_drops.rs:14:12: 14:13
 -         nop;                             // scope 0 at $DIR/remove_unneeded_drops.rs:13:36: 15:2
           return;                          // scope 0 at $DIR/remove_unneeded_drops.rs:15:2: 15:2
+-     }
+- 
+-     bb2 (cleanup): {
+-         resume;                          // scope 0 at $DIR/remove_unneeded_drops.rs:13:1: 15:2
       }
   }
   
