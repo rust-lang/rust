@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use super::{check_annotations, Comments, Config, Error, Mode, OutputConflictHandling};
+use super::*;
 
 fn config() -> Config {
     Config {
@@ -8,7 +8,7 @@ fn config() -> Config {
         target: None,
         stderr_filters: vec![],
         stdout_filters: vec![],
-        root_dir: PathBuf::from("."),
+        root_dir: PathBuf::from("$RUSTROOT"),
         mode: Mode::Fail,
         path_filter: vec![],
         program: PathBuf::from("cake"),
@@ -25,10 +25,12 @@ fn main() {
     let _x: &i32 = unsafe { mem::transmute(16usize) }; //~ ERROR encountered a dangling reference (address $HEX is unallocated)
 }
     ";
-    let comments = Comments::parse(Path::new("<dummy>"), s);
+    let path = Path::new("$DIR/<dummy>");
+    let comments = Comments::parse(&path, s);
     let mut errors = vec![];
     let config = config();
-    let unnormalized_stderr = r"
+    // Crucially, the intended error string *does* appear in this output, as a quote of the comment itself.
+    let stderr = br"
 error: Undefined Behavior: type validation failed: encountered a dangling reference (address 0x10 is unallocated)
   --> tests/compile-fail/validity/dangling_ref1.rs:6:29
    |
@@ -42,9 +44,10 @@ LL |     let _x: &i32 = unsafe { mem::transmute(16usize) }; //~ ERROR encountere
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 error: aborting due to previous error
     ";
-    check_annotations(unnormalized_stderr, &mut errors, &config, "", &comments);
+    check_test_result(&path, &config, "", "", &comments, &mut errors, /*stdout*/ br"", stderr);
+    // The "OutputDiffers" is because we cannot open the .rs file
     match &errors[..] {
-        [Error::PatternNotFound { .. }] => {}
+        [Error::OutputDiffers { .. }, Error::PatternNotFound { .. }] => {}
         _ => panic!("not the expected error: {:#?}", errors),
     }
 }

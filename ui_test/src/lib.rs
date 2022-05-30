@@ -235,11 +235,34 @@ fn run_test(
     }
     let output = miri.output().expect("could not execute miri");
     let mut errors = config.mode.ok(output.status);
+    check_test_result(
+        path,
+        config,
+        target,
+        revision,
+        comments,
+        &mut errors,
+        &output.stdout,
+        &output.stderr,
+    );
+    (miri, errors)
+}
+
+fn check_test_result(
+    path: &Path,
+    config: &Config,
+    target: &str,
+    revision: &str,
+    comments: &Comments,
+    errors: &mut Errors,
+    stdout: &[u8],
+    stderr: &[u8],
+) {
     // Always remove annotation comments from stderr.
     let annotations = Regex::new(r"\s*//~.*").unwrap();
-    let stderr = std::str::from_utf8(&output.stderr).unwrap();
+    let stderr = std::str::from_utf8(stderr).unwrap();
     let stderr = annotations.replace_all(stderr, "");
-    let stdout = std::str::from_utf8(&output.stdout).unwrap();
+    let stdout = std::str::from_utf8(stdout).unwrap();
     // Check output files (if any)
     let revised = |extension: &str| {
         if revision.is_empty() {
@@ -252,7 +275,7 @@ fn run_test(
     check_output(
         &stderr,
         path,
-        &mut errors,
+        errors,
         revised("stderr"),
         target,
         &config.stderr_filters,
@@ -262,7 +285,7 @@ fn run_test(
     check_output(
         &stdout,
         path,
-        &mut errors,
+        errors,
         revised("stdout"),
         target,
         &config.stdout_filters,
@@ -270,8 +293,7 @@ fn run_test(
         comments,
     );
     // Check error annotations in the source against output
-    check_annotations(&stderr, &mut errors, config, revision, comments);
-    (miri, errors)
+    check_annotations(&stderr, errors, config, revision, comments);
 }
 
 fn check_annotations(
