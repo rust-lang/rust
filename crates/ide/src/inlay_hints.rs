@@ -117,33 +117,32 @@ pub(crate) fn inlay_hints(
 
     let mut acc = Vec::new();
 
-    let hints = |node| hints(&mut acc, &sema, config, file_id, node);
-    match range_limit {
-        Some(FileRange { range, .. }) => match file.covering_element(range) {
-            NodeOrToken::Token(_) => return acc,
-            NodeOrToken::Node(n) => n
-                .descendants()
-                .filter(|descendant| range.intersect(descendant.text_range()).is_some())
-                .for_each(hints),
-        },
-        None => file.descendants().for_each(hints),
-    };
+    if let Some(scope) = sema.scope(&file) {
+        let famous_defs = FamousDefs(&sema, scope.krate());
+
+        let hints = |node| hints(&mut acc, &famous_defs, config, file_id, node);
+        match range_limit {
+            Some(FileRange { range, .. }) => match file.covering_element(range) {
+                NodeOrToken::Token(_) => return acc,
+                NodeOrToken::Node(n) => n
+                    .descendants()
+                    .filter(|descendant| range.intersect(descendant.text_range()).is_some())
+                    .for_each(hints),
+            },
+            None => file.descendants().for_each(hints),
+        };
+    }
 
     acc
 }
 
 fn hints(
     hints: &mut Vec<InlayHint>,
-    sema: &Semantics<RootDatabase>,
+    famous_defs @ FamousDefs(sema, _): &FamousDefs,
     config: &InlayHintsConfig,
     file_id: FileId,
     node: SyntaxNode,
 ) {
-    let famous_defs = match sema.scope(&node) {
-        Some(it) => FamousDefs(sema, it.krate()),
-        None => return,
-    };
-
     closing_brace_hints(hints, sema, config, file_id, node.clone());
     match_ast! {
         match node {
@@ -168,8 +167,18 @@ fn hints(
                 }
                 Some(())
             },
-            ast::Fn(it) => lifetime_fn_hints(hints, config, it),
-            _ => Some(()),
+            ast::Item(it) => match it {
+                // FIXME: record impl lifetimes so they aren't being reused in assoc item lifetime inlay hints
+                ast::Item::Impl(_) => None,
+                ast::Item::Fn(it) => fn_lifetime_fn_hints(hints, config, it),
+                // static type elisions
+                ast::Item::Static(it) => implicit_static_hints(hints, config, Either::Left(it)),
+                ast::Item::Const(it) => implicit_static_hints(hints, config, Either::Right(it)),
+                _ => None,
+            },
+            // FIXME: fn-ptr type, dyn fn type, and trait object type elisions
+            ast::Type(_) => None,
+            _ => None,
         }
     };
 }
@@ -279,7 +288,39 @@ fn closing_brace_hints(
     None
 }
 
-fn lifetime_fn_hints(
+fn implicit_static_hints(
+    acc: &mut Vec<InlayHint>,
+    config: &InlayHintsConfig,
+    statik_or_const: Either<ast::Static, ast::Const>,
+) -> Option<()> {
+    if config.lifetime_elision_hints != LifetimeElisionHints::Always {
+        return None;
+    }
+
+    if let Either::Right(it) = &statik_or_const {
+        if ast::AssocItemList::can_cast(
+            it.syntax().parent().map_or(SyntaxKind::EOF, |it| it.kind()),
+        ) {
+            return None;
+        }
+    }
+
+    if let Some(ast::Type::RefType(ty)) = statik_or_const.either(|it| it.ty(), |it| it.ty()) {
+        if ty.lifetime().is_none() {
+            let t = ty.amp_token()?;
+            acc.push(InlayHint {
+                range: t.text_range(),
+                kind: InlayKind::LifetimeHint,
+                label: "'static".to_owned(),
+                tooltip: Some(InlayTooltip::String("Elided static lifetime".into())),
+            });
+        }
+    }
+
+    Some(())
+}
+
+fn fn_lifetime_fn_hints(
     acc: &mut Vec<InlayHint>,
     config: &InlayHintsConfig,
     func: ast::Fn,
@@ -2588,6 +2629,30 @@ impl () {
     fn foo(&self, a: &()) -> &() {}
     // ^^^<'0, '1>
         // ^'0       ^'1     ^'0
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn hints_lifetimes_static() {
+        check_with_config(
+            InlayHintsConfig {
+                lifetime_elision_hints: LifetimeElisionHints::Always,
+                ..TEST_CONFIG
+            },
+            r#"
+trait Trait {}
+static S: &str = "";
+//        ^'static
+const C: &str = "";
+//       ^'static
+const C: &dyn Trait = panic!();
+//       ^'static
+
+impl () {
+    const C: &str = "";
+    const C: &dyn Trait = panic!();
 }
 "#,
         );
