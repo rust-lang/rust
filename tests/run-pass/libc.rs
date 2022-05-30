@@ -230,6 +230,28 @@ fn test_thread_local_errno() {
     }
 }
 
+/// Tests whether clock support exists at all
+#[cfg(target_os = "linux")]
+fn test_clocks() {
+    let mut tp = std::mem::MaybeUninit::<libc::timespec>::uninit();
+    let is_error = unsafe {
+        libc::clock_gettime(libc::CLOCK_REALTIME, tp.as_mut_ptr())
+    };
+    assert_eq!(is_error, 0);
+    let is_error = unsafe {
+        libc::clock_gettime(libc::CLOCK_REALTIME_COARSE, tp.as_mut_ptr())
+    };
+    assert_eq!(is_error, 0);
+     let is_error = unsafe {
+        libc::clock_gettime(libc::CLOCK_MONOTONIC, tp.as_mut_ptr())
+    };
+    assert_eq!(is_error, 0);
+    let is_error = unsafe {
+        libc::clock_gettime(libc::CLOCK_MONOTONIC_COARSE, tp.as_mut_ptr())
+    };
+    assert_eq!(is_error, 0);
+}
+
 fn main() {
     #[cfg(target_os = "linux")]
     test_posix_fadvise();
@@ -249,4 +271,7 @@ fn main() {
     test_prctl_thread_name();
 
     test_thread_local_errno();
+
+    #[cfg(target_os = "linux")]
+    test_clocks();
 }
