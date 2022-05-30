@@ -205,6 +205,10 @@ const handleSourceHighlight = (function() {
 
     return ev => {
         let cur_line_id = parseInt(ev.target.id, 10);
+        // It can happen when clicking not on a line number span.
+        if (isNaN(cur_line_id)) {
+            return;
+        }
         ev.preventDefault();
 
         if (ev.shiftKey && prev_line_id) {
