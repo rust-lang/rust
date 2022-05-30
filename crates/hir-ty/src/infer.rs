@@ -125,6 +125,31 @@ impl Default for BindingMode {
     }
 }
 
+/// Used to generalize patterns and assignee expressions.
+trait PatLike: Into<ExprOrPatId> + Copy {
+    type BindingMode: Copy;
+
+    fn infer(
+        this: &mut InferenceContext,
+        id: Self,
+        expected_ty: &Ty,
+        default_bm: Self::BindingMode,
+    ) -> Ty;
+}
+
+impl PatLike for PatId {
+    type BindingMode = BindingMode;
+
+    fn infer(
+        this: &mut InferenceContext,
+        id: Self,
+        expected_ty: &Ty,
+        default_bm: Self::BindingMode,
+    ) -> Ty {
+        this.infer_pat(id, expected_ty, default_bm)
+    }
+}
+
 #[derive(Debug)]
 pub(crate) struct InferOk<T> {
     value: T,
