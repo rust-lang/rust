@@ -675,15 +675,14 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
             return OperandRef::new_zst(self, place.layout);
         }
 
-        fn scalar_load_metadata<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, load: RValue<'gcc>, scalar: &abi::Scalar) {
-            let vr = scalar.valid_range(bx);
-            match scalar.primitive() {
-                abi::Int(..) => {
+        fn scalar_load_metadata<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, load: RValue<'gcc>, scalar: &abi::Scalar, vr: Option<WrappingRange>) {
+            match (vr, scalar.primitive()) {
+                (Some(vr), abi::Int(..)) => {
                     if !scalar.is_always_valid(bx) {
                         bx.range_metadata(load, vr);
                     }
                 }
-                abi::Pointer if vr.start < vr.end && !vr.contains(0) => {
+                (Some(vr), abi::Pointer) if vr.start < vr.end && !vr.contains(0) => {
                     bx.nonnull_metadata(load);
                 }
                 _ => {}
@@ -697,7 +696,8 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
             else if place.layout.is_gcc_immediate() {
                 let load = self.load(place.llval.get_type(), place.llval, place.align);
                 if let abi::Abi::Scalar(ref scalar) = place.layout.abi {
-                    scalar_load_metadata(self, load, scalar);
+                    let vr = place.scalar_valid_range.map(|ranges| ranges.single()).flatten();
+                    scalar_load_metadata(self, load, scalar, vr);
                 }
                 OperandValue::Immediate(self.to_immediate(load, place.layout))
             }
@@ -705,16 +705,17 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
                 let b_offset = a.size(self).align_to(b.align(self).abi);
                 let pair_type = place.layout.gcc_type(self, false);
 
-                let mut load = |i, scalar: &abi::Scalar, align| {
+                let mut load = |i, scalar: &abi::Scalar, align, vr| {
                     let llptr = self.struct_gep(pair_type, place.llval, i as u64);
                     let load = self.load(llptr.get_type(), llptr, align);
-                    scalar_load_metadata(self, load, scalar);
+                    scalar_load_metadata(self, load, scalar, vr);
                     if scalar.is_bool() { self.trunc(load, self.type_i1()) } else { load }
                 };
 
+                let (vr_a, vr_b) = place.scalar_valid_range.map(|ranges| ranges.pair()).flatten().unzip();
                 OperandValue::Pair(
-                    load(0, a, place.align),
-                    load(1, b, place.align.restrict_for_offset(b_offset)),
+                    load(0, a, place.align, vr_a),
+                    load(1, b, place.align.restrict_for_offset(b_offset), vr_b),
                 )
             }
             else {
