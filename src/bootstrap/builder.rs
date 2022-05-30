@@ -869,15 +869,21 @@ impl<'a> Builder<'a> {
         self.try_run(patchelf.arg(fname));
     }
 
-    pub(crate) fn download_component(&self, base: &str, url: &str, dest_path: &Path) {
+    pub(crate) fn download_component(
+        &self,
+        base: &str,
+        url: &str,
+        dest_path: &Path,
+        help_on_error: &str,
+    ) {
         // Use a temporary file in case we crash while downloading, to avoid a corrupt download in cache/.
         let tempfile = self.tempdir().join(dest_path.file_name().unwrap());
         // FIXME: support `do_verify` (only really needed for nightly rustfmt)
-        self.download_with_retries(&tempfile, &format!("{}/{}", base, url));
+        self.download_with_retries(&tempfile, &format!("{}/{}", base, url), help_on_error);
         t!(std::fs::rename(&tempfile, dest_path));
     }
 
-    fn download_with_retries(&self, tempfile: &Path, url: &str) {
+    fn download_with_retries(&self, tempfile: &Path, url: &str, help_on_error: &str) {
         println!("downloading {}", url);
         // Try curl. If that fails and we are on windows, fallback to PowerShell.
         let mut curl = Command::new("curl");
@@ -913,6 +919,9 @@ impl<'a> Builder<'a> {
                     }
                     println!("\nspurious failure, trying again");
                 }
+            }
+            if !help_on_error.is_empty() {
+                eprintln!("{}", help_on_error);
             }
             std::process::exit(1);
         }

@@ -1491,7 +1491,7 @@ fn download_component(builder: &Builder<'_>, filename: String, prefix: &str, com
     let url = format!("rustc-builds/{commit}");
     let tarball = rustc_cache.join(&filename);
     if !tarball.exists() {
-        builder.download_component(base, &format!("{url}/{filename}"), &tarball);
+        builder.download_component(base, &format!("{url}/{filename}"), &tarball, "");
     }
     let bin_root = builder.out.join(builder.config.build.triple).join("ci-rustc");
     builder.unpack(&tarball, &bin_root, prefix)
