@@ -3083,7 +3083,6 @@ impl<T> [T] {
     /// buf.fill_with(Default::default);
     /// assert_eq!(buf, vec![0; 10]);
     /// ```
-    #[doc(alias = "memset")]
     #[stable(feature = "slice_fill_with", since = "1.51.0")]
     pub fn fill_with<F>(&mut self, mut f: F)
     where
