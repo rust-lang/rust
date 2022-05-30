@@ -130,6 +130,7 @@
 #![feature(ptr_sub_ptr)]
 #![feature(receiver_trait)]
 #![feature(set_ptr_value)]
+#![feature(slice_from_ptr_range)]
 #![feature(slice_group_by)]
 #![feature(slice_ptr_get)]
 #![feature(slice_ptr_len)]
