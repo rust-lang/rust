@@ -497,7 +497,7 @@ impl<'a> FormatLines<'a> {
         skipped_range: &'a [(usize, usize)],
         config: &'a Config,
     ) -> FormatLines<'a> {
-        let issue_seeker = BadIssueSeeker::new(config.report_todo(), config.report_fixme());
+        let issue_seeker = BadIssueSeeker::new(config.report_fixme());
         FormatLines {
             name,
             skipped_range,
@@ -537,7 +537,7 @@ impl<'a> FormatLines<'a> {
             }
 
             if self.allow_issue_seek && self.format_line {
-                // Add warnings for bad todos/ fixmes
+                // Add warnings for bad fixmes
                 if let Some(issue) = self.issue_seeker.inspect(c) {
                     self.push_err(ErrorKind::BadIssue(issue), false, false);
                 }

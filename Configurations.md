@@ -2180,23 +2180,6 @@ Warns about any comments containing `FIXME` in them when set to `"Always"`. If
 it contains a `#X` (with `X` being a number) in parentheses following the
 `FIXME`, `"Unnumbered"` will ignore it.
 
-See also [`report_todo`](#report_todo).
-
-
-## `report_todo`
-
-Report `TODO` items in comments.
-
-- **Default value**: `"Never"`
-- **Possible values**: `"Always"`, `"Unnumbered"`, `"Never"`
-- **Stable**: No (tracking issue: [#3393](https://github.com/rust-lang/rustfmt/issues/3393))
-
-Warns about any comments containing `TODO` in them when set to `"Always"`. If
-it contains a `#X` (with `X` being a number) in parentheses following the
-`TODO`, `"Unnumbered"` will ignore it.
-
-See also [`report_fixme`](#report_fixme).
-
 ## `required_version`
 
 Require a specific version of rustfmt. If you want to make sure that the

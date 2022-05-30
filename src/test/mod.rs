@@ -9,7 +9,7 @@ use std::process::{Command, Stdio};
 use std::str::Chars;
 use std::thread;
 
-use crate::config::{Color, Config, EmitMode, FileName, NewlineStyle, ReportTactic};
+use crate::config::{Color, Config, EmitMode, FileName, NewlineStyle};
 use crate::formatting::{ReportedErrors, SourceFile};
 use crate::rustfmt_diff::{make_diff, print_diff, DiffLine, Mismatch, ModifiedChunk, OutputWriter};
 use crate::source_file;
@@ -687,9 +687,6 @@ fn read_config(filename: &Path) -> Config {
             }
         }
     }
-
-    // Don't generate warnings for to-do items.
-    config.set().report_todo(ReportTactic::Never);
 
     config
 }
