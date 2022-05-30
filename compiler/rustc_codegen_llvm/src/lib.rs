@@ -11,6 +11,7 @@
 #![feature(once_cell)]
 #![feature(nll)]
 #![feature(iter_intersperse)]
+#![feature(unzip_option)]
 #![recursion_limit = "256"]
 #![allow(rustc::potential_query_instability)]
 
