@@ -80,7 +80,7 @@ regexes! {
 regexes! {
     STDERR:
     // erase line and column info
-    r"\.rs:[0-9]+:[0-9]+"            => ".rs:LL:CC",
+    r"\.rs:[0-9]+:[0-9]+(: [0-9]+:[0-9]+)?" => ".rs:LL:CC",
     // erase alloc ids
     "alloc[0-9]+"                    => "ALLOC",
     // erase Stacked Borrows tags
