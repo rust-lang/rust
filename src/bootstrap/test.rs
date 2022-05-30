@@ -572,12 +572,6 @@ impl Step for Miri {
                 return;
             }
 
-            // # Run `cargo test` with `-Zmir-opt-level=4`.
-            cargo.env("MIRIFLAGS", "-O -Zmir-opt-level=4");
-            if !try_run(builder, &mut cargo) {
-                return;
-            }
-
             // # Done!
             builder.save_toolstate("miri", ToolState::TestPass);
         } else {
