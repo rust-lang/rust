@@ -609,6 +609,11 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
                         </a>\
                      </span>\
                      </div>\
+                     <noscript>\
+                        <section>\
+                            You need to enable Javascript be able to update your settings.\
+                        </section>\
+                     </noscript>\
                      <link rel=\"stylesheet\" type=\"text/css\" \
                          href=\"{root_path}settings{suffix}.css\">\
                      <script defer src=\"{root_path}settings{suffix}.js\"></script>",
