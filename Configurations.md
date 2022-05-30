@@ -2168,18 +2168,6 @@ mod sit;
 **Note** `mod` with `#[macro_export]` will not be reordered since that could change the semantics
 of the original source code.
 
-## `report_fixme`
-
-Report `FIXME` items in comments.
-
-- **Default value**: `"Never"`
-- **Possible values**: `"Always"`, `"Unnumbered"`, `"Never"`
-- **Stable**: No (tracking issue: [#3394](https://github.com/rust-lang/rustfmt/issues/3394))
-
-Warns about any comments containing `FIXME` in them when set to `"Always"`. If
-it contains a `#X` (with `X` being a number) in parentheses following the
-`FIXME`, `"Unnumbered"` will ignore it.
-
 ## `required_version`
 
 Require a specific version of rustfmt. If you want to make sure that the

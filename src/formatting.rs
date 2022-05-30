@@ -497,7 +497,7 @@ impl<'a> FormatLines<'a> {
         skipped_range: &'a [(usize, usize)],
         config: &'a Config,
     ) -> FormatLines<'a> {
-        let issue_seeker = BadIssueSeeker::new(config.report_fixme());
+        let issue_seeker = BadIssueSeeker::new();
         FormatLines {
             name,
             skipped_range,
