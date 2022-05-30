@@ -796,9 +796,10 @@ pub(crate) fn handle_completion(
     let _p = profile::span("handle_completion");
     let text_document_position = params.text_document_position.clone();
     let position = from_proto::file_position(&snap, params.text_document_position)?;
-    let completion_trigger_character = params.context.and_then(|ctx| ctx.trigger_character);
+    let completion_trigger_character =
+        params.context.and_then(|ctx| ctx.trigger_character).and_then(|s| s.chars().next());
 
-    if Some(":") == completion_trigger_character.as_deref() {
+    if Some(':') == completion_trigger_character {
         let source_file = snap.analysis.parse(position.file_id)?;
         let left_token = source_file.syntax().token_at_offset(position.offset).left_biased();
         let completion_triggered_after_single_colon = match left_token {
@@ -814,7 +815,7 @@ pub(crate) fn handle_completion(
     let items = match snap.analysis.completions(
         completion_config,
         position,
-        completion_trigger_character.as_deref(),
+        completion_trigger_character,
     )? {
         None => return Ok(None),
         Some(items) => items,

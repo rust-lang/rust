@@ -143,7 +143,7 @@ pub fn completions(
     db: &RootDatabase,
     config: &CompletionConfig,
     position: FilePosition,
-    trigger_character: Option<&str>,
+    trigger_character: Option<char>,
 ) -> Option<Completions> {
     let ctx = &CompletionContext::new(db, position, config)?;
     let mut acc = Completions::default();
@@ -151,7 +151,7 @@ pub fn completions(
     {
         let acc = &mut acc;
         // prevent `(` from triggering unwanted completion noise
-        if trigger_character != Some("(") {
+        if trigger_character != Some('(') {
             completions::attribute::complete_attribute(acc, ctx);
             completions::attribute::complete_derive(acc, ctx);
             completions::attribute::complete_known_attribute_input(acc, ctx);
