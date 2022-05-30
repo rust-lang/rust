@@ -572,10 +572,6 @@ impl Step for Miri {
                 return;
             }
 
-            if !try_run(builder, &mut cargo) {
-                return;
-            }
-
             // # Done!
             builder.save_toolstate("miri", ToolState::TestPass);
         } else {
