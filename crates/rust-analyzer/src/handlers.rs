@@ -796,27 +796,26 @@ pub(crate) fn handle_completion(
     let _p = profile::span("handle_completion");
     let text_document_position = params.text_document_position.clone();
     let position = from_proto::file_position(&snap, params.text_document_position)?;
-    let completion_triggered_after_single_colon = {
-        let mut res = false;
-        if let Some(ctx) = params.context {
-            if ctx.trigger_character.as_deref() == Some(":") {
-                let source_file = snap.analysis.parse(position.file_id)?;
-                let left_token =
-                    source_file.syntax().token_at_offset(position.offset).left_biased();
-                match left_token {
-                    Some(left_token) => res = left_token.kind() == T![:],
-                    None => res = true,
-                }
-            }
+    let completion_trigger_character = params.context.and_then(|ctx| ctx.trigger_character);
+
+    if Some(":") == completion_trigger_character.as_deref() {
+        let source_file = snap.analysis.parse(position.file_id)?;
+        let left_token = source_file.syntax().token_at_offset(position.offset).left_biased();
+        let completion_triggered_after_single_colon = match left_token {
+            Some(left_token) => left_token.kind() == T![:],
+            None => true,
+        };
+        if completion_triggered_after_single_colon {
+            return Ok(None);
         }
-        res
-    };
-    if completion_triggered_after_single_colon {
-        return Ok(None);
     }
 
     let completion_config = &snap.config.completion();
-    let items = match snap.analysis.completions(completion_config, position)? {
+    let items = match snap.analysis.completions(
+        completion_config,
+        position,
+        completion_trigger_character.as_deref(),
+    )? {
         None => return Ok(None),
         Some(items) => items,
     };

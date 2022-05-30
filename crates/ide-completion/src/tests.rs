@@ -79,20 +79,28 @@ pub(crate) const TEST_CONFIG: CompletionConfig = CompletionConfig {
 };
 
 pub(crate) fn completion_list(ra_fixture: &str) -> String {
-    completion_list_with_config(TEST_CONFIG, ra_fixture, true)
+    completion_list_with_config(TEST_CONFIG, ra_fixture, true, None)
 }
 
 pub(crate) fn completion_list_no_kw(ra_fixture: &str) -> String {
-    completion_list_with_config(TEST_CONFIG, ra_fixture, false)
+    completion_list_with_config(TEST_CONFIG, ra_fixture, false, None)
+}
+
+pub(crate) fn completion_list_with_trigger_character(
+    ra_fixture: &str,
+    trigger_character: Option<&str>,
+) -> String {
+    completion_list_with_config(TEST_CONFIG, ra_fixture, true, trigger_character)
 }
 
 fn completion_list_with_config(
     config: CompletionConfig,
     ra_fixture: &str,
     include_keywords: bool,
+    trigger_character: Option<&str>,
 ) -> String {
     // filter out all but one builtintype completion for smaller test outputs
-    let items = get_all_items(config, ra_fixture);
+    let items = get_all_items(config, ra_fixture, trigger_character);
     let mut bt_seen = false;
     let items = items
         .into_iter()
@@ -126,7 +134,7 @@ pub(crate) fn do_completion_with_config(
     code: &str,
     kind: CompletionItemKind,
 ) -> Vec<CompletionItem> {
-    get_all_items(config, code)
+    get_all_items(config, code, None)
         .into_iter()
         .filter(|c| c.kind() == kind)
         .sorted_by(|l, r| l.label().cmp(r.label()))
@@ -173,7 +181,7 @@ pub(crate) fn check_edit_with_config(
     let ra_fixture_after = trim_indent(ra_fixture_after);
     let (db, position) = position(ra_fixture_before);
     let completions: Vec<CompletionItem> =
-        crate::completions(&db, &config, position).unwrap().into();
+        crate::completions(&db, &config, position, None).unwrap().into();
     let (completion,) = completions
         .iter()
         .filter(|it| it.lookup() == what)
@@ -214,9 +222,14 @@ pub(crate) fn check_pattern_is_applicable(code: &str, check: impl FnOnce(SyntaxE
     assert!(check(NodeOrToken::Token(token)));
 }
 
-pub(crate) fn get_all_items(config: CompletionConfig, code: &str) -> Vec<CompletionItem> {
+pub(crate) fn get_all_items(
+    config: CompletionConfig,
+    code: &str,
+    trigger_character: Option<&str>,
+) -> Vec<CompletionItem> {
     let (db, position) = position(code);
-    let res = crate::completions(&db, &config, position).map_or_else(Vec::default, Into::into);
+    let res = crate::completions(&db, &config, position, trigger_character)
+        .map_or_else(Vec::default, Into::into);
     // validate
     res.iter().for_each(|it| {
         let sr = it.source_range();

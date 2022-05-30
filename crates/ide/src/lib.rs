@@ -547,8 +547,11 @@ impl Analysis {
         &self,
         config: &CompletionConfig,
         position: FilePosition,
+        trigger_character: Option<&str>,
     ) -> Cancellable<Option<Vec<CompletionItem>>> {
-        self.with_db(|db| ide_completion::completions(db, config, position).map(Into::into))
+        self.with_db(|db| {
+            ide_completion::completions(db, config, position, trigger_character).map(Into::into)
+        })
     }
 
     /// Resolves additional completion data at the position given.
