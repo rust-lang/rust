@@ -46,12 +46,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         blk_id: hir::HirId,
     ) -> bool {
         let expr = expr.peel_drop_temps();
-        // If the expression is from an external macro, then do not suggest
-        // adding a semicolon, because there's nowhere to put it.
-        // See issue #81943.
-        if expr.can_have_side_effects() && !in_external_macro(self.tcx.sess, expr.span) {
-            self.suggest_missing_semicolon(err, expr, expected, false);
-        }
+        self.suggest_missing_semicolon(err, expr, expected, false);
         let mut pointing_at_return_type = false;
         if let Some((fn_decl, can_suggest)) = self.get_fn_decl(blk_id) {
             let fn_id = self.tcx.hir().get_return_block(blk_id).unwrap();
@@ -493,7 +488,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 | ExprKind::If(..)
                 | ExprKind::Match(..)
                 | ExprKind::Block(..)
-                    if expression.can_have_side_effects() =>
+                    if expression.can_have_side_effects()
+                        // If the expression is from an external macro, then do not suggest
+                        // adding a semicolon, because there's nowhere to put it.
+                        // See issue #81943.
+                        && !in_external_macro(self.tcx.sess, expression.span) =>
                 {
                     if needs_block {
                         err.multipart_suggestion(

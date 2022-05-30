@@ -1579,8 +1579,6 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         if let Some(expr) = expression
             && let hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Closure(_, _, body_id, ..), .. }) = parent
             && !matches!(fcx.tcx.hir().get(body_id.hir_id), hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Block(..), .. }))
-            && expr.can_have_side_effects()
-            && !in_external_macro(fcx.tcx.sess, expr.span)
         {
             fcx.suggest_missing_semicolon(&mut err, expr, expected, true);
         }
