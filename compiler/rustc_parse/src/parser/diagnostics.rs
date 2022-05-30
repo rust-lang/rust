@@ -17,10 +17,10 @@ use rustc_ast::{
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{pluralize, struct_span_err, Diagnostic, EmissionGuarantee, ErrorGuaranteed};
 use rustc_errors::{
-    Applicability, DiagnosticBuilder, DiagnosticMessage, Handler, MultiSpan, PResult,
+    fluent, Applicability, DiagnosticBuilder, DiagnosticMessage, Handler, MultiSpan, PResult,
 };
+use rustc_errors::{pluralize, struct_span_err, Diagnostic, EmissionGuarantee, ErrorGuaranteed};
 use rustc_macros::{SessionDiagnostic, SessionSubdiagnostic};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, Ident};
@@ -658,13 +658,10 @@ impl<'a> Parser<'a> {
                     err.delay_as_bug();
                     self.struct_span_err(
                         expr.span,
-                        DiagnosticMessage::fluent("parser-struct-literal-body-without-path"),
+                        fluent::parser::struct_literal_body_without_path,
                     )
                     .multipart_suggestion(
-                        DiagnosticMessage::fluent_attr(
-                            "parser-struct-literal-body-without-path",
-                            "suggestion",
-                        ),
+                        fluent::parser::suggestion,
                         vec![
                             (expr.span.shrink_to_lo(), "{ SomeStruct ".to_string()),
                             (expr.span.shrink_to_hi(), " }".to_string()),

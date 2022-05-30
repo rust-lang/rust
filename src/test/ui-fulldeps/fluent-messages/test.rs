@@ -12,6 +12,12 @@ pub enum DiagnosticMessage {
     FluentIdentifier(std::borrow::Cow<'static, str>, Option<std::borrow::Cow<'static, str>>),
 }
 
+/// Copy of the relevant `SubdiagnosticMessage` variant constructed by `fluent_messages` as it
+/// expects `crate::SubdiagnosticMessage` to exist.
+pub enum SubdiagnosticMessage {
+    FluentAttr(std::borrow::Cow<'static, str>),
+}
+
 mod missing_absolute {
     use super::fluent_messages;
 

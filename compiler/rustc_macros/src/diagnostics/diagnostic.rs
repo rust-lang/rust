@@ -126,14 +126,14 @@ impl<'a> SessionDiagnosticDerive<'a> {
                     (Some((SessionDiagnosticKind::Error, _)), Some((slug, _))) => {
                         quote! {
                             let mut #diag = #sess.struct_err(
-                                rustc_errors::DiagnosticMessage::fluent(#slug),
+                                rustc_errors::DiagnosticMessage::new(#slug),
                             );
                         }
                     }
                     (Some((SessionDiagnosticKind::Warn, _)), Some((slug, _))) => {
                         quote! {
                             let mut #diag = #sess.struct_warn(
-                                rustc_errors::DiagnosticMessage::fluent(#slug),
+                                rustc_errors::DiagnosticMessage::new(#slug),
                             );
                         }
                     }
@@ -254,21 +254,6 @@ impl SessionDiagnosticDeriveBuilder {
 
         if matches!(name, "help" | "note") && matches!(meta, Meta::Path(_) | Meta::NameValue(_)) {
             let diag = &self.diag;
-            let slug = match &self.slug {
-                Some((slug, _)) => slug.as_str(),
-                None => throw_span_err!(
-                    span,
-                    &format!(
-                        "`#[{}{}]` must come after `#[error(..)]` or `#[warn(..)]`",
-                        name,
-                        match meta {
-                            Meta::Path(_) => "",
-                            Meta::NameValue(_) => " = ...",
-                            _ => unreachable!(),
-                        }
-                    )
-                ),
-            };
             let id = match meta {
                 Meta::Path(..) => quote! { #name },
                 Meta::NameValue(MetaNameValue { lit: syn::Lit::Str(s), .. }) => {
@@ -279,7 +264,7 @@ impl SessionDiagnosticDeriveBuilder {
             let fn_name = proc_macro2::Ident::new(name, attr.span());
 
             return Ok(quote! {
-                #diag.#fn_name(rustc_errors::DiagnosticMessage::fluent_attr(#slug, #id));
+                #diag.#fn_name(rustc_errors::SubdiagnosticMessage::attr(#id));
             });
         }
 
@@ -525,13 +510,8 @@ impl SessionDiagnosticDeriveBuilder {
 
                 let method = format_ident!("span_{}", name);
 
-                let slug = self
-                    .slug
-                    .as_ref()
-                    .map(|(slug, _)| slug.as_str())
-                    .unwrap_or_else(|| "missing-slug");
                 let msg = msg.as_deref().unwrap_or("suggestion");
-                let msg = quote! { rustc_errors::DiagnosticMessage::fluent_attr(#slug, #msg) };
+                let msg = quote! { rustc_errors::SubdiagnosticMessage::attr(#msg) };
                 let code = code.unwrap_or_else(|| quote! { String::new() });
 
                 Ok(quote! { #diag.#method(#span_field, #msg, #code, #applicability); })
@@ -549,14 +529,11 @@ impl SessionDiagnosticDeriveBuilder {
         fluent_attr_identifier: &str,
     ) -> TokenStream {
         let diag = &self.diag;
-
-        let slug =
-            self.slug.as_ref().map(|(slug, _)| slug.as_str()).unwrap_or_else(|| "missing-slug");
         let fn_name = format_ident!("span_{}", kind);
         quote! {
             #diag.#fn_name(
                 #field_binding,
-                rustc_errors::DiagnosticMessage::fluent_attr(#slug, #fluent_attr_identifier)
+                rustc_errors::SubdiagnosticMessage::attr(#fluent_attr_identifier)
             );
         }
     }
@@ -565,9 +542,8 @@ impl SessionDiagnosticDeriveBuilder {
     /// and `fluent_attr_identifier`.
     fn add_subdiagnostic(&self, kind: &Ident, fluent_attr_identifier: &str) -> TokenStream {
         let diag = &self.diag;
-        let slug = self.slug.as_ref().map(|(slug, _)| slug.as_str()).unwrap_or("missing-slug");
         quote! {
-            #diag.#kind(rustc_errors::DiagnosticMessage::fluent_attr(#slug, #fluent_attr_identifier));
+            #diag.#kind(rustc_errors::SubdiagnosticMessage::attr(#fluent_attr_identifier));
         }
     }
 

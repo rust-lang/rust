@@ -1,5 +1,5 @@
 error: could not open Fluent resource
-  --> $DIR/test.rs:19:29
+  --> $DIR/test.rs:25:29
    |
 LL |         missing_absolute => "/definitely_does_not_exist.ftl",
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -7,7 +7,7 @@ LL |         missing_absolute => "/definitely_does_not_exist.ftl",
    = note: os-specific message
 
 error: could not open Fluent resource
-  --> $DIR/test.rs:28:29
+  --> $DIR/test.rs:34:29
    |
 LL |         missing_relative => "../definitely_does_not_exist.ftl",
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -15,7 +15,7 @@ LL |         missing_relative => "../definitely_does_not_exist.ftl",
    = note: os-specific message
 
 error: could not parse Fluent resource
-  --> $DIR/test.rs:37:28
+  --> $DIR/test.rs:43:28
    |
 LL |         missing_message => "./missing-message.ftl",
    |                            ^^^^^^^^^^^^^^^^^^^^^^^
@@ -30,13 +30,13 @@ error: expected a message field for "missing-message"
   |
 
 error: overrides existing message: `key`
-  --> $DIR/test.rs:47:9
+  --> $DIR/test.rs:53:9
    |
 LL |         b => "./duplicate-b.ftl",
    |         ^
    |
 help: previously defined in this resource
-  --> $DIR/test.rs:46:9
+  --> $DIR/test.rs:52:9
    |
 LL |         a => "./duplicate-a.ftl",
    |         ^
