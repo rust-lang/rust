@@ -106,8 +106,6 @@ regexes! {
     r"\\"                           => "/",
     // erase platform file paths
     "sys/[a-z]+/"                    => "sys/PLATFORM/",
-    // erase error annotations in tests
-    r"\s*//~.*"                      => "",
 }
 
 fn ui(mode: Mode, path: &str) {

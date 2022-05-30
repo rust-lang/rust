@@ -231,6 +231,11 @@ fn run_test(
     }
     let output = miri.output().expect("could not execute miri");
     let mut errors = config.mode.ok(output.status);
+    // Always remove annotation comments from stderr.
+    let annotations = Regex::new(r"\s*//~.*").unwrap();
+    let stderr = std::str::from_utf8(&output.stderr).unwrap();
+    let stderr = annotations.replace_all(stderr, "");
+    let stdout = std::str::from_utf8(&output.stdout).unwrap();
     // Check output files (if any)
     let revised = |extension: &str| {
         if revision.is_empty() {
@@ -241,7 +246,7 @@ fn run_test(
     };
     // Check output files against actual output
     check_output(
-        &output.stderr,
+        &stderr,
         path,
         &mut errors,
         revised("stderr"),
@@ -251,7 +256,7 @@ fn run_test(
         comments,
     );
     check_output(
-        &output.stdout,
+        &stdout,
         path,
         &mut errors,
         revised("stdout"),
@@ -261,21 +266,17 @@ fn run_test(
         comments,
     );
     // Check error annotations in the source against output
-    check_annotations(&output.stderr, &mut errors, config, revision, comments);
+    check_annotations(&stderr, &mut errors, config, revision, comments);
     (miri, errors)
 }
 
 fn check_annotations(
-    unnormalized_stderr: &[u8],
+    unnormalized_stderr: &str,
     errors: &mut Errors,
     config: &Config,
     revision: &str,
     comments: &Comments,
 ) {
-    let unnormalized_stderr = std::str::from_utf8(unnormalized_stderr).unwrap();
-    // erase annotations from the stderr so they don't match themselves
-    let annotations = Regex::new(r"\s*//~.*").unwrap();
-    let unnormalized_stderr = annotations.replace(unnormalized_stderr, "");
     let mut found_annotation = false;
     if let Some((ref error_pattern, definition_line)) = comments.error_pattern {
         if !unnormalized_stderr.contains(error_pattern) {
@@ -313,7 +314,7 @@ fn check_annotations(
 }
 
 fn check_output(
-    output: &[u8],
+    output: &str,
     path: &Path,
     errors: &mut Errors,
     kind: String,
@@ -322,7 +323,6 @@ fn check_output(
     config: &Config,
     comments: &Comments,
 ) {
-    let output = std::str::from_utf8(&output).unwrap();
     let output = normalize(path, output, filters, comments);
     let path = output_path(path, comments, kind, target);
     match config.output_conflict_handling {

@@ -42,9 +42,9 @@ LL |     let _x: &i32 = unsafe { mem::transmute(16usize) }; //~ ERROR encountere
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 error: aborting due to previous error
     ";
-    check_annotations(unnormalized_stderr.as_bytes(), &mut errors, &config, "", &comments);
+    check_annotations(unnormalized_stderr, &mut errors, &config, "", &comments);
     match &errors[..] {
         [Error::PatternNotFound { .. }] => {}
-        _ => panic!("{:#?}", errors),
+        _ => panic!("not the expected error: {:#?}", errors),
     }
 }
