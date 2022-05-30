@@ -69,11 +69,11 @@ After you are happy with the state of the code, please use [interactive rebase](
 Avoid @mentioning people in commit messages and pull request descriptions(they are added to commit message by bors).
 Such messages create a lot of duplicate notification traffic during rebases.
 
-If possible, write commit messages from user's perspective:
+If possible, write Pull Request titles and descriptions from the user's perspective:
 
 ```
 # GOOD
-Goto definition works inside macros
+Make goto definition work inside macros
 
 # BAD
 Use original span for FileId
