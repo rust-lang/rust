@@ -13,7 +13,7 @@ note: inside closure at $DIR/deallocate_against_barrier1.rs:LL:CC
    |
 LL |         drop(unsafe { Box::from_raw(raw) });
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: inside `<[closure@$DIR/deallocate_against_barrier1.rs:LL:CC: 12:6] as std::ops::FnOnce<(&mut i32,)>>::call_once - shim` at rustc_src/src/ops/function.rs:LL:CC
+   = note: inside `<[closure@$DIR/deallocate_against_barrier1.rs:LL:CC] as std::ops::FnOnce<(&mut i32,)>>::call_once - shim` at rustc_src/src/ops/function.rs:LL:CC
 note: inside `inner` at $DIR/deallocate_against_barrier1.rs:LL:CC
   --> $DIR/deallocate_against_barrier1.rs:LL:CC
    |
