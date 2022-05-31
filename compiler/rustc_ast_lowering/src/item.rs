@@ -1314,31 +1314,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
         }
 
-        let mut lowered_generics = self.lower_generics_mut(generics, itctx);
-        let res = f(self);
-
-        let extra_lifetimes = self.resolver.take_extra_lifetime_params(parent_node_id);
-        let impl_trait_defs = std::mem::take(&mut self.impl_trait_defs);
-        lowered_generics.params.extend(
-            extra_lifetimes
-                .into_iter()
-                .filter_map(|(ident, node_id, res)| {
-                    self.lifetime_res_to_generic_param(ident, node_id, res)
-                })
-                .chain(impl_trait_defs.into_iter()),
-        );
-        let impl_trait_bounds = std::mem::take(&mut self.impl_trait_bounds);
-        lowered_generics.predicates.extend(impl_trait_bounds.into_iter());
-
-        let lowered_generics = lowered_generics.into_generics(self.arena);
-        (lowered_generics, res)
-    }
-
-    pub(super) fn lower_generics_mut(
-        &mut self,
-        generics: &Generics,
-        itctx: ImplTraitContext,
-    ) -> GenericsCtor<'hir> {
         // Error if `?Trait` bounds in where clauses don't refer directly to type parameters.
         // Note: we used to clone these bounds directly onto the type parameter (and avoid lowering
         // these into hir when we lower thee where clauses), but this makes it quite difficult to
@@ -1386,7 +1361,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
         }
 
-        let mut predicates = SmallVec::new();
+        let mut predicates: SmallVec<[hir::WherePredicate<'hir>; 4]> = SmallVec::new();
         predicates.extend(generics.params.iter().filter_map(|param| {
             let bounds = self.lower_param_bounds(&param.bounds, itctx);
             self.lower_generic_bound_predicate(
@@ -1405,13 +1380,34 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 .map(|predicate| self.lower_where_predicate(predicate)),
         );
 
-        GenericsCtor {
-            params: self.lower_generic_params_mut(&generics.params).collect(),
-            predicates,
-            has_where_clause: !generics.where_clause.predicates.is_empty(),
-            where_clause_span: self.lower_span(generics.where_clause.span),
-            span: self.lower_span(generics.span),
-        }
+        let mut params: Vec<_> = self.lower_generic_params_mut(&generics.params).collect();
+        let has_where_clause = !generics.where_clause.predicates.is_empty();
+        let where_clause_span = self.lower_span(generics.where_clause.span);
+        let span = self.lower_span(generics.span);
+        let res = f(self);
+
+        let extra_lifetimes = self.resolver.take_extra_lifetime_params(parent_node_id);
+        let impl_trait_defs = std::mem::take(&mut self.impl_trait_defs);
+        params.extend(
+            extra_lifetimes
+                .into_iter()
+                .filter_map(|(ident, node_id, res)| {
+                    self.lifetime_res_to_generic_param(ident, node_id, res)
+                })
+                .chain(impl_trait_defs.into_iter()),
+        );
+        let impl_trait_bounds = std::mem::take(&mut self.impl_trait_bounds);
+        predicates.extend(impl_trait_bounds.into_iter());
+
+        let lowered_generics = self.arena.alloc(hir::Generics {
+            params: self.arena.alloc_from_iter(params),
+            predicates: self.arena.alloc_from_iter(predicates),
+            has_where_clause,
+            where_clause_span,
+            span,
+        });
+
+        (lowered_generics, res)
     }
 
     pub(super) fn lower_generic_bound_predicate(
@@ -1525,26 +1521,5 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 })
             }
         }
-    }
-}
-
-/// Helper struct for delayed construction of Generics.
-pub(super) struct GenericsCtor<'hir> {
-    pub(super) params: SmallVec<[hir::GenericParam<'hir>; 4]>,
-    pub(super) predicates: SmallVec<[hir::WherePredicate<'hir>; 4]>,
-    has_where_clause: bool,
-    where_clause_span: Span,
-    span: Span,
-}
-
-impl<'hir> GenericsCtor<'hir> {
-    pub(super) fn into_generics(self, arena: &'hir Arena<'hir>) -> &'hir hir::Generics<'hir> {
-        arena.alloc(hir::Generics {
-            params: arena.alloc_from_iter(self.params),
-            predicates: arena.alloc_from_iter(self.predicates),
-            has_where_clause: self.has_where_clause,
-            where_clause_span: self.where_clause_span,
-            span: self.span,
-        })
     }
 }
