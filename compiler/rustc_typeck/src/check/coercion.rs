@@ -1500,7 +1500,8 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                             coercion_error.clone(),
                             fcx,
                             parent_id,
-                            expression.map(|expr| (expr, blk_id)),
+                            expression,
+                            Some(blk_id),
                         );
                         if !fcx.tcx.features().unsized_locals {
                             unsized_return = self.is_return_ty_unsized(fcx, blk_id);
@@ -1514,6 +1515,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                             coercion_error.clone(),
                             fcx,
                             id,
+                            expression,
                             None,
                         );
                         if !fcx.tcx.features().unsized_locals {
@@ -1564,21 +1566,28 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         ty_err: TypeError<'tcx>,
         fcx: &FnCtxt<'a, 'tcx>,
         id: hir::HirId,
-        expression: Option<(&'tcx hir::Expr<'tcx>, hir::HirId)>,
+        expression: Option<&'tcx hir::Expr<'tcx>>,
+        blk_id: Option<hir::HirId>,
     ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
         let mut err = fcx.report_mismatched_types(cause, expected, found, ty_err);
 
         let mut pointing_at_return_type = false;
         let mut fn_output = None;
 
+        let parent_id = fcx.tcx.hir().get_parent_node(id);
+        let parent = fcx.tcx.hir().get(parent_id);
+        if let Some(expr) = expression
+            && let hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Closure(_, _, body_id, ..), .. }) = parent
+            && !matches!(fcx.tcx.hir().get(body_id.hir_id), hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Block(..), .. }))
+        {
+            fcx.suggest_missing_semicolon(&mut err, expr, expected, true);
+        }
         // Verify that this is a tail expression of a function, otherwise the
         // label pointing out the cause for the type coercion will be wrong
         // as prior return coercions would not be relevant (#57664).
-        let parent_id = fcx.tcx.hir().get_parent_node(id);
-        let fn_decl = if let Some((expr, blk_id)) = expression {
+        let fn_decl = if let (Some(expr), Some(blk_id)) = (expression, blk_id) {
             pointing_at_return_type =
                 fcx.suggest_mismatched_types_on_tail(&mut err, expr, expected, found, blk_id);
-            let parent = fcx.tcx.hir().get(parent_id);
             if let (Some(cond_expr), true, false) = (
                 fcx.tcx.hir().get_if_cause(expr.hir_id),
                 expected.is_unit(),
@@ -1607,7 +1616,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         };
 
         if let Some((fn_decl, can_suggest)) = fn_decl {
-            if expression.is_none() {
+            if blk_id.is_none() {
                 pointing_at_return_type |= fcx.suggest_missing_return_type(
                     &mut err,
                     &fn_decl,
@@ -1625,8 +1634,8 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         let parent_id = fcx.tcx.hir().get_parent_item(id);
         let parent_item = fcx.tcx.hir().get_by_def_id(parent_id);
 
-        if let (Some((expr, _)), Some((fn_decl, _, _))) =
-            (expression, fcx.get_node_fn_decl(parent_item))
+        if let (Some(expr), Some(_), Some((fn_decl, _, _))) =
+            (expression, blk_id, fcx.get_node_fn_decl(parent_item))
         {
             fcx.suggest_missing_break_or_return_expr(
                 &mut err,
