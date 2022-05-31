@@ -100,6 +100,26 @@ macro_rules! tuple_impls {
                 }
             }
         }
+
+        #[stable(feature = "array_tuple_conv", since = "1.63.0")]
+        impl<T> From<[T; count!($($T)+)]> for ($(${ignore(T)} T,)+) {
+            #[inline]
+            #[allow(non_snake_case)]
+            fn from(array: [T; count!($($T)+)]) -> Self {
+                let [$($T,)+] = array;
+                ($($T,)+)
+            }
+        }
+
+        #[stable(feature = "array_tuple_conv", since = "1.63.0")]
+        impl<T> From<($(${ignore(T)} T,)+)> for [T; count!($($T)+)] {
+            #[inline]
+            #[allow(non_snake_case)]
+            fn from(tuple: ($(${ignore(T)} T,)+)) -> Self {
+                let ($($T,)+) = tuple;
+                [$($T,)+]
+            }
+        }
     }
 }
 
@@ -179,3 +199,23 @@ macro_rules! last_type {
 }
 
 tuple_impls!(E D C B A Z Y X W V U T);
+
+macro_rules! count {
+    ($($a:ident)*) => {
+        0 $(${ignore(a)} + 1)*
+    };
+}
+
+#[stable(feature = "array_tuple_conv", since = "1.63.0")]
+impl<T> From<()> for [T; 0] {
+    fn from((): ()) -> Self {
+        []
+    }
+}
+
+#[stable(feature = "array_tuple_conv", since = "1.63.0")]
+impl<T> From<[T; 0]> for () {
+    fn from([]: [T; 0]) -> Self {
+        ()
+    }
+}
