@@ -299,7 +299,7 @@ struct BadQPathStage2 {
 #[error(slug = "parser-incorrect-semicolon")]
 struct IncorrectSemicolon<'a> {
     #[primary_span]
-    #[suggestion(applicability = "machine-applicable")]
+    #[suggestion_short(applicability = "machine-applicable")]
     span: Span,
     #[help]
     opt_help: Option<()>,
