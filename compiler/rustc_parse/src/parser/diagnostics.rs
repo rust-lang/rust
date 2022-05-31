@@ -295,6 +295,17 @@ struct BadQPathStage2 {
     ty: String,
 }
 
+#[derive(SessionDiagnostic)]
+#[error(slug = "parser-incorrect-semicolon")]
+struct IncorrectSemicolon<'a> {
+    #[primary_span]
+    #[suggestion(applicability = "machine-applicable")]
+    span: Span,
+    #[help]
+    opt_help: Option<()>,
+    name: &'a str,
+}
+
 // SnapshotParser is used to create a snapshot of the parser
 // without causing duplicate errors being emitted when the `Parser`
 // is dropped.
@@ -1490,13 +1501,10 @@ impl<'a> Parser<'a> {
     pub fn maybe_consume_incorrect_semicolon(&mut self, items: &[P<Item>]) -> bool {
         if self.token.kind == TokenKind::Semi {
             self.bump();
-            let mut err = self.struct_span_err(self.prev_token.span, "expected item, found `;`");
-            err.span_suggestion_short(
-                self.prev_token.span,
-                "remove this semicolon",
-                String::new(),
-                Applicability::MachineApplicable,
-            );
+
+            let mut err =
+                IncorrectSemicolon { span: self.prev_token.span, opt_help: None, name: "" };
+
             if !items.is_empty() {
                 let previous_item = &items[items.len() - 1];
                 let previous_item_kind_name = match previous_item.kind {
@@ -1509,10 +1517,11 @@ impl<'a> Parser<'a> {
                     _ => None,
                 };
                 if let Some(name) = previous_item_kind_name {
-                    err.help(&format!("{name} declarations are not followed by a semicolon"));
+                    err.opt_help = Some(());
+                    err.name = name;
                 }
             }
-            err.emit();
+            self.sess.emit_err(err);
             true
         } else {
             false

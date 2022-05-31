@@ -18,3 +18,8 @@ parser-expect-path = expected a path
 parser-maybe-recover-from-bad-qpath-stage-2 =
     missing angle brackets in associated item path
     .suggestion = try: `{$ty}`
+
+parser-incorrect-semicolon =
+    expected item, found `;`
+    .suggestion = remove this semicolon
+    .help = {$name} declarations are not followed by a semicolon
