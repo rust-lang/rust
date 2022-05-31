@@ -14,3 +14,7 @@ parser-add-paren = try adding parentheses
 parser-forgot-paren = perhaps you forgot parentheses?
 
 parser-expect-path = expected a path
+
+parser-maybe-recover-from-bad-qpath-stage-2 =
+    missing angle brackets in associated item path
+    .suggestion = try: `{$ty}`
