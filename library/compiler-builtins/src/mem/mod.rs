@@ -51,16 +51,7 @@ intrinsics! {
     #[mem_builtin]
     #[cfg_attr(not(all(target_os = "windows", target_env = "gnu")), linkage = "weak")]
     pub unsafe extern "C" fn memcmp(s1: *const u8, s2: *const u8, n: usize) -> i32 {
-        let mut i = 0;
-        while i < n {
-            let a = *s1.add(i);
-            let b = *s2.add(i);
-            if a != b {
-                return a as i32 - b as i32;
-            }
-            i += 1;
-        }
-        0
+        impls::compare_bytes(s1, s2, n)
     }
 
     #[mem_builtin]

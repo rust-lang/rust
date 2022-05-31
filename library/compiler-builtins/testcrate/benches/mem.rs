@@ -96,6 +96,18 @@ fn memcmp_builtin(b: &mut Bencher, n: usize) {
     })
 }
 
+fn memcmp_builtin_unaligned(b: &mut Bencher, n: usize) {
+    let v1 = AlignedVec::new(0, n);
+    let mut v2 = AlignedVec::new(0, n);
+    v2[n - 1] = 1;
+    b.bytes = n as u64;
+    b.iter(|| {
+        let s1: &[u8] = black_box(&v1[0..]);
+        let s2: &[u8] = black_box(&v2[1..]);
+        s1.cmp(s2)
+    })
+}
+
 fn memcmp_rust(b: &mut Bencher, n: usize) {
     let v1 = AlignedVec::new(0, n);
     let mut v2 = AlignedVec::new(0, n);
@@ -105,6 +117,18 @@ fn memcmp_rust(b: &mut Bencher, n: usize) {
         let s1: &[u8] = black_box(&v1);
         let s2: &[u8] = black_box(&v2);
         unsafe { memcmp(s1.as_ptr(), s2.as_ptr(), n) }
+    })
+}
+
+fn memcmp_rust_unaligned(b: &mut Bencher, n: usize) {
+    let v1 = AlignedVec::new(0, n);
+    let mut v2 = AlignedVec::new(0, n);
+    v2[n - 1] = 1;
+    b.bytes = n as u64;
+    b.iter(|| {
+        let s1: &[u8] = black_box(&v1[0..]);
+        let s2: &[u8] = black_box(&v2[1..]);
+        unsafe { memcmp(s1.as_ptr(), s2.as_ptr(), n - 1) }
     })
 }
 
@@ -210,6 +234,38 @@ fn memset_rust_1048576_offset(b: &mut Bencher) {
 }
 
 #[bench]
+fn memcmp_builtin_8(b: &mut Bencher) {
+    memcmp_builtin(b, 8)
+}
+#[bench]
+fn memcmp_rust_8(b: &mut Bencher) {
+    memcmp_rust(b, 8)
+}
+#[bench]
+fn memcmp_builtin_16(b: &mut Bencher) {
+    memcmp_builtin(b, 16)
+}
+#[bench]
+fn memcmp_rust_16(b: &mut Bencher) {
+    memcmp_rust(b, 16)
+}
+#[bench]
+fn memcmp_builtin_32(b: &mut Bencher) {
+    memcmp_builtin(b, 32)
+}
+#[bench]
+fn memcmp_rust_32(b: &mut Bencher) {
+    memcmp_rust(b, 32)
+}
+#[bench]
+fn memcmp_builtin_64(b: &mut Bencher) {
+    memcmp_builtin(b, 64)
+}
+#[bench]
+fn memcmp_rust_64(b: &mut Bencher) {
+    memcmp_rust(b, 64)
+}
+#[bench]
 fn memcmp_builtin_4096(b: &mut Bencher) {
     memcmp_builtin(b, 4096)
 }
@@ -224,6 +280,54 @@ fn memcmp_builtin_1048576(b: &mut Bencher) {
 #[bench]
 fn memcmp_rust_1048576(b: &mut Bencher) {
     memcmp_rust(b, 1048576)
+}
+#[bench]
+fn memcmp_builtin_unaligned_7(b: &mut Bencher) {
+    memcmp_builtin_unaligned(b, 8)
+}
+#[bench]
+fn memcmp_rust_unaligned_7(b: &mut Bencher) {
+    memcmp_rust_unaligned(b, 8)
+}
+#[bench]
+fn memcmp_builtin_unaligned_15(b: &mut Bencher) {
+    memcmp_builtin_unaligned(b, 16)
+}
+#[bench]
+fn memcmp_rust_unaligned_15(b: &mut Bencher) {
+    memcmp_rust_unaligned(b, 16)
+}
+#[bench]
+fn memcmp_builtin_unaligned_31(b: &mut Bencher) {
+    memcmp_builtin_unaligned(b, 32)
+}
+#[bench]
+fn memcmp_rust_unaligned_31(b: &mut Bencher) {
+    memcmp_rust_unaligned(b, 32)
+}
+#[bench]
+fn memcmp_builtin_unaligned_63(b: &mut Bencher) {
+    memcmp_builtin_unaligned(b, 64)
+}
+#[bench]
+fn memcmp_rust_unaligned_63(b: &mut Bencher) {
+    memcmp_rust_unaligned(b, 64)
+}
+#[bench]
+fn memcmp_builtin_unaligned_4095(b: &mut Bencher) {
+    memcmp_builtin_unaligned(b, 4096)
+}
+#[bench]
+fn memcmp_rust_unaligned_4095(b: &mut Bencher) {
+    memcmp_rust_unaligned(b, 4096)
+}
+#[bench]
+fn memcmp_builtin_unaligned_1048575(b: &mut Bencher) {
+    memcmp_builtin_unaligned(b, 1048576)
+}
+#[bench]
+fn memcmp_rust_unaligned_1048575(b: &mut Bencher) {
+    memcmp_rust_unaligned(b, 1048576)
 }
 
 #[bench]

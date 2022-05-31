@@ -6,6 +6,7 @@
 #![feature(compiler_builtins)]
 #![feature(core_ffi_c)]
 #![feature(core_intrinsics)]
+#![feature(inline_const)]
 #![feature(lang_items)]
 #![feature(linkage)]
 #![feature(naked_functions)]
