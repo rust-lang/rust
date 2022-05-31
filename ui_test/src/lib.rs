@@ -30,8 +30,8 @@ pub struct Config {
     pub mode: Mode,
     pub program: PathBuf,
     pub output_conflict_handling: OutputConflictHandling,
-    /// Only run tests with this string in their path/name
-    pub path_filter: Option<String>,
+    /// Only run tests with one of these strings in their path/name
+    pub path_filter: Vec<String>,
 }
 
 #[derive(Debug)]
@@ -61,6 +61,7 @@ pub fn run_tests(config: Config) {
     let failures = Mutex::new(vec![]);
     let succeeded = AtomicUsize::default();
     let ignored = AtomicUsize::default();
+    let filtered = AtomicUsize::default();
 
     crossbeam::scope(|s| {
         for _ in 0..std::thread::available_parallelism().unwrap().get() {
@@ -77,14 +78,10 @@ pub fn run_tests(config: Config) {
                     if !path.extension().map(|ext| ext == "rs").unwrap_or(false) {
                         continue;
                     }
-                    if let Some(path_filter) = &config.path_filter {
-                        if !path.display().to_string().contains(path_filter) {
-                            ignored.fetch_add(1, Ordering::Relaxed);
-                            eprintln!(
-                                "{} .. {}",
-                                path.display(),
-                                "ignored (command line filter)".yellow()
-                            );
+                    if !config.path_filter.is_empty() {
+                        let path_display = path.display().to_string();
+                        if !config.path_filter.iter().any(|filter| path_display.contains(filter)) {
+                            filtered.fetch_add(1, Ordering::Relaxed);
                             continue;
                         }
                     }
@@ -92,7 +89,11 @@ pub fn run_tests(config: Config) {
                     // Ignore file if only/ignore rules do (not) apply
                     if ignore_file(&comments, &target) {
                         ignored.fetch_add(1, Ordering::Relaxed);
-                        eprintln!("{} .. {}", path.display(), "ignored".yellow());
+                        eprintln!(
+                            "{} ... {}",
+                            path.display(),
+                            "ignored (in-test comment)".yellow()
+                        );
                         continue;
                     }
                     // Run the test for all revisions
@@ -101,7 +102,7 @@ pub fn run_tests(config: Config) {
                     {
                         let (m, errors) = run_test(&path, &config, &target, &revision, &comments);
 
-                        // Using `format` to prevent messages from threads from getting intermingled.
+                        // Using a single `eprintln!` to prevent messages from threads from getting intermingled.
                         let mut msg = format!("{} ", path.display());
                         if !revision.is_empty() {
                             write!(msg, "(revision `{revision}`) ").unwrap();
@@ -125,6 +126,7 @@ pub fn run_tests(config: Config) {
     let failures = failures.into_inner().unwrap();
     let succeeded = succeeded.load(Ordering::Relaxed);
     let ignored = ignored.load(Ordering::Relaxed);
+    let filtered = filtered.load(Ordering::Relaxed);
     if !failures.is_empty() {
         for (path, miri, revision, errors) in &failures {
             eprintln!();
@@ -168,19 +170,22 @@ pub fn run_tests(config: Config) {
             }
         }
         eprintln!(
-            "{} tests failed, {} tests passed, {} ignored",
+            "test result: {}. {} tests failed, {} tests passed, {} ignored, {} filtered out",
+            "FAIL".red(),
             failures.len().to_string().red().bold(),
             succeeded.to_string().green(),
-            ignored.to_string().yellow()
+            ignored.to_string().yellow(),
+            filtered.to_string().yellow(),
         );
         std::process::exit(1);
     }
     eprintln!();
     eprintln!(
-        "test result: {}. {} tests passed, {} ignored",
+        "test result: {}. {} tests passed, {} ignored, {} filtered out",
         "ok".green(),
         succeeded.to_string().green(),
-        ignored.to_string().yellow()
+        ignored.to_string().yellow(),
+        filtered.to_string().yellow(),
     );
     eprintln!();
 }
@@ -230,6 +235,34 @@ fn run_test(
     }
     let output = miri.output().expect("could not execute miri");
     let mut errors = config.mode.ok(output.status);
+    check_test_result(
+        path,
+        config,
+        target,
+        revision,
+        comments,
+        &mut errors,
+        &output.stdout,
+        &output.stderr,
+    );
+    (miri, errors)
+}
+
+fn check_test_result(
+    path: &Path,
+    config: &Config,
+    target: &str,
+    revision: &str,
+    comments: &Comments,
+    errors: &mut Errors,
+    stdout: &[u8],
+    stderr: &[u8],
+) {
+    // Always remove annotation comments from stderr.
+    let annotations = Regex::new(r"\s*//~.*").unwrap();
+    let stderr = std::str::from_utf8(stderr).unwrap();
+    let stderr = annotations.replace_all(stderr, "");
+    let stdout = std::str::from_utf8(stdout).unwrap();
     // Check output files (if any)
     let revised = |extension: &str| {
         if revision.is_empty() {
@@ -240,9 +273,9 @@ fn run_test(
     };
     // Check output files against actual output
     check_output(
-        &output.stderr,
+        &stderr,
         path,
-        &mut errors,
+        errors,
         revised("stderr"),
         target,
         &config.stderr_filters,
@@ -250,9 +283,9 @@ fn run_test(
         comments,
     );
     check_output(
-        &output.stdout,
+        &stdout,
         path,
-        &mut errors,
+        errors,
         revised("stdout"),
         target,
         &config.stdout_filters,
@@ -260,21 +293,16 @@ fn run_test(
         comments,
     );
     // Check error annotations in the source against output
-    check_annotations(&output.stderr, &mut errors, config, revision, comments);
-    (miri, errors)
+    check_annotations(&stderr, errors, config, revision, comments);
 }
 
 fn check_annotations(
-    unnormalized_stderr: &[u8],
+    unnormalized_stderr: &str,
     errors: &mut Errors,
     config: &Config,
     revision: &str,
     comments: &Comments,
 ) {
-    let unnormalized_stderr = std::str::from_utf8(unnormalized_stderr).unwrap();
-    // erase annotations from the stderr so they don't match themselves
-    let annotations = Regex::new(r"\s*//~.*").unwrap();
-    let unnormalized_stderr = annotations.replace(unnormalized_stderr, "");
     let mut found_annotation = false;
     if let Some((ref error_pattern, definition_line)) = comments.error_pattern {
         if !unnormalized_stderr.contains(error_pattern) {
@@ -312,7 +340,7 @@ fn check_annotations(
 }
 
 fn check_output(
-    output: &[u8],
+    output: &str,
     path: &Path,
     errors: &mut Errors,
     kind: String,
@@ -321,7 +349,6 @@ fn check_output(
     config: &Config,
     comments: &Comments,
 ) {
-    let output = std::str::from_utf8(&output).unwrap();
     let output = normalize(path, output, filters, comments);
     let path = output_path(path, comments, kind, target);
     match config.output_conflict_handling {
