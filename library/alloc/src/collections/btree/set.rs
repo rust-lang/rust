@@ -23,9 +23,9 @@ use super::Recover;
 /// It is a logic error for an item to be modified in such a way that the item's ordering relative
 /// to any other item, as determined by the [`Ord`] trait, changes while it is in the set. This is
 /// normally only possible through [`Cell`], [`RefCell`], global state, I/O, or unsafe code.
-/// The behavior resulting from such a logic error is not specified (it could include panics,
-/// incorrect results, aborts, memory leaks, or non-termination) but will not be undefined
-/// behavior.
+/// The behavior resulting from such a logic error is not specified, but will be encapsulated to the
+/// `BTreeSet` that observed the logic error and not result in undefined behavior. This could
+/// include panics, incorrect results, aborts, memory leaks, and non-termination.
 ///
 /// Iterators returned by [`BTreeSet::iter`] produce their items in order, and take worst-case
 /// logarithmic and amortized constant time per item returned.
