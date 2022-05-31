@@ -482,6 +482,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let current_owner = std::mem::replace(&mut self.current_hir_id_owner, def_id);
         let current_local_counter =
             std::mem::replace(&mut self.item_local_id_counter, hir::ItemLocalId::new(1));
+        let current_impl_trait_defs = std::mem::take(&mut self.impl_trait_defs);
+        let current_impl_trait_bounds = std::mem::take(&mut self.impl_trait_bounds);
 
         // Always allocate the first `HirId` for the owner itself.
         let _old = self.node_id_to_local_id.insert(owner, hir::ItemLocalId::new(0));
@@ -489,6 +491,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         let item = f(self);
         debug_assert_eq!(def_id, item.def_id());
+        debug_assert!(self.impl_trait_defs.is_empty());
+        debug_assert!(self.impl_trait_bounds.is_empty());
         let info = self.make_owner_info(item);
 
         self.attrs = current_attrs;
@@ -498,6 +502,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.trait_map = current_trait_map;
         self.current_hir_id_owner = current_owner;
         self.item_local_id_counter = current_local_counter;
+        self.impl_trait_defs = current_impl_trait_defs;
+        self.impl_trait_bounds = current_impl_trait_bounds;
 
         let _old = self.children.insert(def_id, hir::MaybeOwner::Owner(info));
         debug_assert!(_old.is_none())
