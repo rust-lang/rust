@@ -1296,9 +1296,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    /// Creates a new `hir::GenericParam` for every new `Fresh` lifetime and
-    /// universal `impl Trait` type parameter encountered while evaluating `f`.
-    /// Definitions are created with the provided `parent_def_id`.
+    /// Return the pair of the lowered `generics` as `hir::Generics` and the evaluation of `f` with
+    /// the carried impl trait definitions and bounds.
     fn lower_generics<T>(
         &mut self,
         generics: &Generics,
