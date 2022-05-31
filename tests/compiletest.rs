@@ -104,6 +104,8 @@ regexes! {
     "sys::[a-z]+::"                  => "sys::PLATFORM::",
     // Windows file paths
     r"\\"                           => "/",
+    // erase Rust stdlib path
+    "[^ `]*/(rust[^/]*|checkout)/library/" => "RUSTLIB/",
     // erase platform file paths
     "sys/[a-z]+/"                    => "sys/PLATFORM/",
 }

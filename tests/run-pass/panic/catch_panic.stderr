@@ -17,7 +17,7 @@ thread 'main' panicked at 'index out of bounds: the len is 3 but the index is 4'
 Caught panic message (String): index out of bounds: the len is 3 but the index is 4
 thread 'main' panicked at 'attempt to divide by zero', $DIR/catch_panic.rs:LL:CC
 Caught panic message (&str): attempt to divide by zero
-thread 'main' panicked at 'align_offset: align is not a power-of-two', rustc_src/src/ptr/const_ptr.rs:LL:CC
+thread 'main' panicked at 'align_offset: align is not a power-of-two', RUSTLIB/core/src/ptr/const_ptr.rs:LL:CC
 Caught panic message (&str): align_offset: align is not a power-of-two
 thread 'main' panicked at 'assertion failed: false', $DIR/catch_panic.rs:LL:CC
 Caught panic message (&str): assertion failed: false
