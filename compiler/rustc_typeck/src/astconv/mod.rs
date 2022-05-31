@@ -1803,52 +1803,84 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         tcx.check_stability(variant_def.def_id, Some(hir_ref_id), span, None);
                         self.prohibit_generics(slice::from_ref(assoc_segment).iter(), |err| {
                             err.note("enum variants can't have type parameters");
-                            let type_name = tcx.opt_item_name(adt_def.did());
-                            let the_enum = type_name.map(|n| format!("enum `{n}`")).unwrap_or_else(|| "the enum".to_string());
-                            let msg = format!("you might have meant to specity type parameters on {the_enum}");
+                            let type_name = tcx.item_name(adt_def.did());
+                            let msg = format!(
+                                "you might have meant to specity type parameters on enum \
+                                 `{type_name}`"
+                            );
                             let Some(args) = assoc_segment.args else { return; };
+                            // Get the span of the generics args *including* the leading `::`.
                             let args_span = assoc_segment.ident.span.shrink_to_hi().to(args.span_ext);
+                            if tcx.generics_of(adt_def.did()).count() == 0 {
+                                // FIXME(estebank): we could also verify that the arguments being
+                                // work for the `enum`, instead of just looking if it takes *any*.
+                                err.span_suggestion_verbose(
+                                    args_span,
+                                    &format!("{type_name} doesn't have type parameters"),
+                                    String::new(),
+                                    Applicability::MachineApplicable,
+                                );
+                                return;
+                            }
                             let Ok(snippet) = tcx.sess.source_map().span_to_snippet(args_span) else {
                                 err.note(&msg);
                                 return;
                             };
-                            let (qself_sugg_span, is_self) = if let hir::TyKind::Path(hir::QPath::Resolved(_, ref path)) = qself.kind {
+                            let (qself_sugg_span, is_self) = if let hir::TyKind::Path(
+                                hir::QPath::Resolved(_, ref path)
+                            ) = qself.kind {
                                 // If the path segment already has type params, we want to overwrite
                                 // them.
                                 match &path.segments[..] {
-                                    [.., segment, _] => (
-                                        segment.ident.span.shrink_to_hi().to(segment.args.map_or(
-                                            segment.ident.span.shrink_to_hi(),
+                                    // `segment` is the previous to last element on the path,
+                                    // which would normally be the `enum` itself, while the last
+                                    // `_` `PathSegment` corresponds to the variant.
+                                    [.., hir::PathSegment {
+                                        ident,
+                                        args,
+                                        res: Some(Res::Def(DefKind::Enum, _)),
+                                        ..
+                                    }, _] => (
+                                        // We need to include the `::` in `Type::Variant::<Args>`
+                                        // to point the span to `::<Args>`, not just `<Args>`.
+                                        ident.span.shrink_to_hi().to(args.map_or(
+                                            ident.span.shrink_to_hi(),
                                             |a| a.span_ext)),
                                         false,
                                     ),
                                     [segment] => (
+                                        // We need to include the `::` in `Type::Variant::<Args>`
+                                        // to point the span to `::<Args>`, not just `<Args>`.
                                         segment.ident.span.shrink_to_hi().to(segment.args.map_or(
                                             segment.ident.span.shrink_to_hi(),
                                             |a| a.span_ext)),
                                         kw::SelfUpper == segment.ident.name,
                                     ),
-                                    _ => unreachable!(),
+                                    _ => {
+                                        err.note(&msg);
+                                        return;
+                                    }
                                 }
                             } else {
-                                err.note(&msg);
-                                return;
-                            };
-                            let Some(type_name) = type_name else {
                                 err.note(&msg);
                                 return;
                             };
                             let suggestion = vec![
                                 if is_self {
                                     // Account for people writing `Self::Variant::<Args>`, where
-                                    // `Self` is the enum.
+                                    // `Self` is the enum, and suggest replacing `Self` with the
+                                    // appropriate type: `Type::<Args>::Variant`.
                                     (qself.span, format!("{type_name}{snippet}"))
                                 } else {
                                     (qself_sugg_span, snippet)
                                 },
                                 (args_span, String::new()),
                             ];
-                            err.multipart_suggestion_verbose(&msg, suggestion, Applicability::MaybeIncorrect);
+                            err.multipart_suggestion_verbose(
+                                &msg,
+                                suggestion,
+                                Applicability::MaybeIncorrect,
+                            );
                         });
                         return Ok((qself_ty, DefKind::Variant, variant_def.def_id));
                     } else {
@@ -2369,8 +2401,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 // Try to evaluate any array length constants.
                 let ty = tcx.at(span).type_of(def_id);
                 let span_of_impl = tcx.span_of_impl(def_id);
-                // TODO: confirm that `def_id`'s type accepts type params at all before suggesting
-                // using that instead.
                 self.prohibit_generics(path.segments.iter(), |err| {
                     let def_id = match *ty.kind() {
                         ty::Adt(self_def, _) => self_def.did(),
@@ -2379,32 +2409,52 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
                     let type_name = tcx.item_name(def_id);
                     let span_of_ty = tcx.def_ident_span(def_id);
+                    let generics = tcx.generics_of(def_id).count();
 
-                    let msg = format!("the `Self` type is `{ty}`");
+                    let msg = format!("`Self` is of type `{ty}`");
                     if let (Ok(i_sp), Some(t_sp)) = (span_of_impl, span_of_ty) {
                         let i_sp = tcx.sess.source_map().guess_head_span(i_sp);
                         let mut span: MultiSpan = vec![t_sp].into();
                         span.push_span_label(
                             i_sp,
-                            &format!("`Self` is `{type_name}` in this `impl`"),
+                            &format!("`Self` is or type `{type_name}` in this `impl`"),
                         );
-                        span.push_span_label(t_sp, "`Self` corresponds to this type");
+                        let mut postfix = "";
+                        if generics == 0 {
+                            postfix = ", which doesn't have type parameters";
+                        }
+                        span.push_span_label(
+                            t_sp,
+                            &format!("`Self` corresponds to this type{postfix}"),
+                        );
                         err.span_note(span, &msg);
                     } else {
                         err.note(&msg);
                     }
                     for segment in path.segments {
-                        if let Some(_args) = segment.args && segment.ident.name == kw::SelfUpper {
-                            err.span_suggestion_verbose(
-                                segment.ident.span,
-                                format!(
-                                    "the `Self` type doesn't accept type parameters, use the \
-                                     concrete type's name `{type_name}` instead if you want to \
-                                     specify its type parameters"
-                                ),
-                                type_name.to_string(),
-                                Applicability::MaybeIncorrect,
-                            );
+                        if let Some(args) = segment.args && segment.ident.name == kw::SelfUpper {
+                            if generics == 0 {
+                                // FIXME(estebank): we could also verify that the arguments being
+                                // work for the `enum`, instead of just looking if it takes *any*.
+                                err.span_suggestion_verbose(
+                                    segment.ident.span.shrink_to_hi().to(args.span_ext),
+                                    "the `Self` type doesn't accept type parameters",
+                                    String::new(),
+                                    Applicability::MachineApplicable,
+                                );
+                                return;
+                            } else {
+                                err.span_suggestion_verbose(
+                                    segment.ident.span,
+                                    format!(
+                                        "the `Self` type doesn't accept type parameters, use the \
+                                        concrete type's name `{type_name}` instead if you want to \
+                                        specify its type parameters"
+                                    ),
+                                    type_name.to_string(),
+                                    Applicability::MaybeIncorrect,
+                                );
+                            }
                         }
                     }
                 });
