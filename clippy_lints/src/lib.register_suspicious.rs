@@ -3,6 +3,7 @@
 // Manual edits will be overwritten.
 
 store.register_group(true, "clippy::suspicious", Some("clippy_suspicious"), vec![
+    LintId::of(almost_complete_letter_range::ALMOST_COMPLETE_LETTER_RANGE),
     LintId::of(assign_ops::MISREFACTORED_ASSIGN_OP),
     LintId::of(attrs::BLANKET_CLIPPY_RESTRICTION_LINTS),
     LintId::of(await_holding_invalid::AWAIT_HOLDING_INVALID_TYPE),
