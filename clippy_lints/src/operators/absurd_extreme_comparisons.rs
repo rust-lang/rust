@@ -1,7 +1,6 @@
 use rustc_hir::{BinOpKind, Expr, ExprKind};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::LateContext;
 use rustc_middle::ty;
-use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 use clippy_utils::comparisons::{normalize_comparison, Rel};
 use clippy_utils::consts::{constant, Constant};
@@ -10,73 +9,41 @@ use clippy_utils::source::snippet;
 use clippy_utils::ty::is_isize_or_usize;
 use clippy_utils::{clip, int_bits, unsext};
 
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for comparisons where one side of the relation is
-    /// either the minimum or maximum value for its type and warns if it involves a
-    /// case that is always true or always false. Only integer and boolean types are
-    /// checked.
-    ///
-    /// ### Why is this bad?
-    /// An expression like `min <= x` may misleadingly imply
-    /// that it is possible for `x` to be less than the minimum. Expressions like
-    /// `max < x` are probably mistakes.
-    ///
-    /// ### Known problems
-    /// For `usize` the size of the current compile target will
-    /// be assumed (e.g., 64 bits on 64 bit systems). This means code that uses such
-    /// a comparison to detect target pointer width will trigger this lint. One can
-    /// use `mem::sizeof` and compare its value or conditional compilation
-    /// attributes
-    /// like `#[cfg(target_pointer_width = "64")] ..` instead.
-    ///
-    /// ### Example
-    /// ```rust
-    /// let vec: Vec<isize> = Vec::new();
-    /// if vec.len() <= 0 {}
-    /// if 100 > i32::MAX {}
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub ABSURD_EXTREME_COMPARISONS,
-    correctness,
-    "a comparison with a maximum or minimum value that is always true or false"
-}
+use super::ABSURD_EXTREME_COMPARISONS;
 
-declare_lint_pass!(AbsurdExtremeComparisons => [ABSURD_EXTREME_COMPARISONS]);
+pub(super) fn check<'tcx>(
+    cx: &LateContext<'tcx>,
+    expr: &'tcx Expr<'_>,
+    op: BinOpKind,
+    lhs: &'tcx Expr<'_>,
+    rhs: &'tcx Expr<'_>,
+) {
+    if let Some((culprit, result)) = detect_absurd_comparison(cx, op, lhs, rhs) {
+        let msg = "this comparison involving the minimum or maximum element for this \
+                           type contains a case that is always true or always false";
 
-impl<'tcx> LateLintPass<'tcx> for AbsurdExtremeComparisons {
-    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if let ExprKind::Binary(ref cmp, lhs, rhs) = expr.kind {
-            if let Some((culprit, result)) = detect_absurd_comparison(cx, cmp.node, lhs, rhs) {
-                if !expr.span.from_expansion() {
-                    let msg = "this comparison involving the minimum or maximum element for this \
-                               type contains a case that is always true or always false";
+        let conclusion = match result {
+            AbsurdComparisonResult::AlwaysFalse => "this comparison is always false".to_owned(),
+            AbsurdComparisonResult::AlwaysTrue => "this comparison is always true".to_owned(),
+            AbsurdComparisonResult::InequalityImpossible => format!(
+                "the case where the two sides are not equal never occurs, consider using `{} == {}` \
+                         instead",
+                snippet(cx, lhs.span, "lhs"),
+                snippet(cx, rhs.span, "rhs")
+            ),
+        };
 
-                    let conclusion = match result {
-                        AbsurdComparisonResult::AlwaysFalse => "this comparison is always false".to_owned(),
-                        AbsurdComparisonResult::AlwaysTrue => "this comparison is always true".to_owned(),
-                        AbsurdComparisonResult::InequalityImpossible => format!(
-                            "the case where the two sides are not equal never occurs, consider using `{} == {}` \
-                             instead",
-                            snippet(cx, lhs.span, "lhs"),
-                            snippet(cx, rhs.span, "rhs")
-                        ),
-                    };
+        let help = format!(
+            "because `{}` is the {} value for this type, {}",
+            snippet(cx, culprit.expr.span, "x"),
+            match culprit.which {
+                ExtremeType::Minimum => "minimum",
+                ExtremeType::Maximum => "maximum",
+            },
+            conclusion
+        );
 
-                    let help = format!(
-                        "because `{}` is the {} value for this type, {}",
-                        snippet(cx, culprit.expr.span, "x"),
-                        match culprit.which {
-                            ExtremeType::Minimum => "minimum",
-                            ExtremeType::Maximum => "maximum",
-                        },
-                        conclusion
-                    );
-
-                    span_lint_and_help(cx, ABSURD_EXTREME_COMPARISONS, expr.span, msg, None, &help);
-                }
-            }
-        }
+        span_lint_and_help(cx, ABSURD_EXTREME_COMPARISONS, expr.span, msg, None, &help);
     }
 }
 

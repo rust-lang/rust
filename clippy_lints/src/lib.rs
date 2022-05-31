@@ -168,7 +168,6 @@ mod utils;
 mod renamed_lints;
 
 // begin lints modules, do not remove this comment, it’s used in `update_lints`
-mod absurd_extreme_comparisons;
 mod almost_complete_letter_range;
 mod approx_const;
 mod as_conversions;
@@ -336,6 +335,7 @@ mod numeric_arithmetic;
 mod octal_escapes;
 mod only_used_in_recursion;
 mod open_options;
+mod operators;
 mod option_env_unwrap;
 mod option_if_let_else;
 mod overflow_check_conditional;
@@ -683,7 +683,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(derivable_impls::DerivableImpls));
     store.register_late_pass(|| Box::new(drop_forget_ref::DropForgetRef));
     store.register_late_pass(|| Box::new(empty_enum::EmptyEnum));
-    store.register_late_pass(|| Box::new(absurd_extreme_comparisons::AbsurdExtremeComparisons));
     store.register_late_pass(|| Box::new(invalid_upcast_comparisons::InvalidUpcastComparisons));
     store.register_late_pass(|| Box::new(regex::Regex));
     store.register_late_pass(|| Box::new(copies::CopyAndPaste));
@@ -941,6 +940,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(default_instead_of_iter_empty::DefaultIterEmpty));
     store.register_late_pass(move || Box::new(manual_rem_euclid::ManualRemEuclid::new(msrv)));
     store.register_late_pass(move || Box::new(manual_retain::ManualRetain::new(msrv)));
+    store.register_late_pass(|| Box::new(operators::Operators));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 

@@ -3,7 +3,6 @@
 // Manual edits will be overwritten.
 
 store.register_group(true, "clippy::all", Some("clippy_all"), vec![
-    LintId::of(absurd_extreme_comparisons::ABSURD_EXTREME_COMPARISONS),
     LintId::of(almost_complete_letter_range::ALMOST_COMPLETE_LETTER_RANGE),
     LintId::of(approx_const::APPROX_CONSTANT),
     LintId::of(assertions_on_constants::ASSERTIONS_ON_CONSTANTS),
@@ -260,6 +259,7 @@ store.register_group(true, "clippy::all", Some("clippy_all"), vec![
     LintId::of(non_octal_unix_permissions::NON_OCTAL_UNIX_PERMISSIONS),
     LintId::of(octal_escapes::OCTAL_ESCAPES),
     LintId::of(open_options::NONSENSICAL_OPEN_OPTIONS),
+    LintId::of(operators::ABSURD_EXTREME_COMPARISONS),
     LintId::of(option_env_unwrap::OPTION_ENV_UNWRAP),
     LintId::of(overflow_check_conditional::OVERFLOW_CHECK_CONDITIONAL),
     LintId::of(partialeq_ne_impl::PARTIALEQ_NE_IMPL),

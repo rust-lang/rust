@@ -3,7 +3,6 @@
 // Manual edits will be overwritten.
 
 store.register_group(true, "clippy::correctness", Some("clippy_correctness"), vec![
-    LintId::of(absurd_extreme_comparisons::ABSURD_EXTREME_COMPARISONS),
     LintId::of(approx_const::APPROX_CONSTANT),
     LintId::of(async_yields_async::ASYNC_YIELDS_ASYNC),
     LintId::of(attrs::DEPRECATED_SEMVER),
@@ -51,6 +50,7 @@ store.register_group(true, "clippy::correctness", Some("clippy_correctness"), ve
     LintId::of(misc::MODULO_ONE),
     LintId::of(non_octal_unix_permissions::NON_OCTAL_UNIX_PERMISSIONS),
     LintId::of(open_options::NONSENSICAL_OPEN_OPTIONS),
+    LintId::of(operators::ABSURD_EXTREME_COMPARISONS),
     LintId::of(option_env_unwrap::OPTION_ENV_UNWRAP),
     LintId::of(ptr::INVALID_NULL_PTR_USAGE),
     LintId::of(ptr::MUT_FROM_REF),

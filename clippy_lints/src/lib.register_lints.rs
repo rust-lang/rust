@@ -35,7 +35,6 @@ store.register_lints(&[
     utils::internal_lints::PRODUCE_ICE,
     #[cfg(feature = "internal")]
     utils::internal_lints::UNNECESSARY_SYMBOL_STR,
-    absurd_extreme_comparisons::ABSURD_EXTREME_COMPARISONS,
     almost_complete_letter_range::ALMOST_COMPLETE_LETTER_RANGE,
     approx_const::APPROX_CONSTANT,
     as_conversions::AS_CONVERSIONS,
@@ -437,6 +436,7 @@ store.register_lints(&[
     octal_escapes::OCTAL_ESCAPES,
     only_used_in_recursion::ONLY_USED_IN_RECURSION,
     open_options::NONSENSICAL_OPEN_OPTIONS,
+    operators::ABSURD_EXTREME_COMPARISONS,
     option_env_unwrap::OPTION_ENV_UNWRAP,
     option_if_let_else::OPTION_IF_LET_ELSE,
     overflow_check_conditional::OVERFLOW_CHECK_CONDITIONAL,
