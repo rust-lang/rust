@@ -314,6 +314,17 @@ struct IncorrectUseOfAwait {
     span: Span,
 }
 
+#[derive(SessionDiagnostic)]
+#[error(slug = "parser-incorrect-await")]
+struct IncorrectAwait {
+    #[primary_span]
+    span: Span,
+    #[suggestion(code = "{expr}.await{question_mark}")]
+    sugg_span: (Span, Applicability),
+    expr: String,
+    question_mark: &'static str,
+}
+
 // SnapshotParser is used to create a snapshot of the parser
 // without causing duplicate errors being emitted when the `Parser`
 // is dropped.
@@ -1643,18 +1654,20 @@ impl<'a> Parser<'a> {
     }
 
     fn error_on_incorrect_await(&self, lo: Span, hi: Span, expr: &Expr, is_question: bool) -> Span {
-        let expr_str =
-            self.span_to_snippet(expr.span).unwrap_or_else(|_| pprust::expr_to_string(&expr));
-        let suggestion = format!("{}.await{}", expr_str, if is_question { "?" } else { "" });
-        let sp = lo.to(hi);
-        let app = match expr.kind {
+        let span = lo.to(hi);
+        let applicability = match expr.kind {
             ExprKind::Try(_) => Applicability::MaybeIncorrect, // `await <expr>?`
             _ => Applicability::MachineApplicable,
         };
-        self.struct_span_err(sp, "incorrect use of `await`")
-            .span_suggestion(sp, "`await` is a postfix operation", suggestion, app)
-            .emit();
-        sp
+
+        self.sess.emit_err(IncorrectAwait {
+            span,
+            sugg_span: (span, applicability),
+            expr: self.span_to_snippet(expr.span).unwrap_or_else(|_| pprust::expr_to_string(&expr)),
+            question_mark: if is_question { "?" } else { "" },
+        });
+
+        span
     }
 
     /// If encountering `future.await()`, consumes and emits an error.
