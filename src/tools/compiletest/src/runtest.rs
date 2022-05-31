@@ -1906,7 +1906,6 @@ impl<'test> TestCx<'test> {
             TargetLocation::ThisFile(path) => {
                 rustc.arg("-o").arg(path);
                 rustc.arg("--out-dir").arg(&self.config.build_base);
-
             }
             TargetLocation::ThisDirectory(path) => {
                 if is_rustdoc {
