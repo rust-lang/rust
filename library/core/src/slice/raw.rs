@@ -264,7 +264,7 @@ pub const unsafe fn from_ptr_range<'a, T>(range: Range<*const T>) -> &'a [T] {
 ///
 /// [valid]: ptr#safety
 #[unstable(feature = "slice_from_ptr_range", issue = "89792")]
-#[rustc_const_unstable(feature = "slice_from_mut_ptr_range_const", issue = "89792")]
+#[rustc_const_unstable(feature = "const_slice_from_mut_ptr_range", issue = "89792")]
 pub const unsafe fn from_mut_ptr_range<'a, T>(range: Range<*mut T>) -> &'a mut [T] {
     // SAFETY: the caller must uphold the safety contract for `from_mut_ptr_range`.
     unsafe { from_raw_parts_mut(range.start, range.end.sub_ptr(range.start)) }
