@@ -19,12 +19,12 @@
           StorageLive(_2);                 // scope 0 at $DIR/provenance_soundness.rs:8:9: 8:11
           StorageLive(_3);                 // scope 0 at $DIR/provenance_soundness.rs:8:14: 8:15
           _3 = _1;                         // scope 0 at $DIR/provenance_soundness.rs:8:14: 8:15
-          _2 = move _3 as usize (Misc);    // scope 0 at $DIR/provenance_soundness.rs:8:14: 8:24
+          _2 = move _3 as usize (PointerAddress); // scope 0 at $DIR/provenance_soundness.rs:8:14: 8:24
           StorageDead(_3);                 // scope 0 at $DIR/provenance_soundness.rs:8:23: 8:24
           StorageLive(_4);                 // scope 1 at $DIR/provenance_soundness.rs:9:9: 9:11
           StorageLive(_5);                 // scope 1 at $DIR/provenance_soundness.rs:9:14: 9:15
           _5 = _1;                         // scope 1 at $DIR/provenance_soundness.rs:9:14: 9:15
-          _4 = move _5 as isize (Misc);    // scope 1 at $DIR/provenance_soundness.rs:9:14: 9:24
+          _4 = move _5 as isize (PointerAddress); // scope 1 at $DIR/provenance_soundness.rs:9:14: 9:24
           StorageDead(_5);                 // scope 1 at $DIR/provenance_soundness.rs:9:23: 9:24
           _0 = const ();                   // scope 0 at $DIR/provenance_soundness.rs:7:32: 10:2
           StorageDead(_4);                 // scope 1 at $DIR/provenance_soundness.rs:10:1: 10:2

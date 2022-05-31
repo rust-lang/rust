@@ -24,7 +24,7 @@ use rustc_mir_dataflow::{impls::MaybeTransitiveLiveLocals, Analysis};
 /// The `borrowed` set must be a `BitSet` of all the locals that are ever borrowed in this body. It
 /// can be generated via the [`get_borrowed_locals`] function.
 pub fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, borrowed: &BitSet<Local>) {
-    let mut live = MaybeTransitiveLiveLocals::new(borrowed, &body.local_decls, tcx)
+    let mut live = MaybeTransitiveLiveLocals::new(borrowed)
         .into_engine(tcx, body)
         .iterate_to_fixpoint()
         .into_results_cursor(body);
@@ -34,7 +34,7 @@ pub fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, borrowed: &BitS
         for (statement_index, statement) in bb_data.statements.iter().enumerate().rev() {
             let loc = Location { block: bb, statement_index };
             if let StatementKind::Assign(assign) = &statement.kind {
-                if assign.1.is_pointer_int_cast(&body.local_decls, tcx) {
+                if assign.1.is_pointer_int_cast() {
                     continue;
                 }
             }

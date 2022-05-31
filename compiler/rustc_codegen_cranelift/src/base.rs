@@ -607,7 +607,7 @@ fn codegen_stmt<'tcx>(
                     let operand = codegen_operand(fx, operand);
                     lval.write_cvalue(fx, operand.cast_pointer_to(to_layout));
                 }
-                Rvalue::Cast(CastKind::Misc, ref operand, to_ty) => {
+                Rvalue::Cast(CastKind::Misc | CastKind::PointerAddress, ref operand, to_ty) => {
                     let operand = codegen_operand(fx, operand);
                     let from_ty = operand.layout().ty;
                     let to_ty = fx.monomorphize(to_ty);
