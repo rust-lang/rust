@@ -73,6 +73,7 @@ pub const LATE_CONTEXT: [&str; 2] = ["rustc_lint", "LateContext"];
 pub const LATE_LINT_PASS: [&str; 3] = ["rustc_lint", "passes", "LateLintPass"];
 #[cfg(feature = "internal")]
 pub const LINT: [&str; 2] = ["rustc_lint_defs", "Lint"];
+pub const MEM_SWAP: [&str; 3] = ["core", "mem", "swap"];
 pub const MUTEX_GUARD: [&str; 4] = ["std", "sync", "mutex", "MutexGuard"];
 pub const OPEN_OPTIONS: [&str; 3] = ["std", "fs", "OpenOptions"];
 /// Preferably use the diagnostic item `sym::Option` where possible

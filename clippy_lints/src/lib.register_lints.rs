@@ -497,6 +497,7 @@ store.register_lints(&[
     suspicious_trait_impl::SUSPICIOUS_OP_ASSIGN_IMPL,
     swap::ALMOST_SWAPPED,
     swap::MANUAL_SWAP,
+    swap_ptr_to_ref::SWAP_PTR_TO_REF,
     tabs_in_doc_comments::TABS_IN_DOC_COMMENTS,
     temporary_assignment::TEMPORARY_ASSIGNMENT,
     to_digit_is_some::TO_DIGIT_IS_SOME,
