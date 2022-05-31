@@ -6,7 +6,7 @@ use crate::convert::{TryFrom, TryInto};
 use crate::fmt;
 use crate::io::{self, ErrorKind, IoSlice, IoSliceMut};
 use crate::mem;
-use crate::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr};
+use crate::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr, SocketAddrFamily};
 use crate::ptr;
 use crate::sys::common::small_c_string::run_with_cstr;
 use crate::sys::net::netc as c;
@@ -221,22 +221,13 @@ pub struct TcpStream {
 impl TcpStream {
     pub fn connect(addr: io::Result<&SocketAddr>) -> io::Result<TcpStream> {
         let addr = addr?;
-
-        init();
-
-        let sock = Socket::new(addr, c::SOCK_STREAM)?;
-
-        let (addr, len) = addr.into_inner();
-        cvt_r(|| unsafe { c::connect(sock.as_raw(), addr.as_ptr(), len) })?;
-        Ok(TcpStream { inner: sock })
+        let unbound_sock = UnboundTcpSocket::new(addr.family())?;
+        unbound_sock.connect(addr)
     }
 
     pub fn connect_timeout(addr: &SocketAddr, timeout: Duration) -> io::Result<TcpStream> {
-        init();
-
-        let sock = Socket::new(addr, c::SOCK_STREAM)?;
-        sock.connect_timeout(addr, timeout)?;
-        Ok(TcpStream { inner: sock })
+        let unbound_sock = UnboundTcpSocket::new(addr.family())?;
+        unbound_sock.connect_timeout(addr, timeout)
     }
 
     pub fn socket(&self) -> &Socket {
@@ -387,40 +378,8 @@ pub struct TcpListener {
 impl TcpListener {
     pub fn bind(addr: io::Result<&SocketAddr>) -> io::Result<TcpListener> {
         let addr = addr?;
-
-        init();
-
-        let sock = Socket::new(addr, c::SOCK_STREAM)?;
-
-        // On platforms with Berkeley-derived sockets, this allows to quickly
-        // rebind a socket, without needing to wait for the OS to clean up the
-        // previous one.
-        //
-        // On Windows, this allows rebinding sockets which are actively in use,
-        // which allows “socket hijacking”, so we explicitly don't set it here.
-        // https://docs.microsoft.com/en-us/windows/win32/winsock/using-so-reuseaddr-and-so-exclusiveaddruse
-        #[cfg(not(windows))]
-        setsockopt(&sock, c::SOL_SOCKET, c::SO_REUSEADDR, 1 as c_int)?;
-
-        // Bind our new socket
-        let (addr, len) = addr.into_inner();
-        cvt(unsafe { c::bind(sock.as_raw(), addr.as_ptr(), len as _) })?;
-
-        cfg_if::cfg_if! {
-            if #[cfg(target_os = "horizon")] {
-                // The 3DS doesn't support a big connection backlog. Sometimes
-                // it allows up to about 37, but other times it doesn't even
-                // accept 32. There may be a global limitation causing this.
-                let backlog = 20;
-            } else {
-                // The default for all other platforms
-                let backlog = 128;
-            }
-        }
-
-        // Start listening
-        cvt(unsafe { c::listen(sock.as_raw(), backlog) })?;
-        Ok(TcpListener { inner: sock })
+        let unbound_sock = UnboundTcpSocket::new(addr.family())?;
+        unbound_sock.listen(addr)
     }
 
     pub fn socket(&self) -> &Socket {
@@ -507,7 +466,7 @@ impl UdpSocket {
 
         init();
 
-        let sock = Socket::new(addr, c::SOCK_DGRAM)?;
+        let sock = Socket::new(addr.family(), c::SOCK_DGRAM)?;
         let (addr, len) = addr.into_inner();
         cvt(unsafe { c::bind(sock.as_raw(), addr.as_ptr(), len as _) })?;
         Ok(UdpSocket { inner: sock })
@@ -741,5 +700,150 @@ impl<'a> IntoInner<(SocketAddrCRepr, c::socklen_t)> for &'a SocketAddr {
                 (sockaddr, mem::size_of::<c::sockaddr_in6>() as c::socklen_t)
             }
         }
+    }
+}
+
+/// Represents a UDP socket that is not bound to any SocketAddr yet.
+pub struct UnboundUdpSocket {
+    inner: Socket,
+    addr_family: SocketAddrFamily,
+}
+
+impl UnboundUdpSocket {
+    /// Creates a new UDP socket without binding.
+    pub fn new(addr_family: SocketAddrFamily) -> io::Result<Self> {
+        init();
+
+        let inner = Socket::new(addr_family, c::SOCK_DGRAM)?;
+        let new_self = Self { inner, addr_family };
+        Ok(new_self)
+    }
+
+    pub fn socket(&self) -> &Socket {
+        &self.inner
+    }
+
+    pub fn into_socket(self) -> Socket {
+        self.inner
+    }
+
+    pub fn set_reuseaddr(&self, enable: bool) -> io::Result<()> {
+        // The `SO_REUSEADDR` option behaves with subtle differences on different platforms.
+        // Here is a good summary:
+        // https://stackoverflow.com/a/14388707/1783732
+        setsockopt(&self.inner, c::SOL_SOCKET, c::SO_REUSEADDR, enable as c_int)
+    }
+
+    cfg_if::cfg_if! {
+        if #[cfg(windows)] {
+            /// Set "SO_EXCLUSIVEADDRUSE" to true or false on Windows.
+            pub fn set_exclusiveaddruse(&self, enable: bool) -> io::Result<()> {
+                // This is a sockopt in Windows to prevent 'port hijacking':
+                // https://docs.microsoft.com/en-us/windows/win32/winsock/using-so-reuseaddr-and-so-exclusiveaddruse
+                setsockopt(&self.inner, c::SOL_SOCKET, c::SO_EXCLUSIVEADDRUSE, enable as c_int)
+            }
+        } else {
+            /// Returns an error on non-Windows platforms.
+            pub fn set_exclusiveaddruse(&self, _enable: bool) -> io::Result<()> {
+                Err(io::Error::from(io::ErrorKind::Unsupported))
+            }
+
+        }
+    }
+
+    cfg_if::cfg_if! {
+        if #[cfg(unix)] {
+            /// Sets `SO_REUSEPORT` option to true or false on Unix platforms, including
+            /// BSDs, macOS and Linux.
+            pub fn set_reuseport(&self, enable: bool) -> io::Result<()> {
+                setsockopt(&self.inner, c::SOL_SOCKET, c::SO_REUSEPORT, enable as c_int)
+            }
+        } else {
+            /// Returns an error on non-Unix platforms. Note, it is possible
+            /// that some non-Windows and non-Unix platforms also support this option.
+            pub fn set_reuseport(&self, _enable: bool) -> io::Result<()> {
+                Err(io::Error::from(io::ErrorKind::Unsupported))
+            }
+        }
+    }
+
+    /// Binds the socket to an address, and returns a `UdpSocket`.
+    pub fn bind(self, addr: &SocketAddr) -> io::Result<UdpSocket> {
+        if self.addr_family != addr.family() {
+            return Err(io::Error::from(io::ErrorKind::InvalidInput));
+        }
+
+        let (addr, len) = addr.into_inner();
+        cvt(unsafe { c::bind(self.inner.as_raw(), addr.as_ptr(), len as _) })?;
+        Ok(UdpSocket { inner: self.inner })
+    }
+}
+
+impl fmt::Debug for UnboundUdpSocket {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let name = if cfg!(windows) { "socket" } else { "fd" };
+        f.debug_struct("UnboundUdpSocket").field(name, &self.inner.as_raw()).finish()
+    }
+}
+
+/// Represents a TCP socket that is not bound to a `SocketAddr` yet.
+pub struct UnboundTcpSocket {
+    inner: Socket,
+}
+
+impl UnboundTcpSocket {
+    pub fn new(addr_family: SocketAddrFamily) -> io::Result<Self> {
+        init();
+
+        let sock = Socket::new(addr_family, c::SOCK_STREAM)?;
+        Ok(Self { inner: sock })
+    }
+
+    #[cfg(not(windows))]
+    pub fn set_reuseaddr(&self, enable: bool) -> io::Result<()> {
+        setsockopt(&self.inner, c::SOL_SOCKET, c::SO_REUSEADDR, enable as c_int)
+    }
+
+    pub fn connect(self, addr: &SocketAddr) -> io::Result<TcpStream> {
+        let (addr, len) = addr.into_inner();
+        cvt_r(|| unsafe { c::connect(self.inner.as_raw(), addr.as_ptr(), len) })?;
+        Ok(TcpStream { inner: self.inner })
+    }
+
+    pub fn connect_timeout(self, addr: &SocketAddr, timeout: Duration) -> io::Result<TcpStream> {
+        self.inner.connect_timeout(addr, timeout)?;
+        Ok(TcpStream { inner: self.inner })
+    }
+
+    pub fn listen(self, addr: &SocketAddr) -> io::Result<TcpListener> {
+        // On platforms with Berkeley-derived sockets, this allows to quickly
+        // rebind a socket, without needing to wait for the OS to clean up the
+        // previous one.
+        //
+        // On Windows, this allows rebinding sockets which are actively in use,
+        // which allows “socket hijacking”, so we explicitly don't set it here.
+        // https://docs.microsoft.com/en-us/windows/win32/winsock/using-so-reuseaddr-and-so-exclusiveaddruse
+        #[cfg(not(windows))]
+        self.set_reuseaddr(true)?;
+
+        // Bind our socket
+        let (addr, len) = addr.into_inner();
+        cvt(unsafe { c::bind(self.inner.as_raw(), addr.as_ptr(), len as _) })?;
+
+        cfg_if::cfg_if! {
+            if #[cfg(target_os = "horizon")] {
+                // The 3DS doesn't support a big connection backlog. Sometimes
+                // it allows up to about 37, but other times it doesn't even
+                // accept 32. There may be a global limitation causing this.
+                let backlog = 20;
+            } else {
+                // The default for all other platforms
+                let backlog = 128;
+            }
+        }
+
+        // Start listening
+        cvt(unsafe { c::listen(self.inner.as_raw(), backlog) })?;
+        Ok(TcpListener { inner: self.inner })
     }
 }

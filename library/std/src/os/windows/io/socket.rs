@@ -336,3 +336,19 @@ impl From<OwnedSocket> for crate::net::UdpSocket {
         unsafe { Self::from_raw_socket(owned.into_raw_socket()) }
     }
 }
+
+#[unstable(feature = "unbound_socket", issue = "none")]
+impl AsSocket for crate::net::UnboundUdpSocket {
+    #[inline]
+    fn as_socket(&self) -> BorrowedSocket<'_> {
+        unsafe { BorrowedSocket::borrow_raw(self.as_raw_socket()) }
+    }
+}
+
+#[unstable(feature = "unbound_socket", issue = "none")]
+impl From<crate::net::UnboundUdpSocket> for OwnedSocket {
+    #[inline]
+    fn from(unbound_udp_socket: crate::net::UnboundUdpSocket) -> OwnedSocket {
+        unsafe { OwnedSocket::from_raw_socket(unbound_udp_socket.into_raw_socket()) }
+    }
+}

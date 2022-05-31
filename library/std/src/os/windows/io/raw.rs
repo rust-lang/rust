@@ -255,6 +255,14 @@ impl AsRawSocket for net::UdpSocket {
     }
 }
 
+#[unstable(feature = "unbound_socket", issue = "none")]
+impl AsRawSocket for net::UnboundUdpSocket {
+    #[inline]
+    fn as_raw_socket(&self) -> RawSocket {
+        self.as_inner().socket().as_raw_socket()
+    }
+}
+
 #[stable(feature = "from_raw_os", since = "1.1.0")]
 impl FromRawSocket for net::TcpStream {
     #[inline]
@@ -298,6 +306,14 @@ impl IntoRawSocket for net::TcpListener {
 
 #[stable(feature = "into_raw_os", since = "1.4.0")]
 impl IntoRawSocket for net::UdpSocket {
+    #[inline]
+    fn into_raw_socket(self) -> RawSocket {
+        self.into_inner().into_socket().into_inner().into_raw_socket()
+    }
+}
+
+#[unstable(feature = "unbound_socket", issue = "none")]
+impl IntoRawSocket for net::UnboundUdpSocket {
     #[inline]
     fn into_raw_socket(self) -> RawSocket {
         self.into_inner().into_socket().into_inner().into_raw_socket()

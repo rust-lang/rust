@@ -3,7 +3,7 @@
 use crate::cmp;
 use crate::io::{self, IoSlice, IoSliceMut, Read};
 use crate::mem;
-use crate::net::{Shutdown, SocketAddr};
+use crate::net::{Shutdown, SocketAddr, SocketAddrFamily};
 use crate::os::windows::io::{
     AsRawSocket, AsSocket, BorrowedSocket, FromRawSocket, IntoRawSocket, OwnedSocket, RawSocket,
 };
@@ -100,10 +100,10 @@ where
 }
 
 impl Socket {
-    pub fn new(addr: &SocketAddr, ty: c_int) -> io::Result<Socket> {
-        let family = match *addr {
-            SocketAddr::V4(..) => c::AF_INET,
-            SocketAddr::V6(..) => c::AF_INET6,
+    pub fn new(addr_family: SocketAddrFamily, ty: c_int) -> io::Result<Socket> {
+        let family = match addr_family {
+            SocketAddrFamily::InetV4 => c::AF_INET,
+            SocketAddrFamily::InetV6 => c::AF_INET6,
         };
         let socket = unsafe {
             c::WSASocketW(

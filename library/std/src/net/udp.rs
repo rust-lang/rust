@@ -3,7 +3,7 @@ mod tests;
 
 use crate::fmt;
 use crate::io::{self, ErrorKind};
-use crate::net::{Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddrs};
+use crate::net::{Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrFamily, ToSocketAddrs};
 use crate::sys_common::net as net_imp;
 use crate::sys_common::{AsInner, FromInner, IntoInner};
 use crate::time::Duration;
@@ -809,5 +809,102 @@ impl IntoInner<net_imp::UdpSocket> for UdpSocket {
 impl fmt::Debug for UdpSocket {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.fmt(f)
+    }
+}
+
+/// A UDP Socket that is not bound to a `SocketAddr` yet.
+///
+/// This socket is designed to support socket configurations _before_
+/// binding to a `SocketAddr`. After configurations, this socket
+/// can be bound and translated into a [`UdpSocket`].
+///
+/// # Example
+///
+/// ```no_run
+/// #![feature(unbound_socket)]
+/// use std::net::{SocketAddr, SocketAddrFamily, UnboundUdpSocket};
+///
+/// fn main() -> std::io::Result<()> {
+///     let unbound_socket = UnboundUdpSocket::new(SocketAddrFamily::InetV4)?;
+///     unbound_socket.set_reuseaddr(true)?;
+///     let addr = SocketAddr::from(([127, 0, 0, 1], 5500));
+///     let _udp_socket = unbound_socket.bind(&addr)?;
+///     Ok(())
+/// }
+/// ```
+#[unstable(feature = "unbound_socket", issue = "none")]
+pub struct UnboundUdpSocket {
+    inner: net_imp::UnboundUdpSocket,
+}
+
+impl UnboundUdpSocket {
+    /// Creates a new unbound UDP socket with `addr_family`.
+    #[unstable(feature = "unbound_socket", issue = "none")]
+    pub fn new(addr_family: SocketAddrFamily) -> io::Result<UnboundUdpSocket> {
+        let inner = net_imp::UnboundUdpSocket::new(addr_family)?;
+        Ok(Self { inner })
+    }
+
+    /// Sets `SO_REUSEADDR` option for the socket.
+    ///
+    /// In general, this option allows a second caller to bind to a `(addr, port)` again,
+    /// where the `addr` could be the `unspecified` address. However it behaves with subtle
+    /// differences on different platforms. Please be sure to check your platform for
+    /// the exact expected behaviors.
+    ///
+    /// This method can only be called before `bind`, otherwise will fail.
+    #[unstable(feature = "unbound_socket", issue = "none")]
+    pub fn set_reuseaddr(&self, enable: bool) -> io::Result<()> {
+        self.inner.set_reuseaddr(enable)
+    }
+
+    /// Sets `SO_REUSEPORT` option for the socket.
+    ///
+    /// In general, this option allows a second caller to bind to a same `(addr, port)`
+    /// pair again, if the first caller has enabled this option too. Please check with
+    /// your specific platform for the details of the behavior.
+    ///
+    /// This option is only available for UNIX-like platforms and not Windows platforms.
+    #[unstable(feature = "unbound_socket", issue = "none")]
+    pub fn set_reuseport(&self, enable: bool) -> io::Result<()> {
+        self.inner.set_reuseport(enable)
+    }
+
+    /// Sets `SO_EXCLUSIVEADDRUSE` option for the socket.
+    ///
+    /// This option is only available in Windows. Its purpose is to prevent
+    /// any other caller to "reuse" the same (addr, port), even if they call
+    /// `set_reuseaddr(true)`. This method returns an error on non-Windows platforms.
+    #[unstable(feature = "unbound_socket", issue = "none")]
+    pub fn set_exclusiveaddruse(&self, enable: bool) -> io::Result<()> {
+        self.inner.set_exclusiveaddruse(enable)
+    }
+
+    /// Binds to `addr`, consumes this unbound socket and returns a [`UdpSocket`].
+    #[unstable(feature = "unbound_socket", issue = "none")]
+    pub fn bind(self, addr: &SocketAddr) -> io::Result<UdpSocket> {
+        let net_imp = self.inner.bind(addr)?;
+        Ok(UdpSocket(net_imp))
+    }
+}
+
+#[unstable(feature = "unbound_socket", issue = "none")]
+impl fmt::Debug for UnboundUdpSocket {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.inner.fmt(f)
+    }
+}
+
+#[unstable(feature = "unbound_socket", issue = "none")]
+impl AsInner<net_imp::UnboundUdpSocket> for UnboundUdpSocket {
+    fn as_inner(&self) -> &net_imp::UnboundUdpSocket {
+        &self.inner
+    }
+}
+
+#[unstable(feature = "unbound_socket", issue = "none")]
+impl IntoInner<net_imp::UnboundUdpSocket> for UnboundUdpSocket {
+    fn into_inner(self) -> net_imp::UnboundUdpSocket {
+        self.inner
     }
 }

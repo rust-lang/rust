@@ -363,3 +363,269 @@ fn set_nonblocking() {
         }
     })
 }
+
+#[cfg(not(windows))]
+#[test]
+fn set_reuseaddr_v4_not_windows() {
+    let addr = next_test_ip4();
+    let addr_family = addr.family();
+    let port = addr.port();
+    let wild_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), port);
+
+    let unbound_socket = t!(UnboundUdpSocket::new(addr_family));
+    t!(unbound_socket.set_reuseaddr(true)); // Needed at least in Linux.
+    let wild_socket = t!(unbound_socket.bind(&wild_addr));
+
+    // Without set_reuseaddr, we cannot bind to the addr with the same port.
+    let unbound_socket2 = t!(UnboundUdpSocket::new(addr_family));
+    let res = unbound_socket2.bind(&addr);
+    assert!(res.is_err());
+
+    // With set_reuseaddr(false), we cannot bind with the same port.
+    let unbound_socket3 = t!(UnboundUdpSocket::new(addr_family));
+    t!(unbound_socket3.set_reuseaddr(false));
+    let res = unbound_socket3.bind(&addr);
+    assert!(res.is_err());
+
+    // With set_reuseaddr(true), we can bind to a local addr with the same port.
+    let unbound_socket4 = t!(UnboundUdpSocket::new(addr_family));
+    t!(unbound_socket4.set_reuseaddr(true));
+    let socket = t!(unbound_socket4.bind(&addr));
+
+    const MSG_1: &[u8] = b"hello world";
+    t!(socket.send_to(MSG_1, &addr));
+    let mut buf = [0; MSG_1.len()];
+    let (size, _) = t!(socket.recv_from(&mut buf));
+    assert_eq!(MSG_1, &buf[..]);
+    assert_eq!(size, MSG_1.len());
+
+    // Multicast also works with set_reuseaddr.
+    let group_ip = Ipv4Addr::new(224, 0, 0, 251);
+    let any_ip = Ipv4Addr::new(0, 0, 0, 0);
+    let broadcast_addr = SocketAddr::new(IpAddr::V4(group_ip), port);
+
+    let unbound_socket_mcast = t!(UnboundUdpSocket::new(addr_family));
+    t!(unbound_socket_mcast.set_reuseaddr(true));
+    let socket_mcast = t!(unbound_socket_mcast.bind(&broadcast_addr));
+    t!(socket_mcast.join_multicast_v4(&group_ip, &any_ip));
+    t!(wild_socket.join_multicast_v4(&group_ip, &any_ip));
+
+    const MSG_2: &[u8] = b"hello multicast";
+    t!(wild_socket.send_to(MSG_2, &broadcast_addr));
+    let mut buf = [0; MSG_2.len()];
+    let (size, _) = t!(socket_mcast.recv_from(&mut buf));
+    assert_eq!(MSG_2, &buf[..]);
+    assert_eq!(size, MSG_2.len());
+}
+
+#[cfg(not(windows))]
+#[test]
+fn set_reuseaddr_v6_not_windows() {
+    let addr = next_test_ip6();
+    let addr_family = addr.family();
+    let port = addr.port();
+    let wild_addr = SocketAddr::new(IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0)), port);
+
+    let unbound_socket = t!(UnboundUdpSocket::new(addr_family));
+    t!(unbound_socket.set_reuseaddr(true));
+    let _wild_socket = t!(unbound_socket.bind(&wild_addr));
+
+    // Without set_reuseaddr, we cannot bind to the addr with the same port.
+    let unbound_socket2 = t!(UnboundUdpSocket::new(addr_family));
+    let res = unbound_socket2.bind(&addr);
+    assert!(res.is_err());
+
+    // With set_reuseaddr(false), we cannot bind with the same port.
+    let unbound_socket3 = t!(UnboundUdpSocket::new(addr_family));
+    t!(unbound_socket3.set_reuseaddr(false));
+    let res = unbound_socket3.bind(&addr);
+    assert!(res.is_err());
+
+    // With set_reuseaddr(true), we can bind to a local addr with the same port.
+    let unbound_socket4 = t!(UnboundUdpSocket::new(addr_family));
+    t!(unbound_socket4.set_reuseaddr(true));
+    let socket = t!(unbound_socket4.bind(&addr));
+
+    const MSG_1: &[u8] = b"hello world";
+    t!(socket.send_to(MSG_1, &addr));
+    let mut buf = [0; MSG_1.len()];
+    let (size, _) = t!(socket.recv_from(&mut buf));
+    assert_eq!(MSG_1, &buf[..]);
+    assert_eq!(size, MSG_1.len());
+}
+
+#[cfg(windows)]
+#[test]
+fn set_reuseaddr_v4_windows() {
+    let addr = next_test_ip4();
+    let addr_family = addr.family();
+
+    // Since Windows Server 2003 and later, we cannot bind to the same specific address & port
+    // unless both the first socket and the second socket enables set_reuseaddr. Note that
+    // wild card address (0.0.0.0) is not subject to this rule.
+
+    // The 2nd bind would fail as the 1st socket did not enable set_reuseaddr.
+    let unbound_socket1 = t!(UnboundUdpSocket::new(addr_family));
+    let _socket1 = t!(unbound_socket1.bind(&addr));
+
+    let unbound_socket2 = t!(UnboundUdpSocket::new(addr_family));
+    let res = unbound_socket2.bind(&addr);
+    assert!(res.is_err());
+
+    let unbound_socket2 = t!(UnboundUdpSocket::new(addr_family));
+    t!(unbound_socket2.set_reuseaddr(true)); // only the 2nd socket enables reuseaddr.
+    let res = unbound_socket2.bind(&addr);
+    assert!(res.is_err());
+
+    // The 2nd bind would succeed as both the 1st socket and the 2nd socket enabled
+    // set_reuseaddr.
+    let addr = next_test_ip4();
+    let addr_family = addr.family();
+
+    let unbound_socket1 = t!(UnboundUdpSocket::new(addr_family));
+    t!(unbound_socket1.set_reuseaddr(true));
+    let _socket1 = t!(unbound_socket1.bind(&addr));
+
+    let unbound_socket2 = t!(UnboundUdpSocket::new(addr_family));
+    t!(unbound_socket2.set_reuseaddr(true));
+    let _socket2 = t!(unbound_socket2.bind(&addr));
+}
+
+#[cfg(windows)]
+#[test]
+fn set_reuseaddr_v6_windows() {
+    let addr = next_test_ip6();
+    let addr_family = addr.family();
+
+    // Since Windows Server 2003 and later, we cannot bind to the same specific address & port
+    // unless both the first socket and the second socket enables set_reuseaddr. Note that
+    // wild card address (0.0.0.0) is not subject to this rule.
+
+    // The 2nd bind would fail as the 1st socket did not enable set_reuseaddr.
+    let unbound_socket1 = t!(UnboundUdpSocket::new(addr_family));
+    let _socket1 = t!(unbound_socket1.bind(&addr));
+
+    let unbound_socket2 = t!(UnboundUdpSocket::new(addr_family));
+    let res = unbound_socket2.bind(&addr);
+    assert!(res.is_err());
+
+    let unbound_socket2 = t!(UnboundUdpSocket::new(addr_family));
+    t!(unbound_socket2.set_reuseaddr(true)); // only the 2nd socket enables reuseaddr.
+    let res = unbound_socket2.bind(&addr);
+    assert!(res.is_err());
+
+    // The 2nd bind would succeed as both the 1st socket and the 2nd socket enabled
+    // set_reuseaddr.
+    let addr = next_test_ip6();
+    let addr_family = addr.family();
+
+    let unbound_socket1 = t!(UnboundUdpSocket::new(addr_family));
+    t!(unbound_socket1.set_reuseaddr(true));
+    let _socket1 = t!(unbound_socket1.bind(&addr));
+
+    let unbound_socket2 = t!(UnboundUdpSocket::new(addr_family));
+    t!(unbound_socket2.set_reuseaddr(true));
+    let _socket2 = t!(unbound_socket2.bind(&addr));
+}
+
+#[cfg(unix)]
+#[test]
+fn set_reuseport_v4_unix() {
+    set_reuseport_unix(next_test_ip4());
+}
+
+#[cfg(unix)]
+#[test]
+fn set_reuseport_v6_unix() {
+    set_reuseport_unix(next_test_ip6());
+}
+
+#[cfg(unix)]
+fn set_reuseport_unix(sockaddr: SocketAddr) {
+    let addr_family = sockaddr.family();
+
+    // Bind the 1st socket.
+    let unbound_socket = t!(UnboundUdpSocket::new(addr_family));
+    t!(unbound_socket.set_reuseport(true));
+    let socket1 = t!(unbound_socket.bind(&sockaddr));
+
+    // With set_reuseport, We can bind again to the same sockaddr.
+    let unbound_socket2 = t!(UnboundUdpSocket::new(addr_family));
+    t!(unbound_socket2.set_reuseport(true));
+    let socket2 = t!(unbound_socket2.bind(&sockaddr));
+
+    // Use the new socket to send. Because the recv side
+    // is distributed between two sockets by the OS, we cannot
+    // be sure which socket to recv_from, and hence not to recv
+    // the packet.
+    const MSG_1: &[u8] = b"hello world";
+    t!(socket1.send_to(MSG_1, &sockaddr));
+    t!(socket2.send_to(MSG_1, &sockaddr));
+
+    // Verify the negative case:
+    // Without set_reuseport, We cannot bind again to the same sockaddr.
+    let unbound_socket3 = t!(UnboundUdpSocket::new(addr_family));
+    let res = unbound_socket3.bind(&sockaddr);
+    assert!(res.is_err());
+
+    // Make sure the 1st socket was not dropped earlier.
+    t!(socket1.send_to(MSG_1, &sockaddr));
+}
+
+#[cfg(windows)]
+#[test]
+fn set_exclusiveaddruse_v4_windows() {
+    let addr = next_test_ip4();
+    let addr_family = addr.family();
+    let port = addr.port();
+    let wild_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), port);
+
+    let unbound_socket = t!(UnboundUdpSocket::new(addr_family));
+    t!(unbound_socket.set_exclusiveaddruse(true));
+    let _wild_socket = t!(unbound_socket.bind(&wild_addr));
+
+    // With set_exclusiveaddruse(true), we cannot bind to the addr with the same port,
+    // even the first socket is a wild adress.
+    let unbound_socket2 = t!(UnboundUdpSocket::new(addr_family));
+    t!(unbound_socket2.set_reuseaddr(true));
+    let res = unbound_socket2.bind(&addr);
+    assert!(res.is_err());
+}
+
+#[cfg(windows)]
+#[test]
+fn set_exclusiveaddruse_v6_windows() {
+    let addr = next_test_ip6();
+    let addr_family = addr.family();
+    let port = addr.port();
+    let wild_addr = SocketAddr::new(IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0)), port);
+
+    let unbound_socket = t!(UnboundUdpSocket::new(addr_family));
+    t!(unbound_socket.set_exclusiveaddruse(true));
+    let _wild_socket = t!(unbound_socket.bind(&wild_addr));
+
+    // With set_exclusiveaddruse(true), we cannot bind to the addr with the same port.
+    let unbound_socket2 = t!(UnboundUdpSocket::new(addr_family));
+    t!(unbound_socket2.set_reuseaddr(true));
+    let res = unbound_socket2.bind(&addr);
+    assert!(res.is_err());
+}
+
+#[cfg(not(windows))]
+#[test]
+fn set_exclusiveaddruse_non_windows() {
+    let addr_family = SocketAddrFamily::InetV4;
+    let unbound_socket = t!(UnboundUdpSocket::new(addr_family));
+    let res = unbound_socket.set_exclusiveaddruse(true);
+    assert!(res.is_err()); // Not supported.
+}
+
+#[test]
+fn bind_wrong_addr_family() {
+    // An UnboundUdpSocket of IPv4 cannot bind to IPv6 address.
+    let addr = next_test_ip6();
+    let addr_family = SocketAddrFamily::InetV4;
+    let unbound_socket = t!(UnboundUdpSocket::new(addr_family));
+    let res = unbound_socket.bind(&addr);
+    assert!(res.is_err());
+}

@@ -454,3 +454,19 @@ impl<'a> AsFd for io::StderrLock<'a> {
         unsafe { BorrowedFd::borrow_raw(2) }
     }
 }
+
+#[unstable(feature = "unbound_socket", issue = "none")]
+impl AsFd for crate::net::UnboundUdpSocket {
+    #[inline]
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        self.as_inner().socket().as_fd()
+    }
+}
+
+#[unstable(feature = "unbound_socket", issue = "none")]
+impl From<crate::net::UnboundUdpSocket> for OwnedFd {
+    #[inline]
+    fn from(socket: crate::net::UnboundUdpSocket) -> OwnedFd {
+        socket.into_inner().into_socket().into_inner().into_inner().into()
+    }
+}

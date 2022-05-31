@@ -264,6 +264,15 @@ impl SocketAddr {
     pub const fn is_ipv6(&self) -> bool {
         matches!(*self, SocketAddr::V6(_))
     }
+
+    /// Returns the `SocketAddrFamily` value of this `SocketAddr`.
+    #[unstable(feature = "unbound_socket", issue = "none")]
+    pub const fn family(&self) -> SocketAddrFamily {
+        match *self {
+            SocketAddr::V4(..) => SocketAddrFamily::InetV4,
+            SocketAddr::V6(..) => SocketAddrFamily::InetV6,
+        }
+    }
 }
 
 impl SocketAddrV4 {
@@ -971,4 +980,15 @@ impl ToSocketAddrs for String {
     fn to_socket_addrs(&self) -> io::Result<vec::IntoIter<SocketAddr>> {
         (&**self).to_socket_addrs()
     }
+}
+
+/// Address family values for an Internet socket address.
+#[derive(Debug, Clone, Copy, PartialEq)]
+#[non_exhaustive]
+#[unstable(feature = "unbound_socket", issue = "none")]
+pub enum SocketAddrFamily {
+    /// Address family of IPv4.
+    InetV4,
+    /// Address family of IPv6.
+    InetV6,
 }
