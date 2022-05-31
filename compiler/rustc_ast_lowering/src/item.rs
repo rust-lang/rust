@@ -267,11 +267,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         this.lower_maybe_async_body(span, &decl, asyncness, body.as_deref());
 
                     let itctx = ImplTraitContext::Universal(this.current_hir_id_owner);
-                    let (generics, decl) =
-                        this.add_implicit_generics(generics, id, itctx, |this| {
-                            let ret_id = asyncness.opt_return_id();
-                            this.lower_fn_decl(&decl, Some(id), FnDeclKind::Fn, ret_id)
-                        });
+                    let (generics, decl) = this.lower_generics(generics, id, itctx, |this| {
+                        let ret_id = asyncness.opt_return_id();
+                        this.lower_fn_decl(&decl, Some(id), FnDeclKind::Fn, ret_id)
+                    });
                     let sig = hir::FnSig {
                         decl,
                         header: this.lower_fn_header(header),
@@ -311,7 +310,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // opaque type Foo1: Trait
                 let mut generics = generics.clone();
                 add_ty_alias_where_clause(&mut generics, where_clauses, true);
-                let (generics, ty) = self.add_implicit_generics(
+                let (generics, ty) = self.lower_generics(
                     &generics,
                     id,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
@@ -324,7 +323,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }) => {
                 let mut generics = generics.clone();
                 add_ty_alias_where_clause(&mut generics, *where_clauses, true);
-                let (generics, ty) = self.add_implicit_generics(
+                let (generics, ty) = self.lower_generics(
                     &generics,
                     id,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
@@ -333,7 +332,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 hir::ItemKind::TyAlias(ty, generics)
             }
             ItemKind::Enum(ref enum_definition, ref generics) => {
-                let (generics, variants) = self.add_implicit_generics(
+                let (generics, variants) = self.lower_generics(
                     generics,
                     id,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
@@ -346,7 +345,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 hir::ItemKind::Enum(hir::EnumDef { variants }, generics)
             }
             ItemKind::Struct(ref struct_def, ref generics) => {
-                let (generics, struct_def) = self.add_implicit_generics(
+                let (generics, struct_def) = self.lower_generics(
                     generics,
                     id,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
@@ -355,7 +354,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 hir::ItemKind::Struct(struct_def, generics)
             }
             ItemKind::Union(ref vdata, ref generics) => {
-                let (generics, vdata) = self.add_implicit_generics(
+                let (generics, vdata) = self.lower_generics(
                     generics,
                     id,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
@@ -388,7 +387,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // parent lifetime.
                 let itctx = ImplTraitContext::Universal(self.current_hir_id_owner);
                 let (generics, (trait_ref, lowered_ty)) =
-                    self.add_implicit_generics(ast_generics, id, itctx, |this| {
+                    self.lower_generics(ast_generics, id, itctx, |this| {
                         let trait_ref = trait_ref.as_ref().map(|trait_ref| {
                             this.lower_trait_ref(
                                 trait_ref,
@@ -433,7 +432,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ref bounds,
                 ref items,
             }) => {
-                let (generics, (unsafety, items, bounds)) = self.add_implicit_generics(
+                let (generics, (unsafety, items, bounds)) = self.lower_generics(
                     generics,
                     id,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
@@ -452,7 +451,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 hir::ItemKind::Trait(is_auto, unsafety, generics, bounds, items)
             }
             ItemKind::TraitAlias(ref generics, ref bounds) => {
-                let (generics, bounds) = self.add_implicit_generics(
+                let (generics, bounds) = self.lower_generics(
                     generics,
                     id,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
@@ -658,7 +657,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let fdec = &sig.decl;
                     let itctx = ImplTraitContext::Universal(self.current_hir_id_owner);
                     let (generics, (fn_dec, fn_args)) =
-                        self.add_implicit_generics(generics, i.id, itctx, |this| {
+                        self.lower_generics(generics, i.id, itctx, |this| {
                             (
                                 // Disallow `impl Trait` in foreign items.
                                 this.lower_fn_decl(fdec, None, FnDeclKind::ExternFn, None),
@@ -797,7 +796,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }) => {
                 let mut generics = generics.clone();
                 add_ty_alias_where_clause(&mut generics, where_clauses, false);
-                self.add_implicit_generics(
+                self.lower_generics(
                     &generics,
                     i.id,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
@@ -883,7 +882,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             AssocItemKind::TyAlias(box TyAlias { generics, where_clauses, ty, .. }) => {
                 let mut generics = generics.clone();
                 add_ty_alias_where_clause(&mut generics, *where_clauses, false);
-                self.add_implicit_generics(
+                self.lower_generics(
                     &generics,
                     i.id,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
@@ -1239,7 +1238,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ) -> (&'hir hir::Generics<'hir>, hir::FnSig<'hir>) {
         let header = self.lower_fn_header(sig.header);
         let itctx = ImplTraitContext::Universal(self.current_hir_id_owner);
-        let (generics, decl) = self.add_implicit_generics(generics, id, itctx, |this| {
+        let (generics, decl) = self.lower_generics(generics, id, itctx, |this| {
             this.lower_fn_decl(&sig.decl, Some(id), kind, is_async)
         });
         (generics, hir::FnSig { header, decl, span: self.lower_span(sig.span) })
