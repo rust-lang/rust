@@ -2640,11 +2640,7 @@ unsafe fn atomic_compare_exchange<T: Copy>(
             _ => panic!("a failure ordering can't be stronger than a success ordering"),
         }
     };
-    if ok {
-        Ok(val)
-    } else {
-        Err(val)
-    }
+    if ok { Ok(val) } else { Err(val) }
 }
 
 #[inline]
@@ -2673,11 +2669,7 @@ unsafe fn atomic_compare_exchange_weak<T: Copy>(
             _ => panic!("a failure ordering can't be stronger than a success ordering"),
         }
     };
-    if ok {
-        Ok(val)
-    } else {
-        Err(val)
-    }
+    if ok { Ok(val) } else { Err(val) }
 }
 
 #[inline]
