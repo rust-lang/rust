@@ -168,10 +168,22 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx, const_eval::Memory
         mplace: &MPlaceTy<'tcx>,
         fields: impl Iterator<Item = InterpResult<'tcx, Self::V>>,
     ) -> InterpResult<'tcx> {
-        // ZSTs cannot contain pointers, so we can skip them.
-        if mplace.layout.is_zst() {
+        // We want to walk the aggregate to look for reference types to intern. While doing that we
+        // also need to take special care of interior mutability.
+        //
+        // As an optimization, however, if the allocation does not contain any pointers: we don't
+        // need to do the walk. It can be costly for big arrays for example (e.g. issue #93215).
+
+        let Some((size, align)) = self.ecx.size_and_align_of_mplace(&mplace)? else {
+            // We could be dealing with an extern type here in the future, so we do the regular
+            // walk.
+            return self.walk_aggregate(mplace, fields);
+        };
+
+        let Some(alloc) = self.ecx.get_ptr_alloc(mplace.ptr, size, align)? else {
+            // ZSTs cannot contain pointers, so we can skip them.
             return Ok(());
-        }
+        };
 
         if let Some(def) = mplace.layout.ty.ty_adt_def() {
             if Some(def.did()) == self.ecx.tcx.lang_items().unsafe_cell_type() {
@@ -184,6 +196,11 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx, const_eval::Memory
                 self.inside_unsafe_cell = old;
                 return walked;
             }
+        }
+
+        if !alloc.has_relocations() {
+            // There are no refs or relocations in this allocation, we can skip the interning walk.
+            return Ok(());
         }
 
         self.walk_aggregate(mplace, fields)
