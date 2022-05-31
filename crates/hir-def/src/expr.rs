@@ -52,7 +52,7 @@ impl FloatTypeWrapper {
 
 impl std::fmt::Display for FloatTypeWrapper {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", f64::from_bits(self.0))
+        write!(f, "{:?}", f64::from_bits(self.0))
     }
 }
 
