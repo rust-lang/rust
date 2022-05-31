@@ -1,6 +1,6 @@
 use expect_test::expect;
 
-use super::{check_infer, check_no_mismatches, check_types};
+use super::{check, check_infer, check_no_mismatches, check_types};
 
 #[test]
 fn infer_box() {
@@ -2743,5 +2743,303 @@ fn f() {
     mixed::<"", true>(0, -1);
 }
     "#,
+    );
+}
+
+#[test]
+fn destructuring_assignment_slice() {
+    check_types(
+        r#"
+fn main() {
+    let a;
+      //^usize
+    [a,] = [0usize];
+
+    let a;
+      //^usize
+    [a, ..] = [0usize; 5];
+
+    let a;
+      //^usize
+    [.., a] = [0usize; 5];
+
+    let a;
+      //^usize
+    [.., a, _] = [0usize; 5];
+
+    let a;
+      //^usize
+    [_, a, ..] = [0usize; 5];
+
+    let a: &mut i64 = &mut 0;
+    [*a, ..] = [1, 2, 3];
+
+    let a: usize;
+    let b;
+      //^usize
+    [a, _, b] = [3, 4, 5];
+      //^usize
+
+    let a;
+      //^i64
+    let b;
+      //^i64
+    [[a, ..], .., [.., b]] = [[1, 2], [3i64, 4], [5, 6], [7, 8]];
+}
+        "#,
+    );
+}
+
+#[test]
+fn destructuring_assignment_tuple() {
+    check_types(
+        r#"
+fn main() {
+    let a;
+      //^char
+    let b;
+      //^i64
+    (a, b) = ('c', 0i64);
+
+    let a;
+      //^char
+    (a, ..) = ('c', 0i64);
+
+    let a;
+      //^i64
+    (.., a) = ('c', 0i64);
+
+    let a;
+      //^char
+    let b;
+      //^i64
+    (a, .., b) = ('c', 0i64);
+
+    let a;
+      //^char
+    let b;
+      //^bool
+    (a, .., b) = ('c', 0i64, true);
+
+    let a;
+      //^i64
+    let b;
+      //^bool
+    (_, a, .., b) = ('c', 0i64, true);
+
+    let a;
+      //^i64
+    let b;
+      //^usize
+    (_, a, .., b) = ('c', 0i64, true, 0usize);
+
+    let mut a = 1;
+      //^^^^^i64
+    let mut b: i64 = 0;
+    (a, b) = (b, a);
+}
+        "#,
+    );
+}
+
+#[test]
+fn destructuring_assignment_tuple_struct() {
+    check_types(
+        r#"
+struct S2(char, i64);
+struct S3(char, i64, bool);
+struct S4(char, i64, bool usize);
+fn main() {
+    let a;
+      //^char
+    let b;
+      //^i64
+    S2(a, b) = S2('c', 0i64);
+
+    let a;
+      //^char
+    let b;
+      //^i64
+    S2(a, .., b) = S2('c', 0i64);
+
+    let a;
+      //^char
+    let b;
+      //^bool
+    S3(a, .., b) = S3('c', 0i64, true);
+
+    let a;
+      //^i64
+    let b;
+      //^bool
+    S3(_, a, .., b) = S3('c', 0i64, true);
+
+    let a;
+      //^i64
+    let b;
+      //^usize
+    S4(_, a, .., b) = S4('c', 0i64, true, 0usize);
+
+    struct Swap(i64, i64);
+
+    let mut a = 1;
+      //^^^^^i64
+    let mut b = 0;
+      //^^^^^i64
+    Swap(a, b) = Swap(b, a);
+}
+        "#,
+    );
+}
+
+#[test]
+fn destructuring_assignment_struct() {
+    check_types(
+        r#"
+struct S {
+    a: usize,
+    b: char,
+}
+struct T {
+    s: S,
+    t: i64,
+}
+
+fn main() {
+    let a;
+      //^usize
+    let c;
+      //^char
+    S { a, b: c } = S { a: 3, b: 'b' };
+
+    let a;
+      //^char
+    S { b: a, .. } = S { a: 3, b: 'b' };
+
+    let a;
+      //^char
+    S { b: a, _ } = S { a: 3, b: 'b' };
+
+    let a;
+      //^usize
+    let c;
+      //^char
+    let t;
+      //^i64
+    T { s: S { a, b: c }, t } = T { s: S { a: 3, b: 'b' }, t: 0 };
+}
+        "#,
+    );
+}
+
+#[test]
+fn destructuring_assignment_nested() {
+    check_types(
+        r#"
+struct S {
+    a: TS,
+    b: [char; 3],
+}
+struct TS(usize, i64);
+
+fn main() {
+    let a;
+      //^i32
+    let b;
+      //^bool
+    ([.., a], .., b, _) = ([0, 1, 2], true, 'c');
+
+    let a;
+      //^i32
+    let b;
+      //^i32
+    [(.., a, _), .., (b, ..)] = [(1, 2); 5];
+
+    let a;
+      //^usize
+    let b;
+      //^char
+    S { a: TS(a, ..), b: [_, b, ..] } = S { a: TS(0, 0), b: ['a'; 3] };
+}
+        "#,
+    );
+}
+
+#[test]
+fn destructuring_assignment_unit_struct() {
+    // taken from rustc; see https://github.com/rust-lang/rust/pull/95380
+    check_no_mismatches(
+        r#"
+struct S;
+enum E { V, }
+type A = E;
+
+fn main() {
+    let mut a;
+
+    (S, a) = (S, ());
+
+    (E::V, a) = (E::V, ());
+
+    (<E>::V, a) = (E::V, ());
+    (A::V, a) = (E::V, ());
+}
+
+impl S {
+    fn check() {
+        let a;
+        (Self, a) = (S, ());
+    }
+}
+
+impl E {
+    fn check() {
+        let a;
+        (Self::V, a) = (E::V, ());
+    }
+}
+        "#,
+    );
+}
+
+#[test]
+fn destructuring_assignment_no_default_binding_mode() {
+    check(
+        r#"
+struct S { a: usize }
+struct TS(usize);
+fn main() {
+    let x;
+    [x,] = &[1,];
+  //^^^^expected &[i32; 1], got [{unknown}; _]
+
+    // FIXME we only want the outermost error, but this matches the current
+    // behavior of slice patterns
+    let x;
+    [(x,),] = &[(1,),];
+  // ^^^^expected {unknown}, got ({unknown},)
+  //^^^^^^^expected &[(i32,); 1], got [{unknown}; _]
+
+    let x;
+    ((x,),) = &((1,),);
+  //^^^^^^^expected &((i32,),), got (({unknown},),)
+
+    let x;
+    (x,) = &(1,);
+  //^^^^expected &(i32,), got ({unknown},)
+
+    let x;
+    (S { a: x },) = &(S { a: 42 },);
+  //^^^^^^^^^^^^^expected &(S,), got (S,)
+
+    let x;
+    S { a: x } = &S { a: 42 };
+  //^^^^^^^^^^expected &S, got S
+
+    let x;
+    TS(x) = &TS(42);
+  //^^^^^expected &TS, got TS
+}
+        "#,
     );
 }
