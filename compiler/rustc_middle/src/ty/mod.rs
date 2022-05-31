@@ -804,7 +804,7 @@ pub type PolyTraitPredicate<'tcx> = ty::Binder<'tcx, TraitPredicate<'tcx>>;
 
 impl<'tcx> TraitPredicate<'tcx> {
     pub fn remap_constness(&mut self, tcx: TyCtxt<'tcx>, param_env: &mut ParamEnv<'tcx>) {
-        if unlikely!(Some(self.trait_ref.def_id) == tcx.lang_items().drop_trait()) {
+        if std::intrinsics::unlikely(Some(self.trait_ref.def_id) == tcx.lang_items().drop_trait()) {
             // remap without changing constness of this predicate.
             // this is because `T: ~const Drop` has a different meaning to `T: Drop`
             // FIXME(fee1-dead): remove this logic after beta bump
