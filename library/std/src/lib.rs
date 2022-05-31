@@ -299,7 +299,6 @@
 #![feature(map_try_insert)]
 #![feature(new_uninit)]
 #![feature(thin_box)]
-#![feature(toowned_clone_into)]
 #![feature(try_reserve_kind)]
 #![feature(vec_into_raw_parts)]
 #![feature(slice_concat_trait)]

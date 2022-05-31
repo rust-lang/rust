@@ -2287,6 +2287,7 @@ pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
 /// // Now the box is fine
 /// assert_eq!(*v, 42);
 /// ```
+#[doc(alias = "memset")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_ptr_write", issue = "86302")]
 #[inline]
