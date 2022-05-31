@@ -1,7 +1,7 @@
 use cov_mark::check;
 use expect_test::expect;
 
-use super::{check, check_infer, check_infer_with_mismatches, check_types};
+use super::{check, check_infer, check_infer_with_mismatches, check_no_mismatches, check_types};
 
 #[test]
 fn infer_await() {
@@ -3313,6 +3313,42 @@ fn foo() {
 pub trait Deserialize {
     fn deserialize() -> u8;
 }"#,
+    );
+}
+
+#[test]
+fn bin_op_with_rhs_is_self_for_assoc_bound() {
+    check_no_mismatches(
+        r#"//- minicore: eq
+        fn repro<T>(t: T) -> bool
+where
+    T: Request,
+    T::Output: Convertable,
+{
+    let a = execute(&t).convert();
+    let b = execute(&t).convert();
+    a.eq(&b);
+    let a = execute(&t).convert2();
+    let b = execute(&t).convert2();
+    a.eq(&b)
+}
+fn execute<T>(t: &T) -> T::Output
+where
+    T: Request,
+{
+    <T as Request>::output()
+}
+trait Convertable {
+    type TraitSelf: PartialEq<Self::TraitSelf>;
+    type AssocAsDefaultSelf: PartialEq;
+    fn convert(self) -> Self::AssocAsDefaultSelf;
+    fn convert2(self) -> Self::TraitSelf;
+}
+trait Request {
+    type Output;
+    fn output() -> Self::Output;
+}
+     "#,
     );
 }
 
