@@ -1337,7 +1337,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     pub(super) fn lower_generics_mut(
         &mut self,
         generics: &Generics,
-        mut itctx: ImplTraitContext,
+        itctx: ImplTraitContext,
     ) -> GenericsCtor<'hir> {
         // Error if `?Trait` bounds in where clauses don't refer directly to type parameters.
         // Note: we used to clone these bounds directly onto the type parameter (and avoid lowering
@@ -1388,7 +1388,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let mut predicates = SmallVec::new();
         predicates.extend(generics.params.iter().filter_map(|param| {
-            let bounds = self.lower_param_bounds(&param.bounds, itctx.reborrow());
+            let bounds = self.lower_param_bounds(&param.bounds, itctx);
             self.lower_generic_bound_predicate(
                 param.ident,
                 param.id,
