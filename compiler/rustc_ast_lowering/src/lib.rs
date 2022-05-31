@@ -710,10 +710,18 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         &mut self,
         generics: &Generics,
         parent_node_id: NodeId,
+        itctx: ImplTraitContext,
         f: impl FnOnce(&mut Self) -> T,
     ) -> (&'hir hir::Generics<'hir>, T) {
-        let mut lowered_generics = self
-            .lower_generics_mut(generics, ImplTraitContext::Universal(self.current_hir_id_owner));
+        match itctx {
+            ImplTraitContext::Universal(..) => {}
+            _ => {
+                debug_assert!(self.impl_trait_defs.is_empty());
+                debug_assert!(self.impl_trait_bounds.is_empty());
+            }
+        }
+
+        let mut lowered_generics = self.lower_generics_mut(generics, itctx);
         let res = f(self);
 
         let extra_lifetimes = self.resolver.take_extra_lifetime_params(parent_node_id);
