@@ -1347,7 +1347,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         // Expand trait aliases recursively and check that only one regular (non-auto) trait
         // is used and no 'maybe' bounds are used.
-        let expanded_traits = traits::expand_trait_aliases(tcx, bounds.trait_bounds.iter());
+        let expanded_traits =
+            traits::expand_trait_aliases(tcx, bounds.trait_bounds.iter().copied());
         let (mut auto_traits, regular_traits): (Vec<_>, Vec<_>) = expanded_traits
             .filter(|i| i.trait_ref().self_ty().skip_binder() == dummy_self)
             .partition(|i| tcx.trait_is_auto(i.trait_ref().def_id()));
@@ -1387,7 +1388,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             let trait_alias_span = bounds
                 .trait_bounds
                 .iter()
-                .map(|&(trait_ref, _, _)| trait_ref.def_id())
+                .map(|(trait_ref, _)| trait_ref.def_id())
                 .find(|&trait_ref| tcx.is_trait_alias(trait_ref))
                 .map(|trait_ref| tcx.def_span(trait_ref));
             tcx.sess.emit_err(TraitObjectDeclaredWithNoTraits { span, trait_alias_span });

@@ -346,7 +346,9 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
 
                 // No constraints on lifetimes or constants, except potentially
                 // constants' types, but `walk` will get to them as well.
-                GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => continue,
+                GenericArgKind::Constness(_)
+                | GenericArgKind::Lifetime(_)
+                | GenericArgKind::Const(_) => continue,
             };
 
             match *ty.kind() {

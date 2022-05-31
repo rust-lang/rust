@@ -15,7 +15,7 @@ use rustc_middle::ty::{
     suggest_constraining_type_param, Adt, Closure, DefIdTree, FnDef, FnPtr, Param, TraitPredicate,
     Ty,
 };
-use rustc_middle::ty::{Binder, BoundConstness, ImplPolarity, TraitRef};
+use rustc_middle::ty::{Binder, ImplPolarity, TraitRef};
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::sym;
 use rustc_span::{BytePos, Pos, Span, Symbol};

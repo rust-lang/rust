@@ -250,6 +250,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                 ty::subst::GenericArgKind::Lifetime(_) => false,
                 ty::subst::GenericArgKind::Type(t) => t.is_fn_ptr(),
                 ty::subst::GenericArgKind::Const(_) => false,
+                ty::subst::GenericArgKind::Constness(_) => false,
             })
     }
 

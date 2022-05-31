@@ -741,7 +741,7 @@ fn bound_vars_for_item<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> SubstsRef<'tcx
             })
             .into(),
         ty::GenericParamDefKind::Constness => {
-            ty::GenericArg::Param.into() // TODO Confirm
+            ty::ConstnessArg::Param.into() // TODO Confirm
         }
     })
 }
@@ -760,6 +760,7 @@ fn binders_for<'tcx>(
             ty::subst::GenericArgKind::Const(c) => {
                 chalk_ir::VariableKind::Const(c.ty().lower_into(interner))
             }
+            ty::subst::GenericArgKind::Constness(_) => unimplemented!(),
         }),
     )
 }
