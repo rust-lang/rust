@@ -1633,10 +1633,9 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
         assert!(!has_self);
         parent_has_self = generics.has_self;
         own_start = generics.count() as u32;
-        // if parent has constness param, we do not inherit it from the parent, and we
-        // get it in the end instead of the middle.
+        // if the parent has a constness param, we inherit it from the parent
         parent_has_constness = generics.has_constness;
-        generics.parent_count + generics.params.len() - parent_has_constness as usize
+        generics.parent_count + generics.params.len()
     });
 
     let mut params: Vec<_> = Vec::with_capacity(ast_generics.params.len() + has_self as usize);
@@ -1762,7 +1761,7 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
         }
     }
 
-    if has_constness || parent_has_constness {
+    if has_constness && !parent_has_constness {
         trace!("adding constness param");
         params.push(ty::GenericParamDef {
             name: Symbol::intern("<constness>"),

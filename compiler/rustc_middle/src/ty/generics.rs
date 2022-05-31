@@ -241,9 +241,7 @@ impl<'tcx> Generics {
 
     /// Returns the `ConstnessArg`
     pub fn has_constness_param(&'tcx self) -> bool {
-        self.params
-            .last()
-            .map_or(false, |param| matches!(param.kind, ty::GenericParamDefKind::Constness))
+        self.params.iter().any(|param| matches!(param.kind, ty::GenericParamDefKind::Constness))
     }
 
     /// Returns `true` if `params` has `impl Trait`.

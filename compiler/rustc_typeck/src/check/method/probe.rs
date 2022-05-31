@@ -1784,9 +1784,9 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         assert_eq!(
             substs.len(),
             generics.parent_count as usize,
-            "{:#?} vs {:#?}",
+            "substs: {:#?}\ngenerics: {:#?}",
             substs,
-            generics.params
+            generics
         );
 
         let xform_fn_sig = if generics.params.is_empty() {
