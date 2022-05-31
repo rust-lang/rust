@@ -1,0 +1,12 @@
+warning: non-binding let on a synchronization lock
+  --> $DIR/let_underscore_lock.rs:7:5
+   |
+LL |     let _ = data.lock().unwrap();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(let_underscore_lock)]` on by default
+   = help: consider binding to an unused variable
+   = help: consider explicitly droping with `std::mem::drop`
+
+warning: 1 warning emitted
+
