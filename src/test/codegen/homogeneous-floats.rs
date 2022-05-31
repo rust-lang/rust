@@ -13,7 +13,7 @@ pub struct Foo {
     bar4: f32,
 }
 
-// CHECK: define [2 x float] @array_f32x2([2 x float] %0, [2 x float] %1)
+// CHECK: define i64 @array_f32x2(i64 %0, i64 %1)
 #[no_mangle]
 pub fn array_f32x2(a: [f32; 2], b: [f32; 2]) -> [f32; 2] {
     todo!()
