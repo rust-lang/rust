@@ -324,7 +324,7 @@ fn kind_from_prim(ek: u32) -> Option<ErrorKind> {
         Deadlock,
         CrossesDevices,
         TooManyLinks,
-        InvalidFilename,
+        InvalidFileName,
         ArgumentListTooLong,
         Interrupted,
         Other,
