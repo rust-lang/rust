@@ -16,6 +16,7 @@
 // feature is present at compile-time. We don't bother detecting other features.
 // Note that ERMSB does not enhance the backwards (DF=1) "rep movsb".
 
+use core::intrinsics;
 use core::mem;
 
 #[inline(always)]
@@ -110,13 +111,10 @@ pub unsafe fn compare_bytes(a: *const u8, b: *const u8, n: usize) -> i32 {
         U: Clone + Copy + Eq,
         F: FnOnce(*const U, *const U, usize) -> i32,
     {
-        // Just to be sure we're actually working with powers of two...
-        let _ = const { 1 - mem::size_of::<T>().count_ones() }; // <= 1
-        let _ = const { mem::size_of::<T>().count_ones() - 1 }; // >= 1
+        // Ensure T is not a ZST.
+        const { assert!(mem::size_of::<T>() != 0) };
 
-        // This should be equivalent to division with power-of-two sizes, except the former
-        // somehow still leaves a call to panic because ??
-        let end = a.add(n >> mem::size_of::<T>().trailing_zeros());
+        let end = a.add(intrinsics::unchecked_div(n, mem::size_of::<T>()));
         while a != end {
             if a.read_unaligned() != b.read_unaligned() {
                 return f(a.cast(), b.cast(), mem::size_of::<T>());
@@ -124,8 +122,11 @@ pub unsafe fn compare_bytes(a: *const u8, b: *const u8, n: usize) -> i32 {
             a = a.add(1);
             b = b.add(1);
         }
-        // Ditto
-        f(a.cast(), b.cast(), n & (mem::size_of::<T>() - 1))
+        f(
+            a.cast(),
+            b.cast(),
+            intrinsics::unchecked_rem(n, mem::size_of::<T>()),
+        )
     }
     let c1 = |mut a: *const u8, mut b: *const u8, n| {
         for _ in 0..n {
