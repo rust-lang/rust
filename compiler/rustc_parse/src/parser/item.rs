@@ -996,35 +996,24 @@ impl<'a> Parser<'a> {
     fn parse_item_foreign_mod(
         &mut self,
         attrs: &mut Vec<Attribute>,
-        unsafety: Unsafe,
+        mut unsafety: Unsafe,
     ) -> PResult<'a, ItemInfo> {
-        let sp_start = self.prev_token.span;
         let abi = self.parse_abi(); // ABI?
-        match self.parse_item_list(attrs, |p| p.parse_foreign_item(ForceCollect::No)) {
-            Ok(items) => {
-                let module = ast::ForeignMod { unsafety, abi, items };
-                Ok((Ident::empty(), ItemKind::ForeignMod(module)))
-            }
-            Err(mut err) => {
-                let current_qual_sp = self.prev_token.span;
-                let current_qual_sp = current_qual_sp.to(sp_start);
-                if let Ok(current_qual) = self.span_to_snippet(current_qual_sp) {
-                    // FIXME(davidtwco): avoid depending on the error message text
-                    if err.message[0].0.expect_str() == "expected `{`, found keyword `unsafe`" {
-                        let invalid_qual_sp = self.token.uninterpolated_span();
-                        let invalid_qual = self.span_to_snippet(invalid_qual_sp).unwrap();
-
-                        err.span_suggestion(
-                                current_qual_sp.to(invalid_qual_sp),
-                                &format!("`{}` must come before `{}`", invalid_qual, current_qual),
-                                format!("{} {}", invalid_qual, current_qual),
-                                Applicability::MachineApplicable,
-                            ).note("keyword order for functions declaration is `pub`, `default`, `const`, `async`, `unsafe`, `extern`");
-                    }
-                }
-                Err(err)
-            }
+        if unsafety == Unsafe::No
+            && self.token.is_keyword(kw::Unsafe)
+            && self.look_ahead(1, |t| t.kind == token::OpenDelim(Delimiter::Brace))
+        {
+            let mut err = self.expect(&token::OpenDelim(Delimiter::Brace)).unwrap_err();
+            err.emit();
+            unsafety = Unsafe::Yes(self.token.span);
+            self.eat_keyword(kw::Unsafe);
         }
+        let module = ast::ForeignMod {
+            unsafety,
+            abi,
+            items: self.parse_item_list(attrs, |p| p.parse_foreign_item(ForceCollect::No))?,
+        };
+        Ok((Ident::empty(), ItemKind::ForeignMod(module)))
     }
 
     /// Parses a foreign item (one in an `extern { ... }` block).

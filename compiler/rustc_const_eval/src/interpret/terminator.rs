@@ -185,7 +185,14 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // No question
                 return true;
             }
-            // Compare layout
+            if caller_abi.layout.size != callee_abi.layout.size
+                || caller_abi.layout.align.abi != callee_abi.layout.align.abi
+            {
+                // This cannot go well...
+                // FIXME: What about unsized types?
+                return false;
+            }
+            // The rest *should* be okay, but we are extra conservative.
             match (caller_abi.layout.abi, callee_abi.layout.abi) {
                 // Different valid ranges are okay (once we enforce validity,
                 // that will take care to make it UB to leave the range, just
