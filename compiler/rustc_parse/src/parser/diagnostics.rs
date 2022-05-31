@@ -325,6 +325,15 @@ struct IncorrectAwait {
     question_mark: &'static str,
 }
 
+#[derive(SessionDiagnostic)]
+#[error(slug = "parser-in-in-typo")]
+struct InInTypo {
+    #[primary_span]
+    span: Span,
+    #[suggestion(applicability = "machine-applicable")]
+    sugg_span: Span,
+}
+
 // SnapshotParser is used to create a snapshot of the parser
 // without causing duplicate errors being emitted when the `Parser`
 // is dropped.
@@ -1953,14 +1962,10 @@ impl<'a> Parser<'a> {
     pub(super) fn check_for_for_in_in_typo(&mut self, in_span: Span) {
         if self.eat_keyword(kw::In) {
             // a common typo: `for _ in in bar {}`
-            self.struct_span_err(self.prev_token.span, "expected iterable, found keyword `in`")
-                .span_suggestion_short(
-                    in_span.until(self.prev_token.span),
-                    "remove the duplicated `in`",
-                    String::new(),
-                    Applicability::MachineApplicable,
-                )
-                .emit();
+            self.sess.emit_err(InInTypo {
+                span: self.prev_token.span,
+                sugg_span: in_span.until(self.prev_token.span),
+            });
         }
     }
 
