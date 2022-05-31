@@ -1,5 +1,3 @@
-use rustc_middle::ty;
-
 use crate::infer::canonical::OriginalQueryValues;
 use crate::infer::InferCtxt;
 use crate::traits::{

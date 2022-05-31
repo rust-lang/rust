@@ -121,8 +121,6 @@ impl<'tcx> TyCtxt<'tcx> {
         cid: GlobalId<'tcx>,
         span: Option<Span>,
     ) -> EvalToValTreeResult<'tcx> {
-        let param_env = param_env.with_const();
-        debug!(?param_env);
         // Const-eval shouldn't depend on lifetimes at all, so we can erase them, which should
         // improve caching of queries.
         let inputs = self.erase_regions(param_env.and(cid));

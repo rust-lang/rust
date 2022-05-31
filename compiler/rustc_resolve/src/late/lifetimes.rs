@@ -1894,6 +1894,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                                     Some(object_lifetime_default)
                                 }
                                 GenericParamDefKind::Const { .. } => Some(Set1::Empty),
+                                GenericParamDefKind::Constness => None,
                                 GenericParamDefKind::Lifetime => None,
                             })
                             .collect()

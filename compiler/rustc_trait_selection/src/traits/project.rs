@@ -1563,9 +1563,9 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                             &obligation.with(
                                 ty::Binder::dummy(ty::TraitRef::new(
                                     selcx.tcx().require_lang_item(LangItem::Sized, None),
-                                    selcx.tcx().mk_substs_trait(self_ty, &[]),
+                                    selcx.tcx().mk_substs_trait(self_ty, &[], ty::ConstnessArg::Not),
                                 ))
-                                .without_const()
+                                .without_const(selcx.tcx())
                                 .to_predicate(selcx.tcx()),
                             ),
                         ) =>
