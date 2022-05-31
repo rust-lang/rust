@@ -114,7 +114,21 @@ impl Clone for ManuallyCopyLargeEnum {
         *self
     }
 }
+
 impl Copy for ManuallyCopyLargeEnum {}
+
+enum SomeGenericPossiblyCopyEnum<T> {
+    A(bool, std::marker::PhantomData<T>),
+    B([u64; 4000]),
+}
+
+impl<T: Copy> Clone for SomeGenericPossiblyCopyEnum<T> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<T: Copy> Copy for SomeGenericPossiblyCopyEnum<T> {}
 
 fn main() {
     large_enum_variant!();
