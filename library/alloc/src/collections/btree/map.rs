@@ -65,7 +65,7 @@ pub(super) const MIN_LEN: usize = node::MIN_LEN_AFTER_SPLIT;
 /// any other key, as determined by the [`Ord`] trait, changes while it is in the map. This is
 /// normally only possible through [`Cell`], [`RefCell`], global state, I/O, or unsafe code.
 /// The behavior resulting from such a logic error is not specified, but will be encapsulated to the
-/// `BTreeSet` that observed the logic error and not result in undefined behavior. This could
+/// `BTreeMap` that observed the logic error and not result in undefined behavior. This could
 /// include panics, incorrect results, aborts, memory leaks, and non-termination.
 ///
 /// Iterators obtained from functions such as [`BTreeMap::iter`], [`BTreeMap::values`], or
