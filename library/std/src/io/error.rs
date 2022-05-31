@@ -309,11 +309,11 @@ pub enum ErrorKind {
     /// The filesystem does not support making so many hardlinks to the same file.
     #[unstable(feature = "io_error_more", issue = "86442")]
     TooManyLinks,
-    /// A filename was invalid.
+    /// A file name was invalid.
     ///
-    /// This error can also cause if it exceeded the filename length limit.
+    /// This error can also cause if it exceeded the file name length limit.
     #[unstable(feature = "io_error_more", issue = "86442")]
-    InvalidFilename,
+    InvalidFileName,
     /// Program argument list too long.
     ///
     /// When trying to run an external program, a system or process limit on the size of the
@@ -399,7 +399,7 @@ impl ErrorKind {
             HostUnreachable => "host unreachable",
             Interrupted => "operation interrupted",
             InvalidData => "invalid data",
-            InvalidFilename => "invalid filename",
+            InvalidFileName => "invalid file name",
             InvalidInput => "invalid input parameter",
             IsADirectory => "is a directory",
             NetworkDown => "network down",
