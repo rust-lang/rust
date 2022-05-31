@@ -305,6 +305,7 @@ store.register_group(true, "clippy::all", Some("clippy_all"), vec![
     LintId::of(transmute::TRANSMUTE_NUM_TO_BYTES),
     LintId::of(transmute::TRANSMUTE_PTR_TO_REF),
     LintId::of(transmute::UNSOUND_COLLECTION_TRANSMUTE),
+    LintId::of(transmute::USELESS_TRANSMUTE),
     LintId::of(transmute::WRONG_TRANSMUTE),
     LintId::of(transmuting_null::TRANSMUTING_NULL),
     LintId::of(types::BORROWED_BOX),
