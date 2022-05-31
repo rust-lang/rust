@@ -705,6 +705,30 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         protect: bool,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
+        let current_span = &mut this.machine.current_span();
+
+        let log_creation = |this: &MiriEvalContext<'mir, 'tcx>,
+                            current_span: &mut CurrentSpan<'_, 'mir, 'tcx>,
+                            alloc_id,
+                            base_offset,
+                            orig_tag|
+         -> InterpResult<'tcx> {
+            let extra = this.get_alloc_extra(alloc_id)?;
+            let stacked_borrows =
+                extra.stacked_borrows.as_ref().expect("we should have Stacked Borrows data");
+            let mut alloc_history = stacked_borrows.history.borrow_mut();
+            alloc_history.log_creation(
+                Some(orig_tag),
+                new_tag,
+                alloc_range(base_offset, size),
+                current_span,
+            );
+            if protect {
+                alloc_history.log_protector(orig_tag, new_tag, current_span);
+            }
+            Ok(())
+        };
+
         if size == Size::ZERO {
             // Don't update any stacks for a zero-sized access; borrow stacks are per-byte and this
             // touches no bytes so there is no stack to put this tag in.
@@ -714,16 +738,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // Dangling slices are a common case here; it's valid to get their length but with raw
             // pointer tagging for example all calls to get_unchecked on them are invalid.
             if let Ok((alloc_id, base_offset, orig_tag)) = this.ptr_try_get_alloc_id(place.ptr) {
-                let extra = this.get_alloc_extra(alloc_id)?;
-                let stacked_borrows =
-                    extra.stacked_borrows.as_ref().expect("we should have Stacked Borrows data");
-                let mut alloc_history = stacked_borrows.history.borrow_mut();
-                alloc_history.log_creation(
-                    Some(orig_tag),
-                    new_tag,
-                    alloc_range(base_offset, Size::ZERO),
-                    &mut this.machine.current_span(),
-                );
+                log_creation(this, current_span, alloc_id, base_offset, orig_tag)?;
             }
 
             trace!(
@@ -736,23 +751,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             return Ok(());
         }
         let (alloc_id, base_offset, orig_tag) = this.ptr_get_alloc_id(place.ptr)?;
-
-        let mut current_span = this.machine.current_span();
-        {
-            let extra = this.get_alloc_extra(alloc_id)?;
-            let stacked_borrows =
-                extra.stacked_borrows.as_ref().expect("we should have Stacked Borrows data");
-            let mut alloc_history = stacked_borrows.history.borrow_mut();
-            alloc_history.log_creation(
-                Some(orig_tag),
-                new_tag,
-                alloc_range(base_offset, size),
-                &mut current_span,
-            );
-            if protect {
-                alloc_history.log_protector(orig_tag, new_tag, &mut current_span);
-            }
-        }
+        log_creation(this, current_span, alloc_id, base_offset, orig_tag)?;
 
         // Ensure we bail out if the pointer goes out-of-bounds (see miri#1050).
         let (alloc_size, _) =
@@ -819,7 +818,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                             item,
                             (alloc_id, range, offset),
                             &mut *global,
-                            &mut current_span,
+                            current_span,
                             history,
                         )
                     })
@@ -836,14 +835,14 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let item = Item { perm, tag: new_tag, protector };
         let range = alloc_range(base_offset, size);
         let mut global = machine.stacked_borrows.as_ref().unwrap().borrow_mut();
-        let mut current_span = machine.current_span();
+        let current_span = &mut machine.current_span(); // `get_alloc_extra_mut` invalidated our old `current_span`
         stacked_borrows.for_each_mut(range, |offset, stack, history| {
             stack.grant(
                 orig_tag,
                 item,
                 (alloc_id, range, offset),
                 &mut global,
-                &mut current_span,
+                current_span,
                 history,
             )
         })?;

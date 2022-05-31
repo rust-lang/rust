@@ -810,12 +810,12 @@ impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
 /// topmost frame which corresponds to a local crate, and returns the current span in that frame.
 /// The result of that search is cached so that later calls are approximately free.
 #[derive(Clone)]
-pub struct CurrentSpan<'a, 'tcx, 'mir> {
+pub struct CurrentSpan<'a, 'mir, 'tcx> {
     span: Option<Span>,
-    machine: &'a Evaluator<'tcx, 'mir>,
+    machine: &'a Evaluator<'mir, 'tcx>,
 }
 
-impl<'a, 'tcx, 'mir> CurrentSpan<'a, 'tcx, 'mir> {
+impl<'a, 'mir, 'tcx> CurrentSpan<'a, 'mir, 'tcx> {
     pub fn get(&mut self) -> Span {
         *self.span.get_or_insert_with(|| Self::current_span(&self.machine))
     }
