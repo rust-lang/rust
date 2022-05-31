@@ -194,7 +194,7 @@ impl<'tcx> LateLintPass<'tcx> for Ranges {
             },
             ExprKind::Binary(ref op, l, r) => {
                 if meets_msrv(self.msrv, msrvs::RANGE_CONTAINS) {
-                    check_possible_range_contains(cx, op.node, l, r, expr);
+                    check_possible_range_contains(cx, op.node, l, r, expr, expr.span);
                 }
             },
             _ => {},
@@ -213,12 +213,12 @@ fn check_possible_range_contains(
     left: &Expr<'_>,
     right: &Expr<'_>,
     expr: &Expr<'_>,
+    span: Span,
 ) {
     if in_constant(cx, expr.hir_id) {
         return;
     }
 
-    let span = expr.span;
     let combine_and = match op {
         BinOpKind::And | BinOpKind::BitAnd => true,
         BinOpKind::Or | BinOpKind::BitOr => false,
@@ -292,6 +292,20 @@ fn check_possible_range_contains(
                 format!("!({}{}{}{}).contains(&{})", lo, space, range_op, hi, name),
                 applicability,
             );
+        }
+    }
+
+    // If the LHS is the same operator, we have to recurse to get the "real" RHS, since they have
+    // the same operator precedence
+    if_chain! {
+        if let ExprKind::Binary(ref lhs_op, _left, new_lhs) = left.kind;
+        if op == lhs_op.node;
+        let new_span = Span::new(new_lhs.span.lo(), right.span.hi(), expr.span.ctxt(), expr.span.parent());
+        if let Some(snip) = &snippet_opt(cx, new_span);
+        // Do not continue if we have mismatched number of parens, otherwise the suggestion is wrong
+        if snip.matches('(').count() == snip.matches(')').count();
+        then {
+            check_possible_range_contains(cx, op, new_lhs, right, expr, new_span);
         }
     }
 }
