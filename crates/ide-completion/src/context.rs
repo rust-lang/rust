@@ -383,7 +383,6 @@ impl<'a> CompletionContext<'a> {
     // FIXME: This shouldn't exist
     pub(crate) fn is_path_disallowed(&self) -> bool {
         !self.qualifier_ctx.none()
-            || matches!(self.prev_sibling, Some(ImmediatePrevSibling::Visibility))
             || (matches!(self.name_ctx(), Some(NameContext { .. })) && self.pattern_ctx.is_none())
             || matches!(self.pattern_ctx, Some(PatternContext { record_pat: Some(_), .. }))
             || matches!(
