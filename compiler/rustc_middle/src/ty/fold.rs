@@ -514,7 +514,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 t: &Binder<'tcx, T>,
             ) -> ControlFlow<Self::BreakTy> {
                 self.outer_index.shift_in(1);
-                let result = t.as_ref().skip_binder().visit_with(self);
+                let result = t.super_visit_with(self);
                 self.outer_index.shift_out(1);
                 result
             }
