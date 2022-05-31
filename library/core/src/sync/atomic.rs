@@ -427,10 +427,6 @@ impl AtomicBool {
     /// `load` takes an [`Ordering`] argument which describes the memory ordering
     /// of this operation. Possible values are [`SeqCst`], [`Acquire`] and [`Relaxed`].
     ///
-    /// # Panics
-    ///
-    /// Panics if `order` is [`Release`] or [`AcqRel`].
-    ///
     /// # Examples
     ///
     /// ```
@@ -452,10 +448,6 @@ impl AtomicBool {
     ///
     /// `store` takes an [`Ordering`] argument which describes the memory ordering
     /// of this operation. Possible values are [`SeqCst`], [`Release`] and [`Relaxed`].
-    ///
-    /// # Panics
-    ///
-    /// Panics if `order` is [`Acquire`] or [`AcqRel`].
     ///
     /// # Examples
     ///
@@ -1109,10 +1101,6 @@ impl<T> AtomicPtr<T> {
     /// `load` takes an [`Ordering`] argument which describes the memory ordering
     /// of this operation. Possible values are [`SeqCst`], [`Acquire`] and [`Relaxed`].
     ///
-    /// # Panics
-    ///
-    /// Panics if `order` is [`Release`] or [`AcqRel`].
-    ///
     /// # Examples
     ///
     /// ```
@@ -1134,10 +1122,6 @@ impl<T> AtomicPtr<T> {
     ///
     /// `store` takes an [`Ordering`] argument which describes the memory ordering
     /// of this operation. Possible values are [`SeqCst`], [`Release`] and [`Relaxed`].
-    ///
-    /// # Panics
-    ///
-    /// Panics if `order` is [`Acquire`] or [`AcqRel`].
     ///
     /// # Examples
     ///
@@ -1692,10 +1676,6 @@ macro_rules! atomic_int {
             /// `load` takes an [`Ordering`] argument which describes the memory ordering of this operation.
             /// Possible values are [`SeqCst`], [`Acquire`] and [`Relaxed`].
             ///
-            /// # Panics
-            ///
-            /// Panics if `order` is [`Release`] or [`AcqRel`].
-            ///
             /// # Examples
             ///
             /// ```
@@ -1716,10 +1696,6 @@ macro_rules! atomic_int {
             ///
             /// `store` takes an [`Ordering`] argument which describes the memory ordering of this operation.
             ///  Possible values are [`SeqCst`], [`Release`] and [`Relaxed`].
-            ///
-            /// # Panics
-            ///
-            /// Panics if `order` is [`Acquire`] or [`AcqRel`].
             ///
             /// # Examples
             ///
@@ -2664,7 +2640,11 @@ unsafe fn atomic_compare_exchange<T: Copy>(
             _ => panic!("a failure ordering can't be stronger than a success ordering"),
         }
     };
-    if ok { Ok(val) } else { Err(val) }
+    if ok {
+        Ok(val)
+    } else {
+        Err(val)
+    }
 }
 
 #[inline]
@@ -2693,7 +2673,11 @@ unsafe fn atomic_compare_exchange_weak<T: Copy>(
             _ => panic!("a failure ordering can't be stronger than a success ordering"),
         }
     };
-    if ok { Ok(val) } else { Err(val) }
+    if ok {
+        Ok(val)
+    } else {
+        Err(val)
+    }
 }
 
 #[inline]
