@@ -1,3 +1,6 @@
+// EMIT_MIR tls_access.main.PreCodegen.after.mir
+// compile-flags: -Zmir-opt-level=0
+
 #![feature(thread_local)]
 
 #[thread_local]
@@ -9,6 +12,3 @@ fn main() {
         FOO = 42;
     }
 }
-
-// EMIT_MIR tls_access.main.SimplifyCfg-final.after.mir
-// compile-flags: -Zmir-opt-level=0
