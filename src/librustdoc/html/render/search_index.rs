@@ -228,12 +228,13 @@ fn get_index_type_name(clean_type: &clean::Type) -> Option<Symbol> {
         // We return an empty name because we don't care about the generic name itself.
         clean::Generic(_) | clean::ImplTrait(_) => Some(kw::Empty),
         clean::Primitive(ref p) => Some(p.as_sym()),
-        clean::BorrowedRef { ref type_, .. } => get_index_type_name(type_),
+        clean::BorrowedRef { ref type_, .. } | clean::RawPointer(_, ref type_) => {
+            get_index_type_name(type_)
+        }
         clean::BareFunction(_)
         | clean::Tuple(_)
         | clean::Slice(_)
         | clean::Array(_, _)
-        | clean::RawPointer(_, _)
         | clean::QPath { .. }
         | clean::Infer => None,
     }
