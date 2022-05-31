@@ -1667,6 +1667,10 @@ impl Type {
         matches!(self, Type::Generic(_))
     }
 
+    pub(crate) fn is_impl_trait(&self) -> bool {
+        matches!(self, Type::ImplTrait(_))
+    }
+
     pub(crate) fn is_primitive(&self) -> bool {
         self.primitive_type().is_some()
     }
