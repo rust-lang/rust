@@ -703,44 +703,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         })
     }
 
-    /// Creates a new `hir::GenericParam` for every new `Fresh` lifetime and
-    /// universal `impl Trait` type parameter encountered while evaluating `f`.
-    /// Definitions are created with the provided `parent_def_id`.
-    fn lower_generics<T>(
-        &mut self,
-        generics: &Generics,
-        parent_node_id: NodeId,
-        itctx: ImplTraitContext,
-        f: impl FnOnce(&mut Self) -> T,
-    ) -> (&'hir hir::Generics<'hir>, T) {
-        match itctx {
-            ImplTraitContext::Universal(..) => {}
-            _ => {
-                debug_assert!(self.impl_trait_defs.is_empty());
-                debug_assert!(self.impl_trait_bounds.is_empty());
-            }
-        }
-
-        let mut lowered_generics = self.lower_generics_mut(generics, itctx);
-        let res = f(self);
-
-        let extra_lifetimes = self.resolver.take_extra_lifetime_params(parent_node_id);
-        let impl_trait_defs = std::mem::take(&mut self.impl_trait_defs);
-        lowered_generics.params.extend(
-            extra_lifetimes
-                .into_iter()
-                .filter_map(|(ident, node_id, res)| {
-                    self.lifetime_res_to_generic_param(ident, node_id, res)
-                })
-                .chain(impl_trait_defs.into_iter()),
-        );
-        let impl_trait_bounds = std::mem::take(&mut self.impl_trait_bounds);
-        lowered_generics.predicates.extend(impl_trait_bounds.into_iter());
-
-        let lowered_generics = lowered_generics.into_generics(self.arena);
-        (lowered_generics, res)
-    }
-
     /// Setup lifetime capture for and impl-trait.
     /// The captures will be added to `captures`.
     fn while_capturing_lifetimes<T>(
