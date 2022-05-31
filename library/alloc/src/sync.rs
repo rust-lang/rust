@@ -1397,7 +1397,7 @@ impl<T: Clone> Arc<T> {
     /// be cloned.
     ///
     /// See also [`get_mut`], which will fail rather than cloning the inner value
-    /// or diassociating [`Weak`] pointers.
+    /// or disassociating [`Weak`] pointers.
     ///
     /// [`clone`]: Clone::clone
     /// [`get_mut`]: Arc::get_mut
