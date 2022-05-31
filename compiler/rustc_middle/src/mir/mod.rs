@@ -2604,9 +2604,19 @@ pub enum Rvalue<'tcx> {
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 static_assert_size!(Rvalue<'_>, 40);
 
+impl<'tcx> Rvalue<'tcx> {
+    #[inline]
+    pub fn is_pointer_int_cast(&self) -> bool {
+        matches!(self, Rvalue::Cast(CastKind::PointerAddress, _, _))
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
 pub enum CastKind {
     Misc,
+    /// A pointer to address cast. A cast between a pointer and an integer type,
+    /// or between a function pointer and an integer type.
+    PointerAddress,
     Pointer(PointerCast),
 }
 

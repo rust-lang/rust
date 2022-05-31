@@ -2147,6 +2147,18 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         }
                     }
 
+                    CastKind::PointerAddress => {
+                        let ty_from = op.ty(body, tcx);
+                        let cast_ty_from = CastTy::from_ty(ty_from);
+                        let cast_ty_to = CastTy::from_ty(*ty);
+                        match (cast_ty_from, cast_ty_to) {
+                            (Some(CastTy::Ptr(_) | CastTy::FnPtr), Some(CastTy::Int(_))) => (),
+                            _ => {
+                                span_mirbug!(self, rvalue, "Invalid cast {:?} -> {:?}", ty_from, ty)
+                            }
+                        }
+                    }
+
                     CastKind::Misc => {
                         let ty_from = op.ty(body, tcx);
                         let cast_ty_from = CastTy::from_ty(ty_from);
@@ -2155,7 +2167,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             (None, _)
                             | (_, None | Some(CastTy::FnPtr))
                             | (Some(CastTy::Float), Some(CastTy::Ptr(_)))
-                            | (Some(CastTy::Ptr(_) | CastTy::FnPtr), Some(CastTy::Float)) => {
+                            | (
+                                Some(CastTy::Ptr(_) | CastTy::FnPtr),
+                                Some(CastTy::Float | CastTy::Int(_)),
+                            ) => {
                                 span_mirbug!(self, rvalue, "Invalid cast {:?} -> {:?}", ty_from, ty,)
                             }
                             (
@@ -2163,8 +2178,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                                 Some(CastTy::Int(_) | CastTy::Float | CastTy::Ptr(_)),
                             )
                             | (Some(CastTy::Float), Some(CastTy::Int(_) | CastTy::Float))
-                            | (Some(CastTy::Ptr(_)), Some(CastTy::Int(_) | CastTy::Ptr(_)))
-                            | (Some(CastTy::FnPtr), Some(CastTy::Int(_) | CastTy::Ptr(_))) => (),
+                            | (Some(CastTy::Ptr(_) | CastTy::FnPtr), Some(CastTy::Ptr(_))) => (),
                         }
                     }
                 }

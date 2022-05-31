@@ -1,7 +1,6 @@
 use rustc_index::bit_set::{BitSet, ChunkedBitSet};
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
-use rustc_middle::mir::{self, Local, LocalDecls, Location, Place, StatementKind};
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::mir::{self, Local, Location, Place, StatementKind};
 
 use crate::{Analysis, AnalysisDomain, Backward, CallReturnPlaces, GenKill, GenKillAnalysis};
 
@@ -193,27 +192,21 @@ impl DefUse {
 /// This is basically written for dead store elimination and nothing else.
 ///
 /// All of the caveats of `MaybeLiveLocals` apply.
-pub struct MaybeTransitiveLiveLocals<'a, 'tcx> {
+pub struct MaybeTransitiveLiveLocals<'a> {
     always_live: &'a BitSet<Local>,
-    local_decls: &'a LocalDecls<'tcx>,
-    tcx: TyCtxt<'tcx>,
 }
 
-impl<'a, 'tcx> MaybeTransitiveLiveLocals<'a, 'tcx> {
+impl<'a> MaybeTransitiveLiveLocals<'a> {
     /// The `always_alive` set is the set of locals to which all stores should unconditionally be
     /// considered live.
     ///
     /// This should include at least all locals that are ever borrowed.
-    pub fn new(
-        always_live: &'a BitSet<Local>,
-        local_decls: &'a LocalDecls<'tcx>,
-        tcx: TyCtxt<'tcx>,
-    ) -> Self {
-        MaybeTransitiveLiveLocals { always_live, local_decls, tcx }
+    pub fn new(always_live: &'a BitSet<Local>) -> Self {
+        MaybeTransitiveLiveLocals { always_live }
     }
 }
 
-impl<'a, 'tcx> AnalysisDomain<'tcx> for MaybeTransitiveLiveLocals<'a, 'tcx> {
+impl<'a, 'tcx> AnalysisDomain<'tcx> for MaybeTransitiveLiveLocals<'a> {
     type Domain = ChunkedBitSet<Local>;
     type Direction = Backward;
 
@@ -241,7 +234,7 @@ impl<'a> GenKill<Local> for TransferWrapper<'a> {
     }
 }
 
-impl<'a, 'tcx> Analysis<'tcx> for MaybeTransitiveLiveLocals<'a, 'tcx> {
+impl<'a, 'tcx> Analysis<'tcx> for MaybeTransitiveLiveLocals<'a> {
     fn apply_statement_effect(
         &self,
         trans: &mut Self::Domain,
@@ -251,7 +244,7 @@ impl<'a, 'tcx> Analysis<'tcx> for MaybeTransitiveLiveLocals<'a, 'tcx> {
         // Compute the place that we are storing to, if any
         let destination = match &statement.kind {
             StatementKind::Assign(assign) => {
-                if assign.1.is_pointer_int_cast(self.local_decls, self.tcx) {
+                if assign.1.is_pointer_int_cast() {
                     // Pointer to int casts may be side-effects due to exposing the provenance.
                     // While the model is undecided, we should be conservative. See
                     // <https://www.ralfj.de/blog/2022/04/11/provenance-exposed.html>

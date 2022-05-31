@@ -4,7 +4,6 @@
  */
 
 use crate::mir::*;
-use crate::ty::cast::CastTy;
 use crate::ty::subst::Subst;
 use crate::ty::{self, Ty, TyCtxt};
 use rustc_hir as hir;
@@ -223,22 +222,6 @@ impl<'tcx> Rvalue<'tcx> {
             Rvalue::ShallowInitBox(_, _) => RvalueInitializationState::Shallow,
             _ => RvalueInitializationState::Deep,
         }
-    }
-
-    pub fn is_pointer_int_cast<D>(&self, local_decls: &D, tcx: TyCtxt<'tcx>) -> bool
-    where
-        D: HasLocalDecls<'tcx>,
-    {
-        if let Rvalue::Cast(CastKind::Misc, src_op, dest_ty) = self {
-            if let Some(CastTy::Int(_)) = CastTy::from_ty(*dest_ty) {
-                let src_ty = src_op.ty(local_decls, tcx);
-                if let Some(CastTy::FnPtr | CastTy::Ptr(_)) = CastTy::from_ty(src_ty) {
-                    return true;
-                }
-            }
-        }
-
-        false
     }
 }
 
