@@ -4,6 +4,7 @@
 
 store.register_group(true, "clippy::all", Some("clippy_all"), vec![
     LintId::of(absurd_extreme_comparisons::ABSURD_EXTREME_COMPARISONS),
+    LintId::of(almost_complete_letter_range::ALMOST_COMPLETE_LETTER_RANGE),
     LintId::of(approx_const::APPROX_CONSTANT),
     LintId::of(assertions_on_constants::ASSERTIONS_ON_CONSTANTS),
     LintId::of(assign_ops::ASSIGN_OP_PATTERN),

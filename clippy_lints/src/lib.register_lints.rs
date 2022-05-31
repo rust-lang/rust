@@ -34,6 +34,7 @@ store.register_lints(&[
     #[cfg(feature = "internal")]
     utils::internal_lints::UNNECESSARY_SYMBOL_STR,
     absurd_extreme_comparisons::ABSURD_EXTREME_COMPARISONS,
+    almost_complete_letter_range::ALMOST_COMPLETE_LETTER_RANGE,
     approx_const::APPROX_CONSTANT,
     arithmetic::FLOAT_ARITHMETIC,
     arithmetic::INTEGER_ARITHMETIC,
