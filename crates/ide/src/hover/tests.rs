@@ -3634,7 +3634,7 @@ const FOO$0: f32 = 1f32;
             ```
 
             ```rust
-            const FOO: f32 = 1
+            const FOO: f32 = 1.0
             ```
 
             ---
@@ -3656,7 +3656,7 @@ const FOO$0: f64 = 1.0f64;
             ```
 
             ```rust
-            const FOO: f64 = 1
+            const FOO: f64 = 1.0
             ```
 
             ---
