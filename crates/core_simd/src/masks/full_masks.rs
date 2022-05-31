@@ -4,6 +4,9 @@ use super::MaskElement;
 use crate::simd::intrinsics;
 use crate::simd::{LaneCount, Simd, SupportedLaneCount, ToBitMask};
 
+#[cfg(feature = "generic_const_exprs")]
+use crate::simd::ToBitMaskArray;
+
 #[repr(transparent)]
 pub struct Mask<T, const LANES: usize>(Simd<T, LANES>)
 where
@@ -137,6 +140,68 @@ where
     {
         // Safety: masks are simply integer vectors of 0 and -1, and we can cast the element type.
         unsafe { Mask(intrinsics::simd_cast(self.0)) }
+    }
+
+    #[cfg(feature = "generic_const_exprs")]
+    #[inline]
+    #[must_use = "method returns a new array and does not mutate the original value"]
+    pub fn to_bitmask_array<const N: usize>(self) -> [u8; N]
+    where
+        super::Mask<T, LANES>: ToBitMaskArray,
+        [(); <super::Mask<T, LANES> as ToBitMaskArray>::BYTES]: Sized,
+    {
+        assert_eq!(<super::Mask<T, LANES> as ToBitMaskArray>::BYTES, N);
+
+        // Safety: N is the correct bitmask size
+        unsafe {
+            // Compute the bitmask
+            let bitmask: [u8; <super::Mask<T, LANES> as ToBitMaskArray>::BYTES] =
+                intrinsics::simd_bitmask(self.0);
+
+            // Transmute to the return type, previously asserted to be the same size
+            let mut bitmask: [u8; N] = core::mem::transmute_copy(&bitmask);
+
+            // LLVM assumes bit order should match endianness
+            if cfg!(target_endian = "big") {
+                for x in bitmask.as_mut() {
+                    *x = x.reverse_bits();
+                }
+            };
+
+            bitmask
+        }
+    }
+
+    #[cfg(feature = "generic_const_exprs")]
+    #[inline]
+    #[must_use = "method returns a new mask and does not mutate the original value"]
+    pub fn from_bitmask_array<const N: usize>(mut bitmask: [u8; N]) -> Self
+    where
+        super::Mask<T, LANES>: ToBitMaskArray,
+        [(); <super::Mask<T, LANES> as ToBitMaskArray>::BYTES]: Sized,
+    {
+        assert_eq!(<super::Mask<T, LANES> as ToBitMaskArray>::BYTES, N);
+
+        // Safety: N is the correct bitmask size
+        unsafe {
+            // LLVM assumes bit order should match endianness
+            if cfg!(target_endian = "big") {
+                for x in bitmask.as_mut() {
+                    *x = x.reverse_bits();
+                }
+            }
+
+            // Transmute to the bitmask type, previously asserted to be the same size
+            let bitmask: [u8; <super::Mask<T, LANES> as ToBitMaskArray>::BYTES] =
+                core::mem::transmute_copy(&bitmask);
+
+            // Compute the regular mask
+            Self::from_int_unchecked(intrinsics::simd_select_bitmask(
+                bitmask,
+                Self::splat(true).to_int(),
+                Self::splat(false).to_int(),
+            ))
+        }
     }
 
     #[inline]

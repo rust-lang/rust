@@ -122,6 +122,20 @@ macro_rules! test_mask_api {
                 cast_impl::<i64>();
                 cast_impl::<isize>();
             }
+
+            #[cfg(feature = "generic_const_exprs")]
+            #[test]
+            fn roundtrip_bitmask_array_conversion() {
+                use core_simd::ToBitMaskArray;
+                let values = [
+                    true, false, false, true, false, false, true, false,
+                    true, true, false, false, false, false, false, true,
+                ];
+                let mask = core_simd::Mask::<$type, 16>::from_array(values);
+                let bitmask = mask.to_bitmask_array();
+                assert_eq!(bitmask, [0b01001001, 0b10000011]);
+                assert_eq!(core_simd::Mask::<$type, 16>::from_bitmask_array(bitmask), mask);
+            }
         }
     }
 }

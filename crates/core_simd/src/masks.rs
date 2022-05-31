@@ -15,6 +15,9 @@ mod mask_impl;
 mod to_bitmask;
 pub use to_bitmask::ToBitMask;
 
+#[cfg(feature = "generic_const_exprs")]
+pub use to_bitmask::{bitmask_len, ToBitMaskArray};
+
 use crate::simd::{intrinsics, LaneCount, Simd, SimdElement, SimdPartialEq, SupportedLaneCount};
 use core::cmp::Ordering;
 use core::{fmt, mem};

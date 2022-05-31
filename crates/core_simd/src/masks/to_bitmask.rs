@@ -31,6 +31,25 @@ pub unsafe trait ToBitMask: Sealed {
     fn from_bitmask(bitmask: Self::BitMask) -> Self;
 }
 
+/// Converts masks to and from byte array bitmasks.
+///
+/// Each bit of the bitmask corresponds to a mask lane, starting with the LSB of the first byte.
+///
+/// # Safety
+/// This trait is `unsafe` and sealed, since the `BYTES` value must match the number of lanes in
+/// the mask.
+#[cfg(feature = "generic_const_exprs")]
+pub unsafe trait ToBitMaskArray: Sealed {
+    /// The length of the bitmask array.
+    const BYTES: usize;
+
+    /// Converts a mask to a bitmask.
+    fn to_bitmask_array(self) -> [u8; Self::BYTES];
+
+    /// Converts a bitmask to a mask.
+    fn from_bitmask_array(bitmask: [u8; Self::BYTES]) -> Self;
+}
+
 macro_rules! impl_integer_intrinsic {
     { $(unsafe impl ToBitMask<BitMask=$int:ty> for Mask<_, $lanes:literal>)* } => {
         $(
@@ -57,4 +76,26 @@ impl_integer_intrinsic! {
     unsafe impl ToBitMask<BitMask=u16> for Mask<_, 16>
     unsafe impl ToBitMask<BitMask=u32> for Mask<_, 32>
     unsafe impl ToBitMask<BitMask=u64> for Mask<_, 64>
+}
+
+/// Returns the minimum numnber of bytes in a bitmask with `lanes` lanes.
+#[cfg(feature = "generic_const_exprs")]
+pub const fn bitmask_len(lanes: usize) -> usize {
+    (lanes + 7) / 8
+}
+
+#[cfg(feature = "generic_const_exprs")]
+unsafe impl<T: MaskElement, const LANES: usize> ToBitMaskArray for Mask<T, LANES>
+where
+    LaneCount<LANES>: SupportedLaneCount,
+{
+    const BYTES: usize = bitmask_len(LANES);
+
+    fn to_bitmask_array(self) -> [u8; Self::BYTES] {
+        self.0.to_bitmask_array()
+    }
+
+    fn from_bitmask_array(bitmask: [u8; Self::BYTES]) -> Self {
+        Mask(mask_impl::Mask::from_bitmask_array(bitmask))
+    }
 }
