@@ -172,6 +172,7 @@ macro_rules! impl_common_integer_tests {
 macro_rules! impl_signed_tests {
     { $scalar:tt } => {
         mod $scalar {
+            use core_simd::simd::SimdInt;
             type Vector<const LANES: usize> = core_simd::Simd<Scalar, LANES>;
             type Scalar = $scalar;
 
@@ -312,6 +313,7 @@ macro_rules! impl_signed_tests {
 macro_rules! impl_unsigned_tests {
     { $scalar:tt } => {
         mod $scalar {
+            use core_simd::simd::SimdUint;
             type Vector<const LANES: usize> = core_simd::Simd<Scalar, LANES>;
             type Scalar = $scalar;
 
@@ -346,6 +348,7 @@ macro_rules! impl_unsigned_tests {
 macro_rules! impl_float_tests {
     { $scalar:tt, $int_scalar:tt } => {
         mod $scalar {
+            use core_simd::SimdFloat;
             type Vector<const LANES: usize> = core_simd::Simd<Scalar, LANES>;
             type Scalar = $scalar;
 
@@ -462,7 +465,6 @@ macro_rules! impl_float_tests {
                 }
 
                 fn simd_min<const LANES: usize>() {
-                    use core_simd::simd::SimdFloat;
                     // Regular conditions (both values aren't zero)
                     test_helpers::test_binary_elementwise(
                         &Vector::<LANES>::simd_min,
@@ -486,7 +488,6 @@ macro_rules! impl_float_tests {
                 }
 
                 fn simd_max<const LANES: usize>() {
-                    use core_simd::simd::SimdFloat;
                     // Regular conditions (both values aren't zero)
                     test_helpers::test_binary_elementwise(
                         &Vector::<LANES>::simd_max,
@@ -510,7 +511,6 @@ macro_rules! impl_float_tests {
                 }
 
                 fn simd_clamp<const LANES: usize>() {
-                    use core_simd::simd::SimdFloat;
                     test_helpers::test_3(&|value: [Scalar; LANES], mut min: [Scalar; LANES], mut max: [Scalar; LANES]| {
                         for (min, max) in min.iter_mut().zip(max.iter_mut()) {
                             if max < min {

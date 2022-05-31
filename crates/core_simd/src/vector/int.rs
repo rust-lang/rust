@@ -1,46 +1,6 @@
 #![allow(non_camel_case_types)]
 
-use crate::simd::{LaneCount, Mask, Simd, SimdPartialOrd, SupportedLaneCount};
-
-/// Implements additional integer traits (Eq, Ord, Hash) on the specified vector `$name`, holding multiple `$lanes` of `$type`.
-macro_rules! impl_integer_vector {
-    { $type:ty } => {
-        impl<const LANES: usize> Simd<$type, LANES>
-        where
-            LaneCount<LANES>: SupportedLaneCount,
-        {
-            /// Returns true for each positive lane and false if it is zero or negative.
-            #[inline]
-            pub fn is_positive(self) -> Mask<$type, LANES> {
-                self.simd_gt(Self::splat(0))
-            }
-
-            /// Returns true for each negative lane and false if it is zero or positive.
-            #[inline]
-            pub fn is_negative(self) -> Mask<$type, LANES> {
-                self.simd_lt(Self::splat(0))
-            }
-
-            /// Returns numbers representing the sign of each lane.
-            /// * `0` if the number is zero
-            /// * `1` if the number is positive
-            /// * `-1` if the number is negative
-            #[inline]
-            pub fn signum(self) -> Self {
-                self.is_positive().select(
-                    Self::splat(1),
-                    self.is_negative().select(Self::splat(-1), Self::splat(0))
-                )
-            }
-        }
-    }
-}
-
-impl_integer_vector! { isize }
-impl_integer_vector! { i16 }
-impl_integer_vector! { i32 }
-impl_integer_vector! { i64 }
-impl_integer_vector! { i8 }
+use crate::simd::Simd;
 
 /// A SIMD vector with two elements of type `isize`.
 pub type isizex2 = Simd<isize, 2>;
