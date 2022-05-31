@@ -2164,11 +2164,6 @@ impl EncodedMetadata {
     }
 
     #[inline]
-    pub fn empty() -> Self {
-        Self { mmap: None, _temp_dir: None }
-    }
-
-    #[inline]
     pub fn raw_data(&self) -> &[u8] {
         self.mmap.as_ref().map(|mmap| mmap.as_ref()).unwrap_or_default()
     }
