@@ -11,6 +11,7 @@ use rustc_middle::mir::AssertKind;
 use rustc_middle::mir::Place;
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
+use rustc_middle::ty::cast::CastTy;
 use rustc_middle::ty::{self, Ty, UpvarSubsts};
 use rustc_span::Span;
 
@@ -188,11 +189,19 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 block.and(Rvalue::Use(Operand::Move(Place::from(result))))
             }
             ExprKind::Cast { source } => {
+                let source = &this.thir[source];
+                let from_ty = CastTy::from_ty(source.ty);
+                let cast_ty = CastTy::from_ty(expr.ty);
+                let cast_kind = match (from_ty, cast_ty) {
+                    (Some(CastTy::Ptr(_) | CastTy::FnPtr), Some(CastTy::Int(_))) => {
+                        CastKind::PointerAddress
+                    }
+                    (_, _) => CastKind::Misc,
+                };
                 let source = unpack!(
-                    block =
-                        this.as_operand(block, scope, &this.thir[source], None, NeedsTemporary::No)
+                    block = this.as_operand(block, scope, source, None, NeedsTemporary::No)
                 );
-                block.and(Rvalue::Cast(CastKind::Misc, source, expr.ty))
+                block.and(Rvalue::Cast(cast_kind, source, expr.ty))
             }
             ExprKind::Pointer { cast, source } => {
                 let source = unpack!(

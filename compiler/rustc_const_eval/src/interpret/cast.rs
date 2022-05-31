@@ -1,3 +1,4 @@
+use std::assert_matches::assert_matches;
 use std::convert::TryFrom;
 
 use rustc_apfloat::ieee::{Double, Single};
@@ -28,6 +29,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Pointer(PointerCast::Unsize) => {
                 let cast_ty = self.layout_of(cast_ty)?;
                 self.unsize_into(src, cast_ty, dest)?;
+            }
+
+            PointerAddress => {
+                let src = self.read_immediate(src)?;
+                let res = self.pointer_address_cast(&src, cast_ty)?;
+                self.write_immediate(res, dest)?;
             }
 
             Misc => {
@@ -174,23 +181,23 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         // # The remaining source values are scalar and "int-like".
         let scalar = src.to_scalar()?;
+        Ok(self.cast_from_int_like(scalar, src.layout, cast_ty)?.into())
+    }
 
-        // If we are casting from a pointer to something
-        // that is not a pointer, mark the pointer as exposed
-        if src.layout.ty.is_any_ptr() && !cast_ty.is_any_ptr() {
-            let ptr = self.scalar_to_ptr(scalar)?;
+    pub fn pointer_address_cast(
+        &mut self,
+        src: &ImmTy<'tcx, M::PointerTag>,
+        cast_ty: Ty<'tcx>,
+    ) -> InterpResult<'tcx, Immediate<M::PointerTag>> {
+        assert_matches!(src.layout.ty.kind(), ty::RawPtr(_) | ty::FnPtr(_));
+        assert!(cast_ty.is_integral());
 
-            match ptr.into_pointer_or_addr() {
-                Ok(ptr) => {
-                    M::expose_ptr(self, ptr)?;
-                }
-                Err(_) => {
-                    // do nothing, exposing an invalid pointer
-                    // has no meaning
-                }
-            };
-        }
-
+        let scalar = src.to_scalar()?;
+        let ptr = self.scalar_to_ptr(scalar)?;
+        match ptr.into_pointer_or_addr() {
+            Ok(ptr) => M::expose_ptr(self, ptr)?,
+            Err(_) => {} // do nothing, exposing an invalid pointer has no meaning
+        };
         Ok(self.cast_from_int_like(scalar, src.layout, cast_ty)?.into())
     }
 

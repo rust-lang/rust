@@ -181,6 +181,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let cast = bx.cx().layout_of(self.monomorphize(mir_cast_ty));
 
                 let val = match *kind {
+                    mir::CastKind::PointerAddress => {
+                        assert!(bx.cx().is_backend_immediate(cast));
+                        let llptr = operand.immediate();
+                        let llcast_ty = bx.cx().immediate_backend_type(cast);
+                        let lladdr = bx.ptrtoint(llptr, llcast_ty);
+                        OperandValue::Immediate(lladdr)
+                    }
                     mir::CastKind::Pointer(PointerCast::ReifyFnPointer) => {
                         match *operand.layout.ty.kind() {
                             ty::FnDef(def_id, substs) => {
@@ -361,9 +368,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             }
                             (CastTy::Ptr(_) | CastTy::FnPtr, CastTy::Ptr(_)) => {
                                 bx.pointercast(llval, ll_t_out)
-                            }
-                            (CastTy::Ptr(_) | CastTy::FnPtr, CastTy::Int(_)) => {
-                                bx.ptrtoint(llval, ll_t_out)
                             }
                             (CastTy::Int(_), CastTy::Ptr(_)) => {
                                 let usize_llval = bx.intcast(llval, bx.cx().type_isize(), signed);
