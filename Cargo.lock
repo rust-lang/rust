@@ -762,9 +762,9 @@ dependencies = [
 
 [[package]]
 name = "compiler_builtins"
-version = "0.1.73"
+version = "0.1.74"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "71b72fde1d7792ca3bd654f7c3ea4508f9e4d0c826e24179eabb7fcc97a90bc3"
+checksum = "fe4879c339330c0ca526a52bc07500a4f5939c8d51481d58d443e10420a41547"
 dependencies = [
  "cc",
  "rustc-std-workspace-core",
@@ -1320,7 +1320,7 @@ checksum = "f82b0f4c27ad9f8bfd1f3208d882da2b09c301bc1c828fd3a00d0216d2fbbff6"
 dependencies = [
  "crc32fast",
  "libz-sys",
- "miniz_oxide 0.5.1",
+ "miniz_oxide 0.5.3",
 ]
 
 [[package]]
@@ -2111,7 +2111,7 @@ dependencies = [
 [[package]]
 name = "libc"
 version = "0.2.126"
-source = "git+https://github.com/john-sharratt/libc.git#240c54774f16a3aeb83a031e10d247a9c4f5cc29"
+source = "git+https://github.com/john-sharratt/libc.git#9ac73add931a29682029adb0ae13c247cfcf975b"
 dependencies = [
  "rustc-std-workspace-core",
 ]
@@ -2450,9 +2450,9 @@ dependencies = [
 
 [[package]]
 name = "miniz_oxide"
-version = "0.5.1"
+version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d2b29bd4bc3f33391105ebee3589c19197c4271e3e5a9ec9bfe8127eeff8f082"
+checksum = "6f5c75688da582b8ffc1f1799e9db273f32133c49e048f614d22ec3256773ccc"
 dependencies = [
  "adler",
 ]
@@ -2750,9 +2750,9 @@ dependencies = [
 
 [[package]]
 name = "parking_lot"
-version = "0.12.0"
+version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "87f5ec2493a61ac0506c0f4199f99070cbe83857b0337006a30f3e6719b8ef58"
+checksum = "3742b2c103b9f06bc9fff0a37ff4912935851bee6d36f3c02bcc755bcfec228f"
 dependencies = [
  "lock_api",
  "parking_lot_core 0.9.3",
@@ -5066,7 +5066,7 @@ checksum = "213494b7a2b503146286049378ce02b482200519accc31872ee8be91fa820a08"
 dependencies = [
  "new_debug_unreachable",
  "once_cell",
- "parking_lot 0.12.0",
+ "parking_lot 0.12.1",
  "phf_shared",
  "precomputed-hash",
  "serde",
@@ -5516,7 +5516,7 @@ dependencies = [
  "ansi_term",
  "lazy_static",
  "matchers",
- "parking_lot 0.12.0",
+ "parking_lot 0.12.1",
  "regex",
  "sharded-slab",
  "smallvec",
@@ -5892,9 +5892,9 @@ checksum = "9c8d87e72b64a3b4db28d11ce29237c246188f4f51057d65a7eab63b7987e423"
 
 [[package]]
 name = "wasix"
-version = "0.11.12+wasix-snapshot-preview1"
+version = "0.11.14+wasix-snapshot-preview1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f1a509248a6288792b029c6cdcc1fda8884624898229824f0866bd07b277e447"
+checksum = "1b32acfd3c49c872616ecd0f8b8e9a34cf6161eac146833d95a5da95b2269d0f"
 dependencies = [
  "compiler_builtins",
  "rustc-std-workspace-alloc",
