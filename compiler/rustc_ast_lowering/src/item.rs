@@ -83,6 +83,8 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
             task_context: None,
             current_item: None,
             captured_lifetimes: None,
+            impl_trait_defs: Vec::new(),
+            impl_trait_bounds: Vec::new(),
             allow_try_trait: Some([sym::try_trait_v2, sym::yeet_desugar_details][..].into()),
             allow_gen_future: Some([sym::gen_future][..].into()),
             allow_into_future: Some([sym::into_future][..].into()),
@@ -264,16 +266,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let body_id =
                         this.lower_maybe_async_body(span, &decl, asyncness, body.as_deref());
 
-                    let (generics, decl) =
-                        this.add_implicit_generics(generics, id, |this, idty, idpb| {
-                            let ret_id = asyncness.opt_return_id();
-                            this.lower_fn_decl(
-                                &decl,
-                                Some((id, idty, idpb)),
-                                FnDeclKind::Fn,
-                                ret_id,
-                            )
-                        });
+                    let (generics, decl) = this.add_implicit_generics(generics, id, |this| {
+                        let ret_id = asyncness.opt_return_id();
+                        this.lower_fn_decl(&decl, Some(id), FnDeclKind::Fn, ret_id)
+                    });
                     let sig = hir::FnSig {
                         decl,
                         header: this.lower_fn_header(header),
@@ -387,7 +383,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // lifetime to be added, but rather a reference to a
                 // parent lifetime.
                 let (generics, (trait_ref, lowered_ty)) =
-                    self.add_implicit_generics(ast_generics, id, |this, _, _| {
+                    self.add_implicit_generics(ast_generics, id, |this| {
                         let trait_ref = trait_ref.as_ref().map(|trait_ref| {
                             this.lower_trait_ref(
                                 trait_ref,
@@ -652,7 +648,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ForeignItemKind::Fn(box Fn { ref sig, ref generics, .. }) => {
                     let fdec = &sig.decl;
                     let (generics, (fn_dec, fn_args)) =
-                        self.add_implicit_generics(generics, i.id, |this, _, _| {
+                        self.add_implicit_generics(generics, i.id, |this| {
                             (
                                 // Disallow `impl Trait` in foreign items.
                                 this.lower_fn_decl(fdec, None, FnDeclKind::ExternFn, None),
@@ -1231,8 +1227,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         is_async: Option<NodeId>,
     ) -> (&'hir hir::Generics<'hir>, hir::FnSig<'hir>) {
         let header = self.lower_fn_header(sig.header);
-        let (generics, decl) = self.add_implicit_generics(generics, id, |this, idty, idpb| {
-            this.lower_fn_decl(&sig.decl, Some((id, idty, idpb)), kind, is_async)
+        let (generics, decl) = self.add_implicit_generics(generics, id, |this| {
+            this.lower_fn_decl(&sig.decl, Some(id), kind, is_async)
         });
         (generics, hir::FnSig { header, decl, span: self.lower_span(sig.span) })
     }
@@ -1292,7 +1288,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     pub(super) fn lower_generics_mut(
         &mut self,
         generics: &Generics,
-        mut itctx: ImplTraitContext<'_, 'hir>,
+        mut itctx: ImplTraitContext,
     ) -> GenericsCtor<'hir> {
         // Error if `?Trait` bounds in where clauses don't refer directly to type parameters.
         // Note: we used to clone these bounds directly onto the type parameter (and avoid lowering
@@ -1372,7 +1368,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     pub(super) fn lower_generics(
         &mut self,
         generics: &Generics,
-        itctx: ImplTraitContext<'_, 'hir>,
+        itctx: ImplTraitContext,
     ) -> &'hir hir::Generics<'hir> {
         let generics_ctor = self.lower_generics_mut(generics, itctx);
         generics_ctor.into_generics(self.arena)
