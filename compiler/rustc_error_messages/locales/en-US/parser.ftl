@@ -26,9 +26,5 @@ parser-incorrect-semicolon =
 
 parser-incorrect-use-of-await =
     incorrect use of `await`
-    .suggestion = `await` is not a method call, remove the parentheses
-
-
-parser-incorrect-await =
-    incorrect use of `await`
-    .suggestion = `await` is a postfix operation
+    .parentheses-suggestion = `await` is not a method call, remove the parentheses
+    .postfix-suggestion = `await` is a postfix operation

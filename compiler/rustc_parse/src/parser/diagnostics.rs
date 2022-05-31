@@ -310,16 +310,16 @@ struct IncorrectSemicolon<'a> {
 #[error(slug = "parser-incorrect-use-of-await")]
 struct IncorrectUseOfAwait {
     #[primary_span]
-    #[suggestion(applicability = "machine-applicable")]
+    #[suggestion(message = "parentheses-suggestion", applicability = "machine-applicable")]
     span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(slug = "parser-incorrect-await")]
+#[error(slug = "parser-incorrect-use-of-await")]
 struct IncorrectAwait {
     #[primary_span]
     span: Span,
-    #[suggestion(code = "{expr}.await{question_mark}")]
+    #[suggestion(message = "postfix-suggestion", code = "{expr}.await{question_mark}")]
     sugg_span: (Span, Applicability),
     expr: String,
     question_mark: &'static str,
