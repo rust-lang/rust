@@ -306,6 +306,14 @@ struct IncorrectSemicolon<'a> {
     name: &'a str,
 }
 
+#[derive(SessionDiagnostic)]
+#[error(slug = "parser-incorrect-use-of-await")]
+struct IncorrectUseOfAwait {
+    #[primary_span]
+    #[suggestion(applicability = "machine-applicable")]
+    span: Span,
+}
+
 // SnapshotParser is used to create a snapshot of the parser
 // without causing duplicate errors being emitted when the `Parser`
 // is dropped.
@@ -1659,14 +1667,8 @@ impl<'a> Parser<'a> {
             self.bump(); // (
             let sp = lo.to(self.token.span);
             self.bump(); // )
-            self.struct_span_err(sp, "incorrect use of `await`")
-                .span_suggestion(
-                    sp,
-                    "`await` is not a method call, remove the parentheses",
-                    String::new(),
-                    Applicability::MachineApplicable,
-                )
-                .emit();
+
+            self.sess.emit_err(IncorrectUseOfAwait { span: sp });
         }
     }
 

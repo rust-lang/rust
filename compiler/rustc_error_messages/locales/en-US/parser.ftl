@@ -23,3 +23,7 @@ parser-incorrect-semicolon =
     expected item, found `;`
     .suggestion = remove this semicolon
     .help = {$name} declarations are not followed by a semicolon
+
+parser-incorrect-use-of-await =
+    incorrect use of `await`
+    .suggestion = `await` is not a method call, remove the parentheses
