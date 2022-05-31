@@ -17,7 +17,7 @@
                                            // mir::Constant
                                            // + span: $DIR/reify_fn_ptr.rs:4:13: 4:17
                                            // + literal: Const { ty: fn() {main}, val: Value(Scalar(<ZST>)) }
-          _2 = move _3 as usize (Misc);    // scope 0 at $DIR/reify_fn_ptr.rs:4:13: 4:26
+          _2 = move _3 as usize (PointerAddress); // scope 0 at $DIR/reify_fn_ptr.rs:4:13: 4:26
           StorageDead(_3);                 // scope 0 at $DIR/reify_fn_ptr.rs:4:25: 4:26
           _1 = move _2 as *const fn() (Misc); // scope 0 at $DIR/reify_fn_ptr.rs:4:13: 4:41
           StorageDead(_2);                 // scope 0 at $DIR/reify_fn_ptr.rs:4:40: 4:41

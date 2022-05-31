@@ -8,7 +8,6 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::{ImplSource, Obligation, ObligationCause};
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
-use rustc_middle::ty::cast::CastTy;
 use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts};
 use rustc_middle::ty::{self, adjustment::PointerCast, Instance, InstanceDef, Ty, TyCtxt};
 use rustc_middle::ty::{Binder, TraitPredicate, TraitRef, TypeFoldable};
@@ -543,15 +542,11 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 // in the type of any local, which also excludes casts).
             }
 
-            Rvalue::Cast(CastKind::Misc, ref operand, cast_ty) => {
-                let operand_ty = operand.ty(self.body, self.tcx);
-                let cast_in = CastTy::from_ty(operand_ty).expect("bad input type for cast");
-                let cast_out = CastTy::from_ty(cast_ty).expect("bad output type for cast");
-
-                if let (CastTy::Ptr(_) | CastTy::FnPtr, CastTy::Int(_)) = (cast_in, cast_out) {
-                    self.check_op(ops::RawPtrToIntCast);
-                }
+            Rvalue::Cast(CastKind::PointerAddress, _, _) => {
+                self.check_op(ops::RawPtrToIntCast);
             }
+
+            Rvalue::Cast(CastKind::Misc, _, _) => {}
 
             Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf, _) => {}
             Rvalue::ShallowInitBox(_, _) => {}
