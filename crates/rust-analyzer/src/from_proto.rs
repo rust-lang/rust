@@ -91,7 +91,7 @@ pub(crate) fn annotation(
 ) -> Result<Annotation> {
     let data =
         code_lens.data.ok_or_else(|| invalid_params_error("code lens without data".to_string()))?;
-    let resolve = from_json::<lsp_ext::CodeLensResolveData>("CodeLensResolveData", data)?;
+    let resolve = from_json::<lsp_ext::CodeLensResolveData>("CodeLensResolveData", &data)?;
 
     match resolve {
         lsp_ext::CodeLensResolveData::Impls(params) => {

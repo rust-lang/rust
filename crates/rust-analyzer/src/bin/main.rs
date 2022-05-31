@@ -157,7 +157,7 @@ fn run_server() -> Result<()> {
     let (initialize_id, initialize_params) = connection.initialize_start()?;
     tracing::info!("InitializeParams: {}", initialize_params);
     let initialize_params =
-        from_json::<lsp_types::InitializeParams>("InitializeParams", initialize_params)?;
+        from_json::<lsp_types::InitializeParams>("InitializeParams", &initialize_params)?;
 
     let root_path = match initialize_params
         .root_uri
