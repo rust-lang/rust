@@ -708,7 +708,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let current_span = &mut this.machine.current_span();
 
         let log_creation = |this: &MiriEvalContext<'mir, 'tcx>,
-                            current_span: &mut CurrentSpan<'_, '_, '_>,
+                            current_span: &mut CurrentSpan<'_, 'mir, 'tcx>,
                             alloc_id,
                             base_offset,
                             orig_tag|
