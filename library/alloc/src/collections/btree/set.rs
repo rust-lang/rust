@@ -770,10 +770,14 @@ impl<T> BTreeSet<T> {
 
     /// Adds a value to the set.
     ///
-    /// If the set did not have an equal element present, `true` is returned.
+    /// Returns whether the value was newly inserted. That is:
     ///
-    /// If the set did have an equal element present, `false` is returned, and
-    /// the entry is not updated. See the [module-level documentation] for more.
+    /// - If the set did not previously contain an equal value, `true` is
+    ///   returned.
+    /// - If the set already contained an equal value, `false` is returned, and
+    ///   the entry is not updated.
+    ///
+    /// See the [module-level documentation] for more.
     ///
     /// [module-level documentation]: index.html#insert-and-complex-keys
     ///
