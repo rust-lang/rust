@@ -138,9 +138,9 @@ mod remove_dir_all_xat {
         /// It is only `Fd(None)` temporarily in `ensure_open()`.
         Fd(Option<OwnedFd>),
 
-        // Contains the `ReadDir` for the directory while it is being read. The ReadDir does not contain
-        // a valid `root` path, because it is not needed. It also contains the file descriptor of the
-        // directory to avoid calls to dirfd(3).
+        /// Contains the `ReadDir` for the directory while it is being read. The ReadDir does not contain
+        /// a valid `root` path, because it is not needed. It also contains the file descriptor of the
+        /// directory to avoid calls to dirfd(3).
         OpenReadDir(ReadDir, BorrowedFd<'a>),
     }
 
@@ -247,7 +247,7 @@ mod remove_dir_all_xat {
             // Make sure that the reopened directory has the same inode as when we visited it descending
             // the directory tree.
             if self.dev != stat.st_dev || self.ino != stat.st_ino {
-                return Err(io::Error::new(
+                return Err(io::const_io_error!(
                     io::ErrorKind::Uncategorized,
                     "directory with unexpected dev/inode pair",
                 ));
