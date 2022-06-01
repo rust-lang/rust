@@ -213,7 +213,7 @@ where
     #[inline]
     #[cfg(not(bootstrap))]
     pub fn cast<U: SimdElement>(self) -> Simd<U, LANES> {
-        // Safety: The input argument is a vector of a known SIMD type.
+        // Safety: The input argument is a vector of a valid SIMD element type.
         unsafe { intrinsics::simd_as(self) }
     }
 
@@ -624,61 +624,85 @@ pub unsafe trait SimdElement: Sealed + Copy {
 }
 
 impl Sealed for u8 {}
+
+// Safety: u8 is a valid SIMD element type, and is supported by this API
 unsafe impl SimdElement for u8 {
     type Mask = i8;
 }
 
 impl Sealed for u16 {}
+
+// Safety: u16 is a valid SIMD element type, and is supported by this API
 unsafe impl SimdElement for u16 {
     type Mask = i16;
 }
 
 impl Sealed for u32 {}
+
+// Safety: u32 is a valid SIMD element type, and is supported by this API
 unsafe impl SimdElement for u32 {
     type Mask = i32;
 }
 
 impl Sealed for u64 {}
+
+// Safety: u64 is a valid SIMD element type, and is supported by this API
 unsafe impl SimdElement for u64 {
     type Mask = i64;
 }
 
 impl Sealed for usize {}
+
+// Safety: usize is a valid SIMD element type, and is supported by this API
 unsafe impl SimdElement for usize {
     type Mask = isize;
 }
 
 impl Sealed for i8 {}
+
+// Safety: i8 is a valid SIMD element type, and is supported by this API
 unsafe impl SimdElement for i8 {
     type Mask = i8;
 }
 
 impl Sealed for i16 {}
+
+// Safety: i16 is a valid SIMD element type, and is supported by this API
 unsafe impl SimdElement for i16 {
     type Mask = i16;
 }
 
 impl Sealed for i32 {}
+
+// Safety: i32 is a valid SIMD element type, and is supported by this API
 unsafe impl SimdElement for i32 {
     type Mask = i32;
 }
 
 impl Sealed for i64 {}
+
+// Safety: i64 is a valid SIMD element type, and is supported by this API
 unsafe impl SimdElement for i64 {
     type Mask = i64;
 }
 
 impl Sealed for isize {}
+
+// Safety: isize is a valid SIMD element type, and is supported by this API
 unsafe impl SimdElement for isize {
     type Mask = isize;
 }
 
 impl Sealed for f32 {}
+
+// Safety: f32 is a valid SIMD element type, and is supported by this API
 unsafe impl SimdElement for f32 {
     type Mask = i32;
 }
 
 impl Sealed for f64 {}
+
+// Safety: f64 is a valid SIMD element type, and is supported by this API
 unsafe impl SimdElement for f64 {
     type Mask = i64;
 }

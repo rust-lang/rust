@@ -33,6 +33,7 @@ where
 
 macro_rules! unsafe_base {
     ($lhs:ident, $rhs:ident, {$simd_call:ident}, $($_:tt)*) => {
+        // Safety: $lhs and $rhs are vectors
         unsafe { $crate::simd::intrinsics::$simd_call($lhs, $rhs) }
     };
 }
@@ -49,6 +50,7 @@ macro_rules! unsafe_base {
 macro_rules! wrap_bitshift {
     ($lhs:ident, $rhs:ident, {$simd_call:ident}, $int:ident) => {
         #[allow(clippy::suspicious_arithmetic_impl)]
+        // Safety: $lhs and the bitand result are vectors
         unsafe {
             $crate::simd::intrinsics::$simd_call(
                 $lhs,
@@ -91,6 +93,7 @@ macro_rules! int_divrem_guard {
                 // Nice base case to make it easy to const-fold away the other branch.
                 $rhs
             };
+            // Safety: $lhs and rhs are vectors
             unsafe { $crate::simd::intrinsics::$simd_call($lhs, rhs) }
         }
     };

@@ -202,17 +202,20 @@ macro_rules! impl_trait {
             #[inline]
             fn to_bits(self) -> Simd<$bits_ty, LANES> {
                 assert_eq!(core::mem::size_of::<Self>(), core::mem::size_of::<Self::Bits>());
+                // Safety: transmuting between vector types is safe
                 unsafe { core::mem::transmute_copy(&self) }
             }
 
             #[inline]
             fn from_bits(bits: Simd<$bits_ty, LANES>) -> Self {
                 assert_eq!(core::mem::size_of::<Self>(), core::mem::size_of::<Self::Bits>());
+                // Safety: transmuting between vector types is safe
                 unsafe { core::mem::transmute_copy(&bits) }
             }
 
             #[inline]
             fn abs(self) -> Self {
+                // Safety: `self` is a float vector
                 unsafe { intrinsics::simd_fabs(self) }
             }
 
@@ -283,11 +286,13 @@ macro_rules! impl_trait {
 
             #[inline]
             fn simd_min(self, other: Self) -> Self {
+                // Safety: `self` and `other` are float vectors
                 unsafe { intrinsics::simd_fmin(self, other) }
             }
 
             #[inline]
             fn simd_max(self, other: Self) -> Self {
+                // Safety: `self` and `other` are floating point vectors
                 unsafe { intrinsics::simd_fmax(self, other) }
             }
 
