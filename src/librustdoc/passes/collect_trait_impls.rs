@@ -101,9 +101,11 @@ crate fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> Crate
                     // form that is valid for use in type inference.
                     let ty = tcx.type_of(def_id);
                     match ty.kind() {
-                        ty::Slice(ty) => matches!(ty.kind(), ty::Param(..)),
-                        ty::Ref(_region, ty, _mutbl) => matches!(ty.kind(), ty::Param(..)),
-                        ty::RawPtr(ty::TypeAndMut { ty, .. }) => matches!(ty.kind(), ty::Param(..)),
+                        ty::Slice(ty)
+                        | ty::Ref(_, ty, _)
+                        | ty::RawPtr(ty::TypeAndMut { ty, .. }) => {
+                            matches!(ty.kind(), ty::Param(..))
+                        }
                         ty::Tuple(tys) => tys.iter().all(|ty| matches!(ty.kind(), ty::Param(..))),
                         _ => true,
                     }
