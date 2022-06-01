@@ -173,13 +173,13 @@ impl GlobalState {
                 msg.ok().map(Event::Lsp),
 
             recv(self.task_pool.receiver) -> task =>
-                task.ok().map(Event::Task),
+                Some(Event::Task(task.unwrap())),
 
             recv(self.loader.receiver) -> task =>
-                task.ok().map(Event::Vfs),
+                Some(Event::Vfs(task.unwrap())),
 
             recv(self.flycheck_receiver) -> task =>
-                task.ok().map(Event::Flycheck),
+                Some(Event::Flycheck(task.unwrap())),
         }
     }
 

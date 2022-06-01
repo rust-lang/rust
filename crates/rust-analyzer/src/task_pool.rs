@@ -2,8 +2,6 @@
 //! properly.
 use crossbeam_channel::Sender;
 
-use crate::main_loop::Task;
-
 pub(crate) struct TaskPool<T> {
     sender: Sender<T>,
     inner: threadpool::ThreadPool,
@@ -44,11 +42,5 @@ impl<T> TaskPool<T> {
 impl<T> Drop for TaskPool<T> {
     fn drop(&mut self) {
         self.inner.join()
-    }
-}
-
-impl TaskPool<Task> {
-    pub(crate) fn send_retry(&self, req: lsp_server::Request) {
-        let _ = self.sender.send(Task::Retry(req));
     }
 }

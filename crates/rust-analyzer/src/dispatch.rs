@@ -51,10 +51,9 @@ impl<'a> RequestDispatcher<'a> {
             let _pctx = stdx::panic_context::enter(panic_context);
             f(self.global_state, params)
         };
-        match result_to_response::<R>(req.id.clone(), result) {
-            Ok(response) => self.global_state.respond(response),
-            Err(_) => self.global_state.task_pool.handle.send_retry(req),
-        };
+        if let Ok(response) = result_to_response::<R>(req.id.clone(), result) {
+            self.global_state.respond(response);
+        }
 
         self
     }
@@ -80,10 +79,9 @@ impl<'a> RequestDispatcher<'a> {
             f(global_state_snapshot, params)
         });
 
-        match thread_result_to_response::<R>(req.id.clone(), result) {
-            Ok(response) => self.global_state.respond(response),
-            Err(_) => self.global_state.task_pool.handle.send_retry(req),
-        };
+        if let Ok(response) = thread_result_to_response::<R>(req.id.clone(), result) {
+            self.global_state.respond(response);
+        }
 
         self
     }
