@@ -1305,13 +1305,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         itctx: ImplTraitContext,
         f: impl FnOnce(&mut Self) -> T,
     ) -> (&'hir hir::Generics<'hir>, T) {
-        match itctx {
-            ImplTraitContext::Universal(..) => {}
-            _ => {
-                debug_assert!(self.impl_trait_defs.is_empty());
-                debug_assert!(self.impl_trait_bounds.is_empty());
-            }
-        }
+        debug_assert!(self.impl_trait_defs.is_empty());
+        debug_assert!(self.impl_trait_bounds.is_empty());
 
         // Error if `?Trait` bounds in where clauses don't refer directly to type parameters.
         // Note: we used to clone these bounds directly onto the type parameter (and avoid lowering
