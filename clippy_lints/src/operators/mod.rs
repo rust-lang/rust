@@ -5,14 +5,18 @@ use rustc_session::{declare_tool_lint, impl_lint_pass};
 mod absurd_extreme_comparisons;
 mod assign_op_pattern;
 mod bit_mask;
+mod cmp_nan;
+mod cmp_owned;
 mod double_comparison;
 mod duration_subsec;
 mod eq_op;
 mod erasing_op;
+mod float_cmp;
 mod float_equality_without_abs;
 mod identity_op;
 mod integer_division;
 mod misrefactored_assign_op;
+mod modulo_one;
 mod numeric_arithmetic;
 mod op_ref;
 mod verbose_bit_mask;
@@ -464,6 +468,156 @@ declare_clippy_lint! {
     "integer division may cause loss of precision"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for comparisons to NaN.
+    ///
+    /// ### Why is this bad?
+    /// NaN does not compare meaningfully to anything – not
+    /// even itself – so those comparisons are simply wrong.
+    ///
+    /// ### Example
+    /// ```rust
+    /// # let x = 1.0;
+    /// if x == f32::NAN { }
+    /// ```
+    ///
+    /// Use instead:
+    /// ```rust
+    /// # let x = 1.0f32;
+    /// if x.is_nan() { }
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub CMP_NAN,
+    correctness,
+    "comparisons to `NAN`, which will always return false, probably not intended"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for conversions to owned values just for the sake
+    /// of a comparison.
+    ///
+    /// ### Why is this bad?
+    /// The comparison can operate on a reference, so creating
+    /// an owned value effectively throws it away directly afterwards, which is
+    /// needlessly consuming code and heap space.
+    ///
+    /// ### Example
+    /// ```rust
+    /// # let x = "foo";
+    /// # let y = String::from("foo");
+    /// if x.to_owned() == y {}
+    /// ```
+    ///
+    /// Use instead:
+    /// ```rust
+    /// # let x = "foo";
+    /// # let y = String::from("foo");
+    /// if x == y {}
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub CMP_OWNED,
+    perf,
+    "creating owned instances for comparing with others, e.g., `x == \"foo\".to_string()`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for (in-)equality comparisons on floating-point
+    /// values (apart from zero), except in functions called `*eq*` (which probably
+    /// implement equality for a type involving floats).
+    ///
+    /// ### Why is this bad?
+    /// Floating point calculations are usually imprecise, so
+    /// asking if two values are *exactly* equal is asking for trouble. For a good
+    /// guide on what to do, see [the floating point
+    /// guide](http://www.floating-point-gui.de/errors/comparison).
+    ///
+    /// ### Example
+    /// ```rust
+    /// let x = 1.2331f64;
+    /// let y = 1.2332f64;
+    ///
+    /// if y == 1.23f64 { }
+    /// if y != x {} // where both are floats
+    /// ```
+    ///
+    /// Use instead:
+    /// ```rust
+    /// # let x = 1.2331f64;
+    /// # let y = 1.2332f64;
+    /// let error_margin = f64::EPSILON; // Use an epsilon for comparison
+    /// // Or, if Rust <= 1.42, use `std::f64::EPSILON` constant instead.
+    /// // let error_margin = std::f64::EPSILON;
+    /// if (y - 1.23f64).abs() < error_margin { }
+    /// if (y - x).abs() > error_margin { }
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub FLOAT_CMP,
+    pedantic,
+    "using `==` or `!=` on float values instead of comparing difference with an epsilon"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for (in-)equality comparisons on floating-point
+    /// value and constant, except in functions called `*eq*` (which probably
+    /// implement equality for a type involving floats).
+    ///
+    /// ### Why is this bad?
+    /// Floating point calculations are usually imprecise, so
+    /// asking if two values are *exactly* equal is asking for trouble. For a good
+    /// guide on what to do, see [the floating point
+    /// guide](http://www.floating-point-gui.de/errors/comparison).
+    ///
+    /// ### Example
+    /// ```rust
+    /// let x: f64 = 1.0;
+    /// const ONE: f64 = 1.00;
+    ///
+    /// if x == ONE { } // where both are floats
+    /// ```
+    ///
+    /// Use instead:
+    /// ```rust
+    /// # let x: f64 = 1.0;
+    /// # const ONE: f64 = 1.00;
+    /// let error_margin = f64::EPSILON; // Use an epsilon for comparison
+    /// // Or, if Rust <= 1.42, use `std::f64::EPSILON` constant instead.
+    /// // let error_margin = std::f64::EPSILON;
+    /// if (x - ONE).abs() < error_margin { }
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub FLOAT_CMP_CONST,
+    restriction,
+    "using `==` or `!=` on float constants instead of comparing difference with an epsilon"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for getting the remainder of a division by one or minus
+    /// one.
+    ///
+    /// ### Why is this bad?
+    /// The result for a divisor of one can only ever be zero; for
+    /// minus one it can cause panic/overflow (if the left operand is the minimal value of
+    /// the respective integer type) or results in zero. No one will write such code
+    /// deliberately, unless trying to win an Underhanded Rust Contest. Even for that
+    /// contest, it's probably a bad idea. Use something more underhanded.
+    ///
+    /// ### Example
+    /// ```rust
+    /// # let x = 1;
+    /// let a = x % 1;
+    /// let a = x % -1;
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub MODULO_ONE,
+    correctness,
+    "taking a number modulo +/-1, which can either panic/overflow or always returns 0"
+}
+
 pub struct Operators {
     arithmetic_context: numeric_arithmetic::Context,
     verbose_bit_mask_threshold: u64,
@@ -485,6 +639,11 @@ impl_lint_pass!(Operators => [
     FLOAT_EQUALITY_WITHOUT_ABS,
     IDENTITY_OP,
     INTEGER_DIVISION,
+    CMP_NAN,
+    CMP_OWNED,
+    FLOAT_CMP,
+    FLOAT_CMP_CONST,
+    MODULO_ONE,
 ]);
 impl Operators {
     pub fn new(verbose_bit_mask_threshold: u64) -> Self {
@@ -515,6 +674,10 @@ impl<'tcx> LateLintPass<'tcx> for Operators {
                 duration_subsec::check(cx, e, op.node, lhs, rhs);
                 float_equality_without_abs::check(cx, e, op.node, lhs, rhs);
                 integer_division::check(cx, e, op.node, lhs, rhs);
+                cmp_nan::check(cx, e, op.node, lhs, rhs);
+                cmp_owned::check(cx, op.node, lhs, rhs);
+                float_cmp::check(cx, e, op.node, lhs, rhs);
+                modulo_one::check(cx, e, op.node, rhs);
             },
             ExprKind::AssignOp(op, lhs, rhs) => {
                 self.arithmetic_context.check_binary(cx, e, op.node, lhs, rhs);

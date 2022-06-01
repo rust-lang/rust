@@ -22,7 +22,7 @@ store.register_group(true, "clippy::perf", Some("clippy_perf"), vec![
     LintId::of(methods::OR_FUN_CALL),
     LintId::of(methods::SINGLE_CHAR_PATTERN),
     LintId::of(methods::UNNECESSARY_TO_OWNED),
-    LintId::of(misc::CMP_OWNED),
+    LintId::of(operators::CMP_OWNED),
     LintId::of(redundant_clone::REDUNDANT_CLONE),
     LintId::of(slow_vector_initialization::SLOW_VECTOR_INITIALIZATION),
     LintId::of(types::BOX_COLLECTION),
