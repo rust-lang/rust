@@ -219,7 +219,6 @@ mod empty_structs_with_brackets;
 mod entry;
 mod enum_clike;
 mod enum_variants;
-mod eq_op;
 mod equatable_if_let;
 mod erasing_op;
 mod escape;
@@ -576,7 +575,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     });
     store.register_late_pass(|| Box::new(booleans::NonminimalBool));
     store.register_late_pass(|| Box::new(needless_bitwise_bool::NeedlessBitwiseBool));
-    store.register_late_pass(|| Box::new(eq_op::EqOp));
     store.register_late_pass(|| Box::new(enum_clike::UnportableVariant));
     store.register_late_pass(|| Box::new(float_literal::FloatLiteral));
     store.register_late_pass(|| Box::new(ptr::Ptr));

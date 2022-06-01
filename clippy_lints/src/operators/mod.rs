@@ -7,8 +7,10 @@ mod assign_op_pattern;
 mod bit_mask;
 mod double_comparison;
 mod duration_subsec;
+mod eq_op;
 mod misrefactored_assign_op;
 mod numeric_arithmetic;
+mod op_ref;
 mod verbose_bit_mask;
 
 declare_clippy_lint! {
@@ -302,6 +304,62 @@ declare_clippy_lint! {
     "checks for calculation of subsecond microseconds or milliseconds"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for equal operands to comparison, logical and
+    /// bitwise, difference and division binary operators (`==`, `>`, etc., `&&`,
+    /// `||`, `&`, `|`, `^`, `-` and `/`).
+    ///
+    /// ### Why is this bad?
+    /// This is usually just a typo or a copy and paste error.
+    ///
+    /// ### Known problems
+    /// False negatives: We had some false positives regarding
+    /// calls (notably [racer](https://github.com/phildawes/racer) had one instance
+    /// of `x.pop() && x.pop()`), so we removed matching any function or method
+    /// calls. We may introduce a list of known pure functions in the future.
+    ///
+    /// ### Example
+    /// ```rust
+    /// # let x = 1;
+    /// if x + 1 == x + 1 {}
+    ///
+    /// // or
+    ///
+    /// # let a = 3;
+    /// # let b = 4;
+    /// assert_eq!(a, a);
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub EQ_OP,
+    correctness,
+    "equal operands on both sides of a comparison or bitwise combination (e.g., `x == x`)"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for arguments to `==` which have their address
+    /// taken to satisfy a bound
+    /// and suggests to dereference the other argument instead
+    ///
+    /// ### Why is this bad?
+    /// It is more idiomatic to dereference the other argument.
+    ///
+    /// ### Example
+    /// ```rust,ignore
+    /// &x == y
+    /// ```
+    ///
+    /// Use instead:
+    /// ```rust,ignore
+    /// x == *y
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub OP_REF,
+    style,
+    "taking a reference to satisfy the type constraints on `==`"
+}
+
 pub struct Operators {
     arithmetic_context: numeric_arithmetic::Context,
     verbose_bit_mask_threshold: u64,
@@ -317,6 +375,8 @@ impl_lint_pass!(Operators => [
     VERBOSE_BIT_MASK,
     DOUBLE_COMPARISONS,
     DURATION_SUBSEC,
+    EQ_OP,
+    OP_REF,
 ]);
 impl Operators {
     pub fn new(verbose_bit_mask_threshold: u64) -> Self {
@@ -328,10 +388,15 @@ impl Operators {
 }
 impl<'tcx> LateLintPass<'tcx> for Operators {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
+        eq_op::check_assert(cx, e);
         match e.kind {
             ExprKind::Binary(op, lhs, rhs) => {
                 if !e.span.from_expansion() {
                     absurd_extreme_comparisons::check(cx, e, op.node, lhs, rhs);
+                    if !(macro_with_not_op(lhs) || macro_with_not_op(rhs)) {
+                        eq_op::check(cx, e, op.node, lhs, rhs);
+                        op_ref::check(cx, e, op.node, lhs, rhs);
+                    }
                 }
                 self.arithmetic_context.check_binary(cx, e, op.node, lhs, rhs);
                 bit_mask::check(cx, e, op.node, lhs, rhs);
@@ -365,5 +430,13 @@ impl<'tcx> LateLintPass<'tcx> for Operators {
 
     fn check_body_post(&mut self, cx: &LateContext<'tcx>, b: &'tcx Body<'_>) {
         self.arithmetic_context.body_post(cx, b);
+    }
+}
+
+fn macro_with_not_op(e: &Expr<'_>) -> bool {
+    if let ExprKind::Unary(_, e) = e.kind {
+        e.span.from_expansion()
+    } else {
+        false
     }
 }
