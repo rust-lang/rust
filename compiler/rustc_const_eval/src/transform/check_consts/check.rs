@@ -542,7 +542,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 // in the type of any local, which also excludes casts).
             }
 
-            Rvalue::Cast(CastKind::PointerAddress, _, _) => {
+            Rvalue::Cast(CastKind::PointerExposeAddress, _, _) => {
                 self.check_op(ops::RawPtrToIntCast);
             }
 
