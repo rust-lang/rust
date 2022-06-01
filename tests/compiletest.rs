@@ -132,7 +132,7 @@ fn main() {
     // Let the tests know where to store temp files (they might run for a different target, which can make this hard to find).
     env::set_var("MIRI_TEMP", env::temp_dir());
 
-    ui(Mode::Pass, "tests/run-pass");
-    ui(Mode::Panic, "tests/run-fail");
-    ui(Mode::Fail, "tests/compile-fail");
+    ui(Mode::Pass, "tests/pass");
+    ui(Mode::Panic, "tests/panic");
+    ui(Mode::Fail, "tests/fail");
 }
