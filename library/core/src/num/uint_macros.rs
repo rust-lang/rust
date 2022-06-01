@@ -2244,6 +2244,34 @@ macro_rules! uint_impl {
             self.one_less_than_next_power_of_two().wrapping_add(1)
         }
 
+        /// Returns `true` if `self` is even and `false` if the number is odd.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        #[doc = concat!("assert!(10", stringify!($SelfT), ".is_even());")]
+        #[doc = concat!("assert!(!(9", stringify!($SelfT), ").is_even());")]
+        /// ```
+        #[must_use]
+        #[inline(always)]
+        pub const fn is_even(self) -> bool { self % 2 == 0 }
+         
+        /// Returns `true` if `self` is odd and `false` if the number is even.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        #[doc = concat!("assert!(9", stringify!($SelfT), ".is_odd());")]
+        #[doc = concat!("assert!(!(10", stringify!($SelfT), ").is_odd());")]
+        /// ```
+        #[must_use]
+        #[inline(always)]
+        pub const fn is_odd(self) -> bool { !self.is_even() }
+
         /// Return the memory representation of this integer as a byte array in
         /// big-endian (network) byte order.
         ///
