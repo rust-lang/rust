@@ -5,6 +5,7 @@ use rustc_session::{declare_tool_lint, impl_lint_pass};
 mod absurd_extreme_comparisons;
 mod assign_op_pattern;
 mod bit_mask;
+mod double_comparison;
 mod misrefactored_assign_op;
 mod numeric_arithmetic;
 mod verbose_bit_mask;
@@ -242,6 +243,34 @@ declare_clippy_lint! {
     "expressions where a bit mask is less readable than the corresponding method call"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for double comparisons that could be simplified to a single expression.
+    ///
+    ///
+    /// ### Why is this bad?
+    /// Readability.
+    ///
+    /// ### Example
+    /// ```rust
+    /// # let x = 1;
+    /// # let y = 2;
+    /// if x == y || x < y {}
+    /// ```
+    ///
+    /// Use instead:
+    ///
+    /// ```rust
+    /// # let x = 1;
+    /// # let y = 2;
+    /// if x <= y {}
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub DOUBLE_COMPARISONS,
+    complexity,
+    "unnecessary double comparisons that can be simplified"
+}
+
 pub struct Operators {
     arithmetic_context: numeric_arithmetic::Context,
     verbose_bit_mask_threshold: u64,
@@ -255,6 +284,7 @@ impl_lint_pass!(Operators => [
     BAD_BIT_MASK,
     INEFFECTIVE_BIT_MASK,
     VERBOSE_BIT_MASK,
+    DOUBLE_COMPARISONS,
 ]);
 impl Operators {
     pub fn new(verbose_bit_mask_threshold: u64) -> Self {
@@ -274,6 +304,7 @@ impl<'tcx> LateLintPass<'tcx> for Operators {
                 self.arithmetic_context.check_binary(cx, e, op.node, lhs, rhs);
                 bit_mask::check(cx, e, op.node, lhs, rhs);
                 verbose_bit_mask::check(cx, e, op.node, lhs, rhs, self.verbose_bit_mask_threshold);
+                double_comparison::check(cx, op.node, lhs, rhs, e.span);
             },
             ExprKind::AssignOp(op, lhs, rhs) => {
                 self.arithmetic_context.check_binary(cx, e, op.node, lhs, rhs);

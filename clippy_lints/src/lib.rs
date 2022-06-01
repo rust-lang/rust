@@ -209,7 +209,6 @@ mod disallowed_script_idents;
 mod disallowed_types;
 mod doc;
 mod doc_link_with_quotes;
-mod double_comparison;
 mod double_parens;
 mod drop_forget_ref;
 mod duplicate_mod;
@@ -726,7 +725,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(useless_conversion::UselessConversion::default()));
     store.register_late_pass(|| Box::new(implicit_hasher::ImplicitHasher));
     store.register_late_pass(|| Box::new(fallible_impl_from::FallibleImplFrom));
-    store.register_late_pass(|| Box::new(double_comparison::DoubleComparisons));
     store.register_late_pass(|| Box::new(question_mark::QuestionMark));
     store.register_early_pass(|| Box::new(suspicious_operation_groupings::SuspiciousOperationGroupings));
     store.register_late_pass(|| Box::new(suspicious_trait_impl::SuspiciousImpl));
