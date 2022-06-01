@@ -1101,7 +1101,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         impl_def_id: Option<DefId>,
     ) -> Result<ImplSourceConstDestructData<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
         // `~const Destruct` in a non-const environment is always trivially true, since our type is `Drop`
-        if !obligation.predicate.constness().is_const() {
+        if obligation.predicate.constness() == ty::ConstnessArg::Not {
             return Ok(ImplSourceConstDestructData { nested: vec![] });
         }
 

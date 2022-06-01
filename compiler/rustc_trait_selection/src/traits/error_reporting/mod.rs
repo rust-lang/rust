@@ -489,7 +489,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             self.suggest_borrowing_for_object_cast(&mut err, &root_obligation, *concrete_ty, *obj_ty);
                         }
 
-                        if trait_predicate.constness().is_const() {
+                        if trait_predicate.constness() != ty::ConstnessArg::Not {
                             let non_const_predicate = trait_ref.without_const(self.tcx);
                             let non_const_obligation = Obligation {
                                 cause: obligation.cause.clone(),

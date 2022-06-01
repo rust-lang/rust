@@ -1191,12 +1191,16 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         for candidate in candidates {
             // Respect const trait obligations
-            if obligation.predicate.constness().is_const() {
+            if obligation.predicate.constness() == ty::ConstnessArg::Const {
                 match candidate {
                     // const impl
                     ImplCandidate(def_id) if tcx.constness(def_id) == hir::Constness::Const => {}
                     // const param
-                    ParamCandidate(trait_pred) if trait_pred.constness().is_const() => {}
+                    ParamCandidate(trait_pred)
+                        if trait_pred.constness() != ty::ConstnessArg::Not =>
+                    {
+                        debug_assert_eq!(trait_pred.constness(), ty::ConstnessArg::Param);
+                    }
                     // auto trait impl
                     AutoImplCandidate(..) => {}
                     // generator, this will raise error in other places

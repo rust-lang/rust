@@ -5,7 +5,14 @@ LL |     fn req(&self);
    |     -------------- `req` from trait
 ...
 LL | impl const Tr for u16 {
-   | ^^^^^^^^^^^^^^^^^^^^^ missing `req` in implementation
+   |            ^^ the trait `Tr` is not implemented for `u16`
+   |
+note: the trait `Tr` is implemented for `u16`, but that implementation is not `const`
+  --> $DIR/impl-with-default-fn-fail.rs:12:12
+   |
+LL | impl const Tr for u16 {
+   |            ^^
+   = help: the trait `Tr` is implemented for `u16`
 
 error: aborting due to previous error
 

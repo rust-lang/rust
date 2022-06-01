@@ -957,7 +957,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ) {
         // If the predicate is `~const Destruct` in a non-const environment, we don't actually need
         // to check anything. We'll short-circuit checking any obligations in confirmation, too.
-        if !obligation.predicate.constness().is_const() {
+        if obligation.predicate.constness() == ty::ConstnessArg::Not {
             candidates.vec.push(ConstDestructCandidate(None));
             return;
         }

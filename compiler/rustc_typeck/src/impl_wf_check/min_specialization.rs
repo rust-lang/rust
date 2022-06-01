@@ -369,10 +369,7 @@ fn check_specialization_on<'tcx>(tcx: TyCtxt<'tcx>, predicate: ty::Predicate<'tc
         _ if predicate.is_global() => (),
         // We allow specializing on explicitly marked traits with no associated
         // items.
-        ty::PredicateKind::Trait(ty::TraitPredicate {
-            trait_ref,
-            polarity: _,
-        }) if !trait_ref.constness().is_const() => { // TODO fix this
+        ty::PredicateKind::Trait(ty::TraitPredicate { trait_ref, polarity: _ }) => {
             if !matches!(
                 trait_predicate_kind(tcx, predicate),
                 Some(TraitSpecializationKind::Marker)

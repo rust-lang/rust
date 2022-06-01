@@ -5,10 +5,11 @@ LL |     NonConstImpl.a();
    |                  ^^^ the trait `~const ConstDefaultFn` is not implemented for `NonConstImpl`
    |
 note: the trait `ConstDefaultFn` is implemented for `NonConstImpl`, but that implementation is not `const`
-  --> $DIR/const-default-method-bodies.rs:24:18
+  --> $DIR/const-default-method-bodies.rs:15:6
    |
-LL |     NonConstImpl.a();
-   |                  ^^^
+LL | impl ConstDefaultFn for NonConstImpl {
+   |      ^^^^^^^^^^^^^^
+   = help: the trait `ConstDefaultFn` is implemented for `NonConstImpl`
 
 error[E0015]: cannot call non-const fn `<NonConstImpl as ConstDefaultFn>::a` in constant functions
   --> $DIR/const-default-method-bodies.rs:24:18

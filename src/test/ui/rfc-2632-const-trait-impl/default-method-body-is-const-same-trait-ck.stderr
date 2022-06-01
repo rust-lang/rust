@@ -5,18 +5,11 @@ LL |         ().a()
    |            ^^^ the trait `~const Tr` is not implemented for `()`
    |
 note: the trait `Tr` is implemented for `()`, but that implementation is not `const`
-  --> $DIR/default-method-body-is-const-same-trait-ck.rs:8:12
+  --> $DIR/default-method-body-is-const-same-trait-ck.rs:14:6
    |
-LL |         ().a()
-   |            ^^^
-
-error[E0015]: cannot call non-const fn `<() as Tr>::a` in constant functions
-  --> $DIR/default-method-body-is-const-same-trait-ck.rs:8:12
-   |
-LL |         ().a()
-   |            ^^^
-   |
-   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+LL | impl Tr for () {}
+   |      ^^
+   = help: the trait `Tr` is implemented for `()`
 
 error: aborting due to 2 previous errors
 

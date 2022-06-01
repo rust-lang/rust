@@ -317,12 +317,6 @@ pub enum ConstnessArg {
     Param,
 }
 
-impl ConstnessArg {
-    pub fn is_const(self) -> bool {
-        matches!(self, ConstnessArg::Required)
-    }
-}
-
 impl fmt::Display for ConstnessArg {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(match self {
