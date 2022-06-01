@@ -978,45 +978,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     label_span_not_found(&mut err);
                 }
 
-                if let SelfSource::MethodCall(expr) = source
-                    && let Some((fields, substs)) = self.get_field_candidates(span, actual)
-                {
-                    let call_expr =
-                        self.tcx.hir().expect_expr(self.tcx.hir().get_parent_node(expr.hir_id));
-                    for candidate_field in fields.iter() {
-                        if let Some(field_path) = self.check_for_nested_field_satisfying(
-                            span,
-                            &|_, field_ty| {
-                                self.lookup_probe(
-                                    span,
-                                    item_name,
-                                    field_ty,
-                                    call_expr,
-                                    ProbeScope::AllTraits,
-                                )
-                                .is_ok()
-                            },
-                            candidate_field,
-                            substs,
-                            vec![],
-                            self.tcx.parent_module(expr.hir_id).to_def_id(),
-                        ) {
-                            let field_path_str = field_path
-                                .iter()
-                                .map(|id| id.name.to_ident_string())
-                                .collect::<Vec<String>>()
-                                .join(".");
-                            debug!("field_path_str: {:?}", field_path_str);
+                self.check_for_field_method(&mut err, source, span, actual, item_name);
 
-                            err.span_suggestion_verbose(
-                                item_name.span.shrink_to_lo(),
-                                "one of the expressions' fields has a method of the same name",
-                                format!("{field_path_str}."),
-                                Applicability::MaybeIncorrect,
-                            );
-                        }
-                    }
-                }
+                self.check_for_unwrap_self(&mut err, source, span, actual, item_name);
 
                 bound_spans.sort();
                 bound_spans.dedup();
@@ -1343,6 +1307,145 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         false
     }
 
+    fn check_for_field_method(
+        &self,
+        err: &mut DiagnosticBuilder<'tcx, ErrorGuaranteed>,
+        source: SelfSource<'tcx>,
+        span: Span,
+        actual: Ty<'tcx>,
+        item_name: Ident,
+    ) {
+        if let SelfSource::MethodCall(expr) = source
+            && let Some((fields, substs)) = self.get_field_candidates(span, actual)
+        {
+            let call_expr = self.tcx.hir().expect_expr(self.tcx.hir().get_parent_node(expr.hir_id));
+            for candidate_field in fields.iter() {
+                if let Some(field_path) = self.check_for_nested_field_satisfying(
+                    span,
+                    &|_, field_ty| {
+                        self.lookup_probe(
+                            span,
+                            item_name,
+                            field_ty,
+                            call_expr,
+                            ProbeScope::AllTraits,
+                        )
+                        .is_ok()
+                    },
+                    candidate_field,
+                    substs,
+                    vec![],
+                    self.tcx.parent_module(expr.hir_id).to_def_id(),
+                ) {
+                    let field_path_str = field_path
+                        .iter()
+                        .map(|id| id.name.to_ident_string())
+                        .collect::<Vec<String>>()
+                        .join(".");
+                    debug!("field_path_str: {:?}", field_path_str);
+
+                    err.span_suggestion_verbose(
+                        item_name.span.shrink_to_lo(),
+                        "one of the expressions' fields has a method of the same name",
+                        format!("{field_path_str}."),
+                        Applicability::MaybeIncorrect,
+                    );
+                }
+            }
+        }
+    }
+
+    fn check_for_unwrap_self(
+        &self,
+        err: &mut DiagnosticBuilder<'tcx, ErrorGuaranteed>,
+        source: SelfSource<'tcx>,
+        span: Span,
+        actual: Ty<'tcx>,
+        item_name: Ident,
+    ) {
+        let tcx = self.tcx;
+        let SelfSource::MethodCall(expr) = source else { return; };
+        let call_expr = tcx.hir().expect_expr(tcx.hir().get_parent_node(expr.hir_id));
+
+        let ty::Adt(kind, substs) = actual.kind() else { return; };
+        if !kind.is_enum() {
+            return;
+        }
+
+        let matching_variants: Vec<_> = kind
+            .variants()
+            .iter()
+            .flat_map(|variant| {
+                let [field] = &variant.fields[..] else { return None; };
+                let field_ty = field.ty(tcx, substs);
+
+                // Skip `_`, since that'll just lead to ambiguity.
+                if self.resolve_vars_if_possible(field_ty).is_ty_var() {
+                    return None;
+                }
+
+                self.lookup_probe(span, item_name, field_ty, call_expr, ProbeScope::AllTraits)
+                    .ok()
+                    .map(|pick| (variant, field, pick))
+            })
+            .collect();
+
+        let ret_ty_matches = |diagnostic_item| {
+            if let Some(ret_ty) = self
+                .ret_coercion
+                .as_ref()
+                .map(|c| self.resolve_vars_if_possible(c.borrow().expected_ty()))
+                && let ty::Adt(kind, _) = ret_ty.kind()
+                && tcx.get_diagnostic_item(diagnostic_item) == Some(kind.did())
+            {
+                true
+            } else {
+                false
+            }
+        };
+
+        match &matching_variants[..] {
+            [(_, field, pick)] => {
+                let self_ty = field.ty(tcx, substs);
+                err.span_note(
+                    tcx.def_span(pick.item.def_id),
+                    &format!("the method `{item_name}` exists on the type `{self_ty}`"),
+                );
+                let (article, kind, variant, question) =
+                    if Some(kind.did()) == tcx.get_diagnostic_item(sym::Result) {
+                        ("a", "Result", "Err", ret_ty_matches(sym::Result))
+                    } else if Some(kind.did()) == tcx.get_diagnostic_item(sym::Option) {
+                        ("an", "Option", "None", ret_ty_matches(sym::Option))
+                    } else {
+                        return;
+                    };
+                if question {
+                    err.span_suggestion_verbose(
+                        expr.span.shrink_to_hi(),
+                        format!(
+                            "use the `?` operator to extract the `{self_ty}` value, propagating \
+                            {article} `{kind}::{variant}` value to the caller"
+                        ),
+                        "?".to_owned(),
+                        Applicability::MachineApplicable,
+                    );
+                } else {
+                    err.span_suggestion_verbose(
+                        expr.span.shrink_to_hi(),
+                        format!(
+                            "consider using `{kind}::expect` to unwrap the `{self_ty}` value, \
+                             panicking if the value is {article} `{kind}::{variant}`"
+                        ),
+                        ".expect(\"REASON\")".to_owned(),
+                        Applicability::HasPlaceholders,
+                    );
+                }
+            }
+            // FIXME(compiler-errors): Support suggestions for other matching enum variants
+            _ => {}
+        }
+    }
+
     pub(crate) fn note_unmet_impls_on_type(
         &self,
         err: &mut Diagnostic,
@@ -1662,13 +1765,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 (self.tcx.mk_mut_ref(self.tcx.lifetimes.re_erased, rcvr_ty), "&mut "),
                 (self.tcx.mk_imm_ref(self.tcx.lifetimes.re_erased, rcvr_ty), "&"),
             ] {
-                match self.lookup_probe(
-                    span,
-                    item_name,
-                    *rcvr_ty,
-                    rcvr,
-                    crate::check::method::probe::ProbeScope::AllTraits,
-                ) {
+                match self.lookup_probe(span, item_name, *rcvr_ty, rcvr, ProbeScope::AllTraits) {
                     Ok(pick) => {
                         // If the method is defined for the receiver we have, it likely wasn't `use`d.
                         // We point at the method, but we just skip the rest of the check for arbitrary
@@ -1700,13 +1797,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     (self.tcx.mk_diagnostic_item(*rcvr_ty, sym::Arc), "Arc::new"),
                     (self.tcx.mk_diagnostic_item(*rcvr_ty, sym::Rc), "Rc::new"),
                 ] {
-                    if let Some(new_rcvr_t) = *rcvr_ty && let Ok(pick) = self.lookup_probe(
-                        span,
-                        item_name,
-                        new_rcvr_t,
-                        rcvr,
-                        crate::check::method::probe::ProbeScope::AllTraits,
-                    ) {
+                    if let Some(new_rcvr_t) = *rcvr_ty
+                        && let Ok(pick) = self.lookup_probe(
+                            span,
+                            item_name,
+                            new_rcvr_t,
+                            rcvr,
+                            ProbeScope::AllTraits,
+                        )
+                    {
                         debug!("try_alt_rcvr: pick candidate {:?}", pick);
                         let did = Some(pick.item.container.id());
                         // We don't want to suggest a container type when the missing
