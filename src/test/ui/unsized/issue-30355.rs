@@ -4,7 +4,6 @@ pub static Y: &'static X = {
     const Y: &'static [u8] = b"";
     &X(*Y)
     //~^ ERROR E0277
-    //~| ERROR E0277
 };
 
 fn main() {}

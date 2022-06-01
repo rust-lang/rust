@@ -8,3 +8,4 @@ trait A {
 
 #[const_trait] //~ ERROR attribute should be applied
 fn main() {}
+//~^ ERROR `main` function is not allowed to have generic parameters
