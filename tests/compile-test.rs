@@ -346,6 +346,7 @@ fn compile_test() {
 
 const RUSTFIX_COVERAGE_KNOWN_EXCEPTIONS: &[&str] = &[
     "assign_ops2.rs",
+    "borrow_deref_ref_unfixable.rs",
     "cast_size_32bit.rs",
     "char_lit_as_u8.rs",
     "cmp_owned/without_suggestion.rs",

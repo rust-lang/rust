@@ -527,12 +527,11 @@ fn extract_attr_docs_or_lint(cx: &LateContext<'_>, item: &Item<'_>) -> Option<St
 fn extract_attr_docs(cx: &LateContext<'_>, item: &Item<'_>) -> Option<String> {
     let attrs = cx.tcx.hir().attrs(item.hir_id());
     let mut lines = attrs.iter().filter_map(ast::Attribute::doc_str);
-    let mut docs = String::from(&*lines.next()?.as_str());
+    let mut docs = String::from(lines.next()?.as_str());
     let mut in_code_block = false;
     let mut is_code_block_rust = false;
     for line in lines {
         let line = line.as_str();
-        let line = &*line;
 
         // Rustdoc hides code lines starting with `# ` and this removes them from Clippy's lint list :)
         if is_code_block_rust && line.trim_start().starts_with("# ") {

@@ -184,6 +184,7 @@ mod blocks_in_if_conditions;
 mod bool_assert_comparison;
 mod booleans;
 mod borrow_as_ptr;
+mod borrow_deref_ref;
 mod bytecount;
 mod bytes_count_to_len;
 mod cargo;
@@ -640,6 +641,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(mutex_atomic::Mutex));
     store.register_late_pass(|| Box::new(needless_update::NeedlessUpdate));
     store.register_late_pass(|| Box::new(needless_borrowed_ref::NeedlessBorrowedRef));
+    store.register_late_pass(|| Box::new(borrow_deref_ref::BorrowDerefRef));
     store.register_late_pass(|| Box::new(no_effect::NoEffect));
     store.register_late_pass(|| Box::new(temporary_assignment::TemporaryAssignment));
     store.register_late_pass(|| Box::new(transmute::Transmute));
