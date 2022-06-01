@@ -4,8 +4,10 @@ use rustc_session::{declare_tool_lint, impl_lint_pass};
 
 mod absurd_extreme_comparisons;
 mod assign_op_pattern;
+mod bit_mask;
 mod misrefactored_assign_op;
 mod numeric_arithmetic;
+mod verbose_bit_mask;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -146,9 +148,103 @@ declare_clippy_lint! {
     "having a variable on both sides of an assign op"
 }
 
-#[derive(Default)]
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for incompatible bit masks in comparisons.
+    ///
+    /// The formula for detecting if an expression of the type `_ <bit_op> m
+    /// <cmp_op> c` (where `<bit_op>` is one of {`&`, `|`} and `<cmp_op>` is one of
+    /// {`!=`, `>=`, `>`, `!=`, `>=`, `>`}) can be determined from the following
+    /// table:
+    ///
+    /// |Comparison  |Bit Op|Example      |is always|Formula               |
+    /// |------------|------|-------------|---------|----------------------|
+    /// |`==` or `!=`| `&`  |`x & 2 == 3` |`false`  |`c & m != c`          |
+    /// |`<`  or `>=`| `&`  |`x & 2 < 3`  |`true`   |`m < c`               |
+    /// |`>`  or `<=`| `&`  |`x & 1 > 1`  |`false`  |`m <= c`              |
+    /// |`==` or `!=`| `\|` |`x \| 1 == 0`|`false`  |`c \| m != c`         |
+    /// |`<`  or `>=`| `\|` |`x \| 1 < 1` |`false`  |`m >= c`              |
+    /// |`<=` or `>` | `\|` |`x \| 1 > 0` |`true`   |`m > c`               |
+    ///
+    /// ### Why is this bad?
+    /// If the bits that the comparison cares about are always
+    /// set to zero or one by the bit mask, the comparison is constant `true` or
+    /// `false` (depending on mask, compared value, and operators).
+    ///
+    /// So the code is actively misleading, and the only reason someone would write
+    /// this intentionally is to win an underhanded Rust contest or create a
+    /// test-case for this lint.
+    ///
+    /// ### Example
+    /// ```rust
+    /// # let x = 1;
+    /// if (x & 1 == 2) { }
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub BAD_BIT_MASK,
+    correctness,
+    "expressions of the form `_ & mask == select` that will only ever return `true` or `false`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for bit masks in comparisons which can be removed
+    /// without changing the outcome. The basic structure can be seen in the
+    /// following table:
+    ///
+    /// |Comparison| Bit Op   |Example     |equals |
+    /// |----------|----------|------------|-------|
+    /// |`>` / `<=`|`\|` / `^`|`x \| 2 > 3`|`x > 3`|
+    /// |`<` / `>=`|`\|` / `^`|`x ^ 1 < 4` |`x < 4`|
+    ///
+    /// ### Why is this bad?
+    /// Not equally evil as [`bad_bit_mask`](#bad_bit_mask),
+    /// but still a bit misleading, because the bit mask is ineffective.
+    ///
+    /// ### Known problems
+    /// False negatives: This lint will only match instances
+    /// where we have figured out the math (which is for a power-of-two compared
+    /// value). This means things like `x | 1 >= 7` (which would be better written
+    /// as `x >= 6`) will not be reported (but bit masks like this are fairly
+    /// uncommon).
+    ///
+    /// ### Example
+    /// ```rust
+    /// # let x = 1;
+    /// if (x | 1 > 3) {  }
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub INEFFECTIVE_BIT_MASK,
+    correctness,
+    "expressions where a bit mask will be rendered useless by a comparison, e.g., `(x | 1) > 2`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for bit masks that can be replaced by a call
+    /// to `trailing_zeros`
+    ///
+    /// ### Why is this bad?
+    /// `x.trailing_zeros() > 4` is much clearer than `x & 15
+    /// == 0`
+    ///
+    /// ### Known problems
+    /// llvm generates better code for `x & 15 == 0` on x86
+    ///
+    /// ### Example
+    /// ```rust
+    /// # let x = 1;
+    /// if x & 0b1111 == 0 { }
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub VERBOSE_BIT_MASK,
+    pedantic,
+    "expressions where a bit mask is less readable than the corresponding method call"
+}
+
 pub struct Operators {
     arithmetic_context: numeric_arithmetic::Context,
+    verbose_bit_mask_threshold: u64,
 }
 impl_lint_pass!(Operators => [
     ABSURD_EXTREME_COMPARISONS,
@@ -156,7 +252,18 @@ impl_lint_pass!(Operators => [
     FLOAT_ARITHMETIC,
     ASSIGN_OP_PATTERN,
     MISREFACTORED_ASSIGN_OP,
+    BAD_BIT_MASK,
+    INEFFECTIVE_BIT_MASK,
+    VERBOSE_BIT_MASK,
 ]);
+impl Operators {
+    pub fn new(verbose_bit_mask_threshold: u64) -> Self {
+        Self {
+            arithmetic_context: numeric_arithmetic::Context::default(),
+            verbose_bit_mask_threshold,
+        }
+    }
+}
 impl<'tcx> LateLintPass<'tcx> for Operators {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         match e.kind {
@@ -165,6 +272,8 @@ impl<'tcx> LateLintPass<'tcx> for Operators {
                     absurd_extreme_comparisons::check(cx, e, op.node, lhs, rhs);
                 }
                 self.arithmetic_context.check_binary(cx, e, op.node, lhs, rhs);
+                bit_mask::check(cx, e, op.node, lhs, rhs);
+                verbose_bit_mask::check(cx, e, op.node, lhs, rhs, self.verbose_bit_mask_threshold);
             },
             ExprKind::AssignOp(op, lhs, rhs) => {
                 self.arithmetic_context.check_binary(cx, e, op.node, lhs, rhs);

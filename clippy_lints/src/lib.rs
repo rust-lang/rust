@@ -177,7 +177,6 @@ mod assertions_on_constants;
 mod async_yields_async;
 mod attrs;
 mod await_holding_invalid;
-mod bit_mask;
 mod blacklisted_name;
 mod blocks_in_if_conditions;
 mod bool_assert_comparison;
@@ -582,8 +581,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(eq_op::EqOp));
     store.register_late_pass(|| Box::new(enum_clike::UnportableVariant));
     store.register_late_pass(|| Box::new(float_literal::FloatLiteral));
-    let verbose_bit_mask_threshold = conf.verbose_bit_mask_threshold;
-    store.register_late_pass(move || Box::new(bit_mask::BitMask::new(verbose_bit_mask_threshold)));
     store.register_late_pass(|| Box::new(ptr::Ptr));
     store.register_late_pass(|| Box::new(ptr_eq::PtrEq));
     store.register_late_pass(|| Box::new(needless_bool::NeedlessBool));
@@ -936,7 +933,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(default_instead_of_iter_empty::DefaultIterEmpty));
     store.register_late_pass(move || Box::new(manual_rem_euclid::ManualRemEuclid::new(msrv)));
     store.register_late_pass(move || Box::new(manual_retain::ManualRetain::new(msrv)));
-    store.register_late_pass(|| Box::new(operators::Operators::default()));
+    let verbose_bit_mask_threshold = conf.verbose_bit_mask_threshold;
+    store.register_late_pass(move || Box::new(operators::Operators::new(verbose_bit_mask_threshold)));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 

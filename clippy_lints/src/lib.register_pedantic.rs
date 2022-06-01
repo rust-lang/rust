@@ -4,7 +4,6 @@
 
 store.register_group(true, "clippy::pedantic", Some("clippy_pedantic"), vec![
     LintId::of(attrs::INLINE_ALWAYS),
-    LintId::of(bit_mask::VERBOSE_BIT_MASK),
     LintId::of(borrow_as_ptr::BORROW_AS_PTR),
     LintId::of(bytecount::NAIVE_BYTECOUNT),
     LintId::of(case_sensitive_file_extension_comparisons::CASE_SENSITIVE_FILE_EXTENSION_COMPARISONS),
@@ -76,6 +75,7 @@ store.register_group(true, "clippy::pedantic", Some("clippy_pedantic"), vec![
     LintId::of(no_effect::NO_EFFECT_UNDERSCORE_BINDING),
     LintId::of(non_expressive_names::MANY_SINGLE_CHAR_NAMES),
     LintId::of(non_expressive_names::SIMILAR_NAMES),
+    LintId::of(operators::VERBOSE_BIT_MASK),
     LintId::of(pass_by_ref_or_value::LARGE_TYPES_PASSED_BY_VALUE),
     LintId::of(pass_by_ref_or_value::TRIVIALLY_COPY_PASS_BY_REF),
     LintId::of(ranges::RANGE_MINUS_ONE),
