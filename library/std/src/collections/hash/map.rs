@@ -896,6 +896,119 @@ where
         self.base.get_key_value(k)
     }
 
+    /// Attempts to get mutable references to `N` values in the map at once.
+    ///
+    /// Returns an array of length `N` with the results of each query. For soundness, at most one
+    /// mutable reference will be returned to any value. `None` will be returned if any of the
+    /// keys are duplicates or missing.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(map_many_mut)]
+    /// use std::collections::HashMap;
+    ///
+    /// let mut libraries = HashMap::new();
+    /// libraries.insert("Bodleian Library".to_string(), 1602);
+    /// libraries.insert("Athenæum".to_string(), 1807);
+    /// libraries.insert("Herzogin-Anna-Amalia-Bibliothek".to_string(), 1691);
+    /// libraries.insert("Library of Congress".to_string(), 1800);
+    ///
+    /// let got = libraries.get_many_mut([
+    ///     "Athenæum",
+    ///     "Library of Congress",
+    /// ]);
+    /// assert_eq!(
+    ///     got,
+    ///     Some([
+    ///         &mut 1807,
+    ///         &mut 1800,
+    ///     ]),
+    /// );
+    ///
+    /// // Missing keys result in None
+    /// let got = libraries.get_many_mut([
+    ///     "Athenæum",
+    ///     "New York Public Library",
+    /// ]);
+    /// assert_eq!(got, None);
+    ///
+    /// // Duplicate keys result in None
+    /// let got = libraries.get_many_mut([
+    ///     "Athenæum",
+    ///     "Athenæum",
+    /// ]);
+    /// assert_eq!(got, None);
+    /// ```
+    #[inline]
+    #[unstable(feature = "map_many_mut", issue = "97601")]
+    pub fn get_many_mut<Q: ?Sized, const N: usize>(&mut self, ks: [&Q; N]) -> Option<[&'_ mut V; N]>
+    where
+        K: Borrow<Q>,
+        Q: Hash + Eq,
+    {
+        self.base.get_many_mut(ks)
+    }
+
+    /// Attempts to get mutable references to `N` values in the map at once, without validating that
+    /// the values are unique.
+    ///
+    /// Returns an array of length `N` with the results of each query. `None` will be returned if
+    /// any of the keys are missing.
+    ///
+    /// For a safe alternative see [`get_many_mut`](Self::get_many_mut).
+    ///
+    /// # Safety
+    ///
+    /// Calling this method with overlapping keys is *[undefined behavior]* even if the resulting
+    /// references are not used.
+    ///
+    /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(map_many_mut)]
+    /// use std::collections::HashMap;
+    ///
+    /// let mut libraries = HashMap::new();
+    /// libraries.insert("Bodleian Library".to_string(), 1602);
+    /// libraries.insert("Athenæum".to_string(), 1807);
+    /// libraries.insert("Herzogin-Anna-Amalia-Bibliothek".to_string(), 1691);
+    /// libraries.insert("Library of Congress".to_string(), 1800);
+    ///
+    /// let got = libraries.get_many_mut([
+    ///     "Athenæum",
+    ///     "Library of Congress",
+    /// ]);
+    /// assert_eq!(
+    ///     got,
+    ///     Some([
+    ///         &mut 1807,
+    ///         &mut 1800,
+    ///     ]),
+    /// );
+    ///
+    /// // Missing keys result in None
+    /// let got = libraries.get_many_mut([
+    ///     "Athenæum",
+    ///     "New York Public Library",
+    /// ]);
+    /// assert_eq!(got, None);
+    /// ```
+    #[inline]
+    #[unstable(feature = "map_many_mut", issue = "97601")]
+    pub unsafe fn get_many_unchecked_mut<Q: ?Sized, const N: usize>(
+        &mut self,
+        ks: [&Q; N],
+    ) -> Option<[&'_ mut V; N]>
+    where
+        K: Borrow<Q>,
+        Q: Hash + Eq,
+    {
+        self.base.get_many_unchecked_mut(ks)
+    }
+
     /// Returns `true` if the map contains a value for the specified key.
     ///
     /// The key may be any borrowed form of the map's key type, but

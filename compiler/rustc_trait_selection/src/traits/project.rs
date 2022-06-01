@@ -145,15 +145,28 @@ impl<'tcx> ProjectionCandidateSet<'tcx> {
     }
 }
 
-/// Takes the place of a
+/// States returned from `poly_project_and_unify_type`. Takes the place
+/// of the old return type, which was:
+/// ```ignore (not-rust)
 /// Result<
 ///     Result<Option<Vec<PredicateObligation<'tcx>>>, InProgress>,
 ///     MismatchedProjectionTypes<'tcx>,
 /// >
+/// ```
 pub(super) enum ProjectAndUnifyResult<'tcx> {
+    /// The projection bound holds subject to the given obligations. If the
+    /// projection cannot be normalized because the required trait bound does
+    /// not hold, this is returned, with `obligations` being a predicate that
+    /// cannot be proven.
     Holds(Vec<PredicateObligation<'tcx>>),
+    /// The projection cannot be normalized due to ambiguity. Resolving some
+    /// inference variables in the projection may fix this.
     FailedNormalization,
+    /// The project cannot be normalized because `poly_project_and_unify_type`
+    /// is called recursively while normalizing the same projection.
     Recursive,
+    // the projection can be normalized, but is not equal to the expected type.
+    // Returns the type error that arose from the mismatch.
     MismatchedProjectionTypes(MismatchedProjectionTypes<'tcx>),
 }
 
@@ -163,19 +176,6 @@ pub(super) enum ProjectAndUnifyResult<'tcx> {
 /// ```
 /// If successful, this may result in additional obligations. Also returns
 /// the projection cache key used to track these additional obligations.
-///
-/// ## Returns
-///
-/// - `Err(_)`: the projection can be normalized, but is not equal to the
-///   expected type.
-/// - `Ok(Err(InProgress))`: this is called recursively while normalizing
-///   the same projection.
-/// - `Ok(Ok(None))`: The projection cannot be normalized due to ambiguity
-///   (resolving some inference variables in the projection may fix this).
-/// - `Ok(Ok(Some(obligations)))`: The projection bound holds subject to
-///    the given obligations. If the projection cannot be normalized because
-///    the required trait bound doesn't hold this returned with `obligations`
-///    being a predicate that cannot be proven.
 #[instrument(level = "debug", skip(selcx))]
 pub(super) fn poly_project_and_unify_type<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,

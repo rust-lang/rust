@@ -1228,7 +1228,7 @@ fn check_impl<'tcx>(
                     fcx.body_id,
                     &trait_ref,
                     ast_trait_ref.path.span,
-                    Some(item),
+                    item,
                 );
                 debug!(?obligations);
                 for obligation in obligations {
