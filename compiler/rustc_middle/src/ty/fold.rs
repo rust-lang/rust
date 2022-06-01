@@ -263,6 +263,13 @@ pub trait TypeFolder<'tcx>: Sized {
         c.super_fold_with(self)
     }
 
+    fn fold_unevaluated(&mut self, uv: ty::Unevaluated<'tcx>) -> ty::Unevaluated<'tcx>
+    where
+        Self: TypeFolder<'tcx, Error = !>,
+    {
+        uv.super_fold_with(self)
+    }
+
     fn fold_predicate(&mut self, p: ty::Predicate<'tcx>) -> ty::Predicate<'tcx>
     where
         Self: TypeFolder<'tcx, Error = !>,
@@ -302,6 +309,13 @@ pub trait FallibleTypeFolder<'tcx>: TypeFolder<'tcx> {
     }
 
     fn try_fold_const(&mut self, c: ty::Const<'tcx>) -> Result<ty::Const<'tcx>, Self::Error> {
+        c.try_super_fold_with(self)
+    }
+
+    fn try_fold_unevaluated(
+        &mut self,
+        c: ty::Unevaluated<'tcx>,
+    ) -> Result<ty::Unevaluated<'tcx>, Self::Error> {
         c.try_super_fold_with(self)
     }
 

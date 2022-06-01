@@ -1228,6 +1228,10 @@ impl<'tcx> TypeFoldable<'tcx> for InferConst<'tcx> {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for ty::Unevaluated<'tcx> {
+    fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
+        folder.try_fold_unevaluated(self)
+    }
+
     fn try_super_fold_with<F: FallibleTypeFolder<'tcx>>(
         self,
         folder: &mut F,
@@ -1253,19 +1257,11 @@ impl<'tcx> TypeFoldable<'tcx> for ty::Unevaluated<'tcx, ()> {
         self,
         folder: &mut F,
     ) -> Result<Self, F::Error> {
-        Ok(ty::Unevaluated {
-            def: self.def,
-            substs: self.substs.try_fold_with(folder)?,
-            promoted: self.promoted,
-        })
-    }
-
-    fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
-        visitor.visit_unevaluated(self.expand())
+        Ok(self.expand().try_fold_with(folder)?.shrink())
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
-        self.substs.visit_with(visitor)
+        self.expand().visit_with(visitor)
     }
 }
 
