@@ -3,61 +3,40 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::{clip, unsext};
 use rustc_errors::Applicability;
-use rustc_hir::{BinOp, BinOpKind, Expr, ExprKind, Node};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_hir::{BinOpKind, Expr, ExprKind, Node};
+use rustc_lint::LateContext;
 use rustc_middle::ty;
-use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for identity operations, e.g., `x + 0`.
-    ///
-    /// ### Why is this bad?
-    /// This code can be removed without changing the
-    /// meaning. So it just obscures what's going on. Delete it mercilessly.
-    ///
-    /// ### Example
-    /// ```rust
-    /// # let x = 1;
-    /// x / 1 + 0 * 1 - 0 | 0;
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub IDENTITY_OP,
-    complexity,
-    "using identity operations, e.g., `x + 0` or `y / 1`"
-}
+use super::IDENTITY_OP;
 
-declare_lint_pass!(IdentityOp => [IDENTITY_OP]);
-
-impl<'tcx> LateLintPass<'tcx> for IdentityOp {
-    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if expr.span.from_expansion() {
-            return;
-        }
-        if let ExprKind::Binary(cmp, left, right) = &expr.kind {
-            if !is_allowed(cx, *cmp, left, right) {
-                match cmp.node {
-                    BinOpKind::Add | BinOpKind::BitOr | BinOpKind::BitXor => {
-                        check(cx, left, 0, expr.span, right.span, needs_parenthesis(cx, expr, right));
-                        check(cx, right, 0, expr.span, left.span, Parens::Unneeded);
-                    },
-                    BinOpKind::Shl | BinOpKind::Shr | BinOpKind::Sub => {
-                        check(cx, right, 0, expr.span, left.span, Parens::Unneeded);
-                    },
-                    BinOpKind::Mul => {
-                        check(cx, left, 1, expr.span, right.span, needs_parenthesis(cx, expr, right));
-                        check(cx, right, 1, expr.span, left.span, Parens::Unneeded);
-                    },
-                    BinOpKind::Div => check(cx, right, 1, expr.span, left.span, Parens::Unneeded),
-                    BinOpKind::BitAnd => {
-                        check(cx, left, -1, expr.span, right.span, needs_parenthesis(cx, expr, right));
-                        check(cx, right, -1, expr.span, left.span, Parens::Unneeded);
-                    },
-                    BinOpKind::Rem => check_remainder(cx, left, right, expr.span, left.span),
-                    _ => (),
-                }
-            }
+pub(crate) fn check<'tcx>(
+    cx: &LateContext<'tcx>,
+    expr: &'tcx Expr<'_>,
+    op: BinOpKind,
+    left: &'tcx Expr<'_>,
+    right: &'tcx Expr<'_>,
+) {
+    if !is_allowed(cx, op, left, right) {
+        match op {
+            BinOpKind::Add | BinOpKind::BitOr | BinOpKind::BitXor => {
+                check_op(cx, left, 0, expr.span, right.span, needs_parenthesis(cx, expr, right));
+                check_op(cx, right, 0, expr.span, left.span, Parens::Unneeded);
+            },
+            BinOpKind::Shl | BinOpKind::Shr | BinOpKind::Sub => {
+                check_op(cx, right, 0, expr.span, left.span, Parens::Unneeded);
+            },
+            BinOpKind::Mul => {
+                check_op(cx, left, 1, expr.span, right.span, needs_parenthesis(cx, expr, right));
+                check_op(cx, right, 1, expr.span, left.span, Parens::Unneeded);
+            },
+            BinOpKind::Div => check_op(cx, right, 1, expr.span, left.span, Parens::Unneeded),
+            BinOpKind::BitAnd => {
+                check_op(cx, left, -1, expr.span, right.span, needs_parenthesis(cx, expr, right));
+                check_op(cx, right, -1, expr.span, left.span, Parens::Unneeded);
+            },
+            BinOpKind::Rem => check_remainder(cx, left, right, expr.span, left.span),
+            _ => (),
         }
     }
 }
@@ -108,12 +87,12 @@ fn needs_parenthesis(cx: &LateContext<'_>, binary: &Expr<'_>, right: &Expr<'_>) 
     Parens::Needed
 }
 
-fn is_allowed(cx: &LateContext<'_>, cmp: BinOp, left: &Expr<'_>, right: &Expr<'_>) -> bool {
+fn is_allowed(cx: &LateContext<'_>, cmp: BinOpKind, left: &Expr<'_>, right: &Expr<'_>) -> bool {
     // This lint applies to integers
     !cx.typeck_results().expr_ty(left).peel_refs().is_integral()
         || !cx.typeck_results().expr_ty(right).peel_refs().is_integral()
         // `1 << 0` is a common pattern in bit manipulation code
-        || (cmp.node == BinOpKind::Shl
+        || (cmp == BinOpKind::Shl
             && constant_simple(cx, cx.typeck_results(), right) == Some(Constant::Int(0))
             && constant_simple(cx, cx.typeck_results(), left) == Some(Constant::Int(1)))
 }
@@ -130,7 +109,7 @@ fn check_remainder(cx: &LateContext<'_>, left: &Expr<'_>, right: &Expr<'_>, span
     }
 }
 
-fn check(cx: &LateContext<'_>, e: &Expr<'_>, m: i8, span: Span, arg: Span, parens: Parens) {
+fn check_op(cx: &LateContext<'_>, e: &Expr<'_>, m: i8, span: Span, arg: Span, parens: Parens) {
     if let Some(Constant::Int(v)) = constant_simple(cx, cx.typeck_results(), e).map(Constant::peel_refs) {
         let check = match *cx.typeck_results().expr_ty(e).peel_refs().kind() {
             ty::Int(ity) => unsext(cx.tcx, -1_i128, ity),

@@ -239,7 +239,6 @@ mod from_str_radix_10;
 mod functions;
 mod future_not_send;
 mod get_first;
-mod identity_op;
 mod if_let_mutex;
 mod if_not_else;
 mod if_then_some_else_none;
@@ -582,7 +581,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(needless_for_each::NeedlessForEach));
     store.register_late_pass(|| Box::new(misc::MiscLints));
     store.register_late_pass(|| Box::new(eta_reduction::EtaReduction));
-    store.register_late_pass(|| Box::new(identity_op::IdentityOp));
     store.register_late_pass(|| Box::new(mut_mut::MutMut));
     store.register_late_pass(|| Box::new(mut_reference::UnnecessaryMutPassed));
     store.register_late_pass(|| Box::new(len_zero::LenZero));

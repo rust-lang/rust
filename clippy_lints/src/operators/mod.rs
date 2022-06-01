@@ -10,6 +10,7 @@ mod duration_subsec;
 mod eq_op;
 mod erasing_op;
 mod float_equality_without_abs;
+mod identity_op;
 mod misrefactored_assign_op;
 mod numeric_arithmetic;
 mod op_ref;
@@ -417,6 +418,25 @@ declare_clippy_lint! {
     "float equality check without `.abs()`"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for identity operations, e.g., `x + 0`.
+    ///
+    /// ### Why is this bad?
+    /// This code can be removed without changing the
+    /// meaning. So it just obscures what's going on. Delete it mercilessly.
+    ///
+    /// ### Example
+    /// ```rust
+    /// # let x = 1;
+    /// x / 1 + 0 * 1 - 0 | 0;
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub IDENTITY_OP,
+    complexity,
+    "using identity operations, e.g., `x + 0` or `y / 1`"
+}
+
 pub struct Operators {
     arithmetic_context: numeric_arithmetic::Context,
     verbose_bit_mask_threshold: u64,
@@ -436,6 +456,7 @@ impl_lint_pass!(Operators => [
     OP_REF,
     ERASING_OP,
     FLOAT_EQUALITY_WITHOUT_ABS,
+    IDENTITY_OP,
 ]);
 impl Operators {
     pub fn new(verbose_bit_mask_threshold: u64) -> Self {
@@ -457,6 +478,7 @@ impl<'tcx> LateLintPass<'tcx> for Operators {
                         op_ref::check(cx, e, op.node, lhs, rhs);
                     }
                     erasing_op::check(cx, e, op.node, lhs, rhs);
+                    identity_op::check(cx, e, op.node, lhs, rhs);
                 }
                 self.arithmetic_context.check_binary(cx, e, op.node, lhs, rhs);
                 bit_mask::check(cx, e, op.node, lhs, rhs);
