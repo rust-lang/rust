@@ -16,6 +16,7 @@ mod float_equality_without_abs;
 mod identity_op;
 mod integer_division;
 mod misrefactored_assign_op;
+mod modulo_arithmetic;
 mod modulo_one;
 mod numeric_arithmetic;
 mod op_ref;
@@ -618,6 +619,28 @@ declare_clippy_lint! {
     "taking a number modulo +/-1, which can either panic/overflow or always returns 0"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for modulo arithmetic.
+    ///
+    /// ### Why is this bad?
+    /// The results of modulo (%) operation might differ
+    /// depending on the language, when negative numbers are involved.
+    /// If you interop with different languages it might be beneficial
+    /// to double check all places that use modulo arithmetic.
+    ///
+    /// For example, in Rust `17 % -3 = 2`, but in Python `17 % -3 = -1`.
+    ///
+    /// ### Example
+    /// ```rust
+    /// let x = -17 % 3;
+    /// ```
+    #[clippy::version = "1.42.0"]
+    pub MODULO_ARITHMETIC,
+    restriction,
+    "any modulo arithmetic statement"
+}
+
 pub struct Operators {
     arithmetic_context: numeric_arithmetic::Context,
     verbose_bit_mask_threshold: u64,
@@ -644,6 +667,7 @@ impl_lint_pass!(Operators => [
     FLOAT_CMP,
     FLOAT_CMP_CONST,
     MODULO_ONE,
+    MODULO_ARITHMETIC,
 ]);
 impl Operators {
     pub fn new(verbose_bit_mask_threshold: u64) -> Self {
@@ -678,10 +702,12 @@ impl<'tcx> LateLintPass<'tcx> for Operators {
                 cmp_owned::check(cx, op.node, lhs, rhs);
                 float_cmp::check(cx, e, op.node, lhs, rhs);
                 modulo_one::check(cx, e, op.node, rhs);
+                modulo_arithmetic::check(cx, e, op.node, lhs, rhs);
             },
             ExprKind::AssignOp(op, lhs, rhs) => {
                 self.arithmetic_context.check_binary(cx, e, op.node, lhs, rhs);
                 misrefactored_assign_op::check(cx, e, op.node, lhs, rhs);
+                modulo_arithmetic::check(cx, e, op.node, lhs, rhs);
             },
             ExprKind::Assign(lhs, rhs, _) => {
                 assign_op_pattern::check(cx, e, lhs, rhs);

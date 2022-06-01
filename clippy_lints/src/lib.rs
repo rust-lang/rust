@@ -295,7 +295,6 @@ mod missing_enforced_import_rename;
 mod missing_inline;
 mod mixed_read_write_in_expression;
 mod module_style;
-mod modulo_arithmetic;
 mod mut_key;
 mod mut_mut;
 mod mut_mutex_lock;
@@ -738,7 +737,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(move || Box::new(trait_bounds::TraitBounds::new(max_trait_bounds)));
     store.register_late_pass(|| Box::new(comparison_chain::ComparisonChain));
     store.register_late_pass(|| Box::new(mut_key::MutableKeyType));
-    store.register_late_pass(|| Box::new(modulo_arithmetic::ModuloArithmetic));
     store.register_early_pass(|| Box::new(reference::DerefAddrOf));
     store.register_early_pass(|| Box::new(double_parens::DoubleParens));
     store.register_late_pass(|| Box::new(format_impl::FormatImpl::new()));

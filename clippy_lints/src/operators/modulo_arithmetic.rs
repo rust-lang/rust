@@ -2,35 +2,35 @@ use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::sext;
 use if_chain::if_chain;
-use rustc_hir::{BinOpKind, Expr, ExprKind};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_hir::{BinOpKind, Expr};
+use rustc_lint::LateContext;
 use rustc_middle::ty::{self, Ty};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
 use std::fmt::Display;
 
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for modulo arithmetic.
-    ///
-    /// ### Why is this bad?
-    /// The results of modulo (%) operation might differ
-    /// depending on the language, when negative numbers are involved.
-    /// If you interop with different languages it might be beneficial
-    /// to double check all places that use modulo arithmetic.
-    ///
-    /// For example, in Rust `17 % -3 = 2`, but in Python `17 % -3 = -1`.
-    ///
-    /// ### Example
-    /// ```rust
-    /// let x = -17 % 3;
-    /// ```
-    #[clippy::version = "1.42.0"]
-    pub MODULO_ARITHMETIC,
-    restriction,
-    "any modulo arithmetic statement"
-}
+use super::MODULO_ARITHMETIC;
 
-declare_lint_pass!(ModuloArithmetic => [MODULO_ARITHMETIC]);
+pub(super) fn check<'tcx>(
+    cx: &LateContext<'tcx>,
+    e: &'tcx Expr<'_>,
+    op: BinOpKind,
+    lhs: &'tcx Expr<'_>,
+    rhs: &'tcx Expr<'_>,
+) {
+    if op == BinOpKind::Rem {
+        let lhs_operand = analyze_operand(lhs, cx, e);
+        let rhs_operand = analyze_operand(rhs, cx, e);
+        if_chain! {
+            if let Some(lhs_operand) = lhs_operand;
+            if let Some(rhs_operand) = rhs_operand;
+            then {
+                check_const_operands(cx, e, &lhs_operand, &rhs_operand);
+            }
+            else {
+                check_non_const_operands(cx, e, lhs);
+            }
+        }
+    };
+}
 
 struct OperandInfo {
     string_representation: Option<String>,
@@ -122,29 +122,5 @@ fn check_non_const_operands<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, 
                 }
             },
         );
-    }
-}
-
-impl<'tcx> LateLintPass<'tcx> for ModuloArithmetic {
-    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        match &expr.kind {
-            ExprKind::Binary(op, lhs, rhs) | ExprKind::AssignOp(op, lhs, rhs) => {
-                if op.node == BinOpKind::Rem {
-                    let lhs_operand = analyze_operand(lhs, cx, expr);
-                    let rhs_operand = analyze_operand(rhs, cx, expr);
-                    if_chain! {
-                        if let Some(lhs_operand) = lhs_operand;
-                        if let Some(rhs_operand) = rhs_operand;
-                        then {
-                            check_const_operands(cx, expr, &lhs_operand, &rhs_operand);
-                        }
-                        else {
-                            check_non_const_operands(cx, expr, lhs);
-                        }
-                    }
-                };
-            },
-            _ => {},
-        }
     }
 }
