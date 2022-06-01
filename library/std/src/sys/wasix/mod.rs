@@ -1,18 +1,4 @@
-//! System bindings for the wasm/web platform
-//!
-//! This module contains the facade (aka platform-specific) implementations of
-//! OS level functionality for wasm. Note that this wasm is *not* the emscripten
-//! wasm, so we have no runtime here.
-//!
-//! This is all super highly experimental and not actually intended for
-//! wide/production use yet, it's still all in the experimental category. This
-//! will likely change over time.
-//!
-//! Currently all functions here are basically stubs that immediately return
-//! errors. The hope is that with a portability lint we can turn actually just
-//! remove all this and just omit parts of the standard library if we're
-//! compiling for wasm. That way it's a compile time error for something that's
-//! guaranteed to be a runtime error!
+//! System bindings for the wasm/web platform on WASIX
 
 use crate::io as std_io;
 use crate::mem;
@@ -30,8 +16,6 @@ pub mod fd;
 pub mod fs;
 #[path = "../wasi/io.rs"]
 pub mod io;
-#[path = "../unsupported/locks/mod.rs"]
-pub mod locks;
 pub mod net;
 pub mod os;
 #[path = "../unix/os_str.rs"]
@@ -44,13 +28,25 @@ pub mod pipe;
 pub mod process;
 #[path = "../wasi/stdio.rs"]
 pub mod stdio;
-pub mod thread;
 #[path = "../unsupported/thread_local_dtor.rs"]
 pub mod thread_local_dtor;
 #[path = "../unsupported/thread_local_key.rs"]
 pub mod thread_local_key;
 #[path = "../wasi/time.rs"]
 pub mod time;
+
+#[path = "../unix/locks"]
+pub mod locks {
+    #![allow(unsafe_op_in_unsafe_fn)]
+    mod futex;
+    mod futex_rwlock;
+    pub use futex::{Mutex, MovableMutex, Condvar, MovableCondvar};
+    pub use futex_rwlock::{RwLock, MovableRwLock};
+}
+#[path = "atomics/futex.rs"]
+pub mod futex;
+#[path = "atomics/thread.rs"]
+pub mod thread;
 
 #[path = "../unsupported/common.rs"]
 #[deny(unsafe_op_in_unsafe_fn)]

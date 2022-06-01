@@ -92,7 +92,10 @@ pub mod linux;
         all(target_vendor = "fortanix", target_env = "sgx")
     )
 )))]
-#[cfg(any(target_os = "wasi", doc))]
+#[cfg(any(all(target_os = "wasi", not(target_vendor = "wasmer")), doc))]
+pub mod wasi;
+#[cfg(any(all(target_os = "wasi", target_vendor = "wasmer"), doc))]
+#[path = "wasix/mod.rs"]
 pub mod wasi;
 #[cfg(target_os = "wasi")]
 #[stable(feature = "rust1", since = "1.0.0")]

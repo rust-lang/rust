@@ -236,6 +236,56 @@ impl Socket {
         }
     }
 
+    pub fn accept_timeout(&self, storage: *mut sockaddr, len: *mut socklen_t, timeout: Duration) -> io::Result<Socket> {
+        let mut pollfd = libc::pollfd { fd: self.as_raw_fd(), events: libc::POLLIN, revents: 0 };
+
+        if timeout.as_secs() == 0 && timeout.subsec_nanos() == 0 {
+            return self.accept(storage, len);
+        }
+
+        self.set_nonblocking(true)?;
+        let start = Instant::now();
+        loop {
+            let elapsed = start.elapsed();
+            if elapsed >= timeout {
+                return Err(io::const_io_error!(io::ErrorKind::TimedOut, "connection timed out"));
+            }
+
+            let timeout = timeout - elapsed;
+            let mut timeout = timeout
+                .as_secs()
+                .saturating_mul(1_000)
+                .saturating_add(timeout.subsec_nanos() as u64 / 1_000_000);
+            if timeout == 0 {
+                timeout = 1;
+            }
+
+            let timeout = cmp::min(timeout, c_int::MAX as u64) as c_int;
+            match unsafe { libc::poll(&mut pollfd, 1, timeout) } {
+                -1 => {
+                    let err = io::Error::last_os_error();
+                    return Err(err);
+                }
+                0 => {
+                    crate::thread::yield_now();
+                }
+                _ => {
+                    let socket = match self.accept(storage, len) {
+                        Ok(a) => a,
+                        Err(err) => {
+                            if err.kind() == io::ErrorKind::WouldBlock {
+                                crate::thread::sleep(Duration::from_millis(1));
+                                continue;
+                            }
+                            return Err(err);
+                        }
+                    };
+                    return Ok(socket);
+                }
+            }
+        }
+    }
+
     pub fn duplicate(&self) -> io::Result<Socket> {
         self.0.duplicate().map(Socket)
     }

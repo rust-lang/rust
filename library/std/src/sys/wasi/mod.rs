@@ -46,8 +46,6 @@ pub mod thread_local_dtor;
 pub mod thread_local_key;
 pub mod time;
 
-pub type WasiInt = usize;
-
 #[path = "../unsupported/common.rs"]
 #[deny(unsafe_op_in_unsafe_fn)]
 #[allow(unused)]

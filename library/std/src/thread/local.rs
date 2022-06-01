@@ -187,22 +187,9 @@ macro_rules! __thread_local_inner {
         ) -> $crate::option::Option<&'static $t> {
             const INIT_EXPR: $t = $init;
 
-            // wasm without atomics maps directly to `static mut`, and dtors
-            // aren't implemented because thread dtors aren't really a thing
-            // on wasm right now
-            //
-            // FIXME(#84224) this should come after the `target_thread_local`
-            // block.
-            #[cfg(all(target_family = "wasm", not(target_feature = "atomics")))]
-            {
-                static mut VAL: $t = INIT_EXPR;
-                unsafe { $crate::option::Option::Some(&VAL) }
-            }
-
             // If the platform has support for `#[thread_local]`, use it.
             #[cfg(all(
                 target_thread_local,
-                not(all(target_family = "wasm", not(target_feature = "atomics"))),
             ))]
             {
                 #[thread_local]
@@ -258,7 +245,6 @@ macro_rules! __thread_local_inner {
             // same implementation as below for os thread locals.
             #[cfg(all(
                 not(target_thread_local),
-                not(all(target_family = "wasm", not(target_feature = "atomics"))),
             ))]
             {
                 #[inline]
@@ -318,21 +304,15 @@ macro_rules! __thread_local_inner {
             unsafe fn __getit(
                 init: $crate::option::Option<&mut $crate::option::Option<$t>>,
             ) -> $crate::option::Option<&'static $t> {
-                #[cfg(all(target_family = "wasm", not(target_feature = "atomics")))]
-                static __KEY: $crate::thread::__StaticLocalKeyInner<$t> =
-                    $crate::thread::__StaticLocalKeyInner::new();
-
                 #[thread_local]
                 #[cfg(all(
                     target_thread_local,
-                    not(all(target_family = "wasm", not(target_feature = "atomics"))),
                 ))]
                 static __KEY: $crate::thread::__FastLocalKeyInner<$t> =
                     $crate::thread::__FastLocalKeyInner::new();
 
                 #[cfg(all(
                     not(target_thread_local),
-                    not(all(target_family = "wasm", not(target_feature = "atomics"))),
                 ))]
                 static __KEY: $crate::thread::__OsLocalKeyInner<$t> =
                     $crate::thread::__OsLocalKeyInner::new();
@@ -853,48 +833,6 @@ mod lazy {
         pub unsafe fn take(&mut self) -> Option<T> {
             // SAFETY: See doc comment for this method.
             unsafe { (*self.inner.get()).take() }
-        }
-    }
-}
-
-/// On some targets like wasm there's no threads, so no need to generate
-/// thread locals and we can instead just use plain statics!
-#[doc(hidden)]
-#[cfg(all(target_family = "wasm", not(target_feature = "atomics")))]
-pub mod statik {
-    use super::lazy::LazyKeyInner;
-    use crate::fmt;
-
-    pub struct Key<T> {
-        inner: LazyKeyInner<T>,
-    }
-
-    unsafe impl<T> Sync for Key<T> {}
-
-    impl<T> fmt::Debug for Key<T> {
-        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            f.debug_struct("Key").finish_non_exhaustive()
-        }
-    }
-
-    impl<T> Key<T> {
-        pub const fn new() -> Key<T> {
-            Key { inner: LazyKeyInner::new() }
-        }
-
-        pub unsafe fn get(&self, init: impl FnOnce() -> T) -> Option<&'static T> {
-            // SAFETY: The caller must ensure no reference is ever handed out to
-            // the inner cell nor mutable reference to the Option<T> inside said
-            // cell. This make it safe to hand a reference, though the lifetime
-            // of 'static is itself unsafe, making the get method unsafe.
-            let value = unsafe {
-                match self.inner.get() {
-                    Some(ref value) => value,
-                    None => self.inner.initialize(init),
-                }
-            };
-
-            Some(value)
         }
     }
 }

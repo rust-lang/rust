@@ -1199,7 +1199,7 @@ impl<'a> WasmLd<'a> {
         //   the one linear memory as `shared`
         //
         // * `--max-memory=1G` - when specifying a shared memory this must also
-        //   be specified. We conservatively choose 1GB but users should be able
+        //   be specified. We conservatively choose 4GB but users should be able
         //   to override this with `-C link-arg`.
         //
         // * `--import-memory` - it doesn't make much sense for memory to be
@@ -1216,7 +1216,11 @@ impl<'a> WasmLd<'a> {
         //   symbols are how the TLS segments are initialized and configured.
         if sess.target_features.contains(&sym::atomics) {
             cmd.arg("--shared-memory");
-            cmd.arg("--max-memory=1073741824");
+            if sess.target.arch == "wasm64" {
+                cmd.arg("--max-memory=1099511627776");
+            } else {
+                cmd.arg("--max-memory=4294967296");
+            }            
             cmd.arg("--import-memory");
             cmd.arg("--export=__wasm_init_memory");
             cmd.arg("--export=__wasm_init_tls");

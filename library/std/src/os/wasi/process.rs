@@ -3,14 +3,10 @@
 //! [`std::process`]: crate::process
 
 #![stable(feature = "rust1", since = "1.0.0")]
+#![allow(dead_code, unused)]
 
-use crate::ffi::OsStr;
-use crate::io;
 use crate::os::wasi::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
 use crate::process;
-use crate::sealed::Sealed;
-use crate::sys;
-use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 
 #[stable(feature = "process_extensions", since = "1.2.0")]
 impl FromRawFd for process::Stdio {

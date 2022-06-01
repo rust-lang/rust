@@ -270,6 +270,10 @@ impl TcpListener {
         Ok((TcpStream { inner: Socket::new(fd, local_addr), peer_addr }, ret_peer))
     }
 
+    pub fn accept_timeout(&self, _timeout: crate::time::Duration) -> io::Result<(TcpStream, SocketAddr)> {
+        self.accept()
+    }
+
     pub fn duplicate(&self) -> io::Result<TcpListener> {
         Ok(self.clone())
     }

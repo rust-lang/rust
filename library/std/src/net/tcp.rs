@@ -434,7 +434,7 @@ impl TcpStream {
     ///                        .expect("Couldn't connect to the server...");
     /// stream.set_linger(Some(Duration::from_secs(0))).expect("set_linger call failed");
     /// ```
-    #[unstable(feature = "tcp_linger", issue = "88494")]
+    #[stable(feature = "tcp_linger", since = "1.18.0")]
     pub fn set_linger(&self, linger: Option<Duration>) -> io::Result<()> {
         self.0.set_linger(linger)
     }
@@ -456,7 +456,7 @@ impl TcpStream {
     /// stream.set_linger(Some(Duration::from_secs(0))).expect("set_linger call failed");
     /// assert_eq!(stream.linger().unwrap(), Some(Duration::from_secs(0)));
     /// ```
-    #[unstable(feature = "tcp_linger", issue = "88494")]
+    #[stable(feature = "tcp_linger", since = "1.18.0")]
     pub fn linger(&self) -> io::Result<Option<Duration>> {
         self.0.linger()
     }
@@ -809,6 +809,30 @@ impl TcpListener {
         // the `a` variable here is technically unused.
         #[cfg_attr(target_family = "wasm", allow(unused_variables))]
         self.0.accept().map(|(a, b)| (TcpStream(a), b))
+    }
+
+    /// Accept a new incoming connection from this listener (or times out).
+    ///
+    /// Unlike other methods on `TcpStream`, this does not correspond to a
+    /// single system call. It instead uses an OS-specific mechanism to await the
+    /// a completion request request, then calls `accept`.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::net::TcpListener;
+    /// use std::time::Duration;
+    ///
+    /// let listener = TcpListener::bind("127.0.0.1:8080").unwrap();
+    /// match listener.accept_timeout(Duration::from_secs(10)) {
+    ///     Ok((_socket, addr)) => println!("new client: {addr:?}"),
+    ///     Err(e) => println!("couldn't get client: {e:?}"),
+    /// }
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn accept_timeout(&self, timeout: crate::time::Duration) -> io::Result<(TcpStream, SocketAddr)> {
+        #[cfg_attr(target_family = "wasm", allow(unused_variables))]
+        self.0.accept_timeout(timeout).map(|(a, b)| (TcpStream(a), b))
     }
 
     /// Returns an iterator over the connections being received on this

@@ -4,6 +4,7 @@ use crate::io;
 use crate::mem;
 use crate::num::NonZeroUsize;
 use crate::ptr;
+use crate::sync::Arc;
 use crate::sys::{os, stack_overflow};
 use crate::time::Duration;
 
@@ -106,6 +107,43 @@ impl Thread {
                 let _handler = stack_overflow::Handler::new();
                 // Finally, let's run some code.
                 Box::from_raw(main as *mut Box<dyn FnOnce()>)();
+            }
+            ptr::null_mut()
+        }
+    }
+
+    pub unsafe fn new_reactor<F>(p: F) -> io::Result<Thread>
+    where F: Fn() + Send + Sync + 'static {
+        let p = Arc::new(p);
+        let p = Arc::into_raw(p);
+        let mut native: libc::pthread_t = mem::zeroed();
+        let mut attr: libc::pthread_attr_t = mem::zeroed();
+        assert_eq!(libc::pthread_attr_init(&mut attr), 0);
+
+        let ret = libc::pthread_create(&mut native, &attr, reactor_start, p as *mut _);
+        // Note: if the thread creation fails and this assert fails, then p will
+        // be leaked. However, an alternative design could cause double-free
+        // which is clearly worse.
+        assert_eq!(libc::pthread_attr_destroy(&mut attr), 0);
+
+        return if ret != 0 {
+            // The thread failed to start and as a result p was not consumed. Therefore, it is
+            // safe to reconstruct the box so that it gets deallocated.
+            drop(Arc::from_raw(p));
+            Err(io::Error::from_raw_os_error(ret))
+        } else {
+            Ok(Thread { id: native })
+        };
+
+        extern "C" fn reactor_start(main: *mut libc::c_void) -> *mut libc::c_void {
+            unsafe {
+                // Next, set up our stack overflow handler which may get triggered if we run
+                // out of stack.
+                let _handler = stack_overflow::Handler::new();
+                // Finally, let's run some code.
+                let f = Arc::from_raw(main as *mut Arc<dyn Fn()>);
+                f();
+                crate::mem::forget(f);
             }
             ptr::null_mut()
         }

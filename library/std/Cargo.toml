@@ -48,12 +48,14 @@ fortanix-sgx-abi = { version = "0.3.2", features = ['rustc-dep-of-std'] }
 [target.'cfg(target_os = "hermit")'.dependencies]
 hermit-abi = { version = "0.2.0", features = ['rustc-dep-of-std'] }
 
-[target.wasm32-wasi.dependencies]
-#wasi = { version = "0.11.0", features = ['rustc-dep-of-std'], default-features = false }
-wasi = { package = "wasix", version = "0.11.11", features = ['rustc-dep-of-std'], default-features = false }
+[target.wasm32-unknown-wasi.dependencies]
+wasi = { version = "0.11.0", features = ['rustc-dep-of-std'], default-features = false }
 
-[target.wasm64-wasi.dependencies]
-wasi = { package = "wasix", version = "0.11.11", features = ['rustc-dep-of-std'], default-features = false }
+[target.wasm32-wasmer-wasi.dependencies]
+wasi = { package = "wasix", version = "0.11.23", features = ['rustc-dep-of-std'], default-features = false }
+
+[target.wasm64-wasmer-wasi.dependencies]
+wasi = { package = "wasix", version = "0.11.23", features = ['rustc-dep-of-std'], default-features = false }
 
 [features]
 backtrace = [

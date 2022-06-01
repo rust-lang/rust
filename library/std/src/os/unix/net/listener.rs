@@ -151,6 +151,34 @@ impl UnixListener {
         Ok((UnixStream(sock), addr))
     }
 
+    /// Accepts a new incoming connection to this listener.
+    ///
+    /// Unlike other methods, this does not correspond to a
+    /// single system call. It instead uses an OS-specific mechanism to await the
+    /// a completion request request, then calls `accept`.
+    ///
+    /// [`UnixStream`]: crate::os::unix::net::UnixStream
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::os::unix::net::UnixListener;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let listener = UnixListener::bind("/path/to/the/socket")?;
+    ///
+    ///     match listener.accept() {
+    ///         Ok((socket, addr)) => println!("Got a client: {addr:?}"),
+    ///         Err(e) => println!("accept function failed: {e:?}"),
+    ///     }
+    ///     Ok(())
+    /// }
+    /// ```
+    #[stable(feature = "unix_socket", since = "1.10.0")]
+    pub fn accept_timeout(&self, _timeout: crate::time::Duration) -> io::Result<(UnixStream, SocketAddr)> {
+        self.accept()
+    }
+
     /// Creates a new independently owned handle to the underlying socket.
     ///
     /// The returned `UnixListener` is a reference to the same socket that this

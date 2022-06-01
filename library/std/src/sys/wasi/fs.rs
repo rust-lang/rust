@@ -1,4 +1,5 @@
 #![deny(unsafe_op_in_unsafe_fn)]
+#![allow(unused_imports)]
 
 use super::fd::WasiFd;
 use crate::ffi::{CStr, CString, OsStr, OsString};
@@ -662,8 +663,8 @@ fn open_at(fd: &WasiFd, path: &Path, opts: &OpenOptions) -> io::Result<File> {
 ///
 /// Note that this can fail if `p` doesn't look like it can be opened relative
 /// to any pre-opened file descriptor.
-fn open_parent(p: &Path) -> io::Result<(ManuallyDrop<WasiFd>, PathBuf)> {
-    let p = CString::new(p.as_os_str().as_bytes())?;
+fn open_parent(path: &Path) -> io::Result<(ManuallyDrop<WasiFd>, PathBuf)> {
+    let p = CString::new(path.as_os_str().as_bytes())?;
     let mut buf = Vec::<u8>::with_capacity(512);
     loop {
         unsafe {
@@ -691,7 +692,15 @@ fn open_parent(p: &Path) -> io::Result<(ManuallyDrop<WasiFd>, PathBuf)> {
                 );
                 return Err(io::Error::new(io::ErrorKind::Uncategorized, msg));
             }
-            let relative = CStr::from_ptr(relative_path).to_bytes().to_vec();
+            /*
+            let mut relative = CStr::from_ptr(relative_path).to_bytes().to_vec();
+            if let Some(test) = p.as_c_str().as_str() {
+                if test.starts_with("/") {
+                    relative = p;
+                }
+            }
+            */
+            let relative = path.as_os_str().as_bytes().to_vec();
 
             return Ok((
                 ManuallyDrop::new(WasiFd::from_raw_fd(fd as c_int)),

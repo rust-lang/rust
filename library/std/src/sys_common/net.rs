@@ -423,6 +423,14 @@ impl TcpListener {
         Ok((TcpStream { inner: sock }, addr))
     }
 
+    pub fn accept_timeout(&self, timeout: crate::time::Duration) -> io::Result<(TcpStream, SocketAddr)> {
+        let mut storage: c::sockaddr_storage = unsafe { mem::zeroed() };
+        let mut len = mem::size_of_val(&storage) as c::socklen_t;
+        let sock = self.inner.accept_timeout(&mut storage as *mut _ as *mut _, &mut len, timeout)?;
+        let addr = sockaddr_to_addr(&storage, len as usize)?;
+        Ok((TcpStream { inner: sock }, addr))
+    }
+
     pub fn duplicate(&self) -> io::Result<TcpListener> {
         self.inner.duplicate().map(|s| TcpListener { inner: s })
     }

@@ -706,9 +706,10 @@ changelog-seen = 2
 # The full path to the musl libdir.
 #musl-libdir = musl-root/lib
 
-# The root location of the `wasm32-wasi` and 'wasm64-wasi' sysroot. Only used for the
+# The root location of the `wasm32-unknown-wasi` and 'wasm64-unknown-wasi' sysroot. Only used for the
 # `wasi` target os. If you are building wasm32-wasi/wasm64-wasi target, make sure to
-# create a `[target.wasm32-wasi]` or '[target.wasm64-wasi]' section and move this field there.
+# create a `[target.wasm32-unknown-wasi]`, `[target.wasm32-wasmer-wasi]` or '[target.wasm64-wasmer-wasi]'
+# section and move this field there.
 #wasi-root = <none> (path)
 
 # Used in testing for configuring where the QEMU images are located, you

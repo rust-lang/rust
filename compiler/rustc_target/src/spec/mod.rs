@@ -959,9 +959,10 @@ supported_targets! {
     ("asmjs-unknown-emscripten", asmjs_unknown_emscripten),
     ("wasm32-unknown-emscripten", wasm32_unknown_emscripten),
     ("wasm32-unknown-unknown", wasm32_unknown_unknown),
-    ("wasm32-wasi", wasm32_wasi),
+    ("wasm32-unknown-wasi", wasm32_unknown_wasi),
+    ("wasm32-wasmer-wasi", wasm32_wasmer_wasi),
     ("wasm64-unknown-unknown", wasm64_unknown_unknown),
-    ("wasm64-wasi", wasm64_wasi),
+    ("wasm64-wasmer-wasi", wasm64_wasmer_wasi),
 
     ("thumbv6m-none-eabi", thumbv6m_none_eabi),
     ("thumbv7m-none-eabi", thumbv7m_none_eabi),

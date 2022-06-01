@@ -7,6 +7,7 @@ use super::{crt_objects, LinkerFlavor, LldFlavor, Target};
 pub fn target() -> Target {
     let mut options = wasm_base::options();
     options.os = "wasi".into();
+    options.vendor = "wasmer".into();
     options.linker_flavor = LinkerFlavor::Lld(LldFlavor::Wasm);
     let clang_args = options
         .pre_link_args
@@ -41,10 +42,15 @@ pub fn target() -> Target {
     let lld_args = options.pre_link_args.get_mut(&LinkerFlavor::Lld(LldFlavor::Wasm)).unwrap();
     lld_args.push("-mwasm64".into());
 
+    // TODO: Adding "+atomics" here seems to enable more of the multithreading however it does not yet
+    //       work properly so more work is needed to finish this, otherwise this is very close to
+    //       full networking support.
+    // We need shared memory for multithreading
+    //lld_args.push("--shared-memory".into());
+
     // Any engine that implements wasm64 will surely implement the rest of these
     // features since they were all merged into the official spec by the time
     // wasm64 was designed.
-    //options.features = "+bulk-memory,+mutable-globals,+atomics,+simd128,+sign-ext,+nontrapping-fptoint".into();
     options.features = "+bulk-memory,+mutable-globals,+sign-ext,+nontrapping-fptoint".into();
 
     Target {

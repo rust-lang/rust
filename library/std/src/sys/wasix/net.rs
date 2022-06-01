@@ -174,12 +174,8 @@ impl Socket
     }
 
     pub fn accept(&self) -> io::Result<Socket> {
-        self.accept_with_flags(0)
-    }
-
-    fn accept_with_flags(&self, flags: wasi::Fdflags) -> io::Result<Socket> {
         let (fd, addr) = unsafe {
-            wasi::sock_accept(self.fd(), flags).map_err(err2io)?
+            wasi::sock_accept(self.fd(), 0).map_err(err2io)?
         };
         let addr = conv_addr_port(addr);
         Ok(Socket {
@@ -187,6 +183,64 @@ impl Socket
             addr,
             peer: Arc::new(Mutex::new(Some(addr))),
         })
+    }
+
+    pub fn accept_timeout(&self, timeout: Duration) -> io::Result<Socket> {
+        self.set_nonblocking(true)?;
+        loop {
+            let mut pollfd = libc::pollfd { fd: self.as_raw_fd(), events: libc::POLLIN, revents: 0 };
+            let start = Instant::now();
+            loop {
+                let elapsed = start.elapsed();
+                if elapsed >= timeout {
+                    return Err(io::const_io_error!(io::ErrorKind::TimedOut, "connection timed out"));
+                }
+
+                let timeout = timeout - elapsed;
+                let mut timeout = timeout
+                    .as_secs()
+                    .saturating_mul(1_000)
+                    .saturating_add(timeout.subsec_nanos() as u64 / 1_000_000);
+                if timeout == 0 {
+                    timeout = 1;
+                }
+
+                let timeout = timeout.min(libc::c_int::MAX as u64) as c_int;
+
+                match unsafe { libc::poll(&mut pollfd, 1, timeout) } {
+                    -1 => {
+                        let err = io::Error::last_os_error();
+                        if err.kind() != io::ErrorKind::Interrupted {
+                            return Err(err);
+                        }
+                    }
+                    0 => {}
+                    _ => {
+                        break;
+                    }
+                }
+            }
+            
+            unsafe {
+                match wasi::sock_accept(self.fd(), 0) {
+                    Ok((fd, addr)) => {
+                        let addr = conv_addr_port(addr);
+                        return Ok(Socket {
+                            fd: Some(WasiFd::from_raw_fd(fd as RawFd)),
+                            addr,
+                            peer: Arc::new(Mutex::new(Some(addr))),
+                        });
+                    }
+                    Err(wasi::ERRNO_AGAIN) => {
+                        crate::thread::yield_now();
+                        continue;
+                    }
+                    Err(err) => {
+                        return Err(err2io(err))
+                    }
+                }
+            }
+        }
     }
 
     pub fn duplicate(&self) -> io::Result<Socket> {
@@ -557,18 +611,6 @@ impl Socket
     }
 
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
-        if nonblocking {
-            self.set_timeout_internal(Some(Duration::ZERO), wasi::SOCK_OPTION_RECV_TIMEOUT)?;
-            self.set_timeout_internal(Some(Duration::ZERO), wasi::SOCK_OPTION_SEND_TIMEOUT)?;
-            self.set_timeout_internal(Some(Duration::ZERO), wasi::SOCK_OPTION_CONNECT_TIMEOUT)?;
-            self.set_timeout_internal(Some(Duration::ZERO), wasi::SOCK_OPTION_ACCEPT_TIMEOUT)?;
-        } else {
-            self.set_timeout_internal(None, wasi::SOCK_OPTION_RECV_TIMEOUT)?;
-            self.set_timeout_internal(None, wasi::SOCK_OPTION_SEND_TIMEOUT)?;
-            self.set_timeout_internal(None, wasi::SOCK_OPTION_CONNECT_TIMEOUT)?;
-            self.set_timeout_internal(None, wasi::SOCK_OPTION_ACCEPT_TIMEOUT)?;
-        }
-
         let fdstat = unsafe {
             wasi::fd_fdstat_get(self.fd()).map_err(err2io)?
         };
@@ -696,7 +738,7 @@ fn conv_addr_v6(u: wasi::AddrIp6) -> Ipv6Addr {
     Ipv6Addr::new(u.n0, u.n1, u.n2, u.n3, u.h0, u.h1, u.h2, u.h3)
 }
 
-fn conv_addr(addr: wasi::AddrIp) -> IpAddr {
+fn conv_addr(addr: wasi::Addr) -> IpAddr {
     unsafe {
         match addr.tag {
             a if a == wasi::ADDRESS_FAMILY_INET6.raw() => {
@@ -760,20 +802,20 @@ fn to_wasi_addr_v6(ip: Ipv6Addr) -> wasi::AddrIp6 {
     }
 }
 
-fn to_wasi_addr(addr: IpAddr) -> wasi::AddrIp {
+fn to_wasi_addr(addr: IpAddr) -> wasi::Addr {
     match addr {
         IpAddr::V4(ip) => {
-            wasi::AddrIp {
+            wasi::Addr {
                 tag: wasi::ADDRESS_FAMILY_INET4.raw(),
-                u: wasi::AddrIpU {
+                u: wasi::AddrU {
                     inet4: to_wasi_addr_v4(ip)
                 }
             }
         },
         IpAddr::V6(ip) => {
-            wasi::AddrIp {
+            wasi::Addr {
                 tag: wasi::ADDRESS_FAMILY_INET6.raw(),
-                u: wasi::AddrIpU {
+                u: wasi::AddrU {
                     inet6: to_wasi_addr_v6(ip)
                 }
             }
@@ -993,6 +1035,13 @@ impl TcpListener {
     pub fn bind(addr: io::Result<&SocketAddr>) -> io::Result<TcpListener> {
         let addr = addr?;
         let sock = Socket::new(addr, SOCK_STREAM)?;
+
+        sock.set_reuse_addr(true)?;
+
+        unsafe {
+            wasi::sock_listen(sock.fd(), 128).map_err(err2io)?;
+        }
+
         Ok(
             TcpListener {
                 inner: sock
@@ -1006,6 +1055,19 @@ impl TcpListener {
 
     pub fn accept(&self) -> io::Result<(TcpStream, SocketAddr)> {
         let socket = self.inner.accept()?;
+        let addr = socket.socket_addr()?;
+        Ok(
+            (
+                TcpStream {
+                    inner: socket,
+                },
+                addr
+            )
+        )
+    }
+
+    pub fn accept_timeout(&self, timeout: crate::time::Duration) -> io::Result<(TcpStream, SocketAddr)> {
+        let socket = self.inner.accept_timeout(timeout)?;
         let addr = socket.socket_addr()?;
         Ok(
             (
@@ -1290,8 +1352,8 @@ impl<'a> TryFrom<(&'a str, u16)> for LookupHost {
         let port = v.1;
         let mut ret = VecDeque::new();
         unsafe {
-            let mut ips = [crate::mem::MaybeUninit::<wasi::AddrIp>::zeroed(); 50];
-            let cnt = wasi::resolve(host, port, ips.as_mut_ptr() as *mut wasi::AddrIp, ips.len()).map_err(err2io)?;
+            let mut ips = [crate::mem::MaybeUninit::<wasi::Addr>::zeroed(); 50];
+            let cnt = wasi::resolve(host, port, ips.as_mut_ptr() as *mut wasi::Addr, ips.len()).map_err(err2io)?;
             for n in 0..cnt {
                 let ip = ips[n].assume_init();
                 let ip = conv_addr(ip);

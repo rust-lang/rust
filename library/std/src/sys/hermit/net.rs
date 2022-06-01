@@ -253,6 +253,10 @@ impl TcpListener {
         Ok((TcpStream(Arc::new(Socket(handle))), saddr))
     }
 
+    pub fn accept_timeout(&self, _timeout: crate::time::Duration) -> io::Result<(TcpStream, SocketAddr)> {
+        self.accept()
+    }
+
     pub fn duplicate(&self) -> io::Result<TcpListener> {
         Ok(self.clone())
     }

@@ -112,6 +112,11 @@ impl Thread {
         Ok(Thread(handle))
     }
 
+    pub unsafe fn new_reactor<F>(p: F) -> io::Result<Thread>
+    where F: Fn() + Send + Sync + 'static {
+        unsupported()
+    }
+
     pub(super) fn entry() -> JoinNotifier {
         let mut pending_tasks = task_queue::lock();
         let task = rtunwrap!(Some, pending_tasks.pop());

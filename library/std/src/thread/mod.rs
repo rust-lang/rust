@@ -208,10 +208,6 @@ pub use self::local::fast::Key as __FastLocalKeyInner;
 #[unstable(feature = "libstd_thread_internals", issue = "none")]
 #[doc(hidden)]
 pub use self::local::os::Key as __OsLocalKeyInner;
-#[unstable(feature = "libstd_thread_internals", issue = "none")]
-#[cfg(all(target_family = "wasm", not(target_feature = "atomics")))]
-#[doc(hidden)]
-pub use self::local::statik::Key as __StaticLocalKeyInner;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Builder
@@ -391,6 +387,50 @@ impl Builder {
         unsafe { self.spawn_unchecked(f) }
     }
 
+    /// Spawns a new reactor by taking ownership of the `Builder`, and returns an
+    /// [`io::Result`].
+    ///
+    /// The spawned reactor may outlive the caller (unless the caller thread
+    /// is the main thread; the whole process is terminated when the main
+    /// thread finishes).
+    ///
+    /// # Errors
+    ///
+    /// Unlike the [`spawn`] free function, this method yields an
+    /// [`io::Result`] to capture any failure to create the thread at
+    /// the OS level.
+    ///
+    /// [`io::Result`]: crate::io::Result
+    ///
+    /// # Panics
+    ///
+    /// Panics if a reactor name was set and it contained null bytes.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::thread;
+    ///
+    /// let builder = thread::Builder::new();
+    ///
+    /// builder.reactor(|| {
+    ///     // reactor code
+    /// }).unwrap();
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn reactor<F>(self, f: F) -> io::Result<()>
+    where
+        F: Fn(),
+        F: Send + Sync + 'static,
+    {
+        unsafe {
+            imp::Thread::new_reactor(
+                f,
+            )?
+        };
+        Ok(())
+    }
+
     /// Spawns a new thread without any lifetime restrictions by taking ownership
     /// of the `Builder`, and returns an [`io::Result`] to its [`JoinHandle`].
     ///
@@ -496,6 +536,7 @@ impl Builder {
             // SAFETY: the stack guard passed is the one for the current thread.
             // This means the current thread's stack and the new thread's stack
             // are properly set and protected from each other.
+            #[cfg(not(target_os = "wasi"))]
             thread_info::set(unsafe { imp::guard::current() }, their_thread);
             let try_result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
                 crate::sys_common::backtrace::__rust_begin_short_backtrace(f)
@@ -650,6 +691,90 @@ where
     T: Send + 'static,
 {
     Builder::new().spawn(f).expect("failed to spawn thread")
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Free functions
+////////////////////////////////////////////////////////////////////////////////
+
+/// Spawns a new reactor
+///
+/// This call will create a reactor using default parameters of [`Builder`], if you
+/// want to specify the stack size or the name of the reactor, use this API
+/// instead.
+///
+/// As you can see in the signature of `reactor` there are two constraints on
+/// the closure given to `reactor`, let's explain them:
+///
+/// - The `'static` constraint means that the closure must have a lifetime of the
+///   whole program execution. The reason for this is that reactors will be
+///   continuously invoked by outside of the program until it exists
+///
+///   Indeed if the reactor, can outlive their caller, we need to make sure that
+///   they will be valid afterwards, thus is until the end of the program, hence 
+///   he `'static` lifetime.
+/// - The [`Send`] constraint is because the closure will need to be passed
+///   *by value* from the thread where it is spawned to the new thread. Its
+///   return value will need to be passed from the new thread to the thread
+///   where it is `join`ed.
+///   As a reminder, the [`Send`] marker trait expresses that it is safe to be
+///   passed from thread to thread. [`Sync`] expresses that it is safe to have a
+///   reference be passed from thread to thread.
+///
+/// # Panics
+///
+/// Panics if the OS fails to create a thread; use [`Builder::reactor`]
+/// to recover from such errors.
+///
+/// # Examples
+///
+/// Creating a thread.
+///
+/// ```
+/// use std::thread;
+///
+/// thread::reactor(|| {
+///     // reactor code
+/// });
+/// ```
+///
+/// As mentioned in the module documentation, reactors are usually made to
+/// communicate using [`channels`], here is how it usually looks.
+///
+/// This example also shows how to use `move`, in order to give ownership
+/// of values to a reactor.
+///
+/// ```
+/// use std::thread;
+/// use std::sync::{Arc, Mutex};
+/// use std::sync::mpsc::channel;
+///
+/// let (tx, rx) = channel();
+/// let tx = Arc::new(Mutex::new(tx));
+///
+/// let sender = thread::reactor(move || {
+///     tx.lock().unwrap().send("Hello, thread".to_owned())
+///         .expect("Unable to send on channel");
+/// });
+///
+/// let receiver = thread::thread(move || {
+///     let value = rx.recv().expect("Unable to receive from channel");
+///     println!("{value}");
+/// });
+/// 
+/// receiver.join().expect("The receiver thread has panicked");
+/// ```
+///
+/// [`channels`]: crate::sync::mpsc
+/// [`Err`]: crate::result::Result::Err
+#[stable(feature = "rust1", since = "1.0.0")]
+pub fn reactor<F>(f: F)
+where
+    F: Fn(),
+    F: Send + Sync + 'static,
+{
+    Builder::new().reactor(f).expect("failed to spawn reactor")
 }
 
 /// Gets a handle to the thread that invokes it.

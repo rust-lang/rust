@@ -183,6 +183,11 @@ impl Thread {
         Ok(Self { inner: ManuallyDrop::new(inner), task: new_task })
     }
 
+    pub unsafe fn new_reactor<F>(p: F) -> io::Result<Thread>
+    where F: Fn() + Send + Sync + 'static {
+        unsupported()
+    }
+
     pub fn yield_now() {
         expect_success(unsafe { abi::rot_rdq(abi::TPRI_SELF) }, &"rot_rdq");
     }

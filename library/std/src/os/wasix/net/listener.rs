@@ -61,6 +61,17 @@ impl UnixListener {
         ))
     }
 
+    /// Accepts a new incoming connection to this listener (or times out).
+    ///
+    /// Not currently supported on this platform
+    #[stable(feature = "unix_socket", since = "1.10.0")]
+    pub fn accept_timeout(&self, _timeout: crate::time::Duration) -> io::Result<(UnixStream, SocketAddr)> {
+        Err(crate::io::const_io_error!(
+            crate::io::ErrorKind::Unsupported,
+            "unix sockets are not supported on this platform",
+        ))
+    }
+
     /// Creates a new independently owned handle to the underlying socket.
     ///
     /// Not currently supported on this platform
