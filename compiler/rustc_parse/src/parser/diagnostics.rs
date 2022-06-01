@@ -1687,10 +1687,10 @@ impl<'a> Parser<'a> {
             // future.await()
             let lo = self.token.span;
             self.bump(); // (
-            let sp = lo.to(self.token.span);
+            let span = lo.to(self.token.span);
             self.bump(); // )
 
-            self.sess.emit_err(IncorrectUseOfAwait { span: sp });
+            self.sess.emit_err(IncorrectUseOfAwait { span });
         }
     }
 
