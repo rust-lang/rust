@@ -127,7 +127,7 @@ impl<S: Encoder, T: Encodable<S>> Encodable<S> for P<T> {
 }
 
 impl<T> P<[T]> {
-    pub const fn new() -> P<[T]> {
+    pub fn new() -> P<[T]> {
         P { ptr: Box::default() }
     }
 

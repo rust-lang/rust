@@ -44,8 +44,7 @@ impl_float_to_int!(f64 => u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize);
 macro_rules! impl_from {
     ($Small: ty, $Large: ty, #[$attr:meta], $doc: expr) => {
         #[$attr]
-        #[rustc_const_unstable(feature = "const_num_from_num", issue = "87852")]
-        impl const From<$Small> for $Large {
+        impl From<$Small> for $Large {
             // Rustdocs on the impl block show a "[+] show undocumented items" toggle.
             // Rustdocs on functions do not.
             #[doc = $doc]
@@ -172,8 +171,7 @@ impl_from! { f32, f64, #[stable(feature = "lossless_float_conv", since = "1.6.0"
 macro_rules! try_from_unbounded {
     ($source:ty, $($target:ty),*) => {$(
         #[stable(feature = "try_from", since = "1.34.0")]
-        #[rustc_const_unstable(feature = "const_num_from_num", issue = "87852")]
-        impl const TryFrom<$source> for $target {
+        impl TryFrom<$source> for $target {
             type Error = TryFromIntError;
 
             /// Try to create the target number type from a source
@@ -191,8 +189,7 @@ macro_rules! try_from_unbounded {
 macro_rules! try_from_lower_bounded {
     ($source:ty, $($target:ty),*) => {$(
         #[stable(feature = "try_from", since = "1.34.0")]
-        #[rustc_const_unstable(feature = "const_num_from_num", issue = "87852")]
-        impl const TryFrom<$source> for $target {
+        impl TryFrom<$source> for $target {
             type Error = TryFromIntError;
 
             /// Try to create the target number type from a source
@@ -214,8 +211,7 @@ macro_rules! try_from_lower_bounded {
 macro_rules! try_from_upper_bounded {
     ($source:ty, $($target:ty),*) => {$(
         #[stable(feature = "try_from", since = "1.34.0")]
-        #[rustc_const_unstable(feature = "const_num_from_num", issue = "87852")]
-        impl const TryFrom<$source> for $target {
+        impl TryFrom<$source> for $target {
             type Error = TryFromIntError;
 
             /// Try to create the target number type from a source
@@ -237,8 +233,7 @@ macro_rules! try_from_upper_bounded {
 macro_rules! try_from_both_bounded {
     ($source:ty, $($target:ty),*) => {$(
         #[stable(feature = "try_from", since = "1.34.0")]
-        #[rustc_const_unstable(feature = "const_num_from_num", issue = "87852")]
-        impl const TryFrom<$source> for $target {
+        impl TryFrom<$source> for $target {
             type Error = TryFromIntError;
 
             /// Try to create the target number type from a source
@@ -389,8 +384,7 @@ use crate::num::NonZeroUsize;
 macro_rules! nzint_impl_from {
     ($Small: ty, $Large: ty, #[$attr:meta], $doc: expr) => {
         #[$attr]
-        #[rustc_const_unstable(feature = "const_num_from_num", issue = "87852")]
-        impl const From<$Small> for $Large {
+        impl From<$Small> for $Large {
             // Rustdocs on the impl block show a "[+] show undocumented items" toggle.
             // Rustdocs on functions do not.
             #[doc = $doc]

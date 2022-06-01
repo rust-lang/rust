@@ -525,8 +525,7 @@ macro_rules! impls {
         }
 
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[rustc_const_unstable(feature = "const_default_impls", issue = "87864")]
-        impl<T: ?Sized> const Default for $t<T> {
+        impl<T: ?Sized> Default for $t<T> {
             fn default() -> Self {
                 Self
             }

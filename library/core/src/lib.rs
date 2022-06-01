@@ -95,7 +95,6 @@
 #![allow(explicit_outlives_requirements)]
 //
 // Library features:
-#![feature(const_align_offset)]
 #![feature(const_align_of_val)]
 #![feature(const_arguments_as_str)]
 #![feature(const_array_into_iter_constructors)]
@@ -106,12 +105,10 @@
 #![feature(const_char_convert)]
 #![feature(const_clone)]
 #![feature(const_discriminant)]
-#![feature(const_eval_select)]
 #![feature(const_float_bits_conv)]
 #![feature(const_float_classify)]
 #![feature(const_fmt_arguments_new)]
 #![feature(const_heap)]
-#![feature(const_convert)]
 #![feature(const_inherent_unchecked_arith)]
 #![feature(const_int_unchecked_arith)]
 #![feature(const_intrinsic_forget)]
@@ -120,10 +117,8 @@
 #![feature(const_maybe_uninit_as_mut_ptr)]
 #![feature(const_maybe_uninit_assume_init)]
 #![feature(const_nonnull_new)]
-#![feature(const_num_from_num)]
 #![feature(const_ops)]
 #![feature(const_option)]
-#![feature(const_option_ext)]
 #![feature(const_pin)]
 #![feature(const_ptr_sub_ptr)]
 #![feature(const_replace)]
@@ -141,7 +136,6 @@
 #![feature(const_trait_impl)]
 #![feature(const_type_id)]
 #![feature(const_type_name)]
-#![feature(const_default_impls)]
 #![feature(const_unsafecell_get_mut)]
 #![feature(core_panic)]
 #![feature(duration_consts_float)]
@@ -154,8 +148,6 @@
 #![feature(variant_count)]
 #![feature(const_array_from_ref)]
 #![feature(const_slice_from_ref)]
-#![feature(const_slice_index)]
-#![feature(const_is_char_boundary)]
 //
 // Language features:
 #![feature(abi_unadjusted)]

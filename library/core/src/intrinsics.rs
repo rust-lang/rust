@@ -55,7 +55,6 @@
 #![allow(missing_docs)]
 
 use crate::marker::{Destruct, DiscriminantKind};
-use crate::mem;
 
 // These imports are used for simplifying intra-doc links
 #[allow(unused_imports)]
@@ -2311,42 +2310,10 @@ extern "rust-intrinsic" {
 ///
 /// So in a sense it is UB if this macro is useful, but we expect callers of `unsafe fn` to make
 /// the occasional mistake, and this check should help them figure things out.
-#[allow_internal_unstable(const_eval_select)] // permit this to be called in stably-const fn
 macro_rules! assert_unsafe_precondition {
-    ($e:expr) => {
-        if cfg!(debug_assertions) {
-            // Use a closure so that we can capture arbitrary expressions from the invocation
-            let runtime = || {
-                if !$e {
-                    // abort instead of panicking to reduce impact on code size
-                    ::core::intrinsics::abort();
-                }
-            };
-            const fn comptime() {}
-
-            ::core::intrinsics::const_eval_select((), comptime, runtime);
-        }
-    };
+    ($e:expr) => {{}};
 }
 pub(crate) use assert_unsafe_precondition;
-
-/// Checks whether `ptr` is properly aligned with respect to
-/// `align_of::<T>()`.
-pub(crate) fn is_aligned_and_not_null<T>(ptr: *const T) -> bool {
-    !ptr.is_null() && ptr.addr() % mem::align_of::<T>() == 0
-}
-
-/// Checks whether the regions of memory starting at `src` and `dst` of size
-/// `count * size_of::<T>()` do *not* overlap.
-pub(crate) fn is_nonoverlapping<T>(src: *const T, dst: *const T, count: usize) -> bool {
-    let src_usize = src.addr();
-    let dst_usize = dst.addr();
-    let size = mem::size_of::<T>().checked_mul(count).unwrap();
-    let diff = if src_usize > dst_usize { src_usize - dst_usize } else { dst_usize - src_usize };
-    // If the absolute distance between the ptrs is at least as big as the size of the buffer,
-    // they do not overlap.
-    diff >= size
-}
 
 /// Copies `count * size_of::<T>()` bytes from `src` to `dst`. The source
 /// and destination must *not* overlap.
@@ -2711,5 +2678,8 @@ where
     F: ~const FnOnce<ARG, Output = RET>,
     G: FnOnce<ARG, Output = RET> + ~const Destruct,
 {
-    called_in_const.call_once(arg)
+    crate::mem::forget(_called_at_rt);
+    crate::mem::forget(arg);
+    crate::mem::forget(called_in_const);
+    panic!()
 }

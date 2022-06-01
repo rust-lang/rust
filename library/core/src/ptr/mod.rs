@@ -371,9 +371,7 @@
 use crate::cmp::Ordering;
 use crate::fmt;
 use crate::hash;
-use crate::intrinsics::{
-    self, assert_unsafe_precondition, is_aligned_and_not_null, is_nonoverlapping,
-};
+use crate::intrinsics::{self, assert_unsafe_precondition};
 
 use crate::mem::{self, MaybeUninit};
 
@@ -883,13 +881,9 @@ pub const unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
 
     // SAFETY: the caller must guarantee that `x` and `y` are
     // valid for writes and properly aligned.
-    unsafe {
-        assert_unsafe_precondition!(
-            is_aligned_and_not_null(x)
-                && is_aligned_and_not_null(y)
-                && is_nonoverlapping(x, y, count)
-        );
-    }
+    assert_unsafe_precondition!(
+        is_aligned_and_not_null(x) && is_aligned_and_not_null(y) && is_nonoverlapping(x, y, count)
+    );
 
     // NOTE(scottmcm) Miri is disabled here as reading in smaller units is a
     // pessimization for it.  Also, if the type contains any unaligned pointers,
