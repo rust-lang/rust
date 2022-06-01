@@ -226,17 +226,17 @@ fn get_index_type_name(clean_type: &clean::Type) -> Option<Symbol> {
             Some(path.segments.last().unwrap().name)
         }
         // We return an empty name because we don't care about the generic name itself.
-        clean::Generic(_) => Some(kw::Empty),
+        clean::Generic(_) | clean::ImplTrait(_) => Some(kw::Empty),
         clean::Primitive(ref p) => Some(p.as_sym()),
-        clean::BorrowedRef { ref type_, .. } => get_index_type_name(type_),
+        clean::BorrowedRef { ref type_, .. } | clean::RawPointer(_, ref type_) => {
+            get_index_type_name(type_)
+        }
         clean::BareFunction(_)
         | clean::Tuple(_)
         | clean::Slice(_)
         | clean::Array(_, _)
-        | clean::RawPointer(_, _)
         | clean::QPath { .. }
-        | clean::Infer
-        | clean::ImplTrait(_) => None,
+        | clean::Infer => None,
     }
 }
 
@@ -264,10 +264,12 @@ fn add_generics_and_bounds_as_types<'tcx, 'a>(
         mut generics: Vec<TypeWithKind>,
         cache: &Cache,
     ) {
-        let is_full_generic = ty.is_full_generic();
+        // generics and impl trait are both identified by their generics,
+        // rather than a type name itself
+        let anonymous = ty.is_full_generic() || ty.is_impl_trait();
         let generics_empty = generics.is_empty();
 
-        if is_full_generic {
+        if anonymous {
             if generics_empty {
                 // This is a type parameter with no trait bounds (for example: `T` in
                 // `fn f<T>(p: T)`, so not useful for the rustdoc search because we would end up
@@ -318,7 +320,7 @@ fn add_generics_and_bounds_as_types<'tcx, 'a>(
         if index_ty.name.as_ref().map(|s| s.is_empty() && generics_empty).unwrap_or(true) {
             return;
         }
-        if is_full_generic {
+        if anonymous {
             // We remove the name of the full generic because we have no use for it.
             index_ty.name = Some(String::new());
             res.push(TypeWithKind::from((index_ty, ItemType::Generic)));
@@ -398,6 +400,23 @@ fn add_generics_and_bounds_as_types<'tcx, 'a>(
             }
             insert_ty(res, tcx, arg.clone(), ty_generics, cache);
         }
+    } else if let Type::ImplTrait(ref bounds) = *arg {
+        let mut ty_generics = Vec::new();
+        for bound in bounds {
+            if let Some(path) = bound.get_trait_path() {
+                let ty = Type::Path { path };
+                add_generics_and_bounds_as_types(
+                    self_,
+                    generics,
+                    &ty,
+                    tcx,
+                    recurse + 1,
+                    &mut ty_generics,
+                    cache,
+                );
+            }
+        }
+        insert_ty(res, tcx, arg.clone(), ty_generics, cache);
     } else {
         // This is not a type parameter. So for example if we have `T, U: Option<T>`, and we're
         // looking at `Option`, we enter this "else" condition, otherwise if it's `T`, we don't.
