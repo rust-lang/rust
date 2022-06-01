@@ -286,8 +286,8 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     self.visit_foreign_item(item, None, om);
                 }
             }
-            // If we're inlining, skip private items.
-            _ if self.inlining && !is_pub => {}
+            // If we're inlining, skip private items or item reexported as "_".
+            _ if self.inlining && (!is_pub || renamed == Some(kw::Underscore)) => {}
             hir::ItemKind::GlobalAsm(..) => {}
             hir::ItemKind::Use(_, hir::UseKind::ListStem) => {}
             hir::ItemKind::Use(path, kind) => {
