@@ -171,7 +171,15 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
         }
         _ => 0,
     };
-    file.flags = FileFlags::Elf { e_flags };
+    // adapted from LLVM's `MCELFObjectTargetWriter::getOSABI`
+    let os_abi = match sess.target.options.os.as_ref() {
+        "hermit" => elf::ELFOSABI_STANDALONE,
+        "freebsd" => elf::ELFOSABI_FREEBSD,
+        "solaris" => elf::ELFOSABI_SOLARIS,
+        _ => elf::ELFOSABI_NONE,
+    };
+    let abi_version = 0;
+    file.flags = FileFlags::Elf { os_abi, abi_version, e_flags };
     Some(file)
 }
 
