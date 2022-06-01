@@ -417,11 +417,18 @@ public:
     }
 #endif
 
-    llvm::errs() << *gutils->oldFunc << "\n";
-    llvm::errs() << *gutils->newFunc << "\n";
-    llvm::errs() << "in Mode: " << to_string(Mode) << "\n";
-    llvm::errs() << "cannot handle unknown instruction\n" << inst;
-    report_fatal_error("unknown value");
+    std::string s;
+    llvm::raw_string_ostream ss(s);
+    ss << *gutils->oldFunc << "\n";
+    ss << *gutils->newFunc << "\n";
+    ss << "in Mode: " << to_string(Mode) << "\n";
+    ss << "cannot handle unknown instruction\n" << inst;
+    if (CustomErrorHandler) {
+      CustomErrorHandler(ss.str().c_str(), wrap(&inst), ErrorType::NoDerivative,
+                         nullptr);
+    }
+    llvm::errs() << ss.str() << "\n";
+    report_fatal_error("unknown instruction");
   }
 
   // Common function for falling back to the implementation
@@ -1170,10 +1177,16 @@ public:
             // TODO CHECK THIS
             return Builder2.CreateZExt(dif, op0->getType());
           } else {
+            std::string s;
+            llvm::raw_string_ostream ss(s);
+            ss << *I.getParent()->getParent() << "\n" << *I.getParent() << "\n";
+            ss << "cannot handle above cast " << I << "\n";
+            if (CustomErrorHandler) {
+              CustomErrorHandler(ss.str().c_str(), wrap(&I),
+                                 ErrorType::NoDerivative, nullptr);
+            }
             TR.dump();
-            llvm::errs() << *I.getParent()->getParent() << "\n"
-                         << *I.getParent() << "\n";
-            llvm::errs() << "cannot handle above cast " << I << "\n";
+            llvm::errs() << ss.str() << "\n";
             report_fatal_error("unknown instruction");
           }
         };
@@ -2204,24 +2217,30 @@ public:
     }
     default:
     def:;
-      llvm::errs() << *gutils->oldFunc->getParent() << "\n";
-      llvm::errs() << *gutils->oldFunc << "\n";
+      std::string s;
+      llvm::raw_string_ostream ss(s);
+      ss << *gutils->oldFunc->getParent() << "\n";
+      ss << *gutils->oldFunc << "\n";
       for (auto &arg : gutils->oldFunc->args()) {
-        llvm::errs() << " constantarg[" << arg
-                     << "] = " << gutils->isConstantValue(&arg)
-                     << " type: " << TR.query(&arg).str() << " - vals: {";
+        ss << " constantarg[" << arg << "] = " << gutils->isConstantValue(&arg)
+           << " type: " << TR.query(&arg).str() << " - vals: {";
         for (auto v : TR.knownIntegralValues(&arg))
-          llvm::errs() << v << ",";
-        llvm::errs() << "}\n";
+          ss << v << ",";
+        ss << "}\n";
       }
       for (auto &BB : *gutils->oldFunc)
         for (auto &I : BB) {
-          llvm::errs() << " constantinst[" << I
-                       << "] = " << gutils->isConstantInstruction(&I)
-                       << " val:" << gutils->isConstantValue(&I)
-                       << " type: " << TR.query(&I).str() << "\n";
+          ss << " constantinst[" << I
+             << "] = " << gutils->isConstantInstruction(&I)
+             << " val:" << gutils->isConstantValue(&I)
+             << " type: " << TR.query(&I).str() << "\n";
         }
-      llvm::errs() << "cannot handle unknown binary operator: " << BO << "\n";
+      ss << "cannot handle unknown binary operator: " << BO << "\n";
+      if (CustomErrorHandler) {
+        CustomErrorHandler(ss.str().c_str(), wrap(&BO), ErrorType::NoDerivative,
+                           nullptr);
+      }
+      llvm::errs() << ss.str() << "\n";
       report_fatal_error("unknown binary operator");
     }
 
@@ -2592,24 +2611,30 @@ public:
     }
     default:
     def:;
-      llvm::errs() << *gutils->oldFunc->getParent() << "\n";
-      llvm::errs() << *gutils->oldFunc << "\n";
+      std::string s;
+      llvm::raw_string_ostream ss(s);
+      ss << *gutils->oldFunc->getParent() << "\n";
+      ss << *gutils->oldFunc << "\n";
       for (auto &arg : gutils->oldFunc->args()) {
-        llvm::errs() << " constantarg[" << arg
-                     << "] = " << gutils->isConstantValue(&arg)
-                     << " type: " << TR.query(&arg).str() << " - vals: {";
+        ss << " constantarg[" << arg << "] = " << gutils->isConstantValue(&arg)
+           << " type: " << TR.query(&arg).str() << " - vals: {";
         for (auto v : TR.knownIntegralValues(&arg))
-          llvm::errs() << v << ",";
-        llvm::errs() << "}\n";
+          ss << v << ",";
+        ss << "}\n";
       }
       for (auto &BB : *gutils->oldFunc)
         for (auto &I : BB) {
-          llvm::errs() << " constantinst[" << I
-                       << "] = " << gutils->isConstantInstruction(&I)
-                       << " val:" << gutils->isConstantValue(&I)
-                       << " type: " << TR.query(&I).str() << "\n";
+          ss << " constantinst[" << I
+             << "] = " << gutils->isConstantInstruction(&I)
+             << " val:" << gutils->isConstantValue(&I)
+             << " type: " << TR.query(&I).str() << "\n";
         }
-      llvm::errs() << "cannot handle unknown binary operator: " << BO << "\n";
+      ss << "cannot handle unknown binary operator: " << BO << "\n";
+      if (CustomErrorHandler) {
+        CustomErrorHandler(ss.str().c_str(), wrap(&BO), ErrorType::NoDerivative,
+                           nullptr);
+      }
+      llvm::errs() << ss.str() << "\n";
       report_fatal_error("unknown binary operator");
       break;
     }
@@ -2637,9 +2662,16 @@ public:
     }
 
     if (!gutils->isConstantValue(orig_op1)) {
-      llvm::errs() << "couldn't handle non constant inst in memset to "
-                      "propagate differential to\n"
-                   << MS;
+      std::string s;
+      llvm::raw_string_ostream ss(s);
+      ss << "couldn't handle non constant inst in memset to "
+            "propagate differential to\n"
+         << MS;
+      if (CustomErrorHandler) {
+        CustomErrorHandler(ss.str().c_str(), wrap(&MS), ErrorType::NoDerivative,
+                           nullptr);
+      }
+      llvm::errs() << ss.str() << "\n";
       report_fatal_error("non constant in memset");
     }
 
@@ -3123,9 +3155,16 @@ public:
       default:
         if (gutils->isConstantInstruction(&I))
           return;
-        llvm::errs() << *gutils->oldFunc << "\n";
-        llvm::errs() << *gutils->newFunc << "\n";
-        llvm::errs() << "cannot handle (augmented) unknown intrinsic\n" << I;
+        std::string s;
+        llvm::raw_string_ostream ss(s);
+        ss << *gutils->oldFunc << "\n";
+        ss << *gutils->newFunc << "\n";
+        ss << "cannot handle (augmented) unknown intrinsic\n" << I;
+        if (CustomErrorHandler) {
+          CustomErrorHandler(ss.str().c_str(), wrap(&I),
+                             ErrorType::NoDerivative, nullptr);
+        }
+        llvm::errs() << ss.str() << "\n";
         report_fatal_error("(augmented) unknown intrinsic");
       }
       return;
@@ -3649,25 +3688,32 @@ public:
       default:
         if (gutils->isConstantInstruction(&I))
           return;
-        llvm::errs() << *gutils->oldFunc << "\n";
-        llvm::errs() << *gutils->newFunc << "\n";
+
+        std::string s;
+        llvm::raw_string_ostream ss(s);
+        ss << *gutils->oldFunc << "\n";
+        ss << *gutils->newFunc << "\n";
         if (Intrinsic::isOverloaded(ID))
 #if LLVM_VERSION_MAJOR >= 13
-          llvm::errs() << "cannot handle (reverse) unknown intrinsic\n"
-                       << Intrinsic::getName(ID, ArrayRef<Type *>(),
-                                             gutils->oldFunc->getParent(),
-                                             nullptr)
-                       << "\n"
-                       << I;
+          ss << "cannot handle (reverse) unknown intrinsic\n"
+             << Intrinsic::getName(ID, ArrayRef<Type *>(),
+                                   gutils->oldFunc->getParent(), nullptr)
+             << "\n"
+             << I;
 #else
-          llvm::errs() << "cannot handle (reverse) unknown intrinsic\n"
-                       << Intrinsic::getName(ID, ArrayRef<Type *>()) << "\n"
-                       << I;
+          ss << "cannot handle (reverse) unknown intrinsic\n"
+             << Intrinsic::getName(ID, ArrayRef<Type *>()) << "\n"
+             << I;
 #endif
         else
-          llvm::errs() << "cannot handle (reverse) unknown intrinsic\n"
-                       << Intrinsic::getName(ID) << "\n"
-                       << I;
+          ss << "cannot handle (reverse) unknown intrinsic\n"
+             << Intrinsic::getName(ID) << "\n"
+             << I;
+        if (CustomErrorHandler) {
+          CustomErrorHandler(ss.str().c_str(), wrap(&I),
+                             ErrorType::NoDerivative, nullptr);
+        }
+        llvm::errs() << ss.str() << "\n";
         report_fatal_error("(reverse) unknown intrinsic");
       }
       return;
@@ -4163,25 +4209,31 @@ public:
       default:
         if (gutils->isConstantInstruction(&I))
           return;
-        llvm::errs() << *gutils->oldFunc << "\n";
-        llvm::errs() << *gutils->newFunc << "\n";
+        std::string s;
+        llvm::raw_string_ostream ss(s);
+        ss << *gutils->oldFunc << "\n";
+        ss << *gutils->newFunc << "\n";
         if (Intrinsic::isOverloaded(ID))
 #if LLVM_VERSION_MAJOR >= 13
-          llvm::errs() << "cannot handle (forward) unknown intrinsic\n"
-                       << Intrinsic::getName(ID, ArrayRef<Type *>(),
-                                             gutils->oldFunc->getParent(),
-                                             nullptr)
-                       << "\n"
-                       << I;
+          ss << "cannot handle (forward) unknown intrinsic\n"
+             << Intrinsic::getName(ID, ArrayRef<Type *>(),
+                                   gutils->oldFunc->getParent(), nullptr)
+             << "\n"
+             << I;
 #else
-          llvm::errs() << "cannot handle (forward) unknown intrinsic\n"
-                       << Intrinsic::getName(ID, ArrayRef<Type *>()) << "\n"
-                       << I;
+          ss << "cannot handle (forward) unknown intrinsic\n"
+             << Intrinsic::getName(ID, ArrayRef<Type *>()) << "\n"
+             << I;
 #endif
         else
-          llvm::errs() << "cannot handle (forward) unknown intrinsic\n"
-                       << Intrinsic::getName(ID) << "\n"
-                       << I;
+          ss << "cannot handle (forward) unknown intrinsic\n"
+             << Intrinsic::getName(ID) << "\n"
+             << I;
+        if (CustomErrorHandler) {
+          CustomErrorHandler(ss.str().c_str(), wrap(&I),
+                             ErrorType::NoDerivative, nullptr);
+        }
+        llvm::errs() << ss.str() << "\n";
         report_fatal_error("(forward) unknown intrinsic");
       }
       return;
@@ -7056,10 +7108,17 @@ public:
           }
         }
         if (!isSum) {
-          llvm::errs() << *gutils->oldFunc << "\n";
-          llvm::errs() << *gutils->newFunc << "\n";
-          llvm::errs() << " call: " << call << "\n";
-          llvm::errs() << " unhandled mpi_allreduce op: " << *orig_op << "\n";
+          std::string s;
+          llvm::raw_string_ostream ss(s);
+          ss << *gutils->oldFunc << "\n";
+          ss << *gutils->newFunc << "\n";
+          ss << " call: " << call << "\n";
+          ss << " unhandled mpi_allreduce op: " << *orig_op << "\n";
+          if (CustomErrorHandler) {
+            CustomErrorHandler(ss.str().c_str(), wrap(&call),
+                               ErrorType::NoDerivative, nullptr);
+          }
+          llvm::errs() << ss.str() << "\n";
           report_fatal_error("unhandled mpi_allreduce op");
         }
 
@@ -7319,10 +7378,17 @@ public:
           }
         }
         if (!isSum) {
-          llvm::errs() << *gutils->oldFunc << "\n";
-          llvm::errs() << *gutils->newFunc << "\n";
-          llvm::errs() << " call: " << call << "\n";
-          llvm::errs() << " unhandled mpi_allreduce op: " << *orig_op << "\n";
+          std::string s;
+          llvm::raw_string_ostream ss(s);
+          ss << *gutils->oldFunc << "\n";
+          ss << *gutils->newFunc << "\n";
+          ss << " call: " << call << "\n";
+          ss << " unhandled mpi_allreduce op: " << *orig_op << "\n";
+          if (CustomErrorHandler) {
+            CustomErrorHandler(ss.str().c_str(), wrap(&call),
+                               ErrorType::NoDerivative, nullptr);
+          }
+          llvm::errs() << ss.str() << "\n";
           report_fatal_error("unhandled mpi_allreduce op");
         }
 
