@@ -4074,30 +4074,30 @@ impl<K, V, S, A: Allocator + Clone> Debug for RawEntryBuilder<'_, K, V, S, A> {
 /// # Examples
 ///
 /// ```
-/// use hashbrown::hash_map::{HashMap, Entry, OccupiedEntry};
+/// use hashbrown::hash_map::{Entry, HashMap, OccupiedEntry};
 ///
 /// let mut map = HashMap::new();
-/// map.extend([('a', 1), ('b', 2), ('c', 3)]);
+/// map.extend([("a", 10), ("b", 20), ("c", 30)]);
 /// assert_eq!(map.len(), 3);
 ///
 /// // Existing key (insert)
-/// let entry: Entry<_, _, _> = map.entry('a');
-/// let _raw_o: OccupiedEntry<_, _, _> = entry.insert(10);
+/// let entry: Entry<_, _, _> = map.entry("a");
+/// let _raw_o: OccupiedEntry<_, _, _> = entry.insert(1);
 /// assert_eq!(map.len(), 3);
 /// // Nonexistent key (insert)
-/// map.entry('d').insert(40);
+/// map.entry("d").insert(4);
 ///
 /// // Existing key (or_insert)
-/// let v = map.entry('b').or_insert(20);
-/// assert_eq!(std::mem::replace(v, 20), 2);
+/// let v = map.entry("b").or_insert(2);
+/// assert_eq!(std::mem::replace(v, 2), 20);
 /// // Nonexistent key (or_insert)
-/// map.entry('e').or_insert(50);
+/// map.entry("e").or_insert(5);
 ///
 /// // Existing key (or_insert_with)
-/// let v = map.entry('c').or_insert_with(|| 30);
-/// assert_eq!(std::mem::replace(v, 30), 3);
+/// let v = map.entry("c").or_insert_with(|| 3);
+/// assert_eq!(std::mem::replace(v, 3), 30);
 /// // Nonexistent key (or_insert_with)
-/// map.entry('f').or_insert_with(|| 60);
+/// map.entry("f").or_insert_with(|| 6);
 ///
 /// println!("Our HashMap: {:?}", map);
 ///
@@ -4105,16 +4105,40 @@ impl<K, V, S, A: Allocator + Clone> Debug for RawEntryBuilder<'_, K, V, S, A> {
 /// // The `Iter` iterator produces items in arbitrary order, so the
 /// // items must be sorted to test them against a sorted array.
 /// vec.sort_unstable();
-/// assert_eq!(vec, [('a', 10), ('b', 20), ('c', 30), ('d', 40), ('e', 50), ('f', 60)]);
+/// assert_eq!(vec, [("a", 1), ("b", 2), ("c", 3), ("d", 4), ("e", 5), ("f", 6)]);
 /// ```
 pub enum Entry<'a, K, V, S, A = Global>
 where
     A: Allocator + Clone,
 {
     /// An occupied entry.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::hash_map::{Entry, HashMap};
+    /// let mut map: HashMap<_, _> = [("a", 100), ("b", 200)].into();
+    ///
+    /// match map.entry("a") {
+    ///     Entry::Vacant(_) => unreachable!(),
+    ///     Entry::Occupied(_) => { }
+    /// }
+    /// ```
     Occupied(OccupiedEntry<'a, K, V, S, A>),
 
     /// A vacant entry.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::hash_map::{Entry, HashMap};
+    /// let mut map: HashMap<&str, i32> = HashMap::new();
+    ///
+    /// match map.entry("a") {
+    ///     Entry::Occupied(_) => unreachable!(),
+    ///     Entry::Vacant(_) => { }
+    /// }
+    /// ```
     Vacant(VacantEntry<'a, K, V, S, A>),
 }
 
@@ -4131,6 +4155,43 @@ impl<K: Debug, V: Debug, S, A: Allocator + Clone> Debug for Entry<'_, K, V, S, A
 /// It is part of the [`Entry`] enum.
 ///
 /// [`Entry`]: enum.Entry.html
+///
+/// # Examples
+///
+/// ```
+/// use hashbrown::hash_map::{Entry, HashMap, OccupiedEntry};
+///
+/// let mut map = HashMap::new();
+/// map.extend([("a", 10), ("b", 20), ("c", 30)]);
+///
+/// let _entry_o: OccupiedEntry<_, _, _> = map.entry("a").insert(100);
+/// assert_eq!(map.len(), 3);
+///
+/// // Existing key (insert and update)
+/// match map.entry("a") {
+///     Entry::Vacant(_) => unreachable!(),
+///     Entry::Occupied(mut view) => {
+///         assert_eq!(view.get(), &100);
+///         let v = view.get_mut();
+///         let new_v = (*v) * 10;
+///         *v = new_v;
+///         assert_eq!(view.insert(1111), 1000);
+///     }
+/// }
+///
+/// assert_eq!(map[&"a"], 1111);
+/// assert_eq!(map.len(), 3);
+///
+/// // Existing key (take)
+/// match map.entry("c") {
+///     Entry::Vacant(_) => unreachable!(),
+///     Entry::Occupied(view) => {
+///         assert_eq!(view.remove_entry(), ("c", 30));
+///     }
+/// }
+/// assert_eq!(map.get(&"c"), None);
+/// assert_eq!(map.len(), 2);
+/// ```
 pub struct OccupiedEntry<'a, K, V, S, A: Allocator + Clone = Global> {
     hash: u64,
     key: Option<K>,
@@ -4186,14 +4247,75 @@ impl<K: Debug, V, S, A: Allocator + Clone> Debug for VacantEntry<'_, K, V, S, A>
 ///
 /// [`HashMap`]: struct.HashMap.html
 /// [`entry_ref`]: struct.HashMap.html#method.entry_ref
+///
+/// # Examples
+///
+/// ```
+/// use hashbrown::hash_map::{EntryRef, HashMap, OccupiedEntryRef};
+///
+/// let mut map = HashMap::new();
+/// map.extend([("a".to_owned(), 10), ("b".into(), 20), ("c".into(), 30)]);
+/// assert_eq!(map.len(), 3);
+///
+/// // Existing key (insert)
+/// let key = String::from("a");
+/// let entry: EntryRef<_, _, _, _> = map.entry_ref(&key);
+/// let _raw_o: OccupiedEntryRef<_, _, _, _> = entry.insert(1);
+/// assert_eq!(map.len(), 3);
+/// // Nonexistent key (insert)
+/// map.entry_ref("d").insert(4);
+///
+/// // Existing key (or_insert)
+/// let v = map.entry_ref("b").or_insert(2);
+/// assert_eq!(std::mem::replace(v, 2), 20);
+/// // Nonexistent key (or_insert)
+/// map.entry_ref("e").or_insert(5);
+///
+/// // Existing key (or_insert_with)
+/// let v = map.entry_ref("c").or_insert_with(|| 3);
+/// assert_eq!(std::mem::replace(v, 3), 30);
+/// // Nonexistent key (or_insert_with)
+/// map.entry_ref("f").or_insert_with(|| 6);
+///
+/// println!("Our HashMap: {:?}", map);
+///
+/// for (key, value) in ["a", "b", "c", "d", "e", "f"].into_iter().zip(1..=6) {
+///     assert_eq!(map[key], value)
+/// }
+/// assert_eq!(map.len(), 6);
+/// ```
 pub enum EntryRef<'a, 'b, K, Q: ?Sized, V, S, A = Global>
 where
     A: Allocator + Clone,
 {
     /// An occupied entry.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::hash_map::{EntryRef, HashMap};
+    /// let mut map: HashMap<_, _> = [("a".to_owned(), 100), ("b".into(), 200)].into();
+    ///
+    /// match map.entry_ref("a") {
+    ///     EntryRef::Vacant(_) => unreachable!(),
+    ///     EntryRef::Occupied(_) => { }
+    /// }
+    /// ```
     Occupied(OccupiedEntryRef<'a, 'b, K, Q, V, S, A>),
 
     /// A vacant entry.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::hash_map::{EntryRef, HashMap};
+    /// let mut map: HashMap<String, i32> = HashMap::new();
+    ///
+    /// match map.entry_ref("a") {
+    ///     EntryRef::Occupied(_) => unreachable!(),
+    ///     EntryRef::Vacant(_) => { }
+    /// }
+    /// ```
     Vacant(VacantEntryRef<'a, 'b, K, Q, V, S, A>),
 }
 
