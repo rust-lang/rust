@@ -331,7 +331,6 @@ mod non_expressive_names;
 mod non_octal_unix_permissions;
 mod non_send_fields_in_send_ty;
 mod nonstandard_macro_braces;
-mod numeric_arithmetic;
 mod octal_escapes;
 mod only_used_in_recursion;
 mod open_options;
@@ -705,7 +704,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(move || Box::new(doc::DocMarkdown::new(doc_valid_idents.clone())));
     store.register_late_pass(|| Box::new(neg_multiply::NegMultiply));
     store.register_late_pass(|| Box::new(mem_forget::MemForget));
-    store.register_late_pass(|| Box::new(numeric_arithmetic::NumericArithmetic::default()));
     store.register_late_pass(|| Box::new(assign_ops::AssignOps));
     store.register_late_pass(|| Box::new(let_if_seq::LetIfSeq));
     store.register_late_pass(|| Box::new(mixed_read_write_in_expression::EvalOrderDependence));
@@ -940,7 +938,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(default_instead_of_iter_empty::DefaultIterEmpty));
     store.register_late_pass(move || Box::new(manual_rem_euclid::ManualRemEuclid::new(msrv)));
     store.register_late_pass(move || Box::new(manual_retain::ManualRetain::new(msrv)));
-    store.register_late_pass(|| Box::new(operators::Operators));
+    store.register_late_pass(|| Box::new(operators::Operators::default()));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 
