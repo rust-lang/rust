@@ -18,6 +18,7 @@ mod integer_division;
 mod misrefactored_assign_op;
 mod modulo_arithmetic;
 mod modulo_one;
+mod needless_bitwise_bool;
 mod numeric_arithmetic;
 mod op_ref;
 mod verbose_bit_mask;
@@ -641,6 +642,35 @@ declare_clippy_lint! {
     "any modulo arithmetic statement"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for uses of bitwise and/or operators between booleans, where performance may be improved by using
+    /// a lazy and.
+    ///
+    /// ### Why is this bad?
+    /// The bitwise operators do not support short-circuiting, so it may hinder code performance.
+    /// Additionally, boolean logic "masked" as bitwise logic is not caught by lints like `unnecessary_fold`
+    ///
+    /// ### Known problems
+    /// This lint evaluates only when the right side is determined to have no side effects. At this time, that
+    /// determination is quite conservative.
+    ///
+    /// ### Example
+    /// ```rust
+    /// let (x,y) = (true, false);
+    /// if x & !y {} // where both x and y are booleans
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// let (x,y) = (true, false);
+    /// if x && !y {}
+    /// ```
+    #[clippy::version = "1.54.0"]
+    pub NEEDLESS_BITWISE_BOOL,
+    pedantic,
+    "Boolean expressions that use bitwise rather than lazy operators"
+}
+
 pub struct Operators {
     arithmetic_context: numeric_arithmetic::Context,
     verbose_bit_mask_threshold: u64,
@@ -668,6 +698,7 @@ impl_lint_pass!(Operators => [
     FLOAT_CMP_CONST,
     MODULO_ONE,
     MODULO_ARITHMETIC,
+    NEEDLESS_BITWISE_BOOL,
 ]);
 impl Operators {
     pub fn new(verbose_bit_mask_threshold: u64) -> Self {
@@ -690,6 +721,7 @@ impl<'tcx> LateLintPass<'tcx> for Operators {
                     }
                     erasing_op::check(cx, e, op.node, lhs, rhs);
                     identity_op::check(cx, e, op.node, lhs, rhs);
+                    needless_bitwise_bool::check(cx, e, op.node, lhs, rhs);
                 }
                 self.arithmetic_context.check_binary(cx, e, op.node, lhs, rhs);
                 bit_mask::check(cx, e, op.node, lhs, rhs);

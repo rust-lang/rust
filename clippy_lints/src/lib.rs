@@ -302,7 +302,6 @@ mod mut_reference;
 mod mutable_debug_assertion;
 mod mutex_atomic;
 mod needless_arbitrary_self_type;
-mod needless_bitwise_bool;
 mod needless_bool;
 mod needless_borrowed_ref;
 mod needless_continue;
@@ -569,7 +568,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         ))
     });
     store.register_late_pass(|| Box::new(booleans::NonminimalBool));
-    store.register_late_pass(|| Box::new(needless_bitwise_bool::NeedlessBitwiseBool));
     store.register_late_pass(|| Box::new(enum_clike::UnportableVariant));
     store.register_late_pass(|| Box::new(float_literal::FloatLiteral));
     store.register_late_pass(|| Box::new(ptr::Ptr));
