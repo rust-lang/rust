@@ -254,7 +254,6 @@ mod inherent_to_string;
 mod init_numbered_fields;
 mod inline_fn_without_body;
 mod int_plus_one;
-mod integer_division;
 mod invalid_upcast_comparisons;
 mod items_after_statements;
 mod iter_not_returning_iterator;
@@ -734,7 +733,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(assertions_on_constants::AssertionsOnConstants));
     store.register_late_pass(|| Box::new(transmuting_null::TransmutingNull));
     store.register_late_pass(|| Box::new(path_buf_push_overwrite::PathBufPushOverwrite));
-    store.register_late_pass(|| Box::new(integer_division::IntegerDivision));
     store.register_late_pass(|| Box::new(inherent_to_string::InherentToString));
     let max_trait_bounds = conf.max_trait_bounds;
     store.register_late_pass(move || Box::new(trait_bounds::TraitBounds::new(max_trait_bounds)));

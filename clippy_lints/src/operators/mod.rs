@@ -11,6 +11,7 @@ mod eq_op;
 mod erasing_op;
 mod float_equality_without_abs;
 mod identity_op;
+mod integer_division;
 mod misrefactored_assign_op;
 mod numeric_arithmetic;
 mod op_ref;
@@ -437,6 +438,32 @@ declare_clippy_lint! {
     "using identity operations, e.g., `x + 0` or `y / 1`"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for division of integers
+    ///
+    /// ### Why is this bad?
+    /// When outside of some very specific algorithms,
+    /// integer division is very often a mistake because it discards the
+    /// remainder.
+    ///
+    /// ### Example
+    /// ```rust
+    /// let x = 3 / 2;
+    /// println!("{}", x);
+    /// ```
+    ///
+    /// Use instead:
+    /// ```rust
+    /// let x = 3f32 / 2f32;
+    /// println!("{}", x);
+    /// ```
+    #[clippy::version = "1.37.0"]
+    pub INTEGER_DIVISION,
+    restriction,
+    "integer division may cause loss of precision"
+}
+
 pub struct Operators {
     arithmetic_context: numeric_arithmetic::Context,
     verbose_bit_mask_threshold: u64,
@@ -457,6 +484,7 @@ impl_lint_pass!(Operators => [
     ERASING_OP,
     FLOAT_EQUALITY_WITHOUT_ABS,
     IDENTITY_OP,
+    INTEGER_DIVISION,
 ]);
 impl Operators {
     pub fn new(verbose_bit_mask_threshold: u64) -> Self {
@@ -486,6 +514,7 @@ impl<'tcx> LateLintPass<'tcx> for Operators {
                 double_comparison::check(cx, op.node, lhs, rhs, e.span);
                 duration_subsec::check(cx, e, op.node, lhs, rhs);
                 float_equality_without_abs::check(cx, e, op.node, lhs, rhs);
+                integer_division::check(cx, e, op.node, lhs, rhs);
             },
             ExprKind::AssignOp(op, lhs, rhs) => {
                 self.arithmetic_context.check_binary(cx, e, op.node, lhs, rhs);
