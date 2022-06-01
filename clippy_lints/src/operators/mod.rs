@@ -8,6 +8,7 @@ mod bit_mask;
 mod double_comparison;
 mod duration_subsec;
 mod eq_op;
+mod erasing_op;
 mod misrefactored_assign_op;
 mod numeric_arithmetic;
 mod op_ref;
@@ -360,6 +361,28 @@ declare_clippy_lint! {
     "taking a reference to satisfy the type constraints on `==`"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for erasing operations, e.g., `x * 0`.
+    ///
+    /// ### Why is this bad?
+    /// The whole expression can be replaced by zero.
+    /// This is most likely not the intended outcome and should probably be
+    /// corrected
+    ///
+    /// ### Example
+    /// ```rust
+    /// let x = 1;
+    /// 0 / x;
+    /// 0 * x;
+    /// x & 0;
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub ERASING_OP,
+    correctness,
+    "using erasing operations, e.g., `x * 0` or `y & 0`"
+}
+
 pub struct Operators {
     arithmetic_context: numeric_arithmetic::Context,
     verbose_bit_mask_threshold: u64,
@@ -377,6 +400,7 @@ impl_lint_pass!(Operators => [
     DURATION_SUBSEC,
     EQ_OP,
     OP_REF,
+    ERASING_OP,
 ]);
 impl Operators {
     pub fn new(verbose_bit_mask_threshold: u64) -> Self {
@@ -397,6 +421,7 @@ impl<'tcx> LateLintPass<'tcx> for Operators {
                         eq_op::check(cx, e, op.node, lhs, rhs);
                         op_ref::check(cx, e, op.node, lhs, rhs);
                     }
+                    erasing_op::check(cx, e, op.node, lhs, rhs);
                 }
                 self.arithmetic_context.check_binary(cx, e, op.node, lhs, rhs);
                 bit_mask::check(cx, e, op.node, lhs, rhs);

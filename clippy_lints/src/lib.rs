@@ -220,7 +220,6 @@ mod entry;
 mod enum_clike;
 mod enum_variants;
 mod equatable_if_let;
-mod erasing_op;
 mod escape;
 mod eta_reduction;
 mod excessive_bools;
@@ -585,7 +584,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(misc::MiscLints));
     store.register_late_pass(|| Box::new(eta_reduction::EtaReduction));
     store.register_late_pass(|| Box::new(identity_op::IdentityOp));
-    store.register_late_pass(|| Box::new(erasing_op::ErasingOp));
     store.register_late_pass(|| Box::new(mut_mut::MutMut));
     store.register_late_pass(|| Box::new(mut_reference::UnnecessaryMutPassed));
     store.register_late_pass(|| Box::new(len_zero::LenZero));
