@@ -575,7 +575,8 @@ impl<'a> Conflicts<'a> {
             TerminatorKind::Call {
                 func,
                 args,
-                destination: Some((dest_place, _)),
+                destination,
+                target: _,
                 cleanup: _,
                 from_hir_call: _,
                 fn_span: _,
@@ -583,9 +584,9 @@ impl<'a> Conflicts<'a> {
                 // No arguments may overlap with the destination.
                 for arg in args.iter().chain(Some(func)) {
                     if let Some(place) = arg.place() {
-                        if !place.is_indirect() && !dest_place.is_indirect() {
+                        if !place.is_indirect() && !destination.is_indirect() {
                             self.record_local_conflict(
-                                dest_place.local,
+                                destination.local,
                                 place.local,
                                 "call dest/arg overlap",
                             );
@@ -691,7 +692,6 @@ impl<'a> Conflicts<'a> {
             }
 
             TerminatorKind::Goto { .. }
-            | TerminatorKind::Call { destination: None, .. }
             | TerminatorKind::SwitchInt { .. }
             | TerminatorKind::Resume
             | TerminatorKind::Abort

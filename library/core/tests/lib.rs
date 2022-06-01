@@ -3,7 +3,6 @@
 #![feature(array_methods)]
 #![feature(array_windows)]
 #![feature(bench_black_box)]
-#![feature(box_syntax)]
 #![feature(cell_update)]
 #![feature(const_assume)]
 #![feature(const_black_box)]
@@ -35,7 +34,8 @@
 #![feature(float_minimum_maximum)]
 #![feature(future_join)]
 #![feature(future_poll_fn)]
-#![feature(array_from_fn)]
+#![feature(generic_assert_internals)]
+#![feature(array_try_from_fn)]
 #![feature(hasher_prefixfree_extras)]
 #![feature(hashmap_internals)]
 #![feature(try_find)]
@@ -104,6 +104,7 @@ mod alloc;
 mod any;
 mod array;
 mod ascii;
+mod asserting;
 mod atomic;
 mod bool;
 mod cell;

@@ -37,7 +37,6 @@
 #![recursion_limit = "256"]
 #![allow(rustc::potential_query_instability)]
 
-use rustc_ast::tokenstream::{CanSynthesizeMissingTokens, TokenStream};
 use rustc_ast::visit;
 use rustc_ast::{self as ast, *};
 use rustc_ast_pretty::pprust;
@@ -56,7 +55,6 @@ use rustc_hir::{ConstArg, GenericArg, ItemLocalId, ParamName, TraitCandidate};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::parse::feature_err;
-use rustc_session::utils::{FlattenNonterminals, NtToTokenstream};
 use rustc_session::Session;
 use rustc_span::hygiene::{ExpnId, MacroKind};
 use rustc_span::source_map::DesugaringKind;
@@ -88,11 +86,6 @@ struct LoweringContext<'a, 'hir: 'a> {
     sess: &'a Session,
 
     resolver: &'a mut dyn ResolverAstLowering,
-
-    /// HACK(Centril): there is a cyclic dependency between the parser and lowering
-    /// if we don't have this function pointer. To avoid that dependency so that
-    /// `rustc_middle` is independent of the parser, we use dynamic dispatch here.
-    nt_to_tokenstream: NtToTokenstream,
 
     /// Used to allocate HIR nodes.
     arena: &'hir Arena<'hir>,
@@ -436,7 +429,6 @@ pub fn lower_crate<'a, 'hir>(
     sess: &'a Session,
     krate: &'a Crate,
     resolver: &'a mut dyn ResolverAstLowering,
-    nt_to_tokenstream: NtToTokenstream,
     arena: &'hir Arena<'hir>,
 ) -> &'hir hir::Crate<'hir> {
     let _prof_timer = sess.prof.verbose_generic_activity("hir_lowering");
@@ -447,15 +439,8 @@ pub fn lower_crate<'a, 'hir>(
         IndexVec::from_fn_n(|_| hir::MaybeOwner::Phantom, resolver.definitions().def_index_count());
 
     for def_id in ast_index.indices() {
-        item::ItemLowerer {
-            sess,
-            resolver,
-            nt_to_tokenstream,
-            arena,
-            ast_index: &ast_index,
-            owners: &mut owners,
-        }
-        .lower_node(def_id);
+        item::ItemLowerer { sess, resolver, arena, ast_index: &ast_index, owners: &mut owners }
+            .lower_node(def_id);
     }
 
     let hir_hash = compute_hir_hash(resolver, &owners);
@@ -875,11 +860,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 // ```
                 //
                 // In both cases, we don't want to synthesize any tokens
-                MacArgs::Delimited(
-                    dspan,
-                    delim,
-                    self.lower_token_stream(tokens.clone(), CanSynthesizeMissingTokens::No),
-                )
+                MacArgs::Delimited(dspan, delim, tokens.flattened())
             }
             // This is an inert key-value attribute - it will never be visible to macros
             // after it gets lowered to HIR. Therefore, we can extract literals to handle
@@ -902,19 +883,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 unreachable!("in literal form when lowering mac args eq: {:?}", lit)
             }
         }
-    }
-
-    fn lower_token_stream(
-        &self,
-        tokens: TokenStream,
-        synthesize_tokens: CanSynthesizeMissingTokens,
-    ) -> TokenStream {
-        FlattenNonterminals {
-            parse_sess: &self.sess.parse_sess,
-            synthesize_tokens,
-            nt_to_tokenstream: self.nt_to_tokenstream,
-        }
-        .process_token_stream(tokens)
     }
 
     /// Given an associated type constraint like one of these:
@@ -1168,15 +1136,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             TyKind::Ptr(ref mt) => hir::TyKind::Ptr(self.lower_mt(mt, itctx)),
             TyKind::Rptr(ref region, ref mt) => {
                 let region = region.unwrap_or_else(|| {
-                    let Some(LifetimeRes::ElidedAnchor { start, end }) = self.resolver.get_lifetime_res(t.id) else {
-                        panic!()
+                    let id = if let Some(LifetimeRes::ElidedAnchor { start, end }) =
+                        self.resolver.get_lifetime_res(t.id)
+                    {
+                        debug_assert_eq!(start.plus(1), end);
+                        start
+                    } else {
+                        self.resolver.next_node_id()
                     };
-                    debug_assert_eq!(start.plus(1), end);
                     let span = self.sess.source_map().next_point(t.span.shrink_to_lo());
-                    Lifetime {
-                        ident: Ident::new(kw::UnderscoreLifetime, span),
-                        id: start,
-                    }
+                    Lifetime { ident: Ident::new(kw::UnderscoreLifetime, span), id }
                 });
                 let lifetime = self.lower_lifetime(&region);
                 hir::TyKind::Rptr(lifetime, self.lower_mt(mt, itctx))
@@ -1835,10 +1804,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn lower_lifetime(&mut self, l: &Lifetime) -> hir::Lifetime {
         let span = self.lower_span(l.ident.span);
         let ident = self.lower_ident(l.ident);
-        let res = self
-            .resolver
-            .get_lifetime_res(l.id)
-            .unwrap_or_else(|| panic!("Missing resolution for lifetime {:?} at {:?}", l, span));
+        let res = self.resolver.get_lifetime_res(l.id).unwrap_or(LifetimeRes::Error);
         self.new_named_lifetime_with_res(l.id, span, ident, res)
     }
 

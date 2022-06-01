@@ -1,3 +1,7 @@
+// revisions: base nll
+// ignore-compare-mode-nll
+//[nll] compile-flags: -Z borrowck=mir
+
 use std::fmt::{Debug, Formatter, Error};
 use std::collections::HashMap;
 
@@ -13,7 +17,7 @@ trait TraversesWorld {
         let maybe_room = room.direction_to_room.get(&direction);
         match maybe_room {
             Some(entry) => Ok(entry),
-            //~^ ERROR lifetime mismatch [E0623]
+            //[base]~^ ERROR lifetime mismatch [E0623]
             _ => Err("Direction does not exist in room.")
         }
     }

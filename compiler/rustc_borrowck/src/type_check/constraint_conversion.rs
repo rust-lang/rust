@@ -27,7 +27,7 @@ pub(crate) struct ConstraintConversion<'a, 'tcx> {
     param_env: ty::ParamEnv<'tcx>,
     locations: Locations,
     span: Span,
-    category: ConstraintCategory,
+    category: ConstraintCategory<'tcx>,
     constraints: &'a mut MirTypeckRegionConstraints<'tcx>,
 }
 
@@ -40,7 +40,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         locations: Locations,
         span: Span,
-        category: ConstraintCategory,
+        category: ConstraintCategory<'tcx>,
         constraints: &'a mut MirTypeckRegionConstraints<'tcx>,
     ) -> Self {
         Self {

@@ -31,14 +31,12 @@ pub use iter::IntoIter;
 /// # Example
 ///
 /// ```rust
-/// #![feature(array_from_fn)]
-///
 /// let array = core::array::from_fn(|i| i);
 /// assert_eq!(array, [0, 1, 2, 3, 4]);
 /// ```
 #[inline]
-#[unstable(feature = "array_from_fn", issue = "89379")]
-pub fn from_fn<F, T, const N: usize>(mut cb: F) -> [T; N]
+#[stable(feature = "array_from_fn", since = "1.63.0")]
+pub fn from_fn<T, const N: usize, F>(mut cb: F) -> [T; N]
 where
     F: FnMut(usize) -> T,
 {
@@ -65,7 +63,7 @@ where
 /// # Example
 ///
 /// ```rust
-/// #![feature(array_from_fn)]
+/// #![feature(array_try_from_fn)]
 ///
 /// let array: Result<[u8; 5], _> = std::array::try_from_fn(|i| i.try_into());
 /// assert_eq!(array, Ok([0, 1, 2, 3, 4]));
@@ -80,8 +78,8 @@ where
 /// assert_eq!(array, None);
 /// ```
 #[inline]
-#[unstable(feature = "array_from_fn", issue = "89379")]
-pub fn try_from_fn<F, R, const N: usize>(cb: F) -> ChangeOutputType<R, [R::Output; N]>
+#[unstable(feature = "array_try_from_fn", issue = "89379")]
+pub fn try_from_fn<R, const N: usize, F>(cb: F) -> ChangeOutputType<R, [R::Output; N]>
 where
     F: FnMut(usize) -> R,
     R: Try,

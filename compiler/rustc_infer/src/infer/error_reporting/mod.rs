@@ -609,7 +609,14 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 if !matches!(ty.kind(), ty::Infer(ty::InferTy::TyVar(_) | ty::InferTy::FreshTy(_)))
                 {
                     // don't show type `_`
-                    err.span_label(span, format!("this expression has type `{}`", ty));
+                    if span.desugaring_kind() == Some(DesugaringKind::ForLoop)
+                    && let ty::Adt(def, substs) = ty.kind()
+                    && Some(def.did()) == self.tcx.get_diagnostic_item(sym::Option)
+                    {
+                        err.span_label(span, format!("this is an iterator with items of type `{}`", substs.type_at(0)));
+                    } else {
+                        err.span_label(span, format!("this expression has type `{}`", ty));
+                    }
                 }
                 if let Some(ty::error::ExpectedFound { found, .. }) = exp_found
                     && ty.is_box() && ty.boxed_ty() == found
@@ -1442,6 +1449,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// the message in `secondary_span` as the primary label, and apply the message that would
     /// otherwise be used for the primary label on the `secondary_span` `Span`. This applies on
     /// E0271, like `src/test/ui/issues/issue-39970.stderr`.
+    #[tracing::instrument(
+        level = "debug",
+        skip(self, diag, secondary_span, swap_secondary_and_primary, force_label)
+    )]
     pub fn note_type_err(
         &self,
         diag: &mut Diagnostic,
@@ -1453,7 +1464,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         force_label: bool,
     ) {
         let span = cause.span(self.tcx);
-        debug!("note_type_err cause={:?} values={:?}, terr={:?}", cause, values, terr);
 
         // For some types of errors, expected-found does not make
         // sense, so just ignore the values we were given.
@@ -1621,9 +1631,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             }
         };
 
-        // Ignore msg for object safe coercion
-        // since E0038 message will be printed
         match terr {
+            // Ignore msg for object safe coercion
+            // since E0038 message will be printed
             TypeError::ObjectUnsafeCoercion(_) => {}
             _ => {
                 let mut label_or_note = |span: Span, msg: &str| {
@@ -1774,6 +1784,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         // It reads better to have the error origin as the final
         // thing.
         self.note_error_origin(diag, cause, exp_found, terr);
+
+        debug!(?diag);
     }
 
     fn suggest_tuple_pattern(

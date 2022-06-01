@@ -1,3 +1,7 @@
+// ignore-compare-mode-nll
+// revisions: base nll
+// [nll]compile-flags: -Zborrowck=mir
+
 // Test which object types are considered sendable. This test
 // is broken into two parts because some errors occur in distinct
 // phases in the compiler. See kindck-send-object2.rs as well!
@@ -12,7 +16,7 @@ fn test51<'a>() {
 }
 fn test52<'a>() {
     assert_send::<&'a (dyn Dummy + Sync)>();
-    //~^ ERROR does not fulfill the required lifetime
+    //[base]~^ ERROR does not fulfill the required lifetime
 }
 
 // ...unless they are properly bounded

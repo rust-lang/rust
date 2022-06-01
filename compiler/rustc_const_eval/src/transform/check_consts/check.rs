@@ -229,18 +229,6 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
 
         // The local type and predicate checks are not free and only relevant for `const fn`s.
         if self.const_kind() == hir::ConstContext::ConstFn {
-            // Prevent const trait methods from being annotated as `stable`.
-            // FIXME: Do this as part of stability checking.
-            if self.is_const_stable_const_fn() {
-                if crate::const_eval::is_parent_const_impl_raw(tcx, def_id) {
-                    self.ccx
-                        .tcx
-                        .sess
-                        .struct_span_err(self.span, "trait methods cannot be stable const fn")
-                        .emit();
-                }
-            }
-
             for (idx, local) in body.local_decls.iter_enumerated() {
                 // Handle the return place below.
                 if idx == RETURN_PLACE || local.internal {
@@ -723,8 +711,6 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     }
                 };
 
-                let mut nonconst_call_permission = false;
-
                 // Attempting to call a trait method?
                 if let Some(trait_id) = tcx.trait_of_item(callee) {
                     trace!("attempting to call a trait method");
@@ -786,13 +772,12 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                             }
                         }
                         _ if !tcx.is_const_fn_raw(callee) => {
-                            // At this point, it is only legal when the caller is marked with
-                            // #[default_method_body_is_const], and the callee is in the same
-                            // trait.
-                            let callee_trait = tcx.trait_of_item(callee);
-                            if callee_trait.is_some()
-                                && tcx.has_attr(caller.to_def_id(), sym::default_method_body_is_const)
-                                && callee_trait == tcx.trait_of_item(caller)
+                            // At this point, it is only legal when the caller is in a trait
+                            // marked with #[const_trait], and the callee is in the same trait.
+                            let mut nonconst_call_permission = false;
+                            if let Some(callee_trait) = tcx.trait_of_item(callee)
+                                && tcx.has_attr(callee_trait, sym::const_trait)
+                                && Some(callee_trait) == tcx.trait_of_item(caller)
                                 // Can only call methods when it's `<Self as TheTrait>::f`.
                                 && tcx.types.self_param == substs.type_at(0)
                             {
@@ -886,16 +871,10 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 let is_intrinsic = tcx.is_intrinsic(callee);
 
                 if !tcx.is_const_fn_raw(callee) {
-                    if tcx.trait_of_item(callee).is_some() {
-                        if tcx.has_attr(callee, sym::default_method_body_is_const) {
-                            // To get to here we must have already found a const impl for the
-                            // trait, but for it to still be non-const can be that the impl is
-                            // using default method bodies.
-                            nonconst_call_permission = true;
-                        }
-                    }
-
-                    if !nonconst_call_permission {
+                    if !tcx.is_const_default_method(callee) {
+                        // To get to here we must have already found a const impl for the
+                        // trait, but for it to still be non-const can be that the impl is
+                        // using default method bodies.
                         self.check_op(ops::FnCallNonConst {
                             caller,
                             callee,
@@ -944,7 +923,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 // have no `rustc_const_stable` attributes to be const-unstable as well. This
                 // should be fixed later.
                 let callee_is_unstable_unmarked = tcx.lookup_const_stability(callee).is_none()
-                    && tcx.lookup_stability(callee).map_or(false, |s| s.level.is_unstable());
+                    && tcx.lookup_stability(callee).map_or(false, |s| s.is_unstable());
                 if callee_is_unstable_unmarked {
                     trace!("callee_is_unstable_unmarked");
                     // We do not use `const` modifiers for intrinsic "functions", as intrinsics are

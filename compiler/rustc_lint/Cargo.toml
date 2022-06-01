@@ -21,3 +21,4 @@ rustc_session = { path = "../rustc_session" }
 rustc_trait_selection = { path = "../rustc_trait_selection" }
 rustc_parse_format = { path = "../rustc_parse_format" }
 rustc_infer = { path = "../rustc_infer" }
+rustc_type_ir = { path = "../rustc_type_ir" }

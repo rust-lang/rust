@@ -8,6 +8,7 @@ use rustc_ast::tokenstream::DelimSpan;
 use rustc_ast::{ast, AttrStyle, Attribute, Lit, LitKind, MacArgs, MetaItemKind, NestedMetaItem};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{pluralize, struct_span_err, Applicability, MultiSpan};
+use rustc_expand::base::resolve_path;
 use rustc_feature::{AttributeDuplicates, AttributeType, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP};
 use rustc_hir as hir;
 use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID};
@@ -121,9 +122,7 @@ impl CheckAttrVisitor<'_> {
                 | sym::rustc_if_this_changed
                 | sym::rustc_then_this_would_need => self.check_rustc_dirty_clean(&attr),
                 sym::cmse_nonsecure_entry => self.check_cmse_nonsecure_entry(attr, span, target),
-                sym::default_method_body_is_const => {
-                    self.check_default_method_body_is_const(attr, span, target)
-                }
+                sym::const_trait => self.check_const_trait(attr, span, target),
                 sym::must_not_suspend => self.check_must_not_suspend(&attr, span, target),
                 sym::must_use => self.check_must_use(hir_id, &attr, span, target),
                 sym::rustc_pass_by_value => self.check_pass_by_value(&attr, span, target),
@@ -1982,49 +1981,64 @@ impl CheckAttrVisitor<'_> {
             }
         }
 
-        let hints = match attr.meta_item_list() {
-            Some(meta_item_list) => meta_item_list,
-            None => {
-                self.emit_debugger_visualizer_err(attr);
-                return false;
-            }
+        let Some(hints) = attr.meta_item_list() else {
+            self.emit_debugger_visualizer_err(attr.span);
+            return false;
         };
 
         let hint = match hints.len() {
             1 => &hints[0],
             _ => {
-                self.emit_debugger_visualizer_err(attr);
+                self.emit_debugger_visualizer_err(attr.span);
                 return false;
             }
         };
 
-        if !hint.has_name(sym::natvis_file) {
-            self.emit_debugger_visualizer_err(attr);
+        let Some(meta_item) = hint.meta_item() else {
+            self.emit_debugger_visualizer_err(attr.span);
             return false;
-        }
+        };
 
-        let meta_item = match hint.meta_item() {
-            Some(meta_item) => meta_item,
-            None => {
-                self.emit_debugger_visualizer_err(attr);
+        let visualizer_path = match (meta_item.name_or_empty(), meta_item.value_str()) {
+            (sym::natvis_file, Some(value)) => value,
+            (sym::gdb_script_file, Some(value)) => value,
+            (_, _) => {
+                self.emit_debugger_visualizer_err(meta_item.span);
                 return false;
             }
         };
 
-        match (meta_item.name_or_empty(), meta_item.value_str()) {
-            (sym::natvis_file, Some(_)) => true,
-            (_, _) => {
-                self.emit_debugger_visualizer_err(attr);
+        let file =
+            match resolve_path(&self.tcx.sess.parse_sess, visualizer_path.as_str(), attr.span) {
+                Ok(file) => file,
+                Err(mut err) => {
+                    err.emit();
+                    return false;
+                }
+            };
+
+        match std::fs::File::open(&file) {
+            Ok(_) => true,
+            Err(err) => {
+                self.tcx
+                    .sess
+                    .struct_span_err(
+                        meta_item.span,
+                        &format!("couldn't read {}: {}", file.display(), err),
+                    )
+                    .emit();
                 false
             }
         }
     }
 
-    fn emit_debugger_visualizer_err(&self, attr: &Attribute) {
+    fn emit_debugger_visualizer_err(&self, span: Span) {
         self.tcx
             .sess
-            .struct_span_err(attr.span, "invalid argument")
+            .struct_span_err(span, "invalid argument")
             .note(r#"expected: `natvis_file = "..."`"#)
+            .note(r#"OR"#)
+            .note(r#"expected: `gdb_script_file = "..."`"#)
             .emit();
     }
 
@@ -2081,23 +2095,14 @@ impl CheckAttrVisitor<'_> {
         }
     }
 
-    /// default_method_body_is_const should only be applied to trait methods with default bodies.
-    fn check_default_method_body_is_const(
-        &self,
-        attr: &Attribute,
-        span: Span,
-        target: Target,
-    ) -> bool {
+    /// `#[const_trait]` only applies to traits.
+    fn check_const_trait(&self, attr: &Attribute, _span: Span, target: Target) -> bool {
         match target {
-            Target::Method(MethodKind::Trait { body: true }) => true,
+            Target::Trait => true,
             _ => {
                 self.tcx
                     .sess
-                    .struct_span_err(
-                        attr.span,
-                        "attribute should be applied to a trait method with body",
-                    )
-                    .span_label(span, "not a trait method or missing a body")
+                    .struct_span_err(attr.span, "attribute should be applied to a trait")
                     .emit();
                 false
             }
@@ -2191,6 +2196,8 @@ impl CheckAttrVisitor<'_> {
                 "attribute `{}` without any lints has no effect",
                 attr.name_or_empty()
             )
+        } else if attr.name_or_empty() == sym::default_method_body_is_const {
+            format!("`default_method_body_is_const` has been replaced with `#[const_trait]` on traits")
         } else {
             return;
         };

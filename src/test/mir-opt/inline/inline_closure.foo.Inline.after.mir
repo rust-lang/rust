@@ -46,4 +46,8 @@ fn foo(_1: T, _2: i32) -> i32 {
         StorageDead(_3);                 // scope 0 at $DIR/inline-closure.rs:13:1: 13:2
         return;                          // scope 0 at $DIR/inline-closure.rs:13:2: 13:2
     }
+
+    bb1 (cleanup): {
+        resume;                          // scope 0 at $DIR/inline-closure.rs:10:1: 13:2
+    }
 }

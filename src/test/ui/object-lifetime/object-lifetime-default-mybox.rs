@@ -1,3 +1,7 @@
+// ignore-compare-mode-nll
+// revisions: base nll
+// [nll]compile-flags: -Zborrowck=mir
+
 // Test a "pass-through" object-lifetime-default that produces errors.
 
 #![allow(dead_code)]
@@ -24,11 +28,15 @@ fn load1<'a,'b>(a: &'a MyBox<dyn SomeTrait>,
                 b: &'b MyBox<dyn SomeTrait>)
                 -> &'b MyBox<dyn SomeTrait>
 {
-    a //~ ERROR lifetime mismatch
+    a
+    //[base]~^ ERROR lifetime mismatch
+    //[nll]~^^ ERROR lifetime may not live long enough
 }
 
 fn load2<'a>(ss: &MyBox<dyn SomeTrait + 'a>) -> MyBox<dyn SomeTrait + 'a> {
-    load0(ss) //~ ERROR mismatched types
+    load0(ss)
+    //[base]~^ ERROR mismatched types
+    //[nll]~^^ ERROR borrowed data escapes outside of function
 }
 
 fn main() {

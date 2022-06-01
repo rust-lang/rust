@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/issue-10291.rs:3:9
+  --> $DIR/issue-10291.rs:7:9
    |
 LL | fn test<'x>(x: &'x isize) {
    |         -- lifetime `'x` defined here

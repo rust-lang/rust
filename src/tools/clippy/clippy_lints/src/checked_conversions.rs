@@ -30,7 +30,6 @@ declare_clippy_lint! {
     /// Could be written:
     ///
     /// ```rust
-    /// # use std::convert::TryFrom;
     /// # let foo = 1;
     /// # let _ =
     /// i32::try_from(foo).is_ok()
@@ -57,7 +56,7 @@ impl_lint_pass!(CheckedConversions => [CHECKED_CONVERSIONS]);
 
 impl<'tcx> LateLintPass<'tcx> for CheckedConversions {
     fn check_expr(&mut self, cx: &LateContext<'_>, item: &Expr<'_>) {
-        if !meets_msrv(self.msrv.as_ref(), &msrvs::TRY_FROM) {
+        if !meets_msrv(self.msrv, msrvs::TRY_FROM) {
             return;
         }
 
@@ -123,7 +122,7 @@ struct Conversion<'a> {
 }
 
 /// The kind of conversion that is checked
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum ConversionType {
     SignedToUnsigned,
     SignedToSigned,

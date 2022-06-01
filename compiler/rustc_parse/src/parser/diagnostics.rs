@@ -17,10 +17,10 @@ use rustc_ast::{
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{pluralize, struct_span_err, Diagnostic, EmissionGuarantee, ErrorGuaranteed};
 use rustc_errors::{
-    Applicability, DiagnosticBuilder, DiagnosticMessage, Handler, MultiSpan, PResult,
+    fluent, Applicability, DiagnosticBuilder, DiagnosticMessage, Handler, MultiSpan, PResult,
 };
+use rustc_errors::{pluralize, struct_span_err, Diagnostic, EmissionGuarantee, ErrorGuaranteed};
 use rustc_macros::{SessionDiagnostic, SessionSubdiagnostic};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, Ident};
@@ -254,23 +254,23 @@ struct AmbiguousPlus {
 
 #[derive(SessionDiagnostic)]
 #[error(code = "E0178", slug = "parser-maybe-recover-from-bad-type-plus")]
-struct BadTypePlus<'a> {
+struct BadTypePlus {
     pub ty: String,
     #[primary_span]
     pub span: Span,
     #[subdiagnostic]
-    pub sub: BadTypePlusSub<'a>,
+    pub sub: BadTypePlusSub,
 }
 
-#[derive(SessionSubdiagnostic, Clone, Copy)]
-pub enum BadTypePlusSub<'a> {
+#[derive(SessionSubdiagnostic)]
+pub enum BadTypePlusSub {
     #[suggestion(
         slug = "parser-add-paren",
         code = "{sum_with_parens}",
         applicability = "machine-applicable"
     )]
     AddParen {
-        sum_with_parens: &'a str,
+        sum_with_parens: String,
         #[primary_span]
         span: Span,
     },
@@ -658,13 +658,10 @@ impl<'a> Parser<'a> {
                     err.delay_as_bug();
                     self.struct_span_err(
                         expr.span,
-                        DiagnosticMessage::fluent("parser-struct-literal-body-without-path"),
+                        fluent::parser::struct_literal_body_without_path,
                     )
                     .multipart_suggestion(
-                        DiagnosticMessage::fluent_attr(
-                            "parser-struct-literal-body-without-path",
-                            "suggestion",
-                        ),
+                        fluent::parser::suggestion,
                         vec![
                             (expr.span.shrink_to_lo(), "{ SomeStruct ".to_string()),
                             (expr.span.shrink_to_hi(), " }".to_string()),
@@ -1289,11 +1286,9 @@ impl<'a> Parser<'a> {
         let bounds = self.parse_generic_bounds(None)?;
         let sum_span = ty.span.to(self.prev_token.span);
 
-        let sum_with_parens: String;
-
         let sub = match ty.kind {
             TyKind::Rptr(ref lifetime, ref mut_ty) => {
-                sum_with_parens = pprust::to_string(|s| {
+                let sum_with_parens = pprust::to_string(|s| {
                     s.s.word("&");
                     s.print_opt_lifetime(lifetime);
                     s.print_mutability(mut_ty.mutbl, false);
@@ -1303,7 +1298,7 @@ impl<'a> Parser<'a> {
                     s.pclose()
                 });
 
-                BadTypePlusSub::AddParen { sum_with_parens: &sum_with_parens, span: sum_span }
+                BadTypePlusSub::AddParen { sum_with_parens, span: sum_span }
             }
             TyKind::Ptr(..) | TyKind::BareFn(..) => BadTypePlusSub::ForgotParen { span: sum_span },
             _ => BadTypePlusSub::ExpectPath { span: sum_span },

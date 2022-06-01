@@ -365,7 +365,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     om.items.push((item, renamed));
                 }
             }
-            hir::ItemKind::Impl(ref impl_) => {
+            hir::ItemKind::Impl(impl_) => {
                 // Don't duplicate impls when inlining or if it's implementing a trait, we'll pick
                 // them up regardless of where they're located.
                 if !self.inlining && impl_.of_trait.is_none() {

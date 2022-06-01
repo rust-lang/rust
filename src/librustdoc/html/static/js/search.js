@@ -70,7 +70,7 @@ function printTab(nb) {
     });
     if (foundCurrentTab && foundCurrentResultSet) {
         searchState.currentTab = nb;
-    } else if (nb != 0) {
+    } else if (nb !== 0) {
         printTab(0);
     }
 }
@@ -200,7 +200,7 @@ function initSearch(rawSearchIndex) {
      * @return {boolean}
      */
     function isPathStart(parserState) {
-        return parserState.userQuery.slice(parserState.pos, parserState.pos + 2) == "::";
+        return parserState.userQuery.slice(parserState.pos, parserState.pos + 2) === "::";
     }
 
     /**
@@ -211,7 +211,7 @@ function initSearch(rawSearchIndex) {
      * @return {boolean}
      */
     function isReturnArrow(parserState) {
-        return parserState.userQuery.slice(parserState.pos, parserState.pos + 2) == "->";
+        return parserState.userQuery.slice(parserState.pos, parserState.pos + 2) === "->";
     }
 
     /**
@@ -1726,7 +1726,7 @@ function initSearch(rawSearchIndex) {
             crates = " in <select id=\"crate-search\"><option value=\"All crates\">" +
                 "All crates</option>";
             for (const c of window.ALL_CRATES) {
-                crates += `<option value="${c}" ${c == filterCrates && "selected"}>${c}</option>`;
+                crates += `<option value="${c}" ${c === filterCrates && "selected"}>${c}</option>`;
             }
             crates += "</select>";
         }

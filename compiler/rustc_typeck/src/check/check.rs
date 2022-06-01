@@ -1,3 +1,5 @@
+use crate::check::wfcheck::for_item;
+
 use super::coercion::CoerceMany;
 use super::compare_method::check_type_bounds;
 use super::compare_method::{compare_const_impl, compare_impl_method, compare_ty_impl};
@@ -103,12 +105,6 @@ pub(super) fn check_fn<'a, 'tcx>(
             DUMMY_SP,
             param_env,
         ));
-    // HACK(oli-obk): we rewrite the declared return type, too, so that we don't end up inferring all
-    // unconstrained RPIT to have `()` as their hidden type. This would happen because further down we
-    // compare the ret_coercion with declared_ret_ty, and anything uninferred would be inferred to the
-    // opaque type itself. That again would cause writeback to assume we have a recursive call site
-    // and do the sadly stabilized fallback to `()`.
-    let declared_ret_ty = ret_ty;
     fcx.ret_coercion = Some(RefCell::new(CoerceMany::new(ret_ty)));
     fcx.ret_type_span = Some(decl.output.span());
 
@@ -252,7 +248,12 @@ pub(super) fn check_fn<'a, 'tcx>(
             fcx.next_ty_var(TypeVariableOrigin { kind: TypeVariableOriginKind::DynReturnFn, span });
         debug!("actual_return_ty replaced with {:?}", actual_return_ty);
     }
-    fcx.demand_suptype(span, declared_ret_ty, actual_return_ty);
+
+    // HACK(oli-obk, compiler-errors): We should be comparing this against
+    // `declared_ret_ty`, but then anything uninferred would be inferred to
+    // the opaque type itself. That again would cause writeback to assume
+    // we have a recursive call site and do the sadly stabilized fallback to `()`.
+    fcx.demand_suptype(span, ret_ty, actual_return_ty);
 
     // Check that a function marked as `#[panic_handler]` has signature `fn(&PanicInfo) -> !`
     if let Some(panic_impl_did) = tcx.lang_items().panic_impl()
@@ -871,6 +872,14 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
                 }
             }
         }
+        DefKind::GlobalAsm => {
+            let it = tcx.hir().item(id);
+            let hir::ItemKind::GlobalAsm(asm) = it.kind else { span_bug!(it.span, "DefKind::GlobalAsm but got {:#?}", it) };
+            for_item(tcx, it).with_fcx(|fcx| {
+                fcx.check_asm(asm, it.hir_id());
+                Default::default()
+            })
+        }
         _ => {}
     }
 }
@@ -1366,6 +1375,8 @@ fn check_enum<'tcx>(
     }
 
     let mut disr_vals: Vec<Discr<'tcx>> = Vec::with_capacity(vs.len());
+    // This tracks the previous variant span (in the loop) incase we need it for diagnostics
+    let mut prev_variant_span: Span = DUMMY_SP;
     for ((_, discr), v) in iter::zip(def.discriminants(tcx), vs) {
         // Check for duplicate discriminant values
         if let Some(i) = disr_vals.iter().position(|&x| x.val == discr.val) {
@@ -1380,42 +1391,59 @@ fn check_enum<'tcx>(
                 Some(ref expr) => tcx.hir().span(expr.hir_id),
                 None => v.span,
             };
-            let display_discr = display_discriminant_value(tcx, v, discr.val);
-            let display_discr_i = display_discriminant_value(tcx, variant_i, disr_vals[i].val);
-            struct_span_err!(
+            let display_discr = format_discriminant_overflow(tcx, v, discr);
+            let display_discr_i = format_discriminant_overflow(tcx, variant_i, disr_vals[i]);
+            let no_disr = v.disr_expr.is_none();
+            let mut err = struct_span_err!(
                 tcx.sess,
-                span,
+                sp,
                 E0081,
-                "discriminant value `{}` already exists",
-                discr.val,
-            )
-            .span_label(i_span, format!("first use of {display_discr_i}"))
-            .span_label(span, format!("enum already has {display_discr}"))
-            .emit();
+                "discriminant value `{}` assigned more than once",
+                discr,
+            );
+
+            err.span_label(i_span, format!("first assignment of {display_discr_i}"));
+            err.span_label(span, format!("second assignment of {display_discr}"));
+
+            if no_disr {
+                err.span_label(
+                    prev_variant_span,
+                    format!(
+                        "assigned discriminant for `{}` was incremented from this discriminant",
+                        v.ident
+                    ),
+                );
+            }
+            err.emit();
         }
+
         disr_vals.push(discr);
+        prev_variant_span = v.span;
     }
 
     check_representable(tcx, sp, def_id);
     check_transparent(tcx, sp, def);
 }
 
-/// Format an enum discriminant value for use in a diagnostic message.
-fn display_discriminant_value<'tcx>(
+/// In the case that a discriminant is both a duplicate and an overflowing literal,
+/// we insert both the assigned discriminant and the literal it overflowed from into the formatted
+/// output. Otherwise we format the discriminant normally.
+fn format_discriminant_overflow<'tcx>(
     tcx: TyCtxt<'tcx>,
     variant: &hir::Variant<'_>,
-    evaluated: u128,
+    dis: Discr<'tcx>,
 ) -> String {
     if let Some(expr) = &variant.disr_expr {
         let body = &tcx.hir().body(expr.body).value;
         if let hir::ExprKind::Lit(lit) = &body.kind
             && let rustc_ast::LitKind::Int(lit_value, _int_kind) = &lit.node
-            && evaluated != *lit_value
+            && dis.val != *lit_value
         {
-                    return format!("`{evaluated}` (overflowed from `{lit_value}`)");
+                    return format!("`{dis}` (overflowed from `{lit_value}`)");
         }
     }
-    format!("`{}`", evaluated)
+
+    format!("`{dis}`")
 }
 
 pub(super) fn check_type_params_are_used<'tcx>(

@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/issue-75777.rs:11:5
+  --> $DIR/issue-75777.rs:15:5
    |
 LL | fn inject<'a, Env: 'a, A: 'a + Send>(v: A) -> Box<dyn FnOnce(&'a Env) -> BoxFuture<'a, A>> {
    |           -- lifetime `'a` defined here

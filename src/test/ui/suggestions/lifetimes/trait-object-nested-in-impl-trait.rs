@@ -1,3 +1,7 @@
+// revisions: base nll
+// ignore-compare-mode-nll
+//[nll] compile-flags: -Z borrowck=mir
+
 trait Foo {}
 impl<'a, T: Foo> Foo for &'a T {}
 impl<T: Foo + ?Sized> Foo for Box<T> {}
@@ -26,8 +30,10 @@ struct Bar(Vec<Box<dyn Foo>>);
 impl Bar {
     fn iter(&self) -> impl Iterator<Item = Box<dyn Foo>> {
         Iter {
+            //[nll]~^ ERROR lifetime may not live long enough
             current: None,
-            remaining: self.0.iter(), //~ ERROR E0759
+            remaining: self.0.iter(),
+            //[base]~^ ERROR E0759
         }
     }
 }
@@ -37,8 +43,10 @@ struct Baz(Vec<Box<dyn Foo>>);
 impl Baz {
     fn iter(&self) -> impl Iterator<Item = Box<dyn Foo>> + '_ {
         Iter {
+            //[nll]~^ ERROR lifetime may not live long enough
             current: None,
-            remaining: self.0.iter(), //~ ERROR E0759
+            remaining: self.0.iter(),
+            //[base]~^ ERROR E0759
         }
     }
 }
@@ -48,8 +56,10 @@ struct Bat(Vec<Box<dyn Foo>>);
 impl Bat {
     fn iter<'a>(&'a self) -> impl Iterator<Item = Box<dyn Foo>> + 'a {
         Iter {
+            //[nll]~^ ERROR lifetime may not live long enough
             current: None,
-            remaining: self.0.iter(), //~ ERROR E0759
+            remaining: self.0.iter(),
+            //[base]~^ ERROR E0759
         }
     }
 }
@@ -59,8 +69,10 @@ struct Ban(Vec<Box<dyn Foo>>);
 impl Ban {
     fn iter<'a>(&'a self) -> impl Iterator<Item = Box<dyn Foo>> {
         Iter {
+            //[nll]~^ ERROR lifetime may not live long enough
             current: None,
-            remaining: self.0.iter(), //~ ERROR E0759
+            remaining: self.0.iter(),
+            //[base]~^ ERROR E0759
         }
     }
 }

@@ -1772,6 +1772,20 @@ fn to_lowercase() {
     assert_eq!("ΑΣΑ".to_lowercase(), "ασα");
     assert_eq!("ΑΣ'Α".to_lowercase(), "ασ'α");
     assert_eq!("ΑΣ''Α".to_lowercase(), "ασ''α");
+
+    // a really long string that has it's lowercase form
+    // even longer. this tests that implementations don't assume
+    // an incorrect upper bound on allocations
+    let upper = str::repeat("İ", 512);
+    let lower = str::repeat("i̇", 512);
+    assert_eq!(upper.to_lowercase(), lower);
+
+    // a really long ascii-only string.
+    // This test that the ascii hot-path
+    // functions correctly
+    let upper = str::repeat("A", 511);
+    let lower = str::repeat("a", 511);
+    assert_eq!(upper.to_lowercase(), lower);
 }
 
 #[test]

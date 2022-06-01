@@ -24,7 +24,7 @@ unicode-xid = {name = "unicode-xid", versions = ['0.2.1']}
 anyhow = {name = "anyhow", versions = ['1.0.38']}
 async-trait = {name = "async-trait", versions = ['0.1.42']}
 cxx = {name = "cxx", versions = ['1.0.32']}
-ryu = {name = "ryu", version = ['1.0.5']}
+ryu = {name = "ryu", versions = ['1.0.5']}
 serde_yaml = {name = "serde_yaml", versions = ['0.8.17']}
 thiserror = {name = "thiserror", versions = ['1.0.24']}
 # some embark crates, there are other interesting crates but

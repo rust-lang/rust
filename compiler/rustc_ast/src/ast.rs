@@ -23,8 +23,8 @@ pub use GenericArgs::*;
 pub use UnsafeSource::*;
 
 use crate::ptr::P;
-use crate::token::{self, CommentKind, Delimiter, Token, TokenKind};
-use crate::tokenstream::{DelimSpan, LazyTokenStream, TokenStream, TokenTree};
+use crate::token::{self, CommentKind, Delimiter};
+use crate::tokenstream::{DelimSpan, LazyTokenStream, TokenStream};
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::stack::ensure_sufficient_stack;
@@ -444,8 +444,7 @@ impl Default for Generics {
 pub struct WhereClause {
     /// `true` if we ate a `where` token: this can happen
     /// if we parsed no predicates (e.g. `struct Foo where {}`).
-    /// This allows us to accurately pretty-print
-    /// in `nt_to_tokenstream`
+    /// This allows us to pretty-print accurately.
     pub has_where_token: bool,
     pub predicates: Vec<WherePredicate>,
     pub span: Span,
@@ -1571,20 +1570,7 @@ impl MacArgs {
         match self {
             MacArgs::Empty => TokenStream::default(),
             MacArgs::Delimited(.., tokens) => tokens.clone(),
-            MacArgs::Eq(_, MacArgsEq::Ast(expr)) => {
-                // Currently only literals are allowed here. If more complex expression kinds are
-                // allowed in the future, then `nt_to_tokenstream` should be used to extract the
-                // token stream. This will require some cleverness, perhaps with a function
-                // pointer, because `nt_to_tokenstream` is not directly usable from this crate.
-                // It will also require changing the `parse_expr` call in `parse_mac_args_common`
-                // to `parse_expr_force_collect`.
-                if let ExprKind::Lit(lit) = &expr.kind {
-                    let token = Token::new(TokenKind::Literal(lit.token), lit.span);
-                    TokenTree::Token(token).into()
-                } else {
-                    unreachable!("couldn't extract literal when getting inner tokens: {:?}", expr)
-                }
-            }
+            MacArgs::Eq(_, MacArgsEq::Ast(expr)) => TokenStream::from_ast(expr),
             MacArgs::Eq(_, MacArgsEq::Hir(lit)) => {
                 unreachable!("in literal form when getting inner tokens: {:?}", lit)
             }
@@ -2566,15 +2552,6 @@ impl PolyTraitRef {
     }
 }
 
-#[derive(Copy, Clone, Encodable, Decodable, Debug, HashStable_Generic)]
-pub enum CrateSugar {
-    /// Source is `pub(crate)`.
-    PubCrate,
-
-    /// Source is (just) `crate`.
-    JustCrate,
-}
-
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct Visibility {
     pub kind: VisibilityKind,
@@ -2585,7 +2562,6 @@ pub struct Visibility {
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub enum VisibilityKind {
     Public,
-    Crate(CrateSugar),
     Restricted { path: P<Path>, id: NodeId },
     Inherited,
 }

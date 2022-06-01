@@ -35,4 +35,8 @@ fn b(_1: &mut Box<T>) -> &mut T {
         StorageDead(_2);                 // scope 0 at $DIR/issue-58867-inline-as-ref-as-mut.rs:9:1: 9:2
         return;                          // scope 0 at $DIR/issue-58867-inline-as-ref-as-mut.rs:9:2: 9:2
     }
+
+    bb1 (cleanup): {
+        resume;                          // scope 0 at $DIR/issue-58867-inline-as-ref-as-mut.rs:7:1: 9:2
+    }
 }

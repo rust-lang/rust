@@ -1,6 +1,7 @@
-#![feature(rustc_attrs)]
-
-// revisions: good bad
+// ignore-compare-mode-nll
+// revisions: good badbase badnll
+//[good] check-pass
+// [badnll]compile-flags: -Zborrowck=mir
 
 trait Mirror {
     type Image;
@@ -10,7 +11,7 @@ impl<T> Mirror for T {
     type Image = T;
 }
 
-#[cfg(bad)]
+#[cfg(any(badbase, badnll))]
 fn foo<U, T>(_t: T)
     where for<'a> &'a T: Mirror<Image=U>
 {}
@@ -20,8 +21,8 @@ fn foo<U, T>(_t: T)
     where for<'a> &'a T: Mirror<Image=&'a U>
 {}
 
-#[rustc_error]
-fn main() { //[good]~ ERROR fatal error triggered by #[rustc_error]
+fn main() {
     foo(());
-    //[bad]~^ ERROR mismatched types
+    //[badbase]~^ ERROR mismatched types
+    //[badnll]~^^ ERROR mismatched types
 }

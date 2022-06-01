@@ -13,9 +13,15 @@ use super::{count, wrap_index, RingSlices};
 /// [`iter`]: super::VecDeque::iter
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Iter<'a, T: 'a> {
-    pub(crate) ring: &'a [MaybeUninit<T>],
-    pub(crate) tail: usize,
-    pub(crate) head: usize,
+    ring: &'a [MaybeUninit<T>],
+    tail: usize,
+    head: usize,
+}
+
+impl<'a, T> Iter<'a, T> {
+    pub(super) fn new(ring: &'a [MaybeUninit<T>], tail: usize, head: usize) -> Self {
+        Iter { ring, tail, head }
+    }
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]

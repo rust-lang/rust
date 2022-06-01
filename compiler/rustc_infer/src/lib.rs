@@ -16,7 +16,6 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(box_patterns)]
 #![feature(control_flow_enum)]
-#![cfg_attr(bootstrap, feature(derive_default_enum))]
 #![feature(extend_one)]
 #![feature(label_break_value)]
 #![feature(let_chains)]

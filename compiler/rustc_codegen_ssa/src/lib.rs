@@ -36,6 +36,7 @@ use rustc_session::cstore::{self, CrateSource};
 use rustc_session::utils::NativeLibKind;
 use rustc_span::symbol::Symbol;
 use rustc_span::DebuggerVisualizerFile;
+use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
 pub mod back;
@@ -157,7 +158,7 @@ pub struct CrateInfo {
     pub missing_lang_items: FxHashMap<CrateNum, Vec<LangItem>>,
     pub dependency_formats: Lrc<Dependencies>,
     pub windows_subsystem: Option<String>,
-    pub debugger_visualizers: FxHashMap<CrateNum, Vec<DebuggerVisualizerFile>>,
+    pub natvis_debugger_visualizers: BTreeSet<DebuggerVisualizerFile>,
 }
 
 #[derive(Encodable, Decodable)]

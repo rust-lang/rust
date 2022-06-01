@@ -95,7 +95,7 @@ pub struct OutlivesConstraint<'tcx> {
     pub span: Span,
 
     /// What caused this constraint?
-    pub category: ConstraintCategory,
+    pub category: ConstraintCategory<'tcx>,
 
     /// Variance diagnostic information
     pub variance_info: VarianceDiagInfo<'tcx>,

@@ -17,17 +17,12 @@
 -         discriminant(_3) = 0;            // scope 0 at $DIR/simplify-locals.rs:28:11: 28:15
 -         Deinit(_2);                      // scope 0 at $DIR/simplify-locals.rs:28:6: 28:16
 -         (_2.0: i32) = const 10_i32;      // scope 0 at $DIR/simplify-locals.rs:28:6: 28:16
--         (_2.1: E) = const E::A;          // scope 0 at $DIR/simplify-locals.rs:28:6: 28:16
--                                          // mir::Constant
--                                          // + span: $DIR/simplify-locals.rs:28:6: 28:16
--                                          // + literal: Const { ty: E, val: Value(Scalar(0x00)) }
+-         (_2.1: E) = move _3;             // scope 0 at $DIR/simplify-locals.rs:28:6: 28:16
 -         StorageDead(_3);                 // scope 0 at $DIR/simplify-locals.rs:28:15: 28:16
--         (_2.1: E) = const E::B;          // scope 0 at $DIR/simplify-locals.rs:28:5: 28:26
--                                          // mir::Constant
--                                          // + span: $DIR/simplify-locals.rs:28:5: 28:26
--                                          // + literal: Const { ty: E, val: Value(Scalar(0x01)) }
+-         (_2.1: E) = move _1;             // scope 0 at $DIR/simplify-locals.rs:28:5: 28:26
 -         StorageDead(_1);                 // scope 0 at $DIR/simplify-locals.rs:28:25: 28:26
 -         StorageDead(_2);                 // scope 0 at $DIR/simplify-locals.rs:28:26: 28:27
+          _0 = const ();                   // scope 0 at $DIR/simplify-locals.rs:26:9: 29:2
           return;                          // scope 0 at $DIR/simplify-locals.rs:29:2: 29:2
       }
   }

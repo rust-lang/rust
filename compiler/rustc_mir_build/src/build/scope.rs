@@ -1032,6 +1032,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 self.cfg.block_data(start).terminator().kind,
                 TerminatorKind::Assert { .. }
                     | TerminatorKind::Call { .. }
+                    | TerminatorKind::Drop { .. }
                     | TerminatorKind::DropAndReplace { .. }
                     | TerminatorKind::FalseUnwind { .. }
                     | TerminatorKind::InlineAsm { .. }

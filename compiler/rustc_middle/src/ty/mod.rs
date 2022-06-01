@@ -51,6 +51,7 @@ use std::{fmt, str};
 
 pub use crate::ty::diagnostics::*;
 pub use rustc_type_ir::InferTy::*;
+pub use rustc_type_ir::TyKind::*;
 pub use rustc_type_ir::*;
 
 pub use self::binding::BindingMode;
@@ -72,17 +73,18 @@ pub use self::context::{
 };
 pub use self::instance::{Instance, InstanceDef};
 pub use self::list::List;
+pub use self::parameterized::ParameterizedOverTcx;
+pub use self::rvalue_scopes::RvalueScopes;
 pub use self::sty::BoundRegionKind::*;
 pub use self::sty::RegionKind::*;
-pub use self::sty::TyKind::*;
 pub use self::sty::{
-    Binder, BoundRegion, BoundRegionKind, BoundTy, BoundTyKind, BoundVar, BoundVariableKind,
-    CanonicalPolyFnSig, ClosureSubsts, ClosureSubstsParts, ConstVid, EarlyBinder, EarlyBoundRegion,
-    ExistentialPredicate, ExistentialProjection, ExistentialTraitRef, FnSig, FreeRegion, GenSig,
-    GeneratorSubsts, GeneratorSubstsParts, InlineConstSubsts, InlineConstSubstsParts, ParamConst,
-    ParamTy, PolyExistentialProjection, PolyExistentialTraitRef, PolyFnSig, PolyGenSig,
-    PolyTraitRef, ProjectionTy, Region, RegionKind, RegionVid, TraitRef, TyKind, TypeAndMut,
-    UpvarSubsts, VarianceDiagInfo,
+    Article, Binder, BoundRegion, BoundRegionKind, BoundTy, BoundTyKind, BoundVar,
+    BoundVariableKind, CanonicalPolyFnSig, ClosureSubsts, ClosureSubstsParts, ConstVid,
+    EarlyBinder, EarlyBoundRegion, ExistentialPredicate, ExistentialProjection,
+    ExistentialTraitRef, FnSig, FreeRegion, GenSig, GeneratorSubsts, GeneratorSubstsParts,
+    InlineConstSubsts, InlineConstSubstsParts, ParamConst, ParamTy, PolyExistentialProjection,
+    PolyExistentialTraitRef, PolyFnSig, PolyGenSig, PolyTraitRef, ProjectionTy, Region, RegionKind,
+    RegionVid, TraitRef, TyKind, TypeAndMut, UpvarSubsts, VarianceDiagInfo,
 };
 pub use self::trait_def::TraitDef;
 
@@ -118,6 +120,8 @@ mod generics;
 mod impls_ty;
 mod instance;
 mod list;
+mod parameterized;
+mod rvalue_scopes;
 mod structural_impls;
 mod sty;
 
@@ -459,16 +463,18 @@ static_assert_size!(WithStableHash<TyS<'_>>, 56);
 #[rustc_pass_by_value]
 pub struct Ty<'tcx>(Interned<'tcx, WithStableHash<TyS<'tcx>>>);
 
-// Statics only used for internal testing.
-pub static BOOL_TY: Ty<'static> = Ty(Interned::new_unchecked(&WithStableHash {
-    internee: BOOL_TYS,
-    stable_hash: Fingerprint::ZERO,
-}));
-const BOOL_TYS: TyS<'static> = TyS {
-    kind: ty::Bool,
-    flags: TypeFlags::empty(),
-    outer_exclusive_binder: DebruijnIndex::from_usize(0),
-};
+impl<'tcx> TyCtxt<'tcx> {
+    /// A "bool" type used in rustc_mir_transform unit tests when we
+    /// have not spun up a TyCtxt.
+    pub const BOOL_TY_FOR_UNIT_TESTING: Ty<'tcx> = Ty(Interned::new_unchecked(&WithStableHash {
+        internee: TyS {
+            kind: ty::Bool,
+            flags: TypeFlags::empty(),
+            outer_exclusive_binder: DebruijnIndex::from_usize(0),
+        },
+        stable_hash: Fingerprint::ZERO,
+    }));
+}
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for TyS<'tcx> {
     #[inline]
@@ -2296,6 +2302,11 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn is_const_fn_raw(self, def_id: DefId) -> bool {
         matches!(self.def_kind(def_id), DefKind::Fn | DefKind::AssocFn | DefKind::Ctor(..))
             && self.impl_constness(def_id) == hir::Constness::Const
+    }
+
+    #[inline]
+    pub fn is_const_default_method(self, def_id: DefId) -> bool {
+        matches!(self.trait_of_item(def_id), Some(trait_id) if self.has_attr(trait_id, sym::const_trait))
     }
 }
 

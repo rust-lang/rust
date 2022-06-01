@@ -25,7 +25,7 @@ use rustc_ast::tokenstream::{self, DelimSpan, Spacing};
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_ast::AttrId;
 use rustc_ast::DUMMY_NODE_ID;
-use rustc_ast::{self as ast, AnonConst, AttrStyle, AttrVec, Const, CrateSugar, Extern};
+use rustc_ast::{self as ast, AnonConst, AttrStyle, AttrVec, Const, Extern};
 use rustc_ast::{Async, Expr, ExprKind, MacArgs, MacArgsEq, MacDelimiter, Mutability, StrLit};
 use rustc_ast::{HasAttrs, HasTokens, Unsafe, Visibility, VisibilityKind};
 use rustc_ast_pretty::pprust;
@@ -1245,29 +1245,14 @@ impl<'a> Parser<'a> {
         res
     }
 
-    fn is_crate_vis(&self) -> bool {
-        self.token.is_keyword(kw::Crate) && self.look_ahead(1, |t| t != &token::ModSep)
-    }
-
-    /// Parses `pub`, `pub(crate)` and `pub(in path)` plus shortcuts `crate` for `pub(crate)`,
-    /// `pub(self)` for `pub(in self)` and `pub(super)` for `pub(in super)`.
+    /// Parses `pub` and `pub(in path)` plus shortcuts `pub(crate)` for `pub(in crate)`, `pub(self)`
+    /// for `pub(in self)` and `pub(super)` for `pub(in super)`.
     /// If the following element can't be a tuple (i.e., it's a function definition), then
     /// it's not a tuple struct field), and the contents within the parentheses aren't valid,
     /// so emit a proper diagnostic.
     // Public for rustfmt usage.
     pub fn parse_visibility(&mut self, fbt: FollowedByType) -> PResult<'a, Visibility> {
         maybe_whole!(self, NtVis, |x| x.into_inner());
-
-        self.expected_tokens.push(TokenType::Keyword(kw::Crate));
-        if self.is_crate_vis() {
-            self.bump(); // `crate`
-            self.sess.gated_spans.gate(sym::crate_visibility_modifier, self.prev_token.span);
-            return Ok(Visibility {
-                span: self.prev_token.span,
-                kind: VisibilityKind::Crate(CrateSugar::JustCrate),
-                tokens: None,
-            });
-        }
 
         if !self.eat_keyword(kw::Pub) {
             // We need a span for our `Spanned<VisibilityKind>`, but there's inherently no
@@ -1286,20 +1271,7 @@ impl<'a> Parser<'a> {
             // `()` or a tuple might be allowed. For example, `struct Struct(pub (), pub (usize));`.
             // Because of this, we only `bump` the `(` if we're assured it is appropriate to do so
             // by the following tokens.
-            if self.is_keyword_ahead(1, &[kw::Crate]) && self.look_ahead(2, |t| t != &token::ModSep)
-            // account for `pub(crate::foo)`
-            {
-                // Parse `pub(crate)`.
-                self.bump(); // `(`
-                self.bump(); // `crate`
-                self.expect(&token::CloseDelim(Delimiter::Parenthesis))?; // `)`
-                let vis = VisibilityKind::Crate(CrateSugar::PubCrate);
-                return Ok(Visibility {
-                    span: lo.to(self.prev_token.span),
-                    kind: vis,
-                    tokens: None,
-                });
-            } else if self.is_keyword_ahead(1, &[kw::In]) {
+            if self.is_keyword_ahead(1, &[kw::In]) {
                 // Parse `pub(in path)`.
                 self.bump(); // `(`
                 self.bump(); // `in`
@@ -1312,11 +1284,11 @@ impl<'a> Parser<'a> {
                     tokens: None,
                 });
             } else if self.look_ahead(2, |t| t == &token::CloseDelim(Delimiter::Parenthesis))
-                && self.is_keyword_ahead(1, &[kw::Super, kw::SelfLower])
+                && self.is_keyword_ahead(1, &[kw::Crate, kw::Super, kw::SelfLower])
             {
-                // Parse `pub(self)` or `pub(super)`.
+                // Parse `pub(crate)`, `pub(self)`, or `pub(super)`.
                 self.bump(); // `(`
-                let path = self.parse_path(PathStyle::Mod)?; // `super`/`self`
+                let path = self.parse_path(PathStyle::Mod)?; // `crate`/`super`/`self`
                 self.expect(&token::CloseDelim(Delimiter::Parenthesis))?; // `)`
                 let vis = VisibilityKind::Restricted { path: P(path), id: ast::DUMMY_NODE_ID };
                 return Ok(Visibility {

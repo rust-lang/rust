@@ -1372,17 +1372,11 @@ impl UnreachablePub {
             let def_span = cx.tcx.sess.source_map().guess_head_span(span);
             cx.struct_span_lint(UNREACHABLE_PUB, def_span, |lint| {
                 let mut err = lint.build(&format!("unreachable `pub` {}", what));
-                let replacement = if cx.tcx.features().crate_visibility_modifier {
-                    "crate"
-                } else {
-                    "pub(crate)"
-                }
-                .to_owned();
 
                 err.span_suggestion(
                     vis_span,
                     "consider restricting its visibility",
-                    replacement,
+                    "pub(crate)".to_owned(),
                     applicability,
                 );
                 if exportable {
@@ -2495,7 +2489,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
             ty: Ty<'tcx>,
             init: InitKind,
         ) -> Option<InitError> {
-            use rustc_middle::ty::TyKind::*;
+            use rustc_type_ir::sty::TyKind::*;
             match ty.kind() {
                 // Primitive types that don't like 0 as a value.
                 Ref(..) => Some(("references must be non-null".to_string(), None)),
@@ -2807,7 +2801,7 @@ impl ClashingExternDeclarations {
                 true
             } else {
                 // Do a full, depth-first comparison between the two.
-                use rustc_middle::ty::TyKind::*;
+                use rustc_type_ir::sty::TyKind::*;
                 let a_kind = a.kind();
                 let b_kind = b.kind();
 

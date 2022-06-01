@@ -91,11 +91,7 @@ fn extract_path_backwards(text: &str, end_pos: usize) -> Option<usize> {
         }
         break;
     }
-    if current_pos == end_pos {
-        return None;
-    } else {
-        return Some(current_pos);
-    }
+    if current_pos == end_pos { None } else { Some(current_pos) }
 }
 
 fn extract_html_tag(

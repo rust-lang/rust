@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/object-lifetime-default-from-rptr-struct-error.rs:20:5
+  --> $DIR/object-lifetime-default-from-rptr-struct-error.rs:24:5
    |
 LL | fn c<'a>(t: &'a MyBox<dyn Test+'a>, mut ss: SomeStruct<'a>) {
    |      -- lifetime `'a` defined here

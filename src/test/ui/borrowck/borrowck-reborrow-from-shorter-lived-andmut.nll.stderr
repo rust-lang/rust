@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/borrowck-reborrow-from-shorter-lived-andmut.rs:9:5
+  --> $DIR/borrowck-reborrow-from-shorter-lived-andmut.rs:13:5
    |
 LL | fn copy_borrowed_ptr<'a,'b>(p: &'a mut S<'b>) -> S<'b> {
    |                      -- -- lifetime `'b` defined here

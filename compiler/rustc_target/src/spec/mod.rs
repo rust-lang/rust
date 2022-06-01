@@ -108,6 +108,15 @@ pub enum LldFlavor {
 }
 
 impl LldFlavor {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            LldFlavor::Wasm => "wasm",
+            LldFlavor::Ld64 => "darwin",
+            LldFlavor::Ld => "gnu",
+            LldFlavor::Link => "link",
+        }
+    }
+
     fn from_str(s: &str) -> Option<Self> {
         Some(match s {
             "darwin" => LldFlavor::Ld64,
@@ -121,13 +130,7 @@ impl LldFlavor {
 
 impl ToJson for LldFlavor {
     fn to_json(&self) -> Json {
-        match *self {
-            LldFlavor::Ld64 => "darwin",
-            LldFlavor::Ld => "gnu",
-            LldFlavor::Link => "link",
-            LldFlavor::Wasm => "wasm",
-        }
-        .to_json()
+        self.as_str().to_json()
     }
 }
 

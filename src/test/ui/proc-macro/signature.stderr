@@ -1,20 +1,23 @@
-error[E0308]: mismatched types
+error[E0277]: expected a `Fn<(proc_macro::TokenStream,)>` closure, found `unsafe extern "C" fn(i32, u32) -> u32 {foo}`
   --> $DIR/signature.rs:10:1
    |
 LL | / pub unsafe extern "C" fn foo(a: i32, b: u32) -> u32 {
 LL | |
 LL | |     loop {}
 LL | | }
-   | |_^ expected normal fn, found unsafe fn
+   | | ^
+   | | |
+   | |_call the function in a closure: `|| unsafe { /* code */ }`
+   |   required by a bound introduced by this call
    |
-   = note: expected fn pointer `fn(proc_macro::TokenStream) -> proc_macro::TokenStream`
-                 found fn item `unsafe extern "C" fn(i32, u32) -> u32 {foo}`
-note: associated function defined here
+   = help: the trait `Fn<(proc_macro::TokenStream,)>` is not implemented for `unsafe extern "C" fn(i32, u32) -> u32 {foo}`
+   = note: unsafe function cannot be called generically without an unsafe block
+note: required by a bound in `ProcMacro::custom_derive`
   --> $SRC_DIR/proc_macro/src/bridge/client.rs:LL:COL
    |
-LL |     pub const fn custom_derive(
-   |                  ^^^^^^^^^^^^^
+LL |         expand: impl Fn(crate::TokenStream) -> crate::TokenStream + Copy,
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `ProcMacro::custom_derive`
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0308`.
+For more information about this error, try `rustc --explain E0277`.

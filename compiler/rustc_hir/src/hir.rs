@@ -343,12 +343,12 @@ pub struct GenericArgs<'hir> {
     pub span_ext: Span,
 }
 
-impl GenericArgs<'_> {
+impl<'hir> GenericArgs<'hir> {
     pub const fn none() -> Self {
         Self { args: &[], bindings: &[], parenthesized: false, span_ext: DUMMY_SP }
     }
 
-    pub fn inputs(&self) -> &[Ty<'_>] {
+    pub fn inputs(&self) -> &[Ty<'hir>] {
         if self.parenthesized {
             for arg in self.args {
                 match arg {
@@ -549,7 +549,7 @@ impl<'hir> Generics<'hir> {
         &NOPE
     }
 
-    pub fn get_named(&self, name: Symbol) -> Option<&GenericParam<'_>> {
+    pub fn get_named(&self, name: Symbol) -> Option<&GenericParam<'hir>> {
         for param in self.params {
             if name == param.name.ident().name {
                 return Some(param);
@@ -608,7 +608,7 @@ impl<'hir> Generics<'hir> {
     pub fn bounds_for_param(
         &self,
         param_def_id: LocalDefId,
-    ) -> impl Iterator<Item = &WhereBoundPredicate<'_>> {
+    ) -> impl Iterator<Item = &WhereBoundPredicate<'hir>> {
         self.predicates.iter().filter_map(move |pred| match pred {
             WherePredicate::BoundPredicate(bp) if bp.is_param_bound(param_def_id.to_def_id()) => {
                 Some(bp)
@@ -796,7 +796,6 @@ impl<'tcx> AttributeMap<'tcx> {
 /// Map of all HIR nodes inside the current owner.
 /// These nodes are mapped by `ItemLocalId` alongside the index of their parent node.
 /// The HIR tree, including bodies, is pre-hashed.
-#[derive(Debug)]
 pub struct OwnerNodes<'tcx> {
     /// Pre-computed hash of the full HIR.
     pub hash_including_bodies: Fingerprint,
@@ -819,6 +818,18 @@ impl<'tcx> OwnerNodes<'tcx> {
         let node = self.nodes[ItemLocalId::new(0)].as_ref().unwrap().node;
         let node = node.as_owner().unwrap(); // Indexing must ensure it is an OwnerNode.
         node
+    }
+}
+
+impl fmt::Debug for OwnerNodes<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("OwnerNodes")
+            .field("node", &self.nodes[ItemLocalId::from_u32(0)])
+            .field("bodies", &self.bodies)
+            .field("local_id_to_def_id", &self.local_id_to_def_id)
+            .field("hash_without_bodies", &self.hash_without_bodies)
+            .field("hash_including_bodies", &self.hash_including_bodies)
+            .finish()
     }
 }
 
@@ -1359,7 +1370,7 @@ pub enum UnsafeSource {
     UserProvided,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Encodable, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Encodable, Decodable, Hash, Debug)]
 pub struct BodyId {
     pub hir_id: HirId,
 }

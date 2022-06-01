@@ -1203,6 +1203,7 @@ impl SourceFileHash {
 #[derive(Copy, PartialEq, PartialOrd, Clone, Ord, Eq, Hash, Debug, Encodable, Decodable)]
 pub enum DebuggerVisualizerType {
     Natvis,
+    GdbPrettyPrinter,
 }
 
 /// A single debugger visualizer file.
@@ -1270,7 +1271,9 @@ impl<S: Encoder> Encodable<S> for SourceFile {
                     // the lines list is sorted and individual lines are
                     // probably not that long. Because of that we can store lines
                     // as a difference list, using as little space as possible
-                    // for the differences.
+                    // for the differences. But note that the first line is
+                    // always encoded as a `BytePos` because its position is
+                    // often much larger than any of the differences.
                     let max_line_length = if lines.len() == 1 {
                         0
                     } else {

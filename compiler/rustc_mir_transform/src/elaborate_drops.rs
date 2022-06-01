@@ -494,15 +494,13 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
     fn drop_flags_for_fn_rets(&mut self) {
         for (bb, data) in self.body.basic_blocks().iter_enumerated() {
             if let TerminatorKind::Call {
-                destination: Some((ref place, tgt)),
-                cleanup: Some(_),
-                ..
+                destination, target: Some(tgt), cleanup: Some(_), ..
             } = data.terminator().kind
             {
                 assert!(!self.patch.is_patched(bb));
 
                 let loc = Location { block: tgt, statement_index: 0 };
-                let path = self.move_data().rev_lookup.find(place.as_ref());
+                let path = self.move_data().rev_lookup.find(destination.as_ref());
                 on_lookup_result_bits(self.tcx, self.body, self.move_data(), path, |child| {
                     self.set_drop_flag(loc, child, DropFlagState::Present)
                 });
@@ -576,14 +574,13 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
             // There may be a critical edge after this call,
             // so mark the return as initialized *before* the
             // call.
-            if let TerminatorKind::Call {
-                destination: Some((ref place, _)), cleanup: None, ..
-            } = data.terminator().kind
+            if let TerminatorKind::Call { destination, target: Some(_), cleanup: None, .. } =
+                data.terminator().kind
             {
                 assert!(!self.patch.is_patched(bb));
 
                 let loc = Location { block: bb, statement_index: data.statements.len() };
-                let path = self.move_data().rev_lookup.find(place.as_ref());
+                let path = self.move_data().rev_lookup.find(destination.as_ref());
                 on_lookup_result_bits(self.tcx, self.body, self.move_data(), path, |child| {
                     self.set_drop_flag(loc, child, DropFlagState::Present)
                 });

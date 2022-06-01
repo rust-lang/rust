@@ -265,7 +265,8 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         instance: ty::Instance<'tcx>,
         _abi: Abi,
         args: &[OpTy<'tcx>],
-        _ret: Option<(&PlaceTy<'tcx>, mir::BasicBlock)>,
+        _dest: &PlaceTy<'tcx>,
+        _ret: Option<mir::BasicBlock>,
         _unwind: StackPopUnwind, // unwinding is not supported in consts
     ) -> InterpResult<'tcx, Option<(&'mir mir::Body<'tcx>, ty::Instance<'tcx>)>> {
         debug!("find_mir_or_eval_fn: {:?}", instance);
@@ -276,8 +277,8 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
             // sensitive check here.  But we can at least rule out functions that are not const
             // at all.
             if !ecx.tcx.is_const_fn_raw(def.did) {
-                // allow calling functions marked with #[default_method_body_is_const].
-                if !ecx.tcx.has_attr(def.did, sym::default_method_body_is_const) {
+                // allow calling functions inside a trait marked with #[const_trait].
+                if !ecx.tcx.is_const_default_method(def.did) {
                     // We certainly do *not* want to actually call the fn
                     // though, so be sure we return here.
                     throw_unsup_format!("calling non-const function `{}`", instance)
@@ -293,6 +294,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                     new_instance,
                     _abi,
                     args,
+                    _dest,
                     _ret,
                     _unwind,
                 )?
@@ -307,17 +309,18 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx>],
-        ret: Option<(&PlaceTy<'tcx>, mir::BasicBlock)>,
+        dest: &PlaceTy<'tcx, Self::PointerTag>,
+        target: Option<mir::BasicBlock>,
         _unwind: StackPopUnwind,
     ) -> InterpResult<'tcx> {
         // Shared intrinsics.
-        if ecx.emulate_intrinsic(instance, args, ret)? {
+        if ecx.emulate_intrinsic(instance, args, dest, target)? {
             return Ok(());
         }
         let intrinsic_name = ecx.tcx.item_name(instance.def_id());
 
         // CTFE-specific intrinsics.
-        let Some((dest, ret)) = ret else {
+        let Some(ret) = target else {
             return Err(ConstEvalErrKind::NeedsRfc(format!(
                 "calling intrinsic `{}`",
                 intrinsic_name

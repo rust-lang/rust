@@ -259,8 +259,8 @@ fn parse_len_output<'tcx>(cx: &LateContext<'_>, sig: FnSig<'tcx>) -> Option<LenO
     }
 }
 
-impl LenOutput<'_> {
-    fn matches_is_empty_output(self, ty: Ty<'_>) -> bool {
+impl<'tcx> LenOutput<'tcx> {
+    fn matches_is_empty_output(self, ty: Ty<'tcx>) -> bool {
         match (self, ty.kind()) {
             (_, &ty::Bool) => true,
             (Self::Option(id), &ty::Adt(adt, subs)) if id == adt.did() => subs.type_at(0).is_bool(),
@@ -292,7 +292,7 @@ impl LenOutput<'_> {
 }
 
 /// Checks if the given signature matches the expectations for `is_empty`
-fn check_is_empty_sig(sig: FnSig<'_>, self_kind: ImplicitSelfKind, len_output: LenOutput<'_>) -> bool {
+fn check_is_empty_sig<'tcx>(sig: FnSig<'tcx>, self_kind: ImplicitSelfKind, len_output: LenOutput<'tcx>) -> bool {
     match &**sig.inputs_and_output {
         [arg, res] if len_output.matches_is_empty_output(*res) => {
             matches!(
@@ -306,11 +306,11 @@ fn check_is_empty_sig(sig: FnSig<'_>, self_kind: ImplicitSelfKind, len_output: L
 }
 
 /// Checks if the given type has an `is_empty` method with the appropriate signature.
-fn check_for_is_empty(
-    cx: &LateContext<'_>,
+fn check_for_is_empty<'tcx>(
+    cx: &LateContext<'tcx>,
     span: Span,
     self_kind: ImplicitSelfKind,
-    output: LenOutput<'_>,
+    output: LenOutput<'tcx>,
     impl_ty: DefId,
     item_name: Symbol,
     item_kind: &str,

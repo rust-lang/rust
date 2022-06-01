@@ -26,7 +26,7 @@ pub struct PartiallyUninit {
 #[no_mangle]
 pub const fn fully_uninit() -> MaybeUninit<[u8; 10]> {
     const M: MaybeUninit<[u8; 10]> = MaybeUninit::uninit();
-    // CHECK: call void @llvm.memcpy.p0i8.p0i8.i{{(32|64)}}(i8* align 1 %1, i8* align 1 getelementptr inbounds (<{ [10 x i8] }>, <{ [10 x i8] }>* [[FULLY_UNINIT]], i32 0, i32 0, i32 0), i{{(32|64)}} 10, i1 false)
+    // CHECK: call void @llvm.memcpy.{{.+}}({{i8\*|ptr}} align 1 %{{[0-9]+}}, {{i8\*|ptr}} align 1 {{.*}}[[FULLY_UNINIT]]{{.*}}, i{{(32|64)}} 10, i1 false)
     M
 }
 
@@ -34,7 +34,7 @@ pub const fn fully_uninit() -> MaybeUninit<[u8; 10]> {
 #[no_mangle]
 pub const fn partially_uninit() -> PartiallyUninit {
     const X: PartiallyUninit = PartiallyUninit { x: 0xdeadbeef, y: MaybeUninit::uninit() };
-    // CHECK: call void @llvm.memcpy.p0i8.p0i8.i{{(32|64)}}(i8* align 4 %1, i8* align 4 getelementptr inbounds (<{ [4 x i8], [12 x i8] }>, <{ [4 x i8], [12 x i8] }>* [[PARTIALLY_UNINIT]], i32 0, i32 0, i32 0), i{{(32|64)}} 16, i1 false)
+    // CHECK: call void @llvm.memcpy.{{.+}}({{i8\*|ptr}} align 4 %{{[0-9]+}}, {{i8\*|ptr}} align 4 {{.*}}[[PARTIALLY_UNINIT]]{{.*}}, i{{(32|64)}} 16, i1 false)
     X
 }
 
@@ -42,7 +42,7 @@ pub const fn partially_uninit() -> PartiallyUninit {
 #[no_mangle]
 pub const fn uninit_padding_huge() -> [(u32, u8); 4096] {
     const X: [(u32, u8); 4096] = [(123, 45); 4096];
-    // CHECK: call void @llvm.memcpy.p0i8.p0i8.i{{(32|64)}}(i8* align 4 %1, i8* align 4 getelementptr inbounds (<{ [32768 x i8] }>, <{ [32768 x i8] }>* [[UNINIT_PADDING_HUGE]], i32 0, i32 0, i32 0), i{{(32|64)}} 32768, i1 false)
+    // CHECK: call void @llvm.memcpy.{{.+}}({{i8\*|ptr}} align 4 %{{[0-9]+}}, {{i8\*|ptr}} align 4 {{.*}}[[UNINIT_PADDING_HUGE]]{{.*}}, i{{(32|64)}} 32768, i1 false)
     X
 }
 
@@ -50,6 +50,6 @@ pub const fn uninit_padding_huge() -> [(u32, u8); 4096] {
 #[no_mangle]
 pub const fn fully_uninit_huge() -> MaybeUninit<[u32; 4096]> {
     const F: MaybeUninit<[u32; 4096]> = MaybeUninit::uninit();
-    // CHECK: call void @llvm.memcpy.p0i8.p0i8.i{{(32|64)}}(i8* align 4 %1, i8* align 4 getelementptr inbounds (<{ [16384 x i8] }>, <{ [16384 x i8] }>* [[FULLY_UNINIT_HUGE]], i32 0, i32 0, i32 0), i{{(32|64)}} 16384, i1 false)
+    // CHECK: call void @llvm.memcpy.{{.+}}({{i8\*|ptr}} align 4 %{{[0-9]+}}, {{i8\*|ptr}} align 4 {{.*}}[[FULLY_UNINIT_HUGE]]{{.*}}, i{{(32|64)}} 16384, i1 false)
     F
 }

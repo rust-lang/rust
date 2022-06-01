@@ -249,9 +249,6 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         let parent_scope = &self.parent_scope;
         match vis.kind {
             ast::VisibilityKind::Public => Ok(ty::Visibility::Public),
-            ast::VisibilityKind::Crate(..) => {
-                Ok(ty::Visibility::Restricted(CRATE_DEF_ID.to_def_id()))
-            }
             ast::VisibilityKind::Inherited => {
                 Ok(match self.parent_scope.module.kind {
                     // Any inherited visibility resolved directly inside an enum or trait

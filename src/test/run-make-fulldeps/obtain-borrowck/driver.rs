@@ -154,7 +154,7 @@ fn get_bodies<'tcx>(tcx: TyCtxt<'tcx>) -> Vec<(String, BodyWithBorrowckFacts<'tc
                 // SAFETY: For soundness we need to ensure that the bodies have
                 // the same lifetime (`'tcx`), which they had before they were
                 // stored in the thread local.
-                (def_path.to_string_no_crate_verbose(), body)
+                (def_path.to_string_no_crate_verbose(), unsafe { std::mem::transmute(body) })
             })
             .collect()
     })

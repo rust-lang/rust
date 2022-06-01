@@ -119,11 +119,11 @@ impl FromWithTcx<clean::GenericArgs> for GenericArgs {
         use clean::GenericArgs::*;
         match args {
             AngleBracketed { args, bindings } => GenericArgs::AngleBracketed {
-                args: args.into_iter().map(|a| a.into_tcx(tcx)).collect(),
+                args: args.into_vec().into_iter().map(|a| a.into_tcx(tcx)).collect(),
                 bindings: bindings.into_iter().map(|a| a.into_tcx(tcx)).collect(),
             },
             Parenthesized { inputs, output } => GenericArgs::Parenthesized {
-                inputs: inputs.into_iter().map(|a| a.into_tcx(tcx)).collect(),
+                inputs: inputs.into_vec().into_iter().map(|a| a.into_tcx(tcx)).collect(),
                 output: output.map(|a| (*a).into_tcx(tcx)),
             },
         }
@@ -249,7 +249,8 @@ fn from_clean_item(item: clean::Item, tcx: TyCtxt<'_>) -> ItemEnum {
 
 impl FromWithTcx<clean::Struct> for Struct {
     fn from_tcx(struct_: clean::Struct, tcx: TyCtxt<'_>) -> Self {
-        let clean::Struct { struct_type, generics, fields, fields_stripped } = struct_;
+        let fields_stripped = struct_.has_stripped_entries();
+        let clean::Struct { struct_type, generics, fields } = struct_;
         Struct {
             struct_type: from_ctor_kind(struct_type),
             generics: generics.into_tcx(tcx),
@@ -261,8 +262,9 @@ impl FromWithTcx<clean::Struct> for Struct {
 }
 
 impl FromWithTcx<clean::Union> for Union {
-    fn from_tcx(struct_: clean::Union, tcx: TyCtxt<'_>) -> Self {
-        let clean::Union { generics, fields, fields_stripped } = struct_;
+    fn from_tcx(union_: clean::Union, tcx: TyCtxt<'_>) -> Self {
+        let fields_stripped = union_.has_stripped_entries();
+        let clean::Union { generics, fields } = union_;
         Union {
             generics: generics.into_tcx(tcx),
             fields_stripped,
@@ -586,7 +588,8 @@ pub(crate) fn from_function_method(
 
 impl FromWithTcx<clean::Enum> for Enum {
     fn from_tcx(enum_: clean::Enum, tcx: TyCtxt<'_>) -> Self {
-        let clean::Enum { variants, generics, variants_stripped } = enum_;
+        let variants_stripped = enum_.has_stripped_entries();
+        let clean::Enum { variants, generics } = enum_;
         Enum {
             generics: generics.into_tcx(tcx),
             variants_stripped,
@@ -598,7 +601,8 @@ impl FromWithTcx<clean::Enum> for Enum {
 
 impl FromWithTcx<clean::VariantStruct> for Struct {
     fn from_tcx(struct_: clean::VariantStruct, _tcx: TyCtxt<'_>) -> Self {
-        let clean::VariantStruct { struct_type, fields, fields_stripped } = struct_;
+        let fields_stripped = struct_.has_stripped_entries();
+        let clean::VariantStruct { struct_type, fields } = struct_;
         Struct {
             struct_type: from_ctor_kind(struct_type),
             generics: Default::default(),

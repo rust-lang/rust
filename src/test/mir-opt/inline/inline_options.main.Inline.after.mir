@@ -52,4 +52,8 @@ fn main() -> () {
         _0 = const ();                   // scope 0 at $DIR/inline-options.rs:8:11: 11:2
         return;                          // scope 0 at $DIR/inline-options.rs:11:2: 11:2
     }
+
+    bb5 (cleanup): {
+        resume;                          // scope 0 at $DIR/inline-options.rs:8:1: 11:2
+    }
 }

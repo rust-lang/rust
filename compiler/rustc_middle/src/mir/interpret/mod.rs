@@ -203,7 +203,7 @@ enum AllocDiscriminant {
     Static,
 }
 
-pub fn specialized_encode_alloc_id<'tcx, E: TyEncoder<'tcx>>(
+pub fn specialized_encode_alloc_id<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>>(
     encoder: &mut E,
     tcx: TyCtxt<'tcx>,
     alloc_id: AllocId,
@@ -277,7 +277,7 @@ impl<'s> AllocDecodingSession<'s> {
     /// Decodes an `AllocId` in a thread-safe way.
     pub fn decode_alloc_id<'tcx, D>(&self, decoder: &mut D) -> AllocId
     where
-        D: TyDecoder<'tcx>,
+        D: TyDecoder<I = TyCtxt<'tcx>>,
     {
         // Read the index of the allocation.
         let idx = usize::try_from(decoder.read_u32()).unwrap();
@@ -305,7 +305,7 @@ impl<'s> AllocDecodingSession<'s> {
                         AllocDiscriminant::Alloc => {
                             // If this is an allocation, we need to reserve an
                             // `AllocId` so we can decode cyclic graphs.
-                            let alloc_id = decoder.tcx().reserve_alloc_id();
+                            let alloc_id = decoder.interner().reserve_alloc_id();
                             *entry =
                                 State::InProgress(TinyList::new_single(self.session_id), alloc_id);
                             Some(alloc_id)
@@ -349,7 +349,7 @@ impl<'s> AllocDecodingSession<'s> {
                     // We already have a reserved `AllocId`.
                     let alloc_id = alloc_id.unwrap();
                     trace!("decoded alloc {:?}: {:#?}", alloc_id, alloc);
-                    decoder.tcx().set_alloc_id_same_memory(alloc_id, alloc);
+                    decoder.interner().set_alloc_id_same_memory(alloc_id, alloc);
                     alloc_id
                 }
                 AllocDiscriminant::Fn => {
@@ -357,7 +357,7 @@ impl<'s> AllocDecodingSession<'s> {
                     trace!("creating fn alloc ID");
                     let instance = ty::Instance::decode(decoder);
                     trace!("decoded fn alloc instance: {:?}", instance);
-                    let alloc_id = decoder.tcx().create_fn_alloc(instance);
+                    let alloc_id = decoder.interner().create_fn_alloc(instance);
                     alloc_id
                 }
                 AllocDiscriminant::Static => {
@@ -365,7 +365,7 @@ impl<'s> AllocDecodingSession<'s> {
                     trace!("creating extern static alloc ID");
                     let did = <DefId as Decodable<D>>::decode(decoder);
                     trace!("decoded static def-ID: {:?}", did);
-                    let alloc_id = decoder.tcx().create_static_alloc(did);
+                    let alloc_id = decoder.interner().create_static_alloc(did);
                     alloc_id
                 }
             }

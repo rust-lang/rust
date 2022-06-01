@@ -338,11 +338,12 @@ pub struct ClosureOutlivesRequirement<'tcx> {
     pub blame_span: Span,
 
     // ... due to this reason.
-    pub category: ConstraintCategory,
+    pub category: ConstraintCategory<'tcx>,
 }
 
 // Make sure this enum doesn't unintentionally grow
-rustc_data_structures::static_assert_size!(ConstraintCategory, 12);
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+rustc_data_structures::static_assert_size!(ConstraintCategory<'_>, 16);
 
 /// Outlives-constraints can be categorized to determine whether and why they
 /// are interesting (for error reporting). Order of variants indicates sort
@@ -351,7 +352,7 @@ rustc_data_structures::static_assert_size!(ConstraintCategory, 12);
 /// See also `rustc_const_eval::borrow_check::constraints`.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 #[derive(TyEncodable, TyDecodable, HashStable)]
-pub enum ConstraintCategory {
+pub enum ConstraintCategory<'tcx> {
     Return(ReturnConstraint),
     Yield,
     UseAsConst,
@@ -363,7 +364,9 @@ pub enum ConstraintCategory {
     ///
     /// We try to get the category that the closure used when reporting this.
     ClosureBounds,
-    CallArgument,
+
+    /// Contains the function type if available.
+    CallArgument(Option<Ty<'tcx>>),
     CopyBound,
     SizedBound,
     Assignment,

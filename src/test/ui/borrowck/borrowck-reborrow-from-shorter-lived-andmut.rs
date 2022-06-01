@@ -1,3 +1,7 @@
+// ignore-compare-mode-nll
+// revisions: base nll
+// [nll]compile-flags: -Zborrowck=mir
+
 // Test that assignments to an `&mut` pointer which is found in a
 // borrowed (but otherwise non-aliasable) location is illegal.
 
@@ -7,7 +11,8 @@ struct S<'a> {
 
 fn copy_borrowed_ptr<'a,'b>(p: &'a mut S<'b>) -> S<'b> {
     S { pointer: &mut *p.pointer }
-    //~^ ERROR lifetime mismatch
+    //[base]~^ ERROR lifetime mismatch
+    //[nll]~^^ ERROR lifetime may not live long enough
 }
 
 fn main() {

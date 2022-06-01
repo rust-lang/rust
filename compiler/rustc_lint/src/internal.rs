@@ -5,8 +5,8 @@ use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext}
 use rustc_ast as ast;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
-use rustc_hir::{Expr, ExprKind, GenericArg, Path, PathSegment, QPath};
-use rustc_hir::{HirId, Item, ItemKind, Node, Ty, TyKind};
+use rustc_hir::{Expr, ExprKind, GenericArg, PatKind, Path, PathSegment, QPath};
+use rustc_hir::{HirId, Item, ItemKind, Node, Pat, Ty, TyKind};
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
@@ -123,55 +123,115 @@ declare_lint_pass!(TyTyKind => [
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for TyTyKind {
-    fn check_path(&mut self, cx: &LateContext<'_>, path: &'tcx Path<'tcx>, _: HirId) {
-        let segments = path.segments.iter().rev().skip(1).rev();
-
-        if let Some(last) = segments.last() {
-            let span = path.span.with_hi(last.ident.span.hi());
-            if lint_ty_kind_usage(cx, last) {
-                cx.struct_span_lint(USAGE_OF_TY_TYKIND, span, |lint| {
-                    lint.build("usage of `ty::TyKind::<kind>`")
-                        .span_suggestion(
-                            span,
-                            "try using ty::<kind> directly",
-                            "ty".to_string(),
-                            Applicability::MaybeIncorrect, // ty maybe needs an import
-                        )
-                        .emit();
-                })
-            }
+    fn check_path(
+        &mut self,
+        cx: &LateContext<'tcx>,
+        path: &'tcx rustc_hir::Path<'tcx>,
+        _: rustc_hir::HirId,
+    ) {
+        if let Some(segment) = path.segments.iter().nth_back(1)
+        && let Some(res) = &segment.res
+        && lint_ty_kind_usage(cx, res)
+        {
+            let span = path.span.with_hi(
+                segment.args.map_or(segment.ident.span, |a| a.span_ext).hi()
+            );
+            cx.struct_span_lint(USAGE_OF_TY_TYKIND, path.span, |lint| {
+                lint.build("usage of `ty::TyKind::<kind>`")
+                    .span_suggestion(
+                        span,
+                        "try using `ty::<kind>` directly",
+                        "ty".to_string(),
+                        Applicability::MaybeIncorrect, // ty maybe needs an import
+                    )
+                    .emit();
+            });
         }
     }
 
     fn check_ty(&mut self, cx: &LateContext<'_>, ty: &'tcx Ty<'tcx>) {
         match &ty.kind {
             TyKind::Path(QPath::Resolved(_, path)) => {
-                if let Some(last) = path.segments.iter().last() {
-                    if lint_ty_kind_usage(cx, last) {
-                        cx.struct_span_lint(USAGE_OF_TY_TYKIND, path.span, |lint| {
-                            lint.build("usage of `ty::TyKind`")
-                                .help("try using `Ty` instead")
-                                .emit();
-                        })
-                    } else {
-                        if ty.span.from_expansion() {
-                            return;
-                        }
-                        if let Some(t) = is_ty_or_ty_ctxt(cx, ty) {
-                            if path.segments.len() > 1 {
-                                cx.struct_span_lint(USAGE_OF_QUALIFIED_TY, path.span, |lint| {
-                                    lint.build(&format!("usage of qualified `ty::{}`", t))
+                if lint_ty_kind_usage(cx, &path.res) {
+                    cx.struct_span_lint(USAGE_OF_TY_TYKIND, path.span, |lint| {
+                        let hir = cx.tcx.hir();
+                        match hir.find(hir.get_parent_node(ty.hir_id)) {
+                            Some(Node::Pat(Pat {
+                                kind:
+                                    PatKind::Path(qpath)
+                                    | PatKind::TupleStruct(qpath, ..)
+                                    | PatKind::Struct(qpath, ..),
+                                ..
+                            })) => {
+                                if let QPath::TypeRelative(qpath_ty, ..) = qpath
+                                    && qpath_ty.hir_id == ty.hir_id
+                                {
+                                    lint.build("usage of `ty::TyKind::<kind>`")
                                         .span_suggestion(
                                             path.span,
-                                            "try importing it and using it unqualified",
-                                            t,
-                                            // The import probably needs to be changed
-                                            Applicability::MaybeIncorrect,
+                                            "try using `ty::<kind>` directly",
+                                            "ty".to_string(),
+                                            Applicability::MaybeIncorrect, // ty maybe needs an import
                                         )
                                         .emit();
-                                })
+                                    return;
+                                }
                             }
+                            Some(Node::Expr(Expr {
+                                kind: ExprKind::Path(qpath),
+                                ..
+                            })) => {
+                                if let QPath::TypeRelative(qpath_ty, ..) = qpath
+                                    && qpath_ty.hir_id == ty.hir_id
+                                {
+                                    lint.build("usage of `ty::TyKind::<kind>`")
+                                        .span_suggestion(
+                                            path.span,
+                                            "try using `ty::<kind>` directly",
+                                            "ty".to_string(),
+                                            Applicability::MaybeIncorrect, // ty maybe needs an import
+                                        )
+                                        .emit();
+                                    return;
+                                }
+                            }
+                            // Can't unify these two branches because qpath below is `&&` and above is `&`
+                            // and `A | B` paths don't play well together with adjustments, apparently.
+                            Some(Node::Expr(Expr {
+                                kind: ExprKind::Struct(qpath, ..),
+                                ..
+                            })) => {
+                                if let QPath::TypeRelative(qpath_ty, ..) = qpath
+                                    && qpath_ty.hir_id == ty.hir_id
+                                {
+                                    lint.build("usage of `ty::TyKind::<kind>`")
+                                        .span_suggestion(
+                                            path.span,
+                                            "try using `ty::<kind>` directly",
+                                            "ty".to_string(),
+                                            Applicability::MaybeIncorrect, // ty maybe needs an import
+                                        )
+                                        .emit();
+                                    return;
+                                }
+                            }
+                            _ => {}
                         }
+                        lint.build("usage of `ty::TyKind`").help("try using `Ty` instead").emit();
+                    })
+                } else if !ty.span.from_expansion() && let Some(t) = is_ty_or_ty_ctxt(cx, &path) {
+                    if path.segments.len() > 1 {
+                        cx.struct_span_lint(USAGE_OF_QUALIFIED_TY, path.span, |lint| {
+                            lint.build(&format!("usage of qualified `ty::{}`", t))
+                                .span_suggestion(
+                                    path.span,
+                                    "try importing it and using it unqualified",
+                                    t,
+                                    // The import probably needs to be changed
+                                    Applicability::MaybeIncorrect,
+                                )
+                                .emit();
+                        })
                     }
                 }
             }
@@ -180,42 +240,37 @@ impl<'tcx> LateLintPass<'tcx> for TyTyKind {
     }
 }
 
-fn lint_ty_kind_usage(cx: &LateContext<'_>, segment: &PathSegment<'_>) -> bool {
-    if let Some(res) = segment.res {
-        if let Some(did) = res.opt_def_id() {
-            return cx.tcx.is_diagnostic_item(sym::TyKind, did);
-        }
+fn lint_ty_kind_usage(cx: &LateContext<'_>, res: &Res) -> bool {
+    if let Some(did) = res.opt_def_id() {
+        cx.tcx.is_diagnostic_item(sym::TyKind, did) || cx.tcx.is_diagnostic_item(sym::IrTyKind, did)
+    } else {
+        false
     }
-
-    false
 }
 
-fn is_ty_or_ty_ctxt(cx: &LateContext<'_>, ty: &Ty<'_>) -> Option<String> {
-    if let TyKind::Path(QPath::Resolved(_, path)) = &ty.kind {
-        match path.res {
-            Res::Def(_, def_id) => {
-                if let Some(name @ (sym::Ty | sym::TyCtxt)) = cx.tcx.get_diagnostic_name(def_id) {
-                    return Some(format!("{}{}", name, gen_args(path.segments.last().unwrap())));
-                }
+fn is_ty_or_ty_ctxt(cx: &LateContext<'_>, path: &Path<'_>) -> Option<String> {
+    match &path.res {
+        Res::Def(_, def_id) => {
+            if let Some(name @ (sym::Ty | sym::TyCtxt)) = cx.tcx.get_diagnostic_name(*def_id) {
+                return Some(format!("{}{}", name, gen_args(path.segments.last().unwrap())));
             }
-            // Only lint on `&Ty` and `&TyCtxt` if it is used outside of a trait.
-            Res::SelfTy { trait_: None, alias_to: Some((did, _)) } => {
-                if let ty::Adt(adt, substs) = cx.tcx.type_of(did).kind() {
-                    if let Some(name @ (sym::Ty | sym::TyCtxt)) =
-                        cx.tcx.get_diagnostic_name(adt.did())
-                    {
-                        // NOTE: This path is currently unreachable as `Ty<'tcx>` is
-                        // defined as a type alias meaning that `impl<'tcx> Ty<'tcx>`
-                        // is not actually allowed.
-                        //
-                        // I(@lcnr) still kept this branch in so we don't miss this
-                        // if we ever change it in the future.
-                        return Some(format!("{}<{}>", name, substs[0]));
-                    }
-                }
-            }
-            _ => (),
         }
+        // Only lint on `&Ty` and `&TyCtxt` if it is used outside of a trait.
+        Res::SelfTy { trait_: None, alias_to: Some((did, _)) } => {
+            if let ty::Adt(adt, substs) = cx.tcx.type_of(did).kind() {
+                if let Some(name @ (sym::Ty | sym::TyCtxt)) = cx.tcx.get_diagnostic_name(adt.did())
+                {
+                    // NOTE: This path is currently unreachable as `Ty<'tcx>` is
+                    // defined as a type alias meaning that `impl<'tcx> Ty<'tcx>`
+                    // is not actually allowed.
+                    //
+                    // I(@lcnr) still kept this branch in so we don't miss this
+                    // if we ever change it in the future.
+                    return Some(format!("{}<{}>", name, substs[0]));
+                }
+            }
+        }
+        _ => (),
     }
 
     None

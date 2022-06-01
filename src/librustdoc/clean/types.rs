@@ -525,7 +525,7 @@ impl Item {
                 if let Ok((mut href, ..)) = href(*did, cx) {
                     debug!(?href);
                     if let Some(ref fragment) = *fragment {
-                        fragment.render(&mut href, cx.tcx()).unwrap()
+                        fragment.render(&mut href, cx.tcx())
                     }
                     Some(RenderedLink {
                         original_text: s.clone(),
@@ -619,11 +619,12 @@ impl Item {
             _ => false,
         }
     }
-    pub(crate) fn has_stripped_fields(&self) -> Option<bool> {
+    pub(crate) fn has_stripped_entries(&self) -> Option<bool> {
         match *self.kind {
-            StructItem(ref _struct) => Some(_struct.fields_stripped),
-            UnionItem(ref union) => Some(union.fields_stripped),
-            VariantItem(Variant::Struct(ref vstruct)) => Some(vstruct.fields_stripped),
+            StructItem(ref struct_) => Some(struct_.has_stripped_entries()),
+            UnionItem(ref union_) => Some(union_.has_stripped_entries()),
+            EnumItem(ref enum_) => Some(enum_.has_stripped_entries()),
+            VariantItem(ref v) => v.has_stripped_entries(),
             _ => None,
         }
     }
@@ -632,7 +633,7 @@ impl Item {
         self.stability(tcx).as_ref().and_then(|s| {
             let mut classes = Vec::with_capacity(2);
 
-            if s.level.is_unstable() {
+            if s.is_unstable() {
                 classes.push("unstable");
             }
 
@@ -879,7 +880,7 @@ impl AttributesExt for [ast::Attribute] {
             let mut doc_cfg = self
                 .iter()
                 .filter(|attr| attr.has_name(sym::doc))
-                .flat_map(|attr| attr.meta_item_list().unwrap_or_else(Vec::new))
+                .flat_map(|attr| attr.meta_item_list().unwrap_or_default())
                 .filter(|attr| attr.has_name(sym::cfg))
                 .peekable();
             if doc_cfg.peek().is_some() && doc_cfg_active {
@@ -994,7 +995,7 @@ pub(crate) struct DocFragment {
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 rustc_data_structures::static_assert_size!(DocFragment, 32);
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub(crate) enum DocFragmentKind {
     /// A doc fragment created from a `///` or `//!` doc comment.
     SugaredDoc,
@@ -1010,7 +1011,7 @@ pub(crate) enum DocFragmentKind {
 fn add_doc_fragment(out: &mut String, frag: &DocFragment) {
     let s = frag.doc.as_str();
     let mut iter = s.lines();
-    if s == "" {
+    if s.is_empty() {
         out.push('\n');
         return;
     }
@@ -1409,6 +1410,12 @@ pub(crate) struct Generics {
     pub(crate) where_predicates: Vec<WherePredicate>,
 }
 
+impl Generics {
+    pub(crate) fn is_empty(&self) -> bool {
+        self.params.is_empty() && self.where_predicates.is_empty()
+    }
+}
+
 #[derive(Clone, Debug)]
 pub(crate) struct Function {
     pub(crate) decl: FnDecl,
@@ -1560,10 +1567,8 @@ pub(crate) enum Type {
     QPath {
         assoc: Box<PathSegment>,
         self_type: Box<Type>,
-        /// FIXME: This is a hack that should be removed; see [this discussion][1].
-        ///
-        /// [1]: https://github.com/rust-lang/rust/pull/85479#discussion_r635729093
-        self_def_id: Option<DefId>,
+        /// FIXME: compute this field on demand.
+        should_show_cast: bool,
         trait_: Path,
     },
 
@@ -1576,7 +1581,7 @@ pub(crate) enum Type {
 
 // `Type` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(Type, 80);
+rustc_data_structures::static_assert_size!(Type, 72);
 
 impl Type {
     /// When comparing types for equality, it can help to ignore `&` wrapping.
@@ -1595,17 +1600,17 @@ impl Type {
         match (self, other) {
             // Recursive cases.
             (Type::Tuple(a), Type::Tuple(b)) => {
-                a.len() == b.len() && a.iter().zip(b).all(|(a, b)| a.is_same(&b, cache))
+                a.len() == b.len() && a.iter().zip(b).all(|(a, b)| a.is_same(b, cache))
             }
-            (Type::Slice(a), Type::Slice(b)) => a.is_same(&b, cache),
-            (Type::Array(a, al), Type::Array(b, bl)) => al == bl && a.is_same(&b, cache),
+            (Type::Slice(a), Type::Slice(b)) => a.is_same(b, cache),
+            (Type::Array(a, al), Type::Array(b, bl)) => al == bl && a.is_same(b, cache),
             (Type::RawPointer(mutability, type_), Type::RawPointer(b_mutability, b_type_)) => {
-                mutability == b_mutability && type_.is_same(&b_type_, cache)
+                mutability == b_mutability && type_.is_same(b_type_, cache)
             }
             (
                 Type::BorrowedRef { mutability, type_, .. },
                 Type::BorrowedRef { mutability: b_mutability, type_: b_type_, .. },
-            ) => mutability == b_mutability && type_.is_same(&b_type_, cache),
+            ) => mutability == b_mutability && type_.is_same(b_type_, cache),
             // Placeholders and generics are equal to all other types.
             (Type::Infer, _) | (_, Type::Infer) => true,
             (Type::Generic(_), _) | (_, Type::Generic(_)) => true,
@@ -1668,7 +1673,7 @@ impl Type {
 
     pub(crate) fn projection(&self) -> Option<(&Type, DefId, PathSegment)> {
         if let QPath { self_type, trait_, assoc, .. } = self {
-            Some((&self_type, trait_.def_id(), *assoc.clone()))
+            Some((self_type, trait_.def_id(), *assoc.clone()))
         } else {
             None
         }
@@ -2030,14 +2035,24 @@ pub(crate) struct Struct {
     pub(crate) struct_type: CtorKind,
     pub(crate) generics: Generics,
     pub(crate) fields: Vec<Item>,
-    pub(crate) fields_stripped: bool,
+}
+
+impl Struct {
+    pub(crate) fn has_stripped_entries(&self) -> bool {
+        self.fields.iter().any(|f| f.is_stripped())
+    }
 }
 
 #[derive(Clone, Debug)]
 pub(crate) struct Union {
     pub(crate) generics: Generics,
     pub(crate) fields: Vec<Item>,
-    pub(crate) fields_stripped: bool,
+}
+
+impl Union {
+    pub(crate) fn has_stripped_entries(&self) -> bool {
+        self.fields.iter().any(|f| f.is_stripped())
+    }
 }
 
 /// This is a more limited form of the standard Struct, different in that
@@ -2047,14 +2062,28 @@ pub(crate) struct Union {
 pub(crate) struct VariantStruct {
     pub(crate) struct_type: CtorKind,
     pub(crate) fields: Vec<Item>,
-    pub(crate) fields_stripped: bool,
+}
+
+impl VariantStruct {
+    pub(crate) fn has_stripped_entries(&self) -> bool {
+        self.fields.iter().any(|f| f.is_stripped())
+    }
 }
 
 #[derive(Clone, Debug)]
 pub(crate) struct Enum {
     pub(crate) variants: IndexVec<VariantIdx, Item>,
     pub(crate) generics: Generics,
-    pub(crate) variants_stripped: bool,
+}
+
+impl Enum {
+    pub(crate) fn has_stripped_entries(&self) -> bool {
+        self.variants.iter().any(|f| f.is_stripped())
+    }
+
+    pub(crate) fn variants(&self) -> impl Iterator<Item = &Item> {
+        self.variants.iter().filter(|v| !v.is_stripped())
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -2062,6 +2091,15 @@ pub(crate) enum Variant {
     CLike,
     Tuple(Vec<Item>),
     Struct(VariantStruct),
+}
+
+impl Variant {
+    pub(crate) fn has_stripped_entries(&self) -> Option<bool> {
+        match *self {
+            Self::Struct(ref struct_) => Some(struct_.has_stripped_entries()),
+            Self::CLike | Self::Tuple(_) => None,
+        }
+    }
 }
 
 /// Small wrapper around [`rustc_span::Span`] that adds helper methods
@@ -2180,18 +2218,18 @@ pub(crate) enum GenericArg {
 // `GenericArg` can occur many times in a single `Path`, so make sure it
 // doesn't increase in size unexpectedly.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(GenericArg, 88);
+rustc_data_structures::static_assert_size!(GenericArg, 80);
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub(crate) enum GenericArgs {
-    AngleBracketed { args: Vec<GenericArg>, bindings: ThinVec<TypeBinding> },
-    Parenthesized { inputs: Vec<Type>, output: Option<Box<Type>> },
+    AngleBracketed { args: Box<[GenericArg]>, bindings: ThinVec<TypeBinding> },
+    Parenthesized { inputs: Box<[Type]>, output: Option<Box<Type>> },
 }
 
 // `GenericArgs` is in every `PathSegment`, so its size can significantly
 // affect rustdoc's memory usage.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(GenericArgs, 40);
+rustc_data_structures::static_assert_size!(GenericArgs, 32);
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub(crate) struct PathSegment {
@@ -2202,7 +2240,7 @@ pub(crate) struct PathSegment {
 // `PathSegment` usually occurs multiple times in every `Path`, so its size can
 // significantly affect rustdoc's memory usage.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(PathSegment, 48);
+rustc_data_structures::static_assert_size!(PathSegment, 40);
 
 #[derive(Clone, Debug)]
 pub(crate) struct Typedef {

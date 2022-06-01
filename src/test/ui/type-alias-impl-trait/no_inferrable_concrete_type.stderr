@@ -1,10 +1,20 @@
 error: unconstrained opaque type
-  --> $DIR/no_inferrable_concrete_type.rs:6:12
+  --> $DIR/no_inferrable_concrete_type.rs:7:20
    |
-LL | type Foo = impl Copy;
-   |            ^^^^^^^^^
+LL |     pub type Foo = impl Copy;
+   |                    ^^^^^^^^^
    |
    = note: `Foo` must be used in combination with a concrete type within the same module
 
-error: aborting due to previous error
+error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
+  --> $DIR/no_inferrable_concrete_type.rs:17:23
+   |
+LL |     let _: foo::Foo = std::mem::transmute(0u8);
+   |                       ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: source type: `u8` (8 bits)
+   = note: target type: `Foo` (size can vary because of [type error])
 
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0512`.

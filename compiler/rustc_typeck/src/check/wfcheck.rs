@@ -41,7 +41,7 @@ use std::ops::ControlFlow;
 /// ```ignore (illustrative)
 /// F: for<'b, 'tcx> where 'tcx FnOnce(FnCtxt<'b, 'tcx>)
 /// ```
-struct CheckWfFcxBuilder<'tcx> {
+pub(super) struct CheckWfFcxBuilder<'tcx> {
     inherited: super::InheritedBuilder<'tcx>,
     id: hir::HirId,
     span: Span,
@@ -49,7 +49,7 @@ struct CheckWfFcxBuilder<'tcx> {
 }
 
 impl<'tcx> CheckWfFcxBuilder<'tcx> {
-    fn with_fcx<F>(&mut self, f: F)
+    pub(super) fn with_fcx<F>(&mut self, f: F)
     where
         F: for<'b> FnOnce(&FnCtxt<'b, 'tcx>) -> FxHashSet<Ty<'tcx>>,
     {
@@ -827,7 +827,9 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) {
                     );
                 }
 
-                if traits::search_for_structural_match_violation(param.span, tcx, ty).is_some() {
+                if let Some(non_structural_match_ty) =
+                    traits::search_for_structural_match_violation(param.span, tcx, ty)
+                {
                     // We use the same error code in both branches, because this is really the same
                     // issue: we just special-case the message for type parameters to make it
                     // clearer.
@@ -853,19 +855,23 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) {
                         )
                         .emit();
                     } else {
-                        struct_span_err!(
+                        let mut diag = struct_span_err!(
                             tcx.sess,
                             hir_ty.span,
                             E0741,
                             "`{}` must be annotated with `#[derive(PartialEq, Eq)]` to be used as \
                             the type of a const parameter",
-                            ty,
-                        )
-                        .span_label(
-                            hir_ty.span,
-                            format!("`{ty}` doesn't derive both `PartialEq` and `Eq`"),
-                        )
-                        .emit();
+                            non_structural_match_ty.ty,
+                        );
+
+                        if ty == non_structural_match_ty.ty {
+                            diag.span_label(
+                                hir_ty.span,
+                                format!("`{ty}` doesn't derive both `PartialEq` and `Eq`"),
+                            );
+                        }
+
+                        diag.emit();
                     }
                 }
             } else {
@@ -966,7 +972,7 @@ fn check_associated_item(
     })
 }
 
-fn for_item<'tcx>(tcx: TyCtxt<'tcx>, item: &hir::Item<'_>) -> CheckWfFcxBuilder<'tcx> {
+pub(super) fn for_item<'tcx>(tcx: TyCtxt<'tcx>, item: &hir::Item<'_>) -> CheckWfFcxBuilder<'tcx> {
     for_id(tcx, item.def_id, item.span)
 }
 

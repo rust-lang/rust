@@ -5,6 +5,7 @@
 //! assume that HTML output is desired, although it may be possible to redesign
 //! them in the future to instead emit any format desired.
 
+use std::borrow::Cow;
 use std::cell::Cell;
 use std::fmt;
 use std::iter;
@@ -457,7 +458,7 @@ impl clean::GenericArgs {
                             f.write_str("&lt;")?;
                         }
                         let mut comma = false;
-                        for arg in args {
+                        for arg in args.iter() {
                             if comma {
                                 f.write_str(", ")?;
                             }
@@ -468,7 +469,7 @@ impl clean::GenericArgs {
                                 write!(f, "{}", arg.print(cx))?;
                             }
                         }
-                        for binding in bindings {
+                        for binding in bindings.iter() {
                             if comma {
                                 f.write_str(", ")?;
                             }
@@ -489,7 +490,7 @@ impl clean::GenericArgs {
                 clean::GenericArgs::Parenthesized { inputs, output } => {
                     f.write_str("(")?;
                     let mut comma = false;
-                    for ty in inputs {
+                    for ty in inputs.iter() {
                         if comma {
                             f.write_str(", ")?;
                         }
@@ -545,10 +546,10 @@ pub(crate) enum HrefError {
 // Panics if `syms` is empty.
 pub(crate) fn join_with_double_colon(syms: &[Symbol]) -> String {
     let mut s = String::with_capacity(estimate_item_path_byte_length(syms.len()));
-    s.push_str(&syms[0].as_str());
+    s.push_str(syms[0].as_str());
     for sym in &syms[1..] {
         s.push_str("::");
-        s.push_str(&sym.as_str());
+        s.push_str(sym.as_str());
     }
     s
 }
@@ -985,11 +986,7 @@ fn fmt_type<'cx>(
                 write!(f, "impl {}", print_generic_bounds(bounds, cx))
             }
         }
-        clean::QPath { ref assoc, ref self_type, ref trait_, ref self_def_id } => {
-            let should_show_cast = !trait_.segments.is_empty()
-                && self_def_id
-                    .zip(Some(trait_.def_id()))
-                    .map_or(!self_type.is_self_type(), |(id, trait_)| id != trait_);
+        clean::QPath { ref assoc, ref self_type, ref trait_, should_show_cast } => {
             if f.alternate() {
                 if should_show_cast {
                     write!(f, "<{:#} as {:#}>::", self_type.print(cx), trait_.print(cx))?
@@ -1073,7 +1070,7 @@ impl clean::Impl {
                 write!(f, " for ")?;
             }
 
-            if let Some(ref ty) = self.kind.as_blanket_ty() {
+            if let Some(ty) = self.kind.as_blanket_ty() {
                 fmt_type(ty, f, use_absolute, cx)?;
             } else {
                 fmt_type(&self.for_, f, use_absolute, cx)?;
@@ -1299,9 +1296,11 @@ impl clean::Visibility {
         item_did: ItemId,
         cx: &'a Context<'tcx>,
     ) -> impl fmt::Display + 'a + Captures<'tcx> {
-        let to_print = match self {
-            clean::Public => "pub ".to_owned(),
-            clean::Inherited => String::new(),
+        use std::fmt::Write as _;
+
+        let to_print: Cow<'static, str> = match self {
+            clean::Public => "pub ".into(),
+            clean::Inherited => "".into(),
             clean::Visibility::Restricted(vis_did) => {
                 // FIXME(camelid): This may not work correctly if `item_did` is a module.
                 //                 However, rustdoc currently never displays a module's
@@ -1309,17 +1308,16 @@ impl clean::Visibility {
                 let parent_module = find_nearest_parent_module(cx.tcx(), item_did.expect_def_id());
 
                 if vis_did.is_crate_root() {
-                    "pub(crate) ".to_owned()
+                    "pub(crate) ".into()
                 } else if parent_module == Some(vis_did) {
                     // `pub(in foo)` where `foo` is the parent module
                     // is the same as no visibility modifier
-                    String::new()
+                    "".into()
                 } else if parent_module
-                    .map(|parent| find_nearest_parent_module(cx.tcx(), parent))
-                    .flatten()
+                    .and_then(|parent| find_nearest_parent_module(cx.tcx(), parent))
                     == Some(vis_did)
                 {
-                    "pub(super) ".to_owned()
+                    "pub(super) ".into()
                 } else {
                     let path = cx.tcx().def_path(vis_did);
                     debug!("path={:?}", path);
@@ -1329,14 +1327,14 @@ impl clean::Visibility {
 
                     let mut s = "pub(in ".to_owned();
                     for seg in &path.data[..path.data.len() - 1] {
-                        s.push_str(&format!("{}::", seg.data.get_opt_name().unwrap()));
+                        let _ = write!(s, "{}::", seg.data.get_opt_name().unwrap());
                     }
-                    s.push_str(&format!("{}) ", anchor));
-                    s
+                    let _ = write!(s, "{}) ", anchor);
+                    s.into()
                 }
             }
         };
-        display_fn(move |f| f.write_str(&to_print))
+        display_fn(move |f| write!(f, "{}", to_print))
     }
 
     /// This function is the same as print_with_space, except that it renders no links.
@@ -1362,9 +1360,7 @@ impl clean::Visibility {
                     // `pub(in foo)` where `foo` is the parent module
                     // is the same as no visibility modifier
                     String::new()
-                } else if parent_module
-                    .map(|parent| find_nearest_parent_module(tcx, parent))
-                    .flatten()
+                } else if parent_module.and_then(|parent| find_nearest_parent_module(tcx, parent))
                     == Some(vis_did)
                 {
                     "pub(super) ".to_owned()

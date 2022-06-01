@@ -1,9 +1,9 @@
 #![feature(const_trait_impl)]
 
+#[const_trait]
 trait ConstDefaultFn: Sized {
     fn b(self);
 
-    #[default_method_body_is_const]
     fn a(self) {
         self.b();
     }

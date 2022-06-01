@@ -228,7 +228,7 @@ fn scrape_test_config(attrs: &[ast::Attribute]) -> GlobalTestOptions {
     let test_attrs: Vec<_> = attrs
         .iter()
         .filter(|a| a.has_name(sym::doc))
-        .flat_map(|a| a.meta_item_list().unwrap_or_else(Vec::new))
+        .flat_map(|a| a.meta_item_list().unwrap_or_default())
         .filter(|a| a.has_name(sym::test))
         .collect();
     let attrs = test_attrs.iter().flat_map(|a| a.meta_item_list().unwrap_or(&[]));
@@ -738,7 +738,7 @@ fn check_if_attr_is_complete(source: &str, edition: Edition) -> bool {
             }
         };
         // If a parsing error happened, it's very likely that the attribute is incomplete.
-        if !parser.parse_attribute(InnerAttrPolicy::Permitted).is_ok() {
+        if parser.parse_attribute(InnerAttrPolicy::Permitted).is_err() {
             return false;
         }
         // We now check if there is an unclosed delimiter for the attribute. To do so, we look at
@@ -795,7 +795,9 @@ fn partition_source(s: &str, edition: Edition) -> (String, String, String) {
                         // If not, then we append the new line into the pending attribute to check
                         // if this time it's complete...
                         mod_attr_pending.push_str(line);
-                        if !trimline.is_empty() && check_if_attr_is_complete(line, edition) {
+                        if !trimline.is_empty()
+                            && check_if_attr_is_complete(&mod_attr_pending, edition)
+                        {
                             // If it's complete, then we can clear the pending content.
                             mod_attr_pending.clear();
                         }

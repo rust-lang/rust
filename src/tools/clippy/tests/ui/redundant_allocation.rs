@@ -97,4 +97,39 @@ mod box_dyn {
     pub fn test_rc_box(_: Rc<Box<Box<dyn T>>>) {}
 }
 
+// https://github.com/rust-lang/rust-clippy/issues/8604
+mod box_fat_ptr {
+    use std::boxed::Box;
+    use std::path::Path;
+    use std::rc::Rc;
+    use std::sync::Arc;
+
+    pub struct DynSized {
+        foo: [usize],
+    }
+
+    struct S {
+        a: Box<Box<str>>,
+        b: Rc<Box<str>>,
+        c: Arc<Box<str>>,
+
+        e: Box<Box<[usize]>>,
+        f: Box<Box<Path>>,
+        g: Box<Box<DynSized>>,
+    }
+
+    pub fn test_box_str(_: Box<Box<str>>) {}
+    pub fn test_rc_str(_: Rc<Box<str>>) {}
+    pub fn test_arc_str(_: Arc<Box<str>>) {}
+
+    pub fn test_box_slice(_: Box<Box<[usize]>>) {}
+    pub fn test_box_path(_: Box<Box<Path>>) {}
+    pub fn test_box_custom(_: Box<Box<DynSized>>) {}
+
+    pub fn test_rc_box_str(_: Rc<Box<Box<str>>>) {}
+    pub fn test_rc_box_slice(_: Rc<Box<Box<[usize]>>>) {}
+    pub fn test_rc_box_path(_: Rc<Box<Box<Path>>>) {}
+    pub fn test_rc_box_custom(_: Rc<Box<Box<DynSized>>>) {}
+}
+
 fn main() {}

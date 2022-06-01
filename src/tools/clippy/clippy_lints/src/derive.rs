@@ -1,8 +1,9 @@
-use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_note, span_lint_and_then};
+use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_note, span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::paths;
 use clippy_utils::ty::{implements_trait, is_copy};
 use clippy_utils::{is_lint_allowed, match_def_path};
 use if_chain::if_chain;
+use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_expr, walk_fn, walk_item, FnKind, Visitor};
 use rustc_hir::{
     BlockCheckMode, BodyId, Expr, ExprKind, FnDecl, HirId, Impl, Item, ItemKind, TraitRef, UnsafeSource, Unsafety,
@@ -101,8 +102,8 @@ declare_clippy_lint! {
     /// types.
     ///
     /// ### Why is this bad?
-    /// To avoid surprising behaviour, these traits should
-    /// agree and the behaviour of `Copy` cannot be overridden. In almost all
+    /// To avoid surprising behavior, these traits should
+    /// agree and the behavior of `Copy` cannot be overridden. In almost all
     /// situations a `Copy` type should have a `Clone` implementation that does
     /// nothing more than copy the object, which is what `#[derive(Copy, Clone)]`
     /// gets you.
@@ -156,11 +157,44 @@ declare_clippy_lint! {
     "deriving `serde::Deserialize` on a type that has methods using `unsafe`"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for types that derive `PartialEq` and could implement `Eq`.
+    ///
+    /// ### Why is this bad?
+    /// If a type `T` derives `PartialEq` and all of its members implement `Eq`,
+    /// then `T` can always implement `Eq`. Implementing `Eq` allows `T` to be used
+    /// in APIs that require `Eq` types. It also allows structs containing `T` to derive
+    /// `Eq` themselves.
+    ///
+    /// ### Example
+    /// ```rust
+    /// #[derive(PartialEq)]
+    /// struct Foo {
+    ///     i_am_eq: i32,
+    ///     i_am_eq_too: Vec<String>,
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// #[derive(PartialEq, Eq)]
+    /// struct Foo {
+    ///     i_am_eq: i32,
+    ///     i_am_eq_too: Vec<String>,
+    /// }
+    /// ```
+    #[clippy::version = "1.62.0"]
+    pub DERIVE_PARTIAL_EQ_WITHOUT_EQ,
+    style,
+    "deriving `PartialEq` on a type that can implement `Eq`, without implementing `Eq`"
+}
+
 declare_lint_pass!(Derive => [
     EXPL_IMPL_CLONE_ON_COPY,
     DERIVE_HASH_XOR_EQ,
     DERIVE_ORD_XOR_PARTIAL_ORD,
-    UNSAFE_DERIVE_DESERIALIZE
+    UNSAFE_DERIVE_DESERIALIZE,
+    DERIVE_PARTIAL_EQ_WITHOUT_EQ
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Derive {
@@ -171,14 +205,14 @@ impl<'tcx> LateLintPass<'tcx> for Derive {
         }) = item.kind
         {
             let ty = cx.tcx.type_of(item.def_id);
-            let is_automatically_derived =
-                cx.tcx.has_attr(item.def_id.to_def_id(), sym::automatically_derived);
+            let is_automatically_derived = cx.tcx.has_attr(item.def_id.to_def_id(), sym::automatically_derived);
 
             check_hash_peq(cx, item.span, trait_ref, ty, is_automatically_derived);
             check_ord_partial_ord(cx, item.span, trait_ref, ty, is_automatically_derived);
 
             if is_automatically_derived {
                 check_unsafe_derive_deserialize(cx, item, trait_ref, ty);
+                check_partial_eq_without_eq(cx, item.span, trait_ref, ty);
             } else {
                 check_copy_clone(cx, item, trait_ref, ty);
             }
@@ -417,5 +451,38 @@ impl<'tcx> Visitor<'tcx> for UnsafeVisitor<'_, 'tcx> {
 
     fn nested_visit_map(&mut self) -> Self::Map {
         self.cx.tcx.hir()
+    }
+}
+
+/// Implementation of the `DERIVE_PARTIAL_EQ_WITHOUT_EQ` lint.
+fn check_partial_eq_without_eq<'tcx>(cx: &LateContext<'tcx>, span: Span, trait_ref: &TraitRef<'_>, ty: Ty<'tcx>) {
+    if_chain! {
+        if let ty::Adt(adt, substs) = ty.kind();
+        if let Some(eq_trait_def_id) = cx.tcx.get_diagnostic_item(sym::Eq);
+        if let Some(def_id) = trait_ref.trait_def_id();
+        if cx.tcx.is_diagnostic_item(sym::PartialEq, def_id);
+        if !implements_trait(cx, ty, eq_trait_def_id, substs);
+        then {
+            // If all of our fields implement `Eq`, we can implement `Eq` too
+            for variant in adt.variants() {
+                for field in &variant.fields {
+                    let ty = field.ty(cx.tcx, substs);
+
+                    if !implements_trait(cx, ty, eq_trait_def_id, substs) {
+                        return;
+                    }
+                }
+            }
+
+            span_lint_and_sugg(
+                cx,
+                DERIVE_PARTIAL_EQ_WITHOUT_EQ,
+                span.ctxt().outer_expn_data().call_site,
+                "you are deriving `PartialEq` and can implement `Eq`",
+                "consider deriving `Eq` as well",
+                "PartialEq, Eq".to_string(),
+                Applicability::MachineApplicable,
+            )
+        }
     }
 }

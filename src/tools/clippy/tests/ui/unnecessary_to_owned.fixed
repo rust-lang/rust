@@ -78,10 +78,10 @@ fn main() {
     require_slice(array.as_ref());
     require_slice(array_ref.as_ref());
     require_slice(slice);
-    require_slice(x_ref);
+    require_slice(&x_ref.to_owned()); // No longer flagged because of #8759.
 
     require_x(&Cow::<X>::Owned(x.clone()));
-    require_x(x_ref);
+    require_x(&x_ref.to_owned()); // No longer flagged because of #8759.
 
     require_deref_c_str(c_str);
     require_deref_os_str(os_str);
@@ -152,6 +152,7 @@ fn main() {
     require_os_str(&OsString::from("x"));
     require_path(&std::path::PathBuf::from("x"));
     require_str(&String::from("x"));
+    require_slice(&[String::from("x")]);
 }
 
 fn require_c_str(_: &CStr) {}
@@ -270,5 +271,61 @@ mod issue_8507 {
     // Should lint because Y is copy.
     fn test_y(y: Y) -> Box<dyn Abstracted> {
         Box::new(build(y))
+    }
+}
+
+// https://github.com/rust-lang/rust-clippy/issues/8759
+mod issue_8759 {
+    #![allow(dead_code)]
+
+    #[derive(Default)]
+    struct View {}
+
+    impl std::borrow::ToOwned for View {
+        type Owned = View;
+        fn to_owned(&self) -> Self::Owned {
+            View {}
+        }
+    }
+
+    #[derive(Default)]
+    struct RenderWindow {
+        default_view: View,
+    }
+
+    impl RenderWindow {
+        fn default_view(&self) -> &View {
+            &self.default_view
+        }
+        fn set_view(&mut self, _view: &View) {}
+    }
+
+    fn main() {
+        let mut rw = RenderWindow::default();
+        rw.set_view(&rw.default_view().to_owned());
+    }
+}
+
+mod issue_8759_variant {
+    #![allow(dead_code)]
+
+    #[derive(Clone, Default)]
+    struct View {}
+
+    #[derive(Default)]
+    struct RenderWindow {
+        default_view: View,
+    }
+
+    impl RenderWindow {
+        fn default_view(&self) -> &View {
+            &self.default_view
+        }
+        fn set_view(&mut self, _view: &View) {}
+    }
+
+    fn main() {
+        let mut rw = RenderWindow::default();
+        rw.set_view(&rw.default_view().to_owned());
     }
 }

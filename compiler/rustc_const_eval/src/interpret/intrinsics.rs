@@ -15,7 +15,7 @@ use rustc_middle::ty::layout::LayoutOf as _;
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_span::symbol::{sym, Symbol};
-use rustc_target::abi::{Abi, Align, Primitive, Size};
+use rustc_target::abi::{Abi, Align, InitKind, Primitive, Size};
 
 use super::{
     util::ensure_monomorphic_enough, CheckInAllocMsg, ImmTy, InterpCx, Machine, OpTy, PlaceTy,
@@ -115,13 +115,14 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &mut self,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, M::PointerTag>],
-        ret: Option<(&PlaceTy<'tcx, M::PointerTag>, mir::BasicBlock)>,
+        dest: &PlaceTy<'tcx, M::PointerTag>,
+        ret: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx, bool> {
         let substs = instance.substs;
         let intrinsic_name = self.tcx.item_name(instance.def_id());
 
         // First handle intrinsics without return place.
-        let (dest, ret) = match ret {
+        let ret = match ret {
             None => match intrinsic_name {
                 sym::transmute => throw_ub_format!("transmuting to uninhabited type"),
                 sym::abort => M::abort(self, "the program aborted execution".to_owned())?,
@@ -407,7 +408,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     )?;
                 }
                 if intrinsic_name == sym::assert_zero_valid
-                    && !layout.might_permit_raw_init(self, /*zero:*/ true)
+                    && !layout.might_permit_raw_init(
+                        self,
+                        InitKind::Zero,
+                        self.tcx.sess.opts.debugging_opts.strict_init_checks,
+                    )
                 {
                     M::abort(
                         self,
@@ -418,7 +423,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     )?;
                 }
                 if intrinsic_name == sym::assert_uninit_valid
-                    && !layout.might_permit_raw_init(self, /*zero:*/ false)
+                    && !layout.might_permit_raw_init(
+                        self,
+                        InitKind::Uninit,
+                        self.tcx.sess.opts.debugging_opts.strict_init_checks,
+                    )
                 {
                     M::abort(
                         self,

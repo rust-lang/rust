@@ -1,5 +1,5 @@
 error: implementation of `DistributedIteratorMulti` is not general enough
-  --> $DIR/issue-55731.rs:48:5
+  --> $DIR/issue-55731.rs:52:5
    |
 LL | /     multi(Map {
 LL | |         i: Cloned(PhantomData),

@@ -1390,8 +1390,6 @@ impl<'b, T: ?Sized> Ref<'b, T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(cell_filter_map)]
-    ///
     /// use std::cell::{RefCell, Ref};
     ///
     /// let c = RefCell::new(vec![1, 2, 3]);
@@ -1399,7 +1397,7 @@ impl<'b, T: ?Sized> Ref<'b, T> {
     /// let b2: Result<Ref<u32>, _> = Ref::filter_map(b1, |v| v.get(1));
     /// assert_eq!(*b2.unwrap(), 2);
     /// ```
-    #[unstable(feature = "cell_filter_map", reason = "recently added", issue = "81061")]
+    #[stable(feature = "cell_filter_map", since = "1.63.0")]
     #[inline]
     pub fn filter_map<U: ?Sized, F>(orig: Ref<'b, T>, f: F) -> Result<Ref<'b, U>, Self>
     where
@@ -1487,7 +1485,7 @@ impl<'b, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Ref<'b, U>> for Ref<'b,
 #[stable(feature = "std_guard_impls", since = "1.20.0")]
 impl<T: ?Sized + fmt::Display> fmt::Display for Ref<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.value.fmt(f)
+        (**self).fmt(f)
     }
 }
 
@@ -1538,8 +1536,6 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(cell_filter_map)]
-    ///
     /// use std::cell::{RefCell, RefMut};
     ///
     /// let c = RefCell::new(vec![1, 2, 3]);
@@ -1555,7 +1551,7 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
     ///
     /// assert_eq!(*c.borrow(), vec![1, 4, 3]);
     /// ```
-    #[unstable(feature = "cell_filter_map", reason = "recently added", issue = "81061")]
+    #[stable(feature = "cell_filter_map", since = "1.63.0")]
     #[inline]
     pub fn filter_map<U: ?Sized, F>(mut orig: RefMut<'b, T>, f: F) -> Result<RefMut<'b, U>, Self>
     where
@@ -1735,7 +1731,7 @@ impl<'b, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<RefMut<'b, U>> for RefM
 #[stable(feature = "std_guard_impls", since = "1.20.0")]
 impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.value.fmt(f)
+        (**self).fmt(f)
     }
 }
 

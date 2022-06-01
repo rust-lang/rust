@@ -42,8 +42,10 @@ impl Step for Std {
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         // When downloading stage1, the standard library has already been copied to the sysroot, so
         // there's no need to rebuild it.
-        let download_rustc = run.builder.config.download_rustc;
-        run.all_krates("test").path("library").default_condition(!download_rustc)
+        let builder = run.builder;
+        run.all_krates("test")
+            .path("library")
+            .lazy_default_condition(Box::new(|| !builder.download_rustc()))
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -66,7 +68,7 @@ impl Step for Std {
         // Don't recompile them.
         // NOTE: the ABI of the beta compiler is different from the ABI of the downloaded compiler,
         // so its artifacts can't be reused.
-        if builder.config.download_rustc && compiler.stage != 0 {
+        if builder.download_rustc() && compiler.stage != 0 {
             return;
         }
 
@@ -176,7 +178,7 @@ fn copy_third_party_objects(
 
     if target == "x86_64-fortanix-unknown-sgx"
         || target.contains("pc-windows-gnullvm")
-        || builder.config.llvm_libunwind == LlvmLibunwind::InTree
+        || builder.config.llvm_libunwind(target) == LlvmLibunwind::InTree
             && (target.contains("linux") || target.contains("fuchsia"))
     {
         let libunwind_path =
@@ -559,7 +561,7 @@ impl Step for Rustc {
 
         // NOTE: the ABI of the beta compiler is different from the ABI of the downloaded compiler,
         // so its artifacts can't be reused.
-        if builder.config.download_rustc && compiler.stage != 0 {
+        if builder.download_rustc() && compiler.stage != 0 {
             // Copy the existing artifacts instead of rebuilding them.
             // NOTE: this path is only taken for tools linking to rustc-dev.
             builder.ensure(Sysroot { compiler });
@@ -1003,7 +1005,7 @@ impl Step for Sysroot {
         t!(fs::create_dir_all(&sysroot));
 
         // If we're downloading a compiler from CI, we can use the same compiler for all stages other than 0.
-        if builder.config.download_rustc && compiler.stage != 0 {
+        if builder.download_rustc() && compiler.stage != 0 {
             assert_eq!(
                 builder.config.build, compiler.host,
                 "Cross-compiling is not yet supported with `download-rustc`",
@@ -1098,7 +1100,7 @@ impl Step for Assemble {
         let build_compiler = builder.compiler(target_compiler.stage - 1, builder.config.build);
 
         // If we're downloading a compiler from CI, we can use the same compiler for all stages other than 0.
-        if builder.config.download_rustc {
+        if builder.download_rustc() {
             builder.ensure(Sysroot { compiler: target_compiler });
             return target_compiler;
         }
@@ -1172,14 +1174,11 @@ impl Step for Assemble {
             // for `-Z gcc-ld=lld`
             let gcc_ld_dir = libdir_bin.join("gcc-ld");
             t!(fs::create_dir(&gcc_ld_dir));
-            for flavor in ["ld", "ld64"] {
-                let lld_wrapper_exe = builder.ensure(crate::tool::LldWrapper {
-                    compiler: build_compiler,
-                    target: target_compiler.host,
-                    flavor_feature: flavor,
-                });
-                builder.copy(&lld_wrapper_exe, &gcc_ld_dir.join(exe(flavor, target_compiler.host)));
-            }
+            let lld_wrapper_exe = builder.ensure(crate::tool::LldWrapper {
+                compiler: build_compiler,
+                target: target_compiler.host,
+            });
+            builder.copy(&lld_wrapper_exe, &gcc_ld_dir.join(exe("ld", target_compiler.host)));
         }
 
         if builder.config.rust_codegen_backends.contains(&INTERNER.intern_str("llvm")) {

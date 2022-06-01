@@ -75,45 +75,45 @@ pub(crate) fn krate(cx: &mut DocContext<'_>) -> Crate {
     Crate { module, primitives, external_traits: cx.external_traits.clone() }
 }
 
-pub(crate) fn substs_to_args(
-    cx: &mut DocContext<'_>,
-    substs: &[ty::subst::GenericArg<'_>],
+pub(crate) fn substs_to_args<'tcx>(
+    cx: &mut DocContext<'tcx>,
+    substs: &[ty::subst::GenericArg<'tcx>],
     mut skip_first: bool,
 ) -> Vec<GenericArg> {
-    substs
-        .iter()
-        .filter_map(|kind| match kind.unpack() {
-            GenericArgKind::Lifetime(lt) => match *lt {
-                ty::ReLateBound(_, ty::BoundRegion { kind: ty::BrAnon(_), .. }) => {
-                    Some(GenericArg::Lifetime(Lifetime::elided()))
-                }
-                _ => lt.clean(cx).map(GenericArg::Lifetime),
-            },
-            GenericArgKind::Type(_) if skip_first => {
-                skip_first = false;
-                None
+    let mut ret_val =
+        Vec::with_capacity(substs.len().saturating_sub(if skip_first { 1 } else { 0 }));
+    ret_val.extend(substs.iter().filter_map(|kind| match kind.unpack() {
+        GenericArgKind::Lifetime(lt) => match *lt {
+            ty::ReLateBound(_, ty::BoundRegion { kind: ty::BrAnon(_), .. }) => {
+                Some(GenericArg::Lifetime(Lifetime::elided()))
             }
-            GenericArgKind::Type(ty) => Some(GenericArg::Type(ty.clean(cx))),
-            GenericArgKind::Const(ct) => Some(GenericArg::Const(Box::new(ct.clean(cx)))),
-        })
-        .collect()
+            _ => lt.clean(cx).map(GenericArg::Lifetime),
+        },
+        GenericArgKind::Type(_) if skip_first => {
+            skip_first = false;
+            None
+        }
+        GenericArgKind::Type(ty) => Some(GenericArg::Type(ty.clean(cx))),
+        GenericArgKind::Const(ct) => Some(GenericArg::Const(Box::new(ct.clean(cx)))),
+    }));
+    ret_val
 }
 
-fn external_generic_args(
-    cx: &mut DocContext<'_>,
+fn external_generic_args<'tcx>(
+    cx: &mut DocContext<'tcx>,
     did: DefId,
     has_self: bool,
     bindings: Vec<TypeBinding>,
-    substs: SubstsRef<'_>,
+    substs: SubstsRef<'tcx>,
 ) -> GenericArgs {
-    let args = substs_to_args(cx, &substs, has_self);
+    let args = substs_to_args(cx, substs, has_self);
 
     if cx.tcx.fn_trait_kind_from_lang_item(did).is_some() {
         let inputs =
             // The trait's first substitution is the one after self, if there is one.
             match substs.iter().nth(if has_self { 1 } else { 0 }).unwrap().expect_ty().kind() {
-                ty::Tuple(tys) => tys.iter().map(|t| t.clean(cx)).collect(),
-                _ => return GenericArgs::AngleBracketed { args, bindings: bindings.into() },
+                ty::Tuple(tys) => tys.iter().map(|t| t.clean(cx)).collect::<Vec<_>>().into(),
+                _ => return GenericArgs::AngleBracketed { args: args.into(), bindings: bindings.into() },
             };
         let output = None;
         // FIXME(#20299) return type comes from a projection now
@@ -123,16 +123,16 @@ fn external_generic_args(
         // };
         GenericArgs::Parenthesized { inputs, output }
     } else {
-        GenericArgs::AngleBracketed { args, bindings: bindings.into() }
+        GenericArgs::AngleBracketed { args: args.into(), bindings: bindings.into() }
     }
 }
 
-pub(super) fn external_path(
-    cx: &mut DocContext<'_>,
+pub(super) fn external_path<'tcx>(
+    cx: &mut DocContext<'tcx>,
     did: DefId,
     has_self: bool,
     bindings: Vec<TypeBinding>,
-    substs: SubstsRef<'_>,
+    substs: SubstsRef<'tcx>,
 ) -> Path {
     let def_kind = cx.tcx.def_kind(did);
     let name = cx.tcx.item_name(did);
@@ -148,7 +148,7 @@ pub(super) fn external_path(
 /// Remove the generic arguments from a path.
 pub(crate) fn strip_path_generics(mut path: Path) -> Path {
     for ps in path.segments.iter_mut() {
-        ps.args = GenericArgs::AngleBracketed { args: vec![], bindings: ThinVec::new() }
+        ps.args = GenericArgs::AngleBracketed { args: Default::default(), bindings: ThinVec::new() }
     }
 
     path
@@ -439,9 +439,9 @@ pub(crate) fn resolve_use_source(cx: &mut DocContext<'_>, path: Path) -> ImportS
     }
 }
 
-pub(crate) fn enter_impl_trait<F, R>(cx: &mut DocContext<'_>, f: F) -> R
+pub(crate) fn enter_impl_trait<'tcx, F, R>(cx: &mut DocContext<'tcx>, f: F) -> R
 where
-    F: FnOnce(&mut DocContext<'_>) -> R,
+    F: FnOnce(&mut DocContext<'tcx>) -> R,
 {
     let old_bounds = mem::take(&mut cx.impl_trait_bounds);
     let r = f(cx);

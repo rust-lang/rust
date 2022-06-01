@@ -13,7 +13,7 @@ fn exit_if_err(status: io::Result<ExitStatus>) {
     }
 }
 
-pub fn run(path: &str) {
+pub fn run<'a>(path: &str, args: impl Iterator<Item = &'a str>) {
     let is_file = match fs::metadata(path) {
         Ok(metadata) => metadata.is_file(),
         Err(e) => {
@@ -30,6 +30,7 @@ pub fn run(path: &str) {
                 .args(["-Z", "no-codegen"])
                 .args(["--edition", "2021"])
                 .arg(path)
+                .args(args)
                 .status(),
         );
     } else {
@@ -42,6 +43,8 @@ pub fn run(path: &str) {
             .expect("failed to create tempdir");
 
         let status = Command::new(cargo_clippy_path())
+            .arg("clippy")
+            .args(args)
             .current_dir(path)
             .env("CARGO_TARGET_DIR", target.as_ref())
             .status();

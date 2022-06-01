@@ -494,13 +494,7 @@ pub fn lower_to_hir<'res, 'tcx>(
     arena: &'tcx rustc_ast_lowering::Arena<'tcx>,
 ) -> &'tcx Crate<'tcx> {
     // Lower AST to HIR.
-    let hir_crate = rustc_ast_lowering::lower_crate(
-        sess,
-        &*krate,
-        resolver,
-        rustc_parse::nt_to_tokenstream,
-        arena,
-    );
+    let hir_crate = rustc_ast_lowering::lower_crate(sess, &*krate, resolver, arena);
 
     // Drop AST to free memory
     sess.time("drop_ast", || std::mem::drop(krate));
@@ -943,7 +937,6 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
                         //
                         // maybe move the check to a MIR pass?
                         tcx.ensure().check_mod_liveness(module);
-                        tcx.ensure().check_mod_intrinsics(module);
                     });
                 });
             }

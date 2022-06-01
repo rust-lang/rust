@@ -1,5 +1,5 @@
 //! Inlining pass for MIR functions
-
+use crate::deref_separator::deref_finder;
 use rustc_attr::InlineAttr;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::Idx;
@@ -53,6 +53,7 @@ impl<'tcx> MirPass<'tcx> for Inline {
             debug!("running simplify cfg on {:?}", body.source);
             CfgSimplifier::new(body).simplify();
             remove_dead_blocks(tcx, body);
+            deref_finder(tcx, body);
         }
     }
 }
@@ -248,7 +249,7 @@ impl<'tcx> Inliner<'tcx> {
     ) -> Option<CallSite<'tcx>> {
         // Only consider direct calls to functions
         let terminator = bb_data.terminator();
-        if let TerminatorKind::Call { ref func, ref destination, .. } = terminator.kind {
+        if let TerminatorKind::Call { ref func, target, .. } = terminator.kind {
             let func_ty = func.ty(caller_body, self.tcx);
             if let ty::FnDef(def_id, substs) = *func_ty.kind() {
                 // To resolve an instance its substs have to be fully normalized.
@@ -266,7 +267,7 @@ impl<'tcx> Inliner<'tcx> {
                     callee,
                     fn_sig,
                     block: bb,
-                    target: destination.map(|(_, target)| target),
+                    target,
                     source_info: terminator.source_info,
                 });
             }
@@ -395,7 +396,7 @@ impl<'tcx> Inliner<'tcx> {
                     }
                 }
 
-                TerminatorKind::Unreachable | TerminatorKind::Call { destination: None, .. }
+                TerminatorKind::Unreachable | TerminatorKind::Call { target: None, .. }
                     if first_block =>
                 {
                     // If the function always diverges, don't inline
@@ -512,27 +513,22 @@ impl<'tcx> Inliner<'tcx> {
                     false
                 }
 
-                let dest = if let Some((destination_place, _)) = destination {
-                    if dest_needs_borrow(destination_place) {
-                        trace!("creating temp for return destination");
-                        let dest = Rvalue::Ref(
-                            self.tcx.lifetimes.re_erased,
-                            BorrowKind::Mut { allow_two_phase_borrow: false },
-                            destination_place,
-                        );
-                        let dest_ty = dest.ty(caller_body, self.tcx);
-                        let temp = Place::from(self.new_call_temp(caller_body, &callsite, dest_ty));
-                        caller_body[callsite.block].statements.push(Statement {
-                            source_info: callsite.source_info,
-                            kind: StatementKind::Assign(Box::new((temp, dest))),
-                        });
-                        self.tcx.mk_place_deref(temp)
-                    } else {
-                        destination_place
-                    }
+                let dest = if dest_needs_borrow(destination) {
+                    trace!("creating temp for return destination");
+                    let dest = Rvalue::Ref(
+                        self.tcx.lifetimes.re_erased,
+                        BorrowKind::Mut { allow_two_phase_borrow: false },
+                        destination,
+                    );
+                    let dest_ty = dest.ty(caller_body, self.tcx);
+                    let temp = Place::from(self.new_call_temp(caller_body, &callsite, dest_ty));
+                    caller_body[callsite.block].statements.push(Statement {
+                        source_info: callsite.source_info,
+                        kind: StatementKind::Assign(Box::new((temp, dest))),
+                    });
+                    self.tcx.mk_place_deref(temp)
                 } else {
-                    trace!("creating temp for return place");
-                    Place::from(self.new_call_temp(caller_body, &callsite, callee_body.return_ty()))
+                    destination
                 };
 
                 // Copy the arguments if needed.
@@ -914,8 +910,8 @@ impl<'tcx> MutVisitor<'tcx> for Integrator<'_, 'tcx> {
                     *unwind = self.cleanup_block;
                 }
             }
-            TerminatorKind::Call { ref mut destination, ref mut cleanup, .. } => {
-                if let Some((_, ref mut tgt)) = *destination {
+            TerminatorKind::Call { ref mut target, ref mut cleanup, .. } => {
+                if let Some(ref mut tgt) = *target {
                     *tgt = self.map_block(*tgt);
                 }
                 if let Some(tgt) = *cleanup {

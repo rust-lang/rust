@@ -3,12 +3,17 @@ use crate::rmeta::EncodeContext;
 use crate::rmeta::MetadataBlob;
 use rustc_data_structures::owning_ref::OwningRef;
 use rustc_hir::def_path_hash_map::{Config as HashMapConfig, DefPathHashMap};
+use rustc_middle::parameterized_over_tcx;
 use rustc_serialize::{opaque, Decodable, Decoder, Encodable, Encoder};
 use rustc_span::def_id::{DefIndex, DefPathHash};
 
 pub(crate) enum DefPathHashMapRef<'tcx> {
     OwnedFromMetadata(odht::HashTable<HashMapConfig, OwningRef<MetadataBlob, [u8]>>),
     BorrowedFromTcx(&'tcx DefPathHashMap),
+}
+
+parameterized_over_tcx! {
+    DefPathHashMapRef,
 }
 
 impl DefPathHashMapRef<'_> {

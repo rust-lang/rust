@@ -319,6 +319,8 @@ declare_features! (
     (active, cfg_sanitize, "1.41.0", Some(39699), None),
     /// Allows `cfg(target_abi = "...")`.
     (active, cfg_target_abi, "1.55.0", Some(80970), None),
+    /// Allows `cfg(target(abi = "..."))`.
+    (active, cfg_target_compact, "1.63.0", Some(96901), None),
     /// Allows `cfg(target_has_atomic_load_store = "...")`.
     (active, cfg_target_has_atomic, "1.60.0", Some(94039), None),
     /// Allows `cfg(target_has_atomic_equal_alignment = "...")`.
@@ -351,8 +353,6 @@ declare_features! (
     (active, const_trait_impl, "1.42.0", Some(67792), None),
     /// Allows the `?` operator in const contexts.
     (active, const_try, "1.56.0", Some(74935), None),
-    /// Allows using `crate` as visibility modifier, synonymous with `pub(crate)`.
-    (active, crate_visibility_modifier, "1.23.0", Some(53120), None),
     /// Allows non-builtin attributes in inner attribute position.
     (active, custom_inner_attributes, "1.30.0", Some(54726), None),
     /// Allows custom test frameworks with `#![test_runner]` and `#[test_case]`.

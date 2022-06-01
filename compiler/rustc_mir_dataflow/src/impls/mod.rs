@@ -26,6 +26,7 @@ mod storage_liveness;
 pub use self::borrowed_locals::MaybeBorrowedLocals;
 pub use self::init_locals::MaybeInitializedLocals;
 pub use self::liveness::MaybeLiveLocals;
+pub use self::liveness::MaybeTransitiveLiveLocals;
 pub use self::storage_liveness::{MaybeRequiresStorage, MaybeStorageLive};
 
 /// `MaybeInitializedPlaces` tracks all places that might be

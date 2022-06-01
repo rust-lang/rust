@@ -11,7 +11,6 @@ pub(crate) trait DocVisitor: Sized {
             StrippedItem(..) => unreachable!(),
             ModuleItem(i) => {
                 self.visit_mod(i);
-                return;
             }
             StructItem(i) => i.fields.iter().for_each(|x| self.visit_item(x)),
             UnionItem(i) => i.fields.iter().for_each(|x| self.visit_item(x)),

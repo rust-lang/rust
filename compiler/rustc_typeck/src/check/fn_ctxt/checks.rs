@@ -47,6 +47,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
+    pub(in super::super) fn check_transmutes(&self) {
+        let mut deferred_transmute_checks = self.deferred_transmute_checks.borrow_mut();
+        debug!("FnCtxt::check_transmutes: {} deferred checks", deferred_transmute_checks.len());
+        for (from, to, span) in deferred_transmute_checks.drain(..) {
+            self.check_transmute(span, from, to);
+        }
+    }
+
+    pub(in super::super) fn check_asms(&self) {
+        let mut deferred_asm_checks = self.deferred_asm_checks.borrow_mut();
+        debug!("FnCtxt::check_asm: {} deferred checks", deferred_asm_checks.len());
+        for (asm, hir_id) in deferred_asm_checks.drain(..) {
+            let enclosing_id = self.tcx.hir().enclosing_body_owner(hir_id);
+            self.check_asm(asm, enclosing_id);
+        }
+    }
+
     pub(in super::super) fn check_method_argument_types(
         &self,
         sp: Span,
@@ -768,7 +785,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 let second_input_ty =
                                     self.resolve_vars_if_possible(expected_input_tys[second_idx]);
                                 let third_input_ty =
-                                    self.resolve_vars_if_possible(expected_input_tys[second_idx]);
+                                    self.resolve_vars_if_possible(expected_input_tys[third_idx]);
                                 let span = if third_idx < provided_arg_count {
                                     let first_arg_span = provided_args[first_idx].span;
                                     let third_arg_span = provided_args[third_idx].span;
@@ -809,16 +826,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             }
                             missing_idxs => {
                                 let first_idx = *missing_idxs.first().unwrap();
-                                let second_idx = *missing_idxs.last().unwrap();
+                                let last_idx = *missing_idxs.last().unwrap();
                                 // NOTE: Because we might be re-arranging arguments, might have extra arguments, etc.
                                 // It's hard to *really* know where we should provide this error label, so this is a
                                 // decent heuristic
-                                let span = if first_idx < provided_arg_count {
+                                let span = if last_idx < provided_arg_count {
                                     let first_arg_span = provided_args[first_idx].span;
-                                    let second_arg_span = provided_args[second_idx].span;
+                                    let last_arg_span = provided_args[last_idx].span;
                                     Span::new(
                                         first_arg_span.lo(),
-                                        second_arg_span.hi(),
+                                        last_arg_span.hi(),
                                         first_arg_span.ctxt(),
                                         None,
                                     )
@@ -845,7 +862,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let first_provided_ty = if let Some((ty, _)) = final_arg_types[input_idx] {
                             format!(",found `{}`", ty)
                         } else {
-                            "".into()
+                            String::new()
                         };
                         labels.push((
                             first_span,
@@ -857,7 +874,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             if let Some((ty, _)) = final_arg_types[other_input_idx] {
                                 format!(",found `{}`", ty)
                             } else {
-                                "".into()
+                                String::new()
                             };
                         labels.push((
                             second_span,
@@ -875,7 +892,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             let provided_ty = if let Some((ty, _)) = final_arg_types[dst_arg] {
                                 format!(",found `{}`", ty)
                             } else {
-                                "".into()
+                                String::new()
                             };
                             labels.push((
                                 provided_args[dst_arg].span,
@@ -959,7 +976,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Ideally this would be folded into the above, for uniform style
             // but c-variadic is already a corner case
             if c_variadic {
-                fn variadic_error<'tcx>(sess: &Session, span: Span, ty: Ty<'tcx>, cast_ty: &str) {
+                fn variadic_error<'tcx>(
+                    sess: &'tcx Session,
+                    span: Span,
+                    ty: Ty<'tcx>,
+                    cast_ty: &str,
+                ) {
                     use crate::structured_errors::MissingCastForVariadicArg;
 
                     MissingCastForVariadicArg { sess, span, ty, cast_ty }.diagnostic().emit();
@@ -1739,8 +1761,7 @@ fn label_fn_like<'tcx>(
             .get_if_local(def_id)
             .and_then(|node| node.body_id())
             .into_iter()
-            .map(|id| tcx.hir().body(id).params)
-            .flatten();
+            .flat_map(|id| tcx.hir().body(id).params);
 
         for param in params {
             spans.push_span_label(param.span, String::new());

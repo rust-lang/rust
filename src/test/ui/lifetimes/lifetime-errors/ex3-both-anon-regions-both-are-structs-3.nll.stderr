@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/ex3-both-anon-regions-both-are-structs-3.rs:7:5
+  --> $DIR/ex3-both-anon-regions-both-are-structs-3.rs:11:5
    |
 LL | fn foo(mut x: Ref) {
    |        -----

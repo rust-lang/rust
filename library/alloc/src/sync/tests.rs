@@ -103,7 +103,7 @@ fn try_unwrap() {
 
 #[test]
 fn into_from_raw() {
-    let x = Arc::new(box "hello");
+    let x = Arc::new(Box::new("hello"));
     let y = x.clone();
 
     let x_ptr = Arc::into_raw(x);
@@ -142,7 +142,7 @@ fn test_into_from_raw_unsized() {
 
 #[test]
 fn into_from_weak_raw() {
-    let x = Arc::new(box "hello");
+    let x = Arc::new(Box::new("hello"));
     let y = Arc::downgrade(&x);
 
     let y_ptr = Weak::into_raw(y);
@@ -467,7 +467,7 @@ fn test_clone_from_slice_panic() {
 
 #[test]
 fn test_from_box() {
-    let b: Box<u32> = box 123;
+    let b: Box<u32> = Box::new(123);
     let r: Arc<u32> = Arc::from(b);
 
     assert_eq!(*r, 123);
@@ -496,7 +496,7 @@ fn test_from_box_trait() {
     use std::fmt::Display;
     use std::string::ToString;
 
-    let b: Box<dyn Display> = box 123;
+    let b: Box<dyn Display> = Box::new(123);
     let r: Arc<dyn Display> = Arc::from(b);
 
     assert_eq!(r.to_string(), "123");
@@ -506,7 +506,7 @@ fn test_from_box_trait() {
 fn test_from_box_trait_zero_sized() {
     use std::fmt::Debug;
 
-    let b: Box<dyn Debug> = box ();
+    let b: Box<dyn Debug> = Box::new(());
     let r: Arc<dyn Debug> = Arc::from(b);
 
     assert_eq!(format!("{r:?}"), "()");

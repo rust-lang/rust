@@ -183,7 +183,7 @@ pub trait Linker {
     fn optimize(&mut self);
     fn pgo_gen(&mut self);
     fn control_flow_guard(&mut self);
-    fn debuginfo(&mut self, strip: Strip, debugger_visualizers: &[PathBuf]);
+    fn debuginfo(&mut self, strip: Strip, natvis_debugger_visualizers: &[PathBuf]);
     fn no_crt_objects(&mut self);
     fn no_default_libraries(&mut self);
     fn export_symbols(&mut self, tmpdir: &Path, crate_type: CrateType, symbols: &[String]);
@@ -915,7 +915,7 @@ impl<'a> Linker for MsvcLinker<'a> {
         self.cmd.arg("/guard:cf");
     }
 
-    fn debuginfo(&mut self, strip: Strip, debugger_visualizers: &[PathBuf]) {
+    fn debuginfo(&mut self, strip: Strip, natvis_debugger_visualizers: &[PathBuf]) {
         match strip {
             Strip::None => {
                 // This will cause the Microsoft linker to generate a PDB file
@@ -944,7 +944,7 @@ impl<'a> Linker for MsvcLinker<'a> {
                 }
 
                 // This will cause the Microsoft linker to embed .natvis info for all crates into the PDB file
-                for path in debugger_visualizers {
+                for path in natvis_debugger_visualizers {
                     let mut arg = OsString::from("/NATVIS:");
                     arg.push(path);
                     self.cmd.arg(arg);

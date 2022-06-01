@@ -19,7 +19,6 @@ use rustc_mir_dataflow::{Analysis, AnalysisDomain, CallReturnPlaces, GenKill, Ge
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::{BytePos, Span};
 use rustc_span::sym;
-use std::convert::TryFrom;
 use std::ops::ControlFlow;
 
 macro_rules! unwrap_or_continue {
@@ -71,7 +70,7 @@ declare_clippy_lint! {
 declare_lint_pass!(RedundantClone => [REDUNDANT_CLONE]);
 
 impl<'tcx> LateLintPass<'tcx> for RedundantClone {
-    #[allow(clippy::too_many_lines)]
+    #[expect(clippy::too_many_lines)]
     fn check_fn(
         &mut self,
         cx: &LateContext<'tcx>,
@@ -293,7 +292,7 @@ fn is_call_with_ref_arg<'tcx>(
         if let (inner_ty, 1) = walk_ptrs_ty_depth(args[0].ty(&*mir, cx.tcx));
         if !is_copy(cx, inner_ty);
         then {
-            Some((def_id, *local, inner_ty, destination.as_ref().map(|(dest, _)| dest)?.as_local()?))
+            Some((def_id, *local, inner_ty, destination.as_local()?))
         } else {
             None
         }
@@ -585,7 +584,7 @@ impl<'a, 'tcx> mir::visit::Visitor<'tcx> for PossibleBorrowerVisitor<'a, 'tcx> {
     fn visit_terminator(&mut self, terminator: &mir::Terminator<'_>, _loc: mir::Location) {
         if let mir::TerminatorKind::Call {
             args,
-            destination: Some((mir::Place { local: dest, .. }, _)),
+            destination: mir::Place { local: dest, .. },
             ..
         } = &terminator.kind
         {
@@ -633,7 +632,7 @@ impl<'a, 'tcx> mir::visit::Visitor<'tcx> for PossibleBorrowerVisitor<'a, 'tcx> {
 }
 
 /// Collect possible borrowed for every `&mut` local.
-/// For exampel, `_1 = &mut _2` generate _1: {_2,...}
+/// For example, `_1 = &mut _2` generate _1: {_2,...}
 /// Known Problems: not sure all borrowed are tracked
 struct PossibleOriginVisitor<'a, 'tcx> {
     possible_origin: TransitiveRelation,

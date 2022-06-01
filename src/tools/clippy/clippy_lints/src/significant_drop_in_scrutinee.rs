@@ -29,7 +29,7 @@ declare_clippy_lint! {
     /// the match block and thus will not unlock.
     ///
     /// ### Example
-    /// ```rust
+    /// ```rust.ignore
     /// # use std::sync::Mutex;
     ///
     /// # struct State {}
@@ -83,7 +83,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.60.0"]
     pub SIGNIFICANT_DROP_IN_SCRUTINEE,
-    nursery,
+    suspicious,
     "warns when a temporary of a type with a drop with a significant side-effect might have a surprising lifetime"
 }
 
@@ -99,7 +99,7 @@ impl<'tcx> LateLintPass<'tcx> for SignificantDropInScrutinee {
                     found.found_span,
                     "temporary with significant drop in match scrutinee",
                     |diag| set_diagnostic(diag, cx, expr, found),
-                )
+                );
             }
         }
     }
@@ -148,8 +148,8 @@ fn set_diagnostic<'tcx>(diag: &mut Diagnostic, cx: &LateContext<'tcx>, expr: &'t
     );
 }
 
-/// If the expression is an ExprKind::Match, check if the scrutinee has a significant drop that may
-/// have a surprising lifetime.
+/// If the expression is an `ExprKind::Match`, check if the scrutinee has a significant drop that
+/// may have a surprising lifetime.
 fn has_significant_drop_in_scrutinee<'tcx, 'a>(
     cx: &'a LateContext<'tcx>,
     expr: &'tcx Expr<'tcx>,
@@ -171,6 +171,7 @@ struct SigDropHelper<'a, 'tcx> {
     special_handling_for_binary_op: bool,
 }
 
+#[expect(clippy::enum_variant_names)]
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 enum LintSuggestion {
     MoveOnly,
@@ -213,7 +214,7 @@ impl<'a, 'tcx> SigDropHelper<'a, 'tcx> {
     }
 
     /// This will try to set the current suggestion (so it can be moved into the suggestions vec
-    /// later). If allow_move_and_clone is false, the suggestion *won't* be set -- this gives us
+    /// later). If `allow_move_and_clone` is false, the suggestion *won't* be set -- this gives us
     /// an opportunity to look for another type in the chain that will be trivially copyable.
     /// However, if we are at the the end of the chain, we want to accept whatever is there. (The
     /// suggestion won't actually be output, but the diagnostic message will be output, so the user
@@ -313,10 +314,10 @@ impl<'a, 'tcx> SigDropHelper<'a, 'tcx> {
                 }
                 false
             },
-            rustc_middle::ty::Array(ty, _) => self.has_sig_drop_attr(cx, *ty),
-            rustc_middle::ty::RawPtr(TypeAndMut { ty, .. }) => self.has_sig_drop_attr(cx, *ty),
-            rustc_middle::ty::Ref(_, ty, _) => self.has_sig_drop_attr(cx, *ty),
-            rustc_middle::ty::Slice(ty) => self.has_sig_drop_attr(cx, *ty),
+            rustc_middle::ty::Array(ty, _)
+            | rustc_middle::ty::RawPtr(TypeAndMut { ty, .. })
+            | rustc_middle::ty::Ref(_, ty, _)
+            | rustc_middle::ty::Slice(ty) => self.has_sig_drop_attr(cx, *ty),
             _ => false,
         }
     }
@@ -332,15 +333,12 @@ impl<'a, 'tcx> Visitor<'tcx> for SigDropHelper<'a, 'tcx> {
 
         match ex.kind {
             ExprKind::MethodCall(_, [ref expr, ..], _) => {
-                self.visit_expr(expr)
+                self.visit_expr(expr);
             }
             ExprKind::Binary(_, left, right) => {
                 self.visit_exprs_for_binary_ops(left, right, false, ex.span);
             }
-            ExprKind::Assign(left, right, _) => {
-                self.visit_exprs_for_binary_ops(left, right, true, ex.span);
-            }
-            ExprKind::AssignOp(_, left, right) => {
+            ExprKind::Assign(left, right, _) | ExprKind::AssignOp(_, left, right) => {
                 self.visit_exprs_for_binary_ops(left, right, true, ex.span);
             }
             ExprKind::Tup(exprs) => {
