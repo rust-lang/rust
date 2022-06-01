@@ -2537,6 +2537,7 @@ macro_rules! int_impl {
         /// Basic usage:
         ///
         /// ```
+        /// #![feature(is_even_odd)]
         #[doc = concat!("assert!(10", stringify!($SelfT), ".is_even());")]
         #[doc = concat!("assert!(!(9", stringify!($SelfT), ").is_even());")]
         /// ```
@@ -2552,6 +2553,7 @@ macro_rules! int_impl {
         /// Basic usage:
         ///
         /// ```
+        /// #![feature(is_even_odd)]
         #[doc = concat!("assert!(9", stringify!($SelfT), ".is_odd());")]
         #[doc = concat!("assert!(!(10", stringify!($SelfT), ").is_odd());")]
         /// ```

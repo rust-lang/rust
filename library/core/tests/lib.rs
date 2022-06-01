@@ -62,6 +62,7 @@
 #![feature(slice_internals)]
 #![feature(slice_partition_dedup)]
 #![feature(int_log)]
+#![feature(is_even_odd)]
 #![feature(iter_advance_by)]
 #![feature(iter_collect_into)]
 #![feature(iter_partition_in_place)]

@@ -21,6 +21,20 @@ macro_rules! uint_module {
             }
 
             #[test]
+            fn test_is_even() {
+                assert!((0 as $T).is_even());
+                assert!(!(1 as $T).is_even());
+                assert!((2 as $T).is_even());
+            }
+
+            #[test]
+            fn test_is_odd() {
+                assert!(!(0 as $T).is_odd());
+                assert!((1 as $T).is_odd());
+                assert!(!(2 as $T).is_odd());
+            }
+
+            #[test]
             fn test_bitwise_operators() {
                 assert!(0b1110 as $T == (0b1100 as $T).bitor(0b1010 as $T));
                 assert!(0b1000 as $T == (0b1100 as $T).bitand(0b1010 as $T));
