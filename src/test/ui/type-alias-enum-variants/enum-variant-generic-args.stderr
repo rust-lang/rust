@@ -36,7 +36,7 @@ LL | enum Enum<T> { TSVariant(T), SVariant { v: T }, UVariant }
    |      ^^^^ `Self` corresponds to this type
 ...
 LL | impl<T> Enum<T> {
-   | --------------- `Self` is or type `Enum` in this `impl`
+   | --------------- `Self` is on type `Enum` in this `impl`
 help: the `Self` type doesn't accept type parameters, use the concrete type's name `Enum` instead if you want to specify its type parameters
    |
 LL |         Enum::<()>::TSVariant(());
@@ -74,7 +74,7 @@ LL | enum Enum<T> { TSVariant(T), SVariant { v: T }, UVariant }
    |      ^^^^ `Self` corresponds to this type
 ...
 LL | impl<T> Enum<T> {
-   | --------------- `Self` is or type `Enum` in this `impl`
+   | --------------- `Self` is on type `Enum` in this `impl`
 help: the `Self` type doesn't accept type parameters, use the concrete type's name `Enum` instead if you want to specify its type parameters
    |
 LL |         Enum::<()>::TSVariant::<()>(());
@@ -136,7 +136,7 @@ LL | enum Enum<T> { TSVariant(T), SVariant { v: T }, UVariant }
    |      ^^^^ `Self` corresponds to this type
 ...
 LL | impl<T> Enum<T> {
-   | --------------- `Self` is or type `Enum` in this `impl`
+   | --------------- `Self` is on type `Enum` in this `impl`
 help: the `Self` type doesn't accept type parameters, use the concrete type's name `Enum` instead if you want to specify its type parameters
    |
 LL |         Enum::<()>::SVariant { v: () };
@@ -167,7 +167,7 @@ LL | enum Enum<T> { TSVariant(T), SVariant { v: T }, UVariant }
    |      ^^^^ `Self` corresponds to this type
 ...
 LL | impl<T> Enum<T> {
-   | --------------- `Self` is or type `Enum` in this `impl`
+   | --------------- `Self` is on type `Enum` in this `impl`
 help: the `Self` type doesn't accept type parameters, use the concrete type's name `Enum` instead if you want to specify its type parameters
    |
 LL |         Enum::<()>::SVariant::<()> { v: () };
@@ -217,7 +217,7 @@ LL | enum Enum<T> { TSVariant(T), SVariant { v: T }, UVariant }
    |      ^^^^ `Self` corresponds to this type
 ...
 LL | impl<T> Enum<T> {
-   | --------------- `Self` is or type `Enum` in this `impl`
+   | --------------- `Self` is on type `Enum` in this `impl`
 help: the `Self` type doesn't accept type parameters, use the concrete type's name `Enum` instead if you want to specify its type parameters
    |
 LL |         Enum::<()>::UVariant;
@@ -236,7 +236,7 @@ LL | enum Enum<T> { TSVariant(T), SVariant { v: T }, UVariant }
    |      ^^^^ `Self` corresponds to this type
 ...
 LL | impl<T> Enum<T> {
-   | --------------- `Self` is or type `Enum` in this `impl`
+   | --------------- `Self` is on type `Enum` in this `impl`
 help: the `Self` type doesn't accept type parameters, use the concrete type's name `Enum` instead if you want to specify its type parameters
    |
 LL |         Enum::<()>::UVariant::<()>;

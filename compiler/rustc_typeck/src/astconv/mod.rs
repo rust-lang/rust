@@ -2417,7 +2417,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         let mut span: MultiSpan = vec![t_sp].into();
                         span.push_span_label(
                             i_sp,
-                            &format!("`Self` is or type `{type_name}` in this `impl`"),
+                            &format!("`Self` is on type `{type_name}` in this `impl`"),
                         );
                         let mut postfix = "";
                         if generics == 0 {

@@ -41,7 +41,7 @@ LL | struct S;
    |        ^ `Self` corresponds to this type, which doesn't have type parameters
 ...
 LL | impl Tr for S {
-   | ------------- `Self` is or type `S` in this `impl`
+   | ------------- `Self` is on type `S` in this `impl`
 help: the `Self` type doesn't accept type parameters
    |
 LL -         let z = Self::<u8> {};
@@ -61,7 +61,7 @@ LL | struct S;
    |        ^ `Self` corresponds to this type, which doesn't have type parameters
 ...
 LL | impl S {
-   | ------ `Self` is or type `S` in this `impl`
+   | ------ `Self` is on type `S` in this `impl`
 help: the `Self` type doesn't accept type parameters
    |
 LL -         let z = Self::<u8> {};
