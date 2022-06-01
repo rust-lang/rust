@@ -2541,9 +2541,10 @@ macro_rules! int_impl {
         #[doc = concat!("assert!(!(9", stringify!($SelfT), ").is_even());")]
         /// ```
         #[must_use]
+        #[unstable(feature = "is_even_odd", issue = "97620")]
         #[inline(always)]
         pub const fn is_even(self) -> bool { self % 2 == 0 }
-         
+
         /// Returns `true` if `self` is odd and `false` if the number is even.
         ///
         /// # Examples
@@ -2555,6 +2556,7 @@ macro_rules! int_impl {
         #[doc = concat!("assert!(!(10", stringify!($SelfT), ").is_odd());")]
         /// ```
         #[must_use]
+        #[unstable(feature = "is_even_odd", issue = "97620")]
         #[inline(always)]
         pub const fn is_odd(self) -> bool { !self.is_even() }
 
