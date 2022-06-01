@@ -335,7 +335,6 @@ mod path_buf_push_overwrite;
 mod pattern_type_mismatch;
 mod precedence;
 mod ptr;
-mod ptr_eq;
 mod ptr_offset_with_cast;
 mod pub_use;
 mod question_mark;
@@ -571,7 +570,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(enum_clike::UnportableVariant));
     store.register_late_pass(|| Box::new(float_literal::FloatLiteral));
     store.register_late_pass(|| Box::new(ptr::Ptr));
-    store.register_late_pass(|| Box::new(ptr_eq::PtrEq));
     store.register_late_pass(|| Box::new(needless_bool::NeedlessBool));
     store.register_late_pass(|| Box::new(needless_bool::BoolComparison));
     store.register_late_pass(|| Box::new(needless_for_each::NeedlessForEach));
