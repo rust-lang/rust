@@ -10,8 +10,8 @@ use std::ops::Not;
 use std::path::{Path, PathBuf};
 use std::process::{self, Command};
 
-use serde::{Deserialize, Serialize};
 use rustc_version::VersionMeta;
+use serde::{Deserialize, Serialize};
 
 use version::*;
 
