@@ -2108,6 +2108,46 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         extend: impl Fn(&mut DiagnosticBuilder<'tcx, ErrorGuaranteed>),
     ) -> bool {
         let args = segments.clone().flat_map(|segment| segment.args().args);
+        let types_and_spans: Vec<_> = segments
+            .clone()
+            .flat_map(|segment| {
+                segment.res.and_then(|res| {
+                    if segment.args().args.is_empty() {
+                        None
+                    } else {
+                        let mut desc = res.descr();
+                        if desc == "unresolved item" {
+                            desc = "this type";
+                        };
+
+                        let name = match res {
+                            Res::PrimTy(ty) => Some(ty.name()),
+                            Res::Def(_, def_id) => self.tcx().opt_item_name(def_id),
+                            _ => None,
+                        };
+                        Some((
+                            match name {
+                                Some(ty) => format!("{desc} `{ty}`"),
+                                None => desc.to_string(),
+                            },
+                            segment.ident.span,
+                        ))
+                    }
+                })
+            })
+            .collect();
+        let this_type = match &types_and_spans[..] {
+            [.., _, (last, _)] => format!(
+                "{} and {last}",
+                types_and_spans[..types_and_spans.len() - 1]
+                    .iter()
+                    .map(|(x, _)| x.as_str())
+                    .intersperse(&", ")
+                    .collect::<String>()
+            ),
+            [(only, _)] => only.to_string(),
+            [] => "this type".to_string(),
+        };
 
         let (lt, ty, ct, inf) =
             args.clone().fold((false, false, false, false), |(lt, ty, ct, inf), arg| match arg {
@@ -2143,7 +2183,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             let (kind, s) = match types[..] {
                 [.., _, last] => (
                     format!(
-                        "{} and `{last}`",
+                        "{} and {last}",
                         types[..types.len() - 1]
                             .iter()
                             .map(|&x| x)
@@ -2161,9 +2201,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 self.tcx().sess,
                 span,
                 E0109,
-                "{kind} arguments are not allowed for this type",
+                "{kind} arguments are not allowed on {this_type}",
             );
             err.span_label(last_span, format!("{kind} argument{s} not allowed"));
+            for (_, span) in types_and_spans {
+                err.span_label(span, "not allowed on this");
+            }
             extend(&mut err);
             err.emit();
             emitted = true;

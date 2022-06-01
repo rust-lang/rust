@@ -1,14 +1,18 @@
-error[E0109]: type arguments are not allowed for this type
+error[E0109]: type arguments are not allowed on local variable
   --> $DIR/issue-60989.rs:12:10
    |
 LL |     c1::<()>;
-   |          ^^ type argument not allowed
+   |     --   ^^ type argument not allowed
+   |     |
+   |     not allowed on this
 
-error[E0109]: type arguments are not allowed for this type
+error[E0109]: type arguments are not allowed on local variable
   --> $DIR/issue-60989.rs:16:10
    |
 LL |     c1::<dyn Into<B>>;
-   |          ^^^^^^^^^^^ type argument not allowed
+   |     --   ^^^^^^^^^^^ type argument not allowed
+   |     |
+   |     not allowed on this
 
 error: aborting due to 2 previous errors
 
