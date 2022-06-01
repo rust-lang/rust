@@ -1387,14 +1387,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let extra_lifetimes = self.resolver.take_extra_lifetime_params(parent_node_id);
         let impl_trait_defs = std::mem::take(&mut self.impl_trait_defs);
-        params.extend(
-            extra_lifetimes
-                .into_iter()
-                .filter_map(|(ident, node_id, res)| {
-                    self.lifetime_res_to_generic_param(ident, node_id, res)
-                })
-                .chain(impl_trait_defs.into_iter()),
-        );
+        params.extend(extra_lifetimes.into_iter().filter_map(|(ident, node_id, res)| {
+            self.lifetime_res_to_generic_param(ident, node_id, res)
+        }));
+        params.extend(impl_trait_defs.into_iter());
+
         let impl_trait_bounds = std::mem::take(&mut self.impl_trait_bounds);
         predicates.extend(impl_trait_bounds.into_iter());
 
