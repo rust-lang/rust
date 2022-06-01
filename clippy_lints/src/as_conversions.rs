@@ -32,12 +32,11 @@ declare_clippy_lint! {
     /// Use instead:
     /// ```rust,ignore
     /// f(a.try_into()?);
-    /// ```
-    /// or
-    /// ```rust,ignore
+    ///
+    /// // or
+    ///
     /// f(a.try_into().expect("Unexpected u16 overflow in f"));
     /// ```
-    ///
     #[clippy::version = "1.41.0"]
     pub AS_CONVERSIONS,
     restriction,

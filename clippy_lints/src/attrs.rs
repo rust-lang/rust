@@ -241,13 +241,13 @@ declare_clippy_lint! {
     ///
     /// Use instead:
     /// ```rust
+    /// # mod hidden {
     /// #[cfg(target_os = "linux")]
     /// fn conditional() { }
-    /// ```
+    /// # }
     ///
-    /// or
+    /// // or
     ///
-    /// ```rust
     /// #[cfg(unix)]
     /// fn conditional() { }
     /// ```
