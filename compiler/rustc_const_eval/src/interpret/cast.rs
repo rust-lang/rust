@@ -31,9 +31,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.unsize_into(src, cast_ty, dest)?;
             }
 
-            PointerAddress => {
+            PointerExposeAddress => {
                 let src = self.read_immediate(src)?;
-                let res = self.pointer_address_cast(&src, cast_ty)?;
+                let res = self.pointer_expose_address_cast(&src, cast_ty)?;
                 self.write_immediate(res, dest)?;
             }
 
@@ -184,7 +184,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         Ok(self.cast_from_int_like(scalar, src.layout, cast_ty)?.into())
     }
 
-    pub fn pointer_address_cast(
+    pub fn pointer_expose_address_cast(
         &mut self,
         src: &ImmTy<'tcx, M::PointerTag>,
         cast_ty: Ty<'tcx>,
