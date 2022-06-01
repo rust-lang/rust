@@ -125,7 +125,7 @@ fn check_rvalue<'tcx>(
         Rvalue::Len(place) | Rvalue::Discriminant(place) | Rvalue::Ref(_, _, place) | Rvalue::AddressOf(_, place) => {
             check_place(tcx, *place, span, body)
         },
-        Rvalue::Cast(CastKind::PointerAddress, _, _) => {
+        Rvalue::Cast(CastKind::PointerExposeAddress, _, _) => {
             Err((span, "casting pointers to ints is unstable in const fn".into()))
         },
         Rvalue::Cast(CastKind::Misc, operand, _) => {
