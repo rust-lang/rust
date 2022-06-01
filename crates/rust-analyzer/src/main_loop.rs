@@ -665,11 +665,11 @@ impl GlobalState {
             })?
             .on::<lsp_types::notification::DidOpenTextDocument>(|this, params| {
                 if let Ok(path) = from_proto::vfs_path(&params.text_document.uri) {
-                    if this
+                    let already_exists = this
                         .mem_docs
                         .insert(path.clone(), DocumentData::new(params.text_document.version))
-                        .is_err()
-                    {
+                        .is_err();
+                    if already_exists {
                         tracing::error!("duplicate DidOpenTextDocument: {}", path)
                     }
                     this.vfs
@@ -688,7 +688,7 @@ impl GlobalState {
                             doc.version = params.text_document.version;
                         }
                         None => {
-                            tracing::error!("unexpected DidChangeTextDocument: {}; send DidOpenTextDocument first", path);
+                            tracing::error!("unexpected DidChangeTextDocument: {}", path);
                             return Ok(());
                         }
                     };
@@ -722,7 +722,8 @@ impl GlobalState {
                 }
                 if let Ok(abs_path) = from_proto::abs_path(&params.text_document.uri) {
                     if reload::should_refresh_for_change(&abs_path, ChangeKind::Modify) {
-                        this.fetch_workspaces_queue.request_op(format!("DidSaveTextDocument {}", abs_path.display()));
+                        this.fetch_workspaces_queue
+                            .request_op(format!("DidSaveTextDocument {}", abs_path.display()));
                     }
                 }
                 Ok(())
@@ -751,7 +752,10 @@ impl GlobalState {
                                     // provide a configuration. This is handled in Config::update below.
                                     let mut config = Config::clone(&*this.config);
                                     if let Err(error) = config.update(json.take()) {
-                                        this.show_message(lsp_types::MessageType::WARNING, error.to_string());
+                                        this.show_message(
+                                            lsp_types::MessageType::WARNING,
+                                            error.to_string(),
+                                        );
                                     }
                                     this.update_configuration(config);
                                 }
