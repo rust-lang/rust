@@ -1715,6 +1715,7 @@ impl EmitterWriter {
 
     fn emit_suggestion_default(
         &mut self,
+        span: &MultiSpan,
         suggestion: &CodeSuggestion,
         args: &FluentArgs<'_>,
         level: &Level,
@@ -1766,6 +1767,30 @@ impl EmitterWriter {
                 None,
             }
 
+            if let Some(span) = span.primary_span() {
+                // Compare the primary span of the diagnostic with the span of the suggestion
+                // being emitted.  If they belong to the same file, we don't *need* to show the
+                // file name, saving in verbosity, but if it *isn't* we do need it, otherwise we're
+                // telling users to make a change but not clarifying *where*.
+                let loc = sm.lookup_char_pos(parts[0].span.lo());
+                if loc.file.name != sm.span_to_filename(span) && loc.file.name.is_real() {
+                    buffer.puts(row_num - 1, 0, "--> ", Style::LineNumber);
+                    buffer.append(
+                        row_num - 1,
+                        &format!(
+                            "{}:{}:{}",
+                            sm.filename_for_diagnostics(&loc.file.name),
+                            sm.doctest_offset_line(&loc.file.name, loc.line),
+                            loc.col.0 + 1,
+                        ),
+                        Style::LineAndColumn,
+                    );
+                    for _ in 0..max_line_num_len {
+                        buffer.prepend(row_num - 1, " ", Style::NoStyle);
+                    }
+                    row_num += 1;
+                }
+            }
             let show_code_change = if has_deletion && !is_multiline {
                 DisplaySuggestion::Diff
             } else if (parts.len() != 1 || parts[0].snippet.trim() != complete.trim())
@@ -1787,7 +1812,7 @@ impl EmitterWriter {
             assert!(!file_lines.lines.is_empty() || parts[0].span.is_dummy());
 
             let line_start = sm.lookup_char_pos(parts[0].span.lo()).line;
-            draw_col_separator_no_space(&mut buffer, 1, max_line_num_len + 1);
+            draw_col_separator_no_space(&mut buffer, row_num - 1, max_line_num_len + 1);
             let mut lines = complete.lines();
             if lines.clone().next().is_none() {
                 // Account for a suggestion to completely remove a line(s) with whitespace (#94192).
@@ -2046,9 +2071,13 @@ impl EmitterWriter {
                             ) {
                                 panic!("failed to emit error: {}", e);
                             }
-                        } else if let Err(e) =
-                            self.emit_suggestion_default(sugg, args, &Level::Help, max_line_num_len)
-                        {
+                        } else if let Err(e) = self.emit_suggestion_default(
+                            span,
+                            sugg,
+                            args,
+                            &Level::Help,
+                            max_line_num_len,
+                        ) {
                             panic!("failed to emit error: {}", e);
                         };
                     }
