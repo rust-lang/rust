@@ -2256,7 +2256,7 @@ macro_rules! uint_impl {
         #[doc = concat!("assert!(!(9", stringify!($SelfT), ").is_even());")]
         /// ```
         #[must_use]
-        #[unstable(feature = "is_even_odd", issue = "97620")]
+        #[unstable(feature = "is_even_odd", issue = "none")]
         #[inline(always)]
         pub const fn is_even(self) -> bool { self % 2 == 0 }
 
@@ -2272,7 +2272,7 @@ macro_rules! uint_impl {
         #[doc = concat!("assert!(!(10", stringify!($SelfT), ").is_odd());")]
         /// ```
         #[must_use]
-        #[unstable(feature = "is_even_odd", issue = "97620")]
+        #[unstable(feature = "is_even_odd", issue = "none")]
         #[inline(always)]
         pub const fn is_odd(self) -> bool { !self.is_even() }
 
