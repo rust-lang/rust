@@ -1382,6 +1382,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     // `make_ret_async`: if `Some`, converts `-> T` into `-> impl Future<Output = T>` in the
     //      return type. This is used for `async fn` declarations. The `NodeId` is the ID of the
     //      return type `impl Trait` item.
+    #[tracing::instrument(level = "debug", skip(self))]
     fn lower_fn_decl(
         &mut self,
         decl: &FnDecl,
@@ -1389,15 +1390,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         kind: FnDeclKind,
         make_ret_async: Option<NodeId>,
     ) -> &'hir hir::FnDecl<'hir> {
-        debug!(
-            "lower_fn_decl(\
-            fn_decl: {:?}, \
-            fn_node_id: {:?}, \
-            kind: {:?}, \
-            make_ret_async: {:?})",
-            decl, fn_node_id, kind, make_ret_async,
-        );
-
         let c_variadic = decl.c_variadic();
 
         // Skip the `...` (`CVarArgs`) trailing arguments from the AST,
