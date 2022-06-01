@@ -355,7 +355,6 @@ mod repeat_once;
 mod return_self_not_must_use;
 mod returns;
 mod same_name_method;
-mod self_assignment;
 mod self_named_constructors;
 mod semicolon_if_nothing_returned;
 mod serde_api;
@@ -829,7 +828,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(stable_sort_primitive::StableSortPrimitive));
     store.register_late_pass(|| Box::new(repeat_once::RepeatOnce));
     store.register_late_pass(|| Box::new(unwrap_in_result::UnwrapInResult));
-    store.register_late_pass(|| Box::new(self_assignment::SelfAssignment));
     store.register_late_pass(|| Box::new(manual_ok_or::ManualOkOr));
     store.register_late_pass(|| Box::new(semicolon_if_nothing_returned::SemicolonIfNothingReturned));
     store.register_late_pass(|| Box::new(async_yields_async::AsyncYieldsAsync));

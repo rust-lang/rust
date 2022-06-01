@@ -22,6 +22,7 @@ mod needless_bitwise_bool;
 mod numeric_arithmetic;
 mod op_ref;
 mod ptr_eq;
+mod self_assignment;
 mod verbose_bit_mask;
 
 declare_clippy_lint! {
@@ -701,6 +702,45 @@ declare_clippy_lint! {
     "use `std::ptr::eq` when comparing raw pointers"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for explicit self-assignments.
+    ///
+    /// ### Why is this bad?
+    /// Self-assignments are redundant and unlikely to be
+    /// intentional.
+    ///
+    /// ### Known problems
+    /// If expression contains any deref coercions or
+    /// indexing operations they are assumed not to have any side effects.
+    ///
+    /// ### Example
+    /// ```rust
+    /// struct Event {
+    ///     x: i32,
+    /// }
+    ///
+    /// fn copy_position(a: &mut Event, b: &Event) {
+    ///     a.x = a.x;
+    /// }
+    /// ```
+    ///
+    /// Should be:
+    /// ```rust
+    /// struct Event {
+    ///     x: i32,
+    /// }
+    ///
+    /// fn copy_position(a: &mut Event, b: &Event) {
+    ///     a.x = b.x;
+    /// }
+    /// ```
+    #[clippy::version = "1.48.0"]
+    pub SELF_ASSIGNMENT,
+    correctness,
+    "explicit self-assignment"
+}
+
 pub struct Operators {
     arithmetic_context: numeric_arithmetic::Context,
     verbose_bit_mask_threshold: u64,
@@ -730,6 +770,7 @@ impl_lint_pass!(Operators => [
     MODULO_ARITHMETIC,
     NEEDLESS_BITWISE_BOOL,
     PTR_EQ,
+    SELF_ASSIGNMENT,
 ]);
 impl Operators {
     pub fn new(verbose_bit_mask_threshold: u64) -> Self {
@@ -775,6 +816,7 @@ impl<'tcx> LateLintPass<'tcx> for Operators {
             },
             ExprKind::Assign(lhs, rhs, _) => {
                 assign_op_pattern::check(cx, e, lhs, rhs);
+                self_assignment::check(cx, e, lhs, rhs);
             },
             ExprKind::Unary(op, arg) => {
                 if op == UnOp::Neg {
