@@ -1417,7 +1417,7 @@ impl<'a> Parser<'a> {
         match self.parse_opt_lit() {
             Some(literal) => {
                 let expr = self.mk_expr(lo.to(self.prev_token.span), ExprKind::Lit(literal), attrs);
-                self.maybe_recover_from_bad_qpath(expr, true)
+                self.maybe_recover_from_bad_qpath(expr)
             }
             None => self.try_macro_suggestion(),
         }
@@ -1444,7 +1444,7 @@ impl<'a> Parser<'a> {
             ExprKind::Tup(es)
         };
         let expr = self.mk_expr(lo.to(self.prev_token.span), kind, attrs);
-        self.maybe_recover_from_bad_qpath(expr, true)
+        self.maybe_recover_from_bad_qpath(expr)
     }
 
     fn parse_array_or_repeat_expr(
@@ -1481,7 +1481,7 @@ impl<'a> Parser<'a> {
             }
         };
         let expr = self.mk_expr(lo.to(self.prev_token.span), kind, attrs);
-        self.maybe_recover_from_bad_qpath(expr, true)
+        self.maybe_recover_from_bad_qpath(expr)
     }
 
     fn parse_path_start_expr(&mut self, attrs: AttrVec) -> PResult<'a, P<Expr>> {
@@ -1519,7 +1519,7 @@ impl<'a> Parser<'a> {
         };
 
         let expr = self.mk_expr(lo.to(hi), kind, attrs);
-        self.maybe_recover_from_bad_qpath(expr, true)
+        self.maybe_recover_from_bad_qpath(expr)
     }
 
     /// Parse `'label: $expr`. The label is already parsed.
@@ -1604,7 +1604,7 @@ impl<'a> Parser<'a> {
         let lo = self.prev_token.span;
         let kind = ExprKind::Ret(self.parse_expr_opt()?);
         let expr = self.mk_expr(lo.to(self.prev_token.span), kind, attrs);
-        self.maybe_recover_from_bad_qpath(expr, true)
+        self.maybe_recover_from_bad_qpath(expr)
     }
 
     /// Parse `"do" "yeet" expr?`.
@@ -1619,7 +1619,7 @@ impl<'a> Parser<'a> {
         let span = lo.to(self.prev_token.span);
         self.sess.gated_spans.gate(sym::yeet_expr, span);
         let expr = self.mk_expr(span, kind, attrs);
-        self.maybe_recover_from_bad_qpath(expr, true)
+        self.maybe_recover_from_bad_qpath(expr)
     }
 
     /// Parse `"break" (('label (:? expr)?) | expr?)` with `"break"` token already eaten.
@@ -1679,7 +1679,7 @@ impl<'a> Parser<'a> {
             None
         };
         let expr = self.mk_expr(lo.to(self.prev_token.span), ExprKind::Break(label, kind), attrs);
-        self.maybe_recover_from_bad_qpath(expr, true)
+        self.maybe_recover_from_bad_qpath(expr)
     }
 
     /// Parse `"yield" expr?`.
@@ -1689,7 +1689,7 @@ impl<'a> Parser<'a> {
         let span = lo.to(self.prev_token.span);
         self.sess.gated_spans.gate(sym::generators, span);
         let expr = self.mk_expr(span, kind, attrs);
-        self.maybe_recover_from_bad_qpath(expr, true)
+        self.maybe_recover_from_bad_qpath(expr)
     }
 
     /// Returns a string literal if the next token is a string literal.

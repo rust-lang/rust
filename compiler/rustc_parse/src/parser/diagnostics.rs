@@ -1,8 +1,7 @@
 use super::pat::Expected;
-use super::ty::{AllowPlus, RecoverQuestionMark};
 use super::{
-    BlockMode, CommaRecoveryMode, Parser, PathStyle, RecoverColon, RecoverComma, Restrictions,
-    SemiColonMode, SeqSep, TokenExpectType, TokenType,
+    BlockMode, CommaRecoveryMode, Parser, PathStyle, Restrictions, SemiColonMode, SeqSep,
+    TokenExpectType, TokenType,
 };
 
 use crate::lexer::UnmatchedBrace;
@@ -1233,26 +1232,14 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub(super) fn maybe_report_ambiguous_plus(
-        &mut self,
-        allow_plus: AllowPlus,
-        impl_dyn_multi: bool,
-        ty: &Ty,
-    ) {
-        if matches!(allow_plus, AllowPlus::No) && impl_dyn_multi {
+    pub(super) fn maybe_report_ambiguous_plus(&mut self, impl_dyn_multi: bool, ty: &Ty) {
+        if impl_dyn_multi {
             self.sess.emit_err(AmbiguousPlus { sum_ty: pprust::ty_to_string(&ty), span: ty.span });
         }
     }
 
     /// Swift lets users write `Ty?` to mean `Option<Ty>`. Parse the construct and recover from it.
-    pub(super) fn maybe_recover_from_question_mark(
-        &mut self,
-        ty: P<Ty>,
-        recover_question_mark: RecoverQuestionMark,
-    ) -> P<Ty> {
-        if let RecoverQuestionMark::No = recover_question_mark {
-            return ty;
-        }
+    pub(super) fn maybe_recover_from_question_mark(&mut self, ty: P<Ty>) -> P<Ty> {
         if self.token == token::Question {
             self.bump();
             self.struct_span_err(self.prev_token.span, "invalid `?` in type")
@@ -1272,13 +1259,9 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub(super) fn maybe_recover_from_bad_type_plus(
-        &mut self,
-        allow_plus: AllowPlus,
-        ty: &Ty,
-    ) -> PResult<'a, ()> {
+    pub(super) fn maybe_recover_from_bad_type_plus(&mut self, ty: &Ty) -> PResult<'a, ()> {
         // Do not add `+` to expected tokens.
-        if matches!(allow_plus, AllowPlus::No) || !self.token.is_like_plus() {
+        if !self.token.is_like_plus() {
             return Ok(());
         }
 
@@ -1444,10 +1427,9 @@ impl<'a> Parser<'a> {
     pub(super) fn maybe_recover_from_bad_qpath<T: RecoverQPath>(
         &mut self,
         base: P<T>,
-        allow_recovery: bool,
     ) -> PResult<'a, P<T>> {
         // Do not add `::` to expected tokens.
-        if allow_recovery && self.token == token::ModSep {
+        if self.token == token::ModSep {
             if let Some(ty) = base.to_ty() {
                 return self.maybe_recover_from_bad_qpath_stage_2(ty.span, ty);
             }
@@ -1593,7 +1575,7 @@ impl<'a> Parser<'a> {
             _ => ExprKind::Await(expr),
         };
         let expr = self.mk_expr(lo.to(sp), kind, attrs);
-        self.maybe_recover_from_bad_qpath(expr, true)
+        self.maybe_recover_from_bad_qpath(expr)
     }
 
     fn recover_await_macro(&mut self) -> PResult<'a, (Span, P<Expr>, bool)> {
@@ -2457,10 +2439,9 @@ impl<'a> Parser<'a> {
     pub(crate) fn maybe_recover_colon_colon_in_pat_typo(
         &mut self,
         mut first_pat: P<Pat>,
-        ra: RecoverColon,
         expected: Expected,
     ) -> P<Pat> {
-        if RecoverColon::Yes != ra || token::Colon != self.token.kind {
+        if token::Colon != self.token.kind {
             return first_pat;
         }
         if !matches!(first_pat.kind, PatKind::Ident(_, _, None) | PatKind::Path(..))
@@ -2594,10 +2575,9 @@ impl<'a> Parser<'a> {
     pub(crate) fn maybe_recover_unexpected_comma(
         &mut self,
         lo: Span,
-        rc: RecoverComma,
         rt: CommaRecoveryMode,
     ) -> PResult<'a, ()> {
-        if rc == RecoverComma::No || self.token != token::Comma {
+        if self.token != token::Comma {
             return Ok(());
         }
 

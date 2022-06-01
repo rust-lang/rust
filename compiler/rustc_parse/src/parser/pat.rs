@@ -100,8 +100,10 @@ impl<'a> Parser<'a> {
         };
 
         // Parse the first pattern (`p_0`).
-        let first_pat = self.parse_pat_no_top_alt(expected)?;
-        self.maybe_recover_unexpected_comma(first_pat.span, rc, rt)?;
+        let mut first_pat = self.parse_pat_no_top_alt(expected)?;
+        if rc == RecoverComma::Yes {
+            self.maybe_recover_unexpected_comma(first_pat.span, rt)?;
+        }
 
         // If the next token is not a `|`,
         // this is not an or-pattern and we should exit here.
@@ -111,7 +113,9 @@ impl<'a> Parser<'a> {
             // This complicated procedure is done purely for diagnostics UX.
 
             // Check if the user wrote `foo:bar` instead of `foo::bar`.
-            let first_pat = self.maybe_recover_colon_colon_in_pat_typo(first_pat, ra, expected);
+            if ra == RecoverColon::Yes {
+                first_pat = self.maybe_recover_colon_colon_in_pat_typo(first_pat, expected);
+            }
 
             if let Some(leading_vert_span) = leading_vert_span {
                 // If there was a leading vert, treat this as an or-pattern. This improves
@@ -139,7 +143,9 @@ impl<'a> Parser<'a> {
                 err.span_label(lo, WHILE_PARSING_OR_MSG);
                 err
             })?;
-            self.maybe_recover_unexpected_comma(pat.span, rc, rt)?;
+            if rc == RecoverComma::Yes {
+                self.maybe_recover_unexpected_comma(pat.span, rt)?;
+            }
             pats.push(pat);
         }
         let or_pattern_span = lo.to(self.prev_token.span);
@@ -408,7 +414,7 @@ impl<'a> Parser<'a> {
         };
 
         let pat = self.mk_pat(lo.to(self.prev_token.span), pat);
-        let pat = self.maybe_recover_from_bad_qpath(pat, true)?;
+        let pat = self.maybe_recover_from_bad_qpath(pat)?;
         let pat = self.recover_intersection_pat(pat)?;
 
         if !allow_range_pat {

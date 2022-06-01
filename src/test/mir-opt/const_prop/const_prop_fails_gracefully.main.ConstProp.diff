@@ -21,7 +21,7 @@
                                            // + span: $DIR/const_prop_fails_gracefully.rs:7:13: 7:16
                                            // + literal: Const { ty: &i32, val: Unevaluated(FOO, [], None) }
           _2 = &raw const (*_3);           // scope 0 at $DIR/const_prop_fails_gracefully.rs:7:13: 7:16
-          _1 = move _2 as usize (PointerAddress); // scope 0 at $DIR/const_prop_fails_gracefully.rs:7:13: 7:39
+          _1 = move _2 as usize (PointerExposeAddress); // scope 0 at $DIR/const_prop_fails_gracefully.rs:7:13: 7:39
           StorageDead(_2);                 // scope 0 at $DIR/const_prop_fails_gracefully.rs:7:38: 7:39
           StorageDead(_3);                 // scope 0 at $DIR/const_prop_fails_gracefully.rs:7:39: 7:40
           StorageLive(_4);                 // scope 1 at $DIR/const_prop_fails_gracefully.rs:8:5: 8:12

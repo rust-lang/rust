@@ -312,13 +312,18 @@ impl<'a> Parser<'a> {
         };
 
         let span = lo.to(self.prev_token.span);
-        let ty = self.mk_ty(span, kind);
+        let mut ty = self.mk_ty(span, kind);
 
         // Try to recover from use of `+` with incorrect priority.
-        self.maybe_report_ambiguous_plus(allow_plus, impl_dyn_multi, &ty);
-        self.maybe_recover_from_bad_type_plus(allow_plus, &ty)?;
-        let ty = self.maybe_recover_from_question_mark(ty, recover_question_mark);
-        self.maybe_recover_from_bad_qpath(ty, allow_qpath_recovery)
+        if matches!(allow_plus, AllowPlus::Yes) {
+            self.maybe_recover_from_bad_type_plus(&ty)?;
+        } else {
+            self.maybe_report_ambiguous_plus(impl_dyn_multi, &ty);
+        }
+        if let RecoverQuestionMark::Yes = recover_question_mark {
+            ty = self.maybe_recover_from_question_mark(ty);
+        }
+        if allow_qpath_recovery { self.maybe_recover_from_bad_qpath(ty) } else { Ok(ty) }
     }
 
     /// Parses either:

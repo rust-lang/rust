@@ -7,6 +7,7 @@ use rustc_hir::def_id::DefId;
 pub(crate) use renderer::{run_format, FormatRenderer};
 
 use crate::clean::{self, ItemId};
+use cache::Cache;
 
 /// Specifies whether rendering directly implemented trait items or ones from a certain Deref
 /// impl.
@@ -59,5 +60,29 @@ impl Impl {
                 )
             }
         }
+    }
+
+    // Returns true if this is an implementation on a "local" type, meaning:
+    // the type is in the current crate, or the type and the trait are both
+    // re-exported by the current crate.
+    pub(crate) fn is_on_local_type(&self, cache: &Cache) -> bool {
+        let for_type = &self.inner_impl().for_;
+        if let Some(for_type_did) = for_type.def_id(cache) {
+            // The "for" type is local if it's in the paths for the current crate.
+            if cache.paths.contains_key(&for_type_did) {
+                return true;
+            }
+            if let Some(trait_did) = self.trait_did() {
+                // The "for" type and the trait are from the same crate. That could
+                // be different from the current crate, for instance when both were
+                // re-exported from some other crate. But they are local with respect to
+                // each other.
+                if for_type_did.krate == trait_did.krate {
+                    return true;
+                }
+            }
+            return false;
+        };
+        true
     }
 }

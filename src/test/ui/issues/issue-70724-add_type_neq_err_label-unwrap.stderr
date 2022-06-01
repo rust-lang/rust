@@ -9,6 +9,7 @@ LL |     assert_eq!(a, 0);
    |
    = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: you might have forgotten to call this function
+  --> $SRC_DIR/core/src/macros/mod.rs:LL:COL
    |
 LL |                 if !(*left_val() == *right_val) {
    |                               ++

@@ -2285,9 +2285,7 @@ fn sidebar_trait(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item, t: &clean
     if let Some(implementors) = cache.implementors.get(&it.item_id.expect_def_id()) {
         let mut res = implementors
             .iter()
-            .filter(|i| {
-                i.inner_impl().for_.def_id(cache).map_or(false, |d| !cache.paths.contains_key(&d))
-            })
+            .filter(|i| !i.is_on_local_type(cache))
             .filter_map(|i| extract_for_impl_name(&i.impl_item, cx))
             .collect::<Vec<_>>();
 
