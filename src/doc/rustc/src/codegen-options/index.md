@@ -577,7 +577,7 @@ change in the future.
 See the [Symbol Mangling] chapter for details on symbol mangling and the mangling format.
 
 [name mangling]: https://en.wikipedia.org/wiki/Name_mangling
-[Symbol Mangling]: symbol-mangling.md
+[Symbol Mangling]: ../symbol-mangling/index.md
 
 ## target-cpu
 
