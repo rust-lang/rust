@@ -392,6 +392,10 @@ pub trait TypeVisitor<'tcx>: Sized {
     fn visit_predicate(&mut self, p: ty::Predicate<'tcx>) -> ControlFlow<Self::BreakTy> {
         p.super_visit_with(self)
     }
+
+    fn visit_mir_const(&mut self, c: mir::ConstantKind<'tcx>) -> ControlFlow<Self::BreakTy> {
+        c.super_visit_with(self)
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////

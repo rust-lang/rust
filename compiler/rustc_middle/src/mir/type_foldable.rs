@@ -406,4 +406,8 @@ impl<'tcx> TypeFoldable<'tcx> for ConstantKind<'tcx> {
             ConstantKind::Val(_, t) => t.visit_with(visitor),
         }
     }
+
+    fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
+        visitor.visit_mir_const(*self)
+    }
 }
