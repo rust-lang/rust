@@ -8,7 +8,7 @@ use std::{
 
 use always_assert::always;
 use crossbeam_channel::{select, Receiver};
-use ide_db::base_db::{SourceDatabaseExt, VfsPath};
+use ide_db::base_db::{Cancelled, SourceDatabaseExt, VfsPath};
 use lsp_server::{Connection, Notification, Request};
 use lsp_types::notification::Notification as _;
 use vfs::{ChangeKind, FileId};
@@ -19,7 +19,7 @@ use crate::{
     from_proto,
     global_state::{file_id_to_url, url_to_file_id, GlobalState},
     handlers, lsp_ext,
-    lsp_utils::{apply_document_changes, is_cancelled, notification_is, Progress},
+    lsp_utils::{apply_document_changes, notification_is, Progress},
     mem_docs::DocumentData,
     reload::{self, BuildDataProgress, ProjectWorkspaceProgress},
     Result,
@@ -60,6 +60,7 @@ enum Event {
 #[derive(Debug)]
 pub(crate) enum Task {
     Response(lsp_server::Response),
+    Retry(lsp_server::Request),
     Diagnostics(Vec<(FileId, Vec<lsp_types::Diagnostic>)>),
     PrimeCaches(PrimeCachesProgress),
     FetchWorkspace(ProjectWorkspaceProgress),
@@ -196,7 +197,7 @@ impl GlobalState {
         let was_quiescent = self.is_quiescent();
         match event {
             Event::Lsp(msg) => match msg {
-                lsp_server::Message::Request(req) => self.on_request(loop_start, req)?,
+                lsp_server::Message::Request(req) => self.on_request(loop_start, req),
                 lsp_server::Message::Notification(not) => {
                     self.on_notification(not)?;
                 }
@@ -208,6 +209,7 @@ impl GlobalState {
                 loop {
                     match task {
                         Task::Response(response) => self.respond(response),
+                        Task::Retry(req) => self.on_request(loop_start, req),
                         Task::Diagnostics(diagnostics_per_file) => {
                             for (file_id, diagnostics) in diagnostics_per_file {
                                 self.diagnostics.set_native_diagnostics(file_id, diagnostics)
@@ -553,7 +555,7 @@ impl GlobalState {
         Ok(())
     }
 
-    fn on_request(&mut self, request_received: Instant, req: Request) -> Result<()> {
+    fn on_request(&mut self, request_received: Instant, req: Request) {
         self.register_request(&req, request_received);
 
         if self.shutdown_requested {
@@ -562,8 +564,7 @@ impl GlobalState {
                 lsp_server::ErrorCode::InvalidRequest as i32,
                 "Shutdown already requested.".to_owned(),
             ));
-
-            return Ok(());
+            return;
         }
 
         // Avoid flashing a bunch of unresolved references during initial load.
@@ -573,21 +574,21 @@ impl GlobalState {
                 lsp_server::ErrorCode::ContentModified as i32,
                 "waiting for cargo metadata or cargo check".to_owned(),
             ));
-            return Ok(());
+            return;
         }
 
         RequestDispatcher { req: Some(req), global_state: self }
             .on_sync_mut::<lsp_types::request::Shutdown>(|s, ()| {
                 s.shutdown_requested = true;
                 Ok(())
-            })?
-            .on_sync_mut::<lsp_ext::ReloadWorkspace>(handlers::handle_workspace_reload)?
-            .on_sync_mut::<lsp_ext::MemoryUsage>(handlers::handle_memory_usage)?
-            .on_sync_mut::<lsp_ext::ShuffleCrateGraph>(handlers::handle_shuffle_crate_graph)?
-            .on_sync::<lsp_ext::JoinLines>(handlers::handle_join_lines)?
-            .on_sync::<lsp_ext::OnEnter>(handlers::handle_on_enter)?
-            .on_sync::<lsp_types::request::SelectionRangeRequest>(handlers::handle_selection_range)?
-            .on_sync::<lsp_ext::MatchingBrace>(handlers::handle_matching_brace)?
+            })
+            .on_sync_mut::<lsp_ext::ReloadWorkspace>(handlers::handle_workspace_reload)
+            .on_sync_mut::<lsp_ext::MemoryUsage>(handlers::handle_memory_usage)
+            .on_sync_mut::<lsp_ext::ShuffleCrateGraph>(handlers::handle_shuffle_crate_graph)
+            .on_sync::<lsp_ext::JoinLines>(handlers::handle_join_lines)
+            .on_sync::<lsp_ext::OnEnter>(handlers::handle_on_enter)
+            .on_sync::<lsp_types::request::SelectionRangeRequest>(handlers::handle_selection_range)
+            .on_sync::<lsp_ext::MatchingBrace>(handlers::handle_matching_brace)
             .on::<lsp_ext::AnalyzerStatus>(handlers::handle_analyzer_status)
             .on::<lsp_ext::SyntaxTree>(handlers::handle_syntax_tree)
             .on::<lsp_ext::ViewHir>(handlers::handle_view_hir)
@@ -644,8 +645,8 @@ impl GlobalState {
             .on::<lsp_types::request::WillRenameFiles>(handlers::handle_will_rename_files)
             .on::<lsp_ext::Ssr>(handlers::handle_ssr)
             .finish();
-        Ok(())
     }
+
     fn on_notification(&mut self, not: Notification) -> Result<()> {
         NotificationDispatcher { not: Some(not), global_state: self }
             .on::<lsp_types::notification::Cancel>(|this, params| {
@@ -792,7 +793,7 @@ impl GlobalState {
                 .filter_map(|file_id| {
                     handlers::publish_diagnostics(&snapshot, file_id)
                         .map_err(|err| {
-                            if !is_cancelled(&*err) {
+                            if err.is::<Cancelled>() {
                                 tracing::error!("failed to compute diagnostics: {:?}", err);
                             }
                         })

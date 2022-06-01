@@ -1,7 +1,6 @@
 //! Utilities for LSP-related boilerplate code.
-use std::{error::Error, ops::Range, sync::Arc};
+use std::{ops::Range, sync::Arc};
 
-use ide_db::base_db::Cancelled;
 use lsp_server::Notification;
 
 use crate::{
@@ -13,10 +12,6 @@ use crate::{
 
 pub(crate) fn invalid_params_error(message: String) -> LspError {
     LspError { code: lsp_server::ErrorCode::InvalidParams as i32, message }
-}
-
-pub(crate) fn is_cancelled(e: &(dyn Error + 'static)) -> bool {
-    e.downcast_ref::<Cancelled>().is_some()
 }
 
 pub(crate) fn notification_is<N: lsp_types::notification::Notification>(
