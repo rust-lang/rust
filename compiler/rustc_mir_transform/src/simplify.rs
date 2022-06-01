@@ -494,8 +494,12 @@ impl<'tcx> Visitor<'tcx> for UsedLocals {
             StatementKind::StorageLive(_local) | StatementKind::StorageDead(_local) => {}
 
             StatementKind::Assign(box (ref place, ref rvalue)) => {
-                self.visit_lhs(place, location);
-                self.visit_rvalue(rvalue, location);
+                if rvalue.is_safe_to_remove() {
+                    self.visit_lhs(place, location);
+                    self.visit_rvalue(rvalue, location);
+                } else {
+                    self.super_statement(statement, location);
+                }
             }
 
             StatementKind::SetDiscriminant { ref place, variant_index: _ }
