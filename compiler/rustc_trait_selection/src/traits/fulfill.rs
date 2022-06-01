@@ -133,27 +133,16 @@ impl<'a, 'tcx> FulfillmentContext<'tcx> {
 
         let mut errors = Vec::new();
 
-        loop {
-            debug!("select: starting another iteration");
+        // Process pending obligations.
+        let outcome: Outcome<_, _> = self.predicates.process_obligations(&mut FulfillProcessor {
+            selcx,
+            register_region_obligations: self.register_region_obligations,
+        });
 
-            // Process pending obligations.
-            let outcome: Outcome<_, _> =
-                self.predicates.process_obligations(&mut FulfillProcessor {
-                    selcx,
-                    register_region_obligations: self.register_region_obligations,
-                });
-            debug!("select: outcome={:#?}", outcome);
+        // FIXME: if we kept the original cache key, we could mark projection
+        // obligations as complete for the projection cache here.
 
-            // FIXME: if we kept the original cache key, we could mark projection
-            // obligations as complete for the projection cache here.
-
-            errors.extend(outcome.errors.into_iter().map(to_fulfillment_error));
-
-            // If nothing new was added, no need to keep looping.
-            if outcome.stalled {
-                break;
-            }
-        }
+        errors.extend(outcome.errors.into_iter().map(to_fulfillment_error));
 
         debug!(
             "select({} predicates remaining, {} errors) done",

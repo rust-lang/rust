@@ -20,7 +20,6 @@ struct ClosureObligationProcessor<OF, BF, O, E> {
 struct TestOutcome<O, E> {
     pub completed: Vec<O>,
     pub errors: Vec<Error<O, E>>,
-    pub stalled: bool,
 }
 
 impl<O, E> OutcomeTrait for TestOutcome<O, E>
@@ -31,15 +30,7 @@ where
     type Obligation = O;
 
     fn new() -> Self {
-        Self { errors: vec![], stalled: false, completed: vec![] }
-    }
-
-    fn mark_not_stalled(&mut self) {
-        self.stalled = false;
-    }
-
-    fn is_stalled(&self) -> bool {
-        self.stalled
+        Self { errors: vec![], completed: vec![] }
     }
 
     fn record_completed(&mut self, outcome: &Self::Obligation) {
