@@ -462,9 +462,10 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
                 message: "original diagnostic".to_string(),
             };
             for sub in &subdiagnostics {
-                // Filter out empty/non-existent messages, as they greatly confuse VS Code.
-                if sub.related.message.is_empty() {
-                    continue;
+                let mut message = sub.related.message.clone();
+                // Change empty message to " ", as they greatly confuse VS Code.
+                if message.is_empty() {
+                    message = String::from(" ");
                 }
                 diagnostics.push(MappedRustDiagnostic {
                     url: sub.related.location.uri.clone(),
@@ -475,7 +476,7 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
                         code: code.clone().map(lsp_types::NumberOrString::String),
                         code_description: code_description.clone(),
                         source: Some(source.clone()),
-                        message: sub.related.message.clone(),
+                        message,
                         related_information: Some(vec![back_ref.clone()]),
                         tags: None, // don't apply modifiers again
                         data: None,
