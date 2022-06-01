@@ -4,7 +4,6 @@
 
 store.register_group(true, "clippy::suspicious", Some("clippy_suspicious"), vec![
     LintId::of(almost_complete_letter_range::ALMOST_COMPLETE_LETTER_RANGE),
-    LintId::of(assign_ops::MISREFACTORED_ASSIGN_OP),
     LintId::of(attrs::BLANKET_CLIPPY_RESTRICTION_LINTS),
     LintId::of(await_holding_invalid::AWAIT_HOLDING_INVALID_TYPE),
     LintId::of(await_holding_invalid::AWAIT_HOLDING_LOCK),
@@ -29,6 +28,7 @@ store.register_group(true, "clippy::suspicious", Some("clippy_suspicious"), vec!
     LintId::of(methods::SUSPICIOUS_MAP),
     LintId::of(mut_key::MUTABLE_KEY_TYPE),
     LintId::of(octal_escapes::OCTAL_ESCAPES),
+    LintId::of(operators::MISREFACTORED_ASSIGN_OP),
     LintId::of(rc_clone_in_vec_init::RC_CLONE_IN_VEC_INIT),
     LintId::of(suspicious_trait_impl::SUSPICIOUS_ARITHMETIC_IMPL),
     LintId::of(suspicious_trait_impl::SUSPICIOUS_OP_ASSIGN_IMPL),

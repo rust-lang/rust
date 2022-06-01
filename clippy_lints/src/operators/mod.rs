@@ -3,6 +3,8 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 
 mod absurd_extreme_comparisons;
+mod assign_op_pattern;
+mod misrefactored_assign_op;
 mod numeric_arithmetic;
 
 declare_clippy_lint! {
@@ -82,6 +84,68 @@ declare_clippy_lint! {
     "any floating-point arithmetic statement"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for `a = a op b` or `a = b commutative_op a`
+    /// patterns.
+    ///
+    /// ### Why is this bad?
+    /// These can be written as the shorter `a op= b`.
+    ///
+    /// ### Known problems
+    /// While forbidden by the spec, `OpAssign` traits may have
+    /// implementations that differ from the regular `Op` impl.
+    ///
+    /// ### Example
+    /// ```rust
+    /// let mut a = 5;
+    /// let b = 0;
+    /// // ...
+    ///
+    /// a = a + b;
+    /// ```
+    ///
+    /// Use instead:
+    /// ```rust
+    /// let mut a = 5;
+    /// let b = 0;
+    /// // ...
+    ///
+    /// a += b;
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub ASSIGN_OP_PATTERN,
+    style,
+    "assigning the result of an operation on a variable to that same variable"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for `a op= a op b` or `a op= b op a` patterns.
+    ///
+    /// ### Why is this bad?
+    /// Most likely these are bugs where one meant to write `a
+    /// op= b`.
+    ///
+    /// ### Known problems
+    /// Clippy cannot know for sure if `a op= a op b` should have
+    /// been `a = a op a op b` or `a = a op b`/`a op= b`. Therefore, it suggests both.
+    /// If `a op= a op b` is really the correct behavior it should be
+    /// written as `a = a op a op b` as it's less confusing.
+    ///
+    /// ### Example
+    /// ```rust
+    /// let mut a = 5;
+    /// let b = 2;
+    /// // ...
+    /// a += a + b;
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub MISREFACTORED_ASSIGN_OP,
+    suspicious,
+    "having a variable on both sides of an assign op"
+}
+
 #[derive(Default)]
 pub struct Operators {
     arithmetic_context: numeric_arithmetic::Context,
@@ -90,6 +154,8 @@ impl_lint_pass!(Operators => [
     ABSURD_EXTREME_COMPARISONS,
     INTEGER_ARITHMETIC,
     FLOAT_ARITHMETIC,
+    ASSIGN_OP_PATTERN,
+    MISREFACTORED_ASSIGN_OP,
 ]);
 impl<'tcx> LateLintPass<'tcx> for Operators {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
@@ -102,6 +168,10 @@ impl<'tcx> LateLintPass<'tcx> for Operators {
             },
             ExprKind::AssignOp(op, lhs, rhs) => {
                 self.arithmetic_context.check_binary(cx, e, op.node, lhs, rhs);
+                misrefactored_assign_op::check(cx, e, op.node, lhs, rhs);
+            },
+            ExprKind::Assign(lhs, rhs, _) => {
+                assign_op_pattern::check(cx, e, lhs, rhs);
             },
             ExprKind::Unary(op, arg) => {
                 if op == UnOp::Neg {

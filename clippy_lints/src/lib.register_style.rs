@@ -4,7 +4,6 @@
 
 store.register_group(true, "clippy::style", Some("clippy_style"), vec![
     LintId::of(assertions_on_constants::ASSERTIONS_ON_CONSTANTS),
-    LintId::of(assign_ops::ASSIGN_OP_PATTERN),
     LintId::of(blacklisted_name::BLACKLISTED_NAME),
     LintId::of(blocks_in_if_conditions::BLOCKS_IN_IF_CONDITIONS),
     LintId::of(bool_assert_comparison::BOOL_ASSERT_COMPARISON),
@@ -98,6 +97,7 @@ store.register_group(true, "clippy::style", Some("clippy_style"), vec![
     LintId::of(non_copy_const::BORROW_INTERIOR_MUTABLE_CONST),
     LintId::of(non_copy_const::DECLARE_INTERIOR_MUTABLE_CONST),
     LintId::of(non_expressive_names::JUST_UNDERSCORES_AND_DIGITS),
+    LintId::of(operators::ASSIGN_OP_PATTERN),
     LintId::of(ptr::CMP_NULL),
     LintId::of(ptr::PTR_ARG),
     LintId::of(ptr_eq::PTR_EQ),

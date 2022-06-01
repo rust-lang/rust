@@ -174,7 +174,6 @@ mod as_conversions;
 mod as_underscore;
 mod asm_syntax;
 mod assertions_on_constants;
-mod assign_ops;
 mod async_yields_async;
 mod attrs;
 mod await_holding_invalid;
@@ -704,7 +703,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(move || Box::new(doc::DocMarkdown::new(doc_valid_idents.clone())));
     store.register_late_pass(|| Box::new(neg_multiply::NegMultiply));
     store.register_late_pass(|| Box::new(mem_forget::MemForget));
-    store.register_late_pass(|| Box::new(assign_ops::AssignOps));
     store.register_late_pass(|| Box::new(let_if_seq::LetIfSeq));
     store.register_late_pass(|| Box::new(mixed_read_write_in_expression::EvalOrderDependence));
     store.register_late_pass(|| Box::new(missing_doc::MissingDoc::new()));
