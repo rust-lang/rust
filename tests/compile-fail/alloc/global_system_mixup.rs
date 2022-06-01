@@ -3,6 +3,8 @@
 // error-pattern: which is Rust heap memory, using
 
 // normalize-stderr-test: "using [A-Za-z]+ heap deallocation operation" -> "using PLATFORM heap deallocation operation"
+// normalize-stderr-test: "\| +\^+" -> "| ^"
+// normalize-stderr-test: "libc::free\([^()]*\)|unsafe \{ HeapFree\([^()]*\) \};" -> "FREE();"
 
 #![feature(allocator_api, slice_ptr_get)]
 
