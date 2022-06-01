@@ -215,7 +215,6 @@ TrivialTypeTraversalAndLiftImpls! {
     crate::ty::adjustment::AutoBorrowMutability,
     crate::ty::AdtKind,
     crate::ty::BoundConstness,
-    crate::ty::ConstnessArg,
     // Including `BoundRegionKind` is a *bit* dubious, but direct
     // references to bound region appear in `ty::Error`, and aren't
     // really meant to be folded. In general, we can only fold a fully
@@ -1102,6 +1101,33 @@ impl<'tcx> TypeSuperFoldable<'tcx> for ty::Region<'tcx> {
 }
 
 impl<'tcx> TypeSuperVisitable<'tcx> for ty::Region<'tcx> {
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, _visitor: &mut V) -> ControlFlow<V::BreakTy> {
+        ControlFlow::CONTINUE
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for ty::ConstnessArg {
+    fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
+        folder.try_fold_constness(self)
+    }
+}
+
+impl<'tcx> TypeSuperFoldable<'tcx> for ty::ConstnessArg {
+    fn try_super_fold_with<F: FallibleTypeFolder<'tcx>>(
+        self,
+        _folder: &mut F,
+    ) -> Result<Self, F::Error> {
+        Ok(self)
+    }
+}
+
+impl<'tcx> TypeVisitable<'tcx> for ty::ConstnessArg {
+    fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
+        visitor.visit_constness_arg(*self)
+    }
+}
+
+impl<'tcx> TypeSuperVisitable<'tcx> for ty::ConstnessArg {
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, _visitor: &mut V) -> ControlFlow<V::BreakTy> {
         ControlFlow::CONTINUE
     }

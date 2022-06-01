@@ -6,8 +6,7 @@ pub trait A {
 
 pub const fn foo<T: A>() -> bool {
     T::assoc()
-    //~^ ERROR the trait bound
-    //~| ERROR cannot call non-const fn
+    //~^ ERROR cannot call non-const fn
 }
 
 fn main() {}

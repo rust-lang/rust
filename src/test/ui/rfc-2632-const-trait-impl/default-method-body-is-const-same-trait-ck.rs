@@ -6,8 +6,7 @@ pub trait Tr {
 
     fn b(&self) {
         ().a()
-        //~^ ERROR the trait bound
-        //~| ERROR cannot call
+        //~^ ERROR no method named `a` found for unit type `()` in the current scope
     }
 }
 

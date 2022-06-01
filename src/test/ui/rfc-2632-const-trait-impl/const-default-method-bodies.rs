@@ -22,8 +22,7 @@ impl const ConstDefaultFn for ConstImpl {
 
 const fn test() {
     NonConstImpl.a();
-    //~^ ERROR the trait bound
-    //~| ERROR cannot call non-const fn
+    //~^ ERROR no method named `a` found for struct `NonConstImpl`
     ConstImpl.a();
 }
 

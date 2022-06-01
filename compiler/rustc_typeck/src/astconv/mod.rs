@@ -713,6 +713,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         &self,
         trait_ref: &hir::TraitRef<'_>,
         self_ty: Ty<'tcx>,
+        constness: hir::Constness,
     ) -> ty::TraitRef<'tcx> {
         self.prohibit_generics(trait_ref.path.segments.split_last().unwrap().1.iter(), |_| {});
 
@@ -722,6 +723,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             self_ty,
             trait_ref.path.segments.last().unwrap(),
             true,
+            match constness {
+                hir::Constness::Const => ty::ConstnessArg::Param,
+                hir::Constness::NotConst => ty::ConstnessArg::Not,
+            },
         )
     }
 
@@ -877,6 +882,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         self_ty: Ty<'tcx>,
         trait_segment: &hir::PathSegment<'_>,
         is_impl: bool,
+        constness: ty::ConstnessArg,
     ) -> ty::TraitRef<'tcx> {
         let (substs, _) = self.create_substs_for_ast_trait_ref(
             span,
@@ -884,6 +890,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             self_ty,
             trait_segment,
             is_impl,
+            constness,
         );
         let assoc_bindings = self.create_assoc_bindings_for_generic_args(trait_segment.args());
         if let Some(b) = assoc_bindings.first() {
@@ -900,6 +907,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         self_ty: Ty<'tcx>,
         trait_segment: &'a hir::PathSegment<'a>,
         is_impl: bool,
+        constness: ty::ConstnessArg,
     ) -> (SubstsRef<'tcx>, GenericArgCountResult) {
         self.complain_about_internal_fn_trait(span, trait_def_id, trait_segment, is_impl);
 
@@ -911,7 +919,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             trait_segment.args(),
             trait_segment.infer_args,
             Some(self_ty),
-            Some(ty::ConstnessArg::Not),
+            Some(constness),
         )
     }
 
@@ -2122,8 +2130,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         debug!("qpath_to_ty: self_type={:?}", self_ty);
 
-        let trait_ref =
-            self.ast_path_to_mono_trait_ref(span, trait_def_id, self_ty, trait_segment, false);
+        let trait_ref = self.ast_path_to_mono_trait_ref(
+            span,
+            trait_def_id,
+            self_ty,
+            trait_segment,
+            false,
+            ty::ConstnessArg::Not,
+        );
 
         let item_substs = self.create_substs_for_associated_item(
             tcx,
@@ -2926,8 +2940,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let hir::Node::Item(hir::Item { kind: hir::ItemKind::Impl(i), .. }) =
                 hir.get(hir.get_parent_node(fn_hir_id)) else { bug!("ImplItem should have Impl parent") };
 
-        let trait_ref =
-            self.instantiate_mono_trait_ref(i.of_trait.as_ref()?, self.ast_ty_to_ty(i.self_ty));
+        let trait_ref = self.instantiate_mono_trait_ref(
+            i.of_trait.as_ref()?,
+            self.ast_ty_to_ty(i.self_ty),
+            hir::Constness::NotConst,
+        );
 
         let assoc = tcx.associated_items(trait_ref.def_id).find_by_name_and_kind(
             tcx,

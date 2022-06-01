@@ -2519,6 +2519,13 @@ define_print_and_forward_display! {
     }
 
     TraitRefPrintOnlyTraitPath<'tcx> {
+        if cx.tcx().sess.verbose() {
+            match self.0.constness() {
+                ty::ConstnessArg::Not => {},
+                ty::ConstnessArg::Required => p!(write("const ")),
+                ty::ConstnessArg::Param => p!(write("~const ")),
+            }
+        }
         p!(print_def_path(self.0.def_id, self.0.substs));
     }
 

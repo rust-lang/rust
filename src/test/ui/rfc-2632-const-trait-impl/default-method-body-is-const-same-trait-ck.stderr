@@ -1,17 +1,16 @@
-error[E0277]: the trait bound `(): ~const Tr` is not satisfied
+error[E0599]: no method named `a` found for unit type `()` in the current scope
   --> $DIR/default-method-body-is-const-same-trait-ck.rs:8:12
    |
 LL |         ().a()
-   |            ^^^ the trait `~const Tr` is not implemented for `()`
+   |            ^ method not found in `()`
    |
-note: the trait `Tr` is implemented for `()`, but that implementation is not `const`
-  --> $DIR/default-method-body-is-const-same-trait-ck.rs:14:6
+   = help: items from traits can only be used if the trait is implemented and in scope
+note: `Tr` defines an item `a`, perhaps you need to implement it
+  --> $DIR/default-method-body-is-const-same-trait-ck.rs:4:1
    |
-LL | impl Tr for () {}
-   |      ^^
-   = help: the trait `Tr` is implemented for `()`
+LL | pub trait Tr {
+   | ^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0015, E0277.
-For more information about an error, try `rustc --explain E0015`.
+For more information about this error, try `rustc --explain E0599`.

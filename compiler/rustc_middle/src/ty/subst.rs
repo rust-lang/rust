@@ -227,7 +227,7 @@ impl<'tcx> TypeFoldable<'tcx> for GenericArg<'tcx> {
             GenericArgKind::Lifetime(lt) => lt.try_fold_with(folder).map(Into::into),
             GenericArgKind::Type(ty) => ty.try_fold_with(folder).map(Into::into),
             GenericArgKind::Const(ct) => ct.try_fold_with(folder).map(Into::into),
-            GenericArgKind::Constness(_) => Ok(self),
+            GenericArgKind::Constness(cn) => cn.try_fold_with(folder).map(Into::into),
         }
     }
 }
@@ -238,7 +238,7 @@ impl<'tcx> TypeVisitable<'tcx> for GenericArg<'tcx> {
             GenericArgKind::Lifetime(lt) => lt.visit_with(visitor),
             GenericArgKind::Type(ty) => ty.visit_with(visitor),
             GenericArgKind::Const(ct) => ct.visit_with(visitor),
-            GenericArgKind::Constness(_) => ControlFlow::CONTINUE,
+            GenericArgKind::Constness(cn) => cn.visit_with(visitor),
         }
     }
 }
@@ -605,6 +605,20 @@ impl<'a, 'tcx> TypeFolder<'tcx> for SubstFolder<'a, 'tcx> {
     fn fold_const(&mut self, c: ty::Const<'tcx>) -> ty::Const<'tcx> {
         if let ty::ConstKind::Param(p) = c.kind() {
             self.const_for_param(p, c)
+        } else {
+            c.super_fold_with(self)
+        }
+    }
+
+    fn fold_constness(&mut self, c: ty::ConstnessArg) -> ty::ConstnessArg {
+        if let ty::ConstnessArg::Param = c {
+            self.substs
+                .iter()
+                .find_map(|param| match param.unpack() {
+                    GenericArgKind::Constness(c) => Some(c),
+                    _ => None,
+                })
+                .unwrap_or(c)
         } else {
             c.super_fold_with(self)
         }

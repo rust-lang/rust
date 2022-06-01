@@ -131,6 +131,10 @@ pub trait TypeFolder<'tcx>: FallibleTypeFolder<'tcx, Error = !> {
         uv.super_fold_with(self)
     }
 
+    fn fold_constness(&mut self, c: ty::ConstnessArg) -> ty::ConstnessArg {
+        c.super_fold_with(self)
+    }
+
     fn fold_predicate(&mut self, p: ty::Predicate<'tcx>) -> ty::Predicate<'tcx> {
         p.super_fold_with(self)
     }
@@ -178,6 +182,10 @@ pub trait FallibleTypeFolder<'tcx>: Sized {
         c.try_super_fold_with(self)
     }
 
+    fn try_fold_constness(&mut self, c: ty::ConstnessArg) -> Result<ty::ConstnessArg, Self::Error> {
+        c.try_super_fold_with(self)
+    }
+
     fn try_fold_predicate(
         &mut self,
         p: ty::Predicate<'tcx>,
@@ -222,6 +230,10 @@ where
 
     fn try_fold_const(&mut self, c: ty::Const<'tcx>) -> Result<ty::Const<'tcx>, !> {
         Ok(self.fold_const(c))
+    }
+
+    fn try_fold_constness(&mut self, c: ty::ConstnessArg) -> Result<ty::ConstnessArg, !> {
+        Ok(self.fold_constness(c))
     }
 
     fn try_fold_unevaluated(
