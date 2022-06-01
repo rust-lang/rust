@@ -269,6 +269,7 @@
 #![feature(duration_checked_float)]
 #![feature(duration_constants)]
 #![feature(exact_size_is_empty)]
+#![feature(exclusive_wrapper)]
 #![feature(extend_one)]
 #![feature(float_minimum_maximum)]
 #![feature(hasher_prefixfree_extras)]
