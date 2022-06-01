@@ -6,6 +6,7 @@ mod absurd_extreme_comparisons;
 mod assign_op_pattern;
 mod bit_mask;
 mod double_comparison;
+mod duration_subsec;
 mod misrefactored_assign_op;
 mod numeric_arithmetic;
 mod verbose_bit_mask;
@@ -271,6 +272,36 @@ declare_clippy_lint! {
     "unnecessary double comparisons that can be simplified"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for calculation of subsecond microseconds or milliseconds
+    /// from other `Duration` methods.
+    ///
+    /// ### Why is this bad?
+    /// It's more concise to call `Duration::subsec_micros()` or
+    /// `Duration::subsec_millis()` than to calculate them.
+    ///
+    /// ### Example
+    /// ```rust
+    /// # use std::time::Duration;
+    /// # let duration = Duration::new(5, 0);
+    /// let micros = duration.subsec_nanos() / 1_000;
+    /// let millis = duration.subsec_nanos() / 1_000_000;
+    /// ```
+    ///
+    /// Use instead:
+    /// ```rust
+    /// # use std::time::Duration;
+    /// # let duration = Duration::new(5, 0);
+    /// let micros = duration.subsec_micros();
+    /// let millis = duration.subsec_millis();
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub DURATION_SUBSEC,
+    complexity,
+    "checks for calculation of subsecond microseconds or milliseconds"
+}
+
 pub struct Operators {
     arithmetic_context: numeric_arithmetic::Context,
     verbose_bit_mask_threshold: u64,
@@ -285,6 +316,7 @@ impl_lint_pass!(Operators => [
     INEFFECTIVE_BIT_MASK,
     VERBOSE_BIT_MASK,
     DOUBLE_COMPARISONS,
+    DURATION_SUBSEC,
 ]);
 impl Operators {
     pub fn new(verbose_bit_mask_threshold: u64) -> Self {
@@ -305,6 +337,7 @@ impl<'tcx> LateLintPass<'tcx> for Operators {
                 bit_mask::check(cx, e, op.node, lhs, rhs);
                 verbose_bit_mask::check(cx, e, op.node, lhs, rhs, self.verbose_bit_mask_threshold);
                 double_comparison::check(cx, op.node, lhs, rhs, e.span);
+                duration_subsec::check(cx, e, op.node, lhs, rhs);
             },
             ExprKind::AssignOp(op, lhs, rhs) => {
                 self.arithmetic_context.check_binary(cx, e, op.node, lhs, rhs);

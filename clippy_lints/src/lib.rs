@@ -212,7 +212,6 @@ mod doc_link_with_quotes;
 mod double_parens;
 mod drop_forget_ref;
 mod duplicate_mod;
-mod duration_subsec;
 mod else_if_without_else;
 mod empty_drop;
 mod empty_enum;
@@ -732,7 +731,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(inherent_impl::MultipleInherentImpl));
     store.register_late_pass(|| Box::new(neg_cmp_op_on_partial_ord::NoNegCompOpForPartialOrd));
     store.register_late_pass(|| Box::new(unwrap::Unwrap));
-    store.register_late_pass(|| Box::new(duration_subsec::DurationSubsec));
     store.register_late_pass(|| Box::new(indexing_slicing::IndexingSlicing));
     store.register_late_pass(|| Box::new(non_copy_const::NonCopyConst));
     store.register_late_pass(|| Box::new(ptr_offset_with_cast::PtrOffsetWithCast));
