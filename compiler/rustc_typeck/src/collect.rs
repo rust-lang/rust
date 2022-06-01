@@ -1985,6 +1985,7 @@ fn infer_return_ty_for_fn_sig<'tcx>(
     }
 }
 
+#[instrument(level = "debug", skip(tcx))]
 fn impl_trait_ref(tcx: TyCtxt<'_>, def_id: DefId) -> Option<ty::TraitRef<'_>> {
     let icx = ItemCtxt::new(tcx, def_id);
     match tcx.hir().expect_item(def_id.expect_local()).kind {

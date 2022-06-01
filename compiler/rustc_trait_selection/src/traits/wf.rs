@@ -295,11 +295,12 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
     }
 
     /// Pushes the obligations required for `trait_ref` to be WF into `self.out`.
+    #[instrument(level = "debug", skip(self))]
     fn compute_trait_ref(&mut self, trait_ref: &ty::TraitRef<'tcx>, elaborate: Elaborate) {
         let tcx = self.infcx.tcx;
         let obligations = self.nominal_obligations(trait_ref.def_id, trait_ref.substs);
 
-        debug!("compute_trait_ref obligations {:?}", obligations);
+        debug!(?obligations);
         let param_env = self.param_env;
         let depth = self.recursion_depth;
 
@@ -699,12 +700,14 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
         }
     }
 
+    #[instrument(level = "trace", skip(self))]
     fn nominal_obligations(
         &mut self,
         def_id: DefId,
         substs: SubstsRef<'tcx>,
     ) -> Vec<traits::PredicateObligation<'tcx>> {
         let predicates = self.infcx.tcx.predicates_of(def_id);
+        trace!(?predicates);
         let mut origins = vec![def_id; predicates.predicates.len()];
         let mut head = predicates;
         while let Some(parent) = head.parent {
@@ -713,6 +716,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
         }
 
         let predicates = predicates.instantiate(self.infcx.tcx, substs);
+        trace!(?predicates, "instantiated");
         debug_assert_eq!(predicates.predicates.len(), origins.len());
 
         iter::zip(iter::zip(predicates.predicates, predicates.spans), origins.into_iter().rev())

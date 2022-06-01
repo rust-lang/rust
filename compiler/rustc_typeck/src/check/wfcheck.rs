@@ -1229,8 +1229,10 @@ fn check_impl<'tcx>(
                 // therefore don't need to be WF (the trait's `Self: Trait` predicate
                 // won't hold).
                 let trait_ref = tcx.impl_trait_ref(item.def_id).unwrap();
+                trace!(?trait_ref);
                 let trait_ref =
                     fcx.normalize_associated_types_in(ast_trait_ref.path.span, trait_ref);
+                trace!(?trait_ref, "normalized");
                 let obligations = traits::wf::trait_obligations(
                     fcx,
                     fcx.param_env,

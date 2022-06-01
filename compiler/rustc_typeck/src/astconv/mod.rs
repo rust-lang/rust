@@ -709,6 +709,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     ///
     /// If the `projections` argument is `None`, then assoc type bindings like `Foo<T = X>`
     /// are disallowed. Otherwise, they are pushed onto the vector given.
+    #[instrument(level = "debug", skip(self))]
     pub fn instantiate_mono_trait_ref(
         &self,
         trait_ref: &hir::TraitRef<'_>,
