@@ -1,3 +1,5 @@
+mod version;
+
 use std::env;
 use std::ffi::{OsStr, OsString};
 use std::fmt::Write as _;
@@ -8,11 +10,10 @@ use std::ops::Not;
 use std::path::{Path, PathBuf};
 use std::process::{self, Command};
 
+use rustc_version::VersionMeta;
 use serde::{Deserialize, Serialize};
 
-use rustc_version::VersionMeta;
-
-const XARGO_MIN_VERSION: (u32, u32, u32) = (0, 3, 23);
+use version::*;
 
 const CARGO_MIRI_HELP: &str = r#"Runs binary crates and tests in Miri
 
