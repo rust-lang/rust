@@ -81,7 +81,9 @@ export class Ctx {
         let icon = "";
         switch (status.health) {
             case "ok":
+                this.statusBar.command = undefined;
                 this.statusBar.color = undefined;
+                this.statusBar.backgroundColor = undefined;
                 break;
             case "warning":
                 this.statusBar.tooltip += "\nClick to reload.";
