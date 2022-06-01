@@ -5509,6 +5509,8 @@ dependencies = [
  "pretty_assertions 1.2.1",
  "regex",
  "rustc_version",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
