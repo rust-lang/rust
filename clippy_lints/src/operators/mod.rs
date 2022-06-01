@@ -9,6 +9,7 @@ mod double_comparison;
 mod duration_subsec;
 mod eq_op;
 mod erasing_op;
+mod float_equality_without_abs;
 mod misrefactored_assign_op;
 mod numeric_arithmetic;
 mod op_ref;
@@ -383,6 +384,39 @@ declare_clippy_lint! {
     "using erasing operations, e.g., `x * 0` or `y & 0`"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for statements of the form `(a - b) < f32::EPSILON` or
+    /// `(a - b) < f64::EPSILON`. Notes the missing `.abs()`.
+    ///
+    /// ### Why is this bad?
+    /// The code without `.abs()` is more likely to have a bug.
+    ///
+    /// ### Known problems
+    /// If the user can ensure that b is larger than a, the `.abs()` is
+    /// technically unnecessary. However, it will make the code more robust and doesn't have any
+    /// large performance implications. If the abs call was deliberately left out for performance
+    /// reasons, it is probably better to state this explicitly in the code, which then can be done
+    /// with an allow.
+    ///
+    /// ### Example
+    /// ```rust
+    /// pub fn is_roughly_equal(a: f32, b: f32) -> bool {
+    ///     (a - b) < f32::EPSILON
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// pub fn is_roughly_equal(a: f32, b: f32) -> bool {
+    ///     (a - b).abs() < f32::EPSILON
+    /// }
+    /// ```
+    #[clippy::version = "1.48.0"]
+    pub FLOAT_EQUALITY_WITHOUT_ABS,
+    suspicious,
+    "float equality check without `.abs()`"
+}
+
 pub struct Operators {
     arithmetic_context: numeric_arithmetic::Context,
     verbose_bit_mask_threshold: u64,
@@ -401,6 +435,7 @@ impl_lint_pass!(Operators => [
     EQ_OP,
     OP_REF,
     ERASING_OP,
+    FLOAT_EQUALITY_WITHOUT_ABS,
 ]);
 impl Operators {
     pub fn new(verbose_bit_mask_threshold: u64) -> Self {
@@ -428,6 +463,7 @@ impl<'tcx> LateLintPass<'tcx> for Operators {
                 verbose_bit_mask::check(cx, e, op.node, lhs, rhs, self.verbose_bit_mask_threshold);
                 double_comparison::check(cx, op.node, lhs, rhs, e.span);
                 duration_subsec::check(cx, e, op.node, lhs, rhs);
+                float_equality_without_abs::check(cx, e, op.node, lhs, rhs);
             },
             ExprKind::AssignOp(op, lhs, rhs) => {
                 self.arithmetic_context.check_binary(cx, e, op.node, lhs, rhs);
