@@ -18,5 +18,19 @@ error: `filter(..).map(..)` can be simplified as `filter_map(..)`
 LL |     let _ = (0..).filter(|&n| to_res(n).is_ok()).map(|a| to_res(a).unwrap_or(1));
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `filter_map(|a| to_res(a).ok())`
 
-error: aborting due to 3 previous errors
+error: `filter(..).map(..)` can be simplified as `filter_map(..)`
+  --> $DIR/manual_filter_map.rs:53:10
+   |
+LL |           .filter(|f| f.field.is_some())
+   |  __________^
+LL | |         .map(|f| f.field.clone().unwrap());
+   | |__________________________________________^ help: try: `filter_map(|f| f.field.clone())`
+
+error: `filter(..).map(..)` can be simplified as `filter_map(..)`
+  --> $DIR/manual_filter_map.rs:59:24
+   |
+LL |     let _ = vec.iter().filter(|f| f.field.is_ok()).map(|f| f.field.clone().unwrap());
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `filter_map(|f| f.field.clone().ok())`
+
+error: aborting due to 5 previous errors
 

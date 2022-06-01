@@ -18,5 +18,17 @@ error: `find(..).map(..)` can be simplified as `find_map(..)`
 LL |     let _ = (0..).find(|&n| to_res(n).is_ok()).map(|a| to_res(a).unwrap_or(1));
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `find_map(|a| to_res(a).ok())`
 
-error: aborting due to 3 previous errors
+error: `find(..).map(..)` can be simplified as `find_map(..)`
+  --> $DIR/manual_find_map.rs:51:24
+   |
+LL |     let _ = vec.iter().find(|f| f.field.is_some()).map(|f| f.field.clone().unwrap());
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `find_map(|f| f.field.clone())`
+
+error: `find(..).map(..)` can be simplified as `find_map(..)`
+  --> $DIR/manual_find_map.rs:56:24
+   |
+LL |     let _ = vec.iter().find(|f| f.field.is_ok()).map(|f| f.field.clone().unwrap());
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `find_map(|f| f.field.clone().ok())`
+
+error: aborting due to 5 previous errors
 

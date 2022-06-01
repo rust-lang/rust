@@ -35,3 +35,25 @@ fn to_opt<T>(_: T) -> Option<T> {
 fn to_res<T>(_: T) -> Result<T, ()> {
     unimplemented!()
 }
+
+struct OptionFoo {
+    field: Option<String>,
+}
+
+struct ResultFoo {
+    field: Result<String, ()>,
+}
+
+fn issue_8920() {
+    let vec = vec![OptionFoo {
+        field: Some(String::from("str")),
+    }];
+    let _ = vec
+        .iter()
+        .filter_map(|f| f.field.clone());
+
+    let vec = vec![ResultFoo {
+        field: Ok(String::from("str")),
+    }];
+    let _ = vec.iter().filter_map(|f| f.field.clone().ok());
+}

@@ -155,7 +155,15 @@ pub(super) fn check<'tcx>(
                 }
                 false
             };
-            if SpanlessEq::new(cx).expr_fallback(eq_fallback).eq_expr(filter_arg, map_arg);
+
+            if match map_arg.kind {
+                ExprKind::MethodCall(clone, [original_arg], _) => {
+                    clone.ident.name == sym::clone
+                        && SpanlessEq::new(cx).expr_fallback(eq_fallback).eq_expr(filter_arg, original_arg)
+                },
+                _ => SpanlessEq::new(cx).expr_fallback(eq_fallback).eq_expr(filter_arg, map_arg)
+            };
+
             then {
                 let span = filter_span.with_hi(expr.span.hi());
                 let (filter_name, lint) = if is_find {
