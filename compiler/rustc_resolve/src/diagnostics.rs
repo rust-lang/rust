@@ -1839,9 +1839,18 @@ impl<'a> Resolver<'a> {
                     )),
                 )
             } else if self.session.edition() == Edition::Edition2015 {
-                (format!("maybe a missing crate `{}`?", ident), None)
+                (
+                    format!("maybe a missing crate `{ident}`?"),
+                    Some((
+                        vec![],
+                        format!(
+                            "consider adding `extern crate {ident}` to use the `{ident}` crate"
+                        ),
+                        Applicability::MaybeIncorrect,
+                    )),
+                )
             } else {
-                (format!("could not find `{}` in the crate root", ident), None)
+                (format!("could not find `{ident}` in the crate root"), None)
             }
         } else if i > 0 {
             let parent = path[i - 1].ident.name;
@@ -1852,7 +1861,7 @@ impl<'a> Resolver<'a> {
                     "the list of imported crates".to_owned()
                 }
                 kw::PathRoot | kw::Crate => "the crate root".to_owned(),
-                _ => format!("`{}`", parent),
+                _ => format!("`{parent}`"),
             };
 
             let mut msg = format!("could not find `{}` in {}", ident, parent);
