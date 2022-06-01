@@ -8,10 +8,12 @@ use colored::*;
 use comments::ErrorMatch;
 use crossbeam::queue::SegQueue;
 use regex::Regex;
+use rustc_stderr::{Level, Message};
 
 use crate::comments::Comments;
 
 mod comments;
+mod rustc_stderr;
 #[cfg(test)]
 mod tests;
 
@@ -100,7 +102,8 @@ pub fn run_tests(config: Config) {
                     for revision in
                         comments.revisions.clone().unwrap_or_else(|| vec![String::new()])
                     {
-                        let (m, errors) = run_test(&path, &config, &target, &revision, &comments);
+                        let (m, errors, stderr) =
+                            run_test(&path, &config, &target, &revision, &comments);
 
                         // Using a single `eprintln!` to prevent messages from threads from getting intermingled.
                         let mut msg = format!("{} ", path.display());
@@ -113,7 +116,13 @@ pub fn run_tests(config: Config) {
                             succeeded.fetch_add(1, Ordering::Relaxed);
                         } else {
                             eprintln!("{msg}{}", "FAILED".red().bold());
-                            failures.lock().unwrap().push((path.clone(), m, revision, errors));
+                            failures.lock().unwrap().push((
+                                path.clone(),
+                                m,
+                                revision,
+                                errors,
+                                stderr,
+                            ));
                         }
                     }
                 }
@@ -128,7 +137,7 @@ pub fn run_tests(config: Config) {
     let ignored = ignored.load(Ordering::Relaxed);
     let filtered = filtered.load(Ordering::Relaxed);
     if !failures.is_empty() {
-        for (path, miri, revision, errors) in &failures {
+        for (path, miri, revision, errors, stderr) in &failures {
             eprintln!();
             eprint!("{}", path.display().to_string().underline());
             if !revision.is_empty() {
@@ -138,32 +147,63 @@ pub fn run_tests(config: Config) {
             eprintln!();
             eprintln!("command: {:?}", miri);
             eprintln!();
-            let mut dump_stderr = None;
+            // `None` means never dump, as we already dumped it for an `OutputDiffers`
+            // `Some(false)` means there's no reason to dump, as all errors are independent of the stderr
+            // `Some(true)` means that there was a pattern in the .rs file that was not found in the output.
+            let mut dump_stderr = Some(false);
             for error in errors {
                 match error {
                     Error::ExitStatus(mode, exit_status) => eprintln!("{mode:?} got {exit_status}"),
-                    Error::PatternNotFound { stderr, pattern, definition_line } => {
+                    Error::PatternNotFound { pattern, definition_line } => {
                         eprintln!("`{pattern}` {} in stderr output", "not found".red());
                         eprintln!(
                             "expected because of pattern here: {}:{definition_line}",
                             path.display().to_string().bold()
                         );
-                        dump_stderr = Some(stderr.clone())
+                        dump_stderr = dump_stderr.map(|_| true);
                     }
-                    Error::NoPatternsFound =>
-                        eprintln!("{}", "no error patterns found in failure test".red()),
+                    Error::NoPatternsFound => {
+                        eprintln!("{}", "no error patterns found in failure test".red());
+                    }
                     Error::PatternFoundInPassTest =>
                         eprintln!("{}", "error pattern found in success test".red()),
                     Error::OutputDiffers { path, actual, expected } => {
-                        dump_stderr = None;
+                        if path.extension().unwrap() == "stderr" {
+                            dump_stderr = None;
+                        }
                         eprintln!("actual output differed from expected {}", path.display());
                         eprintln!("{}", pretty_assertions::StrComparison::new(expected, actual));
                         eprintln!()
                     }
+                    Error::ErrorsWithoutPattern { path: None, msgs } => {
+                        eprintln!(
+                            "There were {} unmatched diagnostics that occurred outside the testfile and had not pattern",
+                            msgs.len(),
+                        );
+                        for Message { level, message } in msgs {
+                            eprintln!("    {level:?}: {message}")
+                        }
+                    }
+                    Error::ErrorsWithoutPattern { path: Some((path, line)), msgs } => {
+                        eprintln!(
+                            "There were {} unmatched diagnostics at {}:{line}",
+                            msgs.len(),
+                            path.display()
+                        );
+                        for Message { level, message } in msgs {
+                            eprintln!("    {level:?}: {message}")
+                        }
+                    }
+                    Error::ErrorPatternWithoutErrorAnnotation(path, line) => {
+                        eprintln!(
+                            "Annotation at {}:{line} matched an error diagnostic but did not have `ERROR` before its message",
+                            path.display()
+                        );
+                    }
                 }
                 eprintln!();
             }
-            if let Some(stderr) = dump_stderr {
+            if let Some(true) = dump_stderr {
                 eprintln!("actual stderr:");
                 eprintln!("{}", stderr);
                 eprintln!();
@@ -195,7 +235,6 @@ enum Error {
     /// Got an invalid exit status for the given mode.
     ExitStatus(Mode, ExitStatus),
     PatternNotFound {
-        stderr: String,
         pattern: String,
         definition_line: usize,
     },
@@ -209,6 +248,11 @@ enum Error {
         actual: String,
         expected: String,
     },
+    ErrorsWithoutPattern {
+        msgs: Vec<Message>,
+        path: Option<(PathBuf, usize)>,
+    },
+    ErrorPatternWithoutErrorAnnotation(PathBuf, usize),
 }
 
 type Errors = Vec<Error>;
@@ -219,7 +263,7 @@ fn run_test(
     target: &str,
     revision: &str,
     comments: &Comments,
-) -> (Command, Errors) {
+) -> (Command, Errors, String) {
     // Run miri
     let mut miri = Command::new(&config.program);
     miri.args(config.args.iter());
@@ -227,6 +271,7 @@ fn run_test(
     if !revision.is_empty() {
         miri.arg(format!("--cfg={revision}"));
     }
+    miri.arg("--error-format=json");
     for arg in &comments.compile_flags {
         miri.arg(arg);
     }
@@ -235,7 +280,7 @@ fn run_test(
     }
     let output = miri.output().expect("could not execute miri");
     let mut errors = config.mode.ok(output.status);
-    check_test_result(
+    let stderr = check_test_result(
         path,
         config,
         target,
@@ -245,7 +290,7 @@ fn run_test(
         &output.stdout,
         &output.stderr,
     );
-    (miri, errors)
+    (miri, errors, stderr)
 }
 
 fn check_test_result(
@@ -257,11 +302,9 @@ fn check_test_result(
     errors: &mut Errors,
     stdout: &[u8],
     stderr: &[u8],
-) {
+) -> String {
     // Always remove annotation comments from stderr.
-    let annotations = Regex::new(r"\s*//~.*").unwrap();
-    let stderr = std::str::from_utf8(stderr).unwrap();
-    let stderr = annotations.replace_all(stderr, "");
+    let diagnostics = rustc_stderr::process(path, stderr);
     let stdout = std::str::from_utf8(stdout).unwrap();
     // Check output files (if any)
     let revised = |extension: &str| {
@@ -273,7 +316,7 @@ fn check_test_result(
     };
     // Check output files against actual output
     check_output(
-        &stderr,
+        &diagnostics.rendered,
         path,
         errors,
         revised("stderr"),
@@ -293,50 +336,126 @@ fn check_test_result(
         comments,
     );
     // Check error annotations in the source against output
-    check_annotations(&stderr, errors, config, revision, comments);
+    check_annotations(
+        diagnostics.messages,
+        diagnostics.messages_from_unknown_file_or_line,
+        path,
+        errors,
+        config,
+        revision,
+        comments,
+    );
+    diagnostics.rendered
 }
 
 fn check_annotations(
-    unnormalized_stderr: &str,
+    mut messages: Vec<Vec<Message>>,
+    mut messages_from_unknown_file_or_line: Vec<Message>,
+    path: &Path,
     errors: &mut Errors,
     config: &Config,
     revision: &str,
     comments: &Comments,
 ) {
-    let mut found_annotation = false;
     if let Some((ref error_pattern, definition_line)) = comments.error_pattern {
-        if !unnormalized_stderr.contains(error_pattern) {
+        let mut found = false;
+
+        // first check the diagnostics messages outside of our file. We check this first, so that
+        // you can mix in-file annotations with // error-pattern annotations, even if there is overlap
+        // in the messages.
+        if let Some(i) = messages_from_unknown_file_or_line
+            .iter()
+            .position(|msg| msg.message.contains(error_pattern))
+        {
+            messages_from_unknown_file_or_line.remove(i);
+            found = true;
+        }
+
+        // if nothing was found, check the ones inside our file. We permit this because some tests may have
+        // flaky line numbers for their messages.
+        if !found {
+            for line in &mut messages {
+                if let Some(i) = line.iter().position(|msg| msg.message.contains(error_pattern)) {
+                    line.remove(i);
+                    found = true;
+                    break;
+                }
+            }
+        }
+
+        if !found {
             errors.push(Error::PatternNotFound {
-                stderr: unnormalized_stderr.to_string(),
                 pattern: error_pattern.to_string(),
                 definition_line,
             });
         }
-        found_annotation = true;
     }
-    for &ErrorMatch { ref matched, revision: ref rev, definition_line } in &comments.error_matches {
-        // FIXME: check that the error happens on the marked line
 
+    // The order on `Level` is such that `Error` is the highest level.
+    // We will ensure that *all* diagnostics of level at least `lowest_annotation_level`
+    // are matched.
+    let mut lowest_annotation_level = Level::Error;
+    for &ErrorMatch { ref matched, revision: ref rev, definition_line, line, level } in
+        &comments.error_matches
+    {
         if let Some(rev) = rev {
             if rev != revision {
                 continue;
             }
         }
-
-        if !unnormalized_stderr.contains(matched) {
-            errors.push(Error::PatternNotFound {
-                stderr: unnormalized_stderr.to_string(),
-                pattern: matched.to_string(),
-                definition_line,
-            });
+        if let Some(level) = level {
+            // If we found a diagnostic with a level annotation, make sure that all
+            // diagnostics of that level have annotations, even if we don't end up finding a matching diagnostic
+            // for this pattern.
+            lowest_annotation_level = std::cmp::min(lowest_annotation_level, level);
         }
-        found_annotation = true;
+
+        if let Some(msgs) = messages.get_mut(line) {
+            let found = msgs.iter().position(|msg| {
+                msg.message.contains(matched)
+                    // in case there is no level on the annotation, match any level.
+                    && level.map_or(true, |level| {
+                        msg.level == level
+                    })
+            });
+            if let Some(found) = found {
+                let msg = msgs.remove(found);
+                if msg.level == Level::Error && level.is_none() {
+                    errors
+                        .push(Error::ErrorPatternWithoutErrorAnnotation(path.to_path_buf(), line));
+                }
+                continue;
+            }
+        }
+
+        errors.push(Error::PatternNotFound { pattern: matched.to_string(), definition_line });
     }
-    match (config.mode, found_annotation) {
+
+    let filter = |msgs: Vec<Message>| -> Vec<_> {
+        msgs.into_iter().filter(|msg| msg.level >= lowest_annotation_level).collect()
+    };
+
+    let messages_from_unknown_file_or_line = filter(messages_from_unknown_file_or_line);
+    if !messages_from_unknown_file_or_line.is_empty() {
+        errors.push(Error::ErrorsWithoutPattern {
+            path: None,
+            msgs: messages_from_unknown_file_or_line,
+        });
+    }
+
+    for (line, msgs) in messages.into_iter().enumerate() {
+        let msgs = filter(msgs);
+        if !msgs.is_empty() {
+            errors
+                .push(Error::ErrorsWithoutPattern { path: Some((path.to_path_buf(), line)), msgs });
+        }
+    }
+
+    match (config.mode, comments.error_pattern.is_some() || !comments.error_matches.is_empty()) {
         (Mode::Pass, true) | (Mode::Panic, true) => errors.push(Error::PatternFoundInPassTest),
         (Mode::Fail, false) => errors.push(Error::NoPatternsFound),
         _ => {}
-    };
+    }
 }
 
 fn check_output(

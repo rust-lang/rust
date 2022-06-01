@@ -2,6 +2,8 @@ use std::path::Path;
 
 use regex::Regex;
 
+use crate::rustc_stderr::Level;
+
 #[cfg(test)]
 mod tests;
 
@@ -33,7 +35,11 @@ pub(crate) struct Comments {
 pub(crate) struct ErrorMatch {
     pub matched: String,
     pub revision: Option<String>,
+    pub level: Option<Level>,
+    /// The line where the message was defined, for reporting issues with it (e.g. in case it wasn't found).
     pub definition_line: usize,
+    /// The line this pattern is expecting to find a message in.
+    pub line: usize,
 }
 
 impl Comments {
@@ -47,9 +53,13 @@ impl Comments {
     pub(crate) fn parse(path: &Path, content: &str) -> Self {
         let mut this = Self::default();
         let error_pattern_regex =
-            Regex::new(r"//(\[(?P<revision>[^\]]+)\])?~[|^]*\s*(ERROR|HELP|WARN)?:?(?P<text>.*)")
+            Regex::new(r"//(\[(?P<revision>[^\]]+)\])?~(?P<offset>\||[\^]+)?\s*(?P<level>ERROR|HELP|WARN|NOTE)?:?(?P<text>.*)")
                 .unwrap();
+
+        // The line that a `|` will refer to
+        let mut fallthrough_to = None;
         for (l, line) in content.lines().enumerate() {
+            let l = l + 1; // enumerate starts at 0, but line numbers start at 1
             if let Some(revisions) = line.strip_prefix("// revisions:") {
                 assert_eq!(
                     this.revisions,
@@ -113,7 +123,29 @@ impl Comments {
                 let matched = captures["text"].trim().to_string();
 
                 let revision = captures.name("revision").map(|rev| rev.as_str().to_string());
-                this.error_matches.push(ErrorMatch { matched, revision, definition_line: l });
+
+                let level = captures.name("level").map(|rev| rev.as_str().parse().unwrap());
+
+                let match_line = match captures.name("offset").map(|rev| rev.as_str()) {
+                    Some("|") => fallthrough_to.expect("`//~|` pattern without preceding line"),
+                    Some(pat) => {
+                        debug_assert!(pat.chars().all(|c| c == '^'));
+                        l - pat.len()
+                    }
+                    None => l,
+                };
+
+                fallthrough_to = Some(match_line);
+
+                this.error_matches.push(ErrorMatch {
+                    matched,
+                    revision,
+                    level,
+                    definition_line: l,
+                    line: match_line,
+                });
+            } else {
+                fallthrough_to = None;
             }
         }
         this
