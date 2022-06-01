@@ -46,7 +46,8 @@ jobs:
       # we cannot reuse anyway when the nightly changes (and it grows quite large
       # over time).
       - name: Add cache for cargo
-        uses: actions/cache@v2
+        id: cache
+        uses: actions/cache@v3
         with:
           path: |
             # Taken from <https://doc.rust-lang.org/nightly/cargo/guide/cargo-home.html#caching-the-cargo-home-in-ci>.
@@ -61,11 +62,11 @@ jobs:
           restore-keys: ${{ runner.os }}-cargo
 
       - name: Install rustup-toolchain-install-master and xargo
+        if: ${{ steps.cache.outputs.cache-hit == 'false' }}
         shell: bash
         run: |
-          # Only install tools if we don't have them cached
-          if ! which rustup-toolchain-install-master; then cargo install rustup-toolchain-install-master; fi
-          if ! which xargo; then cargo install xargo; fi
+          cargo install rustup-toolchain-install-master
+          cargo install xargo
 
       - name: Install "master" toolchain
         shell: bash
