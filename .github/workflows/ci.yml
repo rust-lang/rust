@@ -63,8 +63,8 @@ jobs:
       - name: Install rustup-toolchain-install-master and xargo
         shell: bash
         run: |
-          cargo install rustup-toolchain-install-master
-          # Only install xargo if we don't have it cached
+          # Only install tools if we don't have them cached
+          if ! which rustup-toolchain-install-master; then cargo install rustup-toolchain-install-master; fi
           if ! which xargo; then cargo install xargo; fi
 
       - name: Install "master" toolchain
