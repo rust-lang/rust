@@ -209,6 +209,11 @@ pub fn run_tests(config: Config) {
                 eprintln!();
             }
         }
+        eprintln!("{}", "failures:".red().underline());
+        for (path, _miri, _revision, _errors, _stderr) in &failures {
+            eprintln!("    {}", path.display());
+        }
+        eprintln!();
         eprintln!(
             "test result: {}. {} tests failed, {} tests passed, {} ignored, {} filtered out",
             "FAIL".red(),
