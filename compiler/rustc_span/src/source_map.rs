@@ -356,12 +356,12 @@ impl SourceMap {
         // compiler backend can optimize away the repeated computations in a
         // way that won't trigger overflow checks.
         match &mut *file_local_lines.borrow_mut() {
-            SourceFileLines::Lines { lines } => {
+            SourceFileLines::Lines(lines) => {
                 for pos in lines {
                     *pos = (*pos - original_start_pos) + start_pos;
                 }
             }
-            SourceFileLines::Diffs { line_start, .. } => {
+            SourceFileLines::Diffs(SourceFileDiffs { line_start, .. }) => {
                 *line_start = (*line_start - original_start_pos) + start_pos;
             }
         }

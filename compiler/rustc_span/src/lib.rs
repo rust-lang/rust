@@ -1225,37 +1225,47 @@ impl DebuggerVisualizerFile {
 #[derive(Clone)]
 pub enum SourceFileLines {
     /// The source file lines, in decoded (random-access) form.
-    Lines { lines: Vec<BytePos> },
+    Lines(Vec<BytePos>),
 
-    /// The source file lines in difference list form. This matches the form
-    /// used within metadata, which saves space by exploiting the fact that the
-    /// lines list is sorted and individual lines are usually not that long.
-    ///
-    /// We read it directly from metadata and only decode it into `Lines` form
-    /// when necessary. This is a significant performance win, especially for
-    /// small crates where very little of `std`'s metadata is used.
-    Diffs {
-        /// Position of the first line. Note that this is always encoded as a
-        /// `BytePos` because it is often much larger than any of the
-        /// differences.
-        line_start: BytePos,
+    /// The source file lines, in undecoded difference list form.
+    Diffs(SourceFileDiffs),
+}
 
-        /// Always 1, 2, or 4. Always as small as possible, while being big
-        /// enough to hold the length of the longest line in the source file.
-        /// The 1 case is by far the most common.
-        bytes_per_diff: usize,
+impl SourceFileLines {
+    pub fn is_lines(&self) -> bool {
+        matches!(self, SourceFileLines::Lines(_))
+    }
+}
 
-        /// The number of diffs encoded in `raw_diffs`. Always one less than
-        /// the number of lines in the source file.
-        num_diffs: usize,
+/// The source file lines in difference list form. This matches the form
+/// used within metadata, which saves space by exploiting the fact that the
+/// lines list is sorted and individual lines are usually not that long.
+///
+/// We read it directly from metadata and only decode it into `Lines` form
+/// when necessary. This is a significant performance win, especially for
+/// small crates where very little of `std`'s metadata is used.
+#[derive(Clone)]
+pub struct SourceFileDiffs {
+    /// Position of the first line. Note that this is always encoded as a
+    /// `BytePos` because it is often much larger than any of the
+    /// differences.
+    line_start: BytePos,
 
-        /// The diffs in "raw" form. Each segment of `bytes_per_diff` length
-        /// encodes one little-endian diff. Note that they aren't LEB128
-        /// encoded. This makes for much faster decoding. Besides, the
-        /// bytes_per_diff==1 case is by far the most common, and LEB128
-        /// encoding has no effect on that case.
-        raw_diffs: Vec<u8>,
-    },
+    /// Always 1, 2, or 4. Always as small as possible, while being big
+    /// enough to hold the length of the longest line in the source file.
+    /// The 1 case is by far the most common.
+    bytes_per_diff: usize,
+
+    /// The number of diffs encoded in `raw_diffs`. Always one less than
+    /// the number of lines in the source file.
+    num_diffs: usize,
+
+    /// The diffs in "raw" form. Each segment of `bytes_per_diff` length
+    /// encodes one little-endian diff. Note that they aren't LEB128
+    /// encoded. This makes for much faster decoding. Besides, the
+    /// bytes_per_diff==1 case is by far the most common, and LEB128
+    /// encoding has no effect on that case.
+    raw_diffs: Vec<u8>,
 }
 
 /// A single source in the [`SourceMap`].
@@ -1298,6 +1308,8 @@ impl<S: Encoder> Encodable<S> for SourceFile {
             s.emit_struct_field("start_pos", false, |s| self.start_pos.encode(s))?;
             s.emit_struct_field("end_pos", false, |s| self.end_pos.encode(s))?;
             s.emit_struct_field("lines", false, |s| {
+                // We are always in `Lines` form by the time we reach here.
+                assert!(self.lines.borrow().is_lines());
                 self.lines(|lines| {
                     // Store the length.
                     s.emit_u32(lines.len() as u32)?;
@@ -1384,9 +1396,14 @@ impl<D: Decoder> Decodable<D> for SourceFile {
                 // Read the difference list.
                 let num_diffs = num_lines as usize - 1;
                 let raw_diffs = d.read_raw_bytes(bytes_per_diff * num_diffs).to_vec();
-                SourceFileLines::Diffs { line_start, bytes_per_diff, num_diffs, raw_diffs }
+                SourceFileLines::Diffs(SourceFileDiffs {
+                    line_start,
+                    bytes_per_diff,
+                    num_diffs,
+                    raw_diffs,
+                })
             } else {
-                SourceFileLines::Lines { lines: vec![] }
+                SourceFileLines::Lines(vec![])
             }
         };
         let multibyte_chars: Vec<MultiByteChar> = Decodable::decode(d);
@@ -1448,7 +1465,7 @@ impl SourceFile {
             external_src: Lock::new(ExternalSource::Unneeded),
             start_pos,
             end_pos: Pos::from_usize(end_pos),
-            lines: Lock::new(SourceFileLines::Lines { lines }),
+            lines: Lock::new(SourceFileLines::Lines(lines)),
             multibyte_chars,
             non_narrow_chars,
             normalized_pos,
@@ -1457,14 +1474,19 @@ impl SourceFile {
         }
     }
 
-    pub fn lines<F, R>(&self, mut f: F) -> R
+    pub fn lines<F, R>(&self, f: F) -> R
     where
-        F: FnMut(&[BytePos]) -> R,
+        F: FnOnce(&[BytePos]) -> R,
     {
         let mut guard = self.lines.borrow_mut();
         match &*guard {
-            SourceFileLines::Lines { lines } => f(lines),
-            SourceFileLines::Diffs { mut line_start, bytes_per_diff, num_diffs, raw_diffs } => {
+            SourceFileLines::Lines(lines) => f(lines),
+            SourceFileLines::Diffs(SourceFileDiffs {
+                mut line_start,
+                bytes_per_diff,
+                num_diffs,
+                raw_diffs,
+            }) => {
                 // Convert from "diffs" form to "lines" form.
                 let num_lines = num_diffs + 1;
                 let mut lines = Vec::with_capacity(num_lines);
@@ -1504,7 +1526,7 @@ impl SourceFile {
                     _ => unreachable!(),
                 }
                 let res = f(&lines);
-                *guard = SourceFileLines::Lines { lines };
+                *guard = SourceFileLines::Lines(lines);
                 res
             }
         }
