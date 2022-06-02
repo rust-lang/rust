@@ -425,7 +425,6 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                     )
                 }
 
-                // TODO
                 ty::PredicateKind::RegionOutlives(data) => {
                     match infcx.region_outlives_predicate(&obligation.cause, Binder::dummy(data)) {
                         Ok(()) => ProcessResult::Changed(vec![]),
