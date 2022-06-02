@@ -1173,6 +1173,7 @@ symbols! {
         rustc_allow_const_fn_unstable,
         rustc_allow_incoherent_impl,
         rustc_attrs,
+        rustc_box,
         rustc_builtin_macro,
         rustc_capture_analysis,
         rustc_clean,

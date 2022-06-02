@@ -34,7 +34,28 @@
 /// be mindful of side effects.
 ///
 /// [`Vec`]: crate::vec::Vec
-#[cfg(all(not(no_global_oom_handling), not(test)))]
+#[cfg(all(not(no_global_oom_handling), not(test), not(bootstrap)))]
+#[macro_export]
+#[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_diagnostic_item = "vec_macro"]
+#[allow_internal_unstable(rustc_attrs, liballoc_internals)]
+macro_rules! vec {
+    () => (
+        $crate::__rust_force_expr!($crate::vec::Vec::new())
+    );
+    ($elem:expr; $n:expr) => (
+        $crate::__rust_force_expr!($crate::vec::from_elem($elem, $n))
+    );
+    ($($x:expr),+ $(,)?) => (
+        $crate::__rust_force_expr!(<[_]>::into_vec(
+            #[rustc_box]
+            $crate::boxed::Box::new([$($x),+])
+        ))
+    );
+}
+
+/// Creates a `Vec` containing the arguments (bootstrap version).
+#[cfg(all(not(no_global_oom_handling), not(test), bootstrap))]
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "vec_macro"]
@@ -65,7 +86,7 @@ macro_rules! vec {
         $crate::vec::from_elem($elem, $n)
     );
     ($($x:expr),*) => (
-        $crate::slice::into_vec(box [$($x),*])
+        $crate::slice::into_vec($crate::boxed::Box::new([$($x),*]))
     );
     ($($x:expr,)*) => (vec![$($x),*])
 }
