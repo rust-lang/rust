@@ -13,7 +13,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID};
 use rustc_hir::PredicateOrigin;
 use rustc_index::vec::{Idx, IndexVec};
-use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
+use rustc_middle::ty::{DefIdTree, ResolverAstLowering, TyCtxt};
 use rustc_span::source_map::DesugaringKind;
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Span;
@@ -133,12 +133,7 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
     fn lower_assoc_item(&mut self, item: &AssocItem, ctxt: AssocCtxt) {
         let def_id = self.resolver.node_id_to_def_id[&item.id];
 
-        let parent_id = {
-            let parent = self.tcx.hir().def_key(def_id).parent;
-            let local_def_index = parent.unwrap();
-            LocalDefId { local_def_index }
-        };
-
+        let parent_id = self.tcx.local_parent(def_id);
         let parent_hir = self.lower_node(parent_id).unwrap();
         self.with_lctx(item.id, |lctx| {
             // Evaluate with the lifetimes in `params` in-scope.
