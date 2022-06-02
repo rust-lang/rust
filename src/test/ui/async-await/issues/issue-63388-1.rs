@@ -15,9 +15,9 @@ impl Xyz {
         &'a self, foo: &dyn Foo
     ) -> &dyn Foo
     {
-        //[nll]~^ ERROR lifetime may not live long enough
+        //[nll]~^ ERROR explicit lifetime required in the type of `foo` [E0621]
         foo
-        //[base]~^ ERROR lifetime mismatch
+        //[base]~^ ERROR explicit lifetime required in the type of `foo` [E0621]
     }
 }
 

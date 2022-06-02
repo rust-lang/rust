@@ -3,6 +3,7 @@
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/hir.html
 
 #![feature(associated_type_defaults)]
+#![feature(closure_track_caller)]
 #![feature(const_btree_new)]
 #![feature(let_else)]
 #![feature(once_cell)]

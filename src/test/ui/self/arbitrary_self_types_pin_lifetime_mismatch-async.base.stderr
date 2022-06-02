@@ -5,6 +5,12 @@ LL |     async fn a(self: Pin<&Foo>, f: &Foo) -> &Foo { f }
    |                                    ----     ----   ^ ...but data from `f` is returned here
    |                                    |
    |                                    this parameter and the return type are declared with different lifetimes...
+   |
+   = note: each elided lifetime in input position becomes a distinct lifetime
+help: consider introducing a named lifetime parameter and update trait if needed
+   |
+LL |     async fn a<'a>(self: Pin<&'a Foo>, f: &'a Foo) -> &Foo { f }
+   |               ++++            ++           ++
 
 error[E0623]: lifetime mismatch
   --> $DIR/arbitrary_self_types_pin_lifetime_mismatch-async.rs:15:82
@@ -13,6 +19,12 @@ LL |     async fn c(self: Pin<&Self>, f: &Foo, g: &Foo) -> (Pin<&Foo>, &Foo) { (
    |                                     ----              -----------------          ^ ...but data from `f` is returned here
    |                                     |
    |                                     this parameter and the return type are declared with different lifetimes...
+   |
+   = note: each elided lifetime in input position becomes a distinct lifetime
+help: consider introducing a named lifetime parameter and update trait if needed
+   |
+LL |     async fn c<'a>(self: Pin<&'a Self>, f: &'a Foo, g: &Foo) -> (Pin<&Foo>, &Foo) { (self, f) }
+   |               ++++            ++            ++
 
 error[E0623]: lifetime mismatch
   --> $DIR/arbitrary_self_types_pin_lifetime_mismatch-async.rs:22:64
