@@ -127,5 +127,71 @@ help: consider boxing the large fields to reduce the total size of the enum
 LL |     B(Box<Struct2>),
    |       ~~~~~~~~~~~~
 
-error: aborting due to 8 previous errors
+error: large size difference between variants
+  --> $DIR/large_enum_variant.rs:104:5
+   |
+LL |     B([u128; 4000]),
+   |     ^^^^^^^^^^^^^^^ this variant is 64000 bytes
+   |
+note: and the second-largest variant is 1 bytes:
+  --> $DIR/large_enum_variant.rs:103:5
+   |
+LL |     A(bool),
+   |     ^^^^^^^
+note: boxing a variant would require the type no longer be `Copy`
+  --> $DIR/large_enum_variant.rs:102:6
+   |
+LL | enum CopyableLargeEnum {
+   |      ^^^^^^^^^^^^^^^^^
+help: consider boxing the large fields to reduce the total size of the enum
+  --> $DIR/large_enum_variant.rs:104:5
+   |
+LL |     B([u128; 4000]),
+   |     ^^^^^^^^^^^^^^^
+
+error: large size difference between variants
+  --> $DIR/large_enum_variant.rs:109:5
+   |
+LL |     B([u128; 4000]),
+   |     ^^^^^^^^^^^^^^^ this variant is 64000 bytes
+   |
+note: and the second-largest variant is 1 bytes:
+  --> $DIR/large_enum_variant.rs:108:5
+   |
+LL |     A(bool),
+   |     ^^^^^^^
+note: boxing a variant would require the type no longer be `Copy`
+  --> $DIR/large_enum_variant.rs:107:6
+   |
+LL | enum ManuallyCopyLargeEnum {
+   |      ^^^^^^^^^^^^^^^^^^^^^
+help: consider boxing the large fields to reduce the total size of the enum
+  --> $DIR/large_enum_variant.rs:109:5
+   |
+LL |     B([u128; 4000]),
+   |     ^^^^^^^^^^^^^^^
+
+error: large size difference between variants
+  --> $DIR/large_enum_variant.rs:122:5
+   |
+LL |     B([u64; 4000]),
+   |     ^^^^^^^^^^^^^^ this variant is 32000 bytes
+   |
+note: and the second-largest variant is 1 bytes:
+  --> $DIR/large_enum_variant.rs:121:5
+   |
+LL |     A(bool, std::marker::PhantomData<T>),
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: boxing a variant would require the type no longer be `Copy`
+  --> $DIR/large_enum_variant.rs:120:6
+   |
+LL | enum SomeGenericPossiblyCopyEnum<T> {
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: consider boxing the large fields to reduce the total size of the enum
+  --> $DIR/large_enum_variant.rs:122:5
+   |
+LL |     B([u64; 4000]),
+   |     ^^^^^^^^^^^^^^
+
+error: aborting due to 11 previous errors
 
