@@ -371,7 +371,7 @@ impl<'a, 'b> visit::Visitor<'a> for DefCollector<'a, 'b> {
     }
 
     fn visit_assoc_constraint(&mut self, constraint: &'a AssocConstraint) {
-        if let ImplTraitContext::UniversalInDyn(item_def) = self.impl_trait_context {
+        /*if let ImplTraitContext::UniversalInDyn(item_def) = self.impl_trait_context {
             let node_id = constraint.impl_trait_id;
             let def_id = self.resolver.create_def(
                 item_def,
@@ -380,17 +380,21 @@ impl<'a, 'b> visit::Visitor<'a> for DefCollector<'a, 'b> {
                 self.expansion.to_expn_id(),
                 constraint.span,
             );
-            self.resolver.impl_trait_context.insert(def_id, ImplTraitContext::UniversalInDyn(item_def));
-        }
-        /*if let ImplTraitContext::UniversalInDyn(_) = self.impl_trait_context {
+            self.resolver
+                .impl_trait_context
+                .insert(def_id, ImplTraitContext::UniversalInDyn(item_def));
+        }*/
+        if let ImplTraitContext::UniversalInDyn(_) = self.impl_trait_context {
             let node_id = constraint.impl_trait_id;
-            self.create_def(
+            let def_id = self.create_def(
                 node_id,
                 DefPathData::ImplTrait,
-                //self.expansion.to_expn_id(),
                 constraint.span,
             );
-        }*/
+            self.resolver
+                .impl_trait_context
+                .insert(def_id, ImplTraitContext::UniversalInDyn(def_id));
+        }
 
         visit::walk_assoc_constraint(self, constraint);
     }

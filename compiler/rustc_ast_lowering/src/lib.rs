@@ -1030,13 +1030,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     //let impl_trait_node_id = self.resolver.next_node_id();
                     let impl_trait_node_id = constraint.impl_trait_id;
                     // definition has been already created in def_collector assoc constraint
-                    /*self.resolver.create_def(
+                    self.resolver.create_def(
                         parent_def_id,
                         impl_trait_node_id,
                         DefPathData::ImplTrait,
                         ExpnId::root(),
                         constraint.span,
-                    );*/
+                    );
+                    self.lower_node_id(impl_trait_node_id);
                     self.with_dyn_type_scope(false, |this| {
                         let node_id = this.resolver.next_node_id();
                         // impl_trait_node_id gets lowered in lower_ty_direct here:
@@ -1279,8 +1280,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         parent_def_id,
                     ) => {
                         // Add a definition for the in-band `Param`.
+                        
+                        // get the def_id that we created in the desugaring
+                        // self.create_def(..) 
                         let def_id = self.resolver.local_def_id(def_node_id);
 
+                        // lower param bounds `impl Bound1 + Bound2`
                         let hir_bounds = self.lower_param_bounds(
                             bounds,
                             ImplTraitContext::Universal(
@@ -1291,6 +1296,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         );
                         // Set the name to `impl Bound1 + Bound2`.
                         let ident = Ident::from_str_and_span(&pprust::ty_to_string(t), span);
+                        // add the new generic param GenericParam desugaring of the
+                        // impl Bound1 (GenericParameters in place of impl Traits)
                         in_band_ty_params.push(hir::GenericParam {
                             hir_id: self.lower_node_id(def_node_id),
                             name: ParamName::Plain(self.lower_ident(ident)),
@@ -1359,6 +1366,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // frequently opened issues show.
         let opaque_ty_span = self.mark_span_with_reason(DesugaringKind::OpaqueTy, span, None);
 
+        // impl_trait_node_id 
         let opaque_ty_def_id = self.resolver.local_def_id(opaque_ty_node_id);
 
         let mut collected_lifetimes = FxHashMap::default();
