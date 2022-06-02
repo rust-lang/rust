@@ -7,6 +7,8 @@ use rustc_data_structures::sync::Lrc;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{BinOp, BinOpKind, Block, Expr, ExprKind, HirId, Item, ItemKind, Node, QPath, UnOp};
 use rustc_lint::LateContext;
+use rustc_middle::mir;
+use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::ty::subst::{Subst, SubstsRef};
 use rustc_middle::ty::{self, EarlyBinder, FloatTy, ScalarInt, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
@@ -422,13 +424,13 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
                 let result = self
                     .lcx
                     .tcx
-                    .const_eval_resolve_for_typeck(
+                    .const_eval_resolve(
                         self.param_env,
                         ty::Unevaluated::new(ty::WithOptConstParam::unknown(def_id), substs),
                         None,
                     )
                     .ok()
-                    .and_then(|val| val.map(|val| rustc_middle::ty::Const::from_value(self.lcx.tcx, val, ty)))?;
+                    .and_then(|val| Some(rustc_middle::mir::ConstantKind::from_value(val, ty)))?;
                 let result = miri_to_const(self.lcx.tcx, result);
                 if result.is_some() {
                     self.needed_resolution = true;
@@ -579,69 +581,90 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
     }
 }
 
-pub fn miri_to_const<'tcx>(tcx: TyCtxt<'tcx>, result: ty::Const<'tcx>) -> Option<Constant> {
-    match result.kind() {
+fn try_const_to_constant<'tcx>(tcx: TyCtxt<'tcx>, c: ty::Const<'tcx>) -> Option<Constant> {
+    match c.kind() {
         ty::ConstKind::Value(valtree) => {
-            match (valtree, result.ty().kind()) {
-                (ty::ValTree::Leaf(int), ty::Bool) => Some(Constant::Bool(int == ScalarInt::TRUE)),
-                (ty::ValTree::Leaf(int), ty::Uint(_) | ty::Int(_)) => Some(Constant::Int(int.assert_bits(int.size()))),
-                (ty::ValTree::Leaf(int), ty::Float(FloatTy::F32)) => Some(Constant::F32(f32::from_bits(
+            let const_val = tcx.valtree_to_const_val((c.ty(), valtree));
+            miri_to_const(tcx, mir::ConstantKind::from_value(const_val, c.ty()))
+        },
+        _ => None,
+    }
+}
+
+pub fn miri_to_const<'tcx>(tcx: TyCtxt<'tcx>, result: mir::ConstantKind<'tcx>) -> Option<Constant> {
+    use rustc_middle::mir::interpret::ConstValue;
+    match result {
+        mir::ConstantKind::Val(ConstValue::Scalar(Scalar::Int(int)), _) => {
+            match result.ty().kind() {
+                ty::Bool => Some(Constant::Bool(int == ScalarInt::TRUE)),
+                ty::Uint(_) | ty::Int(_) => Some(Constant::Int(int.assert_bits(int.size()))),
+                ty::Float(FloatTy::F32) => Some(Constant::F32(f32::from_bits(
                     int.try_into().expect("invalid f32 bit representation"),
                 ))),
-                (ty::ValTree::Leaf(int), ty::Float(FloatTy::F64)) => Some(Constant::F64(f64::from_bits(
+                ty::Float(FloatTy::F64) => Some(Constant::F64(f64::from_bits(
                     int.try_into().expect("invalid f64 bit representation"),
                 ))),
-                (ty::ValTree::Leaf(int), ty::RawPtr(type_and_mut)) => {
+                ty::RawPtr(type_and_mut) => {
                     if let ty::Uint(_) = type_and_mut.ty.kind() {
                         return Some(Constant::RawPtr(int.assert_bits(int.size())));
                     }
                     None
                 },
-                (ty::ValTree::Branch(_), ty::Ref(_, inner_ty, _)) if *inner_ty == tcx.types.str_ => valtree
-                    .try_to_raw_bytes(tcx, result.ty())
-                    .and_then(|bytes| String::from_utf8(bytes.to_owned()).ok().map(Constant::Str)),
-                (ty::ValTree::Branch(_), ty::Array(arr_ty, len)) => match arr_ty.kind() {
-                    ty::Float(float_ty) => {
-                        let chunk_size = match float_ty {
-                            FloatTy::F32 => 4,
-                            FloatTy::F64 => 8,
-                        };
-
-                        match miri_to_const(tcx, *len) {
-                            Some(Constant::Int(_)) => valtree.try_to_raw_bytes(tcx, result.ty()).and_then(|bytes| {
-                                bytes
-                                    .to_owned()
-                                    .chunks(chunk_size)
-                                    .map(|chunk| match float_ty {
-                                        FloatTy::F32 => {
-                                            let float = f32::from_le_bytes(
-                                                chunk
-                                                    .try_into()
-                                                    .expect(&format!("expected to construct f32 from {:?}", chunk)),
-                                            );
-                                            Some(Constant::F32(float))
-                                        },
-                                        FloatTy::F64 => {
-                                            let float = f64::from_le_bytes(
-                                                chunk
-                                                    .try_into()
-                                                    .expect(&format!("expected to construct f64 from {:?}", chunk)),
-                                            );
-                                            Some(Constant::F64(float))
-                                        },
-                                    })
-                                    .collect::<Option<Vec<Constant>>>()
-                                    .map(Constant::Vec)
-                            }),
-                            _ => None,
-                        }
-                    },
-                    _ => None,
-                },
                 // FIXME: implement other conversions.
                 _ => None,
             }
         },
+        mir::ConstantKind::Val(ConstValue::Slice { data, start, end }, _) => match result.ty().kind() {
+            ty::Ref(_, tam, _) => match tam.kind() {
+                ty::Str => String::from_utf8(
+                    data.inner()
+                        .inspect_with_uninit_and_ptr_outside_interpreter(start..end)
+                        .to_owned(),
+                )
+                .ok()
+                .map(Constant::Str),
+                _ => None,
+            },
+            _ => None,
+        },
+        mir::ConstantKind::Val(ConstValue::ByRef { alloc, offset: _ }, _) => match result.ty().kind() {
+            ty::Array(sub_type, len) => match sub_type.kind() {
+                ty::Float(FloatTy::F32) => match try_const_to_constant(tcx, *len) {
+                    Some(Constant::Int(len)) => alloc
+                        .inner()
+                        .inspect_with_uninit_and_ptr_outside_interpreter(0..(4 * len as usize))
+                        .to_owned()
+                        .chunks(4)
+                        .map(|chunk| {
+                            Some(Constant::F32(f32::from_le_bytes(
+                                chunk.try_into().expect("this shouldn't happen"),
+                            )))
+                        })
+                        .collect::<Option<Vec<Constant>>>()
+                        .map(Constant::Vec),
+                    _ => None,
+                },
+                ty::Float(FloatTy::F64) => match try_const_to_constant(tcx, *len) {
+                    Some(Constant::Int(len)) => alloc
+                        .inner()
+                        .inspect_with_uninit_and_ptr_outside_interpreter(0..(8 * len as usize))
+                        .to_owned()
+                        .chunks(8)
+                        .map(|chunk| {
+                            Some(Constant::F64(f64::from_le_bytes(
+                                chunk.try_into().expect("this shouldn't happen"),
+                            )))
+                        })
+                        .collect::<Option<Vec<Constant>>>()
+                        .map(Constant::Vec),
+                    _ => None,
+                },
+                // FIXME: implement other array type conversions.
+                _ => None,
+            },
+            _ => None,
+        },
+        // FIXME: implement other conversions.
         _ => None,
     }
 }

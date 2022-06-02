@@ -199,6 +199,14 @@ impl<'tcx> Const<'tcx> {
         tcx.mk_const(ConstS { kind: ConstKind::Value(val), ty })
     }
 
+    /// Panics if self.kind != ty::ConstKind::Value
+    pub fn to_valtree(self) -> ty::ValTree<'tcx> {
+        match self.val() {
+            ty::ConstKind::Value(valtree) => valtree,
+            _ => bug!("expected ConstKind::Value"),
+        }
+    }
+
     pub fn from_scalar_int(tcx: TyCtxt<'tcx>, i: ScalarInt, ty: Ty<'tcx>) -> Self {
         let valtree = ty::ValTree::from_scalar_int(i);
         Self::from_value(tcx, valtree, ty)

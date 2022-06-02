@@ -798,7 +798,7 @@ pub(crate) fn compare_const_vals<'tcx>(
     if let ty::Str = ty.kind() && let (
         Some(a_val @ ConstValue::Slice { .. }),
         Some(b_val @ ConstValue::Slice { .. }),
-    ) = (a.try_val(tcx), b.try_val(tcx))
+    ) = (a.try_to_value(tcx), b.try_to_value(tcx))
     {
         let a_bytes = get_slice_bytes(&tcx, a_val);
         let b_bytes = get_slice_bytes(&tcx, b_val);
