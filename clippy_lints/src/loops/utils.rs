@@ -4,7 +4,7 @@ use if_chain::if_chain;
 use rustc_ast::ast::{LitIntType, LitKind};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_expr, walk_local, walk_pat, walk_stmt, Visitor};
-use rustc_hir::{BinOpKind, BorrowKind, Expr, ExprKind, HirId, HirIdMap, Local, Mutability, Pat, PatKind, Stmt};
+use rustc_hir::{BinOpKind, Block, BorrowKind, Expr, ExprKind, HirId, HirIdMap, Local, Mutability, Pat, PatKind, Stmt};
 use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, Ty};
@@ -148,7 +148,7 @@ impl<'a, 'tcx> InitializeVisitor<'a, 'tcx> {
 impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
 
-    fn visit_local(&mut self, l: &'tcx Local<'_>) {
+    fn visit_local(&mut self, l: &'tcx Local<'_>, e: Option<&'tcx Block<'_>>) {
         // Look for declarations of the variable
         if_chain! {
             if l.pat.hir_id == self.var_id;
@@ -166,7 +166,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
             }
         }
 
-        walk_local(self, l);
+        walk_local(self, l, e);
     }
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {

@@ -8,7 +8,7 @@ use clippy_utils::{
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_expr, Visitor};
-use rustc_hir::{def::Res, Expr, ExprKind, HirId, Local, Mutability, PatKind, QPath, UnOp};
+use rustc_hir::{def::Res, Block, Expr, ExprKind, HirId, Local, Mutability, PatKind, QPath, UnOp};
 use rustc_lint::LateContext;
 use rustc_middle::ty::adjustment::Adjust;
 use rustc_span::{symbol::sym, Symbol};
@@ -283,7 +283,7 @@ fn needs_mutable_borrow(cx: &LateContext<'_>, iter_expr: &IterExpr, loop_expr: &
         used_after: bool,
     }
     impl<'a, 'b, 'tcx> Visitor<'tcx> for NestedLoopVisitor<'a, 'b, 'tcx> {
-        fn visit_local(&mut self, l: &'tcx Local<'_>) {
+        fn visit_local(&mut self, l: &'tcx Local<'_>, _: Option<&'tcx Block<'_>>) {
             if !self.after_loop {
                 l.pat.each_binding_or_first(&mut |_, id, _, _| {
                     if id == self.local_id {

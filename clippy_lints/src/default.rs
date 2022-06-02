@@ -126,7 +126,7 @@ impl<'tcx> LateLintPass<'tcx> for Default {
             // checked and the name of the bound variable
             let (local, variant, binding_name, binding_type, span) = if_chain! {
                 // only take `let ...` statements
-                if let StmtKind::Local(local) = stmt.kind;
+                if let StmtKind::Local(local, _) = stmt.kind;
                 if let Some(expr) = local.init;
                 if !any_parent_is_automatically_derived(cx.tcx, expr.hir_id);
                 if !expr.span.from_expansion();

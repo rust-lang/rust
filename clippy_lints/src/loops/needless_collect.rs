@@ -76,7 +76,7 @@ fn check_needless_collect_indirect_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateCo
     if let ExprKind::Block(block, _) = expr.kind {
         for stmt in block.stmts {
             if_chain! {
-                if let StmtKind::Local(local) = stmt.kind;
+                if let StmtKind::Local(local, _) = stmt.kind;
                 if let PatKind::Binding(_, id, ..) = local.pat.kind;
                 if let Some(init_expr) = local.init;
                 if let ExprKind::MethodCall(method_name, &[ref iter_source], ..) = init_expr.kind;
@@ -276,7 +276,7 @@ fn get_expr_and_hir_id_from_stmt<'v>(stmt: &'v Stmt<'v>) -> Option<(&'v Expr<'v>
     match stmt.kind {
         StmtKind::Expr(expr) | StmtKind::Semi(expr) => Some((expr, None)),
         StmtKind::Item(..) => None,
-        StmtKind::Local(Local { init, pat, .. }) => {
+        StmtKind::Local(Local { init, pat, .. }, _) => {
             if let PatKind::Binding(_, hir_id, ..) = pat.kind {
                 init.map(|init_expr| (init_expr, Some(hir_id)))
             } else {
