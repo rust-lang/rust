@@ -870,15 +870,18 @@ where
             Ok(src_val) => {
                 assert!(!src.layout.is_unsized(), "cannot have unsized immediates");
                 // Yay, we got a value that we can write directly.
-                // Then make sure `src` does not overlap with `dest`.
-                if let Operand::Indirect(src_mplace) = src.deref()
+                let size = src_val.layout.size;
+                if size != Size::ZERO
+                    && let Operand::Indirect(src_mplace) = src.deref()
                     && let Place::Ptr(dest_mplace) = dest.deref()
-                    && let Ok((src_id, src_offset, _)) = self.ptr_try_get_alloc_id(src_mplace.ptr)
-                    && let Ok((dest_id, dest_offset, _)) = self.ptr_try_get_alloc_id(dest_mplace.ptr)
                 {
-                    let size = src_val.layout.size;
+                    // If `src` and `dest` are both `MemPlace`, we need to check if the memory
+                    // they point overlap.
+                    let (src_id, src_offset, _) = self.ptr_get_alloc_id(src_mplace.ptr)?;
+                    let (dest_id, dest_offset, _) = self.ptr_get_alloc_id(dest_mplace.ptr)?;
+
                     if Self::check_ptr_overlap(src_id, src_offset, dest_id, dest_offset, size) {
-                        throw_ub_format!("copy_nonoverlapping called on overlapping ranges")
+                        throw_ub_format!("copy the operand to the overlapping place")
                     }
                 }
                 return self.write_immediate_no_validate(*src_val, dest);
