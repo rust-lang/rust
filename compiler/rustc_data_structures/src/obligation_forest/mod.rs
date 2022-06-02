@@ -96,6 +96,8 @@ pub trait ObligationProcessor {
     type Obligation: ForestObligation;
     type Error: Debug;
 
+    fn needs_process_obligation(&self, obligation: &Self::Obligation) -> bool;
+
     fn process_obligation(
         &mut self,
         obligation: &mut Self::Obligation,
@@ -143,7 +145,7 @@ pub struct ObligationForest<O: ForestObligation> {
 
     /// A cache of the nodes in `nodes`, indexed by predicate. Unfortunately,
     /// its contents are not guaranteed to match those of `nodes`. See the
-    /// comments in [`Self::process_obligation` for details.
+    /// comments in `Self::process_obligation` for details.
     active_cache: FxHashMap<O::CacheKey, usize>,
 
     /// A vector reused in [Self::compress()] and [Self::find_cycles_from_node()],
@@ -417,15 +419,18 @@ impl<O: ForestObligation> ObligationForest<O> {
             // nodes. Therefore we use a `while` loop.
             let mut index = 0;
             while let Some(node) = self.nodes.get_mut(index) {
+                if node.state.get() != NodeState::Pending
+                    || !processor.needs_process_obligation(&node.obligation)
+                {
+                    index += 1;
+                    continue;
+                }
+
                 // `processor.process_obligation` can modify the predicate within
                 // `node.obligation`, and that predicate is the key used for
                 // `self.active_cache`. This means that `self.active_cache` can get
                 // out of sync with `nodes`. It's not very common, but it does
                 // happen, and code in `compress` has to allow for it.
-                if node.state.get() != NodeState::Pending {
-                    index += 1;
-                    continue;
-                }
 
                 match processor.process_obligation(&mut node.obligation) {
                     ProcessResult::Unchanged => {

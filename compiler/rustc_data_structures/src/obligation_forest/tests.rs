@@ -65,6 +65,10 @@ where
     type Obligation = O;
     type Error = E;
 
+    fn needs_process_obligation(&self, _obligation: &Self::Obligation) -> bool {
+        true
+    }
+
     fn process_obligation(
         &mut self,
         obligation: &mut Self::Obligation,
