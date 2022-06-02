@@ -42,8 +42,8 @@ use rustc_query_system::ich::StableHashingContext;
 use rustc_session::cstore::CrateStoreDyn;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
-use rustc_target::abi::Align;
 pub use subst::*;
+use rustc_target::abi::{Align, VariantIdx};
 pub use vtable::*;
 
 use std::fmt::Debug;
@@ -2452,4 +2452,11 @@ pub struct FoundRelationships {
     /// This is true if we identified that this Ty (`?T`) is found in a `<_ as
     /// _>::AssocType = ?T`
     pub output: bool,
+}
+
+/// The constituent parts of a type level constant of kind ADT or array.
+#[derive(Copy, Clone, Debug, HashStable)]
+pub struct DestructuredConst<'tcx> {
+    pub variant: Option<VariantIdx>,
+    pub fields: &'tcx [ty::Const<'tcx>],
 }

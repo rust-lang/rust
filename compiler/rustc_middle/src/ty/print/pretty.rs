@@ -1460,9 +1460,7 @@ pub trait PrettyPrinter<'tcx>:
                 return Ok(self);
             }
             // Aggregates, printed as array/tuple/struct/variant construction syntax.
-            (ty::ValTree::Branch(_), ty::Array(..) | ty::Tuple(..) | ty::Adt(..))
-                if !ty.has_param_types_or_consts() =>
-            {
+            (ty::ValTree::Branch(_), ty::Array(..) | ty::Tuple(..) | ty::Adt(..)) => {
                 let Some(contents) = self.tcx().try_destructure_const(
                     ty::Const::from_value(self.tcx(), valtree, ty)
                 ) else {

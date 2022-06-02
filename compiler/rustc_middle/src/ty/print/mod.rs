@@ -98,6 +98,7 @@ pub trait Printer<'tcx>: Sized {
 
     // Defaults (should not be overridden):
 
+    #[instrument(skip(self), level = "debug")]
     fn default_print_def_path(
         self,
         def_id: DefId,

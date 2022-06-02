@@ -358,7 +358,6 @@ dependencies = [
  "libgit2-sys",
  "log",
  "memchr",
- "num_cpus",
  "opener",
  "openssl",
  "os_info",

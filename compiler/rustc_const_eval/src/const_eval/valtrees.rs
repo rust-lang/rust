@@ -1,6 +1,6 @@
 use super::eval_queries::{mk_eval_cx, op_to_const};
 use super::machine::CompileTimeEvalContext;
-use super::{ValTreeCreationError, ValTreeCreationResult};
+use super::{ValTreeCreationError, ValTreeCreationResult, VALTREE_MAX_NODES};
 use crate::interpret::{
     intern_const_alloc_recursive, ConstValue, ImmTy, Immediate, InternKind, MemPlaceMeta,
     MemoryKind, PlaceTy, Scalar, ScalarMaybeUninit,
@@ -16,6 +16,7 @@ fn branches<'tcx>(
     place: &MPlaceTy<'tcx>,
     n: usize,
     variant: Option<VariantIdx>,
+    num_nodes: &mut usize,
 ) -> ValTreeCreationResult<'tcx> {
     let place = match variant {
         Some(variant) => ecx.mplace_downcast(&place, variant).unwrap(),
@@ -27,7 +28,7 @@ fn branches<'tcx>(
     let mut fields = Vec::with_capacity(n);
     for i in 0..n {
         let field = ecx.mplace_field(&place, i).unwrap();
-        let valtree = const_to_valtree_inner(ecx, &field)?;
+        let valtree = const_to_valtree_inner(ecx, &field, num_nodes)?;
         fields.push(Some(valtree));
     }
 
@@ -39,6 +40,11 @@ fn branches<'tcx>(
         .collect::<Option<Vec<_>>>()
         .expect("should have already checked for errors in ValTree creation");
 
+    // Have to account for ZSTs here
+    if branches.len() == 0 {
+        *num_nodes += 1;
+    }
+
     Ok(ty::ValTree::Branch(ecx.tcx.arena.alloc_from_iter(branches)))
 }
 
@@ -46,6 +52,7 @@ fn branches<'tcx>(
 fn slice_branches<'tcx>(
     ecx: &CompileTimeEvalContext<'tcx, 'tcx>,
     place: &MPlaceTy<'tcx>,
+    num_nodes: &mut usize,
 ) -> ValTreeCreationResult<'tcx> {
     let n = place
         .len(&ecx.tcx.tcx)
@@ -54,7 +61,7 @@ fn slice_branches<'tcx>(
     let mut elems = Vec::with_capacity(n as usize);
     for i in 0..n {
         let place_elem = ecx.mplace_index(place, i).unwrap();
-        let valtree = const_to_valtree_inner(ecx, &place_elem)?;
+        let valtree = const_to_valtree_inner(ecx, &place_elem, num_nodes)?;
         elems.push(valtree);
     }
 
@@ -65,12 +72,18 @@ fn slice_branches<'tcx>(
 pub(crate) fn const_to_valtree_inner<'tcx>(
     ecx: &CompileTimeEvalContext<'tcx, 'tcx>,
     place: &MPlaceTy<'tcx>,
+    num_nodes: &mut usize,
 ) -> ValTreeCreationResult<'tcx> {
     let ty = place.layout.ty;
     debug!("ty kind: {:?}", ty.kind());
 
+    if *num_nodes >= VALTREE_MAX_NODES {
+        return Err(ValTreeCreationError::NodesOverflow);
+    }
+
     match ty.kind() {
         ty::FnDef(..) => {
+            *num_nodes += 1;
             Ok(ty::ValTree::zst())
         }
         ty::Bool | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Char => {
@@ -78,6 +91,7 @@ pub(crate) fn const_to_valtree_inner<'tcx>(
                 return Err(ValTreeCreationError::Other);
             };
             let val = val.to_scalar().unwrap();
+            *num_nodes += 1;
 
             Ok(ty::ValTree::Leaf(val.assert_int()))
         }
@@ -94,11 +108,11 @@ pub(crate) fn const_to_valtree_inner<'tcx>(
             };
             debug!(?derefd_place);
 
-            const_to_valtree_inner(ecx, &derefd_place)
+            const_to_valtree_inner(ecx, &derefd_place, num_nodes)
         }
 
         ty::Str | ty::Slice(_) | ty::Array(_, _) => {
-            slice_branches(ecx, place)
+            slice_branches(ecx, place, num_nodes)
         }
         // Trait objects are not allowed in type level constants, as we have no concept for
         // resolving their backing type, even if we can do that at const eval time. We may
@@ -107,7 +121,7 @@ pub(crate) fn const_to_valtree_inner<'tcx>(
         ty::Dynamic(..) => Err(ValTreeCreationError::NonSupportedType),
 
         ty::Tuple(elem_tys) => {
-            branches(ecx, place, elem_tys.len(), None)
+            branches(ecx, place, elem_tys.len(), None, num_nodes)
         }
 
         ty::Adt(def, _) => {
@@ -120,7 +134,7 @@ pub(crate) fn const_to_valtree_inner<'tcx>(
             let Ok((_, variant)) = ecx.read_discriminant(&place.into()) else {
                 return Err(ValTreeCreationError::Other);
             };
-            branches(ecx, place, def.variant(variant).fields.len(), def.is_enum().then_some(variant))
+            branches(ecx, place, def.variant(variant).fields.len(), def.is_enum().then_some(variant), num_nodes)
         }
 
         ty::Never

@@ -503,7 +503,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                 // deref pattern.
                 _ => {
                     if !pointee_ty.is_sized(tcx.at(span), param_env) {
-                        // `tcx.deref_mirconstant()` below will ICE with an unsized type
+                        // `tcx.deref_mir_constant()` below will ICE with an unsized type
                         // (except slices, which are handled in a separate arm above).
                         let msg = format!("cannot use unsized non-slice type `{}` in constant patterns", pointee_ty);
                         if self.include_lint_checks {

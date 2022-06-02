@@ -24,12 +24,6 @@ pub use fn_queries::*;
 pub use machine::*;
 pub(crate) use valtrees::{const_to_valtree_inner, valtree_to_const_value};
 
-pub(crate) enum ValTreeCreationError {
-    NonSupportedType,
-    Other,
-}
-pub(crate) type ValTreeCreationResult<'tcx> = Result<ty::ValTree<'tcx>, ValTreeCreationError>;
-
 pub(crate) fn const_caller_location(
     tcx: TyCtxt<'_>,
     (file, line, col): (Symbol, u32, u32),
@@ -43,6 +37,16 @@ pub(crate) fn const_caller_location(
     }
     ConstValue::Scalar(Scalar::from_maybe_pointer(loc_place.ptr, &tcx))
 }
+
+// We forbid type-level constants that contain more than `VALTREE_MAX_NODES` nodes.
+const VALTREE_MAX_NODES: usize = 100000;
+
+pub(crate) enum ValTreeCreationError {
+    NodesOverflow,
+    NonSupportedType,
+    Other,
+}
+pub(crate) type ValTreeCreationResult<'tcx> = Result<ty::ValTree<'tcx>, ValTreeCreationError>;
 
 /// Evaluates a constant and turns it into a type-level constant value.
 pub(crate) fn eval_to_valtree<'tcx>(
@@ -62,11 +66,28 @@ pub(crate) fn eval_to_valtree<'tcx>(
     let place = ecx.raw_const_to_mplace(const_alloc).unwrap();
     debug!(?place);
 
-    let valtree_result = const_to_valtree_inner(&ecx, &place);
+    let mut num_nodes = 0;
+    let valtree_result = const_to_valtree_inner(&ecx, &place, &mut num_nodes);
 
     match valtree_result {
         Ok(valtree) => Ok(Some(valtree)),
-        Err(_) => Ok(None),
+        Err(err) => {
+            let did = cid.instance.def_id();
+            let s = cid.display(tcx);
+            match err {
+                ValTreeCreationError::NodesOverflow => {
+                    let msg = format!("maximum number of nodes exceeded in constant {}", &s);
+                    let mut diag = match tcx.hir().span_if_local(did) {
+                        Some(span) => tcx.sess.struct_span_err(span, &msg),
+                        None => tcx.sess.struct_err(&msg),
+                    };
+                    diag.emit();
+
+                    Ok(None)
+                }
+                ValTreeCreationError::NonSupportedType | ValTreeCreationError::Other => Ok(None),
+            }
+        }
     }
 }
 
@@ -75,7 +96,7 @@ pub(crate) fn eval_to_valtree<'tcx>(
 pub(crate) fn try_destructure_const<'tcx>(
     tcx: TyCtxt<'tcx>,
     const_: ty::Const<'tcx>,
-) -> Option<mir::DestructuredConst<'tcx>> {
+) -> Option<ty::DestructuredConst<'tcx>> {
     if let ty::ConstKind::Value(valtree) = const_.val() {
         let branches = match valtree {
             ty::ValTree::Branch(b) => b,
@@ -141,7 +162,7 @@ pub(crate) fn try_destructure_const<'tcx>(
 
         let fields = tcx.arena.alloc_from_iter(fields.into_iter());
 
-        Some(mir::DestructuredConst { variant, fields })
+        Some(ty::DestructuredConst { variant, fields })
     } else {
         None
     }

@@ -140,6 +140,7 @@ impl<'tcx> ConstEvalErr<'tcx> {
     ///
     /// If `lint_root.is_some()` report it as a lint, else report it as a hard error.
     /// (Except that for some errors, we ignore all that -- see `must_error` below.)
+    #[instrument(skip(self, tcx, decorate, lint_root), level = "debug")]
     fn struct_generic(
         &self,
         tcx: TyCtxtAt<'tcx>,
@@ -190,6 +191,7 @@ impl<'tcx> ConstEvalErr<'tcx> {
             decorate(err);
         };
 
+        debug!("self.error: {:?}", self.error);
         // Special handling for certain errors
         match &self.error {
             // Don't emit a new diagnostic for these errors
