@@ -2,7 +2,7 @@
 //! up data structures required by type-checking/codegen.
 
 use crate::errors::{CopyImplOnNonAdt, CopyImplOnTypeWithDtor, DropImplOnWrongItem};
-use rustc_errors::struct_span_err;
+use rustc_errors::{struct_span_err, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
@@ -16,6 +16,7 @@ use rustc_trait_selection::traits::error_reporting::InferCtxtExt;
 use rustc_trait_selection::traits::misc::{can_type_implement_copy, CopyImplementationError};
 use rustc_trait_selection::traits::predicate_for_trait_def;
 use rustc_trait_selection::traits::{self, ObligationCause, TraitEngine, TraitEngineExt};
+use std::collections::BTreeMap;
 
 pub fn check_trait(tcx: TyCtxt<'_>, trait_def_id: DefId) {
     let lang_items = tcx.lang_items();
@@ -101,6 +102,7 @@ fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
                     generics = self_item.kind.generics();
                 }
             }
+            let mut errors: BTreeMap<_, Vec<_>> = Default::default();
             let mut bounds = vec![];
 
             for (field, ty) in fields {
@@ -127,13 +129,10 @@ fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
                         // FIXME: This error could be more descriptive, especially if the error_predicate
                         // contains a foreign type or if it's a deeply nested type...
                         if error_predicate != error.root_obligation.predicate {
-                            err.span_note(
-                                error.obligation.cause.span,
-                                &format!(
-                                    "the `Copy` impl for `{}` requires that `{}`",
-                                    ty, error_predicate
-                                ),
-                            );
+                            errors
+                                .entry((ty.to_string(), error_predicate.to_string()))
+                                .or_default()
+                                .push(error.obligation.cause.span);
                         }
                         if let ty::PredicateKind::Trait(ty::TraitPredicate {
                             trait_ref,
@@ -152,6 +151,13 @@ fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
                         }
                     }
                 });
+            }
+            for ((ty, error_predicate), spans) in errors {
+                let span: MultiSpan = spans.into();
+                err.span_note(
+                    span,
+                    &format!("the `Copy` impl for `{}` requires that `{}`", ty, error_predicate),
+                );
             }
             if let Some(generics) = generics {
                 suggest_constraining_type_params(
