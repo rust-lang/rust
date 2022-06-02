@@ -732,7 +732,16 @@ fn signal_string(signal: i32) -> &'static str {
         libc::SIGWINCH => " (SIGWINCH)",
         libc::SIGIO => " (SIGIO)",
         libc::SIGSYS => " (SIGSYS)",
-        #[cfg(target_os = "linux")]
+        // For information on Linux signals, run `man 7 signal`
+        #[cfg(all(
+            target_os = "linux",
+            any(
+                target_arch = "x86_64",
+                target_arch = "x86",
+                target_arch = "arm",
+                target_arch = "aarch64"
+            )
+        ))]
         libc::SIGSTKFLT => " (SIGSTKFLT)",
         #[cfg(target_os = "linux")]
         libc::SIGPWR => " (SIGPWR)",
