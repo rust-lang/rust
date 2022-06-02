@@ -1,16 +1,46 @@
-error: cannot introduce explicit parameters for a closure
-  --> $DIR/recover-quantified-closure.rs:2:5
-   |
-LL |     for<'a> |x: &'a u8| *x + 1;
-   |     ^^^^^^^ ------------------ the parameters are attached to this closure
-   |     |
-   |     help: remove the parameters
-
 error: expected one of `move`, `static`, `|`, or `||`, found `::`
-  --> $DIR/recover-quantified-closure.rs:8:14
+  --> $DIR/recover-quantified-closure.rs:10:14
    |
 LL |     for <Foo>::Bar in x {}
    |              ^^ expected one of `move`, `static`, `|`, or `||`
 
-error: aborting due to 2 previous errors
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/recover-quantified-closure.rs:2:18
+   |
+LL | fn main() {
+   |        - help: consider introducing lifetime `'a` here: `<'a>`
+LL |     for<'a> |x: &'a u8| *x + 1;
+   |                  ^^ undeclared lifetime
 
+error[E0658]: `for<...>` binders for closures are experimental
+  --> $DIR/recover-quantified-closure.rs:2:5
+   |
+LL |     for<'a> |x: &'a u8| *x + 1;
+   |     ^^^^^^^
+   |
+   = note: see issue #97362 <https://github.com/rust-lang/rust/issues/97362> for more information
+   = help: add `#![feature(closure_lifetime_binder)]` to the crate attributes to enable
+   = help: consider removing `for<...>`
+
+error[E0658]: `for<...>` binders for closures are experimental
+  --> $DIR/recover-quantified-closure.rs:10:5
+   |
+LL |     for <Foo>::Bar in x {}
+   |     ^^^^^^^^^
+   |
+   = note: see issue #97362 <https://github.com/rust-lang/rust/issues/97362> for more information
+   = help: add `#![feature(closure_lifetime_binder)]` to the crate attributes to enable
+   = help: consider removing `for<...>`
+
+error: `for<...>` binders for closures are not yet supported
+  --> $DIR/recover-quantified-closure.rs:2:5
+   |
+LL |     for<'a> |x: &'a u8| *x + 1;
+   |     ^^^^^^^
+   |
+   = help: consider removing `for<...>`
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0261, E0658.
+For more information about an error, try `rustc --explain E0261`.
