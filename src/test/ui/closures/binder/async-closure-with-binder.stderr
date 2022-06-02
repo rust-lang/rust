@@ -1,0 +1,8 @@
+error: `for<...>` binders on `async` closures are not currently supported
+  --> $DIR/async-closure-with-binder.rs:5:5
+   |
+LL |     for<'a> async || ();
+   |     ^^^^^^^
+
+error: aborting due to previous error
+

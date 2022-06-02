@@ -1,0 +1,10 @@
+error: implicit return type is forbidden when `for<...>` is present
+  --> $DIR/implicit-return.rs:4:34
+   |
+LL |     let _f = for<'a> |_: &'a ()| {};
+   |              -------             ^
+   |              |
+   |              `for<...>` is here
+
+error: aborting due to previous error
+

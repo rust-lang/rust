@@ -459,6 +459,7 @@ symbols! {
         clone_closures,
         clone_from,
         closure,
+        closure_lifetime_binder,
         closure_to_fn_coercion,
         closure_track_caller,
         cmp,

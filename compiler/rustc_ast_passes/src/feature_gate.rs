@@ -744,6 +744,11 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session) {
         "async closures are unstable",
         "to use an async block, remove the `||`: `async {`"
     );
+    gate_all!(
+        closure_lifetime_binder,
+        "`for<...>` binders for closures are experimental",
+        "consider removing `for<...>`"
+    );
     gate_all!(more_qualified_paths, "usage of qualified paths in this context is experimental");
     gate_all!(generators, "yield syntax is experimental");
     gate_all!(raw_ref_op, "raw address of syntax is experimental");

@@ -155,6 +155,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     self.lower_expr_await(span, expr)
                 }
                 ExprKind::Closure(
+                    ref binder,
                     capture_clause,
                     asyncness,
                     movability,
@@ -164,6 +165,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ) => {
                     if let Async::Yes { closure_id, .. } = asyncness {
                         self.lower_expr_async_closure(
+                            binder,
                             capture_clause,
                             e.id,
                             closure_id,
@@ -173,6 +175,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         )
                     } else {
                         self.lower_expr_closure(
+                            binder,
                             capture_clause,
                             e.id,
                             movability,
@@ -831,6 +834,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn lower_expr_closure(
         &mut self,
+        binder: &ClosureBinder,
         capture_clause: CaptureBy,
         closure_id: NodeId,
         movability: Movability,
@@ -838,6 +842,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
         body: &Expr,
         fn_decl_span: Span,
     ) -> hir::ExprKind<'hir> {
+        // FIXME(waffle): lower binder
+        if let &ClosureBinder::For { span, .. } = binder {
+            self.sess
+                .struct_span_err(span, "`for<...>` binders for closures are not yet supported")
+                .help("consider removing `for<...>`")
+                .emit();
+        }
+
         let (body, generator_option) = self.with_new_scopes(move |this| {
             let prev = this.current_item;
             this.current_item = Some(fn_decl_span);
@@ -908,6 +920,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn lower_expr_async_closure(
         &mut self,
+        binder: &ClosureBinder,
         capture_clause: CaptureBy,
         closure_id: NodeId,
         inner_closure_id: NodeId,
@@ -915,6 +928,17 @@ impl<'hir> LoweringContext<'_, 'hir> {
         body: &Expr,
         fn_decl_span: Span,
     ) -> hir::ExprKind<'hir> {
+        // FIXME(waffle): lower binder
+        if let &ClosureBinder::For { span, .. } = binder {
+            self.sess
+                .struct_span_err(
+                    span,
+                    "`for<...>` binders for async closures are not yet supported",
+                )
+                .help("consider removing `for<...>`")
+                .emit();
+        }
+
         let outer_decl =
             FnDecl { inputs: decl.inputs.clone(), output: FnRetTy::Default(fn_decl_span) };
 

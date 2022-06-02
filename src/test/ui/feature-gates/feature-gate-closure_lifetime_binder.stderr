@@ -1,0 +1,67 @@
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/feature-gate-closure_lifetime_binder.rs:8:22
+   |
+LL | fn main() {
+   |        - help: consider introducing lifetime `'a` here: `<'a>`
+...
+LL |     for<'a, 'b> |_: &'a ()| {};
+   |                      ^^ undeclared lifetime
+
+error[E0658]: `for<...>` binders for closures are experimental
+  --> $DIR/feature-gate-closure_lifetime_binder.rs:2:5
+   |
+LL |     for<> || {};
+   |     ^^^^^
+   |
+   = note: see issue #97362 <https://github.com/rust-lang/rust/issues/97362> for more information
+   = help: add `#![feature(closure_lifetime_binder)]` to the crate attributes to enable
+   = help: consider removing `for<...>`
+
+error[E0658]: `for<...>` binders for closures are experimental
+  --> $DIR/feature-gate-closure_lifetime_binder.rs:5:5
+   |
+LL |     for<'a> || {};
+   |     ^^^^^^^
+   |
+   = note: see issue #97362 <https://github.com/rust-lang/rust/issues/97362> for more information
+   = help: add `#![feature(closure_lifetime_binder)]` to the crate attributes to enable
+   = help: consider removing `for<...>`
+
+error[E0658]: `for<...>` binders for closures are experimental
+  --> $DIR/feature-gate-closure_lifetime_binder.rs:8:5
+   |
+LL |     for<'a, 'b> |_: &'a ()| {};
+   |     ^^^^^^^^^^^
+   |
+   = note: see issue #97362 <https://github.com/rust-lang/rust/issues/97362> for more information
+   = help: add `#![feature(closure_lifetime_binder)]` to the crate attributes to enable
+   = help: consider removing `for<...>`
+
+error: `for<...>` binders for closures are not yet supported
+  --> $DIR/feature-gate-closure_lifetime_binder.rs:2:5
+   |
+LL |     for<> || {};
+   |     ^^^^^
+   |
+   = help: consider removing `for<...>`
+
+error: `for<...>` binders for closures are not yet supported
+  --> $DIR/feature-gate-closure_lifetime_binder.rs:5:5
+   |
+LL |     for<'a> || {};
+   |     ^^^^^^^
+   |
+   = help: consider removing `for<...>`
+
+error: `for<...>` binders for closures are not yet supported
+  --> $DIR/feature-gate-closure_lifetime_binder.rs:8:5
+   |
+LL |     for<'a, 'b> |_: &'a ()| {};
+   |     ^^^^^^^^^^^
+   |
+   = help: consider removing `for<...>`
+
+error: aborting due to 7 previous errors
+
+Some errors have detailed explanations: E0261, E0658.
+For more information about an error, try `rustc --explain E0261`.
