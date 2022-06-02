@@ -1216,7 +1216,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         dest_offset: Size,
         size: Size,
     ) -> bool {
-        let overlaps = |a, b| a <= b && b < a + size;
+        let overlaps = |a, b| a <= b && b - a < size;
         src_id == dest_id
             && (overlaps(src_offset, dest_offset) || overlaps(dest_offset, src_offset))
     }
