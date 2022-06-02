@@ -1154,7 +1154,6 @@ declare_lint! {
     /// ### Example
     ///
     /// ```compile_fail
-    /// #![deny(unaligned_references)]
     /// #[repr(packed)]
     /// pub struct Foo {
     ///     field1: u64,
@@ -2614,7 +2613,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust
+    /// ```compile_fail
     /// # #![allow(unused)]
     /// enum E {
     ///     A,
