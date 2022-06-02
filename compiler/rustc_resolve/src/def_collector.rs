@@ -386,11 +386,7 @@ impl<'a, 'b> visit::Visitor<'a> for DefCollector<'a, 'b> {
         }*/
         if let ImplTraitContext::UniversalInDyn(_) = self.impl_trait_context {
             let node_id = constraint.impl_trait_id;
-            let def_id = self.create_def(
-                node_id,
-                DefPathData::ImplTrait,
-                constraint.span,
-            );
+            let def_id = self.create_def(node_id, DefPathData::ImplTrait, constraint.span);
             self.resolver
                 .impl_trait_context
                 .insert(def_id, ImplTraitContext::UniversalInDyn(def_id));
