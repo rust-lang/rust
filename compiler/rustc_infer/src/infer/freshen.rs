@@ -228,12 +228,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
                     .probe_value(v)
                     .val
                     .known();
-                return self.freshen_const(
-                    opt_ct,
-                    ty::InferConst::Var(v),
-                    ty::InferConst::Fresh,
-                    ct.ty(),
-                );
+                self.freshen_const(opt_ct, ty::InferConst::Var(v), ty::InferConst::Fresh, ct.ty())
             }
             ty::ConstKind::Infer(ty::InferConst::Fresh(i)) => {
                 if i >= self.const_freshen_count {
@@ -244,7 +239,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
                         self.const_freshen_count,
                     );
                 }
-                return ct;
+                ct
             }
 
             ty::ConstKind::Bound(..) | ty::ConstKind::Placeholder(_) => {
@@ -254,9 +249,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
             ty::ConstKind::Param(_)
             | ty::ConstKind::Value(_)
             | ty::ConstKind::Unevaluated(..)
-            | ty::ConstKind::Error(_) => {}
+            | ty::ConstKind::Error(_) => ct.super_fold_with(self),
         }
-
-        ct.super_fold_with(self)
     }
 }
