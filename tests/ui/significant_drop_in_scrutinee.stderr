@@ -285,7 +285,7 @@ error: temporary with significant drop in match scrutinee
 LL |     match rwlock.read().unwrap().to_number() {
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: temporary with significant drop in match scrutinee
+error: temporary with significant drop in for loop
   --> $DIR/significant_drop_in_scrutinee.rs:589:14
    |
 LL |     for s in rwlock.read().unwrap().iter() {

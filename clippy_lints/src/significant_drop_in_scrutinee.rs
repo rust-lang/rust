@@ -91,15 +91,11 @@ declare_lint_pass!(SignificantDropInScrutinee => [SIGNIFICANT_DROP_IN_SCRUTINEE]
 
 impl<'tcx> LateLintPass<'tcx> for SignificantDropInScrutinee {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
-        if let Some(suggestions) = has_significant_drop_in_scrutinee(cx, expr) {
+        if let Some((suggestions, message)) = has_significant_drop_in_scrutinee(cx, expr) {
             for found in suggestions {
-                span_lint_and_then(
-                    cx,
-                    SIGNIFICANT_DROP_IN_SCRUTINEE,
-                    found.found_span,
-                    "temporary with significant drop in match scrutinee",
-                    |diag| set_diagnostic(diag, cx, expr, found),
-                );
+                span_lint_and_then(cx, SIGNIFICANT_DROP_IN_SCRUTINEE, found.found_span, message, |diag| {
+                    set_diagnostic(diag, cx, expr, found);
+                });
             }
         }
     }
@@ -153,13 +149,20 @@ fn set_diagnostic<'tcx>(diag: &mut Diagnostic, cx: &LateContext<'tcx>, expr: &'t
 fn has_significant_drop_in_scrutinee<'tcx, 'a>(
     cx: &'a LateContext<'tcx>,
     expr: &'tcx Expr<'tcx>,
-) -> Option<Vec<FoundSigDrop>> {
+) -> Option<(Vec<FoundSigDrop>, &'static str)> {
     match expr.kind {
         ExprKind::Match(match_expr, _, source) => {
             match source {
                 MatchSource::Normal | MatchSource::ForLoopDesugar => {
                     let mut helper = SigDropHelper::new(cx);
-                    helper.find_sig_drop(match_expr)
+                    helper.find_sig_drop(match_expr).map(|drops| {
+                        let message = if source == MatchSource::Normal {
+                            "temporary with significant drop in match scrutinee"
+                        } else {
+                            "temporary with significant drop in for loop"
+                        };
+                        (drops, message)
+                    })
                 },
                 // MatchSource of TryDesugar or AwaitDesugar is out of scope for this lint
                 MatchSource::TryDesugar | MatchSource::AwaitDesugar => None,
