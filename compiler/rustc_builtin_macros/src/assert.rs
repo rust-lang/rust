@@ -1,11 +1,13 @@
+mod context;
+
 use crate::edition_panic::use_panic_2021;
 use rustc_ast::ptr::P;
 use rustc_ast::token;
 use rustc_ast::tokenstream::{DelimSpan, TokenStream};
-use rustc_ast::{self as ast, *};
+use rustc_ast::{Expr, ExprKind, MacArgs, MacCall, MacDelimiter, Path, PathSegment, UnOp};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{Applicability, PResult};
-use rustc_expand::base::*;
+use rustc_expand::base::{DummyResult, ExtCtxt, MacEager, MacResult};
 use rustc_parse::parser::Parser;
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
@@ -25,13 +27,13 @@ pub fn expand_assert<'cx>(
 
     // `core::panic` and `std::panic` are different macros, so we use call-site
     // context to pick up whichever is currently in scope.
-    let sp = cx.with_call_site_ctxt(span);
+    let call_site_span = cx.with_call_site_ctxt(span);
 
-    let panic_call = if let Some(tokens) = custom_message {
-        let path = if use_panic_2021(span) {
+    let panic_path = || {
+        if use_panic_2021(span) {
             // On edition 2021, we always call `$crate::panic::panic_2021!()`.
             Path {
-                span: sp,
+                span: call_site_span,
                 segments: cx
                     .std_path(&[sym::panic, sym::panic_2021])
                     .into_iter()
@@ -42,27 +44,40 @@ pub fn expand_assert<'cx>(
         } else {
             // Before edition 2021, we call `panic!()` unqualified,
             // such that it calls either `std::panic!()` or `core::panic!()`.
-            Path::from_ident(Ident::new(sym::panic, sp))
-        };
-        // Pass the custom message to panic!().
-        cx.expr(
-            sp,
+            Path::from_ident(Ident::new(sym::panic, call_site_span))
+        }
+    };
+
+    // Simply uses the user provided message instead of generating custom outputs
+    let expr = if let Some(tokens) = custom_message {
+        let then = cx.expr(
+            call_site_span,
             ExprKind::MacCall(MacCall {
-                path,
+                path: panic_path(),
                 args: P(MacArgs::Delimited(
-                    DelimSpan::from_single(sp),
+                    DelimSpan::from_single(call_site_span),
                     MacDelimiter::Parenthesis,
                     tokens,
                 )),
                 prior_type_ascription: None,
             }),
-        )
-    } else {
+        );
+        expr_if_not(cx, call_site_span, cond_expr, then, None)
+    }
+    // If `generic_assert` is enabled, generates rich captured outputs
+    //
+    // FIXME(c410-f3r) See https://github.com/rust-lang/rust/issues/96949
+    else if let Some(features) = cx.ecfg.features && features.generic_assert {
+        context::Context::new(cx, call_site_span).build(cond_expr, panic_path())
+    }
+    // If `generic_assert` is not enabled, only outputs a literal "assertion failed: ..."
+    // string
+    else {
         // Pass our own message directly to $crate::panicking::panic(),
         // because it might contain `{` and `}` that should always be
         // passed literally.
-        cx.expr_call_global(
-            sp,
+        let then = cx.expr_call_global(
+            call_site_span,
             cx.std_path(&[sym::panicking, sym::panic]),
             vec![cx.expr_str(
                 DUMMY_SP,
@@ -71,16 +86,27 @@ pub fn expand_assert<'cx>(
                     pprust::expr_to_string(&cond_expr).escape_debug()
                 )),
             )],
-        )
+        );
+        expr_if_not(cx, call_site_span, cond_expr, then, None)
     };
-    let if_expr =
-        cx.expr_if(sp, cx.expr(sp, ExprKind::Unary(UnOp::Not, cond_expr)), panic_call, None);
-    MacEager::expr(if_expr)
+
+    MacEager::expr(expr)
 }
 
 struct Assert {
-    cond_expr: P<ast::Expr>,
+    cond_expr: P<Expr>,
     custom_message: Option<TokenStream>,
+}
+
+// if !{ ... } { ... } else { ... }
+fn expr_if_not(
+    cx: &ExtCtxt<'_>,
+    span: Span,
+    cond: P<Expr>,
+    then: P<Expr>,
+    els: Option<P<Expr>>,
+) -> P<Expr> {
+    cx.expr_if(span, cx.expr(span, ExprKind::Unary(UnOp::Not, cond)), then, els)
 }
 
 fn parse_assert<'a>(cx: &mut ExtCtxt<'a>, sp: Span, stream: TokenStream) -> PResult<'a, Assert> {

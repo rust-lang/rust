@@ -160,7 +160,7 @@ impl<'a> ExtCtxt<'a> {
             attrs: AttrVec::new(),
             tokens: None,
         });
-        ast::Stmt { id: ast::DUMMY_NODE_ID, kind: ast::StmtKind::Local(local), span: sp }
+        self.stmt_local(local, sp)
     }
 
     // Generates `let _: Type;`, which is usually used for type assertions.
@@ -174,6 +174,10 @@ impl<'a> ExtCtxt<'a> {
             attrs: AttrVec::new(),
             tokens: None,
         });
+        self.stmt_local(local, span)
+    }
+
+    pub fn stmt_local(&self, local: P<ast::Local>, span: Span) -> ast::Stmt {
         ast::Stmt { id: ast::DUMMY_NODE_ID, kind: ast::StmtKind::Local(local), span }
     }
 
