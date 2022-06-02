@@ -1,0 +1,21 @@
+warning: non-binding let on a expression marked `must_use`
+  --> $DIR/let_underscore_must_use.rs:10:5
+   |
+LL |     let _ = MustUseType;
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(let_underscore_must_use)]` on by default
+   = help: consider binding to an unused variable
+   = help: consider explicitly droping with `std::mem::drop`
+
+warning: non-binding let on a expression marked `must_use`
+  --> $DIR/let_underscore_must_use.rs:11:5
+   |
+LL |     let _ = must_use_function();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider binding to an unused variable
+   = help: consider explicitly droping with `std::mem::drop`
+
+warning: 2 warnings emitted
+
