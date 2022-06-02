@@ -1816,7 +1816,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                 // work for the `enum`, instead of just looking if it takes *any*.
                                 err.span_suggestion_verbose(
                                     args_span,
-                                    &format!("{type_name} doesn't have type parameters"),
+                                    &format!("{type_name} doesn't have generic parameters"),
                                     String::new(),
                                     Applicability::MachineApplicable,
                                 );
@@ -2115,20 +2115,15 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     if segment.args().args.is_empty() {
                         None
                     } else {
-                        let mut desc = res.descr();
-                        if desc == "unresolved item" {
-                            desc = "this type";
-                        };
-
-                        let name = match res {
-                            Res::PrimTy(ty) => Some(ty.name()),
-                            Res::Def(_, def_id) => self.tcx().opt_item_name(def_id),
-                            _ => None,
-                        };
                         Some((
-                            match name {
-                                Some(ty) => format!("{desc} `{ty}`"),
-                                None => desc.to_string(),
+                            match res {
+                                Res::PrimTy(ty) => format!("{} `{}`", res.descr(), ty.name()),
+                                Res::Def(_, def_id)
+                                if let Some(name) = self.tcx().opt_item_name(def_id) => {
+                                    format!("{} `{name}`", res.descr())
+                                }
+                                Res::Err => "this type".to_string(),
+                                _ => res.descr().to_string(),
                             },
                             segment.ident.span,
                         ))
@@ -2158,33 +2153,26 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             });
         let mut emitted = false;
         if lt || ty || ct || inf {
-            let arg_spans: Vec<Span> = args
-                .map(|arg| match arg {
-                    hir::GenericArg::Lifetime(lt) => lt.span,
-                    hir::GenericArg::Type(ty) => ty.span,
-                    hir::GenericArg::Const(ct) => ct.span,
-                    hir::GenericArg::Infer(inf) => inf.span,
-                })
-                .collect();
+            let arg_spans: Vec<Span> = args.map(|arg| arg.span()).collect();
 
-            let mut types = Vec::with_capacity(4);
+            let mut kinds = Vec::with_capacity(4);
             if lt {
-                types.push("lifetime");
+                kinds.push("lifetime");
             }
             if ty {
-                types.push("type");
+                kinds.push("type");
             }
             if ct {
-                types.push("const");
+                kinds.push("const");
             }
             if inf {
-                types.push("generic");
+                kinds.push("generic");
             }
-            let (kind, s) = match types[..] {
+            let (kind, s) = match kinds[..] {
                 [.., _, last] => (
                     format!(
                         "{} and {last}",
-                        types[..types.len() - 1]
+                        kinds[..kinds.len() - 1]
                             .iter()
                             .map(|&x| x)
                             .intersperse(", ")
@@ -2464,7 +2452,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         );
                         let mut postfix = "";
                         if generics == 0 {
-                            postfix = ", which doesn't have type parameters";
+                            postfix = ", which doesn't have generic parameters";
                         }
                         span.push_span_label(
                             t_sp,
@@ -2557,7 +2545,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         if let Some(args) = segment.args {
                             err.span_suggestion_verbose(
                                 segment.ident.span.shrink_to_hi().to(args.span_ext),
-                                &format!("primitive type `{name}` doesn't have type parameters"),
+                                &format!("primitive type `{name}` doesn't have generic parameters"),
                                 String::new(),
                                 Applicability::MaybeIncorrect,
                             );

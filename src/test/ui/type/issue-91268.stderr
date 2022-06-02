@@ -38,7 +38,7 @@ LL |     0: u8(ţ
    |        |
    |        not allowed on this
    |
-help: primitive type `u8` doesn't have type parameters
+help: primitive type `u8` doesn't have generic parameters
    |
 LL -     0: u8(ţ
 LL +     0: u8

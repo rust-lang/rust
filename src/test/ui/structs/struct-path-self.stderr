@@ -42,7 +42,7 @@ note: `Self` is of type `S`
   --> $DIR/struct-path-self.rs:1:8
    |
 LL | struct S;
-   |        ^ `Self` corresponds to this type, which doesn't have type parameters
+   |        ^ `Self` corresponds to this type, which doesn't have generic parameters
 ...
 LL | impl Tr for S {
    | ------------- `Self` is on type `S` in this `impl`
@@ -64,7 +64,7 @@ note: `Self` is of type `S`
   --> $DIR/struct-path-self.rs:1:8
    |
 LL | struct S;
-   |        ^ `Self` corresponds to this type, which doesn't have type parameters
+   |        ^ `Self` corresponds to this type, which doesn't have generic parameters
 ...
 LL | impl S {
    | ------ `Self` is on type `S` in this `impl`

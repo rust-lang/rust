@@ -6,7 +6,7 @@ LL | let _x: isize<isize>;
    |         |
    |         not allowed on this
    |
-help: primitive type `isize` doesn't have type parameters
+help: primitive type `isize` doesn't have generic parameters
    |
 LL - let _x: isize<isize>;
 LL + let _x: isize;
@@ -20,7 +20,7 @@ LL | let _x: i8<isize>;
    |         |
    |         not allowed on this
    |
-help: primitive type `i8` doesn't have type parameters
+help: primitive type `i8` doesn't have generic parameters
    |
 LL - let _x: i8<isize>;
 LL + let _x: i8;
@@ -34,7 +34,7 @@ LL | let _x: i16<isize>;
    |         |
    |         not allowed on this
    |
-help: primitive type `i16` doesn't have type parameters
+help: primitive type `i16` doesn't have generic parameters
    |
 LL - let _x: i16<isize>;
 LL + let _x: i16;
@@ -48,7 +48,7 @@ LL | let _x: i32<isize>;
    |         |
    |         not allowed on this
    |
-help: primitive type `i32` doesn't have type parameters
+help: primitive type `i32` doesn't have generic parameters
    |
 LL - let _x: i32<isize>;
 LL + let _x: i32;
@@ -62,7 +62,7 @@ LL | let _x: i64<isize>;
    |         |
    |         not allowed on this
    |
-help: primitive type `i64` doesn't have type parameters
+help: primitive type `i64` doesn't have generic parameters
    |
 LL - let _x: i64<isize>;
 LL + let _x: i64;
@@ -76,7 +76,7 @@ LL | let _x: usize<isize>;
    |         |
    |         not allowed on this
    |
-help: primitive type `usize` doesn't have type parameters
+help: primitive type `usize` doesn't have generic parameters
    |
 LL - let _x: usize<isize>;
 LL + let _x: usize;
@@ -90,7 +90,7 @@ LL | let _x: u8<isize>;
    |         |
    |         not allowed on this
    |
-help: primitive type `u8` doesn't have type parameters
+help: primitive type `u8` doesn't have generic parameters
    |
 LL - let _x: u8<isize>;
 LL + let _x: u8;
@@ -104,7 +104,7 @@ LL | let _x: u16<isize>;
    |         |
    |         not allowed on this
    |
-help: primitive type `u16` doesn't have type parameters
+help: primitive type `u16` doesn't have generic parameters
    |
 LL - let _x: u16<isize>;
 LL + let _x: u16;
@@ -118,7 +118,7 @@ LL | let _x: u32<isize>;
    |         |
    |         not allowed on this
    |
-help: primitive type `u32` doesn't have type parameters
+help: primitive type `u32` doesn't have generic parameters
    |
 LL - let _x: u32<isize>;
 LL + let _x: u32;
@@ -132,7 +132,7 @@ LL | let _x: u64<isize>;
    |         |
    |         not allowed on this
    |
-help: primitive type `u64` doesn't have type parameters
+help: primitive type `u64` doesn't have generic parameters
    |
 LL - let _x: u64<isize>;
 LL + let _x: u64;
@@ -146,7 +146,7 @@ LL | let _x: char<isize>;
    |         |
    |         not allowed on this
    |
-help: primitive type `char` doesn't have type parameters
+help: primitive type `char` doesn't have generic parameters
    |
 LL - let _x: char<isize>;
 LL + let _x: char;
@@ -160,7 +160,7 @@ LL | let _x: isize<'static>;
    |         |
    |         not allowed on this
    |
-help: primitive type `isize` doesn't have type parameters
+help: primitive type `isize` doesn't have generic parameters
    |
 LL - let _x: isize<'static>;
 LL + let _x: isize;
@@ -174,7 +174,7 @@ LL | let _x: i8<'static>;
    |         |
    |         not allowed on this
    |
-help: primitive type `i8` doesn't have type parameters
+help: primitive type `i8` doesn't have generic parameters
    |
 LL - let _x: i8<'static>;
 LL + let _x: i8;
@@ -188,7 +188,7 @@ LL | let _x: i16<'static>;
    |         |
    |         not allowed on this
    |
-help: primitive type `i16` doesn't have type parameters
+help: primitive type `i16` doesn't have generic parameters
    |
 LL - let _x: i16<'static>;
 LL + let _x: i16;
@@ -202,7 +202,7 @@ LL | let _x: i32<'static>;
    |         |
    |         not allowed on this
    |
-help: primitive type `i32` doesn't have type parameters
+help: primitive type `i32` doesn't have generic parameters
    |
 LL - let _x: i32<'static>;
 LL + let _x: i32;
@@ -216,7 +216,7 @@ LL | let _x: i64<'static>;
    |         |
    |         not allowed on this
    |
-help: primitive type `i64` doesn't have type parameters
+help: primitive type `i64` doesn't have generic parameters
    |
 LL - let _x: i64<'static>;
 LL + let _x: i64;
@@ -230,7 +230,7 @@ LL | let _x: usize<'static>;
    |         |
    |         not allowed on this
    |
-help: primitive type `usize` doesn't have type parameters
+help: primitive type `usize` doesn't have generic parameters
    |
 LL - let _x: usize<'static>;
 LL + let _x: usize;
@@ -244,7 +244,7 @@ LL | let _x: u8<'static>;
    |         |
    |         not allowed on this
    |
-help: primitive type `u8` doesn't have type parameters
+help: primitive type `u8` doesn't have generic parameters
    |
 LL - let _x: u8<'static>;
 LL + let _x: u8;
@@ -258,7 +258,7 @@ LL | let _x: u16<'static>;
    |         |
    |         not allowed on this
    |
-help: primitive type `u16` doesn't have type parameters
+help: primitive type `u16` doesn't have generic parameters
    |
 LL - let _x: u16<'static>;
 LL + let _x: u16;
@@ -272,7 +272,7 @@ LL | let _x: u32<'static>;
    |         |
    |         not allowed on this
    |
-help: primitive type `u32` doesn't have type parameters
+help: primitive type `u32` doesn't have generic parameters
    |
 LL - let _x: u32<'static>;
 LL + let _x: u32;
@@ -286,7 +286,7 @@ LL | let _x: u64<'static>;
    |         |
    |         not allowed on this
    |
-help: primitive type `u64` doesn't have type parameters
+help: primitive type `u64` doesn't have generic parameters
    |
 LL - let _x: u64<'static>;
 LL + let _x: u64;
@@ -300,7 +300,7 @@ LL | let _x: char<'static>;
    |         |
    |         not allowed on this
    |
-help: primitive type `char` doesn't have type parameters
+help: primitive type `char` doesn't have generic parameters
    |
 LL - let _x: char<'static>;
 LL + let _x: char;

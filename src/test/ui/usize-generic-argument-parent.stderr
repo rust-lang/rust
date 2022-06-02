@@ -6,7 +6,7 @@ LL |     let x: usize<foo>;
    |            |
    |            not allowed on this
    |
-help: primitive type `usize` doesn't have type parameters
+help: primitive type `usize` doesn't have generic parameters
    |
 LL -     let x: usize<foo>;
 LL +     let x: usize;
