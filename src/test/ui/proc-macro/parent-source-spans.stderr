@@ -1,4 +1,4 @@
-error: first final: /*«*/ "hello" /*»*/
+error: first final: "hello"
   --> $DIR/parent-source-spans.rs:16:12
    |
 LL |     three!($a, $b);
@@ -9,7 +9,7 @@ LL |     one!("hello", "world");
    |
    = note: this error originates in the macro `two` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: second final: /*«*/ "world" /*»*/
+error: second final: "world"
   --> $DIR/parent-source-spans.rs:16:16
    |
 LL |     three!($a, $b);
@@ -20,7 +20,7 @@ LL |     one!("hello", "world");
    |
    = note: this error originates in the macro `two` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: first parent: /*«*/ "hello" /*»*/
+error: first parent: "hello"
   --> $DIR/parent-source-spans.rs:10:5
    |
 LL |     two!($a, $b);
@@ -31,7 +31,7 @@ LL |     one!("hello", "world");
    |
    = note: this error originates in the macro `one` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: second parent: /*«*/ "world" /*»*/
+error: second parent: "world"
   --> $DIR/parent-source-spans.rs:10:5
    |
 LL |     two!($a, $b);
@@ -42,31 +42,31 @@ LL |     one!("hello", "world");
    |
    = note: this error originates in the macro `one` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: first grandparent: /*«*/ "hello" /*»*/
+error: first grandparent: "hello"
   --> $DIR/parent-source-spans.rs:36:5
    |
 LL |     one!("hello", "world");
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
-error: second grandparent: /*«*/ "world" /*»*/
+error: second grandparent: "world"
   --> $DIR/parent-source-spans.rs:36:5
    |
 LL |     one!("hello", "world");
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
-error: first source: /*«*/ "hello" /*»*/
+error: first source: "hello"
   --> $DIR/parent-source-spans.rs:36:5
    |
 LL |     one!("hello", "world");
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
-error: second source: /*«*/ "world" /*»*/
+error: second source: "world"
   --> $DIR/parent-source-spans.rs:36:5
    |
 LL |     one!("hello", "world");
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
-error: first final: /*«*/ "yay" /*»*/
+error: first final: "yay"
   --> $DIR/parent-source-spans.rs:16:12
    |
 LL |     three!($a, $b);
@@ -77,7 +77,7 @@ LL |     two!("yay", "rust");
    |
    = note: this error originates in the macro `two` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: second final: /*«*/ "rust" /*»*/
+error: second final: "rust"
   --> $DIR/parent-source-spans.rs:16:16
    |
 LL |     three!($a, $b);
@@ -88,25 +88,25 @@ LL |     two!("yay", "rust");
    |
    = note: this error originates in the macro `two` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: first parent: /*«*/ "yay" /*»*/
+error: first parent: "yay"
   --> $DIR/parent-source-spans.rs:42:5
    |
 LL |     two!("yay", "rust");
    |     ^^^^^^^^^^^^^^^^^^^
 
-error: second parent: /*«*/ "rust" /*»*/
+error: second parent: "rust"
   --> $DIR/parent-source-spans.rs:42:5
    |
 LL |     two!("yay", "rust");
    |     ^^^^^^^^^^^^^^^^^^^
 
-error: first source: /*«*/ "yay" /*»*/
+error: first source: "yay"
   --> $DIR/parent-source-spans.rs:42:5
    |
 LL |     two!("yay", "rust");
    |     ^^^^^^^^^^^^^^^^^^^
 
-error: second source: /*«*/ "rust" /*»*/
+error: second source: "rust"
   --> $DIR/parent-source-spans.rs:42:5
    |
 LL |     two!("yay", "rust");

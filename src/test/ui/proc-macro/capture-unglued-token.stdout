@@ -1,5 +1,5 @@
 PRINT-BANG INPUT (DISPLAY): Vec<u8>
-PRINT-BANG RE-COLLECTED (DISPLAY): /*«*/ Vec < u8 > /*»*/
+PRINT-BANG RE-COLLECTED (DISPLAY): Vec < u8 >
 PRINT-BANG INPUT (DEBUG): TokenStream [
     Group {
         delimiter: None,

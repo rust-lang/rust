@@ -12,15 +12,6 @@ use std::str::FromStr;
 
 #[proc_macro]
 pub fn expand_expr_is(input: TokenStream) -> TokenStream {
-    expand_expr_is_inner(input, false)
-}
-
-#[proc_macro]
-pub fn expand_expr_is_trim(input: TokenStream) -> TokenStream {
-    expand_expr_is_inner(input, true)
-}
-
-fn expand_expr_is_inner(input: TokenStream, trim_invisible: bool) -> TokenStream {
     let mut iter = input.into_iter();
     let mut expected_tts = Vec::new();
     loop {
@@ -31,18 +22,14 @@ fn expand_expr_is_inner(input: TokenStream, trim_invisible: bool) -> TokenStream
         }
     }
 
-    // If requested, trim the "invisible" delimiters at the start and end.
-    let expected = expected_tts.into_iter().collect::<TokenStream>().to_string();
-    let expected = if trim_invisible {
-        let len1 = "/*«*/ ".len();
-        let len2 = " /*»*/".len();
-        &expected[len1..expected.len() - len2]
-    } else {
-        &expected[..]
-    };
-    let expanded = iter.collect::<TokenStream>().expand_expr().unwrap().to_string();
-
-    assert_eq!(expected, expanded);
+    let expected = expected_tts.into_iter().collect::<TokenStream>();
+    let expanded = iter.collect::<TokenStream>().expand_expr().expect("expand_expr failed");
+    assert!(
+        expected.to_string() == expanded.to_string(),
+        "assert failed\nexpected: `{}`\nexpanded: `{}`",
+        expected.to_string(),
+        expanded.to_string()
+    );
 
     TokenStream::new()
 }
