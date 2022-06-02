@@ -223,4 +223,10 @@ fn let_else() {
     let Some(1) = Some(1) else { return };
 }
 
+fn needless_return_macro() -> String {
+    let _ = "foo";
+    let _ = "bar";
+    return format!("Hello {}", "world!");
+}
+
 fn main() {}
