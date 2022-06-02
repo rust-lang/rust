@@ -858,7 +858,7 @@ pub fn isolation_abort_error<'tcx>(name: &str) -> InterpResult<'tcx> {
 
 /// Retrieve the list of local crates that should have been passed by cargo-miri in
 /// MIRI_LOCAL_CRATES and turn them into `CrateNum`s.
-pub fn get_local_crates(tcx: &TyCtxt<'_>) -> Vec<CrateNum> {
+pub fn get_local_crates(tcx: TyCtxt<'_>) -> Vec<CrateNum> {
     // Convert the local crate names from the passed-in config into CrateNums so that they can
     // be looked up quickly during execution
     let local_crate_names = std::env::var("MIRI_LOCAL_CRATES")
