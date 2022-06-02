@@ -327,7 +327,7 @@ pub struct Evaluator<'mir, 'tcx> {
 
 impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
     pub(crate) fn new(config: &MiriConfig, layout_cx: LayoutCx<'tcx, TyCtxt<'tcx>>) -> Self {
-        let local_crates = helpers::get_local_crates(&layout_cx.tcx);
+        let local_crates = helpers::get_local_crates(layout_cx.tcx);
         let layouts =
             PrimitiveLayouts::new(layout_cx).expect("Couldn't get layouts of primitive types");
         let profiler = config.measureme_out.as_ref().map(|out| {
