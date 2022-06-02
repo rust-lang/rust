@@ -269,7 +269,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     mir::CastKind::Pointer(
                         PointerCast::MutToConstPointer | PointerCast::ArrayToPointer,
                     )
-                    | mir::CastKind::Misc => {
+                    | mir::CastKind::Misc
+                    | mir::CastKind::PointerFromExposedAddress => {
                         assert!(bx.cx().is_backend_immediate(cast));
                         let ll_t_out = bx.cx().immediate_backend_type(cast);
                         if operand.layout.abi.is_uninhabited() {
