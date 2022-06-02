@@ -2083,7 +2083,8 @@ static TEST_ITEM_NAMES_CACHE: SyncOnceCell<Mutex<FxHashMap<LocalDefId, Vec<Symbo
 fn with_test_item_names<'tcx>(tcx: TyCtxt<'tcx>, module: LocalDefId, f: impl Fn(&[Symbol]) -> bool) -> bool {
     let cache = TEST_ITEM_NAMES_CACHE.get_or_init(|| Mutex::new(FxHashMap::default()));
     let mut map: MutexGuard<'_, FxHashMap<LocalDefId, Vec<Symbol>>> = cache.lock().unwrap();
-    match map.entry(module) {
+    let value = map.entry(module);
+    match value {
         Entry::Occupied(entry) => f(entry.get()),
         Entry::Vacant(entry) => {
             let mut names = Vec::new();

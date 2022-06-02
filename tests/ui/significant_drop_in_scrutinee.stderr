@@ -1,5 +1,5 @@
 error: temporary with significant drop in match scrutinee
-  --> $DIR/significant_drop_in_scrutinee.rs:57:11
+  --> $DIR/significant_drop_in_scrutinee.rs:59:11
    |
 LL |     match mutex.lock().unwrap().foo() {
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -12,7 +12,7 @@ LL ~     match value {
    |
 
 error: temporary with significant drop in match scrutinee
-  --> $DIR/significant_drop_in_scrutinee.rs:130:11
+  --> $DIR/significant_drop_in_scrutinee.rs:132:11
    |
 LL |     match s.lock_m().get_the_value() {
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -24,7 +24,7 @@ LL ~     match value {
    |
 
 error: temporary with significant drop in match scrutinee
-  --> $DIR/significant_drop_in_scrutinee.rs:151:11
+  --> $DIR/significant_drop_in_scrutinee.rs:153:11
    |
 LL |     match s.lock_m_m().get_the_value() {
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -36,7 +36,7 @@ LL ~     match value {
    |
 
 error: temporary with significant drop in match scrutinee
-  --> $DIR/significant_drop_in_scrutinee.rs:199:11
+  --> $DIR/significant_drop_in_scrutinee.rs:201:11
    |
 LL |     match counter.temp_increment().len() {
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -48,7 +48,7 @@ LL ~     match value {
    |
 
 error: temporary with significant drop in match scrutinee
-  --> $DIR/significant_drop_in_scrutinee.rs:222:16
+  --> $DIR/significant_drop_in_scrutinee.rs:224:16
    |
 LL |         match (mutex1.lock().unwrap().s.len(), true) {
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -60,7 +60,7 @@ LL ~         match (value, true) {
    |
 
 error: temporary with significant drop in match scrutinee
-  --> $DIR/significant_drop_in_scrutinee.rs:231:22
+  --> $DIR/significant_drop_in_scrutinee.rs:233:22
    |
 LL |         match (true, mutex1.lock().unwrap().s.len(), true) {
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -72,7 +72,7 @@ LL ~         match (true, value, true) {
    |
 
 error: temporary with significant drop in match scrutinee
-  --> $DIR/significant_drop_in_scrutinee.rs:241:16
+  --> $DIR/significant_drop_in_scrutinee.rs:243:16
    |
 LL |         match (mutex1.lock().unwrap().s.len(), true, mutex2.lock().unwrap().s.len()) {
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -84,7 +84,7 @@ LL ~         match (value, true, mutex2.lock().unwrap().s.len()) {
    |
 
 error: temporary with significant drop in match scrutinee
-  --> $DIR/significant_drop_in_scrutinee.rs:241:54
+  --> $DIR/significant_drop_in_scrutinee.rs:243:54
    |
 LL |         match (mutex1.lock().unwrap().s.len(), true, mutex2.lock().unwrap().s.len()) {
    |                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -96,19 +96,19 @@ LL ~         match (mutex1.lock().unwrap().s.len(), true, value) {
    |
 
 error: temporary with significant drop in match scrutinee
-  --> $DIR/significant_drop_in_scrutinee.rs:252:15
+  --> $DIR/significant_drop_in_scrutinee.rs:254:15
    |
 LL |         match mutex3.lock().unwrap().s.as_str() {
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: temporary with significant drop in match scrutinee
-  --> $DIR/significant_drop_in_scrutinee.rs:262:22
+  --> $DIR/significant_drop_in_scrutinee.rs:264:22
    |
 LL |         match (true, mutex3.lock().unwrap().s.as_str()) {
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: temporary with significant drop in match scrutinee
-  --> $DIR/significant_drop_in_scrutinee.rs:281:11
+  --> $DIR/significant_drop_in_scrutinee.rs:283:11
    |
 LL |     match mutex.lock().unwrap().s.len() > 1 {
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -120,7 +120,7 @@ LL ~     match value {
    |
 
 error: temporary with significant drop in match scrutinee
-  --> $DIR/significant_drop_in_scrutinee.rs:288:11
+  --> $DIR/significant_drop_in_scrutinee.rs:290:11
    |
 LL |     match 1 < mutex.lock().unwrap().s.len() {
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -132,7 +132,7 @@ LL ~     match value {
    |
 
 error: temporary with significant drop in match scrutinee
-  --> $DIR/significant_drop_in_scrutinee.rs:306:11
+  --> $DIR/significant_drop_in_scrutinee.rs:308:11
    |
 LL |     match mutex1.lock().unwrap().s.len() < mutex2.lock().unwrap().s.len() {
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -144,7 +144,7 @@ LL ~     match value {
    |
 
 error: temporary with significant drop in match scrutinee
-  --> $DIR/significant_drop_in_scrutinee.rs:317:11
+  --> $DIR/significant_drop_in_scrutinee.rs:319:11
    |
 LL |     match mutex1.lock().unwrap().s.len() >= mutex2.lock().unwrap().s.len() {
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -156,7 +156,7 @@ LL ~     match value {
    |
 
 error: temporary with significant drop in match scrutinee
-  --> $DIR/significant_drop_in_scrutinee.rs:352:11
+  --> $DIR/significant_drop_in_scrutinee.rs:354:11
    |
 LL |     match get_mutex_guard().s.len() > 1 {
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -168,7 +168,7 @@ LL ~     match value {
    |
 
 error: temporary with significant drop in match scrutinee
-  --> $DIR/significant_drop_in_scrutinee.rs:369:11
+  --> $DIR/significant_drop_in_scrutinee.rs:371:11
    |
 LL |       match match i {
    |  ___________^
@@ -191,7 +191,7 @@ LL +     .len()
  ...
 
 error: temporary with significant drop in match scrutinee
-  --> $DIR/significant_drop_in_scrutinee.rs:395:11
+  --> $DIR/significant_drop_in_scrutinee.rs:397:11
    |
 LL |       match if i > 1 {
    |  ___________^
@@ -214,7 +214,7 @@ LL +     .s
  ...
 
 error: temporary with significant drop in match scrutinee
-  --> $DIR/significant_drop_in_scrutinee.rs:449:11
+  --> $DIR/significant_drop_in_scrutinee.rs:451:11
    |
 LL |     match s.lock().deref().deref() {
    |           ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -226,13 +226,13 @@ LL ~     match value {
    |
 
 error: temporary with significant drop in match scrutinee
-  --> $DIR/significant_drop_in_scrutinee.rs:477:11
+  --> $DIR/significant_drop_in_scrutinee.rs:479:11
    |
 LL |     match s.lock().deref().deref() {
    |           ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: temporary with significant drop in match scrutinee
-  --> $DIR/significant_drop_in_scrutinee.rs:496:11
+  --> $DIR/significant_drop_in_scrutinee.rs:498:11
    |
 LL |     match mutex.lock().unwrap().i = i {
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -244,7 +244,7 @@ LL ~     match () {
    |
 
 error: temporary with significant drop in match scrutinee
-  --> $DIR/significant_drop_in_scrutinee.rs:502:11
+  --> $DIR/significant_drop_in_scrutinee.rs:504:11
    |
 LL |     match i = mutex.lock().unwrap().i {
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -256,7 +256,7 @@ LL ~     match () {
    |
 
 error: temporary with significant drop in match scrutinee
-  --> $DIR/significant_drop_in_scrutinee.rs:508:11
+  --> $DIR/significant_drop_in_scrutinee.rs:510:11
    |
 LL |     match mutex.lock().unwrap().i += 1 {
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -268,7 +268,7 @@ LL ~     match () {
    |
 
 error: temporary with significant drop in match scrutinee
-  --> $DIR/significant_drop_in_scrutinee.rs:514:11
+  --> $DIR/significant_drop_in_scrutinee.rs:516:11
    |
 LL |     match i += mutex.lock().unwrap().i {
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -279,5 +279,17 @@ LL ~     i += mutex.lock().unwrap().i;
 LL ~     match () {
    |
 
-error: aborting due to 23 previous errors
+error: temporary with significant drop in match scrutinee
+  --> $DIR/significant_drop_in_scrutinee.rs:579:11
+   |
+LL |     match rwlock.read().unwrap().to_number() {
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: temporary with significant drop in for loop
+  --> $DIR/significant_drop_in_scrutinee.rs:589:14
+   |
+LL |     for s in rwlock.read().unwrap().iter() {
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 25 previous errors
 

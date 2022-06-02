@@ -4,7 +4,7 @@ use clippy_utils::get_attr;
 use clippy_utils::source::{indent_of, snippet};
 use rustc_errors::{Applicability, Diagnostic};
 use rustc_hir::intravisit::{walk_expr, Visitor};
-use rustc_hir::{Expr, ExprKind};
+use rustc_hir::{Expr, ExprKind, MatchSource};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{Ty, TypeAndMut};
@@ -91,15 +91,11 @@ declare_lint_pass!(SignificantDropInScrutinee => [SIGNIFICANT_DROP_IN_SCRUTINEE]
 
 impl<'tcx> LateLintPass<'tcx> for SignificantDropInScrutinee {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
-        if let Some(suggestions) = has_significant_drop_in_scrutinee(cx, expr) {
+        if let Some((suggestions, message)) = has_significant_drop_in_scrutinee(cx, expr) {
             for found in suggestions {
-                span_lint_and_then(
-                    cx,
-                    SIGNIFICANT_DROP_IN_SCRUTINEE,
-                    found.found_span,
-                    "temporary with significant drop in match scrutinee",
-                    |diag| set_diagnostic(diag, cx, expr, found),
-                );
+                span_lint_and_then(cx, SIGNIFICANT_DROP_IN_SCRUTINEE, found.found_span, message, |diag| {
+                    set_diagnostic(diag, cx, expr, found);
+                });
             }
         }
     }
@@ -153,10 +149,25 @@ fn set_diagnostic<'tcx>(diag: &mut Diagnostic, cx: &LateContext<'tcx>, expr: &'t
 fn has_significant_drop_in_scrutinee<'tcx, 'a>(
     cx: &'a LateContext<'tcx>,
     expr: &'tcx Expr<'tcx>,
-) -> Option<Vec<FoundSigDrop>> {
-    let mut helper = SigDropHelper::new(cx);
+) -> Option<(Vec<FoundSigDrop>, &'static str)> {
     match expr.kind {
-        ExprKind::Match(match_expr, _, _) => helper.find_sig_drop(match_expr),
+        ExprKind::Match(match_expr, _, source) => {
+            match source {
+                MatchSource::Normal | MatchSource::ForLoopDesugar => {
+                    let mut helper = SigDropHelper::new(cx);
+                    helper.find_sig_drop(match_expr).map(|drops| {
+                        let message = if source == MatchSource::Normal {
+                            "temporary with significant drop in match scrutinee"
+                        } else {
+                            "temporary with significant drop in for loop"
+                        };
+                        (drops, message)
+                    })
+                },
+                // MatchSource of TryDesugar or AwaitDesugar is out of scope for this lint
+                MatchSource::TryDesugar | MatchSource::AwaitDesugar => None,
+            }
+        },
         _ => None,
     }
 }
@@ -213,6 +224,19 @@ impl<'a, 'tcx> SigDropHelper<'a, 'tcx> {
         self.sig_drop_spans.take()
     }
 
+    fn replace_current_sig_drop(
+        &mut self,
+        found_span: Span,
+        is_unit_return_val: bool,
+        lint_suggestion: LintSuggestion,
+    ) {
+        self.current_sig_drop.replace(FoundSigDrop {
+            found_span,
+            is_unit_return_val,
+            lint_suggestion,
+        });
+    }
+
     /// This will try to set the current suggestion (so it can be moved into the suggestions vec
     /// later). If `allow_move_and_clone` is false, the suggestion *won't* be set -- this gives us
     /// an opportunity to look for another type in the chain that will be trivially copyable.
@@ -229,25 +253,15 @@ impl<'a, 'tcx> SigDropHelper<'a, 'tcx> {
             // but let's avoid any chance of an ICE
             if let Some(TypeAndMut { ty, .. }) = ty.builtin_deref(true) {
                 if ty.is_trivially_pure_clone_copy() {
-                    self.current_sig_drop.replace(FoundSigDrop {
-                        found_span: expr.span,
-                        is_unit_return_val: false,
-                        lint_suggestion: LintSuggestion::MoveAndDerefToCopy,
-                    });
+                    self.replace_current_sig_drop(expr.span, false, LintSuggestion::MoveAndDerefToCopy);
                 } else if allow_move_and_clone {
-                    self.current_sig_drop.replace(FoundSigDrop {
-                        found_span: expr.span,
-                        is_unit_return_val: false,
-                        lint_suggestion: LintSuggestion::MoveAndClone,
-                    });
+                    self.replace_current_sig_drop(expr.span, false, LintSuggestion::MoveAndClone);
                 }
             }
         } else if ty.is_trivially_pure_clone_copy() {
-            self.current_sig_drop.replace(FoundSigDrop {
-                found_span: expr.span,
-                is_unit_return_val: false,
-                lint_suggestion: LintSuggestion::MoveOnly,
-            });
+            self.replace_current_sig_drop(expr.span, false, LintSuggestion::MoveOnly);
+        } else if allow_move_and_clone {
+            self.replace_current_sig_drop(expr.span, false, LintSuggestion::MoveAndClone);
         }
     }
 
@@ -279,11 +293,7 @@ impl<'a, 'tcx> SigDropHelper<'a, 'tcx> {
         // If either side had a significant drop, suggest moving the entire scrutinee to avoid
         // unnecessary copies and to simplify cases where both sides have significant drops.
         if self.has_significant_drop {
-            self.current_sig_drop.replace(FoundSigDrop {
-                found_span: span,
-                is_unit_return_val,
-                lint_suggestion: LintSuggestion::MoveOnly,
-            });
+            self.replace_current_sig_drop(span, is_unit_return_val, LintSuggestion::MoveOnly);
         }
 
         self.special_handling_for_binary_op = false;
@@ -363,34 +373,34 @@ impl<'a, 'tcx> Visitor<'tcx> for SigDropHelper<'a, 'tcx> {
                 }
             }
             ExprKind::Box(..) |
-                ExprKind::Array(..) |
-                ExprKind::Call(..) |
-                ExprKind::Unary(..) |
-                ExprKind::If(..) |
-                ExprKind::Match(..) |
-                ExprKind::Field(..) |
-                ExprKind::Index(..) |
-                ExprKind::Ret(..) |
-                ExprKind::Repeat(..) |
-                ExprKind::Yield(..) |
-                ExprKind::MethodCall(..) => walk_expr(self, ex),
+            ExprKind::Array(..) |
+            ExprKind::Call(..) |
+            ExprKind::Unary(..) |
+            ExprKind::If(..) |
+            ExprKind::Match(..) |
+            ExprKind::Field(..) |
+            ExprKind::Index(..) |
+            ExprKind::Ret(..) |
+            ExprKind::Repeat(..) |
+            ExprKind::Yield(..) |
+            ExprKind::MethodCall(..) => walk_expr(self, ex),
             ExprKind::AddrOf(_, _, _) |
-                ExprKind::Block(_, _) |
-                ExprKind::Break(_, _) |
-                ExprKind::Cast(_, _) |
-                // Don't want to check the closure itself, only invocation, which is covered by MethodCall
-                ExprKind::Closure(_, _, _, _, _) |
-                ExprKind::ConstBlock(_) |
-                ExprKind::Continue(_) |
-                ExprKind::DropTemps(_) |
-                ExprKind::Err |
-                ExprKind::InlineAsm(_) |
-                ExprKind::Let(_) |
-                ExprKind::Lit(_) |
-                ExprKind::Loop(_, _, _, _) |
-                ExprKind::Path(_) |
-                ExprKind::Struct(_, _, _) |
-                ExprKind::Type(_, _) => {
+            ExprKind::Block(_, _) |
+            ExprKind::Break(_, _) |
+            ExprKind::Cast(_, _) |
+            // Don't want to check the closure itself, only invocation, which is covered by MethodCall
+            ExprKind::Closure(_, _, _, _, _) |
+            ExprKind::ConstBlock(_) |
+            ExprKind::Continue(_) |
+            ExprKind::DropTemps(_) |
+            ExprKind::Err |
+            ExprKind::InlineAsm(_) |
+            ExprKind::Let(_) |
+            ExprKind::Lit(_) |
+            ExprKind::Loop(_, _, _, _) |
+            ExprKind::Path(_) |
+            ExprKind::Struct(_, _, _) |
+            ExprKind::Type(_, _) => {
                 return;
             }
         }
