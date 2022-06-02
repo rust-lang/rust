@@ -7,6 +7,11 @@ LL |     async fn ref_self(&self, f: &u32) -> &u32 {
    |                       let's call the lifetime of this reference `'2`
 LL |         f
    |         ^ associated function was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
+   |
+help: consider introducing a named lifetime parameter and update trait if needed
+   |
+LL |     async fn ref_self<'a>(&'a self, f: &'a u32) -> &u32 {
+   |                      ++++  ++           ++
 
 error: lifetime may not live long enough
   --> $DIR/ref-self-async.rs:34:9
@@ -17,6 +22,11 @@ LL |     async fn ref_Self(self: &Self, f: &u32) -> &u32 {
    |                             let's call the lifetime of this reference `'2`
 LL |         f
    |         ^ associated function was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
+   |
+help: consider introducing a named lifetime parameter and update trait if needed
+   |
+LL |     async fn ref_Self<'a>(self: &'a Self, f: &'a u32) -> &u32 {
+   |                      ++++        ++           ++
 
 error: lifetime may not live long enough
   --> $DIR/ref-self-async.rs:40:9
@@ -27,6 +37,11 @@ LL |     async fn box_ref_Self(self: Box<&Self>, f: &u32) -> &u32 {
    |                                     let's call the lifetime of this reference `'2`
 LL |         f
    |         ^ associated function was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
+   |
+help: consider introducing a named lifetime parameter and update trait if needed
+   |
+LL |     async fn box_ref_Self<'a>(self: Box<&'a Self>, f: &'a u32) -> &u32 {
+   |                          ++++            ++            ++
 
 error: lifetime may not live long enough
   --> $DIR/ref-self-async.rs:46:9
@@ -37,6 +52,11 @@ LL |     async fn pin_ref_Self(self: Pin<&Self>, f: &u32) -> &u32 {
    |                                     let's call the lifetime of this reference `'2`
 LL |         f
    |         ^ associated function was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
+   |
+help: consider introducing a named lifetime parameter and update trait if needed
+   |
+LL |     async fn pin_ref_Self<'a>(self: Pin<&'a Self>, f: &'a u32) -> &u32 {
+   |                          ++++            ++            ++
 
 error: lifetime may not live long enough
   --> $DIR/ref-self-async.rs:52:9
@@ -47,6 +67,11 @@ LL |     async fn box_box_ref_Self(self: Box<Box<&Self>>, f: &u32) -> &u32 {
    |                                             let's call the lifetime of this reference `'2`
 LL |         f
    |         ^ associated function was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
+   |
+help: consider introducing a named lifetime parameter and update trait if needed
+   |
+LL |     async fn box_box_ref_Self<'a>(self: Box<Box<&'a Self>>, f: &'a u32) -> &u32 {
+   |                              ++++                ++             ++
 
 error: lifetime may not live long enough
   --> $DIR/ref-self-async.rs:58:9
@@ -57,6 +82,11 @@ LL |     async fn box_pin_ref_Self(self: Box<Pin<&Self>>, f: &u32) -> &u32 {
    |                                             let's call the lifetime of this reference `'2`
 LL |         f
    |         ^ associated function was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
+   |
+help: consider introducing a named lifetime parameter and update trait if needed
+   |
+LL |     async fn box_pin_ref_Self<'a>(self: Box<Pin<&'a Self>>, f: &'a u32) -> &u32 {
+   |                              ++++                ++             ++
 
 error: lifetime may not live long enough
   --> $DIR/ref-self-async.rs:64:9
@@ -67,6 +97,11 @@ LL |     async fn wrap_ref_Self_Self(self: Wrap<&Self, Self>, f: &u8) -> &u8 {
    |                                            let's call the lifetime of this reference `'2`
 LL |         f
    |         ^ associated function was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
+   |
+help: consider introducing a named lifetime parameter and update trait if needed
+   |
+LL |     async fn wrap_ref_Self_Self<'a>(self: Wrap<&'a Self, Self>, f: &'a u8) -> &u8 {
+   |                                ++++             ++                  ++
 
 error: aborting due to 7 previous errors
 

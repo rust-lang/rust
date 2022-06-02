@@ -8,10 +8,11 @@ use super::*;
 use rustc_attr as attr;
 use rustc_errors::{Applicability, ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
+use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{def::Res, ItemKind, Node, PathSegment};
+use rustc_hir::{ItemKind, Node, PathSegment};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{RegionVariableOrigin, TyCtxtInferExt};
 use rustc_infer::traits::Obligation;
@@ -29,7 +30,6 @@ use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt as _;
 use rustc_ty_utils::representability::{self, Representability};
 
-use rustc_hir::def::DefKind;
 use std::iter;
 use std::ops::ControlFlow;
 
@@ -93,7 +93,6 @@ pub(super) fn check_fn<'a, 'tcx>(
     fcx.return_type_pre_known = return_type_pre_known;
 
     let tcx = fcx.tcx;
-    let sess = tcx.sess;
     let hir = tcx.hir();
 
     let declared_ret_ty = fn_sig.output();
@@ -259,85 +258,123 @@ pub(super) fn check_fn<'a, 'tcx>(
     if let Some(panic_impl_did) = tcx.lang_items().panic_impl()
         && panic_impl_did == hir.local_def_id(fn_id).to_def_id()
     {
-        if let Some(panic_info_did) = tcx.lang_items().panic_info() {
-            if *declared_ret_ty.kind() != ty::Never {
-                sess.span_err(decl.output.span(), "return type should be `!`");
-            }
-
-            let inputs = fn_sig.inputs();
-            let span = hir.span(fn_id);
-            if inputs.len() == 1 {
-                let arg_is_panic_info = match *inputs[0].kind() {
-                    ty::Ref(region, ty, mutbl) => match *ty.kind() {
-                        ty::Adt(ref adt, _) => {
-                            adt.did() == panic_info_did
-                                && mutbl == hir::Mutability::Not
-                                && !region.is_static()
-                        }
-                        _ => false,
-                    },
-                    _ => false,
-                };
-
-                if !arg_is_panic_info {
-                    sess.span_err(decl.inputs[0].span, "argument should be `&PanicInfo`");
-                }
-
-                if let Node::Item(item) = hir.get(fn_id)
-                    && let ItemKind::Fn(_, ref generics, _) = item.kind
-                    && !generics.params.is_empty()
-                {
-                            sess.span_err(span, "should have no type parameters");
-                        }
-            } else {
-                let span = sess.source_map().guess_head_span(span);
-                sess.span_err(span, "function should have one argument");
-            }
-        } else {
-            sess.err("language item required, but not found: `panic_info`");
-        }
+        check_panic_info_fn(tcx, panic_impl_did.expect_local(), fn_sig, decl, declared_ret_ty);
     }
 
     // Check that a function marked as `#[alloc_error_handler]` has signature `fn(Layout) -> !`
     if let Some(alloc_error_handler_did) = tcx.lang_items().oom()
         && alloc_error_handler_did == hir.local_def_id(fn_id).to_def_id()
     {
-        if let Some(alloc_layout_did) = tcx.lang_items().alloc_layout() {
-            if *declared_ret_ty.kind() != ty::Never {
-                sess.span_err(decl.output.span(), "return type should be `!`");
-            }
-
-            let inputs = fn_sig.inputs();
-            let span = hir.span(fn_id);
-            if inputs.len() == 1 {
-                let arg_is_alloc_layout = match inputs[0].kind() {
-                    ty::Adt(ref adt, _) => adt.did() == alloc_layout_did,
-                    _ => false,
-                };
-
-                if !arg_is_alloc_layout {
-                    sess.span_err(decl.inputs[0].span, "argument should be `Layout`");
-                }
-
-                if let Node::Item(item) = hir.get(fn_id)
-                    && let ItemKind::Fn(_, ref generics, _) = item.kind
-                    && !generics.params.is_empty()
-                {
-                            sess.span_err(
-                                span,
-                        "`#[alloc_error_handler]` function should have no type parameters",
-                            );
-                        }
-            } else {
-                let span = sess.source_map().guess_head_span(span);
-                sess.span_err(span, "function should have one argument");
-            }
-        } else {
-            sess.err("language item required, but not found: `alloc_layout`");
-        }
+        check_alloc_error_fn(tcx, alloc_error_handler_did.expect_local(), fn_sig, decl, declared_ret_ty);
     }
 
     (fcx, gen_ty)
+}
+
+fn check_panic_info_fn(
+    tcx: TyCtxt<'_>,
+    fn_id: LocalDefId,
+    fn_sig: ty::FnSig<'_>,
+    decl: &hir::FnDecl<'_>,
+    declared_ret_ty: Ty<'_>,
+) {
+    let Some(panic_info_did) = tcx.lang_items().panic_info() else {
+        tcx.sess.err("language item required, but not found: `panic_info`");
+        return;
+    };
+
+    if *declared_ret_ty.kind() != ty::Never {
+        tcx.sess.span_err(decl.output.span(), "return type should be `!`");
+    }
+
+    let span = tcx.def_span(fn_id);
+    let inputs = fn_sig.inputs();
+    if inputs.len() != 1 {
+        let span = tcx.sess.source_map().guess_head_span(span);
+        tcx.sess.span_err(span, "function should have one argument");
+        return;
+    }
+
+    let arg_is_panic_info = match *inputs[0].kind() {
+        ty::Ref(region, ty, mutbl) => match *ty.kind() {
+            ty::Adt(ref adt, _) => {
+                adt.did() == panic_info_did && mutbl == hir::Mutability::Not && !region.is_static()
+            }
+            _ => false,
+        },
+        _ => false,
+    };
+
+    if !arg_is_panic_info {
+        tcx.sess.span_err(decl.inputs[0].span, "argument should be `&PanicInfo`");
+    }
+
+    let DefKind::Fn = tcx.def_kind(fn_id) else {
+        let span = tcx.def_span(fn_id);
+        tcx.sess.span_err(span, "should be a function");
+        return;
+    };
+
+    let generic_counts = tcx.generics_of(fn_id).own_counts();
+    if generic_counts.types != 0 {
+        let span = tcx.def_span(fn_id);
+        tcx.sess.span_err(span, "should have no type parameters");
+    }
+    if generic_counts.consts != 0 {
+        let span = tcx.def_span(fn_id);
+        tcx.sess.span_err(span, "should have no const parameters");
+    }
+}
+
+fn check_alloc_error_fn(
+    tcx: TyCtxt<'_>,
+    fn_id: LocalDefId,
+    fn_sig: ty::FnSig<'_>,
+    decl: &hir::FnDecl<'_>,
+    declared_ret_ty: Ty<'_>,
+) {
+    let Some(alloc_layout_did) = tcx.lang_items().alloc_layout() else {
+        tcx.sess.err("language item required, but not found: `alloc_layout`");
+        return;
+    };
+
+    if *declared_ret_ty.kind() != ty::Never {
+        tcx.sess.span_err(decl.output.span(), "return type should be `!`");
+    }
+
+    let inputs = fn_sig.inputs();
+    if inputs.len() != 1 {
+        let span = tcx.def_span(fn_id);
+        let span = tcx.sess.source_map().guess_head_span(span);
+        tcx.sess.span_err(span, "function should have one argument");
+        return;
+    }
+
+    let arg_is_alloc_layout = match inputs[0].kind() {
+        ty::Adt(ref adt, _) => adt.did() == alloc_layout_did,
+        _ => false,
+    };
+
+    if !arg_is_alloc_layout {
+        tcx.sess.span_err(decl.inputs[0].span, "argument should be `Layout`");
+    }
+
+    let DefKind::Fn = tcx.def_kind(fn_id) else {
+        let span = tcx.def_span(fn_id);
+        tcx.sess.span_err(span, "`#[alloc_error_handler]` should be a function");
+        return;
+    };
+
+    let generic_counts = tcx.generics_of(fn_id).own_counts();
+    if generic_counts.types != 0 {
+        let span = tcx.def_span(fn_id);
+        tcx.sess.span_err(span, "`#[alloc_error_handler]` function should have no type parameters");
+    }
+    if generic_counts.consts != 0 {
+        let span = tcx.def_span(fn_id);
+        tcx.sess
+            .span_err(span, "`#[alloc_error_handler]` function should have no const parameters");
+    }
 }
 
 fn check_struct(tcx: TyCtxt<'_>, def_id: LocalDefId, span: Span) {
