@@ -198,7 +198,8 @@ impl<'tcx> TypeRelation<'tcx> for Sub<'_, '_, 'tcx> {
     where
         T: Relate<'tcx>,
     {
-        self.fields.higher_ranked_sub(a, b, self.a_is_expected)
+        self.fields.higher_ranked_sub(a, b, self.a_is_expected)?;
+        Ok(a)
     }
 }
 

@@ -9,49 +9,56 @@ use rustc_middle::ty::{self, Binder, TypeFoldable};
 use std::cell::Cell;
 
 impl<'a, 'tcx> CombineFields<'a, 'tcx> {
+    /// Checks whether `for<..> sub <: for<..> sup` holds.
+    ///
+    /// For this to hold, **all** instantiations of the super type
+    /// have to be a super type of **at least one** instantiation of
+    /// the subtype.
+    ///
+    /// This is implemented by first entering a new universe.
+    /// We then replace all bound variables in `sup` with placeholders,
+    /// and all bound variables in `sup` with inference vars.
+    /// We can then just relate the two resulting types as normal.
+    ///
+    /// Note: this is a subtle algorithm. For a full explanation, please see
+    /// the [rustc dev guide][rd]
+    ///
+    /// [rd]: https://rustc-dev-guide.rust-lang.org/borrow_check/region_inference/placeholders_and_universes.html
     #[instrument(skip(self), level = "debug")]
     pub fn higher_ranked_sub<T>(
         &mut self,
-        a: Binder<'tcx, T>,
-        b: Binder<'tcx, T>,
-        a_is_expected: bool,
-    ) -> RelateResult<'tcx, Binder<'tcx, T>>
+        sub: Binder<'tcx, T>,
+        sup: Binder<'tcx, T>,
+        sub_is_expected: bool,
+    ) -> RelateResult<'tcx, ()>
     where
         T: Relate<'tcx>,
     {
-        // Rather than checking the subtype relationship between `a` and `b`
-        // as-is, we need to do some extra work here in order to make sure
-        // that function subtyping works correctly with respect to regions
-        //
-        // Note: this is a subtle algorithm.  For a full explanation, please see
-        // the rustc dev guide:
-        // <https://rustc-dev-guide.rust-lang.org/borrow_check/region_inference/placeholders_and_universes.html>
-
         let span = self.trace.cause.span;
 
         self.infcx.commit_if_ok(|_| {
             // First, we instantiate each bound region in the supertype with a
-            // fresh placeholder region.
-            let b_prime = self.infcx.replace_bound_vars_with_placeholders(b);
+            // fresh placeholder region. Note that this automatically creates
+            // a new universe if needed.
+            let sup_prime = self.infcx.replace_bound_vars_with_placeholders(sup);
 
             // Next, we instantiate each bound region in the subtype
             // with a fresh region variable. These region variables --
             // but no other pre-existing region variables -- can name
             // the placeholders.
-            let a_prime = self.infcx.replace_bound_vars_with_fresh_vars(span, HigherRankedType, a);
+            let sub_prime =
+                self.infcx.replace_bound_vars_with_fresh_vars(span, HigherRankedType, sub);
 
-            debug!("a_prime={:?}", a_prime);
-            debug!("b_prime={:?}", b_prime);
+            debug!("a_prime={:?}", sub_prime);
+            debug!("b_prime={:?}", sup_prime);
 
             // Compare types now that bound regions have been replaced.
-            let result = self.sub(a_is_expected).relate(a_prime, b_prime)?;
+            let result = self.sub(sub_is_expected).relate(sub_prime, sup_prime)?;
 
-            debug!("higher_ranked_sub: OK result={:?}", result);
-
-            // We related `a_prime` and `b_prime`, which just had any bound vars
-            // replaced with placeholders or infer vars, respectively. Relating
-            // them should not introduce new bound vars.
-            Ok(ty::Binder::dummy(result))
+            debug!("higher_ranked_sub: OK result={result:?}");
+            // NOTE: returning the result here would be dangerous as it contains
+            // placeholders which **must not** be named after wards.
+            Ok(())
         })
     }
 }
