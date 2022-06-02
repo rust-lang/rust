@@ -133,6 +133,12 @@ fn type_bound(p: &mut Parser) -> bool {
     match p.current() {
         LIFETIME_IDENT => lifetime(p),
         T![for] => types::for_type(p, false),
+        T![?] if p.nth_at(1, T![for]) => {
+            // test question_for_type_trait_bound
+            // fn f<T>() where T: ?for<> Sized {}
+            p.bump_any();
+            types::for_type(p, false)
+        }
         current => {
             match current {
                 T![?] => p.bump_any(),
