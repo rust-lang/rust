@@ -46,7 +46,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::struct_span_err;
+use rustc_errors::{struct_span_err, Applicability};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Namespace, PartialRes, PerNS, Res};
 use rustc_hir::def_id::{DefId, DefPathHash, LocalDefId, CRATE_DEF_ID};
@@ -901,7 +901,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         mut itctx: ImplTraitContext<'_, 'hir>,
     ) -> hir::TypeBinding<'hir> {
         debug!("lower_assoc_ty_constraint(constraint={:?}, itctx={:?})", constraint, itctx);
-
         // lower generic arguments of identifier in constraint
         let gen_args = if let Some(ref gen_args) = constraint.gen_args {
             let gen_args_ctor = match gen_args {
@@ -914,12 +913,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     .0
                 }
                 GenericArgs::Parenthesized(ref data) => {
-                    let mut err = self.sess.struct_span_err(
-                        gen_args.span(),
-                        "parenthesized generic arguments cannot be used in associated type constraints"
-                    );
-                    // FIXME: try to write a suggestion here
-                    err.emit();
+                    self.assoc_ty_contraint_param_error_emit(data);
                     self.lower_angle_bracketed_parameter_data(
                         &data.as_angle_bracketed_args(),
                         ParamMode::Explicit,
@@ -1031,6 +1025,42 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             kind,
             span: self.lower_span(constraint.span),
         }
+    }
+
+    fn assoc_ty_contraint_param_error_emit(&self, data: &ParenthesizedArgs) -> () {
+        let mut err = self.sess.struct_span_err(
+            data.span,
+            "parenthesized generic arguments cannot be used in associated type constraints",
+        );
+        // Suggest removing empty parentheses: "Trait()" -> "Trait"
+        if data.inputs.is_empty() {
+            let parentheses_span =
+                data.inputs_span.shrink_to_lo().to(data.inputs_span.shrink_to_hi());
+            err.multipart_suggestion(
+                "remove these parentheses",
+                vec![(parentheses_span, String::new())],
+                Applicability::MaybeIncorrect,
+            );
+        }
+        // Suggest replacing parentheses with angle brackets `Trait(params...)` to `Trait<params...>`
+        else {
+            // Start of parameters to the 1st argument
+            let open_param = data.inputs_span.shrink_to_lo().to(data
+                .inputs
+                .first()
+                .unwrap()
+                .span
+                .shrink_to_lo());
+            // End of last argument to end of parameters
+            let close_param =
+                data.inputs.last().unwrap().span.shrink_to_hi().to(data.inputs_span.shrink_to_hi());
+            err.multipart_suggestion(
+                &format!("use angle brackets instead",),
+                vec![(open_param, String::from("<")), (close_param, String::from(">"))],
+                Applicability::MaybeIncorrect,
+            );
+        }
+        err.emit();
     }
 
     fn lower_generic_arg(
