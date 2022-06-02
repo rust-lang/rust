@@ -1897,18 +1897,18 @@ impl<K, V, S, A: Allocator + Clone> HashMap<K, V, S, A> {
     /// # Examples
     ///
     /// ```
-    /// use hashbrown::{HashMap, hash_map::RawEntryMut};
+    /// use core::hash::{BuildHasher, Hash};
+    /// use hashbrown::hash_map::{HashMap, RawEntryMut};
     ///
     /// let mut map = HashMap::new();
     /// map.extend([("a", 100), ("b", 200), ("c", 300)]);
     ///
-    /// let compute_hash = |map: &HashMap<&str, i32>, k: &str| -> u64 {
-    ///     use core::hash::{BuildHasher, Hash, Hasher};
-    ///
-    ///     let mut hasher = map.hasher().build_hasher();
-    ///     k.hash(&mut hasher);
-    ///     hasher.finish()
-    /// };
+    /// fn compute_hash<K: Hash + ?Sized, S: BuildHasher>(hash_builder: &S, key: &K) -> u64 {
+    ///     use core::hash::Hasher;
+    ///     let mut state = hash_builder.build_hasher();
+    ///     key.hash(&mut state);
+    ///     state.finish()
+    /// }
     ///
     /// // Existing key (insert and update)
     /// match map.raw_entry_mut().from_key(&"a") {
@@ -1926,7 +1926,7 @@ impl<K, V, S, A: Allocator + Clone> HashMap<K, V, S, A> {
     /// assert_eq!(map.len(), 3);
     ///
     /// // Existing key (take)
-    /// let hash = compute_hash(&map, &"c");
+    /// let hash = compute_hash(map.hasher(), &"c");
     /// match map.raw_entry_mut().from_key_hashed_nocheck(hash, &"c") {
     ///     RawEntryMut::Vacant(_) => unreachable!(),
     ///     RawEntryMut::Occupied(view) => {
@@ -1938,7 +1938,7 @@ impl<K, V, S, A: Allocator + Clone> HashMap<K, V, S, A> {
     ///
     /// // Nonexistent key (insert and update)
     /// let key = "d";
-    /// let hash = compute_hash(&map, &key);
+    /// let hash = compute_hash(map.hasher(), &key);
     /// match map.raw_entry_mut().from_hash(hash, |q| *q == key) {
     ///     RawEntryMut::Occupied(_) => unreachable!(),
     ///     RawEntryMut::Vacant(view) => {
@@ -1983,21 +1983,21 @@ impl<K, V, S, A: Allocator + Clone> HashMap<K, V, S, A> {
     /// # Examples
     ///
     /// ```
+    /// use core::hash::{BuildHasher, Hash};
     /// use hashbrown::HashMap;
     ///
     /// let mut map = HashMap::new();
     /// map.extend([("a", 100), ("b", 200), ("c", 300)]);
     ///
-    /// let compute_hash = |map: &HashMap<&str, i32>, k: &str| -> u64 {
-    ///     use core::hash::{BuildHasher, Hash, Hasher};
-    ///
-    ///     let mut hasher = map.hasher().build_hasher();
-    ///     k.hash(&mut hasher);
-    ///     hasher.finish()
-    /// };
+    /// fn compute_hash<K: Hash + ?Sized, S: BuildHasher>(hash_builder: &S, key: &K) -> u64 {
+    ///     use core::hash::Hasher;
+    ///     let mut state = hash_builder.build_hasher();
+    ///     key.hash(&mut state);
+    ///     state.finish()
+    /// }
     ///
     /// for k in ["a", "b", "c", "d", "e", "f"] {
-    ///     let hash = compute_hash(&map, k);
+    ///     let hash = compute_hash(map.hasher(), k);
     ///     let v = map.get(&k).cloned();
     ///     let kv = v.as_ref().map(|v| (&k, v));
     ///
