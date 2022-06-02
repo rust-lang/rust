@@ -51,16 +51,16 @@ declare_clippy_lint! {
 }
 
 #[derive(Copy, Clone, Default)]
-pub struct Arithmetic {
+pub struct NumericArithmetic {
     expr_span: Option<Span>,
     /// This field is used to check whether expressions are constants, such as in enum discriminants
     /// and consts
     const_span: Option<Span>,
 }
 
-impl_lint_pass!(Arithmetic => [INTEGER_ARITHMETIC, FLOAT_ARITHMETIC]);
+impl_lint_pass!(NumericArithmetic => [INTEGER_ARITHMETIC, FLOAT_ARITHMETIC]);
 
-impl<'tcx> LateLintPass<'tcx> for Arithmetic {
+impl<'tcx> LateLintPass<'tcx> for NumericArithmetic {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
         if self.expr_span.is_some() {
             return;
