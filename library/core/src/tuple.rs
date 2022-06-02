@@ -199,17 +199,3 @@ macro_rules! last_type {
 }
 
 tuple_impls!(E D C B A Z Y X W V U T);
-
-#[stable(feature = "array_tuple_conv", since = "1.63.0")]
-impl<T> From<()> for [T; 0] {
-    fn from((): ()) -> Self {
-        []
-    }
-}
-
-#[stable(feature = "array_tuple_conv", since = "1.63.0")]
-impl<T> From<[T; 0]> for () {
-    fn from([]: [T; 0]) -> Self {
-        ()
-    }
-}
