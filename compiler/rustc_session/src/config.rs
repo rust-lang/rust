@@ -1102,41 +1102,96 @@ impl CrateCheckConfig {
             .extend(atomic_values);
 
         // Target specific values
-        for target in
-            TARGETS.iter().map(|target| Target::expect_builtin(&TargetTriple::from_triple(target)))
+        #[cfg(bootstrap)]
         {
-            self.values_valid
-                .entry(sym::target_os)
-                .or_default()
-                .insert(Symbol::intern(&target.options.os));
-            self.values_valid
-                .entry(sym::target_family)
-                .or_default()
-                .extend(target.options.families.iter().map(|family| Symbol::intern(family)));
-            self.values_valid
-                .entry(sym::target_arch)
-                .or_default()
-                .insert(Symbol::intern(&target.arch));
-            self.values_valid
-                .entry(sym::target_endian)
-                .or_default()
-                .insert(Symbol::intern(&target.options.endian.as_str()));
-            self.values_valid
-                .entry(sym::target_env)
-                .or_default()
-                .insert(Symbol::intern(&target.options.env));
-            self.values_valid
-                .entry(sym::target_abi)
-                .or_default()
-                .insert(Symbol::intern(&target.options.abi));
-            self.values_valid
-                .entry(sym::target_vendor)
-                .or_default()
-                .insert(Symbol::intern(&target.options.vendor));
-            self.values_valid
-                .entry(sym::target_pointer_width)
-                .or_default()
-                .insert(sym::integer(target.pointer_width));
+            for target in TARGETS
+                .iter()
+                .map(|target| Target::expect_builtin(&TargetTriple::from_triple(target)))
+            {
+                self.values_valid
+                    .entry(sym::target_os)
+                    .or_default()
+                    .insert(Symbol::intern(&target.options.os));
+                self.values_valid
+                    .entry(sym::target_family)
+                    .or_default()
+                    .extend(target.options.families.iter().map(|family| Symbol::intern(family)));
+                self.values_valid
+                    .entry(sym::target_arch)
+                    .or_default()
+                    .insert(Symbol::intern(&target.arch));
+                self.values_valid
+                    .entry(sym::target_endian)
+                    .or_default()
+                    .insert(Symbol::intern(&target.options.endian.as_str()));
+                self.values_valid
+                    .entry(sym::target_env)
+                    .or_default()
+                    .insert(Symbol::intern(&target.options.env));
+                self.values_valid
+                    .entry(sym::target_abi)
+                    .or_default()
+                    .insert(Symbol::intern(&target.options.abi));
+                self.values_valid
+                    .entry(sym::target_vendor)
+                    .or_default()
+                    .insert(Symbol::intern(&target.options.vendor));
+                self.values_valid
+                    .entry(sym::target_pointer_width)
+                    .or_default()
+                    .insert(sym::integer(target.pointer_width));
+            }
+        }
+
+        // Target specific values
+        #[cfg(not(bootstrap))]
+        {
+            const VALUES: [&Symbol; 8] = [
+                &sym::target_os,
+                &sym::target_family,
+                &sym::target_arch,
+                &sym::target_endian,
+                &sym::target_env,
+                &sym::target_abi,
+                &sym::target_vendor,
+                &sym::target_pointer_width,
+            ];
+
+            // Initialize (if not already initialized)
+            for &e in VALUES {
+                self.values_valid.entry(e).or_default();
+            }
+
+            // Get all values map at once otherwise it would be costly.
+            // (8 values * 220 targets ~= 1760 times, at the time of writing this comment).
+            let [
+                values_target_os,
+                values_target_family,
+                values_target_arch,
+                values_target_endian,
+                values_target_env,
+                values_target_abi,
+                values_target_vendor,
+                values_target_pointer_width,
+            ] = self
+                .values_valid
+                .get_many_mut(VALUES)
+                .expect("unable to get all the check-cfg values buckets");
+
+            for target in TARGETS
+                .iter()
+                .map(|target| Target::expect_builtin(&TargetTriple::from_triple(target)))
+            {
+                values_target_os.insert(Symbol::intern(&target.options.os));
+                values_target_family
+                    .extend(target.options.families.iter().map(|family| Symbol::intern(family)));
+                values_target_arch.insert(Symbol::intern(&target.arch));
+                values_target_endian.insert(Symbol::intern(&target.options.endian.as_str()));
+                values_target_env.insert(Symbol::intern(&target.options.env));
+                values_target_abi.insert(Symbol::intern(&target.options.abi));
+                values_target_vendor.insert(Symbol::intern(&target.options.vendor));
+                values_target_pointer_width.insert(sym::integer(target.pointer_width));
+            }
         }
     }
 
