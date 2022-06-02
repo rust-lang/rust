@@ -1885,9 +1885,8 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         let mut function_value_rib = Rib::new(kind);
         let mut function_lifetime_rib = LifetimeRib::new(lifetime_kind);
         let mut seen_bindings = FxHashMap::default();
-        // Store all seen lifetimes names, and whether they were created in the currently processed
-        // parameter set.
-        let mut seen_lifetimes = FxHashMap::default();
+        // Store all seen lifetimes names from outer scopes.
+        let mut seen_lifetimes = FxHashSet::default();
 
         // We also can't shadow bindings from the parent item
         if let AssocItemRibKind = kind {
@@ -1905,7 +1904,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
         // Forbid shadowing lifetime bindings
         for rib in self.lifetime_ribs.iter().rev() {
-            seen_lifetimes.extend(rib.bindings.iter().map(|(ident, _)| (*ident, false)));
+            seen_lifetimes.extend(rib.bindings.iter().map(|(ident, _)| *ident));
             if let LifetimeRibKind::Item = rib.kind {
                 break;
             }
@@ -1915,35 +1914,28 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             let ident = param.ident.normalize_to_macros_2_0();
             debug!("with_generic_param_rib: {}", param.id);
 
-            if let GenericParamKind::Lifetime = param.kind {
-                match seen_lifetimes.entry(ident) {
-                    Entry::Occupied(entry) => {
-                        let original = *entry.key();
-                        let orig_is_param = *entry.get();
-                        diagnostics::signal_lifetime_shadowing(
-                            self.r.session,
-                            original,
-                            param.ident,
-                            orig_is_param,
-                        );
+            if let GenericParamKind::Lifetime = param.kind
+                && let Some(&original) = seen_lifetimes.get(&ident)
+            {
+                diagnostics::signal_lifetime_shadowing(self.r.session, original, param.ident);
+                // Record lifetime res, so lowering knows there is something fishy.
+                self.record_lifetime_res(param.id, LifetimeRes::Error);
+                continue;
+            }
+
+            match seen_bindings.entry(ident) {
+                Entry::Occupied(entry) => {
+                    let span = *entry.get();
+                    let err = ResolutionError::NameAlreadyUsedInParameterList(ident.name, span);
+                    self.report_error(param.ident.span, err);
+                    if let GenericParamKind::Lifetime = param.kind {
                         // Record lifetime res, so lowering knows there is something fishy.
                         self.record_lifetime_res(param.id, LifetimeRes::Error);
                         continue;
                     }
-                    Entry::Vacant(entry) => {
-                        entry.insert(true);
-                    }
                 }
-            } else {
-                match seen_bindings.entry(ident) {
-                    Entry::Occupied(entry) => {
-                        let span = *entry.get();
-                        let err = ResolutionError::NameAlreadyUsedInParameterList(ident.name, span);
-                        self.report_error(param.ident.span, err);
-                    }
-                    Entry::Vacant(entry) => {
-                        entry.insert(param.ident.span);
-                    }
+                Entry::Vacant(entry) => {
+                    entry.insert(param.ident.span);
                 }
             }
 

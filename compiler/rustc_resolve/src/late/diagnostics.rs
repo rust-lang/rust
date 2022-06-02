@@ -2038,29 +2038,14 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
 }
 
 /// Report lifetime/lifetime shadowing as an error.
-pub fn signal_lifetime_shadowing(
-    sess: &Session,
-    orig: Ident,
-    shadower: Ident,
-    orig_is_param: bool,
-) {
-    let mut err = if orig_is_param {
-        struct_span_err!(
-            sess,
-            shadower.span,
-            E0263,
-            "lifetime name `{}` declared twice in the same scope",
-            orig.name,
-        )
-    } else {
-        struct_span_err!(
-            sess,
-            shadower.span,
-            E0496,
-            "lifetime name `{}` shadows a lifetime name that is already in scope",
-            orig.name,
-        )
-    };
+pub fn signal_lifetime_shadowing(sess: &Session, orig: Ident, shadower: Ident) {
+    let mut err = struct_span_err!(
+        sess,
+        shadower.span,
+        E0496,
+        "lifetime name `{}` shadows a lifetime name that is already in scope",
+        orig.name,
+    );
     err.span_label(orig.span, "first declared here");
     err.span_label(shadower.span, format!("lifetime `{}` already in scope", orig.name));
     err.emit();
