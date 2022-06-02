@@ -413,7 +413,10 @@ impl Module {
                                         ctx,
                                     )
                                 {
-                                    import_paths_to_be_removed.push(import_path);
+                                    check_intersection_and_push(
+                                        &mut import_paths_to_be_removed,
+                                        import_path,
+                                    );
                                 }
                             }
                         }
@@ -439,7 +442,10 @@ impl Module {
                                         ctx,
                                     )
                                 {
-                                    import_paths_to_be_removed.push(import_path);
+                                    check_intersection_and_push(
+                                        &mut import_paths_to_be_removed,
+                                        import_path,
+                                    );
                                 }
                             }
                         }
@@ -543,12 +549,25 @@ impl Module {
         } else if exists_inside_sel && !exists_outside_sel {
             //Changes to be made inside new module, and remove import from outside
 
-            if let Some((use_tree_str, text_range_opt)) =
+            if let Some((mut use_tree_str, text_range_opt)) =
                 self.process_use_stmt_for_import_resolve(use_stmt_opt, node_syntax)
             {
                 if let Some(text_range) = text_range_opt {
                     import_path_to_be_removed = Some(text_range);
                 }
+
+                if source_exists_outside_sel_in_same_mod {
+                    if let Some(first_path_in_use_tree) = use_tree_str.last() {
+                        let first_path_in_use_tree_str = first_path_in_use_tree.to_string();
+                        if !first_path_in_use_tree_str.contains("super")
+                            && !first_path_in_use_tree_str.contains("crate")
+                        {
+                            let super_path = make::ext::ident_path("super");
+                            use_tree_str.push(super_path);
+                        }
+                    }
+                }
+
                 use_tree_str_opt = Some(use_tree_str);
             } else if source_exists_outside_sel_in_same_mod {
                 self.make_use_stmt_of_node_with_super(node_syntax);
@@ -558,9 +577,16 @@ impl Module {
         if let Some(use_tree_str) = use_tree_str_opt {
             let mut use_tree_str = use_tree_str;
             use_tree_str.reverse();
-            if use_tree_str[0].to_string().contains("super") {
-                let super_path = make::ext::ident_path("super");
-                use_tree_str.insert(0, super_path)
+
+            if !(!exists_outside_sel && exists_inside_sel && source_exists_outside_sel_in_same_mod)
+            {
+                if let Some(first_path_in_use_tree) = use_tree_str.first() {
+                    let first_path_in_use_tree_str = first_path_in_use_tree.to_string();
+                    if first_path_in_use_tree_str.contains("super") {
+                        let super_path = make::ext::ident_path("super");
+                        use_tree_str.insert(0, super_path)
+                    }
+                }
             }
 
             let use_ =
@@ -618,6 +644,32 @@ impl Module {
         }
 
         None
+    }
+}
+
+fn check_intersection_and_push(
+    import_paths_to_be_removed: &mut Vec<TextRange>,
+    import_path: TextRange,
+) {
+    if import_paths_to_be_removed.len() > 0 {
+        // Text ranges recieved here for imports are extended to the
+        // next/previous comma which can cause intersections among them
+        // and later deletion of these can cause panics similar
+        // to reported in #11766. So to mitigate it, we
+        // check for intersection between all current members
+        // and if it exists we combine both text ranges into
+        // one
+        let r = import_paths_to_be_removed
+            .into_iter()
+            .position(|it| it.intersect(import_path).is_some());
+        match r {
+            Some(it) => {
+                import_paths_to_be_removed[it] = import_paths_to_be_removed[it].cover(import_path)
+            }
+            None => import_paths_to_be_removed.push(import_path),
+        }
+    } else {
+        import_paths_to_be_removed.push(import_path);
     }
 }
 
@@ -1492,6 +1544,40 @@ mod modname {
         pub(crate) fn foo(x: B) {}
     }
 }
+        ",
+        )
+    }
+
+    #[test]
+    fn test_issue_11766() {
+        //https://github.com/rust-lang/rust-analyzer/issues/11766
+        check_assist(
+            extract_module,
+            r"
+            mod x {
+                pub struct Foo;
+                pub struct Bar;
+            }
+
+            use x::{Bar, Foo};
+
+            $0type A = (Foo, Bar);$0
+        ",
+            r"
+            mod x {
+                pub struct Foo;
+                pub struct Bar;
+            }
+
+            use x::{};
+
+            mod modname {
+                use super::x::Bar;
+
+                use super::x::Foo;
+
+                pub(crate) type A = (Foo, Bar);
+            }
         ",
         )
     }
