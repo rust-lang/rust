@@ -1548,12 +1548,8 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
     /// Searches the current set of local scopes for labels. Returns the `NodeId` of the resolved
     /// label and reports an error if the label is not found or is unreachable.
-    fn resolve_label(&mut self, mut label: Ident) -> Option<NodeId> {
+    fn resolve_label(&mut self, mut label: Ident) -> Result<(NodeId, Span), ResolutionError<'a>> {
         let mut suggestion = None;
-
-        // Preserve the original span so that errors contain "in this macro invocation"
-        // information.
-        let original_span = label.span;
 
         for i in (0..self.label_ribs.len()).rev() {
             let rib = &self.label_ribs[i];
@@ -1570,18 +1566,13 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             if let Some((ident, id)) = rib.bindings.get_key_value(&ident) {
                 let definition_span = ident.span;
                 return if self.is_label_valid_from_rib(i) {
-                    Some(*id)
+                    Ok((*id, definition_span))
                 } else {
-                    self.report_error(
-                        original_span,
-                        ResolutionError::UnreachableLabel {
-                            name: label.name,
-                            definition_span,
-                            suggestion,
-                        },
-                    );
-
-                    None
+                    Err(ResolutionError::UnreachableLabel {
+                        name: label.name,
+                        definition_span,
+                        suggestion,
+                    })
                 };
             }
 
@@ -1590,11 +1581,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             suggestion = suggestion.or_else(|| self.suggestion_for_label_in_rib(i, label));
         }
 
-        self.report_error(
-            original_span,
-            ResolutionError::UndeclaredLabel { name: label.name, suggestion },
-        );
-        None
+        Err(ResolutionError::UndeclaredLabel { name: label.name, suggestion })
     }
 
     /// Determine whether or not a label from the `rib_index`th label rib is reachable.
@@ -3152,17 +3139,12 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 self.diagnostic_metadata.unused_labels.insert(id, label.ident.span);
             }
 
-            let ident = label.ident.normalize_to_macro_rules();
-            for rib in self.label_ribs.iter_mut().rev() {
-                if let Some((&orig_ident, _)) = rib.bindings.get_key_value(&ident) {
-                    diagnostics::signal_label_shadowing(self.r.session, orig_ident, label.ident)
-                }
-                if rib.kind.is_label_barrier() {
-                    break;
-                }
+            if let Ok((_, orig_span)) = self.resolve_label(label.ident) {
+                diagnostics::signal_label_shadowing(self.r.session, orig_span, label.ident)
             }
 
             self.with_label_rib(NormalRibKind, |this| {
+                let ident = label.ident.normalize_to_macro_rules();
                 this.label_ribs.last_mut().unwrap().bindings.insert(ident, id);
                 f(this);
             });
@@ -3266,10 +3248,15 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             }
 
             ExprKind::Break(Some(label), _) | ExprKind::Continue(Some(label)) => {
-                if let Some(node_id) = self.resolve_label(label.ident) {
-                    // Since this res is a label, it is never read.
-                    self.r.label_res_map.insert(expr.id, node_id);
-                    self.diagnostic_metadata.unused_labels.remove(&node_id);
+                match self.resolve_label(label.ident) {
+                    Ok((node_id, _)) => {
+                        // Since this res is a label, it is never read.
+                        self.r.label_res_map.insert(expr.id, node_id);
+                        self.diagnostic_metadata.unused_labels.remove(&node_id);
+                    }
+                    Err(error) => {
+                        self.report_error(label.ident.span, error);
+                    }
                 }
 
                 // visit `break` argument if any

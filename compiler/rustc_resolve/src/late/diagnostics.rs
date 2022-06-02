@@ -2066,15 +2066,17 @@ pub fn signal_lifetime_shadowing(
     err.emit();
 }
 
-/// Shadowing involving a label is only a warning, due to issues with
-/// labels and lifetimes not being macro-hygienic.
-pub fn signal_label_shadowing(sess: &Session, orig: Ident, shadower: Ident) {
+/// Shadowing involving a label is only a warning for historical reasons.
+//FIXME: make this a proper lint.
+pub fn signal_label_shadowing(sess: &Session, orig: Span, shadower: Ident) {
+    let name = shadower.name;
+    let shadower = shadower.span;
     let mut err = sess.struct_span_warn(
-        shadower.span,
-        &format!("label name `{}` shadows a label name that is already in scope", orig.name),
+        shadower,
+        &format!("label name `{}` shadows a label name that is already in scope", name),
     );
-    err.span_label(orig.span, "first declared here");
-    err.span_label(shadower.span, format!("label `{}` already in scope", orig.name));
+    err.span_label(orig, "first declared here");
+    err.span_label(shadower, format!("label `{}` already in scope", name));
     err.emit();
 }
 
