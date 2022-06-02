@@ -21,7 +21,9 @@ use rustc_hir::lang_items::LangItem;
 use rustc_hir::{AsyncGeneratorKind, GeneratorKind, Node};
 use rustc_middle::hir::map;
 use rustc_middle::ty::{
-    self, suggest_arbitrary_trait_bound, suggest_constraining_type_param, AdtKind, DefIdTree,
+    self,
+    subst::{GenericArgKind, SubstsRef},
+    suggest_arbitrary_trait_bound, suggest_constraining_type_param, AdtKind, DefIdTree,
     GeneratorDiagnosticData, GeneratorInteriorTypeCause, Infer, InferTy, ToPredicate, Ty, TyCtxt,
     TypeFoldable,
 };
@@ -458,6 +460,16 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             _ => (false, None),
         };
 
+        let generic_args_have_impl_trait = |args: SubstsRef<'tcx>| -> bool {
+            args.iter().any(|arg| match arg.unpack() {
+                GenericArgKind::Type(ty) => match ty.kind() {
+                    ty::Param(param) => param.name.as_str().starts_with("impl"),
+                    _ => false,
+                },
+                _ => false,
+            })
+        };
+
         // FIXME: Add check for trait bound that is already present, particularly `?Sized` so we
         //        don't suggest `T: Sized + ?Sized`.
         let mut hir_id = body_id;
@@ -588,7 +600,9 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         | hir::ItemKind::TraitAlias(generics, _)
                         | hir::ItemKind::OpaqueTy(hir::OpaqueTy { generics, .. }),
                     ..
-                }) if !param_ty => {
+                }) if !param_ty
+                    && !generic_args_have_impl_trait(trait_pred.skip_binder().trait_ref.substs) =>
+                {
                     // Missing generic type parameter bound.
                     let param_name = self_ty.to_string();
                     let constraint = trait_pred.print_modifiers_and_trait_path().to_string();
