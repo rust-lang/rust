@@ -1826,7 +1826,7 @@ pub fn is_expr_used_or_unified(tcx: TyCtxt<'_>, expr: &Expr<'_>) -> bool {
                             ..
                         },
                         ..
-                    }),
+                    }, _),
                 ..
             }),
             _

@@ -883,7 +883,12 @@ impl<'a> State<'a> {
         self.ann.post(self, AnnNode::SubItem(ii.hir_id()))
     }
 
-    pub fn print_local(&mut self, init: Option<&hir::Expr<'_>>, decl: impl Fn(&mut Self)) {
+    pub fn print_local(
+        &mut self,
+        init: Option<&hir::Expr<'_>>,
+        els: Option<&hir::Block<'_>>,
+        decl: impl Fn(&mut Self),
+    ) {
         self.space_if_not_bol();
         self.ibox(INDENT_UNIT);
         self.word_nbsp("let");
@@ -897,14 +902,21 @@ impl<'a> State<'a> {
             self.word_space("=");
             self.print_expr(init);
         }
+
+        if let Some(els) = els {
+            self.nbsp();
+            self.word_space("else");
+            self.print_block(els);
+        }
+
         self.end()
     }
 
     pub fn print_stmt(&mut self, st: &hir::Stmt<'_>) {
         self.maybe_print_comment(st.span.lo());
         match st.kind {
-            hir::StmtKind::Local(loc) => {
-                self.print_local(loc.init, |this| this.print_local_decl(loc));
+            hir::StmtKind::Local(loc, els) => {
+                self.print_local(loc.init, els, |this| this.print_local_decl(loc));
             }
             hir::StmtKind::Item(item) => self.ann.nested(self, Nested::Item(item)),
             hir::StmtKind::Expr(expr) => {
@@ -1404,7 +1416,7 @@ impl<'a> State<'a> {
 
                 // Print `let _t = $init;`:
                 let temp = Ident::from_str("_t");
-                self.print_local(Some(init), |this| this.print_ident(temp));
+                self.print_local(Some(init), None, |this| this.print_ident(temp));
                 self.word(";");
 
                 // Print `_t`:
@@ -2293,7 +2305,7 @@ fn expr_requires_semi_to_be_stmt(e: &hir::Expr<'_>) -> bool {
 /// seen the semicolon, and thus don't need another.
 fn stmt_ends_with_semi(stmt: &hir::StmtKind<'_>) -> bool {
     match *stmt {
-        hir::StmtKind::Local(_) => true,
+        hir::StmtKind::Local(_, _) => true,
         hir::StmtKind::Item(_) => false,
         hir::StmtKind::Expr(e) => expr_requires_semi_to_be_stmt(e),
         hir::StmtKind::Semi(..) => false,

@@ -24,7 +24,7 @@ macro_rules! late_lint_methods {
             fn check_foreign_item_post(a: &$hir hir::ForeignItem<$hir>);
             fn check_item(a: &$hir hir::Item<$hir>);
             fn check_item_post(a: &$hir hir::Item<$hir>);
-            fn check_local(a: &$hir hir::Local<$hir>);
+            fn check_local(a: &$hir hir::Local<$hir>, b: Option<&$hir hir::Block<$hir>>);
             fn check_block(a: &$hir hir::Block<$hir>);
             fn check_block_post(a: &$hir hir::Block<$hir>);
             fn check_stmt(a: &$hir hir::Stmt<$hir>);

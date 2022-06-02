@@ -21,7 +21,7 @@ use rustc_session::lint::builtin::{
 };
 use rustc_session::Session;
 use rustc_span::source_map::Spanned;
-use rustc_span::{BytePos, DesugaringKind, ExpnKind, Span};
+use rustc_span::{BytePos, Span};
 
 pub(crate) fn check_match(tcx: TyCtxt<'_>, def_id: DefId) {
     let body_id = match def_id.as_local() {
@@ -75,8 +75,11 @@ impl<'tcx> Visitor<'tcx> for MatchVisitor<'_, '_, 'tcx> {
         }
     }
 
-    fn visit_local(&mut self, loc: &'tcx hir::Local<'tcx>) {
-        intravisit::walk_local(self, loc);
+    fn visit_local(&mut self, loc: &'tcx hir::Local<'tcx>, els: Option<&'tcx hir::Block<'tcx>>) {
+        intravisit::walk_local(self, loc, els);
+        if let Some(init) = &loc.init && els.is_some() {
+            self.check_let(&loc.pat, &init, loc.span);
+        }
 
         let (msg, sp) = match loc.source {
             hir::LocalSource::Normal => ("local binding", Some(loc.span)),
@@ -84,7 +87,9 @@ impl<'tcx> Visitor<'tcx> for MatchVisitor<'_, '_, 'tcx> {
             hir::LocalSource::AwaitDesugar => ("`await` future binding", None),
             hir::LocalSource::AssignDesugar(_) => ("destructuring assignment binding", None),
         };
-        self.check_irrefutable(&loc.pat, msg, sp);
+        if els.is_none() {
+            self.check_irrefutable(&loc.pat, msg, sp);
+        }
     }
 
     fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) {
@@ -1125,17 +1130,16 @@ fn let_source_parent(tcx: TyCtxt<'_>, parent: HirId, pat_id: Option<HirId>) -> L
         }) if Some(*hir_id) == pat_id => {
             return LetSource::IfLetGuard;
         }
-        hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Let(..), span, .. }) => {
-            let expn_data = span.ctxt().outer_expn_data();
-            if let ExpnKind::Desugaring(DesugaringKind::LetElse) = expn_data.kind {
-                return LetSource::LetElse(expn_data.call_site);
-            }
-        }
         _ => {}
     }
 
     let parent_parent = hir.get_parent_node(parent);
     let parent_parent_node = hir.get(parent_parent);
+    if let hir::Node::Stmt(hir::Stmt { kind: hir::StmtKind::Local(_, Some(_)), span, .. }) =
+        parent_parent_node
+    {
+        return LetSource::LetElse(*span);
+    }
 
     let parent_parent_parent = hir.get_parent_node(parent_parent);
     let parent_parent_parent_parent = hir.get_parent_node(parent_parent_parent);

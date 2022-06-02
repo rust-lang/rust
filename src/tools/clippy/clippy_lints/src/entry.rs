@@ -386,7 +386,7 @@ impl<'tcx> Visitor<'tcx> for InsertSearcher<'_, 'tcx> {
                 }
             },
             StmtKind::Expr(e) => self.visit_expr(e),
-            StmtKind::Local(l) => {
+            StmtKind::Local(l, _) => {
                 self.visit_pat(l.pat);
                 if let Some(e) = l.init {
                     self.allow_insert_closure &= !self.in_tail_pos;

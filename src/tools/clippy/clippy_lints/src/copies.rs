@@ -324,7 +324,7 @@ impl BlockEq {
 
 /// If the statement is a local, checks if the bound names match the expected list of names.
 fn eq_binding_names(s: &Stmt<'_>, names: &[(HirId, Symbol)]) -> bool {
-    if let StmtKind::Local(l) = s.kind {
+    if let StmtKind::Local(l, _) = s.kind {
         let mut i = 0usize;
         let mut res = true;
         l.pat.each_binding_or_first(&mut |_, _, _, name| {
@@ -349,7 +349,7 @@ fn eq_stmts(
     eq: &mut HirEqInterExpr<'_, '_, '_>,
     moved_bindings: &mut Vec<(HirId, Symbol)>,
 ) -> bool {
-    (if let StmtKind::Local(l) = stmt.kind {
+    (if let StmtKind::Local(l, _) = stmt.kind {
         let old_count = moved_bindings.len();
         l.pat.each_binding_or_first(&mut |_, id, _, name| {
             moved_bindings.push((id, name.name));
@@ -435,7 +435,7 @@ fn scan_block_for_eq(cx: &LateContext<'_>, _conds: &[&Expr<'_>], block: &Block<'
                 // Clear out all locals seen at the end so far. None of them can be moved.
                 let stmts = &blocks[0].stmts;
                 for stmt in &stmts[stmts.len() - init..=stmts.len() - offset] {
-                    if let StmtKind::Local(l) = stmt.kind {
+                    if let StmtKind::Local(l, _) = stmt.kind {
                         l.pat.each_binding_or_first(&mut |_, id, _, _| {
                             eq.locals.remove(&id);
                         });

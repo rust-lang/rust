@@ -102,7 +102,7 @@ pub struct HirEqInterExpr<'a, 'b, 'tcx> {
 impl HirEqInterExpr<'_, '_, '_> {
     pub fn eq_stmt(&mut self, left: &Stmt<'_>, right: &Stmt<'_>) -> bool {
         match (&left.kind, &right.kind) {
-            (&StmtKind::Local(l), &StmtKind::Local(r)) => {
+            (&StmtKind::Local(l, le), &StmtKind::Local(r, re)) => {
                 // This additional check ensures that the type of the locals are equivalent even if the init
                 // expression or type have some inferred parts.
                 if let Some((typeck_lhs, typeck_rhs)) = self.inner.maybe_typeck_results {
@@ -117,6 +117,7 @@ impl HirEqInterExpr<'_, '_, '_> {
                 // these only get added if the init and type is equal.
                 both(&l.init, &r.init, |l, r| self.eq_expr(l, r))
                     && both(&l.ty, &r.ty, |l, r| self.eq_ty(l, r))
+                    && both(&le, &re, |l, r| self.eq_block(l, r))
                     && self.eq_pat(l.pat, r.pat)
             },
             (&StmtKind::Expr(l), &StmtKind::Expr(r)) | (&StmtKind::Semi(l), &StmtKind::Semi(r)) => self.eq_expr(l, r),
@@ -921,10 +922,13 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
         std::mem::discriminant(&b.kind).hash(&mut self.s);
 
         match &b.kind {
-            StmtKind::Local(local) => {
+            StmtKind::Local(local, els) => {
                 self.hash_pat(local.pat);
                 if let Some(init) = local.init {
                     self.hash_expr(init);
+                }
+                if let Some(els) = els {
+                    self.hash_block(els);
                 }
             },
             StmtKind::Item(..) => {},

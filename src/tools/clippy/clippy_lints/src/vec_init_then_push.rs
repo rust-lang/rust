@@ -155,7 +155,7 @@ impl<'tcx> LateLintPass<'tcx> for VecInitThenPush {
         self.searcher = None;
     }
 
-    fn check_local(&mut self, cx: &LateContext<'tcx>, local: &'tcx Local<'tcx>) {
+    fn check_local(&mut self, cx: &LateContext<'tcx>, local: &'tcx Local<'tcx>, _: Option<&'tcx Block<'tcx>>) {
         if let Some(init_expr) = local.init
             && let PatKind::Binding(BindingAnnotation::Mutable, id, name, None) = local.pat.kind
             && !in_external_macro(cx.sess(), local.span)

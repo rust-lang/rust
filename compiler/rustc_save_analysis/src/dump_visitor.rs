@@ -82,14 +82,7 @@ impl<'tcx> DumpVisitor<'tcx> {
     pub fn new(save_ctxt: SaveContext<'tcx>) -> DumpVisitor<'tcx> {
         let span_utils = SpanUtils::new(&save_ctxt.tcx.sess);
         let dumper = Dumper::new(save_ctxt.config.clone());
-        DumpVisitor {
-            tcx: save_ctxt.tcx,
-            save_ctxt,
-            dumper,
-            span: span_utils,
-            // mac_defs: FxHashSet::default(),
-            // macro_calls: FxHashSet::default(),
-        }
+        DumpVisitor { tcx: save_ctxt.tcx, save_ctxt, dumper, span: span_utils }
     }
 
     pub fn analysis(&self) -> &rls_data::Analysis {
@@ -1421,13 +1414,14 @@ impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
         intravisit::walk_stmt(self, s)
     }
 
-    fn visit_local(&mut self, l: &'tcx hir::Local<'tcx>) {
+    fn visit_local(&mut self, l: &'tcx hir::Local<'tcx>, e: Option<&'tcx hir::Block<'tcx>>) {
         self.process_macro_use(l.span);
         self.process_var_decl(&l.pat);
 
-        // Just walk the initializer and type (don't want to walk the pattern again).
+        // Just walk the initializer, the else branch and type (don't want to walk the pattern again).
         walk_list!(self, visit_ty, &l.ty);
         walk_list!(self, visit_expr, &l.init);
+        walk_list!(self, visit_block, e);
     }
 
     fn visit_foreign_item(&mut self, item: &'tcx hir::ForeignItem<'tcx>) {

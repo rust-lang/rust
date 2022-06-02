@@ -460,6 +460,7 @@ fn resolve_local<'tcx>(
     visitor: &mut RegionResolutionVisitor<'tcx>,
     pat: Option<&'tcx hir::Pat<'tcx>>,
     init: Option<&'tcx hir::Expr<'tcx>>,
+    els: Option<&'tcx hir::Block<'tcx>>,
 ) {
     debug!("resolve_local(pat={:?}, init={:?})", pat, init);
 
@@ -537,12 +538,17 @@ fn resolve_local<'tcx>(
         }
     }
 
-    // Make sure we visit the initializer first, so expr_and_pat_count remains correct
+    // Make sure we visit the initializer first, so expr_and_pat_count remains correct.
+    // The correct order, as shared between generator_interior, drop_ranges and intravisitor,
+    // is to walk initializer, followed by pattern bindings, finally followed by the `else` block.
     if let Some(expr) = init {
         visitor.visit_expr(expr);
     }
     if let Some(pat) = pat {
         visitor.visit_pat(pat);
+    }
+    if let Some(els) = els {
+        visitor.visit_block(els);
     }
 
     /// Returns `true` if `pat` match the `P&` non-terminal.
@@ -764,7 +770,7 @@ impl<'tcx> Visitor<'tcx> for RegionResolutionVisitor<'tcx> {
             // (i.e., `'static`), which means that after `g` returns, it drops,
             // and all the associated destruction scope rules apply.
             self.cx.var_parent = None;
-            resolve_local(self, None, Some(&body.value));
+            resolve_local(self, None, Some(&body.value), None);
         }
 
         if body.generator_kind.is_some() {
@@ -790,8 +796,8 @@ impl<'tcx> Visitor<'tcx> for RegionResolutionVisitor<'tcx> {
     fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) {
         resolve_expr(self, ex);
     }
-    fn visit_local(&mut self, l: &'tcx Local<'tcx>) {
-        resolve_local(self, Some(&l.pat), l.init);
+    fn visit_local(&mut self, l: &'tcx Local<'tcx>, e: Option<&'tcx Block<'tcx>>) {
+        resolve_local(self, Some(&l.pat), l.init, e)
     }
 }
 

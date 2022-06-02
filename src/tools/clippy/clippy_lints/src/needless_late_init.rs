@@ -92,7 +92,7 @@ fn contains_let(cond: &Expr<'_>) -> bool {
 }
 
 fn stmt_needs_ordered_drop(cx: &LateContext<'_>, stmt: &Stmt<'_>) -> bool {
-    let StmtKind::Local(local) = stmt.kind else { return false };
+    let StmtKind::Local(local, _) = stmt.kind else { return false };
     !local.pat.walk_short(|pat| {
         if let PatKind::Binding(.., None) = pat.kind {
             !needs_ordered_drop(cx, cx.typeck_results().pat_ty(pat))
@@ -367,7 +367,7 @@ fn check<'tcx>(
 }
 
 impl<'tcx> LateLintPass<'tcx> for NeedlessLateInit {
-    fn check_local(&mut self, cx: &LateContext<'tcx>, local: &'tcx Local<'tcx>) {
+    fn check_local(&mut self, cx: &LateContext<'tcx>, local: &'tcx Local<'tcx>, _: Option<&'tcx Block<'tcx>>) {
         let mut parents = cx.tcx.hir().parent_iter(local.hir_id);
         if_chain! {
             if let Local {

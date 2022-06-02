@@ -12,7 +12,7 @@ mod vec_box;
 use rustc_hir as hir;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
-    Body, FnDecl, FnRetTy, GenericArg, HirId, ImplItem, ImplItemKind, Item, ItemKind, Local, MutTy, QPath, TraitItem,
+    Block, Body, FnDecl, FnRetTy, GenericArg, HirId, ImplItem, ImplItemKind, Item, ItemKind, Local, MutTy, QPath, TraitItem,
     TraitItemKind, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
@@ -406,7 +406,7 @@ impl<'tcx> LateLintPass<'tcx> for Types {
         }
     }
 
-    fn check_local(&mut self, cx: &LateContext<'_>, local: &Local<'_>) {
+    fn check_local(&mut self, cx: &LateContext<'_>, local: &Local<'_>, _: Option<&Block<'_>>) {
         if let Some(ty) = local.ty {
             self.check_ty(
                 cx,

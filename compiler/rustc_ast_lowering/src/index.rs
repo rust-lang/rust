@@ -284,10 +284,10 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         });
     }
 
-    fn visit_local(&mut self, l: &'hir Local<'hir>) {
+    fn visit_local(&mut self, l: &'hir Local<'hir>, e: Option<&'hir Block<'hir>>) {
         self.insert(l.span, l.hir_id, Node::Local(l));
         self.with_parent(l.hir_id, |this| {
-            intravisit::walk_local(this, l);
+            intravisit::walk_local(this, l, e);
         })
     }
 

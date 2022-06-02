@@ -252,7 +252,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
             }
 
             hir::ExprKind::Let(hir::Let { pat, init, .. }) => {
-                self.walk_local(init, pat, |t| t.borrow_expr(init, ty::ImmBorrow));
+                self.walk_local(init, pat, None, |t| t.borrow_expr(init, ty::ImmBorrow))
             }
 
             hir::ExprKind::Match(ref discr, arms, _) => {
@@ -453,11 +453,11 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
 
     fn walk_stmt(&mut self, stmt: &hir::Stmt<'_>) {
         match stmt.kind {
-            hir::StmtKind::Local(hir::Local { pat, init: Some(expr), .. }) => {
-                self.walk_local(expr, pat, |_| {});
+            hir::StmtKind::Local(hir::Local { pat, init: Some(expr), .. }, els) => {
+                self.walk_local(expr, pat, els, |_| {})
             }
 
-            hir::StmtKind::Local(_) => {}
+            hir::StmtKind::Local(_, _) => {}
 
             hir::StmtKind::Item(_) => {
                 // We don't visit nested items in this visitor,
@@ -470,13 +470,23 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         }
     }
 
-    fn walk_local<F>(&mut self, expr: &hir::Expr<'_>, pat: &hir::Pat<'_>, mut f: F)
-    where
+    fn walk_local<F>(
+        &mut self,
+        expr: &hir::Expr<'_>,
+        pat: &hir::Pat<'_>,
+        els: Option<&hir::Block<'_>>,
+        mut f: F,
+    ) where
         F: FnMut(&mut Self),
     {
         self.walk_expr(expr);
         let expr_place = return_if_err!(self.mc.cat_expr(expr));
         f(self);
+        if let Some(els) = els {
+            // borrowing because we need to test the descriminant
+            self.borrow_expr(expr, ImmBorrow);
+            self.walk_block(els)
+        }
         self.walk_irrefutable_pat(&expr_place, &pat);
     }
 
@@ -667,7 +677,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         let ExprUseVisitor { ref mc, body_owner: _, ref mut delegate } = *self;
         return_if_err!(mc.cat_pattern(discr_place.clone(), pat, |place, pat| {
             if let PatKind::Binding(_, canonical_id, ..) = pat.kind {
-                debug!("walk_pat: binding place={:?} pat={:?}", place, pat,);
+                debug!("walk_pat: binding place={:?} pat={:?}", place, pat);
                 if let Some(bm) =
                     mc.typeck_results.extract_binding_mode(tcx.sess, pat.hir_id, pat.span)
                 {

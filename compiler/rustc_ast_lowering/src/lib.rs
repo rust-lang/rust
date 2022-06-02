@@ -2147,7 +2147,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             self.attrs.insert(hir_id.local_id, a);
         }
         let local = hir::Local { hir_id, init, pat, source, span: self.lower_span(span), ty: None };
-        self.stmt(span, hir::StmtKind::Local(self.arena.alloc(local)))
+        self.stmt(span, hir::StmtKind::Local(self.arena.alloc(local), None))
     }
 
     fn block_expr(&mut self, expr: &'hir hir::Expr<'hir>) -> &'hir hir::Block<'hir> {

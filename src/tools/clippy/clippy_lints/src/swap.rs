@@ -141,7 +141,7 @@ fn check_manual_swap(cx: &LateContext<'_>, block: &Block<'_>) {
     for w in block.stmts.windows(3) {
         if_chain! {
             // let t = foo();
-            if let StmtKind::Local(tmp) = w[0].kind;
+            if let StmtKind::Local(tmp, _) = w[0].kind;
             if let Some(tmp_init) = tmp.init;
             if let PatKind::Binding(.., ident, None) = tmp.pat.kind;
 

@@ -783,9 +783,9 @@ impl<'tcx> intravisit::Visitor<'tcx> for LintLevelMapBuilder<'tcx> {
         })
     }
 
-    fn visit_local(&mut self, l: &'tcx hir::Local<'tcx>) {
+    fn visit_local(&mut self, l: &'tcx hir::Local<'tcx>, e: Option<&'tcx hir::Block<'tcx>>) {
         self.with_lint_attrs(l.hir_id, |builder| {
-            intravisit::walk_local(builder, l);
+            intravisit::walk_local(builder, l, e);
         })
     }
 

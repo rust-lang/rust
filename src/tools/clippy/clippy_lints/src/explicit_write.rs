@@ -116,7 +116,7 @@ fn look_in_block<'tcx, 'hir>(cx: &LateContext<'tcx>, kind: &'tcx ExprKind<'hir>)
     if_chain! {
         if let ExprKind::Block(block, _label @ None) = kind;
         if let Block {
-            stmts: [Stmt { kind: StmtKind::Local(local), .. }],
+            stmts: [Stmt { kind: StmtKind::Local(local, _), .. }],
             expr: Some(expr_end_of_block),
             rules: BlockCheckMode::DefaultBlock,
             ..

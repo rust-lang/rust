@@ -99,9 +99,9 @@ impl<'a, 'tcx> GatherLocalsVisitor<'a, 'tcx> {
 
 impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
     // Add explicitly-declared locals.
-    fn visit_local(&mut self, local: &'tcx hir::Local<'tcx>) {
+    fn visit_local(&mut self, local: &'tcx hir::Local<'tcx>, els: Option<&'tcx hir::Block<'tcx>>) {
         self.declare(local.into());
-        intravisit::walk_local(self, local);
+        intravisit::walk_local(self, local, els)
     }
 
     fn visit_let_expr(&mut self, let_expr: &'tcx hir::Let<'tcx>) {

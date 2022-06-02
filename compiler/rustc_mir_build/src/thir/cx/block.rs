@@ -48,7 +48,7 @@ impl<'tcx> Cx<'tcx> {
             .filter_map(|(index, stmt)| {
                 let hir_id = stmt.hir_id;
                 let opt_dxn_ext = self.region_scope_tree.opt_destruction_scope(hir_id.local_id);
-                match stmt.kind {
+                match &stmt.kind {
                     hir::StmtKind::Expr(ref expr) | hir::StmtKind::Semi(ref expr) => {
                         let stmt = Stmt {
                             kind: StmtKind::Expr {
@@ -66,13 +66,15 @@ impl<'tcx> Cx<'tcx> {
                         // ignore for purposes of the MIR
                         None
                     }
-                    hir::StmtKind::Local(ref local) => {
+                    hir::StmtKind::Local(local, els) => {
                         let remainder_scope = region::Scope {
                             id: block_id,
                             data: region::ScopeData::Remainder(region::FirstStatementIndex::new(
                                 index,
                             )),
                         };
+
+                        let else_block = els.map(|els| self.mirror_block(els));
 
                         let mut pattern = self.pattern_from_hir(local.pat);
                         debug!(?pattern);
@@ -110,6 +112,7 @@ impl<'tcx> Cx<'tcx> {
                                 },
                                 pattern,
                                 initializer: local.init.map(|init| self.mirror_expr(init)),
+                                else_block,
                                 lint_level: LintLevel::Explicit(local.hir_id),
                             },
                             opt_destruction_scope: opt_dxn_ext,
