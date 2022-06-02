@@ -905,7 +905,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 self.probe(|_| {
                     let substs = self.fresh_substs_for_item(self.span, method.def_id);
                     let fty = fty.subst(self.tcx, substs);
-                    let (fty, _) =
+                    let fty =
                         self.replace_bound_vars_with_fresh_vars(self.span, infer::FnCall, fty);
 
                     if let Some(self_ty) = self_ty {

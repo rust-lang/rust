@@ -255,7 +255,7 @@ fn compare_predicate_entailment<'tcx>(
 
         let mut wf_tys = FxHashSet::default();
 
-        let (impl_sig, _) = infcx.replace_bound_vars_with_fresh_vars(
+        let impl_sig = infcx.replace_bound_vars_with_fresh_vars(
             impl_m_span,
             infer::HigherRankedType,
             tcx.fn_sig(impl_m.def_id),

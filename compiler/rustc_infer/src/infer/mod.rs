@@ -1524,7 +1524,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         span: Span,
         lbrct: LateBoundRegionConversionTime,
         value: ty::Binder<'tcx, T>,
-    ) -> (T, BTreeMap<ty::BoundRegion, ty::Region<'tcx>>)
+    ) -> T
     where
         T: TypeFoldable<'tcx>,
     {
@@ -1553,8 +1553,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 )
             })
         };
-        let result = self.tcx.replace_bound_vars_uncached(value, fld_r, fld_t, fld_c);
-        (result, region_map)
+        self.tcx.replace_bound_vars_uncached(value, fld_r, fld_t, fld_c)
     }
 
     /// See the [`region_constraints::RegionConstraintCollector::verify_generic_bound`] method.

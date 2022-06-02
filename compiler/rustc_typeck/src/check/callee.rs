@@ -152,13 +152,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // fnmut vs fnonce. If so, we have to defer further processing.
                 if self.closure_kind(substs).is_none() {
                     let closure_sig = substs.as_closure().sig();
-                    let closure_sig = self
-                        .replace_bound_vars_with_fresh_vars(
-                            call_expr.span,
-                            infer::FnCall,
-                            closure_sig,
-                        )
-                        .0;
+                    let closure_sig = self.replace_bound_vars_with_fresh_vars(
+                        call_expr.span,
+                        infer::FnCall,
+                        closure_sig,
+                    );
                     let adjustments = self.adjust_steps(autoderef);
                     self.record_deferred_call_resolution(
                         def_id,
@@ -503,8 +501,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // renormalize the associated types at this point, since they
         // previously appeared within a `Binder<>` and hence would not
         // have been normalized before.
-        let fn_sig =
-            self.replace_bound_vars_with_fresh_vars(call_expr.span, infer::FnCall, fn_sig).0;
+        let fn_sig = self.replace_bound_vars_with_fresh_vars(call_expr.span, infer::FnCall, fn_sig);
         let fn_sig = self.normalize_associated_types_in(call_expr.span, fn_sig);
 
         // Call the generic checker.

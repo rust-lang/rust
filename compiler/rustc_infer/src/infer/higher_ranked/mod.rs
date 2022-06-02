@@ -38,8 +38,7 @@ impl<'a, 'tcx> CombineFields<'a, 'tcx> {
             // with a fresh region variable. These region variables --
             // but no other pre-existing region variables -- can name
             // the placeholders.
-            let (a_prime, _) =
-                self.infcx.replace_bound_vars_with_fresh_vars(span, HigherRankedType, a);
+            let a_prime = self.infcx.replace_bound_vars_with_fresh_vars(span, HigherRankedType, a);
 
             debug!("a_prime={:?}", a_prime);
             debug!("b_prime={:?}", b_prime);
