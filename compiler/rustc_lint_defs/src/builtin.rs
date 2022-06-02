@@ -2650,10 +2650,11 @@ declare_lint! {
     /// [issue #73333]: https://github.com/rust-lang/rust/issues/73333
     /// [`Copy`]: https://doc.rust-lang.org/std/marker/trait.Copy.html
     pub CENUM_IMPL_DROP_CAST,
-    Warn,
+    Deny,
     "a C-like enum implementing Drop is cast",
     @future_incompatible = FutureIncompatibleInfo {
         reference: "issue #73333 <https://github.com/rust-lang/rust/issues/73333>",
+        reason: FutureIncompatibilityReason::FutureReleaseErrorReportNow,
     };
 }
 
