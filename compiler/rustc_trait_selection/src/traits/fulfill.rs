@@ -425,6 +425,7 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                     )
                 }
 
+                // TODO
                 ty::PredicateKind::RegionOutlives(data) => {
                     match infcx.region_outlives_predicate(&obligation.cause, Binder::dummy(data)) {
                         Ok(()) => ProcessResult::Changed(vec![]),
@@ -433,14 +434,34 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                 }
 
                 ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(t_a, r_b)) => {
-                    if self.register_region_obligations {
-                        self.selcx.infcx().register_region_obligation_with_cause(
-                            t_a,
-                            r_b,
-                            &obligation.cause,
-                        );
+                    if true {
+                        if t_a.is_ty_infer() {
+                            pending_obligation.stalled_on =
+                                vec![TyOrConstInferVar::maybe_from_ty(t_a).unwrap()];
+                            ProcessResult::Unchanged
+                        } else {
+                            if self.register_region_obligations {
+                                let obligations = infcx.nested_outlives_obligations(
+                                    &obligation.cause,
+                                    obligation.param_env,
+                                    t_a,
+                                    r_b,
+                                );
+                                ProcessResult::Changed(mk_pending(obligations))
+                            } else {
+                                ProcessResult::Changed(vec![])
+                            }
+                        }
+                    } else {
+                        if self.register_region_obligations {
+                            self.selcx.infcx().register_region_obligation_with_cause(
+                                t_a,
+                                r_b,
+                                &obligation.cause,
+                            );
+                        }
+                        ProcessResult::Changed(vec![])
                     }
-                    ProcessResult::Changed(vec![])
                 }
 
                 ty::PredicateKind::Projection(ref data) => {

@@ -62,17 +62,22 @@
 use crate::infer::outlives::components::{push_outlives_components, Component};
 use crate::infer::outlives::env::RegionBoundPairs;
 use crate::infer::outlives::verify::VerifyBoundCx;
+use crate::infer::traits::{Obligation, PredicateObligation};
+use crate::infer::LateBoundRegionConversionTime;
 use crate::infer::{
     self, GenericKind, InferCtxt, RegionObligation, SubregionOrigin, UndoLog, VerifyBound,
 };
 use crate::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::subst::GenericArgKind;
+use rustc_middle::ty::subst::InternalSubsts;
+use rustc_middle::ty::ToPredicate;
 use rustc_middle::ty::{self, Region, Ty, TyCtxt, TypeFoldable};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::undo_log::UndoLogs;
 use rustc_hir as hir;
 use smallvec::smallvec;
+use std::iter;
 
 impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     /// Registers that the given region obligation must be resolved
@@ -184,6 +189,150 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
                     &format!("no region-bound-pairs for {:?}", body_id),
                 );
             }
+        }
+    }
+
+    pub fn nested_outlives_obligations(
+        &self,
+        cause: &ObligationCause<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        ty: Ty<'tcx>,
+        region: ty::Region<'tcx>,
+    ) -> Vec<PredicateObligation<'tcx>> {
+        let to_obligation = |pred: ty::Binder<'tcx, ty::PredicateKind<'tcx>>| {
+            Obligation::new(cause.clone(), param_env, pred.to_predicate(self.tcx))
+        };
+        let ty_outlives = |ty| {
+            to_obligation(ty::Binder::dummy(ty::PredicateKind::TypeOutlives(
+                ty::OutlivesPredicate(ty, region),
+            )))
+        };
+        let reg_outlives = |reg| {
+            to_obligation(ty::Binder::dummy(ty::PredicateKind::RegionOutlives(
+                ty::OutlivesPredicate(reg, region),
+            )))
+        };
+        match ty.kind() {
+            ty::Infer(..) | ty::Bound(..) => bug!("unexpected type: {:?}", ty),
+            ty::FnDef(_, substs) => {
+                substs
+                    .iter()
+                    .filter_map(|arg| match arg.unpack() {
+                        GenericArgKind::Type(ty) => Some(ty_outlives(ty)),
+                        GenericArgKind::Lifetime(_) => {
+                            // HACK(eddyb) ignore lifetimes found shallowly in `substs`.
+                            // This is inconsistent with `ty::Adt` (including all substs)
+                            // and with `ty::Closure` (ignoring all substs other than
+                            // upvars, of which a `ty::FnDef` doesn't have any), but
+                            // consistent with previous (accidental) behavior.
+                            // See https://github.com/rust-lang/rust/issues/70917
+                            // for further background and discussion.
+                            None
+                        }
+                        GenericArgKind::Const(_) => None,
+                    })
+                    .collect()
+            }
+
+            &ty::Ref(re, ty, _) => {
+                vec![reg_outlives(re), ty_outlives(ty)]
+            }
+
+            &ty::RawPtr(ty::TypeAndMut { ty, mutbl: _ }) | &ty::Slice(ty) | &ty::Array(ty, _) => {
+                vec![ty_outlives(ty)]
+            }
+
+            ty::Closure(_, substs) => {
+                let tupled_ty = substs.as_closure().tupled_upvars_ty();
+                vec![ty_outlives(tupled_ty)]
+            }
+
+            ty::Generator(_, substs, _) => {
+                let tupled_ty = substs.as_generator().tupled_upvars_ty();
+                vec![ty_outlives(tupled_ty)]
+            }
+
+            // All regions are bound inside a witness
+            ty::GeneratorWitness(..) => vec![],
+
+            // FIXME: These two should ideally happen eagerly here, but
+            // require some kind of `Any` bound which we don't have yet.
+            ty::Param(_) | ty::Projection(_) => {
+                self.register_region_obligation_with_cause(ty, region, cause);
+                vec![]
+            }
+            &ty::Projection(_) => {
+                self.register_region_obligation_with_cause(ty, region, cause);
+                vec![]
+            }
+
+            // Trivial types
+            ty::Bool
+            | ty::Char
+            | ty::Int(..)
+            | ty::Uint(..)
+            | ty::Float(..)
+            | ty::Never
+            | ty::Str
+            | ty::Foreign(..) => vec![],
+
+            ty::Adt(_, substs) | ty::Opaque(_, substs) => substs
+                .iter()
+                .filter_map(|arg| match arg.unpack() {
+                    GenericArgKind::Lifetime(re) => Some(reg_outlives(re)),
+                    GenericArgKind::Type(ty) => Some(ty_outlives(ty)),
+                    GenericArgKind::Const(_) => None,
+                })
+                .collect(),
+
+            ty::Tuple(fields) => fields.iter().map(|ty| ty_outlives(ty)).collect(),
+
+            &ty::FnPtr(data) => {
+                let (data, _) = self.replace_bound_vars_with_fresh_vars(
+                    cause.span,
+                    LateBoundRegionConversionTime::HigherRankedType,
+                    data,
+                );
+                data.inputs_and_output.iter().map(|ty| ty_outlives(ty)).collect()
+            }
+
+            &ty::Dynamic(traits, region) => traits
+                .iter()
+                .flat_map(|predicate| {
+                    let (predicate, _) = self.replace_bound_vars_with_fresh_vars(
+                        cause.span,
+                        LateBoundRegionConversionTime::HigherRankedType,
+                        predicate,
+                    );
+                    let (substs, opt_ty) = match predicate {
+                        ty::ExistentialPredicate::Trait(tr) => (tr.substs, None),
+                        ty::ExistentialPredicate::Projection(p) => (p.substs, Some(p.term)),
+                        ty::ExistentialPredicate::AutoTrait(_) => (InternalSubsts::empty(), None),
+                    };
+
+                    substs
+                        .iter()
+                        .rev()
+                        .chain(opt_ty.map(|term| match term {
+                            ty::Term::Ty(ty) => ty.into(),
+                            ty::Term::Const(ct) => ct.into(),
+                        }))
+                        .map(move |arg| arg)
+                })
+                .filter_map(|arg| match arg.unpack() {
+                    GenericArgKind::Lifetime(re) => Some(reg_outlives(re)),
+                    GenericArgKind::Type(ty) => Some(ty_outlives(ty)),
+                    GenericArgKind::Const(_) => None,
+                })
+                .chain(iter::once(reg_outlives(region)))
+                .collect(),
+
+            // FIXME: The way we deal with placeholders is wrong for now.
+            //
+            // Have to check for bounds in the `param_env`.
+            ty::Placeholder(..) => vec![],
+
+            ty::Error(_) => vec![],
         }
     }
 }
