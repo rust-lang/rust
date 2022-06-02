@@ -733,6 +733,7 @@ symbols! {
         generator_state,
         generators,
         generic_arg_infer,
+        generic_assert,
         generic_associated_types,
         generic_associated_types_extended,
         generic_const_exprs,

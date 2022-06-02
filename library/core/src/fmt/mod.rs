@@ -2233,35 +2233,41 @@ impl Display for char {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Pointer for *const T {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        /// Since the formatting will be identical for all pointer types, use a non-monomorphized
-        /// implementation for the actual formatting to reduce the amount of codegen work needed
-        fn inner(ptr: *const (), f: &mut Formatter<'_>) -> Result {
-            let old_width = f.width;
-            let old_flags = f.flags;
-
-            // The alternate flag is already treated by LowerHex as being special-
-            // it denotes whether to prefix with 0x. We use it to work out whether
-            // or not to zero extend, and then unconditionally set it to get the
-            // prefix.
-            if f.alternate() {
-                f.flags |= 1 << (FlagV1::SignAwareZeroPad as u32);
-
-                if f.width.is_none() {
-                    f.width = Some((usize::BITS / 4) as usize + 2);
-                }
-            }
-            f.flags |= 1 << (FlagV1::Alternate as u32);
-
-            let ret = LowerHex::fmt(&(ptr.addr()), f);
-
-            f.width = old_width;
-            f.flags = old_flags;
-
-            ret
-        }
-
-        inner(*self as *const (), f)
+        // Cast is needed here because `.addr()` requires `T: Sized`.
+        pointer_fmt_inner((*self as *const ()).addr(), f)
     }
+}
+
+/// Since the formatting will be identical for all pointer types, use a non-monomorphized
+/// implementation for the actual formatting to reduce the amount of codegen work needed.
+///
+/// This uses `ptr_addr: usize` and not `ptr: *const ()` to be able to use this for
+/// `fn(...) -> ...` without using [problematic] "Oxford Casts".
+///
+/// [problematic]: https://github.com/rust-lang/rust/issues/95489
+pub(crate) fn pointer_fmt_inner(ptr_addr: usize, f: &mut Formatter<'_>) -> Result {
+    let old_width = f.width;
+    let old_flags = f.flags;
+
+    // The alternate flag is already treated by LowerHex as being special-
+    // it denotes whether to prefix with 0x. We use it to work out whether
+    // or not to zero extend, and then unconditionally set it to get the
+    // prefix.
+    if f.alternate() {
+        f.flags |= 1 << (FlagV1::SignAwareZeroPad as u32);
+
+        if f.width.is_none() {
+            f.width = Some((usize::BITS / 4) as usize + 2);
+        }
+    }
+    f.flags |= 1 << (FlagV1::Alternate as u32);
+
+    let ret = LowerHex::fmt(&ptr_addr, f);
+
+    f.width = old_width;
+    f.flags = old_flags;
+
+    ret
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
