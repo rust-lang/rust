@@ -771,7 +771,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Replaces all escaping bound vars. The `fld_r` closure replaces escaping
     /// bound regions; the `fld_t` closure replaces escaping bound types and the `fld_c`
     /// closure replaces escaping bound consts.
-    pub fn replace_escaping_bound_vars<T, F, G, H>(
+    pub fn replace_escaping_bound_vars_uncached<T, F, G, H>(
         self,
         value: T,
         mut fld_r: F,
@@ -795,23 +795,20 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Replaces all types or regions bound by the given `Binder`. The `fld_r`
     /// closure replaces bound regions, the `fld_t` closure replaces bound
     /// types, and `fld_c` replaces bound constants.
-    pub fn replace_bound_vars<T, F, G, H>(
+    pub fn replace_bound_vars_uncached<T, F, G, H>(
         self,
         value: Binder<'tcx, T>,
-        mut fld_r: F,
+        fld_r: F,
         fld_t: G,
         fld_c: H,
-    ) -> (T, BTreeMap<ty::BoundRegion, ty::Region<'tcx>>)
+    ) -> T
     where
         F: FnMut(ty::BoundRegion) -> ty::Region<'tcx>,
         G: FnMut(ty::BoundTy) -> Ty<'tcx>,
         H: FnMut(ty::BoundVar, Ty<'tcx>) -> ty::Const<'tcx>,
         T: TypeFoldable<'tcx>,
     {
-        let mut region_map = BTreeMap::new();
-        let real_fld_r = |br: ty::BoundRegion| *region_map.entry(br).or_insert_with(|| fld_r(br));
-        let value = self.replace_escaping_bound_vars(value.skip_binder(), real_fld_r, fld_t, fld_c);
-        (value, region_map)
+        self.replace_escaping_bound_vars_uncached(value.skip_binder(), fld_r, fld_t, fld_c)
     }
 
     /// Replaces any late-bound regions bound in `value` with
@@ -837,7 +834,7 @@ impl<'tcx> TyCtxt<'tcx> {
     where
         T: TypeFoldable<'tcx>,
     {
-        self.replace_escaping_bound_vars(
+        self.replace_escaping_bound_vars_uncached(
             value,
             |r| {
                 self.mk_region(ty::ReLateBound(

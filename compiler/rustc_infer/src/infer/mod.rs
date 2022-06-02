@@ -1528,21 +1528,33 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     where
         T: TypeFoldable<'tcx>,
     {
-        let fld_r =
-            |br: ty::BoundRegion| self.next_region_var(LateBoundRegion(span, br.kind, lbrct));
-        let fld_t = |_| {
-            self.next_ty_var(TypeVariableOrigin {
-                kind: TypeVariableOriginKind::MiscVariable,
-                span,
+        let mut region_map = BTreeMap::new();
+        let fld_r = |br: ty::BoundRegion| {
+            *region_map
+                .entry(br)
+                .or_insert_with(|| self.next_region_var(LateBoundRegion(span, br.kind, lbrct)))
+        };
+
+        let mut ty_map = BTreeMap::new();
+        let fld_t = |bt: ty::BoundTy| {
+            *ty_map.entry(bt).or_insert_with(|| {
+                self.next_ty_var(TypeVariableOrigin {
+                    kind: TypeVariableOriginKind::MiscVariable,
+                    span,
+                })
             })
         };
-        let fld_c = |_, ty| {
-            self.next_const_var(
-                ty,
-                ConstVariableOrigin { kind: ConstVariableOriginKind::MiscVariable, span },
-            )
+        let mut ct_map = BTreeMap::new();
+        let fld_c = |bc: ty::BoundVar, ty| {
+            *ct_map.entry(bc).or_insert_with(|| {
+                self.next_const_var(
+                    ty,
+                    ConstVariableOrigin { kind: ConstVariableOriginKind::MiscVariable, span },
+                )
+            })
         };
-        self.tcx.replace_bound_vars(value, fld_r, fld_t, fld_c)
+        let result = self.tcx.replace_bound_vars_uncached(value, fld_r, fld_t, fld_c);
+        (result, region_map)
     }
 
     /// See the [`region_constraints::RegionConstraintCollector::verify_generic_bound`] method.

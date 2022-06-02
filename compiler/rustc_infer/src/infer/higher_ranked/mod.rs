@@ -3,10 +3,10 @@
 
 use super::combine::CombineFields;
 use super::{HigherRankedType, InferCtxt};
-
 use crate::infer::CombinedSnapshot;
 use rustc_middle::ty::relate::{Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::{self, Binder, TypeFoldable};
+use std::cell::Cell;
 
 impl<'a, 'tcx> CombineFields<'a, 'tcx> {
     #[instrument(skip(self), level = "debug")]
@@ -65,6 +65,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// For more details visit the relevant sections of the [rustc dev guide].
     ///
     /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/hrtb.html
+    #[instrument(level = "debug", skip(self))]
     pub fn replace_bound_vars_with_placeholders<T>(&self, binder: ty::Binder<'tcx, T>) -> T
     where
         T: TypeFoldable<'tcx>,
@@ -76,7 +77,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         // (i.e., if there are no placeholders).
         let next_universe = self.universe().next_universe();
 
+        let replaced_bound_var = Cell::new(false);
         let fld_r = |br: ty::BoundRegion| {
+            replaced_bound_var.set(true);
             self.tcx.mk_region(ty::RePlaceholder(ty::PlaceholderRegion {
                 universe: next_universe,
                 name: br.kind,
@@ -84,6 +87,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         };
 
         let fld_t = |bound_ty: ty::BoundTy| {
+            replaced_bound_var.set(true);
             self.tcx.mk_ty(ty::Placeholder(ty::PlaceholderType {
                 universe: next_universe,
                 name: bound_ty.var,
@@ -91,6 +95,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         };
 
         let fld_c = |bound_var: ty::BoundVar, ty| {
+            replaced_bound_var.set(true);
             self.tcx.mk_const(ty::ConstS {
                 val: ty::ConstKind::Placeholder(ty::PlaceholderConst {
                     universe: next_universe,
@@ -100,22 +105,16 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             })
         };
 
-        let (result, map) = self.tcx.replace_bound_vars(binder, fld_r, fld_t, fld_c);
+        let result = self.tcx.replace_bound_vars_uncached(binder, fld_r, fld_t, fld_c);
 
         // If there were higher-ranked regions to replace, then actually create
         // the next universe (this avoids needlessly creating universes).
-        if !map.is_empty() {
+        if replaced_bound_var.get() {
             let n_u = self.create_next_universe();
             assert_eq!(n_u, next_universe);
         }
 
-        debug!(
-            "replace_bound_vars_with_placeholders(\
-             next_universe={:?}, \
-             result={:?}, \
-             map={:?})",
-            next_universe, result, map,
-        );
+        debug!(?next_universe, ?result);
 
         result
     }
