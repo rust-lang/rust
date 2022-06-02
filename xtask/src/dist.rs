@@ -72,7 +72,8 @@ fn dist_client(
 }
 
 fn dist_server(sh: &Shell, release_channel: &str, target: &Target) -> anyhow::Result<()> {
-    let _e = sh.push_env("RUST_ANALYZER_CHANNEL", release_channel);
+    let _e = sh.push_env("CFG_RELEASE_CHANNEL", release_channel);
+    let _e = sh.push_env("CFG_RELEASE", "0.0.0");
     let _e = sh.push_env("CARGO_PROFILE_RELEASE_LTO", "thin");
 
     // Uncomment to enable debug info for releases. Note that:

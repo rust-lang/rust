@@ -4,11 +4,14 @@ use std::{env, path::PathBuf, process::Command};
 
 fn main() {
     set_rerun();
-    println!("cargo:rustc-env=REV={}", rev());
+    set_commit_info();
+    if option_env!("CFG_RELEASE").is_none() {
+        println!("cargo:rustc-env=POKE_RA_DEVS=1");
+    }
 }
 
 fn set_rerun() {
-    println!("cargo:rerun-if-env-changed=RUST_ANALYZER_REV");
+    println!("cargo:rerun-if-env-changed=CFG_RELEASE");
 
     let mut manifest_dir = PathBuf::from(
         env::var("CARGO_MANIFEST_DIR").expect("`CARGO_MANIFEST_DIR` is always set by cargo."),
@@ -27,47 +30,21 @@ fn set_rerun() {
     println!("cargo:warning=Could not find `.git/HEAD` from manifest dir!");
 }
 
-fn rev() -> String {
-    if let Ok(rev) = env::var("RUST_ANALYZER_REV") {
-        return rev;
-    }
-
-    if let Some(commit_hash) = commit_hash() {
-        let mut buf = commit_hash;
-
-        if let Some(date) = build_date() {
-            buf.push(' ');
-            buf.push_str(&date);
-        }
-
-        let channel = env::var("RUST_ANALYZER_CHANNEL").unwrap_or_else(|_| "dev".to_string());
-        buf.push(' ');
-        buf.push_str(&channel);
-
-        return buf;
-    }
-
-    "???????".to_string()
-}
-
-fn commit_hash() -> Option<String> {
-    exec("git rev-parse --short HEAD").ok()
-}
-
-fn build_date() -> Option<String> {
-    exec("date -u +%Y-%m-%d").ok()
-}
-
-fn exec(command: &str) -> std::io::Result<String> {
-    let args = command.split_ascii_whitespace().collect::<Vec<_>>();
-    let output = Command::new(args[0]).args(&args[1..]).output()?;
-    if !output.status.success() {
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::InvalidData,
-            format!("command {:?} returned non-zero code", command,),
-        ));
-    }
-    let stdout = String::from_utf8(output.stdout)
-        .map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidData, err))?;
-    Ok(stdout.trim().to_string())
+fn set_commit_info() {
+    let output = match Command::new("git")
+        .arg("log")
+        .arg("-1")
+        .arg("--date=short")
+        .arg("--format=%H %h %cd")
+        .output()
+    {
+        Ok(output) if output.status.success() => output,
+        _ => return,
+    };
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let mut parts = stdout.split_whitespace();
+    let mut next = || parts.next().unwrap();
+    println!("cargo:rustc-env=RA_COMMIT_HASH={}", next());
+    println!("cargo:rustc-env=RA_COMMIT_SHORT_HASH={}", next());
+    println!("cargo:rustc-env=RA_COMMIT_DATE={}", next())
 }

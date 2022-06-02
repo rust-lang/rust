@@ -16,26 +16,28 @@ macro_rules! eprintln {
     ($($tt:tt)*) => { stdx::eprintln!($($tt)*) };
 }
 
-mod global_state;
-mod reload;
-mod main_loop;
-mod dispatch;
-mod handlers;
 mod caps;
 mod cargo_target_spec;
-mod to_proto;
-mod from_proto;
-mod semantic_tokens;
-mod markdown;
 mod diagnostics;
+mod diff;
+mod dispatch;
+mod from_proto;
+mod global_state;
+mod handlers;
 mod line_index;
 mod lsp_utils;
-mod task_pool;
+mod main_loop;
+mod markdown;
 mod mem_docs;
-mod diff;
 mod op_queue;
-pub mod lsp_ext;
+mod reload;
+mod semantic_tokens;
+mod task_pool;
+mod to_proto;
+mod version;
+
 pub mod config;
+pub mod lsp_ext;
 
 #[cfg(test)]
 mod integrated_benchmarks;
@@ -44,7 +46,7 @@ use std::fmt;
 
 use serde::de::DeserializeOwned;
 
-pub use crate::{caps::server_capabilities, main_loop::main_loop};
+pub use crate::{caps::server_capabilities, main_loop::main_loop, version::version};
 
 pub type Error = Box<dyn std::error::Error + Send + Sync>;
 pub type Result<T, E = Error> = std::result::Result<T, E>;
