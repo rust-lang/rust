@@ -285,6 +285,54 @@ pub enum BadTypePlusSub {
     },
 }
 
+#[derive(SessionDiagnostic)]
+#[error(slug = "parser-maybe-recover-from-bad-qpath-stage-2")]
+struct BadQPathStage2 {
+    #[primary_span]
+    #[suggestion(applicability = "maybe-incorrect")]
+    span: Span,
+    ty: String,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(slug = "parser-incorrect-semicolon")]
+struct IncorrectSemicolon<'a> {
+    #[primary_span]
+    #[suggestion_short(applicability = "machine-applicable")]
+    span: Span,
+    #[help]
+    opt_help: Option<()>,
+    name: &'a str,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(slug = "parser-incorrect-use-of-await")]
+struct IncorrectUseOfAwait {
+    #[primary_span]
+    #[suggestion(message = "parentheses-suggestion", applicability = "machine-applicable")]
+    span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(slug = "parser-incorrect-use-of-await")]
+struct IncorrectAwait {
+    #[primary_span]
+    span: Span,
+    #[suggestion(message = "postfix-suggestion", code = "{expr}.await{question_mark}")]
+    sugg_span: (Span, Applicability),
+    expr: String,
+    question_mark: &'static str,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(slug = "parser-in-in-typo")]
+struct InInTypo {
+    #[primary_span]
+    span: Span,
+    #[suggestion(applicability = "machine-applicable")]
+    sugg_span: Span,
+}
+
 // SnapshotParser is used to create a snapshot of the parser
 // without causing duplicate errors being emitted when the `Parser`
 // is dropped.
@@ -1451,15 +1499,10 @@ impl<'a> Parser<'a> {
         path.span = ty_span.to(self.prev_token.span);
 
         let ty_str = self.span_to_snippet(ty_span).unwrap_or_else(|_| pprust::ty_to_string(&ty));
-        self.struct_span_err(path.span, "missing angle brackets in associated item path")
-            .span_suggestion(
-                // This is a best-effort recovery.
-                path.span,
-                "try",
-                format!("<{}>::{}", ty_str, pprust::path_to_string(&path)),
-                Applicability::MaybeIncorrect,
-            )
-            .emit();
+        self.sess.emit_err(BadQPathStage2 {
+            span: path.span,
+            ty: format!("<{}>::{}", ty_str, pprust::path_to_string(&path)),
+        });
 
         let path_span = ty_span.shrink_to_hi(); // Use an empty path since `position == 0`.
         Ok(P(T::recovered(Some(QSelf { ty, path_span, position: 0 }), path)))
@@ -1468,13 +1511,10 @@ impl<'a> Parser<'a> {
     pub fn maybe_consume_incorrect_semicolon(&mut self, items: &[P<Item>]) -> bool {
         if self.token.kind == TokenKind::Semi {
             self.bump();
-            let mut err = self.struct_span_err(self.prev_token.span, "expected item, found `;`");
-            err.span_suggestion_short(
-                self.prev_token.span,
-                "remove this semicolon",
-                String::new(),
-                Applicability::MachineApplicable,
-            );
+
+            let mut err =
+                IncorrectSemicolon { span: self.prev_token.span, opt_help: None, name: "" };
+
             if !items.is_empty() {
                 let previous_item = &items[items.len() - 1];
                 let previous_item_kind_name = match previous_item.kind {
@@ -1487,10 +1527,11 @@ impl<'a> Parser<'a> {
                     _ => None,
                 };
                 if let Some(name) = previous_item_kind_name {
-                    err.help(&format!("{name} declarations are not followed by a semicolon"));
+                    err.opt_help = Some(());
+                    err.name = name;
                 }
             }
-            err.emit();
+            self.sess.emit_err(err);
             true
         } else {
             false
@@ -1604,18 +1645,20 @@ impl<'a> Parser<'a> {
     }
 
     fn error_on_incorrect_await(&self, lo: Span, hi: Span, expr: &Expr, is_question: bool) -> Span {
-        let expr_str =
-            self.span_to_snippet(expr.span).unwrap_or_else(|_| pprust::expr_to_string(&expr));
-        let suggestion = format!("{}.await{}", expr_str, if is_question { "?" } else { "" });
-        let sp = lo.to(hi);
-        let app = match expr.kind {
+        let span = lo.to(hi);
+        let applicability = match expr.kind {
             ExprKind::Try(_) => Applicability::MaybeIncorrect, // `await <expr>?`
             _ => Applicability::MachineApplicable,
         };
-        self.struct_span_err(sp, "incorrect use of `await`")
-            .span_suggestion(sp, "`await` is a postfix operation", suggestion, app)
-            .emit();
-        sp
+
+        self.sess.emit_err(IncorrectAwait {
+            span,
+            sugg_span: (span, applicability),
+            expr: self.span_to_snippet(expr.span).unwrap_or_else(|_| pprust::expr_to_string(&expr)),
+            question_mark: if is_question { "?" } else { "" },
+        });
+
+        span
     }
 
     /// If encountering `future.await()`, consumes and emits an error.
@@ -1626,16 +1669,10 @@ impl<'a> Parser<'a> {
             // future.await()
             let lo = self.token.span;
             self.bump(); // (
-            let sp = lo.to(self.token.span);
+            let span = lo.to(self.token.span);
             self.bump(); // )
-            self.struct_span_err(sp, "incorrect use of `await`")
-                .span_suggestion(
-                    sp,
-                    "`await` is not a method call, remove the parentheses",
-                    String::new(),
-                    Applicability::MachineApplicable,
-                )
-                .emit();
+
+            self.sess.emit_err(IncorrectUseOfAwait { span });
         }
     }
 
@@ -1907,14 +1944,10 @@ impl<'a> Parser<'a> {
     pub(super) fn check_for_for_in_in_typo(&mut self, in_span: Span) {
         if self.eat_keyword(kw::In) {
             // a common typo: `for _ in in bar {}`
-            self.struct_span_err(self.prev_token.span, "expected iterable, found keyword `in`")
-                .span_suggestion_short(
-                    in_span.until(self.prev_token.span),
-                    "remove the duplicated `in`",
-                    String::new(),
-                    Applicability::MachineApplicable,
-                )
-                .emit();
+            self.sess.emit_err(InInTypo {
+                span: self.prev_token.span,
+                sugg_span: in_span.until(self.prev_token.span),
+            });
         }
     }
 
