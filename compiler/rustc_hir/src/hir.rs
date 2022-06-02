@@ -131,6 +131,17 @@ impl LifetimeName {
         }
     }
 
+    pub fn is_anonymous(&self) -> bool {
+        match *self {
+            LifetimeName::ImplicitObjectLifetimeDefault
+            | LifetimeName::Implicit
+            | LifetimeName::Underscore
+            | LifetimeName::Param(ParamName::Fresh(_))
+            | LifetimeName::Error => true,
+            LifetimeName::Static | LifetimeName::Param(_) => false,
+        }
+    }
+
     pub fn is_elided(&self) -> bool {
         match self {
             LifetimeName::ImplicitObjectLifetimeDefault
