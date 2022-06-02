@@ -4,10 +4,25 @@ version = "0.0.0"
 edition = "2021"
 
 [dependencies]
-rustc_middle = { path = "../rustc_middle", optional = true }
-rustc_driver = { path = "../rustc_driver", optional = true }
 rustc_borrowck = { path = "../rustc_borrowck", optional = true }
+rustc_driver = { path = "../rustc_driver", optional = true }
+rustc_hir = { path = "../rustc_hir", optional = true }
 rustc_interface = { path = "../rustc_interface", optional = true }
+rustc_middle = { path = "../rustc_middle", optional = true }
+rustc_mir_dataflow = { path = "../rustc_mir_dataflow", optional = true }
+rustc_mir_transform = { path = "../rustc_mir_transform", optional = true }
+rustc_serialize = { path = "../rustc_serialize", optional = true }
+rustc_trait_selection = { path = "../rustc_trait_selection", optional = true }
 
 [features]
-default = ["rustc_middle", "rustc_driver", "rustc_borrowck", "rustc_interface"]
+default = [
+    "rustc_borrowck",
+    "rustc_driver",
+    "rustc_hir",
+    "rustc_interface",
+    "rustc_middle",
+    "rustc_mir_dataflow",
+    "rustc_mir_transform",
+    "rustc_serialize",
+    "rustc_trait_selection",
+]
