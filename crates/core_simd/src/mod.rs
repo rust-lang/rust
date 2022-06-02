@@ -14,7 +14,6 @@ mod lane_count;
 mod masks;
 mod ops;
 mod ord;
-mod round;
 mod select;
 mod vector;
 mod vendor;
