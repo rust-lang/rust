@@ -21,7 +21,7 @@ fn duplicate_tup2<A: Copy, B: Copy>(t: (A, B)) -> ((A, B), (A, B)) {
     (t, t) //~ use of moved value: `t`
 }
 
-fn duplicate_custom<T: Trait + Copy>(t: S<T>) -> (S<T>, S<T>) {
+fn duplicate_custom<T: Copy + Trait>(t: S<T>) -> (S<T>, S<T>) {
     //~^ HELP consider restricting type parameter `T`
     (t, t) //~ use of moved value: `t`
 }
@@ -39,14 +39,14 @@ trait A {}
 trait B {}
 
 // Test where bounds are added with different bound placements
-fn duplicate_custom_1<T: Trait + Copy>(t: S<T>) -> (S<T>, S<T>) where {
+fn duplicate_custom_1<T: Copy + Trait>(t: S<T>) -> (S<T>, S<T>) where {
     //~^ HELP consider restricting type parameter `T`
     (t, t) //~ use of moved value: `t`
 }
 
 fn duplicate_custom_2<T>(t: S<T>) -> (S<T>, S<T>)
 where
-    T: A + Trait + Copy,
+    T: A + Copy + Trait,
     //~^ HELP consider further restricting this bound
 {
     (t, t) //~ use of moved value: `t`
@@ -54,14 +54,14 @@ where
 
 fn duplicate_custom_3<T>(t: S<T>) -> (S<T>, S<T>)
 where
-    T: A + Trait + Copy,
+    T: A + Copy + Trait,
     //~^ HELP consider further restricting this bound
     T: B,
 {
     (t, t) //~ use of moved value: `t`
 }
 
-fn duplicate_custom_4<T: A + Trait + Copy>(t: S<T>) -> (S<T>, S<T>)
+fn duplicate_custom_4<T: A + Copy + Trait>(t: S<T>) -> (S<T>, S<T>)
 //~^ HELP consider further restricting this bound
 where
     T: B,

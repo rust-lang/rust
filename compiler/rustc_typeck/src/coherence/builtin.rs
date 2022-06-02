@@ -11,8 +11,7 @@ use rustc_infer::infer;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{RegionckMode, TyCtxtInferExt};
 use rustc_middle::ty::adjustment::CoerceUnsizedInfo;
-use rustc_middle::ty::TypeFoldable;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, suggest_constraining_type_params, Ty, TyCtxt, TypeFoldable};
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt;
 use rustc_trait_selection::traits::misc::{can_type_implement_copy, CopyImplementationError};
 use rustc_trait_selection::traits::predicate_for_trait_def;
@@ -91,6 +90,19 @@ fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
                 E0204,
                 "the trait `Copy` may not be implemented for this type"
             );
+
+            // We'll try to suggest constraining type parameters to fulfill the requirements of
+            // their `Copy` implementation.
+            let mut generics = None;
+            if let ty::Adt(def, _substs) = self_type.kind() {
+                let self_def_id = def.did();
+                if let Some(local) = self_def_id.as_local() {
+                    let self_item = tcx.hir().expect_item(local);
+                    generics = self_item.kind.generics();
+                }
+            }
+            let mut bounds = vec![];
+
             for (field, ty) in fields {
                 let field_span = tcx.def_span(field.did);
                 err.span_label(field_span, "this field does not implement `Copy`");
@@ -123,8 +135,33 @@ fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
                                 ),
                             );
                         }
+                        if let ty::PredicateKind::Trait(ty::TraitPredicate {
+                            trait_ref,
+                            polarity: ty::ImplPolarity::Positive,
+                            ..
+                        }) = error_predicate.kind().skip_binder()
+                        {
+                            let ty = trait_ref.self_ty();
+                            if let ty::Param(_) = ty.kind() {
+                                bounds.push((
+                                    format!("{ty}"),
+                                    trait_ref.print_only_trait_path().to_string(),
+                                    Some(trait_ref.def_id),
+                                ));
+                            }
+                        }
                     }
                 });
+            }
+            if let Some(generics) = generics {
+                suggest_constraining_type_params(
+                    tcx,
+                    generics,
+                    &mut err,
+                    bounds.iter().map(|(param, constraint, def_id)| {
+                        (param.as_str(), constraint.as_str(), *def_id)
+                    }),
+                );
             }
             err.emit();
         }
