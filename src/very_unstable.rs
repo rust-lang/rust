@@ -3,12 +3,25 @@
 //! Only use rustc_smir in your dependencies and use the reexports here instead of
 //! directly referring to the unstable crates.
 
-pub use rustc_borrowck as borrowck;
-pub use rustc_driver as driver;
-pub use rustc_hir as hir;
-pub use rustc_interface as interface;
-pub use rustc_middle as middle;
-pub use rustc_mir_dataflow as dataflow;
-pub use rustc_mir_transform as transform;
-pub use rustc_serialize as serialize;
-pub use rustc_trait_selection as trait_selection;
+macro_rules! crates {
+    ($($rustc_name:ident -> $name:ident,)*) => {
+        $(
+            #[cfg(not(feature = "default"))]
+            pub extern crate $rustc_name as $name;
+            #[cfg(feature = "default")]
+            pub use $rustc_name as $name;
+        )*
+    }
+}
+
+crates! {
+    rustc_borrowck -> borrowck,
+    rustc_driver -> driver,
+    rustc_hir -> hir,
+    rustc_interface -> interface,
+    rustc_middle -> middle,
+    rustc_mir_dataflow -> dataflow,
+    rustc_mir_transform -> transform,
+    rustc_serialize -> serialize,
+    rustc_trait_selection -> trait_selection,
+}

@@ -7,6 +7,18 @@ sync is pushed entirely onto us, without affecting rustc workflows negatively.
 This may change in the future, but changes to policy should only be done via a
 compiler team MCP.
 
+## Instructions for working on this crate locally
+
+Since the crate is the same in the rustc repo and here, the dependencies on rustc_* crates
+will only either work here or there, but never in both places at the same time. Thus we use
+optional dependencies on the rustc_* crates, requiring local development to use
+
+```
+cargo build --no-default-features -Zavoid-dev-deps
+```
+
+in order to compile successfully.
+
 ## Instructions for syncing
 
 ### Updating this repository

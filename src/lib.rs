@@ -11,6 +11,8 @@
     test(attr(allow(unused_variables), deny(warnings)))
 )]
 
+#![cfg_attr(not(feature = "default"), feature(rustc_private))]
+
 pub mod mir;
 
 pub mod very_unstable;

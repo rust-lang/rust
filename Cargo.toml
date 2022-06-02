@@ -4,7 +4,10 @@ version = "0.0.0"
 edition = "2021"
 
 [dependencies]
-rustc_middle = { path = "../rustc_middle" }
-rustc_driver = { path = "../rustc_driver" }
-rustc_borrowck = { path = "../rustc_borrowck" }
-rustc_interface = { path = "../rustc_interface" }
+rustc_middle = { path = "../rustc_middle", optional = true }
+rustc_driver = { path = "../rustc_driver", optional = true }
+rustc_borrowck = { path = "../rustc_borrowck", optional = true }
+rustc_interface = { path = "../rustc_interface", optional = true }
+
+[features]
+default = ["rustc_middle", "rustc_driver", "rustc_borrowck", "rustc_interface"]

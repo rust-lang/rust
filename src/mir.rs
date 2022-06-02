@@ -1,4 +1,4 @@
-pub use rustc_middle::mir::{
+pub use crate::very_unstable::middle::mir::{
     visit::MutVisitor, AggregateKind, AssertKind, BasicBlock, BasicBlockData, BinOp, BindingForm,
     BlockTailInfo, Body, BorrowKind, CastKind, ClearCrossCrate, Constant, ConstantKind,
     CopyNonOverlapping, Coverage, FakeReadCause, Field, GeneratorInfo, ImplicitSelfKind,
