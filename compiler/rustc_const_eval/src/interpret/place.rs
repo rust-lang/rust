@@ -4,6 +4,7 @@
 
 use std::convert::TryFrom;
 use std::hash::Hash;
+use std::ops::Deref;
 
 use rustc_ast::Mutability;
 use rustc_macros::HashStable;
@@ -869,8 +870,17 @@ where
             Ok(src_val) => {
                 assert!(!src.layout.is_unsized(), "cannot have unsized immediates");
                 // Yay, we got a value that we can write directly.
-                // FIXME: Add a check to make sure that if `src` is indirect,
-                // it does not overlap with `dest`.
+                // Then make sure `src` does not overlap with `dest`.
+                if let Operand::Indirect(src_mplace) = src.deref()
+                    && let Place::Ptr(dest_mplace) = dest.deref()
+                    && let Ok((src_id, src_offset, _)) = self.ptr_try_get_alloc_id(src_mplace.ptr)
+                    && let Ok((dest_id, dest_offset, _)) = self.ptr_try_get_alloc_id(dest_mplace.ptr)
+                {
+                    let size = src_val.layout.size;
+                    if Self::check_ptr_overlap(src_id, src_offset, dest_id, dest_offset, size) {
+                        throw_ub_format!("copy_nonoverlapping called on overlapping ranges")
+                    }
+                }
                 return self.write_immediate_no_validate(*src_val, dest);
             }
             Err(mplace) => mplace,

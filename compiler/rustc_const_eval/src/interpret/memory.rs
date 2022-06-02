@@ -1096,22 +1096,17 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // The pointers above remain valid even if the `HashMap` table is moved around because they
         // point into the `Vec` storing the bytes.
         unsafe {
-            if src_alloc_id == dest_alloc_id {
+            if Self::check_ptr_overlap(src_alloc_id, src_offset, dest_alloc_id, dest_offset, size) {
                 if nonoverlapping {
-                    // `Size` additions
-                    if (src_offset <= dest_offset && src_offset + size > dest_offset)
-                        || (dest_offset <= src_offset && dest_offset + size > src_offset)
-                    {
-                        throw_ub_format!("copy_nonoverlapping called on overlapping ranges")
+                    throw_ub_format!("copy_nonoverlapping called on overlapping ranges")
+                } else {
+                    for i in 0..num_copies {
+                        ptr::copy(
+                            src_bytes,
+                            dest_bytes.add((size * i).bytes_usize()), // `Size` multiplication
+                            size.bytes_usize(),
+                        );
                     }
-                }
-
-                for i in 0..num_copies {
-                    ptr::copy(
-                        src_bytes,
-                        dest_bytes.add((size * i).bytes_usize()), // `Size` multiplication
-                        size.bytes_usize(),
-                    );
                 }
             } else {
                 for i in 0..num_copies {
@@ -1210,5 +1205,19 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         self.ptr_try_get_alloc_id(ptr).map_err(|offset| {
             err_ub!(DanglingIntPointer(offset, CheckInAllocMsg::InboundsTest)).into()
         })
+    }
+
+    /// Check if a `src` ptr overlaps with a `dest` ptr.
+    #[inline(always)]
+    pub fn check_ptr_overlap(
+        src_id: AllocId,
+        src_offset: Size,
+        dest_id: AllocId,
+        dest_offset: Size,
+        size: Size,
+    ) -> bool {
+        let overlaps = |a, b| a <= b && b < a + size;
+        src_id == dest_id
+            && (overlaps(src_offset, dest_offset) || overlaps(dest_offset, src_offset))
     }
 }
