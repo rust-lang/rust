@@ -1280,9 +1280,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         parent_def_id,
                     ) => {
                         // Add a definition for the in-band `Param`.
-                        
+
                         // get the def_id that we created in the desugaring
-                        // self.create_def(..) 
+                        // self.create_def(..)
                         let def_id = self.resolver.local_def_id(def_node_id);
 
                         // lower param bounds `impl Bound1 + Bound2`
@@ -1366,7 +1366,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // frequently opened issues show.
         let opaque_ty_span = self.mark_span_with_reason(DesugaringKind::OpaqueTy, span, None);
 
-        // impl_trait_node_id 
+        // impl_trait_node_id
         let opaque_ty_def_id = self.resolver.local_def_id(opaque_ty_node_id);
 
         let mut collected_lifetimes = FxHashMap::default();
