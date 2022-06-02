@@ -261,10 +261,6 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
                 self.register_region_obligation_with_cause(ty, region, cause);
                 vec![]
             }
-            &ty::Projection(_) => {
-                self.register_region_obligation_with_cause(ty, region, cause);
-                vec![]
-            }
 
             // Trivial types
             ty::Bool
