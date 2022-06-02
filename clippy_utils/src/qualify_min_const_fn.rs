@@ -131,7 +131,12 @@ fn check_rvalue<'tcx>(
         Rvalue::Cast(CastKind::Misc, operand, _) => {
             check_operand(tcx, operand, span, body)
         },
-        Rvalue::Cast(CastKind::Pointer(PointerCast::MutToConstPointer | PointerCast::ArrayToPointer), operand, _) => {
+        Rvalue::Cast(
+            CastKind::PointerFromExposedAddress
+            | CastKind::Pointer(PointerCast::MutToConstPointer | PointerCast::ArrayToPointer),
+            operand,
+            _
+        ) => {
             check_operand(tcx, operand, span, body)
         },
         Rvalue::Cast(
