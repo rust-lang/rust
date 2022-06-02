@@ -722,11 +722,7 @@ impl<'tcx> DeadVisitor<'tcx> {
                         traits_str,
                         is_are
                     );
-                    let multispan = ign_traits
-                        .iter()
-                        .map(|(_, impl_id)| self.tcx.def_span(*impl_id))
-                        .collect::<Vec<_>>();
-                    err.span_note(multispan, &msg);
+                    err.note(&msg);
                 }
                 err.emit();
             });
