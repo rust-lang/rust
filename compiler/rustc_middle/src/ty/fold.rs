@@ -753,19 +753,29 @@ impl<'tcx> TyCtxt<'tcx> {
         T: TypeFoldable<'tcx>,
     {
         let mut region_map = BTreeMap::new();
-        let mut real_fld_r =
-            |br: ty::BoundRegion| *region_map.entry(br).or_insert_with(|| fld_r(br));
+        let real_fld_r = |br: ty::BoundRegion| *region_map.entry(br).or_insert_with(|| fld_r(br));
+        let value = self.replace_late_bound_regions_uncached(value, real_fld_r);
+        (value, region_map)
+    }
+
+    pub fn replace_late_bound_regions_uncached<T, F>(
+        self,
+        value: Binder<'tcx, T>,
+        mut fld_r: F,
+    ) -> T
+    where
+        F: FnMut(ty::BoundRegion) -> ty::Region<'tcx>,
+        T: TypeFoldable<'tcx>,
+    {
         let mut fld_t = |b| bug!("unexpected bound ty in binder: {b:?}");
         let mut fld_c = |b, ty| bug!("unexpected bound ct in binder: {b:?} {ty}");
-
         let value = value.skip_binder();
-        let value = if !value.has_escaping_bound_vars() {
+        if !value.has_escaping_bound_vars() {
             value
         } else {
-            let mut replacer = BoundVarReplacer::new(self, &mut real_fld_r, &mut fld_t, &mut fld_c);
+            let mut replacer = BoundVarReplacer::new(self, &mut fld_r, &mut fld_t, &mut fld_c);
             value.fold_with(&mut replacer)
-        };
-        (value, region_map)
+        }
     }
 
     /// Replaces all escaping bound vars. The `fld_r` closure replaces escaping
@@ -821,13 +831,12 @@ impl<'tcx> TyCtxt<'tcx> {
     where
         T: TypeFoldable<'tcx>,
     {
-        self.replace_late_bound_regions(value, |br| {
+        self.replace_late_bound_regions_uncached(value, |br| {
             self.mk_region(ty::ReFree(ty::FreeRegion {
                 scope: all_outlive_scope,
                 bound_region: br.kind,
             }))
         })
-        .0
     }
 
     pub fn shift_bound_var_indices<T>(self, bound_vars: usize, value: T) -> T

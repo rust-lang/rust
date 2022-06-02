@@ -449,8 +449,9 @@ impl<'tcx> AstConv<'tcx> for ItemCtxt<'tcx> {
                                     format!(
                                         "{}::",
                                         // Replace the existing lifetimes with a new named lifetime.
-                                        self.tcx
-                                            .replace_late_bound_regions(poly_trait_ref, |_| {
+                                        self.tcx.replace_late_bound_regions_uncached(
+                                            poly_trait_ref,
+                                            |_| {
                                                 self.tcx.mk_region(ty::ReEarlyBound(
                                                     ty::EarlyBoundRegion {
                                                         def_id: item_def_id,
@@ -458,8 +459,8 @@ impl<'tcx> AstConv<'tcx> for ItemCtxt<'tcx> {
                                                         name: Symbol::intern(&lt_name),
                                                     },
                                                 ))
-                                            })
-                                            .0,
+                                            }
+                                        ),
                                     ),
                                 ),
                             ];
