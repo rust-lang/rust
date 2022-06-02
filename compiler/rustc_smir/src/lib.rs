@@ -10,7 +10,6 @@
     html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/",
     test(attr(allow(unused_variables), deny(warnings)))
 )]
-
 #![cfg_attr(not(feature = "default"), feature(rustc_private))]
 
 pub mod mir;
