@@ -41,7 +41,7 @@ declare_clippy_lint! {
     ///
     /// ```
     ///
-    /// Should be written:
+    /// Use instead:
     ///
     /// ```rust,ignore
     /// if x && y {

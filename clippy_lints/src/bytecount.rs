@@ -28,7 +28,13 @@ declare_clippy_lint! {
     /// ### Example
     /// ```rust
     /// # let vec = vec![1_u8];
-    /// &vec.iter().filter(|x| **x == 0u8).count(); // use bytecount::count instead
+    /// let count = vec.iter().filter(|x| **x == 0u8).count();
+    /// ```
+    ///
+    /// Use instead:
+    /// ```rust,ignore
+    /// # let vec = vec![1_u8];
+    /// let count = bytecount::count(&vec, 0u8);
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub NAIVE_BYTECOUNT,

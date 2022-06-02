@@ -194,25 +194,18 @@ declare_clippy_lint! {
     ///
     /// ### Examples
     /// ```rust
-    /// # let opt = Some(1);
-    ///
-    /// // Bad
-    /// opt.unwrap();
-    ///
-    /// // Good
-    /// opt.expect("more helpful message");
+    /// # let option = Some(1);
+    /// # let result: Result<usize, ()> = Ok(1);
+    /// option.unwrap();
+    /// result.unwrap();
     /// ```
     ///
-    /// // or
-    ///
+    /// Use instead:
     /// ```rust
-    /// # let res: Result<usize, ()> = Ok(1);
-    ///
-    /// // Bad
-    /// res.unwrap();
-    ///
-    /// // Good
-    /// res.expect("more helpful message");
+    /// # let option = Some(1);
+    /// # let result: Result<usize, ()> = Ok(1);
+    /// option.expect("more helpful message");
+    /// result.expect("more helpful message");
     /// ```
     #[clippy::version = "1.45.0"]
     pub UNWRAP_USED,
@@ -235,27 +228,21 @@ declare_clippy_lint! {
     ///
     /// ### Examples
     /// ```rust,ignore
-    /// # let opt = Some(1);
-    ///
-    /// // Bad
-    /// opt.expect("one");
-    ///
-    /// // Good
-    /// let opt = Some(1);
-    /// opt?;
+    /// # let option = Some(1);
+    /// # let result: Result<usize, ()> = Ok(1);
+    /// option.expect("one");
+    /// result.expect("one");
     /// ```
+    ///
+    /// Use instead:
+    /// ```rust,ignore
+    /// # let option = Some(1);
+    /// # let result: Result<usize, ()> = Ok(1);
+    /// option?;
     ///
     /// // or
     ///
-    /// ```rust
-    /// # let res: Result<usize, ()> = Ok(1);
-    ///
-    /// // Bad
-    /// res.expect("one");
-    ///
-    /// // Good
-    /// res?;
-    /// # Ok::<(), ()>(())
+    /// result?;
     /// ```
     #[clippy::version = "1.45.0"]
     pub EXPECT_USED,
@@ -431,26 +418,20 @@ declare_clippy_lint! {
     ///
     /// ### Examples
     /// ```rust
-    /// # let x = Some(1);
-    ///
-    /// // Bad
-    /// x.map(|a| a + 1).unwrap_or(0);
-    ///
-    /// // Good
-    /// x.map_or(0, |a| a + 1);
+    /// # let option = Some(1);
+    /// # let result: Result<usize, ()> = Ok(1);
+    /// # fn some_function(foo: ()) -> usize { 1 }
+    /// option.map(|a| a + 1).unwrap_or(0);
+    /// result.map(|a| a + 1).unwrap_or_else(some_function);
     /// ```
     ///
-    /// // or
-    ///
+    /// Use instead:
     /// ```rust
-    /// # let x: Result<usize, ()> = Ok(1);
+    /// # let option = Some(1);
+    /// # let result: Result<usize, ()> = Ok(1);
     /// # fn some_function(foo: ()) -> usize { 1 }
-    ///
-    /// // Bad
-    /// x.map(|a| a + 1).unwrap_or_else(some_function);
-    ///
-    /// // Good
-    /// x.map_or_else(some_function, |a| a + 1);
+    /// option.map_or(0, |a| a + 1);
+    /// result.map_or_else(some_function, |a| a + 1);
     /// ```
     #[clippy::version = "1.45.0"]
     pub MAP_UNWRAP_OR,
@@ -793,13 +774,14 @@ declare_clippy_lint! {
     /// # let foo = Some(String::new());
     /// foo.unwrap_or(String::new());
     /// ```
-    /// this can instead be written:
+    ///
+    /// Use instead:
     /// ```rust
     /// # let foo = Some(String::new());
     /// foo.unwrap_or_else(String::new);
-    /// ```
-    /// or
-    /// ```rust
+    ///
+    /// // or
+    ///
     /// # let foo = Some(String::new());
     /// foo.unwrap_or_default();
     /// ```
@@ -863,15 +845,14 @@ declare_clippy_lint! {
     /// # let err_code = "418";
     /// # let err_msg = "I'm a teapot";
     /// foo.expect(&format!("Err {}: {}", err_code, err_msg));
-    /// ```
-    /// or
-    /// ```rust
+    ///
+    /// // or
+    ///
     /// # let foo = Some(String::new());
-    /// # let err_code = "418";
-    /// # let err_msg = "I'm a teapot";
     /// foo.expect(format!("Err {}: {}", err_code, err_msg).as_str());
     /// ```
-    /// this can instead be written:
+    ///
+    /// Use instead:
     /// ```rust
     /// # let foo = Some(String::new());
     /// # let err_code = "418";

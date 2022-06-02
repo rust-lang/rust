@@ -32,7 +32,7 @@ declare_clippy_lint! {
     ///     BattenbergCake,
     /// }
     /// ```
-    /// Could be written as:
+    /// Use instead:
     /// ```rust
     /// enum Cake {
     ///     BlackForest,

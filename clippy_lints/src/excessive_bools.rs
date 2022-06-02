@@ -18,7 +18,6 @@ declare_clippy_lint! {
     /// readability and API.
     ///
     /// ### Example
-    /// Bad:
     /// ```rust
     /// struct S {
     ///     is_pending: bool,
@@ -27,7 +26,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     ///
-    /// Good:
+    /// Use instead:
     /// ```rust
     /// enum S {
     ///     Pending,

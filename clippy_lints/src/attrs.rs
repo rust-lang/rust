@@ -89,13 +89,14 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```ignore
-    /// // Bad
     /// #[deny(dead_code)]
     /// extern crate foo;
     /// #[forbid(dead_code)]
     /// use foo::bar;
+    /// ```
     ///
-    /// // Ok
+    /// Use instead:
+    /// ```rust,ignore
     /// #[allow(unused_imports)]
     /// use foo::baz;
     /// #[allow(unused_imports)]
@@ -146,15 +147,19 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
+    /// #[allow(dead_code)]
+    ///
+    /// fn not_quite_good_code() { }
+    /// ```
+    ///
+    /// Use instead:
+    /// ```rust
     /// // Good (as inner attribute)
     /// #![allow(dead_code)]
     ///
     /// fn this_is_fine() { }
     ///
-    /// // Bad
-    /// #[allow(dead_code)]
-    ///
-    /// fn not_quite_good_code() { }
+    /// // or
     ///
     /// // Good (as outer attribute)
     /// #[allow(dead_code)]
@@ -175,12 +180,11 @@ declare_clippy_lint! {
     /// These lints should only be enabled on a lint-by-lint basis and with careful consideration.
     ///
     /// ### Example
-    /// Bad:
     /// ```rust
     /// #![deny(clippy::restriction)]
     /// ```
     ///
-    /// Good:
+    /// Use instead:
     /// ```rust
     /// #![deny(clippy::as_conversions)]
     /// ```
@@ -205,13 +209,12 @@ declare_clippy_lint! {
     /// [#3123](https://github.com/rust-lang/rust-clippy/pull/3123#issuecomment-422321765)
     ///
     /// ### Example
-    /// Bad:
     /// ```rust
     /// #[cfg_attr(rustfmt, rustfmt_skip)]
     /// fn main() { }
     /// ```
     ///
-    /// Good:
+    /// Use instead:
     /// ```rust
     /// #[rustfmt::skip]
     /// fn main() { }
@@ -231,20 +234,20 @@ declare_clippy_lint! {
     /// by the conditional compilation engine.
     ///
     /// ### Example
-    /// Bad:
     /// ```rust
     /// #[cfg(linux)]
     /// fn conditional() { }
     /// ```
     ///
-    /// Good:
+    /// Use instead:
     /// ```rust
+    /// # mod hidden {
     /// #[cfg(target_os = "linux")]
     /// fn conditional() { }
-    /// ```
+    /// # }
     ///
-    /// Or:
-    /// ```rust
+    /// // or
+    ///
     /// #[cfg(unix)]
     /// fn conditional() { }
     /// ```
@@ -266,14 +269,13 @@ declare_clippy_lint! {
     /// ensure that others understand the reasoning
     ///
     /// ### Example
-    /// Bad:
     /// ```rust
     /// #![feature(lint_reasons)]
     ///
     /// #![allow(clippy::some_lint)]
     /// ```
     ///
-    /// Good:
+    /// Use instead:
     /// ```rust
     /// #![feature(lint_reasons)]
     ///

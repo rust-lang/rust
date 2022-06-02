@@ -35,8 +35,7 @@ declare_clippy_lint! {
     /// let _ = a.exp() - 1.0;
     /// ```
     ///
-    /// is better expressed as
-    ///
+    /// Use instead:
     /// ```rust
     /// let a = 3f32;
     /// let _ = a.cbrt();
