@@ -1393,11 +1393,11 @@ impl<T: Clone> Arc<T> {
     /// referred to as clone-on-write.
     ///
     /// However, if there are no other `Arc` pointers to this allocation, but some [`Weak`]
-    /// pointers, then the [`Weak`] pointers will be disassociated and the inner value will not
+    /// pointers, then the [`Weak`] pointers will be dissociated and the inner value will not
     /// be cloned.
     ///
     /// See also [`get_mut`], which will fail rather than cloning the inner value
-    /// or diassociating [`Weak`] pointers.
+    /// or dissociating [`Weak`] pointers.
     ///
     /// [`clone`]: Clone::clone
     /// [`get_mut`]: Arc::get_mut
@@ -1420,7 +1420,7 @@ impl<T: Clone> Arc<T> {
     /// assert_eq!(*other_data, 12);
     /// ```
     ///
-    /// [`Weak`] pointers will be disassociated:
+    /// [`Weak`] pointers will be dissociated:
     ///
     /// ```
     /// use std::sync::Arc;
