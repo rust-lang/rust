@@ -331,7 +331,7 @@ impl SourceMap {
         name_hash: u128,
         source_len: usize,
         cnum: CrateNum,
-        mut file_local_lines: Vec<BytePos>,
+        file_local_lines: Lock<SourceFileLines>,
         mut file_local_multibyte_chars: Vec<MultiByteChar>,
         mut file_local_non_narrow_chars: Vec<NonNarrowChar>,
         mut file_local_normalized_pos: Vec<NormalizedPos>,
@@ -355,8 +355,15 @@ impl SourceMap {
         // form rather than pre-computing the offset into a local variable. The
         // compiler backend can optimize away the repeated computations in a
         // way that won't trigger overflow checks.
-        for pos in &mut file_local_lines {
-            *pos = (*pos - original_start_pos) + start_pos;
+        match &mut *file_local_lines.borrow_mut() {
+            SourceFileLines::Lines(lines) => {
+                for pos in lines {
+                    *pos = (*pos - original_start_pos) + start_pos;
+                }
+            }
+            SourceFileLines::Diffs(SourceFileDiffs { line_start, .. }) => {
+                *line_start = (*line_start - original_start_pos) + start_pos;
+            }
         }
         for mbc in &mut file_local_multibyte_chars {
             mbc.pos = (mbc.pos - original_start_pos) + start_pos;
