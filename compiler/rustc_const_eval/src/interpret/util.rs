@@ -1,5 +1,5 @@
 use rustc_middle::mir::interpret::InterpResult;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeVisitor};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable, TypeVisitor};
 use std::convert::TryInto;
 use std::ops::ControlFlow;
 
@@ -47,7 +47,7 @@ where
                         match (is_used, subst.needs_subst()) {
                             // Just in case there are closures or generators within this subst,
                             // recurse.
-                            (true, true) => return subst.super_visit_with(self),
+                            (true, true) => return subst.visit_with(self),
                             // Confirm that polymorphization replaced the parameter with
                             // `ty::Param`/`ty::ConstKind::Param`.
                             (false, true) if cfg!(debug_assertions) => match subst.unpack() {

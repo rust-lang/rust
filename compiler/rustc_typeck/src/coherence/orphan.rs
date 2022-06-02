@@ -9,7 +9,9 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::util::IgnoreRegions;
-use rustc_middle::ty::{self, ImplPolarity, Ty, TyCtxt, TypeFoldable, TypeVisitor};
+use rustc_middle::ty::{
+    self, ImplPolarity, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable, TypeVisitor,
+};
 use rustc_session::lint;
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::Span;
@@ -439,7 +441,7 @@ fn fast_reject_auto_impl<'tcx>(tcx: TyCtxt<'tcx>, trait_def_id: DefId, self_ty: 
             }
 
             match t.kind() {
-                ty::Adt(def, substs) if def.is_phantom_data() => substs.super_visit_with(self),
+                ty::Adt(def, substs) if def.is_phantom_data() => substs.visit_with(self),
                 ty::Adt(def, substs) => {
                     // @lcnr: This is the only place where cycles can happen. We avoid this
                     // by only visiting each `DefId` once.

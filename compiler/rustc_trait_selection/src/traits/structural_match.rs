@@ -6,7 +6,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt, TypeFoldable, TypeVisitor};
+use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable, TypeVisitor};
 use rustc_span::Span;
 use std::ops::ControlFlow;
 

@@ -30,14 +30,14 @@ pub fn type_foldable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::
     s.bound_impl(
         quote!(::rustc_middle::ty::fold::TypeFoldable<'tcx>),
         quote! {
-            fn try_super_fold_with<__F: ::rustc_middle::ty::fold::FallibleTypeFolder<'tcx>>(
+            fn try_fold_with<__F: ::rustc_middle::ty::fold::FallibleTypeFolder<'tcx>>(
                 self,
                 __folder: &mut __F
             ) -> Result<Self, __F::Error> {
                 Ok(match self { #body_fold })
             }
 
-            fn super_visit_with<__F: ::rustc_middle::ty::fold::TypeVisitor<'tcx>>(
+            fn visit_with<__F: ::rustc_middle::ty::fold::TypeVisitor<'tcx>>(
                 &self,
                 __folder: &mut __F
             ) -> ::std::ops::ControlFlow<__F::BreakTy> {

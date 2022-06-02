@@ -15,16 +15,20 @@
 //! the ones containing the most important type-related information, such as
 //! `Ty`, `Predicate`, `Region`, and `Const`.
 //!
-//! There are two traits involved in each traversal type.
-//! - The first trait is `TypeFoldable`, which is implemented once for many
-//!   types. This includes both (a) types of interest, and (b) all other
-//!   relevant types, including generic containers like `Vec` and `Option`. It
-//!   defines a "skeleton" of how they should be traversed, for both folding
-//!   and visiting.
-//! - The second trait is `TypeFolder`/`FallibleTypeFolder` (for
-//!   infallible/fallible folding traversals) or `TypeVisitor` (for visiting
-//!   traversals). One of these is implemented for each folder/visitor. This
-//!   defines how types of interest are handled.
+//! There are three traits involved in each traversal type.
+//! - `TypeFoldable`. This is implemented once for many types. This includes
+//!   both:
+//!   - Types of interest, for which the the methods delegate to the
+//!     folder/visitor.
+//!   - All other types, including generic containers like `Vec` and `Option`.
+//!     It defines a "skeleton" of how they should be traversed, for both
+//!     folding and visiting.
+//! - `TypeSuperFoldable`. This is implemented only for each type of interest,
+//!   and defines the traversal "skeleton" for these types.
+//! - `TypeFolder`/`FallibleTypeFolder` (for infallible/fallible folding
+//!   traversals) or `TypeVisitor` (for visiting traversals). One of these is
+//!   implemented for each folder/visitor. This defines how types of interest
+//!   are folded/visited.
 //!
 //! This means each traversal is a mixture of (a) generic traversal operations,
 //! and (b) custom fold/visit operations that are specific to the
@@ -32,22 +36,23 @@
 //! - The `TypeFoldable` impls handle most of the traversal, and call into
 //!   `TypeFolder`/`FallibleTypeFolder`/`TypeVisitor` when they encounter a
 //!   type of interest.
-//! - A `TypeFolder`/`FallibleTypeFolder`/`TypeVisitor` may also call back into
-//!   a `TypeFoldable` impl, because (a) the types of interest are recursive
-//!   and can contain other types of interest, and (b) each folder/visitor
-//!   might provide custom handling only for some types of interest, or only
-//!   for some variants of each type of interest, and then use default
-//!   traversal for the remaining cases.
+//! - A `TypeFolder`/`FallibleTypeFolder`/`TypeVisitor` may call into another
+//!   `TypeFoldable` impl, because some of the types of interest are recursive
+//!   and can contain other types of interest.
+//! - A `TypeFolder`/`FallibleTypeFolder`/`TypeVisitor` may also call into
+//!   a `TypeSuperFoldable` impl, because each folder/visitor might provide
+//!   custom handling only for some types of interest, or only for some
+//!   variants of each type of interest, and then use default traversal for the
+//!   remaining cases.
 //!
 //! For example, if you have `struct S(Ty, U)` where `S: TypeFoldable` and `U:
-//! TypeFoldable`, and an instance `S(ty, u)`, it would be visited like so:
+//! TypeFoldable`, and an instance `s = S(ty, u)`, it would be visited like so:
 //! ```text
 //! s.visit_with(visitor) calls
-//! - s.super_visit_with(visitor) calls
-//!   - ty.visit_with(visitor) calls
-//!     - visitor.visit_ty(ty) may call
-//!       - ty.super_visit_with(visitor)
-//!   - u.visit_with(visitor)
+//! - ty.visit_with(visitor) calls
+//!   - visitor.visit_ty(ty) may call
+//!     - ty.super_visit_with(visitor)
+//! - u.visit_with(visitor)
 //! ```
 use crate::mir;
 use crate::ty::{self, flags::FlagComputation, Binder, Ty, TyCtxt, TypeFlags};
@@ -66,18 +71,17 @@ use std::ops::ControlFlow;
 /// To implement this conveniently, use the derive macro located in
 /// `rustc_macros`.
 pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
-    /// The main entry point for folding. To fold a value `t` with a folder `f`
+    /// The entry point for folding. To fold a value `t` with a folder `f`
     /// call: `t.try_fold_with(f)`.
     ///
-    /// For types of interest (such as `Ty`), this default is overridden with a
-    /// method that calls a folder method specifically for that type (such as
+    /// For most types, this just traverses the value, calling `try_fold_with`
+    /// on each field/element.
+    ///
+    /// For types of interest (such as `Ty`), the implementation of method
+    /// calls a folder method specifically for that type (such as
     /// `F::try_fold_ty`). This is where control transfers from `TypeFoldable`
     /// to `TypeFolder`.
-    ///
-    /// For other types, this default is used.
-    fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
-        self.try_super_fold_with(folder)
-    }
+    fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error>;
 
     /// A convenient alternative to `try_fold_with` for use with infallible
     /// folders. Do not override this method, to ensure coherence with
@@ -86,40 +90,17 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
         self.try_fold_with(folder).into_ok()
     }
 
-    /// Traverses the type in question, typically by calling `try_fold_with` on
-    /// each field/element. This is true even for types of interest such as
-    /// `Ty`. This should only be called within `TypeFolder` methods, when
-    /// non-custom traversals are desired for types of interest.
-    fn try_super_fold_with<F: FallibleTypeFolder<'tcx>>(
-        self,
-        folder: &mut F,
-    ) -> Result<Self, F::Error>;
-
-    /// A convenient alternative to `try_super_fold_with` for use with
-    /// infallible folders. Do not override this method, to ensure coherence
-    /// with `try_super_fold_with`.
-    fn super_fold_with<F: TypeFolder<'tcx, Error = !>>(self, folder: &mut F) -> Self {
-        self.try_super_fold_with(folder).into_ok()
-    }
-
     /// The entry point for visiting. To visit a value `t` with a visitor `v`
     /// call: `t.visit_with(v)`.
     ///
-    /// For types of interest (such as `Ty`), this default is overridden with a
-    /// method that calls a visitor method specifically for that type (such as
+    /// For most types, this just traverses the value, calling `visit_with` on
+    /// each field/element.
+    ///
+    /// For types of interest (such as `Ty`), the implementation of this method
+    /// that calls a visitor method specifically for that type (such as
     /// `V::visit_ty`). This is where control transfers from `TypeFoldable` to
     /// `TypeVisitor`.
-    ///
-    /// For other types, this default is used.
-    fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
-        self.super_visit_with(visitor)
-    }
-
-    /// Traverses the type in question, typically by calling `visit_with` on
-    /// each field/element. This is true even for types of interest such as
-    /// `Ty`. This should only be called within `TypeVisitor` methods, when
-    /// non-custom traversals are desired for types of interest.
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy>;
+    fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy>;
 
     /// Returns `true` if `self` has any late-bound regions that are either
     /// bound by `binder` or bound by some binder outside of `binder`.
@@ -219,9 +200,40 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
     }
 }
 
+// This trait is implemented for types of interest.
+pub trait TypeSuperFoldable<'tcx>: TypeFoldable<'tcx> {
+    /// Provides a default fold for a type of interest. This should only be
+    /// called within `TypeFolder` methods, when a non-custom traversal is
+    /// desired for the value of the type of interest passed to that method.
+    /// For example, in `MyFolder::try_fold_ty(ty)`, it is valid to call
+    /// `ty.try_super_fold_with(self)`, but any other folding should be done
+    /// with `xyz.try_fold_with(self)`.
+    fn try_super_fold_with<F: FallibleTypeFolder<'tcx>>(
+        self,
+        folder: &mut F,
+    ) -> Result<Self, F::Error>;
+
+    /// A convenient alternative to `try_super_fold_with` for use with
+    /// infallible folders. Do not override this method, to ensure coherence
+    /// with `try_super_fold_with`.
+    fn super_fold_with<F: TypeFolder<'tcx, Error = !>>(self, folder: &mut F) -> Self {
+        self.try_super_fold_with(folder).into_ok()
+    }
+
+    /// Provides a default visit for a type of interest. This should only be
+    /// called within `TypeVisitor` methods, when a non-custom traversal is
+    /// desired for the value of the type of interest passed to that method.
+    /// For example, in `MyVisitor::visit_ty(ty)`, it is valid to call
+    /// `ty.super_visit_with(self)`, but any other visiting should be done
+    /// with `xyz.visit_with(self)`.
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy>;
+}
+
 /// This trait is implemented for every folding traversal. There is a fold
 /// method defined for every type of interest. Each such method has a default
-/// that does an "identity" fold.
+/// that does an "identity" fold. Implementations of these methods often fall
+/// back to a `super_fold_with` method if the primary argument doesn't
+/// satisfy a particular condition.
 ///
 /// If this folder is fallible (and therefore its [`Error`][`TypeFolder::Error`]
 /// associated type is something other than the default `!`) then
