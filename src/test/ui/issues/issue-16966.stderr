@@ -6,6 +6,7 @@ LL |     panic!(std::default::Default::default());
    |
    = note: this error originates in the macro `$crate::panic::panic_2015` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider specifying the generic argument
+  --> $SRC_DIR/std/src/panic.rs:LL:COL
    |
 LL |         $crate::rt::begin_panic::<M>($msg)
    |                                +++++
