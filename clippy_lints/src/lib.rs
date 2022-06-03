@@ -279,7 +279,6 @@ mod main_recursion;
 mod manual_assert;
 mod manual_async_fn;
 mod manual_bits;
-mod manual_map;
 mod manual_non_exhaustive;
 mod manual_ok_or;
 mod manual_strip;
@@ -845,7 +844,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     });
     store.register_late_pass(|| Box::new(redundant_slicing::RedundantSlicing));
     store.register_late_pass(|| Box::new(from_str_radix_10::FromStrRadix10));
-    store.register_late_pass(|| Box::new(manual_map::ManualMap));
     store.register_late_pass(move || Box::new(if_then_some_else_none::IfThenSomeElseNone::new(msrv)));
     store.register_late_pass(|| Box::new(bool_assert_comparison::BoolAssertComparison));
     store.register_early_pass(move || Box::new(module_style::ModStyle));

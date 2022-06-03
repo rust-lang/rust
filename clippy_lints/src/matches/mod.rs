@@ -10,6 +10,7 @@ use rustc_span::{Span, SpanData, SyntaxContext};
 
 mod collapsible_match;
 mod infallible_destructuring_match;
+mod manual_map;
 mod manual_unwrap_or;
 mod match_as_ref;
 mod match_bool;
@@ -861,6 +862,30 @@ declare_clippy_lint! {
     "return errors explicitly rather than hiding them behind a `?`"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usages of `match` which could be implemented using `map`
+    ///
+    /// ### Why is this bad?
+    /// Using the `map` method is clearer and more concise.
+    ///
+    /// ### Example
+    /// ```rust
+    /// match Some(0) {
+    ///     Some(x) => Some(x + 1),
+    ///     None => None,
+    /// };
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// Some(0).map(|x| x + 1);
+    /// ```
+    #[clippy::version = "1.52.0"]
+    pub MANUAL_MAP,
+    style,
+    "reimplementation of `map`"
+}
+
 #[derive(Default)]
 pub struct Matches {
     msrv: Option<RustcVersion>,
@@ -901,6 +926,7 @@ impl_lint_pass!(Matches => [
     MATCH_STR_CASE_MISMATCH,
     SIGNIFICANT_DROP_IN_SCRUTINEE,
     TRY_ERR,
+    MANUAL_MAP,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Matches {
@@ -949,6 +975,7 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
 
                     if !in_constant(cx, expr.hir_id) {
                         manual_unwrap_or::check(cx, expr, ex, arms);
+                        manual_map::check_match(cx, expr, ex, arms);
                     }
 
                     if self.infallible_destructuring_match_linted {
@@ -972,6 +999,9 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
                             if_let.if_then,
                             else_expr,
                         );
+                    }
+                    if !in_constant(cx, expr.hir_id) {
+                        manual_map::check_if_let(cx, expr, if_let.let_pat, if_let.let_expr, if_let.if_then, else_expr);
                     }
                 }
                 redundant_pattern_match::check_if_let(
