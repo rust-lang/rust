@@ -38,7 +38,4 @@ impl Condvar {
         unsafe { mutex.lock() };
         success
     }
-
-    #[inline]
-    pub unsafe fn destroy(&self) {}
 }

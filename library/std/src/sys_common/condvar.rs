@@ -55,9 +55,3 @@ impl Condvar {
         self.inner.wait_timeout(mutex.raw(), dur)
     }
 }
-
-impl Drop for Condvar {
-    fn drop(&mut self) {
-        unsafe { self.inner.destroy() };
-    }
-}

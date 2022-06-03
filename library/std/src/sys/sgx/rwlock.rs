@@ -168,9 +168,6 @@ impl RwLock {
             unsafe { self.__read_unlock(rguard, wguard) };
         }
     }
-
-    #[inline]
-    pub unsafe fn destroy(&self) {}
 }
 
 // The following functions are needed by libunwind. These symbols are named

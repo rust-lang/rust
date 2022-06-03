@@ -92,9 +92,3 @@ impl MovableMutex {
         self.0.unlock()
     }
 }
-
-impl Drop for MovableMutex {
-    fn drop(&mut self) {
-        unsafe { self.0.destroy() };
-    }
-}

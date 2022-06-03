@@ -84,12 +84,6 @@ impl RwLock {
         // FIXME: should only wake up one of these some of the time
         self.cond.notify_all();
     }
-
-    #[inline]
-    pub unsafe fn destroy(&self) {
-        self.lock.destroy();
-        self.cond.destroy();
-    }
 }
 
 impl State {

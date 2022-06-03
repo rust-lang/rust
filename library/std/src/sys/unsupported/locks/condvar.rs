@@ -26,7 +26,4 @@ impl Condvar {
     pub unsafe fn wait_timeout(&self, _mutex: &Mutex, _dur: Duration) -> bool {
         panic!("condvar wait not supported");
     }
-
-    #[inline]
-    pub unsafe fn destroy(&self) {}
 }

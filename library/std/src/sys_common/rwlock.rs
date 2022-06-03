@@ -126,9 +126,3 @@ impl MovableRwLock {
         self.0.write_unlock()
     }
 }
-
-impl Drop for MovableRwLock {
-    fn drop(&mut self) {
-        unsafe { self.0.destroy() };
-    }
-}
