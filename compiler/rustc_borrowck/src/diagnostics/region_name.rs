@@ -567,14 +567,14 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         let lifetime =
             self.try_match_adt_and_generic_args(substs, needle_fr, args, search_stack)?;
         match lifetime.name {
-            hir::LifetimeName::Param(hir::ParamName::Plain(_) | hir::ParamName::Error)
+            hir::LifetimeName::Param(_, hir::ParamName::Plain(_) | hir::ParamName::Error)
             | hir::LifetimeName::Error
             | hir::LifetimeName::Static => {
                 let lifetime_span = lifetime.span;
                 Some(RegionNameHighlight::MatchedAdtAndSegment(lifetime_span))
             }
 
-            hir::LifetimeName::Param(hir::ParamName::Fresh(_))
+            hir::LifetimeName::Param(_, hir::ParamName::Fresh)
             | hir::LifetimeName::ImplicitObjectLifetimeDefault
             | hir::LifetimeName::Implicit
             | hir::LifetimeName::Underscore => {

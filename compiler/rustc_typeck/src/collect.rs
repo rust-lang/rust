@@ -1364,7 +1364,6 @@ fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<S
 
     fn has_late_bound_regions<'tcx>(
         tcx: TyCtxt<'tcx>,
-        def_id: LocalDefId,
         generics: &'tcx hir::Generics<'tcx>,
         decl: &'tcx hir::FnDecl<'tcx>,
     ) -> Option<Span> {
@@ -1373,14 +1372,9 @@ fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<S
             outer_index: ty::INNERMOST,
             has_late_bound_regions: None,
         };
-        let late_bound_map = tcx.is_late_bound_map(def_id);
-        let is_late_bound = |id| {
-            let id = tcx.hir().local_def_id(id);
-            late_bound_map.map_or(false, |(_, set)| set.contains(&id))
-        };
         for param in generics.params {
             if let GenericParamKind::Lifetime { .. } = param.kind {
-                if is_late_bound(param.hir_id) {
+                if tcx.is_late_bound(param.hir_id) {
                     return Some(param.span);
                 }
             }
@@ -1392,25 +1386,25 @@ fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<S
     match node {
         Node::TraitItem(item) => match item.kind {
             hir::TraitItemKind::Fn(ref sig, _) => {
-                has_late_bound_regions(tcx, item.def_id, &item.generics, sig.decl)
+                has_late_bound_regions(tcx, &item.generics, sig.decl)
             }
             _ => None,
         },
         Node::ImplItem(item) => match item.kind {
             hir::ImplItemKind::Fn(ref sig, _) => {
-                has_late_bound_regions(tcx, item.def_id, &item.generics, sig.decl)
+                has_late_bound_regions(tcx, &item.generics, sig.decl)
             }
             _ => None,
         },
         Node::ForeignItem(item) => match item.kind {
             hir::ForeignItemKind::Fn(fn_decl, _, ref generics) => {
-                has_late_bound_regions(tcx, item.def_id, generics, fn_decl)
+                has_late_bound_regions(tcx, generics, fn_decl)
             }
             _ => None,
         },
         Node::Item(item) => match item.kind {
             hir::ItemKind::Fn(ref sig, .., ref generics, _) => {
-                has_late_bound_regions(tcx, item.def_id, generics, sig.decl)
+                has_late_bound_regions(tcx, generics, sig.decl)
             }
             _ => None,
         },
@@ -1671,7 +1665,7 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
         params.push(opt_self);
     }
 
-    let early_lifetimes = early_bound_lifetimes_from_generics(tcx, hir_id.owner, ast_generics);
+    let early_lifetimes = early_bound_lifetimes_from_generics(tcx, ast_generics);
     params.extend(early_lifetimes.enumerate().map(|(i, param)| ty::GenericParamDef {
         name: param.name.ident().name,
         index: own_start + i as u32,
@@ -2054,23 +2048,10 @@ fn impl_polarity(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ImplPolarity {
 /// `resolve_lifetime::early_bound_lifetimes`.
 fn early_bound_lifetimes_from_generics<'a, 'tcx: 'a>(
     tcx: TyCtxt<'tcx>,
-    def_id: LocalDefId,
     generics: &'a hir::Generics<'a>,
 ) -> impl Iterator<Item = &'a hir::GenericParam<'a>> + Captures<'tcx> {
-    let late_bound_map = if generics.params.is_empty() {
-        // This function may be called on `def_id == CRATE_DEF_ID`,
-        // which makes `is_late_bound_map` ICE.  Don't even try if there
-        // is no generic parameter.
-        None
-    } else {
-        tcx.is_late_bound_map(def_id)
-    };
-    let is_late_bound = move |hir_id| {
-        let id = tcx.hir().local_def_id(hir_id);
-        late_bound_map.map_or(false, |(_, set)| set.contains(&id))
-    };
     generics.params.iter().filter(move |param| match param.kind {
-        GenericParamKind::Lifetime { .. } => !is_late_bound(param.hir_id),
+        GenericParamKind::Lifetime { .. } => !tcx.is_late_bound(param.hir_id),
         _ => false,
     })
 }
@@ -2255,7 +2236,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
     // have to be careful to only iterate over early-bound regions.
     let mut index = parent_count
         + has_own_self as u32
-        + early_bound_lifetimes_from_generics(tcx, hir_id.owner, ast_generics).count() as u32;
+        + early_bound_lifetimes_from_generics(tcx, ast_generics).count() as u32;
 
     // Collect the predicates that were written inline by the user on each
     // type parameter (e.g., `<T: Foo>`).
