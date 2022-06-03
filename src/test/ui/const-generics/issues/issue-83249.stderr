@@ -1,16 +1,13 @@
 error[E0282]: type annotations needed
-  --> $DIR/issue-83249.rs:19:13
+  --> $DIR/issue-83249.rs:19:9
    |
 LL |     let _ = foo([0; 1]);
-   |         -   ^^^ cannot infer type for type parameter `T` declared on the function `foo`
-   |         |
-   |         consider giving this pattern a type
+   |         ^
    |
-help: type parameter declared here
-  --> $DIR/issue-83249.rs:12:8
+help: consider giving this pattern a type
    |
-LL | fn foo<T: Foo>(_: [u8; T::N]) -> T {
-   |        ^
+LL |     let _: _ = foo([0; 1]);
+   |          +++
 
 error: aborting due to previous error
 

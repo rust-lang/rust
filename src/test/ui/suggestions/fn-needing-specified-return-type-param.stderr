@@ -1,16 +1,13 @@
-error[E0282]: type annotations needed for `fn() -> A`
+error[E0282]: type annotations needed
   --> $DIR/fn-needing-specified-return-type-param.rs:3:13
    |
 LL |     let _ = f;
-   |         -   ^ cannot infer type for type parameter `A` declared on the function `f`
-   |         |
-   |         consider giving this pattern the explicit type `fn() -> A`, where the type parameter `A` is specified
+   |             ^ cannot infer type of the type parameter `A` declared on the function `f`
    |
-help: type parameter declared here
-  --> $DIR/fn-needing-specified-return-type-param.rs:1:6
+help: consider specifying the generic argument
    |
-LL | fn f<A>() -> A { unimplemented!() }
-   |      ^
+LL |     let _ = f::<A>;
+   |              +++++
 
 error: aborting due to previous error
 

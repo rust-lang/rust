@@ -983,7 +983,11 @@ impl<'hir> Map<'hir> {
             Node::AnonConst(constant) => self.body(constant.body).value.span,
             Node::Expr(expr) => expr.span,
             Node::Stmt(stmt) => stmt.span,
-            Node::PathSegment(seg) => seg.ident.span,
+            Node::PathSegment(seg) => {
+                let ident_span = seg.ident.span;
+                ident_span
+                    .with_hi(seg.args.map_or_else(|| ident_span.hi(), |args| args.span_ext.hi()))
+            }
             Node::Ty(ty) => ty.span,
             Node::TraitRef(tr) => tr.path.span,
             Node::Binding(pat) => pat.span,

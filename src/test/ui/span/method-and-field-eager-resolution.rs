@@ -2,14 +2,14 @@
 
 fn main() {
     let mut x = Default::default();
-    x.0;
     //~^ ERROR type annotations needed
+    x.0;
     x = 1;
 }
 
 fn foo() {
     let mut x = Default::default();
-    x[0];
     //~^ ERROR type annotations needed
+    x[0];
     x = 1;
 }
