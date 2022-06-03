@@ -1,6 +1,16 @@
 // compile-flags:-g
 // We can't set the main thread name on Linux because it renames the process (#97191)
 // ignore-linux
+// ignore-android
+// ignore-dragonfly
+// ignore-emscripten
+// ignore-freebsd
+// ignore-haiku
+// ignore-ios
+// ignore-netbsd
+// ignore-openbsd
+// ignore-solaris
+// ignore-sgx
 
 // === GDB TESTS ==================================================================================
 //
