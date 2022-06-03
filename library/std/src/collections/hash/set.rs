@@ -588,12 +588,10 @@ where
     /// Visits the values representing the intersection,
     /// i.e., the values that are both in `self` and `other`.
     ///
-    /// Note: this operation does not guarantee which collection
-    /// is visited from `self` or `other`. This has consequences
-    /// for values which may be defined as equal by the `Eq` trait
-    /// but which are not physically equivalent (eg. they may have
-    /// fields which differ or do not participate in the definition
-    /// of equivalence).
+    /// Note: When an equal element is present in `self` and `other`
+    /// then the resulting `Intersection` may yield references to
+    /// one or the other, which will be visible in properties of `T`
+    /// not participating in the `Eq` implementation.
     ///
     /// # Examples
     ///
