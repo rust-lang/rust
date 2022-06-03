@@ -20,14 +20,11 @@ fn lbv_macro_test_hygiene_respected() {
     macro_rules! mac3 {
         ($val:expr) => {
             'a: {
-            //~^ WARNING `'a` shadows a label
-            //~| WARNING `'a` shadows a label
-            //~| WARNING `'a` shadows a label
                 $val
             }
         };
     }
-    let x: u8 = mac3!('b: { //~ WARNING `'b` shadows a label
+    let x: u8 = mac3!('b: {
         if true {
             break 'a 3; //~ ERROR undeclared label `'a` [E0426]
         }

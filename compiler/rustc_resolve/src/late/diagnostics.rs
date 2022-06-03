@@ -25,6 +25,7 @@ use rustc_hir::def_id::{DefId, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::PrimTy;
 use rustc_session::lint;
 use rustc_session::parse::feature_err;
+use rustc_session::Session;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::lev_distance::find_best_match_for_name;
@@ -2034,6 +2035,34 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
             .emit();
         }
     }
+}
+
+/// Report lifetime/lifetime shadowing as an error.
+pub fn signal_lifetime_shadowing(sess: &Session, orig: Ident, shadower: Ident) {
+    let mut err = struct_span_err!(
+        sess,
+        shadower.span,
+        E0496,
+        "lifetime name `{}` shadows a lifetime name that is already in scope",
+        orig.name,
+    );
+    err.span_label(orig.span, "first declared here");
+    err.span_label(shadower.span, format!("lifetime `{}` already in scope", orig.name));
+    err.emit();
+}
+
+/// Shadowing involving a label is only a warning for historical reasons.
+//FIXME: make this a proper lint.
+pub fn signal_label_shadowing(sess: &Session, orig: Span, shadower: Ident) {
+    let name = shadower.name;
+    let shadower = shadower.span;
+    let mut err = sess.struct_span_warn(
+        shadower,
+        &format!("label name `{}` shadows a label name that is already in scope", name),
+    );
+    err.span_label(orig, "first declared here");
+    err.span_label(shadower, format!("label `{}` already in scope", name));
+    err.emit();
 }
 
 impl<'tcx> LifetimeContext<'_, 'tcx> {

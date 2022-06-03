@@ -1848,14 +1848,15 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn lower_generic_param(&mut self, param: &GenericParam) -> hir::GenericParam<'hir> {
         let (name, kind) = match param.kind {
             GenericParamKind::Lifetime => {
-                let param_name = if param.ident.name == kw::StaticLifetime
-                    || param.ident.name == kw::UnderscoreLifetime
-                {
-                    ParamName::Error
-                } else {
-                    let ident = self.lower_ident(param.ident);
-                    ParamName::Plain(ident)
-                };
+                // AST resolution emitted an error on those parameters, so we lower them using
+                // `ParamName::Error`.
+                let param_name =
+                    if let Some(LifetimeRes::Error) = self.resolver.get_lifetime_res(param.id) {
+                        ParamName::Error
+                    } else {
+                        let ident = self.lower_ident(param.ident);
+                        ParamName::Plain(ident)
+                    };
                 let kind =
                     hir::GenericParamKind::Lifetime { kind: hir::LifetimeParamKind::Explicit };
 
@@ -1879,10 +1880,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     hir::GenericParamKind::Const { ty, default },
                 )
             }
-        };
-        let name = match name {
-            hir::ParamName::Plain(ident) => hir::ParamName::Plain(self.lower_ident(ident)),
-            name => name,
         };
 
         let hir_id = self.lower_node_id(param.id);

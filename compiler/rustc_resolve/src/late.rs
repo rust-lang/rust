@@ -172,6 +172,23 @@ impl RibKind<'_> {
             AssocItemRibKind | ItemRibKind(_) | ForwardGenericParamBanRibKind => true,
         }
     }
+
+    /// This rib forbids referring to labels defined in upwards ribs.
+    fn is_label_barrier(self) -> bool {
+        match self {
+            NormalRibKind | MacroDefinition(..) => false,
+
+            AssocItemRibKind
+            | ClosureOrAsyncRibKind
+            | FnItemRibKind
+            | ItemRibKind(..)
+            | ConstantItemRibKind(..)
+            | ModuleRibKind(..)
+            | ForwardGenericParamBanRibKind
+            | ConstParamTyRibKind
+            | InlineAsmSymRibKind => true,
+        }
+    }
 }
 
 /// A single local scope.
@@ -732,7 +749,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
         // Create a value rib for the function.
         self.with_rib(ValueNS, rib_kind, |this| {
             // Create a label rib for the function.
-            this.with_label_rib(rib_kind, |this| {
+            this.with_label_rib(FnItemRibKind, |this| {
                 let async_node_id = fn_kind.header().and_then(|h| h.asyncness.opt_return_id());
 
                 if let FnKind::Fn(_, _, _, _, generics, _) = fn_kind {
@@ -1531,12 +1548,8 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
     /// Searches the current set of local scopes for labels. Returns the `NodeId` of the resolved
     /// label and reports an error if the label is not found or is unreachable.
-    fn resolve_label(&mut self, mut label: Ident) -> Option<NodeId> {
+    fn resolve_label(&mut self, mut label: Ident) -> Result<(NodeId, Span), ResolutionError<'a>> {
         let mut suggestion = None;
-
-        // Preserve the original span so that errors contain "in this macro invocation"
-        // information.
-        let original_span = label.span;
 
         for i in (0..self.label_ribs.len()).rev() {
             let rib = &self.label_ribs[i];
@@ -1553,18 +1566,13 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             if let Some((ident, id)) = rib.bindings.get_key_value(&ident) {
                 let definition_span = ident.span;
                 return if self.is_label_valid_from_rib(i) {
-                    Some(*id)
+                    Ok((*id, definition_span))
                 } else {
-                    self.report_error(
-                        original_span,
-                        ResolutionError::UnreachableLabel {
-                            name: label.name,
-                            definition_span,
-                            suggestion,
-                        },
-                    );
-
-                    None
+                    Err(ResolutionError::UnreachableLabel {
+                        name: label.name,
+                        definition_span,
+                        suggestion,
+                    })
                 };
             }
 
@@ -1573,11 +1581,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             suggestion = suggestion.or_else(|| self.suggestion_for_label_in_rib(i, label));
         }
 
-        self.report_error(
-            original_span,
-            ResolutionError::UndeclaredLabel { name: label.name, suggestion },
-        );
-        None
+        Err(ResolutionError::UndeclaredLabel { name: label.name, suggestion })
     }
 
     /// Determine whether or not a label from the `rib_index`th label rib is reachable.
@@ -1585,22 +1589,8 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         let ribs = &self.label_ribs[rib_index + 1..];
 
         for rib in ribs {
-            match rib.kind {
-                NormalRibKind | MacroDefinition(..) => {
-                    // Nothing to do. Continue.
-                }
-
-                AssocItemRibKind
-                | ClosureOrAsyncRibKind
-                | FnItemRibKind
-                | ItemRibKind(..)
-                | ConstantItemRibKind(..)
-                | ModuleRibKind(..)
-                | ForwardGenericParamBanRibKind
-                | ConstParamTyRibKind
-                | InlineAsmSymRibKind => {
-                    return false;
-                }
+            if rib.kind.is_label_barrier() {
+                return false;
             }
         }
 
@@ -1895,6 +1885,8 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         let mut function_value_rib = Rib::new(kind);
         let mut function_lifetime_rib = LifetimeRib::new(lifetime_kind);
         let mut seen_bindings = FxHashMap::default();
+        // Store all seen lifetimes names from outer scopes.
+        let mut seen_lifetimes = FxHashSet::default();
 
         // We also can't shadow bindings from the parent item
         if let AssocItemRibKind = kind {
@@ -1910,16 +1902,36 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             add_bindings_for_ns(TypeNS);
         }
 
+        // Forbid shadowing lifetime bindings
+        for rib in self.lifetime_ribs.iter().rev() {
+            seen_lifetimes.extend(rib.bindings.iter().map(|(ident, _)| *ident));
+            if let LifetimeRibKind::Item = rib.kind {
+                break;
+            }
+        }
+
         for param in params {
             let ident = param.ident.normalize_to_macros_2_0();
             debug!("with_generic_param_rib: {}", param.id);
+
+            if let GenericParamKind::Lifetime = param.kind
+                && let Some(&original) = seen_lifetimes.get(&ident)
+            {
+                diagnostics::signal_lifetime_shadowing(self.r.session, original, param.ident);
+                // Record lifetime res, so lowering knows there is something fishy.
+                self.record_lifetime_res(param.id, LifetimeRes::Error);
+                continue;
+            }
 
             match seen_bindings.entry(ident) {
                 Entry::Occupied(entry) => {
                     let span = *entry.get();
                     let err = ResolutionError::NameAlreadyUsedInParameterList(ident.name, span);
-                    if !matches!(param.kind, GenericParamKind::Lifetime) {
-                        self.report_error(param.ident.span, err);
+                    self.report_error(param.ident.span, err);
+                    if let GenericParamKind::Lifetime = param.kind {
+                        // Record lifetime res, so lowering knows there is something fishy.
+                        self.record_lifetime_res(param.id, LifetimeRes::Error);
+                        continue;
                     }
                 }
                 Entry::Vacant(entry) => {
@@ -1936,6 +1948,8 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 )
                 .span_label(param.ident.span, "`'_` is a reserved lifetime name")
                 .emit();
+                // Record lifetime res, so lowering knows there is something fishy.
+                self.record_lifetime_res(param.id, LifetimeRes::Error);
                 continue;
             }
 
@@ -1949,6 +1963,8 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 )
                 .span_label(param.ident.span, "'static is a reserved lifetime name")
                 .emit();
+                // Record lifetime res, so lowering knows there is something fishy.
+                self.record_lifetime_res(param.id, LifetimeRes::Error);
                 continue;
             }
 
@@ -3114,6 +3130,11 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             if label.ident.as_str().as_bytes()[1] != b'_' {
                 self.diagnostic_metadata.unused_labels.insert(id, label.ident.span);
             }
+
+            if let Ok((_, orig_span)) = self.resolve_label(label.ident) {
+                diagnostics::signal_label_shadowing(self.r.session, orig_span, label.ident)
+            }
+
             self.with_label_rib(NormalRibKind, |this| {
                 let ident = label.ident.normalize_to_macro_rules();
                 this.label_ribs.last_mut().unwrap().bindings.insert(ident, id);
@@ -3219,10 +3240,15 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             }
 
             ExprKind::Break(Some(label), _) | ExprKind::Continue(Some(label)) => {
-                if let Some(node_id) = self.resolve_label(label.ident) {
-                    // Since this res is a label, it is never read.
-                    self.r.label_res_map.insert(expr.id, node_id);
-                    self.diagnostic_metadata.unused_labels.remove(&node_id);
+                match self.resolve_label(label.ident) {
+                    Ok((node_id, _)) => {
+                        // Since this res is a label, it is never read.
+                        self.r.label_res_map.insert(expr.id, node_id);
+                        self.diagnostic_metadata.unused_labels.remove(&node_id);
+                    }
+                    Err(error) => {
+                        self.report_error(label.ident.span, error);
+                    }
                 }
 
                 // visit `break` argument if any
