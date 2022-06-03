@@ -77,12 +77,10 @@ fn try_main() -> Result<()> {
                 println!("{}", flags::RustAnalyzer::HELP);
                 return Ok(());
             }
-            with_extra_thread("rust-analyzer server thread", run_server)?;
+            with_extra_thread("LspServer", run_server)?;
         }
         flags::RustAnalyzerCmd::ProcMacro(flags::ProcMacro) => {
-            with_extra_thread("rust-analyzer proc-macro expander", || {
-                proc_macro_srv::cli::run().map_err(Into::into)
-            })?;
+            with_extra_thread("MacroExpander", || proc_macro_srv::cli::run().map_err(Into::into))?;
         }
         flags::RustAnalyzerCmd::Parse(cmd) => cmd.run()?,
         flags::RustAnalyzerCmd::Symbols(cmd) => cmd.run()?,
