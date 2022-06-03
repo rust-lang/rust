@@ -385,7 +385,6 @@ mod trailing_empty_array;
 mod trait_bounds;
 mod transmute;
 mod transmuting_null;
-mod try_err;
 mod types;
 mod undocumented_unsafe_blocks;
 mod unicode;
@@ -700,7 +699,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     );
     store.register_late_pass(move || Box::new(pass_by_ref_or_value));
     store.register_late_pass(|| Box::new(ref_option_ref::RefOptionRef));
-    store.register_late_pass(|| Box::new(try_err::TryErr));
     store.register_late_pass(|| Box::new(bytecount::ByteCount));
     store.register_late_pass(|| Box::new(infinite_iter::InfiniteIter));
     store.register_late_pass(|| Box::new(inline_fn_without_body::InlineFnWithoutBody));

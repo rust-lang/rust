@@ -27,6 +27,7 @@ mod redundant_pattern_match;
 mod rest_pat_in_fully_bound_struct;
 mod significant_drop_in_scrutinee;
 mod single_match;
+mod try_err;
 mod wild_in_or_pats;
 
 declare_clippy_lint! {
@@ -825,6 +826,41 @@ declare_clippy_lint! {
     "warns when a temporary of a type with a drop with a significant side-effect might have a surprising lifetime"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usages of `Err(x)?`.
+    ///
+    /// ### Why is this bad?
+    /// The `?` operator is designed to allow calls that
+    /// can fail to be easily chained. For example, `foo()?.bar()` or
+    /// `foo(bar()?)`. Because `Err(x)?` can't be used that way (it will
+    /// always return), it is more clear to write `return Err(x)`.
+    ///
+    /// ### Example
+    /// ```rust
+    /// fn foo(fail: bool) -> Result<i32, String> {
+    ///     if fail {
+    ///       Err("failed")?;
+    ///     }
+    ///     Ok(0)
+    /// }
+    /// ```
+    /// Could be written:
+    ///
+    /// ```rust
+    /// fn foo(fail: bool) -> Result<i32, String> {
+    ///     if fail {
+    ///       return Err("failed".into());
+    ///     }
+    ///     Ok(0)
+    /// }
+    /// ```
+    #[clippy::version = "1.38.0"]
+    pub TRY_ERR,
+    restriction,
+    "return errors explicitly rather than hiding them behind a `?`"
+}
+
 #[derive(Default)]
 pub struct Matches {
     msrv: Option<RustcVersion>,
@@ -864,6 +900,7 @@ impl_lint_pass!(Matches => [
     MATCH_ON_VEC_ITEMS,
     MATCH_STR_CASE_MISMATCH,
     SIGNIFICANT_DROP_IN_SCRUTINEE,
+    TRY_ERR,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Matches {
@@ -886,6 +923,10 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
                 // These don't depend on a relationship between multiple arms
                 match_wild_err_arm::check(cx, ex, arms);
                 wild_in_or_pats::check(cx, arms);
+            }
+
+            if source == MatchSource::TryDesugar {
+                try_err::check(cx, expr, ex);
             }
 
             if !from_expansion && !contains_cfg_arm(cx, expr, ex, arms) {
