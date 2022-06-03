@@ -72,5 +72,6 @@ module.exports = {
         "no-ex-assign": "error",
         "no-fallthrough": "error",
         "no-invalid-regexp": "error",
+        "no-import-assign": "error",
     }
 };
