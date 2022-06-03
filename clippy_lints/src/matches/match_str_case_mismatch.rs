@@ -3,46 +3,13 @@ use clippy_utils::ty::is_type_diagnostic_item;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_expr, Visitor};
-use rustc_hir::{Arm, Expr, ExprKind, MatchSource, PatKind};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::lint::in_external_macro;
+use rustc_hir::{Arm, Expr, ExprKind, PatKind};
+use rustc_lint::LateContext;
 use rustc_middle::ty;
-use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::symbol::Symbol;
 use rustc_span::{sym, Span};
 
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for `match` expressions modifying the case of a string with non-compliant arms
-    ///
-    /// ### Why is this bad?
-    /// The arm is unreachable, which is likely a mistake
-    ///
-    /// ### Example
-    /// ```rust
-    /// # let text = "Foo";
-    /// match &*text.to_ascii_lowercase() {
-    ///     "foo" => {},
-    ///     "Bar" => {},
-    ///     _ => {},
-    /// }
-    /// ```
-    /// Use instead:
-    /// ```rust
-    /// # let text = "Foo";
-    /// match &*text.to_ascii_lowercase() {
-    ///     "foo" => {},
-    ///     "bar" => {},
-    ///     _ => {},
-    /// }
-    /// ```
-    #[clippy::version = "1.58.0"]
-    pub MATCH_STR_CASE_MISMATCH,
-    correctness,
-    "creation of a case altering match expression with non-compliant arms"
-}
-
-declare_lint_pass!(MatchStrCaseMismatch => [MATCH_STR_CASE_MISMATCH]);
+use super::MATCH_STR_CASE_MISMATCH;
 
 #[derive(Debug)]
 enum CaseMethod {
@@ -52,25 +19,21 @@ enum CaseMethod {
     AsciiUppercase,
 }
 
-impl<'tcx> LateLintPass<'tcx> for MatchStrCaseMismatch {
-    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if_chain! {
-            if !in_external_macro(cx.tcx.sess, expr.span);
-            if let ExprKind::Match(match_expr, arms, MatchSource::Normal) = expr.kind;
-            if let ty::Ref(_, ty, _) = cx.typeck_results().expr_ty(match_expr).kind();
-            if let ty::Str = ty.kind();
-            then {
-                let mut visitor = MatchExprVisitor {
-                    cx,
-                    case_method: None,
-                };
+pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, scrutinee: &'tcx Expr<'_>, arms: &'tcx [Arm<'_>]) {
+    if_chain! {
+        if let ty::Ref(_, ty, _) = cx.typeck_results().expr_ty(scrutinee).kind();
+        if let ty::Str = ty.kind();
+        then {
+            let mut visitor = MatchExprVisitor {
+                cx,
+                case_method: None,
+            };
 
-                visitor.visit_expr(match_expr);
+            visitor.visit_expr(scrutinee);
 
-                if let Some(case_method) = visitor.case_method {
-                    if let Some((bad_case_span, bad_case_sym)) = verify_case(&case_method, arms) {
-                        lint(cx, &case_method, bad_case_span, bad_case_sym.as_str());
-                    }
+            if let Some(case_method) = visitor.case_method {
+                if let Some((bad_case_span, bad_case_sym)) = verify_case(&case_method, arms) {
+                    lint(cx, &case_method, bad_case_span, bad_case_sym.as_str());
                 }
             }
         }

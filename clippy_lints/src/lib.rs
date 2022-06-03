@@ -287,7 +287,6 @@ mod map_clone;
 mod map_err_ignore;
 mod map_unit_fn;
 mod match_result_ok;
-mod match_str_case_mismatch;
 mod matches;
 mod mem_forget;
 mod mem_replace;
@@ -875,7 +874,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         ))
     });
     store.register_late_pass(move || Box::new(undocumented_unsafe_blocks::UndocumentedUnsafeBlocks));
-    store.register_late_pass(|| Box::new(match_str_case_mismatch::MatchStrCaseMismatch));
     store.register_late_pass(move || Box::new(format_args::FormatArgs));
     store.register_late_pass(|| Box::new(trailing_empty_array::TrailingEmptyArray));
     store.register_early_pass(|| Box::new(octal_escapes::OctalEscapes));

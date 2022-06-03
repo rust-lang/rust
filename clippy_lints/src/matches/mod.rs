@@ -18,6 +18,7 @@ mod match_on_vec_items;
 mod match_ref_pats;
 mod match_same_arms;
 mod match_single_binding;
+mod match_str_case_mismatch;
 mod match_wild_enum;
 mod match_wild_err_arm;
 mod needless_match;
@@ -716,6 +717,37 @@ declare_clippy_lint! {
     "matching on vector elements can panic"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for `match` expressions modifying the case of a string with non-compliant arms
+    ///
+    /// ### Why is this bad?
+    /// The arm is unreachable, which is likely a mistake
+    ///
+    /// ### Example
+    /// ```rust
+    /// # let text = "Foo";
+    /// match &*text.to_ascii_lowercase() {
+    ///     "foo" => {},
+    ///     "Bar" => {},
+    ///     _ => {},
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// # let text = "Foo";
+    /// match &*text.to_ascii_lowercase() {
+    ///     "foo" => {},
+    ///     "bar" => {},
+    ///     _ => {},
+    /// }
+    /// ```
+    #[clippy::version = "1.58.0"]
+    pub MATCH_STR_CASE_MISMATCH,
+    correctness,
+    "creation of a case altering match expression with non-compliant arms"
+}
+
 #[derive(Default)]
 pub struct Matches {
     msrv: Option<RustcVersion>,
@@ -753,6 +785,7 @@ impl_lint_pass!(Matches => [
     COLLAPSIBLE_MATCH,
     MANUAL_UNWRAP_OR,
     MATCH_ON_VEC_ITEMS,
+    MATCH_STR_CASE_MISMATCH,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Matches {
@@ -790,6 +823,7 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
                     match_as_ref::check(cx, ex, arms, expr);
                     needless_match::check_match(cx, ex, arms, expr);
                     match_on_vec_items::check(cx, ex);
+                    match_str_case_mismatch::check(cx, ex, arms);
 
                     if !in_constant(cx, expr.hir_id) {
                         manual_unwrap_or::check(cx, expr, ex, arms);
