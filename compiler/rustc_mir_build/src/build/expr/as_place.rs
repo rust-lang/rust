@@ -133,7 +133,7 @@ fn convert_to_hir_projections_and_truncate_for_capture<'tcx>(
 ///        ancestor of `foo.x.y`. It's the caller's responsibility to ensure that both projections
 ///        list are being applied to the same root variable.
 fn is_ancestor_or_same_capture(
-    proj_possible_ancestor: &Vec<HirProjectionKind>,
+    proj_possible_ancestor: &[HirProjectionKind],
     proj_capture: &[HirProjectionKind],
 ) -> bool {
     // We want to make sure `is_ancestor_or_same_capture("x.0.0", "x.0")` to return false.
@@ -187,7 +187,7 @@ fn find_capture_matching_projections<'a, 'tcx>(
     // If an ancestor is found, `idx` is the index within the list of captured places
     // for root variable `var_hir_id` and `capture` is the `ty::CapturedPlace` itself.
     let (idx, capture) = root_variable_min_captures.iter().enumerate().find(|(_, capture)| {
-        let possible_ancestor_proj_kinds =
+        let possible_ancestor_proj_kinds: Vec<_> =
             capture.place.projections.iter().map(|proj| proj.kind).collect();
         is_ancestor_or_same_capture(&possible_ancestor_proj_kinds, &hir_projections)
     })?;

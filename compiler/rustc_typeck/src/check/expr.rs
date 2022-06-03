@@ -2448,7 +2448,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         span: Span,
         base_t: Ty<'tcx>,
-    ) -> Option<(&Vec<ty::FieldDef>, SubstsRef<'tcx>)> {
+    ) -> Option<(&[ty::FieldDef], SubstsRef<'tcx>)> {
         debug!("get_field_candidates(span: {:?}, base_t: {:?}", span, base_t);
 
         for (base_t, _) in self.autoderef(span, base_t) {

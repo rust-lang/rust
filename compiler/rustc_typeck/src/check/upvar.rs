@@ -2039,7 +2039,7 @@ fn should_do_rust_2021_incompatible_closure_captures_analysis(
 /// - s2: Comma separated names of the variables being migrated.
 fn migration_suggestion_for_2229(
     tcx: TyCtxt<'_>,
-    need_migrations: &Vec<NeededMigration>,
+    need_migrations: &[NeededMigration],
 ) -> (String, String) {
     let need_migrations_variables = need_migrations
         .iter()

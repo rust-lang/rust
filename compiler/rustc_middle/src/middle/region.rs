@@ -16,6 +16,7 @@ use rustc_query_system::ich::StableHashingContext;
 use rustc_span::{Span, DUMMY_SP};
 
 use std::fmt;
+use std::ops::Deref;
 
 /// Represents a statically-describable scope that can be used to
 /// bound the lifetime/region for values.
@@ -407,8 +408,8 @@ impl ScopeTree {
 
     /// Checks whether the given scope contains a `yield`. If so,
     /// returns `Some(YieldData)`. If not, returns `None`.
-    pub fn yield_in_scope(&self, scope: Scope) -> Option<&Vec<YieldData>> {
-        self.yield_in_scope.get(&scope)
+    pub fn yield_in_scope(&self, scope: Scope) -> Option<&[YieldData]> {
+        self.yield_in_scope.get(&scope).map(Deref::deref)
     }
 
     /// Gives the number of expressions visited in a body.

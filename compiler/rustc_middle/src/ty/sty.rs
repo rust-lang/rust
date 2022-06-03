@@ -1032,6 +1032,13 @@ impl<'tcx, T> Binder<'tcx, T> {
         Binder(&self.0, self.1)
     }
 
+    pub fn as_deref(&self) -> Binder<'tcx, &T::Target>
+    where
+        T: Deref,
+    {
+        Binder(&self.0, self.1)
+    }
+
     pub fn map_bound_ref_unchecked<F, U>(&self, f: F) -> Binder<'tcx, U>
     where
         F: FnOnce(&T) -> U,

@@ -773,7 +773,7 @@ pub struct PlaceholderReplacer<'me, 'tcx> {
     mapped_regions: BTreeMap<ty::PlaceholderRegion, ty::BoundRegion>,
     mapped_types: BTreeMap<ty::PlaceholderType, ty::BoundTy>,
     mapped_consts: BTreeMap<ty::PlaceholderConst<'tcx>, ty::BoundVar>,
-    universe_indices: &'me Vec<Option<ty::UniverseIndex>>,
+    universe_indices: &'me [Option<ty::UniverseIndex>],
     current_index: ty::DebruijnIndex,
 }
 
@@ -783,7 +783,7 @@ impl<'me, 'tcx> PlaceholderReplacer<'me, 'tcx> {
         mapped_regions: BTreeMap<ty::PlaceholderRegion, ty::BoundRegion>,
         mapped_types: BTreeMap<ty::PlaceholderType, ty::BoundTy>,
         mapped_consts: BTreeMap<ty::PlaceholderConst<'tcx>, ty::BoundVar>,
-        universe_indices: &'me Vec<Option<ty::UniverseIndex>>,
+        universe_indices: &'me [Option<ty::UniverseIndex>],
         value: T,
     ) -> T {
         let mut replacer = PlaceholderReplacer {
