@@ -312,9 +312,9 @@ impl ProjectWorkspace {
                         let pkg_root = cargo[pkg].manifest.parent().to_path_buf();
 
                         let mut include = vec![pkg_root.clone()];
-                        include.extend(
-                            build_scripts.outputs.get(pkg).and_then(|it| it.out_dir.clone()),
-                        );
+                        let out_dir =
+                            build_scripts.get_output(pkg).and_then(|it| it.out_dir.clone());
+                        include.extend(out_dir);
 
                         // In case target's path is manually set in Cargo.toml to be
                         // outside the package root, add its parent as an extra include.
@@ -586,7 +586,7 @@ fn cargo_to_crate_graph(
                 let crate_id = add_target_crate_root(
                     &mut crate_graph,
                     &cargo[pkg],
-                    build_scripts.outputs.get(pkg),
+                    build_scripts.get_output(pkg),
                     cfg_options,
                     &mut |path| load_proc_macro(&cargo[tgt].name, path),
                     file_id,
