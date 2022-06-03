@@ -70,5 +70,6 @@ module.exports = {
         "no-dupe-keys": "error",
         "no-duplicate-case": "error",
         "no-ex-assign": "error",
+        "no-fallthrough": "error",
     }
 };
