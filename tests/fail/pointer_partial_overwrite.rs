@@ -2,7 +2,7 @@
 // compile-flags: -Zmiri-disable-alignment-check -Zmiri-disable-stacked-borrows -Zmiri-disable-validation
 
 // Test what happens when we overwrite parts of a pointer.
-// Also see <https://github.com/rust-lang/rust/issues/87184>.
+// Also see <https://github.com/rust-lang/miri/issues/2181>.
 
 fn main() {
     let mut p = &42;

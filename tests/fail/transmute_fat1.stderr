@@ -1,10 +1,11 @@
-error: unsupported operation: unable to turn pointer into raw bytes
+error: Undefined Behavior: type validation failed: encountered a pointer, but expected plain (non-pointer) bytes
   --> $DIR/transmute_fat1.rs:LL:CC
    |
-LL |     let _val = bad[0] + bad[bad.len()-1];
-   |                ^^^^^^ unable to turn pointer into raw bytes
+LL |         std::mem::transmute::<&[u8], [u8; 16]>(&[1u8])
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a pointer, but expected plain (non-pointer) bytes
    |
-   = help: this is likely not a bug in the program; it indicates that the program performed an operation that the interpreter does not support
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
            
    = note: inside `main` at $DIR/transmute_fat1.rs:LL:CC
 
