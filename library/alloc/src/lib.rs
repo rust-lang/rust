@@ -120,6 +120,7 @@
 #![feature(inplace_iteration)]
 #![feature(iter_advance_by)]
 #![feature(layout_for_ptr)]
+#![feature(layout_padding_needed_for)]
 #![feature(maybe_uninit_slice)]
 #![cfg_attr(test, feature(new_uninit))]
 #![feature(nonnull_slice_from_raw_parts)]

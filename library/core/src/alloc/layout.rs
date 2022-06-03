@@ -225,11 +225,14 @@ impl Layout {
     /// padding required to get a 4-aligned address (assuming that the
     /// corresponding memory block starts at a 4-aligned address).
     ///
+    /// The return value of this function has no meaning if `align` is
+    /// not a power-of-two.
+    ///
     /// Note that the utility of the returned value requires `align`
     /// to be less than or equal to the alignment of the starting
     /// address for the whole allocated block of memory. One way to
     /// satisfy this constraint is to ensure `align <= self.align()`.
-    #[stable(feature = "alloc_layout_extra", since = "1.63.0")]
+    #[unstable(feature = "layout_padding_needed_for", issue = "55724")]
     #[rustc_const_unstable(feature = "const_alloc_layout", issue = "67521")]
     #[must_use = "this returns the padding needed, \
                   without modifying the `Layout`"]
