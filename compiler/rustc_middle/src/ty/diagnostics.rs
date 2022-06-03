@@ -272,7 +272,10 @@ pub fn suggest_constraining_type_params<'a>(
             continue;
         }
 
-        let constraint = constraints.iter().map(|&(c, _)| c).collect::<Vec<_>>().join(" + ");
+        let mut constraint = constraints.iter().map(|&(c, _)| c).collect::<Vec<_>>();
+        constraint.sort();
+        constraint.dedup();
+        let constraint = constraint.join(" + ");
         let mut suggest_restrict = |span, bound_list_non_empty| {
             suggestions.push((
                 span,
