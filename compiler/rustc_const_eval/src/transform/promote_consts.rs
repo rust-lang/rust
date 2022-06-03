@@ -504,7 +504,8 @@ impl<'tcx> Validator<'_, 'tcx> {
             // ptr-to-int casts are not possible in consts and thus not promotable
             Rvalue::Cast(CastKind::PointerExposeAddress, _, _) => return Err(Unpromotable),
 
-            // int-to-ptr casts are fine, they just use the integer value at pointer type.
+            // all other casts including int-to-ptr casts are fine, they just use the integer value
+            // at pointer type.
             Rvalue::Cast(_, operand, _) => {
                 self.validate_operand(operand)?;
             }

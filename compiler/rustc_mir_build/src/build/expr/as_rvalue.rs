@@ -196,6 +196,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     (Some(CastTy::Ptr(_) | CastTy::FnPtr), Some(CastTy::Int(_))) => {
                         CastKind::PointerExposeAddress
                     }
+                    (Some(CastTy::Int(_)), Some(CastTy::Ptr(_))) => {
+                        CastKind::PointerFromExposedAddress
+                    }
                     (_, _) => CastKind::Misc,
                 };
                 let source = unpack!(

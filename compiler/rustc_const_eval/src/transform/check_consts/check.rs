@@ -520,30 +520,28 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             }
 
             Rvalue::Cast(
-                CastKind::Pointer(PointerCast::MutToConstPointer | PointerCast::ArrayToPointer),
-                _,
-                _,
-            ) => {}
-
-            Rvalue::Cast(
                 CastKind::Pointer(
-                    PointerCast::UnsafeFnPointer
+                    PointerCast::MutToConstPointer
+                    | PointerCast::ArrayToPointer
+                    | PointerCast::UnsafeFnPointer
                     | PointerCast::ClosureFnPointer(_)
                     | PointerCast::ReifyFnPointer,
                 ),
                 _,
                 _,
             ) => {
-                // Nothing to do here. Function pointer casts are allowed now.
+                // These are all okay; they only change the type, not the data.
             }
 
             Rvalue::Cast(CastKind::Pointer(PointerCast::Unsize), _, _) => {
-                // Nothing to check here (`check_local_or_return_ty` ensures no trait objects occur
-                // in the type of any local, which also excludes casts).
+                // Unsizing is implemented for CTFE.
             }
 
             Rvalue::Cast(CastKind::PointerExposeAddress, _, _) => {
                 self.check_op(ops::RawPtrToIntCast);
+            }
+            Rvalue::Cast(CastKind::PointerFromExposedAddress, _, _) => {
+                // Since no pointer can ever get exposed (rejected above), this is easy to support.
             }
 
             Rvalue::Cast(CastKind::Misc, _, _) => {}

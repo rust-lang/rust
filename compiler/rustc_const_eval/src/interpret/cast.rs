@@ -37,6 +37,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.write_immediate(res, dest)?;
             }
 
+            PointerFromExposedAddress => {
+                let src = self.read_immediate(src)?;
+                let res = self.pointer_from_exposed_address_cast(&src, cast_ty)?;
+                self.write_immediate(res, dest)?;
+            }
+
             Misc => {
                 let src = self.read_immediate(src)?;
                 let res = self.misc_cast(&src, cast_ty)?;
@@ -201,6 +207,24 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         Ok(self.cast_from_int_like(scalar, src.layout, cast_ty)?.into())
     }
 
+    pub fn pointer_from_exposed_address_cast(
+        &mut self,
+        src: &ImmTy<'tcx, M::PointerTag>,
+        cast_ty: Ty<'tcx>,
+    ) -> InterpResult<'tcx, Immediate<M::PointerTag>> {
+        assert!(src.layout.ty.is_integral());
+        assert_matches!(cast_ty.kind(), ty::RawPtr(_));
+
+        // First cast to usize.
+        let scalar = src.to_scalar()?;
+        let addr = self.cast_from_int_like(scalar, src.layout, self.tcx.types.usize)?;
+        let addr = addr.to_machine_usize(self)?;
+
+        // Then turn address into pointer.
+        let ptr = M::ptr_from_addr_cast(&self, addr);
+        Ok(Scalar::from_maybe_pointer(ptr, self).into())
+    }
+
     pub fn cast_from_int_like(
         &self,
         scalar: Scalar<M::PointerTag>, // input value (there is no ScalarTy so we separate data+layout)
@@ -223,16 +247,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 };
                 let v = size.truncate(v);
                 Scalar::from_uint(v, size)
-            }
-
-            RawPtr(_) => {
-                assert!(src_layout.ty.is_integral());
-
-                let size = self.pointer_size();
-                let addr = u64::try_from(size.truncate(v)).unwrap();
-
-                let ptr = M::ptr_from_addr_cast(&self, addr);
-                Scalar::from_maybe_pointer(ptr, self)
             }
 
             Float(FloatTy::F32) if signed => Scalar::from_f32(Single::from_i128(v as i128).value),
