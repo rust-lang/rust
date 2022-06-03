@@ -1564,13 +1564,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             QPath::TypeRelative(ref qself, ref segment) => {
                 let ty = self.to_ty(qself);
 
-                let res = if let hir::TyKind::Path(QPath::Resolved(_, ref path)) = qself.kind {
-                    path.res
-                } else {
-                    Res::Err
-                };
                 let result = <dyn AstConv<'_>>::associated_path_to_ty(
-                    self, hir_id, path_span, ty, res, segment, true,
+                    self, hir_id, path_span, ty, qself, segment, true,
                 );
                 let ty = result.map(|(ty, _, _)| ty).unwrap_or_else(|_| self.tcx().ty_error());
                 let result = result.map(|(_, kind, def_id)| (kind, def_id));
