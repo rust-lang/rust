@@ -158,11 +158,13 @@ impl<'tcx> Inliner<'tcx> {
             return Err("optimization fuel exhausted");
         }
 
-        let callee_body = callsite.callee.subst_mir_and_normalize_erasing_regions(
+        let Ok(callee_body) = callsite.callee.try_subst_mir_and_normalize_erasing_regions(
             self.tcx,
             self.param_env,
             callee_body.clone(),
-        );
+        ) else {
+            return Err("failed to normalize callee body");
+        };
 
         let old_blocks = caller_body.basic_blocks().next_index();
         self.inline_call(caller_body, &callsite, callee_body);
@@ -253,7 +255,7 @@ impl<'tcx> Inliner<'tcx> {
             let func_ty = func.ty(caller_body, self.tcx);
             if let ty::FnDef(def_id, substs) = *func_ty.kind() {
                 // To resolve an instance its substs have to be fully normalized.
-                let substs = self.tcx.normalize_erasing_regions(self.param_env, substs);
+                let substs = self.tcx.try_normalize_erasing_regions(self.param_env, substs).ok()?;
                 let callee =
                     Instance::resolve(self.tcx, self.param_env, def_id, substs).ok().flatten()?;
 
@@ -408,14 +410,17 @@ impl<'tcx> Inliner<'tcx> {
                     if let ty::FnDef(def_id, substs) =
                         *callsite.callee.subst_mir(self.tcx, &f.literal.ty()).kind()
                     {
-                        let substs = self.tcx.normalize_erasing_regions(self.param_env, substs);
-                        if let Ok(Some(instance)) =
-                            Instance::resolve(self.tcx, self.param_env, def_id, substs)
+                        if let Ok(substs) =
+                            self.tcx.try_normalize_erasing_regions(self.param_env, substs)
                         {
-                            if callsite.callee.def_id() == instance.def_id() {
-                                return Err("self-recursion");
-                            } else if self.history.contains(&instance) {
-                                return Err("already inlined");
+                            if let Ok(Some(instance)) =
+                                Instance::resolve(self.tcx, self.param_env, def_id, substs)
+                            {
+                                if callsite.callee.def_id() == instance.def_id() {
+                                    return Err("self-recursion");
+                                } else if self.history.contains(&instance) {
+                                    return Err("already inlined");
+                                }
                             }
                         }
                         // Don't give intrinsics the extra penalty for calls
