@@ -1,8 +1,16 @@
-error[E0109]: lifetime arguments are not allowed for this type
+error[E0109]: lifetime arguments are not allowed on this type
   --> $DIR/E0110.rs:1:14
    |
 LL | type X = u32<'static>;
-   |              ^^^^^^^ lifetime argument not allowed
+   |          --- ^^^^^^^ lifetime argument not allowed
+   |          |
+   |          not allowed on this
+   |
+help: primitive type `u32` doesn't have generic parameters
+   |
+LL - type X = u32<'static>;
+LL + type X = u32;
+   | 
 
 error: aborting due to previous error
 
