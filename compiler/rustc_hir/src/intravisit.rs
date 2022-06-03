@@ -510,11 +510,11 @@ pub fn walk_label<'v, V: Visitor<'v>>(visitor: &mut V, label: &'v Label) {
 pub fn walk_lifetime<'v, V: Visitor<'v>>(visitor: &mut V, lifetime: &'v Lifetime) {
     visitor.visit_id(lifetime.hir_id);
     match lifetime.name {
-        LifetimeName::Param(ParamName::Plain(ident)) => {
+        LifetimeName::Param(_, ParamName::Plain(ident)) => {
             visitor.visit_ident(ident);
         }
-        LifetimeName::Param(ParamName::Fresh(_))
-        | LifetimeName::Param(ParamName::Error)
+        LifetimeName::Param(_, ParamName::Fresh)
+        | LifetimeName::Param(_, ParamName::Error)
         | LifetimeName::Static
         | LifetimeName::Error
         | LifetimeName::Implicit
@@ -879,7 +879,7 @@ pub fn walk_generic_param<'v, V: Visitor<'v>>(visitor: &mut V, param: &'v Generi
     visitor.visit_id(param.hir_id);
     match param.name {
         ParamName::Plain(ident) => visitor.visit_ident(ident),
-        ParamName::Error | ParamName::Fresh(_) => {}
+        ParamName::Error | ParamName::Fresh => {}
     }
     match param.kind {
         GenericParamKind::Lifetime { .. } => {}
