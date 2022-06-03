@@ -869,8 +869,6 @@ where
             Ok(src_val) => {
                 assert!(!src.layout.is_unsized(), "cannot have unsized immediates");
                 // Yay, we got a value that we can write directly.
-                // FIXME: Add a check to make sure that if `src` is indirect,
-                // it does not overlap with `dest`.
                 return self.write_immediate_no_validate(*src_val, dest);
             }
             Err(mplace) => mplace,
@@ -890,7 +888,7 @@ where
         });
         assert_eq!(src.meta, dest.meta, "Can only copy between equally-sized instances");
 
-        self.mem_copy(src.ptr, src.align, dest.ptr, dest.align, size, /*nonoverlapping*/ true)
+        self.mem_copy(src.ptr, src.align, dest.ptr, dest.align, size, /*nonoverlapping*/ false)
     }
 
     /// Copies the data from an operand to a place. The layouts may disagree, but they must

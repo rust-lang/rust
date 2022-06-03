@@ -158,6 +158,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         place: mir::Place<'tcx>,
     ) -> InterpResult<'tcx> {
         let dest = self.eval_place(place)?;
+        // FIXME: ensure some kind of non-aliasing between LHS and RHS?
+        // Also see https://github.com/rust-lang/rust/issues/68364.
 
         use rustc_middle::mir::Rvalue::*;
         match *rvalue {

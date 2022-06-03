@@ -2,7 +2,7 @@
 //! up data structures required by type-checking/codegen.
 
 use crate::errors::{CopyImplOnNonAdt, CopyImplOnTypeWithDtor, DropImplOnWrongItem};
-use rustc_errors::struct_span_err;
+use rustc_errors::{struct_span_err, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
@@ -11,12 +11,12 @@ use rustc_infer::infer;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{RegionckMode, TyCtxtInferExt};
 use rustc_middle::ty::adjustment::CoerceUnsizedInfo;
-use rustc_middle::ty::TypeFoldable;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, suggest_constraining_type_params, Ty, TyCtxt, TypeFoldable};
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt;
 use rustc_trait_selection::traits::misc::{can_type_implement_copy, CopyImplementationError};
 use rustc_trait_selection::traits::predicate_for_trait_def;
 use rustc_trait_selection::traits::{self, ObligationCause, TraitEngine, TraitEngineExt};
+use std::collections::BTreeMap;
 
 pub fn check_trait(tcx: TyCtxt<'_>, trait_def_id: DefId) {
     let lang_items = tcx.lang_items();
@@ -91,6 +91,20 @@ fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
                 E0204,
                 "the trait `Copy` may not be implemented for this type"
             );
+
+            // We'll try to suggest constraining type parameters to fulfill the requirements of
+            // their `Copy` implementation.
+            let mut generics = None;
+            if let ty::Adt(def, _substs) = self_type.kind() {
+                let self_def_id = def.did();
+                if let Some(local) = self_def_id.as_local() {
+                    let self_item = tcx.hir().expect_item(local);
+                    generics = self_item.kind.generics();
+                }
+            }
+            let mut errors: BTreeMap<_, Vec<_>> = Default::default();
+            let mut bounds = vec![];
+
             for (field, ty) in fields {
                 let field_span = tcx.def_span(field.did);
                 err.span_label(field_span, "this field does not implement `Copy`");
@@ -115,16 +129,45 @@ fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
                         // FIXME: This error could be more descriptive, especially if the error_predicate
                         // contains a foreign type or if it's a deeply nested type...
                         if error_predicate != error.root_obligation.predicate {
-                            err.span_note(
-                                error.obligation.cause.span,
-                                &format!(
-                                    "the `Copy` impl for `{}` requires that `{}`",
-                                    ty, error_predicate
-                                ),
-                            );
+                            errors
+                                .entry((ty.to_string(), error_predicate.to_string()))
+                                .or_default()
+                                .push(error.obligation.cause.span);
+                        }
+                        if let ty::PredicateKind::Trait(ty::TraitPredicate {
+                            trait_ref,
+                            polarity: ty::ImplPolarity::Positive,
+                            ..
+                        }) = error_predicate.kind().skip_binder()
+                        {
+                            let ty = trait_ref.self_ty();
+                            if let ty::Param(_) = ty.kind() {
+                                bounds.push((
+                                    format!("{ty}"),
+                                    trait_ref.print_only_trait_path().to_string(),
+                                    Some(trait_ref.def_id),
+                                ));
+                            }
                         }
                     }
                 });
+            }
+            for ((ty, error_predicate), spans) in errors {
+                let span: MultiSpan = spans.into();
+                err.span_note(
+                    span,
+                    &format!("the `Copy` impl for `{}` requires that `{}`", ty, error_predicate),
+                );
+            }
+            if let Some(generics) = generics {
+                suggest_constraining_type_params(
+                    tcx,
+                    generics,
+                    &mut err,
+                    bounds.iter().map(|(param, constraint, def_id)| {
+                        (param.as_str(), constraint.as_str(), *def_id)
+                    }),
+                );
             }
             err.emit();
         }

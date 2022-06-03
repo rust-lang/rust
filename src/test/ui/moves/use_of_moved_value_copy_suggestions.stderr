@@ -75,7 +75,7 @@ LL |     (t, t)
    |
 help: consider restricting type parameter `T`
    |
-LL | fn duplicate_custom<T: Trait + Copy>(t: S<T>) -> (S<T>, S<T>) {
+LL | fn duplicate_custom<T: Copy + Trait>(t: S<T>) -> (S<T>, S<T>) {
    |                      ++++++++++++++
 
 error[E0382]: use of moved value: `t`
@@ -91,7 +91,7 @@ LL |     (t, t)
    |
 help: consider restricting type parameter `T`
    |
-LL | fn duplicate_custom_1<T: Trait + Copy>(t: S<T>) -> (S<T>, S<T>) where {
+LL | fn duplicate_custom_1<T: Copy + Trait>(t: S<T>) -> (S<T>, S<T>) where {
    |                        ++++++++++++++
 
 error[E0382]: use of moved value: `t`
@@ -107,7 +107,7 @@ LL |     (t, t)
    |
 help: consider further restricting this bound
    |
-LL |     T: A + Trait + Copy,
+LL |     T: A + Copy + Trait,
    |          ++++++++++++++
 
 error[E0382]: use of moved value: `t`
@@ -123,7 +123,7 @@ LL |     (t, t)
    |
 help: consider further restricting this bound
    |
-LL |     T: A + Trait + Copy,
+LL |     T: A + Copy + Trait,
    |          ++++++++++++++
 
 error[E0382]: use of moved value: `t`
@@ -139,7 +139,7 @@ LL |     (t, t)
    |
 help: consider further restricting this bound
    |
-LL | fn duplicate_custom_4<T: A + Trait + Copy>(t: S<T>) -> (S<T>, S<T>)
+LL | fn duplicate_custom_4<T: A + Copy + Trait>(t: S<T>) -> (S<T>, S<T>)
    |                            ++++++++++++++
 
 error[E0382]: use of moved value: `t`

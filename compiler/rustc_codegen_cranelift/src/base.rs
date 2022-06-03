@@ -608,7 +608,9 @@ fn codegen_stmt<'tcx>(
                     lval.write_cvalue(fx, operand.cast_pointer_to(to_layout));
                 }
                 Rvalue::Cast(
-                    CastKind::Misc | CastKind::PointerExposeAddress,
+                    CastKind::Misc
+                    | CastKind::PointerExposeAddress
+                    | CastKind::PointerFromExposedAddress,
                     ref operand,
                     to_ty,
                 ) => {
