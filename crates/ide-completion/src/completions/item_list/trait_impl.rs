@@ -43,7 +43,10 @@ use syntax::{
 use text_edit::TextEdit;
 
 use crate::{
-    context::{ItemListKind, NameContext, NameKind, NameRefContext, PathCompletionCtx, PathKind},
+    context::{
+        IdentContext, ItemListKind, NameContext, NameKind, NameRefContext, PathCompletionCtx,
+        PathKind,
+    },
     CompletionContext, CompletionItem, CompletionItemKind, CompletionRelevance, Completions,
 };
 
@@ -78,47 +81,49 @@ pub(crate) fn complete_trait_impl(acc: &mut Completions, ctx: &CompletionContext
 }
 
 fn completion_match(ctx: &CompletionContext) -> Option<(ImplCompletionKind, TextRange, ast::Impl)> {
-    let token = ctx.token.clone();
-
-    if let Some(NameContext { name, kind, .. }) = ctx.name_ctx() {
-        let kind = match kind {
-            NameKind::Const => ImplCompletionKind::Const,
-            NameKind::Function => ImplCompletionKind::Fn,
-            NameKind::TypeAlias => ImplCompletionKind::TypeAlias,
-            _ => return None,
-        };
-        let item = match name {
-            Some(name) => name.syntax().parent(),
-            None => {
-                if token.kind() == SyntaxKind::WHITESPACE { token.prev_token()? } else { token }
-                    .parent()
-            }
-        }?;
-        return Some((
-            kind,
-            replacement_range(ctx, &item),
-            // item -> ASSOC_ITEM_LIST -> IMPL
-            ast::Impl::cast(item.parent()?.parent()?)?,
-        ));
-    } else if let Some(NameRefContext {
-        nameref,
-        path_ctx:
-            Some(PathCompletionCtx { kind: PathKind::Item { kind: ItemListKind::TraitImpl }, .. }),
-        ..
-    }) = ctx.nameref_ctx()
-    {
-        if !ctx.is_non_trivial_path() {
-            return Some((
-                ImplCompletionKind::All,
-                match nameref {
-                    Some(name) => name.syntax().text_range(),
-                    None => TextRange::empty(ctx.position.offset),
-                },
-                ctx.impl_def.clone()?,
-            ));
+    match &ctx.ident_ctx {
+        IdentContext::Name(NameContext { name, kind, .. }) => {
+            let kind = match kind {
+                NameKind::Const => ImplCompletionKind::Const,
+                NameKind::Function => ImplCompletionKind::Fn,
+                NameKind::TypeAlias => ImplCompletionKind::TypeAlias,
+                _ => return None,
+            };
+            let token = ctx.token.clone();
+            let item = match name {
+                Some(name) => name.syntax().parent(),
+                None => {
+                    if token.kind() == SyntaxKind::WHITESPACE { token.prev_token()? } else { token }
+                        .parent()
+                }
+            }?;
+            Some((
+                kind,
+                replacement_range(ctx, &item),
+                // item -> ASSOC_ITEM_LIST -> IMPL
+                ast::Impl::cast(item.parent()?.parent()?)?,
+            ))
         }
+        IdentContext::NameRef(NameRefContext {
+            nameref,
+            path_ctx:
+                Some(
+                    path_ctx @ PathCompletionCtx {
+                        kind: PathKind::Item { kind: ItemListKind::TraitImpl },
+                        ..
+                    },
+                ),
+            ..
+        }) if path_ctx.is_trivial_path() => Some((
+            ImplCompletionKind::All,
+            match nameref {
+                Some(name) => name.syntax().text_range(),
+                None => TextRange::empty(ctx.position.offset),
+            },
+            ctx.impl_def.clone()?,
+        )),
+        _ => None,
     }
-    None
 }
 
 fn add_function_impl(

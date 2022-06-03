@@ -109,7 +109,7 @@ pub(crate) struct PathCompletionCtx {
 }
 
 impl PathCompletionCtx {
-    fn is_trivial_path(&self) -> bool {
+    pub(super) fn is_trivial_path(&self) -> bool {
         matches!(
             self,
             PathCompletionCtx {
