@@ -73,5 +73,6 @@ module.exports = {
         "no-fallthrough": "error",
         "no-invalid-regexp": "error",
         "no-import-assign": "error",
+        "no-self-compare": "error",
     }
 };
