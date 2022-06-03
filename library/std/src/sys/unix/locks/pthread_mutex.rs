@@ -1,12 +1,13 @@
 use crate::cell::UnsafeCell;
 use crate::mem::MaybeUninit;
 use crate::sys::cvt_nz;
+use crate::sys_common::lazy_box::{LazyBox, LazyInit};
 
 pub struct Mutex {
     inner: UnsafeCell<libc::pthread_mutex_t>,
 }
 
-pub type MovableMutex = Box<Mutex>;
+pub(crate) type MovableMutex = LazyBox<Mutex>;
 
 #[inline]
 pub unsafe fn raw(m: &Mutex) -> *mut libc::pthread_mutex_t {
@@ -15,6 +16,14 @@ pub unsafe fn raw(m: &Mutex) -> *mut libc::pthread_mutex_t {
 
 unsafe impl Send for Mutex {}
 unsafe impl Sync for Mutex {}
+
+impl LazyInit for Mutex {
+    fn init() -> Box<Self> {
+        let mut mutex = Box::new(Self::new());
+        unsafe { mutex.init() };
+        mutex
+    }
+}
 
 impl Mutex {
     pub const fn new() -> Mutex {

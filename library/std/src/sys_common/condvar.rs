@@ -15,9 +15,7 @@ pub struct Condvar {
 impl Condvar {
     /// Creates a new condition variable for use.
     pub fn new() -> Self {
-        let mut c = imp::MovableCondvar::from(imp::Condvar::new());
-        unsafe { c.init() };
-        Self { inner: c, check: CondvarCheck::new() }
+        Self { inner: imp::MovableCondvar::new(), check: CondvarCheck::new() }
     }
 
     /// Signals one waiter on this condition variable to wake up.

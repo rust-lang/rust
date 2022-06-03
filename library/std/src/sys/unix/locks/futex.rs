@@ -115,9 +115,6 @@ impl Condvar {
         Self { futex: AtomicU32::new(0) }
     }
 
-    #[inline]
-    pub unsafe fn init(&mut self) {}
-
     // All the memory orderings here are `Relaxed`,
     // because synchronization is done by unlocking and locking the mutex.
 
