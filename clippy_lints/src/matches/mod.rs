@@ -25,6 +25,7 @@ mod needless_match;
 mod overlapping_arms;
 mod redundant_pattern_match;
 mod rest_pat_in_fully_bound_struct;
+mod significant_drop_in_scrutinee;
 mod single_match;
 mod wild_in_or_pats;
 
@@ -748,6 +749,82 @@ declare_clippy_lint! {
     "creation of a case altering match expression with non-compliant arms"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Check for temporaries returned from function calls in a match scrutinee that have the
+    /// `clippy::has_significant_drop` attribute.
+    ///
+    /// ### Why is this bad?
+    /// The `clippy::has_significant_drop` attribute can be added to types whose Drop impls have
+    /// an important side-effect, such as unlocking a mutex, making it important for users to be
+    /// able to accurately understand their lifetimes. When a temporary is returned in a function
+    /// call in a match scrutinee, its lifetime lasts until the end of the match block, which may
+    /// be surprising.
+    ///
+    /// For `Mutex`es this can lead to a deadlock. This happens when the match scrutinee uses a
+    /// function call that returns a `MutexGuard` and then tries to lock again in one of the match
+    /// arms. In that case the `MutexGuard` in the scrutinee will not be dropped until the end of
+    /// the match block and thus will not unlock.
+    ///
+    /// ### Example
+    /// ```rust.ignore
+    /// # use std::sync::Mutex;
+    ///
+    /// # struct State {}
+    ///
+    /// # impl State {
+    /// #     fn foo(&self) -> bool {
+    /// #         true
+    /// #     }
+    ///
+    /// #     fn bar(&self) {}
+    /// # }
+    ///
+    ///
+    /// let mutex = Mutex::new(State {});
+    ///
+    /// match mutex.lock().unwrap().foo() {
+    ///     true => {
+    ///         mutex.lock().unwrap().bar(); // Deadlock!
+    ///     }
+    ///     false => {}
+    /// };
+    ///
+    /// println!("All done!");
+    ///
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// # use std::sync::Mutex;
+    ///
+    /// # struct State {}
+    ///
+    /// # impl State {
+    /// #     fn foo(&self) -> bool {
+    /// #         true
+    /// #     }
+    ///
+    /// #     fn bar(&self) {}
+    /// # }
+    ///
+    /// let mutex = Mutex::new(State {});
+    ///
+    /// let is_foo = mutex.lock().unwrap().foo();
+    /// match is_foo {
+    ///     true => {
+    ///         mutex.lock().unwrap().bar();
+    ///     }
+    ///     false => {}
+    /// };
+    ///
+    /// println!("All done!");
+    /// ```
+    #[clippy::version = "1.60.0"]
+    pub SIGNIFICANT_DROP_IN_SCRUTINEE,
+    suspicious,
+    "warns when a temporary of a type with a drop with a significant side-effect might have a surprising lifetime"
+}
+
 #[derive(Default)]
 pub struct Matches {
     msrv: Option<RustcVersion>,
@@ -786,6 +863,7 @@ impl_lint_pass!(Matches => [
     MANUAL_UNWRAP_OR,
     MATCH_ON_VEC_ITEMS,
     MATCH_STR_CASE_MISMATCH,
+    SIGNIFICANT_DROP_IN_SCRUTINEE,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Matches {
@@ -796,8 +874,11 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
         let from_expansion = expr.span.from_expansion();
 
         if let ExprKind::Match(ex, arms, source) = expr.kind {
-            if !span_starts_with(cx, expr.span, "match") {
+            if source == MatchSource::Normal && !span_starts_with(cx, expr.span, "match") {
                 return;
+            }
+            if matches!(source, MatchSource::Normal | MatchSource::ForLoopDesugar) {
+                significant_drop_in_scrutinee::check(cx, expr, ex, source);
             }
 
             collapsible_match::check_match(cx, arms);
