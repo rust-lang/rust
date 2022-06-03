@@ -905,15 +905,15 @@ pub const unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
             if mem::align_of::<T>() >= mem::align_of::<$ChunkTy>()
                 && mem::size_of::<T>() % mem::size_of::<$ChunkTy>() == 0
             {
-                let x: *mut MaybeUninit<$ChunkTy> = x.cast();
-                let y: *mut MaybeUninit<$ChunkTy> = y.cast();
+                let x: *mut $ChunkTy = x.cast();
+                let y: *mut $ChunkTy = y.cast();
                 let count = count * (mem::size_of::<T>() / mem::size_of::<$ChunkTy>());
                 // SAFETY: these are the same bytes that the caller promised were
                 // ok, just typed as `MaybeUninit<ChunkTy>`s instead of as `T`s.
                 // The `if` condition above ensures that we're not violating
                 // alignment requirements, and that the division is exact so
                 // that we don't lose any bytes off the end.
-                return unsafe { swap_nonoverlapping_simple(x, y, count) };
+                return unsafe { swap_nonoverlapping_simple_untyped(x, y, count) };
             }
         };
     }
@@ -946,7 +946,7 @@ pub const unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
     }
 
     // SAFETY: Same preconditions as this function
-    unsafe { swap_nonoverlapping_simple(x, y, count) }
+    unsafe { swap_nonoverlapping_simple_untyped(x, y, count) }
 }
 
 /// Same behaviour and safety conditions as [`swap_nonoverlapping`]
@@ -955,16 +955,16 @@ pub const unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
 /// `swap_nonoverlapping` tries to use) so no need to manually SIMD it.
 #[inline]
 #[rustc_const_unstable(feature = "const_swap", issue = "83163")]
-const unsafe fn swap_nonoverlapping_simple<T>(x: *mut T, y: *mut T, count: usize) {
+const unsafe fn swap_nonoverlapping_simple_untyped<T>(x: *mut T, y: *mut T, count: usize) {
+    let x = x.cast::<MaybeUninit<T>>();
+    let y = y.cast::<MaybeUninit<T>>();
     let mut i = 0;
     while i < count {
-        let x: &mut T =
-            // SAFETY: By precondition, `i` is in-bounds because it's below `n`
-            unsafe { &mut *x.add(i) };
-        let y: &mut T =
-            // SAFETY: By precondition, `i` is in-bounds because it's below `n`
-            // and it's distinct from `x` since the ranges are non-overlapping
-            unsafe { &mut *y.add(i) };
+        // SAFETY: By precondition, `i` is in-bounds because it's below `n`
+        let x = unsafe { &mut *x.add(i) };
+        // SAFETY: By precondition, `i` is in-bounds because it's below `n`
+        // and it's distinct from `x` since the ranges are non-overlapping
+        let y = unsafe { &mut *y.add(i) };
         mem::swap_simple(x, y);
 
         i += 1;

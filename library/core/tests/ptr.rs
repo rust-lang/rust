@@ -784,6 +784,31 @@ fn nonnull_tagged_pointer_with_provenance() {
 }
 
 #[test]
+fn swap_copy_untyped() {
+    // We call `{swap,copy}{,_nonoverlapping}` at `bool` type on data that is not a valid bool.
+    // These should all do untyped copies, so this should work fine.
+    let mut x = 5u8;
+    let mut y = 6u8;
+
+    let ptr1 = &mut x as *mut u8 as *mut bool;
+    let ptr2 = &mut y as *mut u8 as *mut bool;
+
+    unsafe {
+        ptr::swap(ptr1, ptr2);
+        ptr::swap_nonoverlapping(ptr1, ptr2, 1);
+    }
+    assert_eq!(x, 5);
+    assert_eq!(y, 6);
+
+    unsafe {
+        ptr::copy(ptr1, ptr2, 1);
+        ptr::copy_nonoverlapping(ptr1, ptr2, 1);
+    }
+    assert_eq!(x, 5);
+    assert_eq!(y, 5);
+}
+
+#[test]
 fn test_const_copy() {
     const {
         let ptr1 = &1;
