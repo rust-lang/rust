@@ -14,6 +14,7 @@ mod manual_unwrap_or;
 mod match_as_ref;
 mod match_bool;
 mod match_like_matches;
+mod match_on_vec_items;
 mod match_ref_pats;
 mod match_same_arms;
 mod match_single_binding;
@@ -678,6 +679,43 @@ declare_clippy_lint! {
     "finds patterns that can be encoded more concisely with `Option::unwrap_or` or `Result::unwrap_or`"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for `match vec[idx]` or `match vec[n..m]`.
+    ///
+    /// ### Why is this bad?
+    /// This can panic at runtime.
+    ///
+    /// ### Example
+    /// ```rust, no_run
+    /// let arr = vec![0, 1, 2, 3];
+    /// let idx = 1;
+    ///
+    /// // Bad
+    /// match arr[idx] {
+    ///     0 => println!("{}", 0),
+    ///     1 => println!("{}", 3),
+    ///     _ => {},
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```rust, no_run
+    /// let arr = vec![0, 1, 2, 3];
+    /// let idx = 1;
+    ///
+    /// // Good
+    /// match arr.get(idx) {
+    ///     Some(0) => println!("{}", 0),
+    ///     Some(1) => println!("{}", 3),
+    ///     _ => {},
+    /// }
+    /// ```
+    #[clippy::version = "1.45.0"]
+    pub MATCH_ON_VEC_ITEMS,
+    pedantic,
+    "matching on vector elements can panic"
+}
+
 #[derive(Default)]
 pub struct Matches {
     msrv: Option<RustcVersion>,
@@ -714,6 +752,7 @@ impl_lint_pass!(Matches => [
     NEEDLESS_MATCH,
     COLLAPSIBLE_MATCH,
     MANUAL_UNWRAP_OR,
+    MATCH_ON_VEC_ITEMS,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Matches {
@@ -750,6 +789,7 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
                     match_wild_enum::check(cx, ex, arms);
                     match_as_ref::check(cx, ex, arms, expr);
                     needless_match::check_match(cx, ex, arms, expr);
+                    match_on_vec_items::check(cx, ex);
 
                     if !in_constant(cx, expr.hir_id) {
                         manual_unwrap_or::check(cx, expr, ex, arms);

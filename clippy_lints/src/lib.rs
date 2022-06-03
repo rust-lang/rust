@@ -286,7 +286,6 @@ mod manual_strip;
 mod map_clone;
 mod map_err_ignore;
 mod map_unit_fn;
-mod match_on_vec_items;
 mod match_result_ok;
 mod match_str_case_mismatch;
 mod matches;
@@ -815,7 +814,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(if_not_else::IfNotElse));
     store.register_late_pass(|| Box::new(equatable_if_let::PatternEquality));
     store.register_late_pass(|| Box::new(mut_mutex_lock::MutMutexLock));
-    store.register_late_pass(|| Box::new(match_on_vec_items::MatchOnVecItems));
     store.register_late_pass(|| Box::new(manual_async_fn::ManualAsyncFn));
     store.register_late_pass(|| Box::new(vec_resize_to_zero::VecResizeToZero));
     store.register_late_pass(|| Box::new(panic_in_result_fn::PanicInResultFn));
