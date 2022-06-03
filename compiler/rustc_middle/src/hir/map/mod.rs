@@ -364,7 +364,11 @@ impl<'hir> Map<'hir> {
         match node.node {
             OwnerNode::ImplItem(impl_item) => Some(&impl_item.generics),
             OwnerNode::TraitItem(trait_item) => Some(&trait_item.generics),
-            OwnerNode::Item(Item {
+            OwnerNode::ForeignItem(ForeignItem {
+                kind: ForeignItemKind::Fn(_, _, generics),
+                ..
+            })
+            | OwnerNode::Item(Item {
                 kind:
                     ItemKind::Fn(_, generics, _)
                     | ItemKind::TyAlias(_, generics)

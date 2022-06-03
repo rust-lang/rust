@@ -1228,6 +1228,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     None
                 }
             }),
+            |_| {},
         );
 
         if let Res::Local(hid) = res {

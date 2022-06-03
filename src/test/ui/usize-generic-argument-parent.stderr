@@ -1,8 +1,16 @@
-error[E0109]: const arguments are not allowed for this type
+error[E0109]: const arguments are not allowed on this type
   --> $DIR/usize-generic-argument-parent.rs:2:18
    |
 LL |     let x: usize<foo>;
-   |                  ^^^ const argument not allowed
+   |            ----- ^^^ const argument not allowed
+   |            |
+   |            not allowed on this
+   |
+help: primitive type `usize` doesn't have generic parameters
+   |
+LL -     let x: usize<foo>;
+LL +     let x: usize;
+   | 
 
 error: aborting due to previous error
 

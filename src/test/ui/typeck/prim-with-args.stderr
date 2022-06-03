@@ -1,134 +1,310 @@
-error[E0109]: type arguments are not allowed for this type
-  --> $DIR/prim-with-args.rs:3:14
+error[E0109]: type arguments are not allowed on this type
+  --> $DIR/prim-with-args.rs:4:15
    |
-LL | let x: isize<isize>;
-   |              ^^^^^ type argument not allowed
-
-error[E0109]: type arguments are not allowed for this type
-  --> $DIR/prim-with-args.rs:4:11
+LL | let _x: isize<isize>;
+   |         ----- ^^^^^ type argument not allowed
+   |         |
+   |         not allowed on this
    |
-LL | let x: i8<isize>;
-   |           ^^^^^ type argument not allowed
+help: primitive type `isize` doesn't have generic parameters
+   |
+LL - let _x: isize<isize>;
+LL + let _x: isize;
+   | 
 
-error[E0109]: type arguments are not allowed for this type
+error[E0109]: type arguments are not allowed on this type
   --> $DIR/prim-with-args.rs:5:12
    |
-LL | let x: i16<isize>;
-   |            ^^^^^ type argument not allowed
-
-error[E0109]: type arguments are not allowed for this type
-  --> $DIR/prim-with-args.rs:6:12
+LL | let _x: i8<isize>;
+   |         -- ^^^^^ type argument not allowed
+   |         |
+   |         not allowed on this
    |
-LL | let x: i32<isize>;
-   |            ^^^^^ type argument not allowed
-
-error[E0109]: type arguments are not allowed for this type
-  --> $DIR/prim-with-args.rs:7:12
+help: primitive type `i8` doesn't have generic parameters
    |
-LL | let x: i64<isize>;
-   |            ^^^^^ type argument not allowed
+LL - let _x: i8<isize>;
+LL + let _x: i8;
+   | 
 
-error[E0109]: type arguments are not allowed for this type
-  --> $DIR/prim-with-args.rs:8:14
+error[E0109]: type arguments are not allowed on this type
+  --> $DIR/prim-with-args.rs:6:13
    |
-LL | let x: usize<isize>;
-   |              ^^^^^ type argument not allowed
-
-error[E0109]: type arguments are not allowed for this type
-  --> $DIR/prim-with-args.rs:9:11
+LL | let _x: i16<isize>;
+   |         --- ^^^^^ type argument not allowed
+   |         |
+   |         not allowed on this
    |
-LL | let x: u8<isize>;
-   |           ^^^^^ type argument not allowed
+help: primitive type `i16` doesn't have generic parameters
+   |
+LL - let _x: i16<isize>;
+LL + let _x: i16;
+   | 
 
-error[E0109]: type arguments are not allowed for this type
+error[E0109]: type arguments are not allowed on this type
+  --> $DIR/prim-with-args.rs:7:13
+   |
+LL | let _x: i32<isize>;
+   |         --- ^^^^^ type argument not allowed
+   |         |
+   |         not allowed on this
+   |
+help: primitive type `i32` doesn't have generic parameters
+   |
+LL - let _x: i32<isize>;
+LL + let _x: i32;
+   | 
+
+error[E0109]: type arguments are not allowed on this type
+  --> $DIR/prim-with-args.rs:8:13
+   |
+LL | let _x: i64<isize>;
+   |         --- ^^^^^ type argument not allowed
+   |         |
+   |         not allowed on this
+   |
+help: primitive type `i64` doesn't have generic parameters
+   |
+LL - let _x: i64<isize>;
+LL + let _x: i64;
+   | 
+
+error[E0109]: type arguments are not allowed on this type
+  --> $DIR/prim-with-args.rs:9:15
+   |
+LL | let _x: usize<isize>;
+   |         ----- ^^^^^ type argument not allowed
+   |         |
+   |         not allowed on this
+   |
+help: primitive type `usize` doesn't have generic parameters
+   |
+LL - let _x: usize<isize>;
+LL + let _x: usize;
+   | 
+
+error[E0109]: type arguments are not allowed on this type
   --> $DIR/prim-with-args.rs:10:12
    |
-LL | let x: u16<isize>;
-   |            ^^^^^ type argument not allowed
-
-error[E0109]: type arguments are not allowed for this type
-  --> $DIR/prim-with-args.rs:11:12
+LL | let _x: u8<isize>;
+   |         -- ^^^^^ type argument not allowed
+   |         |
+   |         not allowed on this
    |
-LL | let x: u32<isize>;
-   |            ^^^^^ type argument not allowed
-
-error[E0109]: type arguments are not allowed for this type
-  --> $DIR/prim-with-args.rs:12:12
+help: primitive type `u8` doesn't have generic parameters
    |
-LL | let x: u64<isize>;
-   |            ^^^^^ type argument not allowed
+LL - let _x: u8<isize>;
+LL + let _x: u8;
+   | 
 
-error[E0109]: type arguments are not allowed for this type
+error[E0109]: type arguments are not allowed on this type
+  --> $DIR/prim-with-args.rs:11:13
+   |
+LL | let _x: u16<isize>;
+   |         --- ^^^^^ type argument not allowed
+   |         |
+   |         not allowed on this
+   |
+help: primitive type `u16` doesn't have generic parameters
+   |
+LL - let _x: u16<isize>;
+LL + let _x: u16;
+   | 
+
+error[E0109]: type arguments are not allowed on this type
+  --> $DIR/prim-with-args.rs:12:13
+   |
+LL | let _x: u32<isize>;
+   |         --- ^^^^^ type argument not allowed
+   |         |
+   |         not allowed on this
+   |
+help: primitive type `u32` doesn't have generic parameters
+   |
+LL - let _x: u32<isize>;
+LL + let _x: u32;
+   | 
+
+error[E0109]: type arguments are not allowed on this type
   --> $DIR/prim-with-args.rs:13:13
    |
-LL | let x: char<isize>;
-   |             ^^^^^ type argument not allowed
-
-error[E0109]: lifetime arguments are not allowed for this type
-  --> $DIR/prim-with-args.rs:15:14
+LL | let _x: u64<isize>;
+   |         --- ^^^^^ type argument not allowed
+   |         |
+   |         not allowed on this
    |
-LL | let x: isize<'static>;
-   |              ^^^^^^^ lifetime argument not allowed
-
-error[E0109]: lifetime arguments are not allowed for this type
-  --> $DIR/prim-with-args.rs:16:11
+help: primitive type `u64` doesn't have generic parameters
    |
-LL | let x: i8<'static>;
-   |           ^^^^^^^ lifetime argument not allowed
+LL - let _x: u64<isize>;
+LL + let _x: u64;
+   | 
 
-error[E0109]: lifetime arguments are not allowed for this type
+error[E0109]: type arguments are not allowed on this type
+  --> $DIR/prim-with-args.rs:14:14
+   |
+LL | let _x: char<isize>;
+   |         ---- ^^^^^ type argument not allowed
+   |         |
+   |         not allowed on this
+   |
+help: primitive type `char` doesn't have generic parameters
+   |
+LL - let _x: char<isize>;
+LL + let _x: char;
+   | 
+
+error[E0109]: lifetime arguments are not allowed on this type
+  --> $DIR/prim-with-args.rs:16:15
+   |
+LL | let _x: isize<'static>;
+   |         ----- ^^^^^^^ lifetime argument not allowed
+   |         |
+   |         not allowed on this
+   |
+help: primitive type `isize` doesn't have generic parameters
+   |
+LL - let _x: isize<'static>;
+LL + let _x: isize;
+   | 
+
+error[E0109]: lifetime arguments are not allowed on this type
   --> $DIR/prim-with-args.rs:17:12
    |
-LL | let x: i16<'static>;
-   |            ^^^^^^^ lifetime argument not allowed
-
-error[E0109]: lifetime arguments are not allowed for this type
-  --> $DIR/prim-with-args.rs:18:12
+LL | let _x: i8<'static>;
+   |         -- ^^^^^^^ lifetime argument not allowed
+   |         |
+   |         not allowed on this
    |
-LL | let x: i32<'static>;
-   |            ^^^^^^^ lifetime argument not allowed
-
-error[E0109]: lifetime arguments are not allowed for this type
-  --> $DIR/prim-with-args.rs:19:12
+help: primitive type `i8` doesn't have generic parameters
    |
-LL | let x: i64<'static>;
-   |            ^^^^^^^ lifetime argument not allowed
+LL - let _x: i8<'static>;
+LL + let _x: i8;
+   | 
 
-error[E0109]: lifetime arguments are not allowed for this type
-  --> $DIR/prim-with-args.rs:20:14
+error[E0109]: lifetime arguments are not allowed on this type
+  --> $DIR/prim-with-args.rs:18:13
    |
-LL | let x: usize<'static>;
-   |              ^^^^^^^ lifetime argument not allowed
-
-error[E0109]: lifetime arguments are not allowed for this type
-  --> $DIR/prim-with-args.rs:21:11
+LL | let _x: i16<'static>;
+   |         --- ^^^^^^^ lifetime argument not allowed
+   |         |
+   |         not allowed on this
    |
-LL | let x: u8<'static>;
-   |           ^^^^^^^ lifetime argument not allowed
+help: primitive type `i16` doesn't have generic parameters
+   |
+LL - let _x: i16<'static>;
+LL + let _x: i16;
+   | 
 
-error[E0109]: lifetime arguments are not allowed for this type
+error[E0109]: lifetime arguments are not allowed on this type
+  --> $DIR/prim-with-args.rs:19:13
+   |
+LL | let _x: i32<'static>;
+   |         --- ^^^^^^^ lifetime argument not allowed
+   |         |
+   |         not allowed on this
+   |
+help: primitive type `i32` doesn't have generic parameters
+   |
+LL - let _x: i32<'static>;
+LL + let _x: i32;
+   | 
+
+error[E0109]: lifetime arguments are not allowed on this type
+  --> $DIR/prim-with-args.rs:20:13
+   |
+LL | let _x: i64<'static>;
+   |         --- ^^^^^^^ lifetime argument not allowed
+   |         |
+   |         not allowed on this
+   |
+help: primitive type `i64` doesn't have generic parameters
+   |
+LL - let _x: i64<'static>;
+LL + let _x: i64;
+   | 
+
+error[E0109]: lifetime arguments are not allowed on this type
+  --> $DIR/prim-with-args.rs:21:15
+   |
+LL | let _x: usize<'static>;
+   |         ----- ^^^^^^^ lifetime argument not allowed
+   |         |
+   |         not allowed on this
+   |
+help: primitive type `usize` doesn't have generic parameters
+   |
+LL - let _x: usize<'static>;
+LL + let _x: usize;
+   | 
+
+error[E0109]: lifetime arguments are not allowed on this type
   --> $DIR/prim-with-args.rs:22:12
    |
-LL | let x: u16<'static>;
-   |            ^^^^^^^ lifetime argument not allowed
-
-error[E0109]: lifetime arguments are not allowed for this type
-  --> $DIR/prim-with-args.rs:23:12
+LL | let _x: u8<'static>;
+   |         -- ^^^^^^^ lifetime argument not allowed
+   |         |
+   |         not allowed on this
    |
-LL | let x: u32<'static>;
-   |            ^^^^^^^ lifetime argument not allowed
-
-error[E0109]: lifetime arguments are not allowed for this type
-  --> $DIR/prim-with-args.rs:24:12
+help: primitive type `u8` doesn't have generic parameters
    |
-LL | let x: u64<'static>;
-   |            ^^^^^^^ lifetime argument not allowed
+LL - let _x: u8<'static>;
+LL + let _x: u8;
+   | 
 
-error[E0109]: lifetime arguments are not allowed for this type
+error[E0109]: lifetime arguments are not allowed on this type
+  --> $DIR/prim-with-args.rs:23:13
+   |
+LL | let _x: u16<'static>;
+   |         --- ^^^^^^^ lifetime argument not allowed
+   |         |
+   |         not allowed on this
+   |
+help: primitive type `u16` doesn't have generic parameters
+   |
+LL - let _x: u16<'static>;
+LL + let _x: u16;
+   | 
+
+error[E0109]: lifetime arguments are not allowed on this type
+  --> $DIR/prim-with-args.rs:24:13
+   |
+LL | let _x: u32<'static>;
+   |         --- ^^^^^^^ lifetime argument not allowed
+   |         |
+   |         not allowed on this
+   |
+help: primitive type `u32` doesn't have generic parameters
+   |
+LL - let _x: u32<'static>;
+LL + let _x: u32;
+   | 
+
+error[E0109]: lifetime arguments are not allowed on this type
   --> $DIR/prim-with-args.rs:25:13
    |
-LL | let x: char<'static>;
-   |             ^^^^^^^ lifetime argument not allowed
+LL | let _x: u64<'static>;
+   |         --- ^^^^^^^ lifetime argument not allowed
+   |         |
+   |         not allowed on this
+   |
+help: primitive type `u64` doesn't have generic parameters
+   |
+LL - let _x: u64<'static>;
+LL + let _x: u64;
+   | 
+
+error[E0109]: lifetime arguments are not allowed on this type
+  --> $DIR/prim-with-args.rs:26:14
+   |
+LL | let _x: char<'static>;
+   |         ---- ^^^^^^^ lifetime argument not allowed
+   |         |
+   |         not allowed on this
+   |
+help: primitive type `char` doesn't have generic parameters
+   |
+LL - let _x: char<'static>;
+LL + let _x: char;
+   | 
 
 error: aborting due to 22 previous errors
 

@@ -4,11 +4,13 @@ error[E0071]: expected struct, variant or union type, found associated type
 LL |     let s = T::A {};
    |             ^^^^ not a struct
 
-error[E0109]: type arguments are not allowed for this type
+error[E0109]: type arguments are not allowed on this type
   --> $DIR/struct-path-associated-type.rs:14:20
    |
 LL |     let z = T::A::<u8> {};
-   |                    ^^ type argument not allowed
+   |                -   ^^ type argument not allowed
+   |                |
+   |                not allowed on this
 
 error[E0071]: expected struct, variant or union type, found associated type
   --> $DIR/struct-path-associated-type.rs:14:13
@@ -22,11 +24,13 @@ error[E0071]: expected struct, variant or union type, found associated type
 LL |         T::A {} => {}
    |         ^^^^ not a struct
 
-error[E0109]: type arguments are not allowed for this type
+error[E0109]: type arguments are not allowed on this type
   --> $DIR/struct-path-associated-type.rs:25:20
    |
 LL |     let z = T::A::<u8> {};
-   |                    ^^ type argument not allowed
+   |                -   ^^ type argument not allowed
+   |                |
+   |                not allowed on this
 
 error[E0223]: ambiguous associated type
   --> $DIR/struct-path-associated-type.rs:32:13
