@@ -110,10 +110,8 @@ pub(crate) fn import_on_the_fly(acc: &mut Completions, ctx: &CompletionContext) 
     if !ctx.config.enable_imports_on_the_fly {
         return None;
     }
-    if matches!(ctx.path_kind(), Some(PathKind::Vis { .. } | PathKind::Use))
+    if matches!(ctx.path_kind(), Some(PathKind::Vis { .. } | PathKind::Use | PathKind::Item { .. }))
         || ctx.is_path_disallowed()
-        || ctx.expects_item()
-        || ctx.expects_assoc_item()
     {
         return None;
     }
@@ -160,7 +158,10 @@ pub(crate) fn import_on_the_fly(acc: &mut Completions, ctx: &CompletionContext) 
             (_, ItemInNs::Types(hir::ModuleDef::Module(_))) => true,
             // and so are macros(except for attributes)
             (
-                PathKind::Expr { .. } | PathKind::Type | PathKind::Item { .. } | PathKind::Pat,
+                PathKind::Expr { .. }
+                | PathKind::Type { .. }
+                | PathKind::Item { .. }
+                | PathKind::Pat,
                 ItemInNs::Macros(mac),
             ) => mac.is_fn_like(ctx.db),
             (PathKind::Item { .. }, _) => true,
@@ -170,14 +171,14 @@ pub(crate) fn import_on_the_fly(acc: &mut Completions, ctx: &CompletionContext) 
             (PathKind::Pat, ItemInNs::Types(_)) => true,
             (PathKind::Pat, ItemInNs::Values(def)) => matches!(def, hir::ModuleDef::Const(_)),
 
-            (PathKind::Type, ItemInNs::Types(ty)) => {
+            (PathKind::Type { .. }, ItemInNs::Types(ty)) => {
                 if matches!(ctx.completion_location, Some(ImmediateLocation::TypeBound)) {
                     matches!(ty, ModuleDef::Trait(_))
                 } else {
                     true
                 }
             }
-            (PathKind::Type, ItemInNs::Values(_)) => false,
+            (PathKind::Type { .. }, ItemInNs::Values(_)) => false,
 
             (PathKind::Attr { .. }, ItemInNs::Macros(mac)) => mac.is_attr(ctx.db),
             (PathKind::Attr { .. }, _) => false,

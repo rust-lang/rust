@@ -108,7 +108,6 @@ fn in_item_list_after_attr() {
 
 #[test]
 fn in_qualified_path() {
-    cov_mark::check!(no_keyword_completion_in_non_trivial_path);
     check(
         r#"crate::$0"#,
         expect![[r#"
@@ -137,6 +136,7 @@ fn after_visibility() {
         expect![[r#"
             kw const
             kw enum
+            kw extern
             kw fn
             kw mod
             kw static
@@ -152,12 +152,10 @@ fn after_visibility() {
 
 #[test]
 fn after_visibility_unsafe() {
-    // FIXME this shouldn't show `impl`
     check(
         r#"pub unsafe $0"#,
         expect![[r#"
             kw fn
-            kw impl
             kw trait
         "#]],
     );
@@ -178,7 +176,6 @@ fn in_impl_assoc_item_list() {
             kw pub(super)
             kw self::
             kw super::
-            kw type
             kw unsafe
         "#]],
     )
@@ -199,7 +196,6 @@ fn in_impl_assoc_item_list_after_attr() {
             kw pub(super)
             kw self::
             kw super::
-            kw type
             kw unsafe
         "#]],
     )
@@ -249,16 +245,9 @@ impl Test for () {
             ma makro!(…)          macro_rules! makro
             md module
             ta type Type1 =
-            kw const
             kw crate::
-            kw fn
-            kw pub
-            kw pub(crate)
-            kw pub(super)
             kw self::
             kw super::
-            kw type
-            kw unsafe
         "#]],
     );
 }

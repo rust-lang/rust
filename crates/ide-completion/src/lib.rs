@@ -158,6 +158,7 @@ pub fn completions(
             completions::dot::complete_dot(acc, ctx);
             completions::expr::complete_expr_path(acc, ctx);
             completions::extern_abi::complete_extern_abi(acc, ctx);
+            completions::field::complete_field_list(acc, ctx);
             completions::flyimport::import_on_the_fly(acc, ctx);
             completions::fn_param::complete_fn_param(acc, ctx);
             completions::format_string::format_string(acc, ctx);

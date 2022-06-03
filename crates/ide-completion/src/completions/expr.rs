@@ -15,12 +15,12 @@ pub(crate) fn complete_expr_path(acc: &mut Completions, ctx: &CompletionContext)
         return;
     }
 
-    let (is_absolute_path, qualifier, in_block_expr, in_loop_body, is_func_update) =
+    let (is_absolute_path, qualifier, in_block_expr, in_loop_body, is_func_update, after_if_expr) =
         match ctx.nameref_ctx() {
             Some(NameRefContext {
                 path_ctx:
                     Some(PathCompletionCtx {
-                        kind: PathKind::Expr { in_block_expr, in_loop_body },
+                        kind: PathKind::Expr { in_block_expr, in_loop_body, after_if_expr },
                         is_absolute_path,
                         qualifier,
                         ..
@@ -33,6 +33,7 @@ pub(crate) fn complete_expr_path(acc: &mut Completions, ctx: &CompletionContext)
                 *in_block_expr,
                 *in_loop_body,
                 record_expr.as_ref().map_or(false, |&(_, it)| it),
+                *after_if_expr,
             ),
             _ => return,
         };
@@ -177,8 +178,7 @@ pub(crate) fn complete_expr_path(acc: &mut Completions, ctx: &CompletionContext)
             });
 
             if !is_func_update {
-                let mut add_keyword =
-                    |kw, snippet| super::keyword::add_keyword(acc, ctx, kw, snippet);
+                let mut add_keyword = |kw, snippet| acc.add_keyword_snippet(ctx, kw, snippet);
 
                 if ctx.expects_expression() {
                     if !in_block_expr {
@@ -202,7 +202,7 @@ pub(crate) fn complete_expr_path(acc: &mut Completions, ctx: &CompletionContext)
                     add_keyword("let", "let");
                 }
 
-                if ctx.after_if() {
+                if after_if_expr {
                     add_keyword("else", "else {\n    $0\n}");
                     add_keyword("else if", "else if $1 {\n    $0\n}");
                 }

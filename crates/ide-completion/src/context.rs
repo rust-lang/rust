@@ -15,7 +15,7 @@ use ide_db::{
 use syntax::{
     algo::{find_node_at_offset, non_trivia_sibling},
     ast::{self, AttrKind, HasArgList, HasName, NameOrNameRef},
-    match_ast, AstNode, AstToken, NodeOrToken,
+    match_ast, AstNode, AstToken, Direction, NodeOrToken,
     SyntaxKind::{self, *},
     SyntaxNode, SyntaxToken, TextRange, TextSize, T,
 };
@@ -23,8 +23,8 @@ use text_edit::Indel;
 
 use crate::{
     patterns::{
-        determine_location, determine_prev_sibling, is_in_loop_body, is_in_token_of_for_loop,
-        previous_token, ImmediateLocation, ImmediatePrevSibling,
+        determine_location, is_in_loop_body, is_in_token_of_for_loop, previous_token,
+        ImmediateLocation,
     },
     CompletionConfig,
 };
@@ -48,8 +48,11 @@ pub(super) enum PathKind {
     Expr {
         in_block_expr: bool,
         in_loop_body: bool,
+        after_if_expr: bool,
     },
-    Type,
+    Type {
+        in_tuple_struct: bool,
+    },
     Attr {
         kind: AttrKind,
         annotated_item_kind: Option<SyntaxKind>,
@@ -71,6 +74,7 @@ pub(super) enum ItemListKind {
     SourceFile,
     Module,
     Impl,
+    TraitImpl,
     Trait,
     ExternBlock,
 }
@@ -182,6 +186,8 @@ pub(super) struct NameRefContext {
     // FIXME: these fields are actually disjoint -> enum
     pub(super) dot_access: Option<DotAccess>,
     pub(super) path_ctx: Option<PathCompletionCtx>,
+    /// Position where we are only interested in keyword completions
+    pub(super) keyword: Option<ast::Item>,
     /// The record expression this nameref is a field of
     pub(super) record_expr: Option<(ast::RecordExpr, bool)>,
 }
@@ -259,7 +265,6 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) incomplete_let: bool,
 
     pub(super) completion_location: Option<ImmediateLocation>,
-    pub(super) prev_sibling: Option<ImmediatePrevSibling>,
     pub(super) previous_token: Option<SyntaxToken>,
 
     pub(super) ident_ctx: IdentContext,
@@ -331,53 +336,13 @@ impl<'a> CompletionContext<'a> {
         self.dot_receiver().is_some()
     }
 
-    pub(crate) fn expects_assoc_item(&self) -> bool {
-        matches!(self.completion_location, Some(ImmediateLocation::Trait | ImmediateLocation::Impl))
-    }
-
-    pub(crate) fn expects_non_trait_assoc_item(&self) -> bool {
-        matches!(self.completion_location, Some(ImmediateLocation::Impl))
-    }
-
-    pub(crate) fn expects_item(&self) -> bool {
-        matches!(self.completion_location, Some(ImmediateLocation::ItemList))
-    }
-
     // FIXME: This shouldn't exist
     pub(crate) fn expects_generic_arg(&self) -> bool {
         matches!(self.completion_location, Some(ImmediateLocation::GenericArgList(_)))
     }
 
-    pub(crate) fn has_block_expr_parent(&self) -> bool {
-        matches!(self.completion_location, Some(ImmediateLocation::StmtList))
-    }
-
     pub(crate) fn expects_ident_ref_expr(&self) -> bool {
         matches!(self.completion_location, Some(ImmediateLocation::RefExpr))
-    }
-
-    pub(crate) fn expect_field(&self) -> bool {
-        matches!(self.completion_location, Some(ImmediateLocation::TupleField))
-            || matches!(self.name_ctx(), Some(NameContext { kind: NameKind::RecordField, .. }))
-    }
-
-    /// Whether the cursor is right after a trait or impl header.
-    /// trait Foo ident$0
-    // FIXME: This probably shouldn't exist
-    pub(crate) fn has_unfinished_impl_or_trait_prev_sibling(&self) -> bool {
-        matches!(
-            self.prev_sibling,
-            Some(ImmediatePrevSibling::ImplDefType | ImmediatePrevSibling::TraitDefName)
-        )
-    }
-
-    // FIXME: This probably shouldn't exist
-    pub(crate) fn has_impl_prev_sibling(&self) -> bool {
-        matches!(self.prev_sibling, Some(ImmediatePrevSibling::ImplDefType))
-    }
-
-    pub(crate) fn after_if(&self) -> bool {
-        matches!(self.prev_sibling, Some(ImmediatePrevSibling::IfExpr))
     }
 
     // FIXME: This shouldn't exist
@@ -558,7 +523,6 @@ impl<'a> CompletionContext<'a> {
             impl_def: None,
             incomplete_let: false,
             completion_location: None,
-            prev_sibling: None,
             previous_token: None,
             // dummy value, will be overwritten
             ident_ctx: IdentContext::UnexpandedAttrTT { fake_attribute_under_caret: None },
@@ -953,7 +917,6 @@ impl<'a> CompletionContext<'a> {
         };
         self.completion_location =
             determine_location(&self.sema, original_file, offset, &name_like);
-        self.prev_sibling = determine_prev_sibling(&name_like);
         self.impl_def = self
             .sema
             .token_ancestors_with_macros(self.token.clone())
@@ -1110,8 +1073,13 @@ impl<'a> CompletionContext<'a> {
     ) -> (NameRefContext, Option<PatternContext>) {
         let nameref = find_node_at_offset(&original_file, name_ref.syntax().text_range().start());
 
-        let mut nameref_ctx =
-            NameRefContext { dot_access: None, path_ctx: None, nameref, record_expr: None };
+        let mut nameref_ctx = NameRefContext {
+            dot_access: None,
+            path_ctx: None,
+            nameref,
+            record_expr: None,
+            keyword: None,
+        };
 
         if let Some(record_field) = ast::RecordExprField::for_field_name(&name_ref) {
             nameref_ctx.record_expr =
@@ -1195,6 +1163,13 @@ impl<'a> CompletionContext<'a> {
                     find_node_in_file_compensated(original_file, &record_expr).zip(Some(true));
             }
         };
+        let after_if_expr = |node: SyntaxNode| {
+            let prev_expr = (|| {
+                let prev_sibling = non_trivia_sibling(node.into(), Direction::Prev)?.into_node()?;
+                ast::ExprStmt::cast(prev_sibling)?.expr()
+            })();
+            matches!(prev_expr, Some(ast::Expr::IfExpr(_)))
+        };
 
         // We do not want to generate path completions when we are sandwiched between an item decl signature and its body.
         // ex. trait Foo $0 {}
@@ -1208,7 +1183,7 @@ impl<'a> CompletionContext<'a> {
                 syntax::algo::non_trivia_sibling(node.into(), syntax::Direction::Prev)
             {
                 if let Some(item) = ast::Item::cast(n) {
-                    match item {
+                    let is_inbetween = match &item {
                         ast::Item::Const(it) => it.body().is_none(),
                         ast::Item::Enum(it) => it.variant_list().is_none(),
                         ast::Item::ExternBlock(it) => it.extern_item_list().is_none(),
@@ -1221,24 +1196,27 @@ impl<'a> CompletionContext<'a> {
                         ast::Item::TypeAlias(it) => it.ty().is_none(),
                         ast::Item::Union(it) => it.record_field_list().is_none(),
                         _ => false,
+                    };
+                    if is_inbetween {
+                        return Some(item);
                     }
-                } else {
-                    false
                 }
-            } else {
-                false
             }
+            None
         };
 
         let kind = path.syntax().ancestors().find_map(|it| {
             // using Option<Option<PathKind>> as extra controlflow
             let kind = match_ast! {
                 match it {
-                    ast::PathType(_) => Some(PathKind::Type),
+                    ast::PathType(it) => Some(PathKind::Type {
+                        in_tuple_struct: it.syntax().parent().map_or(false, |it| ast::TupleField::can_cast(it.kind()))
+                    }),
                     ast::PathExpr(it) => {
                         if let Some(p) = it.syntax().parent() {
                             if ast::ExprStmt::can_cast(p.kind()) {
-                                if inbetween_body_and_decl_check(p) {
+                                if let Some(kind) = inbetween_body_and_decl_check(p) {
+                                    nameref_ctx.keyword = Some(kind);
                                     return Some(None);
                                 }
                             }
@@ -1249,7 +1227,9 @@ impl<'a> CompletionContext<'a> {
                         path_ctx.has_call_parens = it.syntax().parent().map_or(false, |it| ast::CallExpr::can_cast(it.kind()));
                         let in_block_expr = is_in_block(it.syntax());
                         let in_loop_body = is_in_loop_body(it.syntax());
-                        Some(PathKind::Expr { in_block_expr, in_loop_body })
+                        let after_if_expr = after_if_expr(it.syntax().clone());
+
+                        Some(PathKind::Expr { in_block_expr, in_loop_body, after_if_expr })
                     },
                     ast::TupleStructPat(it) => {
                         path_ctx.has_call_parens = true;
@@ -1266,7 +1246,8 @@ impl<'a> CompletionContext<'a> {
                         Some(PathKind::Pat)
                     },
                     ast::MacroCall(it) => {
-                        if inbetween_body_and_decl_check(it.syntax().clone()) {
+                        if let Some(kind) = inbetween_body_and_decl_check(it.syntax().clone()) {
+                            nameref_ctx.keyword = Some(kind);
                             return Some(None);
                         }
 
@@ -1274,12 +1255,21 @@ impl<'a> CompletionContext<'a> {
                         let parent = it.syntax().parent();
                         match parent.as_ref().map(|it| it.kind()) {
                             Some(SyntaxKind::MACRO_PAT) => Some(PathKind::Pat),
-                            Some(SyntaxKind::MACRO_TYPE) => Some(PathKind::Type),
+                            Some(SyntaxKind::MACRO_TYPE) => Some(PathKind::Type { in_tuple_struct: false }),
                             Some(SyntaxKind::ITEM_LIST) => Some(PathKind::Item { kind: ItemListKind::Module }),
-                            Some(SyntaxKind::ASSOC_ITEM_LIST) => Some(PathKind::Item { kind: match parent.and_then(|it| it.parent()).map(|it| it.kind()) {
-                                Some(SyntaxKind::TRAIT) => ItemListKind::Trait,
-                                Some(SyntaxKind::IMPL) => ItemListKind::Impl,
-                                _ => return Some(None),
+                            Some(SyntaxKind::ASSOC_ITEM_LIST) => Some(PathKind::Item { kind: match parent.and_then(|it| it.parent()) {
+                                Some(it) => match_ast! {
+                                    match it {
+                                        ast::Trait(_) => ItemListKind::Trait,
+                                        ast::Impl(it) => if it.trait_().is_some() {
+                                            ItemListKind::TraitImpl
+                                        } else {
+                                            ItemListKind::Impl
+                                        },
+                                        _ => return Some(None)
+                                    }
+                                },
+                                None => return Some(None),
                             } }),
                             Some(SyntaxKind::EXTERN_ITEM_LIST) => Some(PathKind::Item { kind: ItemListKind::ExternBlock }),
                             Some(SyntaxKind::SOURCE_FILE) => Some(PathKind::Item { kind: ItemListKind::SourceFile }),
@@ -1287,8 +1277,9 @@ impl<'a> CompletionContext<'a> {
                                return Some(parent.and_then(ast::MacroExpr::cast).map(|it| {
                                     let in_loop_body = is_in_loop_body(it.syntax());
                                     let in_block_expr = is_in_block(it.syntax());
+                                    let after_if_expr = after_if_expr(it.syntax().clone());
                                     fill_record_expr(it.syntax());
-                                    PathKind::Expr { in_block_expr, in_loop_body }
+                                    PathKind::Expr { in_block_expr, in_loop_body, after_if_expr }
                                 }));
                             },
                         }
@@ -1313,12 +1304,18 @@ impl<'a> CompletionContext<'a> {
                     ast::UseTree(_) => Some(PathKind::Use),
                     ast::ItemList(_) => Some(PathKind::Item { kind: ItemListKind::Module }),
                     ast::AssocItemList(it) => Some(PathKind::Item { kind: {
-                            match it.syntax().parent()?.kind() {
-                                SyntaxKind::TRAIT => ItemListKind::Trait,
-                                SyntaxKind::IMPL => ItemListKind::Impl,
-                                _ => return None,
+                        match_ast! {
+                            match (it.syntax().parent()?) {
+                                ast::Trait(_) => ItemListKind::Trait,
+                                ast::Impl(it) => if it.trait_().is_some() {
+                                    ItemListKind::TraitImpl
+                                } else {
+                                    ItemListKind::Impl
+                                },
+                                _ => return None
                             }
-                        }}),
+                        }
+                    }}),
                     ast::ExternItemList(_) => Some(PathKind::Item { kind: ItemListKind::ExternBlock }),
                     ast::SourceFile(_) => Some(PathKind::Item { kind: ItemListKind::SourceFile }),
                     _ => return None,

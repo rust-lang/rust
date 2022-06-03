@@ -7,23 +7,14 @@
 use hir::Semantics;
 use ide_db::RootDatabase;
 use syntax::{
-    algo::non_trivia_sibling,
     ast::{self, HasLoopBody, HasName},
-    match_ast, AstNode, Direction, SyntaxElement,
+    match_ast, AstNode, SyntaxElement,
     SyntaxKind::*,
     SyntaxNode, SyntaxToken, TextRange, TextSize,
 };
 
 #[cfg(test)]
 use crate::tests::check_pattern_is_applicable;
-
-/// Immediate previous node to what we are completing.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub(crate) enum ImmediatePrevSibling {
-    IfExpr,
-    TraitDefName,
-    ImplDefType,
-}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum TypeAnnotation {
@@ -39,69 +30,13 @@ pub(crate) enum TypeAnnotation {
 /// from which file the nodes are.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum ImmediateLocation {
-    Impl,
-    Trait,
-    TupleField,
     RefExpr,
-    IdentPat,
-    StmtList,
-    ItemList,
     TypeBound,
     /// Original file ast node
     TypeAnnotation(TypeAnnotation),
     // Only set from a type arg
     /// Original file ast node
     GenericArgList(ast::GenericArgList),
-}
-
-pub(crate) fn determine_prev_sibling(name_like: &ast::NameLike) -> Option<ImmediatePrevSibling> {
-    let node = match name_like {
-        ast::NameLike::NameRef(name_ref) => maximize_name_ref(name_ref),
-        ast::NameLike::Name(n) => n.syntax().clone(),
-        ast::NameLike::Lifetime(lt) => lt.syntax().clone(),
-    };
-    let node = match node.parent().and_then(ast::MacroCall::cast) {
-        // When a path is being typed after the name of a trait/type of an impl it is being
-        // parsed as a macro, so when the trait/impl has a block following it an we are between the
-        // name and block the macro will attach the block to itself so maximizing fails to take
-        // that into account
-        // FIXME path expr and statement have a similar problem with attrs
-        Some(call)
-            if call.excl_token().is_none()
-                && call.token_tree().map_or(false, |t| t.l_curly_token().is_some())
-                && call.semicolon_token().is_none() =>
-        {
-            call.syntax().clone()
-        }
-        _ => node,
-    };
-    let prev_sibling = non_trivia_sibling(node.into(), Direction::Prev)?.into_node()?;
-    let res = match_ast! {
-        match prev_sibling {
-            ast::ExprStmt(it) => {
-                let node = it.expr().filter(|_| it.semicolon_token().is_none())?.syntax().clone();
-                match_ast! {
-                    match node {
-                        ast::IfExpr(_) => ImmediatePrevSibling::IfExpr,
-                        _ => return None,
-                    }
-                }
-            },
-            ast::Trait(it) => if it.assoc_item_list().is_none() {
-                    ImmediatePrevSibling::TraitDefName
-                } else {
-                    return None
-            },
-            ast::Impl(it) => if it.assoc_item_list().is_none()
-                && (it.for_token().is_none() || it.self_ty().is_some()) {
-                    ImmediatePrevSibling::ImplDefType
-                } else {
-                    return None
-            },
-            _ => return None,
-        }
-    };
-    Some(res)
 }
 
 pub(crate) fn determine_location(
@@ -140,30 +75,14 @@ pub(crate) fn determine_location(
             _ => parent,
         },
         // SourceFile
-        None => {
-            return match node.kind() {
-                MACRO_ITEMS | SOURCE_FILE => Some(ImmediateLocation::ItemList),
-                _ => None,
-            }
-        }
+        None => return None,
     };
 
     let res = match_ast! {
         match parent {
-            ast::IdentPat(_) => ImmediateLocation::IdentPat,
-            ast::StmtList(_) => ImmediateLocation::StmtList,
-            ast::SourceFile(_) => ImmediateLocation::ItemList,
-            ast::ItemList(_) => ImmediateLocation::ItemList,
             ast::RefExpr(_) => ImmediateLocation::RefExpr,
-            ast::TupleField(_) => ImmediateLocation::TupleField,
-            ast::TupleFieldList(_) => ImmediateLocation::TupleField,
             ast::TypeBound(_) => ImmediateLocation::TypeBound,
             ast::TypeBoundList(_) => ImmediateLocation::TypeBound,
-            ast::AssocItemList(it) => match it.syntax().parent().map(|it| it.kind()) {
-                Some(IMPL) => ImmediateLocation::Impl,
-                Some(TRAIT) => ImmediateLocation::Trait,
-                _ => return None,
-            },
             ast::GenericArgList(_) => sema
                 .find_node_at_offset_with_macros(original_file, offset)
                 .map(ImmediateLocation::GenericArgList)?,
@@ -351,83 +270,8 @@ mod tests {
         );
     }
 
-    fn check_prev_sibling(code: &str, sibling: impl Into<Option<ImmediatePrevSibling>>) {
-        check_pattern_is_applicable(code, |e| {
-            let name = &e.parent().and_then(ast::NameLike::cast).expect("Expected a namelike");
-            assert_eq!(determine_prev_sibling(name), sibling.into());
-            true
-        });
-    }
-
-    #[test]
-    fn test_trait_loc() {
-        check_location(r"trait A { f$0 }", ImmediateLocation::Trait);
-        check_location(r"trait A { #[attr] f$0 }", ImmediateLocation::Trait);
-        check_location(r"trait A { f$0 fn f() {} }", ImmediateLocation::Trait);
-        check_location(r"trait A { fn f() {} f$0 }", ImmediateLocation::Trait);
-        check_location(r"trait A$0 {}", None);
-        check_location(r"trait A { fn f$0 }", None);
-    }
-
-    #[test]
-    fn test_impl_loc() {
-        check_location(r"impl A { f$0 }", ImmediateLocation::Impl);
-        check_location(r"impl A { #[attr] f$0 }", ImmediateLocation::Impl);
-        check_location(r"impl A { f$0 fn f() {} }", ImmediateLocation::Impl);
-        check_location(r"impl A { fn f() {} f$0 }", ImmediateLocation::Impl);
-        check_location(r"impl A$0 {}", None);
-        check_location(r"impl A { fn f$0 }", None);
-    }
-
-    #[test]
-    fn test_block_expr_loc() {
-        check_location(r"fn my_fn() { let a = 2; f$0 }", ImmediateLocation::StmtList);
-        check_location(r"fn my_fn() { f$0 f }", ImmediateLocation::StmtList);
-    }
-
-    #[test]
-    fn test_ident_pat_loc() {
-        check_location(r"fn my_fn(m$0) {}", ImmediateLocation::IdentPat);
-        check_location(r"fn my_fn() { let m$0 }", ImmediateLocation::IdentPat);
-        check_location(r"fn my_fn(&m$0) {}", ImmediateLocation::IdentPat);
-        check_location(r"fn my_fn() { let &m$0 }", ImmediateLocation::IdentPat);
-    }
-
     #[test]
     fn test_ref_expr_loc() {
         check_location(r"fn my_fn() { let x = &m$0 foo; }", ImmediateLocation::RefExpr);
-    }
-
-    #[test]
-    fn test_item_list_loc() {
-        check_location(r"i$0", ImmediateLocation::ItemList);
-        check_location(r"#[attr] i$0", ImmediateLocation::ItemList);
-        check_location(r"fn f() {} i$0", ImmediateLocation::ItemList);
-        check_location(r"mod foo { f$0 }", ImmediateLocation::ItemList);
-        check_location(r"mod foo { #[attr] f$0 }", ImmediateLocation::ItemList);
-        check_location(r"mod foo { fn f() {} f$0 }", ImmediateLocation::ItemList);
-        check_location(r"mod foo$0 {}", None);
-    }
-
-    #[test]
-    fn test_impl_prev_sibling() {
-        check_prev_sibling(r"impl A w$0 ", ImmediatePrevSibling::ImplDefType);
-        check_prev_sibling(r"impl A w$0 {}", ImmediatePrevSibling::ImplDefType);
-        check_prev_sibling(r"impl A for A w$0 ", ImmediatePrevSibling::ImplDefType);
-        check_prev_sibling(r"impl A for A w$0 {}", ImmediatePrevSibling::ImplDefType);
-        check_prev_sibling(r"impl A for w$0 {}", None);
-        check_prev_sibling(r"impl A for w$0", None);
-    }
-
-    #[test]
-    fn test_trait_prev_sibling() {
-        check_prev_sibling(r"trait A w$0 ", ImmediatePrevSibling::TraitDefName);
-        check_prev_sibling(r"trait A w$0 {}", ImmediatePrevSibling::TraitDefName);
-    }
-
-    #[test]
-    fn test_if_expr_prev_sibling() {
-        check_prev_sibling(r"fn foo() { if true {} w$0", ImmediatePrevSibling::IfExpr);
-        check_prev_sibling(r"fn foo() { if true {}; w$0", None);
     }
 }

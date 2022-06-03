@@ -4,6 +4,7 @@ pub(crate) mod attribute;
 pub(crate) mod dot;
 pub(crate) mod expr;
 pub(crate) mod extern_abi;
+pub(crate) mod field;
 pub(crate) mod flyimport;
 pub(crate) mod fn_param;
 pub(crate) mod format_string;
@@ -108,6 +109,26 @@ impl Completions {
 
     pub(crate) fn add_nameref_keywords(&mut self, ctx: &CompletionContext) {
         ["self", "super", "crate"].into_iter().for_each(|kw| self.add_keyword(ctx, kw));
+    }
+
+    pub(crate) fn add_keyword_snippet(&mut self, ctx: &CompletionContext, kw: &str, snippet: &str) {
+        let mut item = CompletionItem::new(CompletionItemKind::Keyword, ctx.source_range(), kw);
+
+        match ctx.config.snippet_cap {
+            Some(cap) => {
+                if snippet.ends_with('}') && ctx.incomplete_let {
+                    // complete block expression snippets with a trailing semicolon, if inside an incomplete let
+                    cov_mark::hit!(let_semi);
+                    item.insert_snippet(cap, format!("{};", snippet));
+                } else {
+                    item.insert_snippet(cap, snippet);
+                }
+            }
+            None => {
+                item.insert_text(if snippet.contains('$') { kw } else { snippet });
+            }
+        };
+        item.add_to(self);
     }
 
     pub(crate) fn add_crate_roots(&mut self, ctx: &CompletionContext) {

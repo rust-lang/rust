@@ -9,7 +9,6 @@ fn check(ra_fixture: &str, expect: Expect) {
 
 #[test]
 fn without_default_impl() {
-    cov_mark::check!(no_keyword_completion_in_record_lit);
     check(
         r#"
 struct Struct { foo: u32, bar: usize }
