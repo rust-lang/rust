@@ -18,7 +18,7 @@ use crate::{cfg_flag::CfgFlag, CargoConfig, CargoWorkspace, Package};
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct WorkspaceBuildScripts {
-    pub(crate) outputs: ArenaMap<Package, BuildScriptOutput>,
+    outputs: ArenaMap<Package, Option<BuildScriptOutput>>,
     error: Option<String>,
 }
 
@@ -72,6 +72,7 @@ impl WorkspaceBuildScripts {
 
         cmd
     }
+
     pub(crate) fn run(
         config: &CargoConfig,
         workspace: &CargoWorkspace,
@@ -91,13 +92,13 @@ impl WorkspaceBuildScripts {
         cmd.current_dir(workspace.workspace_root());
 
         let mut res = WorkspaceBuildScripts::default();
+        let outputs = &mut res.outputs;
         // NB: Cargo.toml could have been modified between `cargo metadata` and
         // `cargo check`. We shouldn't assume that package ids we see here are
         // exactly those from `config`.
         let mut by_id: FxHashMap<String, Package> = FxHashMap::default();
-
         for package in workspace.packages() {
-            res.outputs.insert(package, BuildScriptOutput::default());
+            outputs.insert(package, None);
             by_id.insert(workspace[package].id.clone(), package);
         }
 
@@ -141,7 +142,8 @@ impl WorkspaceBuildScripts {
                             }
                             acc
                         };
-                        let package_build_data = &mut res.outputs[package];
+                        let package_build_data =
+                            outputs[package].get_or_insert_with(Default::default);
                         // cargo_metadata crate returns default (empty) path for
                         // older cargos, which is not absolute, so work around that.
                         if !message.out_dir.as_str().is_empty() {
@@ -167,7 +169,9 @@ impl WorkspaceBuildScripts {
                                 message.filenames.iter().find(|name| is_dylib(name))
                             {
                                 let filename = AbsPathBuf::assert(PathBuf::from(&filename));
-                                res.outputs[package].proc_macro_dylib_path = Some(filename);
+                                outputs[package]
+                                    .get_or_insert_with(Default::default)
+                                    .proc_macro_dylib_path = Some(filename);
                             }
                         }
                     }
@@ -189,17 +193,18 @@ impl WorkspaceBuildScripts {
         )?;
 
         for package in workspace.packages() {
-            let package_build_data = &mut res.outputs[package];
-            tracing::info!(
-                "{} BuildScriptOutput: {:?}",
-                workspace[package].manifest.parent().display(),
-                package_build_data,
-            );
-            // inject_cargo_env(package, package_build_data);
-            if let Some(out_dir) = &package_build_data.out_dir {
-                // NOTE: cargo and rustc seem to hide non-UTF-8 strings from env! and option_env!()
-                if let Some(out_dir) = out_dir.as_os_str().to_str().map(|s| s.to_owned()) {
-                    package_build_data.envs.push(("OUT_DIR".to_string(), out_dir));
+            if let Some(package_build_data) = &mut outputs[package] {
+                tracing::info!(
+                    "{} BuildScriptOutput: {:?}",
+                    workspace[package].manifest.parent().display(),
+                    package_build_data,
+                );
+                // inject_cargo_env(package, package_build_data);
+                if let Some(out_dir) = &package_build_data.out_dir {
+                    // NOTE: cargo and rustc seem to hide non-UTF-8 strings from env! and option_env!()
+                    if let Some(out_dir) = out_dir.as_os_str().to_str().map(|s| s.to_owned()) {
+                        package_build_data.envs.push(("OUT_DIR".to_string(), out_dir));
+                    }
                 }
             }
         }
@@ -217,6 +222,10 @@ impl WorkspaceBuildScripts {
 
     pub fn error(&self) -> Option<&str> {
         self.error.as_deref()
+    }
+
+    pub(crate) fn get_output(&self, idx: Package) -> Option<&BuildScriptOutput> {
+        self.outputs.get(idx)?.as_ref()
     }
 }
 
