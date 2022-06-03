@@ -4,6 +4,7 @@
 
 store.register_group(true, "clippy::restriction", Some("clippy_restriction"), vec![
     LintId::of(as_conversions::AS_CONVERSIONS),
+    LintId::of(as_underscore::AS_UNDERSCORE),
     LintId::of(asm_syntax::INLINE_ASM_X86_ATT_SYNTAX),
     LintId::of(asm_syntax::INLINE_ASM_X86_INTEL_SYNTAX),
     LintId::of(attrs::ALLOW_ATTRIBUTES_WITHOUT_REASON),
