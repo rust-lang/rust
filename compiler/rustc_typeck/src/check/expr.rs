@@ -1557,9 +1557,27 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // FIXME: We are currently creating two branches here in order to maintain
             // consistency. But they should be merged as much as possible.
             let fru_tys = if self.tcx.features().type_changing_struct_update {
-                let base_ty = self.check_expr(base_expr);
                 match adt_ty.kind() {
                     ty::Adt(adt, substs) if adt.is_struct() => {
+                        // Make an ADT with fresh inference substitutions. This
+                        // will allow us to guide inference along so that, e.g.
+                        // ```
+                        // let x = MyStruct<'a, B, const C: usize> {
+                        //    f: 1,
+                        //    ..Default::default()
+                        // };
+                        // ```
+                        // will have the default base expression constrained to
+                        // `MyStruct<'_, _, _>`, as opposed to just `_`... This
+                        // will allow us to then do a subtyping relation on all
+                        // of the `remaining_fields` below, per the RFC.
+                        let fresh_substs = self.fresh_substs_for_item(base_expr.span, adt.did());
+                        let base_ty = self.check_expr_has_type_or_error(
+                            base_expr,
+                            self.tcx.mk_adt(*adt, fresh_substs),
+                            |_| {},
+                        );
+                        let base_ty = self.shallow_resolve(base_ty);
                         match base_ty.kind() {
                             ty::Adt(base_adt, base_subs) if adt == base_adt => {
                                 variant
@@ -1585,7 +1603,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                                     self.register_predicates(obligations)
                                                 }
                                                 // FIXME: Need better diagnostics for `FieldMisMatch` error
-                                                Err(_) => {
+                                                Err(type_error) => {
+                                                    debug!("check_expr_struct_fields: {fru_ty} sub {target_ty} failed: {type_error:?}");
                                                     self.report_mismatched_types(
                                                         &cause,
                                                         target_ty,
@@ -1596,7 +1615,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                                 }
                                             }
                                         }
-                                        fru_ty
+                                        self.resolve_vars_if_possible(fru_ty)
                                     })
                                     .collect()
                             }
@@ -1613,6 +1632,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     }
                     _ => {
+                        // Check the base_expr, regardless of a bad expected adt_ty, so we can get
+                        // type errors on that expression, too.
+                        self.check_expr(base_expr);
                         self.tcx
                             .sess
                             .emit_err(FunctionalRecordUpdateOnNonStruct { span: base_expr.span });
