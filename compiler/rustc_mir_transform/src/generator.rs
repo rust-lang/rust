@@ -228,7 +228,7 @@ struct TransformVisitor<'tcx> {
     suspension_points: Vec<SuspensionPoint<'tcx>>,
 
     // The set of locals that have no `StorageLive`/`StorageDead` annotations.
-    always_live_locals: storage::AlwaysLiveLocals,
+    always_live_locals: BitSet<Local>,
 
     // The original RETURN_PLACE local
     new_ret_local: Local,
@@ -450,7 +450,7 @@ struct LivenessInfo {
 fn locals_live_across_suspend_points<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
-    always_live_locals: &storage::AlwaysLiveLocals,
+    always_live_locals: &BitSet<Local>,
     movable: bool,
 ) -> LivenessInfo {
     let body_ref: &Body<'_> = &body;
@@ -615,7 +615,7 @@ impl ops::Deref for GeneratorSavedLocals {
 fn compute_storage_conflicts<'mir, 'tcx>(
     body: &'mir Body<'tcx>,
     saved_locals: &GeneratorSavedLocals,
-    always_live_locals: storage::AlwaysLiveLocals,
+    always_live_locals: BitSet<Local>,
     requires_storage: rustc_mir_dataflow::Results<'tcx, MaybeRequiresStorage<'mir, 'tcx>>,
 ) -> BitMatrix<GeneratorSavedLocal, GeneratorSavedLocal> {
     assert_eq!(body.local_decls.len(), saved_locals.domain_size());
@@ -625,7 +625,7 @@ fn compute_storage_conflicts<'mir, 'tcx>(
 
     // Locals that are always live or ones that need to be stored across
     // suspension points are not eligible for overlap.
-    let mut ineligible_locals = always_live_locals.into_inner();
+    let mut ineligible_locals = always_live_locals;
     ineligible_locals.intersect(&**saved_locals);
 
     // Compute the storage conflicts for all eligible locals.
@@ -1300,7 +1300,7 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
             },
         );
 
-        let always_live_locals = storage::AlwaysLiveLocals::new(&body);
+        let always_live_locals = storage::always_live_locals(&body);
 
         let liveness_info =
             locals_live_across_suspend_points(tcx, body, &always_live_locals, movable);

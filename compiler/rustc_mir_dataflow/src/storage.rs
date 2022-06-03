@@ -7,35 +7,17 @@ use rustc_middle::mir::{self, Local};
 //
 // FIXME: Currently, we need to traverse the entire MIR to compute this. We should instead store it
 // as a field in the `LocalDecl` for each `Local`.
-#[derive(Debug, Clone)]
-pub struct AlwaysLiveLocals(BitSet<Local>);
+pub fn always_live_locals(body: &mir::Body<'_>) -> BitSet<Local> {
+    let mut always_live_locals = BitSet::new_filled(body.local_decls.len());
 
-impl AlwaysLiveLocals {
-    pub fn new(body: &mir::Body<'_>) -> Self {
-        let mut always_live_locals = AlwaysLiveLocals(BitSet::new_filled(body.local_decls.len()));
-
-        for block in body.basic_blocks() {
-            for statement in &block.statements {
-                use mir::StatementKind::{StorageDead, StorageLive};
-                if let StorageLive(l) | StorageDead(l) = statement.kind {
-                    always_live_locals.0.remove(l);
-                }
+    for block in body.basic_blocks() {
+        for statement in &block.statements {
+            use mir::StatementKind::{StorageDead, StorageLive};
+            if let StorageLive(l) | StorageDead(l) = statement.kind {
+                always_live_locals.remove(l);
             }
         }
-
-        always_live_locals
     }
 
-    pub fn into_inner(self) -> BitSet<Local> {
-        self.0
-    }
-}
-
-impl std::ops::Deref for AlwaysLiveLocals {
-    type Target = BitSet<Local>;
-
-    #[inline]
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
+    always_live_locals
 }
