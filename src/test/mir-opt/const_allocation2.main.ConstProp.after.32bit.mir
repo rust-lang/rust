@@ -21,41 +21,41 @@ fn main() -> () {
 }
 
 alloc1 (static: FOO, size: 8, align: 4) {
-    ╾─alloc28─╼ 03 00 00 00                         │ ╾──╼....
+    ╾─alloc22─╼ 03 00 00 00                         │ ╾──╼....
 }
 
-alloc28 (size: 48, align: 4) {
-    0x00 │ 00 00 00 00 __ __ __ __ ╾─alloc13─╼ 00 00 00 00 │ ....░░░░╾──╼....
-    0x10 │ 00 00 00 00 __ __ __ __ ╾─alloc18─╼ 02 00 00 00 │ ....░░░░╾──╼....
-    0x20 │ 01 00 00 00 2a 00 00 00 ╾─alloc26─╼ 03 00 00 00 │ ....*...╾──╼....
+alloc22 (size: 48, align: 4) {
+    0x00 │ 00 00 00 00 __ __ __ __ ╾─alloc9──╼ 00 00 00 00 │ ....░░░░╾──╼....
+    0x10 │ 00 00 00 00 __ __ __ __ ╾─alloc14─╼ 02 00 00 00 │ ....░░░░╾──╼....
+    0x20 │ 01 00 00 00 2a 00 00 00 ╾─alloc20─╼ 03 00 00 00 │ ....*...╾──╼....
 }
 
-alloc13 (size: 0, align: 4) {}
+alloc9 (size: 0, align: 4) {}
 
-alloc18 (size: 8, align: 4) {
-    ╾─alloc16─╼ ╾─alloc17─╼                         │ ╾──╼╾──╼
+alloc14 (size: 8, align: 4) {
+    ╾─alloc12─╼ ╾─alloc13─╼                         │ ╾──╼╾──╼
 }
 
-alloc16 (size: 1, align: 1) {
+alloc12 (size: 1, align: 1) {
     05                                              │ .
 }
 
-alloc17 (size: 1, align: 1) {
+alloc13 (size: 1, align: 1) {
     06                                              │ .
 }
 
-alloc26 (size: 12, align: 4) {
-    ╾─a22+0x3─╼ ╾─alloc23─╼ ╾─a25+0x2─╼             │ ╾──╼╾──╼╾──╼
+alloc20 (size: 12, align: 4) {
+    ╾─a17+0x3─╼ ╾─alloc18─╼ ╾─a19+0x2─╼             │ ╾──╼╾──╼╾──╼
 }
 
-alloc22 (size: 4, align: 1) {
+alloc17 (size: 4, align: 1) {
     2a 45 15 6f                                     │ *E.o
 }
 
-alloc23 (size: 1, align: 1) {
+alloc18 (size: 1, align: 1) {
     2a                                              │ *
 }
 
-alloc25 (size: 4, align: 1) {
+alloc19 (size: 4, align: 1) {
     2a 45 15 6f                                     │ *E.o
 }

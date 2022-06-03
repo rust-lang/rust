@@ -23,7 +23,7 @@
 |
 fn main() -> () {
     let mut _0: ();                      // return place in scope 0 at $DIR/region-subtyping-basic.rs:16:11: 16:11
-    let mut _1: [usize; Const { ty: usize, kind: Value(Scalar(0x00000003)) }]; // in scope 0 at $DIR/region-subtyping-basic.rs:17:9: 17:14
+    let mut _1: [usize; Const { ty: usize, kind: Value(Leaf(0x00000003)) }]; // in scope 0 at $DIR/region-subtyping-basic.rs:17:9: 17:14
     let _3: usize;                       // in scope 0 at $DIR/region-subtyping-basic.rs:18:16: 18:17
     let mut _4: usize;                   // in scope 0 at $DIR/region-subtyping-basic.rs:18:14: 18:18
     let mut _5: bool;                    // in scope 0 at $DIR/region-subtyping-basic.rs:18:14: 18:18
@@ -63,7 +63,7 @@ fn main() -> () {
         FakeRead(ForLet(None), _6);      // bb1[4]: scope 2 at $DIR/region-subtyping-basic.rs:19:9: 19:10
         StorageLive(_7);                 // bb1[5]: scope 3 at $DIR/region-subtyping-basic.rs:20:8: 20:12
         _7 = const ConstValue(Scalar(0x01): bool); // bb1[6]: scope 3 at $DIR/region-subtyping-basic.rs:20:8: 20:12
-        switchInt(move _7) -> [Const(Value(Scalar(0x00)): bool): bb4, otherwise: bb2]; // bb1[7]: scope 3 at $DIR/region-subtyping-basic.rs:20:8: 20:12
+        switchInt(move _7) -> [ConstValue(Scalar(0x00): bool): bb4, otherwise: bb2]; // bb1[7]: scope 3 at $DIR/region-subtyping-basic.rs:20:8: 20:12
     }
 
     bb2: {
