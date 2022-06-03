@@ -196,24 +196,23 @@ impl Hash for RealFileName {
 // an added assert statement
 impl<S: Encoder> Encodable<S> for RealFileName {
     fn encode(&self, encoder: &mut S) -> Result<(), S::Error> {
-        encoder.emit_enum(|encoder| match *self {
-            RealFileName::LocalPath(ref local_path) => {
-                encoder.emit_enum_variant("LocalPath", 0, 1, |encoder| {
-                    encoder.emit_enum_variant_arg(true, |encoder| local_path.encode(encoder))?;
-                    Ok(())
+        match *self {
+            RealFileName::LocalPath(ref local_path) => encoder.emit_enum_variant(0, |encoder| {
+                Ok({
+                    local_path.encode(encoder)?;
                 })
-            }
+            }),
 
             RealFileName::Remapped { ref local_path, ref virtual_name } => encoder
-                .emit_enum_variant("Remapped", 1, 2, |encoder| {
+                .emit_enum_variant(1, |encoder| {
                     // For privacy and build reproducibility, we must not embed host-dependant path in artifacts
                     // if they have been remapped by --remap-path-prefix
                     assert!(local_path.is_none());
-                    encoder.emit_enum_variant_arg(true, |encoder| local_path.encode(encoder))?;
-                    encoder.emit_enum_variant_arg(false, |encoder| virtual_name.encode(encoder))?;
+                    local_path.encode(encoder)?;
+                    virtual_name.encode(encoder)?;
                     Ok(())
                 }),
-        })
+        }
     }
 }
 
@@ -950,10 +949,8 @@ impl Default for Span {
 impl<E: Encoder> Encodable<E> for Span {
     default fn encode(&self, s: &mut E) -> Result<(), E::Error> {
         let span = self.data();
-        s.emit_struct(false, |s| {
-            s.emit_struct_field("lo", true, |s| span.lo.encode(s))?;
-            s.emit_struct_field("hi", false, |s| span.hi.encode(s))
-        })
+        span.lo.encode(s)?;
+        span.hi.encode(s)
     }
 }
 impl<D: Decoder> Decodable<D> for Span {
@@ -1302,79 +1299,77 @@ pub struct SourceFile {
 
 impl<S: Encoder> Encodable<S> for SourceFile {
     fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_struct(false, |s| {
-            s.emit_struct_field("name", true, |s| self.name.encode(s))?;
-            s.emit_struct_field("src_hash", false, |s| self.src_hash.encode(s))?;
-            s.emit_struct_field("start_pos", false, |s| self.start_pos.encode(s))?;
-            s.emit_struct_field("end_pos", false, |s| self.end_pos.encode(s))?;
-            s.emit_struct_field("lines", false, |s| {
-                // We are always in `Lines` form by the time we reach here.
-                assert!(self.lines.borrow().is_lines());
-                self.lines(|lines| {
-                    // Store the length.
-                    s.emit_u32(lines.len() as u32)?;
+        self.name.encode(s)?;
+        self.src_hash.encode(s)?;
+        self.start_pos.encode(s)?;
+        self.end_pos.encode(s)?;
 
-                    // Compute and store the difference list.
-                    if lines.len() != 0 {
-                        let max_line_length = if lines.len() == 1 {
-                            0
-                        } else {
-                            lines
-                                .array_windows()
-                                .map(|&[fst, snd]| snd - fst)
-                                .map(|bp| bp.to_usize())
-                                .max()
-                                .unwrap()
-                        };
+        // We are always in `Lines` form by the time we reach here.
+        assert!(self.lines.borrow().is_lines());
+        self.lines(|lines| {
+            // Store the length.
+            s.emit_u32(lines.len() as u32)?;
 
-                        let bytes_per_diff: usize = match max_line_length {
-                            0..=0xFF => 1,
-                            0x100..=0xFFFF => 2,
-                            _ => 4,
-                        };
+            // Compute and store the difference list.
+            if lines.len() != 0 {
+                let max_line_length = if lines.len() == 1 {
+                    0
+                } else {
+                    lines
+                        .array_windows()
+                        .map(|&[fst, snd]| snd - fst)
+                        .map(|bp| bp.to_usize())
+                        .max()
+                        .unwrap()
+                };
 
-                        // Encode the number of bytes used per diff.
-                        s.emit_u8(bytes_per_diff as u8)?;
+                let bytes_per_diff: usize = match max_line_length {
+                    0..=0xFF => 1,
+                    0x100..=0xFFFF => 2,
+                    _ => 4,
+                };
 
-                        // Encode the first element.
-                        lines[0].encode(s)?;
+                // Encode the number of bytes used per diff.
+                s.emit_u8(bytes_per_diff as u8)?;
 
-                        // Encode the difference list.
-                        let diff_iter = lines.array_windows().map(|&[fst, snd]| snd - fst);
-                        let num_diffs = lines.len() - 1;
-                        let mut raw_diffs;
-                        match bytes_per_diff {
-                            1 => {
-                                raw_diffs = Vec::with_capacity(num_diffs);
-                                for diff in diff_iter {
-                                    raw_diffs.push(diff.0 as u8);
-                                }
-                            }
-                            2 => {
-                                raw_diffs = Vec::with_capacity(bytes_per_diff * num_diffs);
-                                for diff in diff_iter {
-                                    raw_diffs.extend_from_slice(&(diff.0 as u16).to_le_bytes());
-                                }
-                            }
-                            4 => {
-                                raw_diffs = Vec::with_capacity(bytes_per_diff * num_diffs);
-                                for diff in diff_iter {
-                                    raw_diffs.extend_from_slice(&(diff.0 as u32).to_le_bytes());
-                                }
-                            }
-                            _ => unreachable!(),
+                // Encode the first element.
+                lines[0].encode(s)?;
+
+                // Encode the difference list.
+                let diff_iter = lines.array_windows().map(|&[fst, snd]| snd - fst);
+                let num_diffs = lines.len() - 1;
+                let mut raw_diffs;
+                match bytes_per_diff {
+                    1 => {
+                        raw_diffs = Vec::with_capacity(num_diffs);
+                        for diff in diff_iter {
+                            raw_diffs.push(diff.0 as u8);
                         }
-                        s.emit_raw_bytes(&raw_diffs)?;
                     }
-                    Ok(())
-                })
-            })?;
-            s.emit_struct_field("multibyte_chars", false, |s| self.multibyte_chars.encode(s))?;
-            s.emit_struct_field("non_narrow_chars", false, |s| self.non_narrow_chars.encode(s))?;
-            s.emit_struct_field("name_hash", false, |s| self.name_hash.encode(s))?;
-            s.emit_struct_field("normalized_pos", false, |s| self.normalized_pos.encode(s))?;
-            s.emit_struct_field("cnum", false, |s| self.cnum.encode(s))
-        })
+                    2 => {
+                        raw_diffs = Vec::with_capacity(bytes_per_diff * num_diffs);
+                        for diff in diff_iter {
+                            raw_diffs.extend_from_slice(&(diff.0 as u16).to_le_bytes());
+                        }
+                    }
+                    4 => {
+                        raw_diffs = Vec::with_capacity(bytes_per_diff * num_diffs);
+                        for diff in diff_iter {
+                            raw_diffs.extend_from_slice(&(diff.0 as u32).to_le_bytes());
+                        }
+                    }
+                    _ => unreachable!(),
+                }
+                s.emit_raw_bytes(&raw_diffs)?;
+            }
+            Ok(())
+        })?;
+
+        self.multibyte_chars.encode(s)?;
+        self.non_narrow_chars.encode(s)?;
+        self.name_hash.encode(s)?;
+        self.normalized_pos.encode(s)?;
+        self.cnum.encode(s)
     }
 }
 

@@ -15,7 +15,6 @@ pub trait Encoder {
     type Error;
 
     // Primitive types:
-    fn emit_unit(&mut self) -> Result<(), Self::Error>;
     fn emit_usize(&mut self, v: usize) -> Result<(), Self::Error>;
     fn emit_u128(&mut self, v: u128) -> Result<(), Self::Error>;
     fn emit_u64(&mut self, v: u64) -> Result<(), Self::Error>;
@@ -35,22 +34,8 @@ pub trait Encoder {
     fn emit_str(&mut self, v: &str) -> Result<(), Self::Error>;
     fn emit_raw_bytes(&mut self, s: &[u8]) -> Result<(), Self::Error>;
 
-    // Compound types:
-    #[inline]
-    fn emit_enum<F>(&mut self, f: F) -> Result<(), Self::Error>
-    where
-        F: FnOnce(&mut Self) -> Result<(), Self::Error>,
-    {
-        f(self)
-    }
-
-    fn emit_enum_variant<F>(
-        &mut self,
-        _v_name: &str,
-        v_id: usize,
-        _len: usize,
-        f: F,
-    ) -> Result<(), Self::Error>
+    // Convenience for the derive macro:
+    fn emit_enum_variant<F>(&mut self, v_id: usize, f: F) -> Result<(), Self::Error>
     where
         F: FnOnce(&mut Self) -> Result<(), Self::Error>,
     {
@@ -65,111 +50,8 @@ pub trait Encoder {
     // optimization that would otherwise be necessary here, likely due to the
     // multiple levels of inlining and const-prop that are needed.
     #[inline]
-    fn emit_fieldless_enum_variant<const ID: usize>(
-        &mut self,
-        _v_name: &str,
-    ) -> Result<(), Self::Error> {
+    fn emit_fieldless_enum_variant<const ID: usize>(&mut self) -> Result<(), Self::Error> {
         self.emit_usize(ID)
-    }
-
-    #[inline]
-    fn emit_enum_variant_arg<F>(&mut self, _first: bool, f: F) -> Result<(), Self::Error>
-    where
-        F: FnOnce(&mut Self) -> Result<(), Self::Error>,
-    {
-        f(self)
-    }
-
-    #[inline]
-    fn emit_struct<F>(&mut self, _no_fields: bool, f: F) -> Result<(), Self::Error>
-    where
-        F: FnOnce(&mut Self) -> Result<(), Self::Error>,
-    {
-        f(self)
-    }
-
-    #[inline]
-    fn emit_struct_field<F>(&mut self, _f_name: &str, _first: bool, f: F) -> Result<(), Self::Error>
-    where
-        F: FnOnce(&mut Self) -> Result<(), Self::Error>,
-    {
-        f(self)
-    }
-
-    #[inline]
-    fn emit_tuple<F>(&mut self, _len: usize, f: F) -> Result<(), Self::Error>
-    where
-        F: FnOnce(&mut Self) -> Result<(), Self::Error>,
-    {
-        f(self)
-    }
-
-    #[inline]
-    fn emit_tuple_arg<F>(&mut self, _idx: usize, f: F) -> Result<(), Self::Error>
-    where
-        F: FnOnce(&mut Self) -> Result<(), Self::Error>,
-    {
-        f(self)
-    }
-
-    // Specialized types:
-    fn emit_option<F>(&mut self, f: F) -> Result<(), Self::Error>
-    where
-        F: FnOnce(&mut Self) -> Result<(), Self::Error>,
-    {
-        self.emit_enum(f)
-    }
-
-    #[inline]
-    fn emit_option_none(&mut self) -> Result<(), Self::Error> {
-        self.emit_enum_variant("None", 0, 0, |_| Ok(()))
-    }
-
-    fn emit_option_some<F>(&mut self, f: F) -> Result<(), Self::Error>
-    where
-        F: FnOnce(&mut Self) -> Result<(), Self::Error>,
-    {
-        self.emit_enum_variant("Some", 1, 1, f)
-    }
-
-    fn emit_seq<F>(&mut self, len: usize, f: F) -> Result<(), Self::Error>
-    where
-        F: FnOnce(&mut Self) -> Result<(), Self::Error>,
-    {
-        self.emit_usize(len)?;
-        f(self)
-    }
-
-    #[inline]
-    fn emit_seq_elt<F>(&mut self, _idx: usize, f: F) -> Result<(), Self::Error>
-    where
-        F: FnOnce(&mut Self) -> Result<(), Self::Error>,
-    {
-        f(self)
-    }
-
-    fn emit_map<F>(&mut self, len: usize, f: F) -> Result<(), Self::Error>
-    where
-        F: FnOnce(&mut Self) -> Result<(), Self::Error>,
-    {
-        self.emit_usize(len)?;
-        f(self)
-    }
-
-    #[inline]
-    fn emit_map_elt_key<F>(&mut self, _idx: usize, f: F) -> Result<(), Self::Error>
-    where
-        F: FnOnce(&mut Self) -> Result<(), Self::Error>,
-    {
-        f(self)
-    }
-
-    #[inline]
-    fn emit_map_elt_val<F>(&mut self, f: F) -> Result<(), Self::Error>
-    where
-        F: FnOnce(&mut Self) -> Result<(), Self::Error>,
-    {
-        f(self)
     }
 }
 
@@ -320,8 +202,8 @@ impl<D: Decoder> Decodable<D> for String {
 }
 
 impl<S: Encoder> Encodable<S> for () {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_unit()
+    fn encode(&self, _s: &mut S) -> Result<(), S::Error> {
+        Ok(())
     }
 }
 
@@ -330,8 +212,8 @@ impl<D: Decoder> Decodable<D> for () {
 }
 
 impl<S: Encoder, T> Encodable<S> for PhantomData<T> {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_unit()
+    fn encode(&self, _s: &mut S) -> Result<(), S::Error> {
+        Ok(())
     }
 }
 
@@ -362,12 +244,11 @@ impl<D: Decoder, T: Decodable<D>> Decodable<D> for Rc<T> {
 
 impl<S: Encoder, T: Encodable<S>> Encodable<S> for [T] {
     default fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_seq(self.len(), |s| {
-            for (i, e) in self.iter().enumerate() {
-                s.emit_seq_elt(i, |s| e.encode(s))?
-            }
-            Ok(())
-        })
+        s.emit_usize(self.len())?;
+        for e in self.iter() {
+            e.encode(s)?
+        }
+        Ok(())
     }
 }
 
@@ -450,10 +331,10 @@ impl<'a, D: Decoder> Decodable<D> for Cow<'a, str> {
 
 impl<S: Encoder, T: Encodable<S>> Encodable<S> for Option<T> {
     fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_option(|s| match *self {
-            None => s.emit_option_none(),
-            Some(ref v) => s.emit_option_some(|s| v.encode(s)),
-        })
+        match *self {
+            None => s.emit_enum_variant(0, |_| Ok(())),
+            Some(ref v) => s.emit_enum_variant(1, |s| v.encode(s)),
+        }
     }
 }
 
@@ -469,14 +350,10 @@ impl<D: Decoder, T: Decodable<D>> Decodable<D> for Option<T> {
 
 impl<S: Encoder, T1: Encodable<S>, T2: Encodable<S>> Encodable<S> for Result<T1, T2> {
     fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_enum(|s| match *self {
-            Ok(ref v) => {
-                s.emit_enum_variant("Ok", 0, 1, |s| s.emit_enum_variant_arg(true, |s| v.encode(s)))
-            }
-            Err(ref v) => {
-                s.emit_enum_variant("Err", 1, 1, |s| s.emit_enum_variant_arg(true, |s| v.encode(s)))
-            }
-        })
+        match *self {
+            Ok(ref v) => s.emit_enum_variant(0, |s| v.encode(s)),
+            Err(ref v) => s.emit_enum_variant(1, |s| v.encode(s)),
+        }
     }
 }
 
@@ -494,18 +371,6 @@ macro_rules! peel {
     ($name:ident, $($other:ident,)*) => (tuple! { $($other,)* })
 }
 
-/// Evaluates to the number of tokens passed to it.
-///
-/// Logarithmic counting: every one or two recursive expansions, the number of
-/// tokens to count is divided by two, instead of being reduced by one.
-/// Therefore, the recursion depth is the binary logarithm of the number of
-/// tokens to count, and the expanded tree is likewise very small.
-macro_rules! count {
-    ($one:tt)              => (1usize);
-    ($($pairs:tt $_p:tt)*) => (count!($($pairs)*) << 1usize);
-    ($odd:tt $($rest:tt)*) => (count!($($rest)*) | 1usize);
-}
-
 macro_rules! tuple {
     () => ();
     ( $($name:ident,)+ ) => (
@@ -518,12 +383,8 @@ macro_rules! tuple {
             #[allow(non_snake_case)]
             fn encode(&self, s: &mut S) -> Result<(), S::Error> {
                 let ($(ref $name,)+) = *self;
-                let len: usize = count!($($name)+);
-                s.emit_tuple(len, |s| {
-                    let mut i = 0;
-                    $(s.emit_tuple_arg({ i+=1; i-1 }, |s| $name.encode(s))?;)+
-                    Ok(())
-                })
+                $($name.encode(s)?;)+
+                Ok(())
             }
         }
         peel! { $($name,)+ }

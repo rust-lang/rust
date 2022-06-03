@@ -140,79 +140,56 @@ fn encodable_body(
 
     let encode_body = match s.variants() {
         [_] => {
-            let mut field_idx = 0usize;
             let encode_inner = s.each_variant(|vi| {
                 vi.bindings()
                     .iter()
                     .map(|binding| {
                         let bind_ident = &binding.binding;
-                        let field_name = binding
-                            .ast()
-                            .ident
-                            .as_ref()
-                            .map_or_else(|| field_idx.to_string(), |i| i.to_string());
-                        let first = field_idx == 0;
                         let result = quote! {
-                            match ::rustc_serialize::Encoder::emit_struct_field(
+                            match ::rustc_serialize::Encodable::<#encoder_ty>::encode(
+                                #bind_ident,
                                 __encoder,
-                                #field_name,
-                                #first,
-                                |__encoder|
-                                ::rustc_serialize::Encodable::<#encoder_ty>::encode(#bind_ident, __encoder),
                             ) {
                                 ::std::result::Result::Ok(()) => (),
                                 ::std::result::Result::Err(__err)
                                     => return ::std::result::Result::Err(__err),
                             }
                         };
-                        field_idx += 1;
                         result
                     })
                     .collect::<TokenStream>()
             });
-            let no_fields = field_idx == 0;
             quote! {
-                ::rustc_serialize::Encoder::emit_struct(__encoder, #no_fields, |__encoder| {
-                    ::std::result::Result::Ok(match *self { #encode_inner })
-                })
+                ::std::result::Result::Ok(match *self { #encode_inner })
             }
         }
         _ => {
             let mut variant_idx = 0usize;
             let encode_inner = s.each_variant(|vi| {
-                let variant_name = vi.ast().ident.to_string();
-                let mut field_idx = 0usize;
-
                 let encode_fields: TokenStream = vi
                     .bindings()
                     .iter()
                     .map(|binding| {
                         let bind_ident = &binding.binding;
-                        let first = field_idx == 0;
                         let result = quote! {
-                            match ::rustc_serialize::Encoder::emit_enum_variant_arg(
+                            match ::rustc_serialize::Encodable::<#encoder_ty>::encode(
+                                #bind_ident,
                                 __encoder,
-                                #first,
-                                |__encoder|
-                                ::rustc_serialize::Encodable::<#encoder_ty>::encode(#bind_ident, __encoder),
                             ) {
                                 ::std::result::Result::Ok(()) => (),
                                 ::std::result::Result::Err(__err)
                                     => return ::std::result::Result::Err(__err),
                             }
                         };
-                        field_idx += 1;
                         result
                     })
                     .collect();
 
-                let result = if field_idx != 0 {
+                let result = if !vi.bindings().is_empty() {
                     quote! {
                         ::rustc_serialize::Encoder::emit_enum_variant(
                             __encoder,
-                            #variant_name,
                             #variant_idx,
-                            #field_idx,
                             |__encoder| { ::std::result::Result::Ok({ #encode_fields }) }
                         )
                     }
@@ -220,7 +197,6 @@ fn encodable_body(
                     quote! {
                         ::rustc_serialize::Encoder::emit_fieldless_enum_variant::<#variant_idx>(
                             __encoder,
-                            #variant_name,
                         )
                     }
                 };
@@ -228,11 +204,9 @@ fn encodable_body(
                 result
             });
             quote! {
-                ::rustc_serialize::Encoder::emit_enum(__encoder, |__encoder| {
-                    match *self {
-                        #encode_inner
-                    }
-                })
+                match *self {
+                    #encode_inner
+                }
             }
         }
     };

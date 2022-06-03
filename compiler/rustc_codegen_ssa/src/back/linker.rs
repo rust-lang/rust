@@ -14,7 +14,6 @@ use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo, SymbolExportKind};
 use rustc_middle::ty::TyCtxt;
-use rustc_serialize::{json, Encoder};
 use rustc_session::config::{self, CrateType, DebugInfo, LinkerPluginLto, Lto, OptLevel, Strip};
 use rustc_session::Session;
 use rustc_span::symbol::Symbol;
@@ -1152,21 +1151,12 @@ impl<'a> Linker for EmLinker<'a> {
         self.cmd.arg("-s");
 
         let mut arg = OsString::from("EXPORTED_FUNCTIONS=");
-        let mut encoded = String::new();
-
-        {
-            let mut encoder = json::Encoder::new(&mut encoded);
-            let res = encoder.emit_seq(symbols.len(), |encoder| {
-                for (i, sym) in symbols.iter().enumerate() {
-                    encoder.emit_seq_elt(i, |encoder| encoder.emit_str(&("_".to_owned() + sym)))?;
-                }
-                Ok(())
-            });
-            if let Err(e) = res {
-                self.sess.fatal(&format!("failed to encode exported symbols: {}", e));
-            }
-        }
+        let encoded = serde_json::to_string(
+            &symbols.iter().map(|sym| "_".to_owned() + sym).collect::<Vec<_>>(),
+        )
+        .unwrap();
         debug!("{}", encoded);
+
         arg.push(encoded);
 
         self.cmd.arg(arg);

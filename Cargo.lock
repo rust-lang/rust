@@ -3686,6 +3686,7 @@ dependencies = [
  "rustc_span",
  "rustc_symbol_mangling",
  "rustc_target",
+ "serde_json",
  "smallvec",
  "snap",
  "tempfile",
@@ -3774,6 +3775,7 @@ dependencies = [
  "rustc_span",
  "rustc_target",
  "rustc_typeck",
+ "serde_json",
  "tracing",
  "winapi",
 ]
@@ -3809,6 +3811,8 @@ dependencies = [
  "rustc_macros",
  "rustc_serialize",
  "rustc_span",
+ "serde",
+ "serde_json",
  "termcolor",
  "termize",
  "tracing",
@@ -4024,6 +4028,7 @@ dependencies = [
  "rustc_serialize",
  "rustc_span",
  "rustc_target",
+ "serde",
 ]
 
 [[package]]
@@ -4445,6 +4450,7 @@ dependencies = [
  "rustc_macros",
  "rustc_serialize",
  "rustc_span",
+ "serde_json",
  "tracing",
 ]
 
