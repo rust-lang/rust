@@ -1093,7 +1093,13 @@ impl<T: Ord> FromIterator<T> for BTreeSet<T> {
 
         // use stable sort to preserve the insertion order.
         inputs.sort();
-        let iter = inputs.into_iter().map(|k| (k, ()));
+        BTreeSet::from_sorted_iter(inputs.into_iter())
+    }
+}
+
+impl<T: Ord> BTreeSet<T> {
+    fn from_sorted_iter<I: Iterator<Item = T>>(iter: I) -> BTreeSet<T> {
+        let iter = iter.map(|k| (k, ()));
         let map = BTreeMap::bulk_build_from_sorted_iter(iter);
         BTreeSet { map }
     }
@@ -1258,11 +1264,10 @@ impl<T: Ord + Clone> Sub<&BTreeSet<T>> for &BTreeSet<T> {
     /// let b = BTreeSet::from([3, 4, 5]);
     ///
     /// let result = &a - &b;
-    /// let result_vec: Vec<_> = result.into_iter().collect();
-    /// assert_eq!(result_vec, [1, 2]);
+    /// assert_eq!(result, BTreeSet::from([1, 2]));
     /// ```
     fn sub(self, rhs: &BTreeSet<T>) -> BTreeSet<T> {
-        self.difference(rhs).cloned().collect()
+        BTreeSet::from_sorted_iter(self.difference(rhs).cloned())
     }
 }
 
@@ -1281,11 +1286,10 @@ impl<T: Ord + Clone> BitXor<&BTreeSet<T>> for &BTreeSet<T> {
     /// let b = BTreeSet::from([2, 3, 4]);
     ///
     /// let result = &a ^ &b;
-    /// let result_vec: Vec<_> = result.into_iter().collect();
-    /// assert_eq!(result_vec, [1, 4]);
+    /// assert_eq!(result, BTreeSet::from([1, 4]));
     /// ```
     fn bitxor(self, rhs: &BTreeSet<T>) -> BTreeSet<T> {
-        self.symmetric_difference(rhs).cloned().collect()
+        BTreeSet::from_sorted_iter(self.symmetric_difference(rhs).cloned())
     }
 }
 
@@ -1304,11 +1308,10 @@ impl<T: Ord + Clone> BitAnd<&BTreeSet<T>> for &BTreeSet<T> {
     /// let b = BTreeSet::from([2, 3, 4]);
     ///
     /// let result = &a & &b;
-    /// let result_vec: Vec<_> = result.into_iter().collect();
-    /// assert_eq!(result_vec, [2, 3]);
+    /// assert_eq!(result, BTreeSet::from([2, 3]));
     /// ```
     fn bitand(self, rhs: &BTreeSet<T>) -> BTreeSet<T> {
-        self.intersection(rhs).cloned().collect()
+        BTreeSet::from_sorted_iter(self.intersection(rhs).cloned())
     }
 }
 
@@ -1327,11 +1330,10 @@ impl<T: Ord + Clone> BitOr<&BTreeSet<T>> for &BTreeSet<T> {
     /// let b = BTreeSet::from([3, 4, 5]);
     ///
     /// let result = &a | &b;
-    /// let result_vec: Vec<_> = result.into_iter().collect();
-    /// assert_eq!(result_vec, [1, 2, 3, 4, 5]);
+    /// assert_eq!(result, BTreeSet::from([1, 2, 3, 4, 5]));
     /// ```
     fn bitor(self, rhs: &BTreeSet<T>) -> BTreeSet<T> {
-        self.union(rhs).cloned().collect()
+        BTreeSet::from_sorted_iter(self.union(rhs).cloned())
     }
 }
 
