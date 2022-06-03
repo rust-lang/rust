@@ -2043,6 +2043,9 @@ pub(crate) fn is_nonoverlapping<T>(src: *const T, dst: *const T, count: usize) -
 /// `copy_nonoverlapping` is semantically equivalent to C's [`memcpy`], but
 /// with the argument order swapped.
 ///
+/// The copy is "untyped" in the sense that data may be uninitialized or otherwise violate the
+/// requirements of `T`. The initialization state is preserved exactly.
+///
 /// [`memcpy`]: https://en.cppreference.com/w/c/string/byte/memcpy
 ///
 /// # Safety
@@ -2147,6 +2150,9 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
 /// `copy` is semantically equivalent to C's [`memmove`], but with the argument
 /// order swapped. Copying takes place as if the bytes were copied from `src`
 /// to a temporary array and then copied from the array to `dst`.
+///
+/// The copy is "untyped" in the sense that data may be uninitialized or otherwise violate the
+/// requirements of `T`. The initialization state is preserved exactly.
 ///
 /// [`memmove`]: https://en.cppreference.com/w/c/string/byte/memmove
 ///

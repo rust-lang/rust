@@ -774,7 +774,7 @@ pub const fn slice_from_raw_parts_mut<T>(data: *mut T, len: usize) -> *mut [T] {
 /// Swaps the values at two mutable locations of the same type, without
 /// deinitializing either.
 ///
-/// But for the following two exceptions, this function is semantically
+/// But for the following exceptions, this function is semantically
 /// equivalent to [`mem::swap`]:
 ///
 /// * It operates on raw pointers instead of references. When references are
@@ -783,6 +783,9 @@ pub const fn slice_from_raw_parts_mut<T>(data: *mut T, len: usize) -> *mut [T] {
 /// * The two pointed-to values may overlap. If the values do overlap, then the
 ///   overlapping region of memory from `x` will be used. This is demonstrated
 ///   in the second example below.
+///
+/// * The operation is "untyped" in the sense that data may be uninitialized or otherwise violate
+///   the requirements of `T`. The initialization state is preserved exactly.
 ///
 /// # Safety
 ///
@@ -859,6 +862,9 @@ pub const unsafe fn swap<T>(x: *mut T, y: *mut T) {
 
 /// Swaps `count * size_of::<T>()` bytes between the two regions of memory
 /// beginning at `x` and `y`. The two regions must *not* overlap.
+///
+/// The operation is "untyped" in the sense that data may be uninitialized or otherwise violate the
+/// requirements of `T`. The initialization state is preserved exactly.
 ///
 /// # Safety
 ///
@@ -965,7 +971,7 @@ const unsafe fn swap_nonoverlapping_simple_untyped<T>(x: *mut T, y: *mut T, coun
         // SAFETY: By precondition, `i` is in-bounds because it's below `n`
         // and it's distinct from `x` since the ranges are non-overlapping
         let y = unsafe { &mut *y.add(i) };
-        mem::swap_simple(x, y);
+        mem::swap_simple::<MaybeUninit<T>>(x, y);
 
         i += 1;
     }
