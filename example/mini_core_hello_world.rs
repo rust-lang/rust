@@ -56,8 +56,8 @@ struct NoisyDrop {
 }
 
 struct NoisyDropUnsized {
-    text: str,
     inner: NoisyDropInner,
+    text: str,
 }
 
 struct NoisyDropInner;
