@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
-use clippy_utils::source::snippet_opt;
+use clippy_utils::source::{snippet_opt, snippet_with_context};
 use clippy_utils::{fn_def_id, path_to_local_id};
 use if_chain::if_chain;
 use rustc_ast::ast::Attribute;
@@ -226,14 +226,10 @@ fn emit_return_lint(cx: &LateContext<'_>, ret_span: Span, inner_span: Option<Spa
     }
     match inner_span {
         Some(inner_span) => {
-            if in_external_macro(cx.tcx.sess, inner_span) || inner_span.from_expansion() {
-                return;
-            }
-
+            let mut applicability = Applicability::MachineApplicable;
             span_lint_and_then(cx, NEEDLESS_RETURN, ret_span, "unneeded `return` statement", |diag| {
-                if let Some(snippet) = snippet_opt(cx, inner_span) {
-                    diag.span_suggestion(ret_span, "remove `return`", snippet, Applicability::MachineApplicable);
-                }
+                let (snippet, _) = snippet_with_context(cx, inner_span, ret_span.ctxt(), "..", &mut applicability);
+                diag.span_suggestion(ret_span, "remove `return`", snippet, applicability);
             });
         },
         None => match replacement {
@@ -287,7 +283,7 @@ struct BorrowVisitor<'a, 'tcx> {
 
 impl<'tcx> Visitor<'tcx> for BorrowVisitor<'_, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
-        if self.borrows {
+        if self.borrows || expr.span.from_expansion() {
             return;
         }
 
