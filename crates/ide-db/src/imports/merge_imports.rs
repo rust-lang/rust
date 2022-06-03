@@ -30,6 +30,8 @@ impl MergeBehavior {
     }
 }
 
+/// Merge `rhs` into `lhs` keeping both intact.
+/// Returned AST is mutable.
 pub fn try_merge_imports(
     lhs: &ast::Use,
     rhs: &ast::Use,
@@ -51,6 +53,8 @@ pub fn try_merge_imports(
     Some(lhs)
 }
 
+/// Merge `rhs` into `lhs` keeping both intact.
+/// Returned AST is mutable.
 pub fn try_merge_trees(
     lhs: &ast::UseTree,
     rhs: &ast::UseTree,
