@@ -6,8 +6,15 @@ use crate::{
     CompletionContext, Completions,
 };
 
+mod trait_impl;
+
 pub(crate) fn complete_item_list(acc: &mut Completions, ctx: &CompletionContext) {
     let _p = profile::span("complete_item_list");
+
+    if let Some(_) = ctx.name_ctx() {
+        trait_impl::complete_trait_impl(acc, ctx);
+        return;
+    }
 
     let (&is_absolute_path, path_qualifier, kind) = match ctx.path_context() {
         Some(PathCompletionCtx {
@@ -24,7 +31,6 @@ pub(crate) fn complete_item_list(acc: &mut Completions, ctx: &CompletionContext)
         }) => (is_absolute_path, qualifier, None),
         _ => return,
     };
-    let mut add_keyword = |kw, snippet| acc.add_keyword_snippet(ctx, kw, snippet);
 
     let in_item_list = matches!(kind, Some(ItemListKind::SourceFile | ItemListKind::Module) | None);
     let in_assoc_non_trait_impl = matches!(kind, Some(ItemListKind::Impl | ItemListKind::Trait));
@@ -34,6 +40,11 @@ pub(crate) fn complete_item_list(acc: &mut Completions, ctx: &CompletionContext)
     let in_inherent_impl = matches!(kind, Some(ItemListKind::Impl));
     let no_qualifiers = ctx.qualifier_ctx.vis_node.is_none();
     let in_block = matches!(kind, None);
+
+    if in_trait_impl {
+        trait_impl::complete_trait_impl(acc, ctx);
+    }
+    let mut add_keyword = |kw, snippet| acc.add_keyword_snippet(ctx, kw, snippet);
 
     'block: loop {
         if ctx.is_non_trivial_path() {
