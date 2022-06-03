@@ -1,5 +1,5 @@
 use clippy_utils::source::{snippet_opt, span_starts_with, walk_span_to_context};
-use clippy_utils::{higher, meets_msrv, msrvs};
+use clippy_utils::{higher, in_constant, meets_msrv, msrvs};
 use rustc_hir::{Arm, Expr, ExprKind, Local, MatchSource, Pat};
 use rustc_lexer::{tokenize, TokenKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -10,6 +10,7 @@ use rustc_span::{Span, SpanData, SyntaxContext};
 
 mod collapsible_match;
 mod infallible_destructuring_match;
+mod manual_unwrap_or;
 mod match_as_ref;
 mod match_bool;
 mod match_like_matches;
@@ -650,6 +651,33 @@ declare_clippy_lint! {
     "Nested `match` or `if let` expressions where the patterns may be \"collapsed\" together."
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Finds patterns that reimplement `Option::unwrap_or` or `Result::unwrap_or`.
+    ///
+    /// ### Why is this bad?
+    /// Concise code helps focusing on behavior instead of boilerplate.
+    ///
+    /// ### Example
+    /// ```rust
+    /// let foo: Option<i32> = None;
+    /// match foo {
+    ///     Some(v) => v,
+    ///     None => 1,
+    /// };
+    /// ```
+    ///
+    /// Use instead:
+    /// ```rust
+    /// let foo: Option<i32> = None;
+    /// foo.unwrap_or(1);
+    /// ```
+    #[clippy::version = "1.49.0"]
+    pub MANUAL_UNWRAP_OR,
+    complexity,
+    "finds patterns that can be encoded more concisely with `Option::unwrap_or` or `Result::unwrap_or`"
+}
+
 #[derive(Default)]
 pub struct Matches {
     msrv: Option<RustcVersion>,
@@ -685,6 +713,7 @@ impl_lint_pass!(Matches => [
     MATCH_SAME_ARMS,
     NEEDLESS_MATCH,
     COLLAPSIBLE_MATCH,
+    MANUAL_UNWRAP_OR,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Matches {
@@ -721,6 +750,10 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
                     match_wild_enum::check(cx, ex, arms);
                     match_as_ref::check(cx, ex, arms, expr);
                     needless_match::check_match(cx, ex, arms, expr);
+
+                    if !in_constant(cx, expr.hir_id) {
+                        manual_unwrap_or::check(cx, expr, ex, arms);
+                    }
 
                     if self.infallible_destructuring_match_linted {
                         self.infallible_destructuring_match_linted = false;

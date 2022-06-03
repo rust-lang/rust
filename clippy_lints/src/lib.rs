@@ -283,7 +283,6 @@ mod manual_map;
 mod manual_non_exhaustive;
 mod manual_ok_or;
 mod manual_strip;
-mod manual_unwrap_or;
 mod map_clone;
 mod map_err_ignore;
 mod map_unit_fn;
@@ -834,7 +833,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(repeat_once::RepeatOnce));
     store.register_late_pass(|| Box::new(unwrap_in_result::UnwrapInResult));
     store.register_late_pass(|| Box::new(self_assignment::SelfAssignment));
-    store.register_late_pass(|| Box::new(manual_unwrap_or::ManualUnwrapOr));
     store.register_late_pass(|| Box::new(manual_ok_or::ManualOkOr));
     store.register_late_pass(|| Box::new(float_equality_without_abs::FloatEqualityWithoutAbs));
     store.register_late_pass(|| Box::new(semicolon_if_nothing_returned::SemicolonIfNothingReturned));
