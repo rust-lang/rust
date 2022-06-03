@@ -23,10 +23,10 @@
           StorageLive(_1);                 // scope 0 at $DIR/inline-into-box-place.rs:8:9: 8:11
           _2 = SizeOf(std::vec::Vec<u32>); // scope 2 at $DIR/inline-into-box-place.rs:8:29: 8:43
           _3 = AlignOf(std::vec::Vec<u32>); // scope 2 at $DIR/inline-into-box-place.rs:8:29: 8:43
-          _4 = : unsafe fn(usize, usize) -> *mut u8 {alloc::alloc::exchange_malloc}(move _2, move _3) -> bb1; // scope 2 at $DIR/inline-into-box-place.rs:8:29: 8:43
+          _4 = alloc::alloc::exchange_malloc(move _2, move _3) -> bb1; // scope 2 at $DIR/inline-into-box-place.rs:8:29: 8:43
                                            // mir::Constant
                                            // + span: $DIR/inline-into-box-place.rs:8:29: 8:43
-                                           // + literal: Const { ty: unsafe fn(usize, usize) -> *mut u8 {alloc::alloc::exchange_malloc}, val: Value(ValTree::Branch(..)) }
+                                           // + literal: Const { ty: unsafe fn(usize, usize) -> *mut u8 {alloc::alloc::exchange_malloc}, val: Value(Scalar(<ZST>)) }
       }
   
       bb1: {
@@ -71,10 +71,10 @@
 -     }
 - 
 -     bb5 (cleanup): {
--         _6 = : unsafe fn(Unique::<Vec<u32>>, std::alloc::Global) {alloc::alloc::box_free::<Vec<u32>, std::alloc::Global>}(move (_5.0: std::ptr::Unique<std::vec::Vec<u32>>), move (_5.1: std::alloc::Global)) -> bb4; // scope 0 at $DIR/inline-into-box-place.rs:8:42: 8:43
+-         _6 = alloc::alloc::box_free::<Vec<u32>, std::alloc::Global>(move (_5.0: std::ptr::Unique<std::vec::Vec<u32>>), move (_5.1: std::alloc::Global)) -> bb4; // scope 0 at $DIR/inline-into-box-place.rs:8:42: 8:43
 -                                          // mir::Constant
 -                                          // + span: $DIR/inline-into-box-place.rs:8:42: 8:43
--                                          // + literal: Const { ty: unsafe fn(Unique<Vec<u32>>, std::alloc::Global) {alloc::alloc::box_free::<Vec<u32>, std::alloc::Global>}, val: Value(ValTree::Branch(..)) }
+-                                          // + literal: Const { ty: unsafe fn(Unique<Vec<u32>>, std::alloc::Global) {alloc::alloc::box_free::<Vec<u32>, std::alloc::Global>}, val: Value(Scalar(<ZST>)) }
       }
   }
   
