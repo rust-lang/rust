@@ -423,6 +423,8 @@ def check_snapshot(snapshot_name, actual_tree, normalize_to_text):
     else:
         actual_str = flatten(actual_tree)
 
+    expected_str = expected_str.replace("{{channel}}", channel)
+
     # Conditions:
     #  1. Is --bless
     #  2. Are actual and expected tree different

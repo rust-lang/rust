@@ -881,11 +881,16 @@ fn fmt_type<'cx>(
                 }
             }
         }
-        clean::Slice(ref t) => {
-            primitive_link(f, PrimitiveType::Slice, "[", cx)?;
-            fmt::Display::fmt(&t.print(cx), f)?;
-            primitive_link(f, PrimitiveType::Slice, "]", cx)
-        }
+        clean::Slice(ref t) => match **t {
+            clean::Generic(name) => {
+                primitive_link(f, PrimitiveType::Slice, &format!("[{name}]"), cx)
+            }
+            _ => {
+                primitive_link(f, PrimitiveType::Slice, "[", cx)?;
+                fmt::Display::fmt(&t.print(cx), f)?;
+                primitive_link(f, PrimitiveType::Slice, "]", cx)
+            }
+        },
         clean::Array(ref t, ref n) => {
             primitive_link(f, PrimitiveType::Array, "[", cx)?;
             fmt::Display::fmt(&t.print(cx), f)?;
@@ -924,23 +929,12 @@ fn fmt_type<'cx>(
                 clean::Slice(ref bt) => {
                     // `BorrowedRef{ ... Slice(T) }` is `&[T]`
                     match **bt {
-                        clean::Generic(_) => {
-                            if f.alternate() {
-                                primitive_link(
-                                    f,
-                                    PrimitiveType::Slice,
-                                    &format!("{}{}{}[{:#}]", amp, lt, m, bt.print(cx)),
-                                    cx,
-                                )
-                            } else {
-                                primitive_link(
-                                    f,
-                                    PrimitiveType::Slice,
-                                    &format!("{}{}{}[{}]", amp, lt, m, bt.print(cx)),
-                                    cx,
-                                )
-                            }
-                        }
+                        clean::Generic(name) => primitive_link(
+                            f,
+                            PrimitiveType::Slice,
+                            &format!("{amp}{lt}{m}[{name}]"),
+                            cx,
+                        ),
                         _ => {
                             primitive_link(
                                 f,
