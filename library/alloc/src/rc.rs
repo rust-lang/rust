@@ -348,6 +348,17 @@ impl<T: ?Sized> Rc<T> {
     unsafe fn from_ptr(ptr: *mut RcBox<T>) -> Self {
         unsafe { Self::from_inner(NonNull::new_unchecked(ptr)) }
     }
+
+    // Non-inlined part of `drop`.
+    #[inline(never)]
+    unsafe fn drop_slow(&mut self) {
+        // Destroy the data at this time, even though we must not free the box
+        // allocation itself (there might still be weak pointers lying around).
+        unsafe { ptr::drop_in_place(Self::get_mut_unchecked(self)) };
+
+        // Drop the weak ref collectively held by all strong references.
+        drop(Weak { ptr: self.ptr });
+    }
 }
 
 impl<T> Rc<T> {
@@ -1516,20 +1527,19 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Rc<T> {
     /// drop(foo);    // Doesn't print anything
     /// drop(foo2);   // Prints "dropped!"
     /// ```
+    #[inline]
     fn drop(&mut self) {
         unsafe {
             self.inner().dec_strong();
-            if self.inner().strong() == 0 {
-                // destroy the contained object
-                ptr::drop_in_place(Self::get_mut_unchecked(self));
+            if self.inner().strong() != 0 {
+                return;
+            }
 
-                // remove the implicit "strong weak" pointer now that we've
-                // destroyed the contents.
-                self.inner().dec_weak();
-
-                if self.inner().weak() == 0 {
-                    Global.deallocate(self.ptr.cast(), Layout::for_value(self.ptr.as_ref()));
-                }
+            if mem::needs_drop::<T>() {
+                self.drop_slow();
+            } else {
+                // Drop the weak ref collectively held by all strong references.
+                drop(Weak { ptr: self.ptr });
             }
         }
     }
@@ -2457,6 +2467,7 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Weak<T> {
     ///
     /// assert!(other_weak_foo.upgrade().is_none());
     /// ```
+    #[inline]
     fn drop(&mut self) {
         let inner = if let Some(inner) = self.inner() { inner } else { return };
 

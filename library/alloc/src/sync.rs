@@ -1105,7 +1105,7 @@ impl<T: ?Sized> Arc<T> {
         // allocation itself (there might still be weak pointers lying around).
         unsafe { ptr::drop_in_place(Self::get_mut_unchecked(self)) };
 
-        // Drop the weak ref collectively held by all strong references
+        // Drop the weak ref collectively held by all strong references.
         drop(Weak { ptr: self.ptr });
     }
 
@@ -1699,7 +1699,12 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Arc<T> {
         acquire!(self.inner().strong);
 
         unsafe {
-            self.drop_slow();
+            if mem::needs_drop::<T>() {
+                self.drop_slow();
+            } else {
+                // Drop the weak ref collectively held by all strong references.
+                drop(Weak { ptr: self.ptr });
+            }
         }
     }
 }
@@ -2159,6 +2164,7 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Weak<T> {
     ///
     /// assert!(other_weak_foo.upgrade().is_none());
     /// ```
+    #[inline]
     fn drop(&mut self) {
         // If we find out that we were the last weak pointer, then its time to
         // deallocate the data entirely. See the discussion in Arc::drop() about
