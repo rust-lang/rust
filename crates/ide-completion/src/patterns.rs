@@ -7,21 +7,14 @@
 use hir::Semantics;
 use ide_db::RootDatabase;
 use syntax::{
-    algo::non_trivia_sibling,
     ast::{self, HasLoopBody, HasName},
-    match_ast, AstNode, Direction, SyntaxElement,
+    match_ast, AstNode, SyntaxElement,
     SyntaxKind::*,
     SyntaxNode, SyntaxToken, TextRange, TextSize,
 };
 
 #[cfg(test)]
 use crate::tests::check_pattern_is_applicable;
-
-/// Immediate previous node to what we are completing.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub(crate) enum ImmediatePrevSibling {
-    IfExpr,
-}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum TypeAnnotation {
@@ -44,45 +37,6 @@ pub(crate) enum ImmediateLocation {
     // Only set from a type arg
     /// Original file ast node
     GenericArgList(ast::GenericArgList),
-}
-
-pub(crate) fn determine_prev_sibling(name_like: &ast::NameLike) -> Option<ImmediatePrevSibling> {
-    let node = match name_like {
-        ast::NameLike::NameRef(name_ref) => maximize_name_ref(name_ref),
-        ast::NameLike::Name(n) => n.syntax().clone(),
-        ast::NameLike::Lifetime(lt) => lt.syntax().clone(),
-    };
-    let node = match node.parent().and_then(ast::MacroCall::cast) {
-        // When a path is being typed after the name of a trait/type of an impl it is being
-        // parsed as a macro, so when the trait/impl has a block following it an we are between the
-        // name and block the macro will attach the block to itself so maximizing fails to take
-        // that into account
-        // FIXME path expr and statement have a similar problem with attrs
-        Some(call)
-            if call.excl_token().is_none()
-                && call.token_tree().map_or(false, |t| t.l_curly_token().is_some())
-                && call.semicolon_token().is_none() =>
-        {
-            call.syntax().clone()
-        }
-        _ => node,
-    };
-    let prev_sibling = non_trivia_sibling(node.into(), Direction::Prev)?.into_node()?;
-    let res = match_ast! {
-        match prev_sibling {
-            ast::ExprStmt(it) => {
-                let node = it.expr().filter(|_| it.semicolon_token().is_none())?.syntax().clone();
-                match_ast! {
-                    match node {
-                        ast::IfExpr(_) => ImmediatePrevSibling::IfExpr,
-                        _ => return None,
-                    }
-                }
-            },
-            _ => return None,
-        }
-    };
-    Some(res)
 }
 
 pub(crate) fn determine_location(
@@ -316,22 +270,8 @@ mod tests {
         );
     }
 
-    fn check_prev_sibling(code: &str, sibling: impl Into<Option<ImmediatePrevSibling>>) {
-        check_pattern_is_applicable(code, |e| {
-            let name = &e.parent().and_then(ast::NameLike::cast).expect("Expected a namelike");
-            assert_eq!(determine_prev_sibling(name), sibling.into());
-            true
-        });
-    }
-
     #[test]
     fn test_ref_expr_loc() {
         check_location(r"fn my_fn() { let x = &m$0 foo; }", ImmediateLocation::RefExpr);
-    }
-
-    #[test]
-    fn test_if_expr_prev_sibling() {
-        check_prev_sibling(r"fn foo() { if true {} w$0", ImmediatePrevSibling::IfExpr);
-        check_prev_sibling(r"fn foo() { if true {}; w$0", None);
     }
 }

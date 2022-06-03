@@ -15,7 +15,7 @@ use ide_db::{
 use syntax::{
     algo::{find_node_at_offset, non_trivia_sibling},
     ast::{self, AttrKind, HasArgList, HasName, NameOrNameRef},
-    match_ast, AstNode, AstToken, NodeOrToken,
+    match_ast, AstNode, AstToken, Direction, NodeOrToken,
     SyntaxKind::{self, *},
     SyntaxNode, SyntaxToken, TextRange, TextSize, T,
 };
@@ -23,8 +23,8 @@ use text_edit::Indel;
 
 use crate::{
     patterns::{
-        determine_location, determine_prev_sibling, is_in_loop_body, is_in_token_of_for_loop,
-        previous_token, ImmediateLocation, ImmediatePrevSibling,
+        determine_location, is_in_loop_body, is_in_token_of_for_loop, previous_token,
+        ImmediateLocation,
     },
     CompletionConfig,
 };
@@ -48,6 +48,7 @@ pub(super) enum PathKind {
     Expr {
         in_block_expr: bool,
         in_loop_body: bool,
+        after_if_expr: bool,
     },
     Type {
         in_tuple_struct: bool,
@@ -264,7 +265,6 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) incomplete_let: bool,
 
     pub(super) completion_location: Option<ImmediateLocation>,
-    pub(super) prev_sibling: Option<ImmediatePrevSibling>,
     pub(super) previous_token: Option<SyntaxToken>,
 
     pub(super) ident_ctx: IdentContext,
@@ -343,10 +343,6 @@ impl<'a> CompletionContext<'a> {
 
     pub(crate) fn expects_ident_ref_expr(&self) -> bool {
         matches!(self.completion_location, Some(ImmediateLocation::RefExpr))
-    }
-
-    pub(crate) fn after_if(&self) -> bool {
-        matches!(self.prev_sibling, Some(ImmediatePrevSibling::IfExpr))
     }
 
     // FIXME: This shouldn't exist
@@ -527,7 +523,6 @@ impl<'a> CompletionContext<'a> {
             impl_def: None,
             incomplete_let: false,
             completion_location: None,
-            prev_sibling: None,
             previous_token: None,
             // dummy value, will be overwritten
             ident_ctx: IdentContext::UnexpandedAttrTT { fake_attribute_under_caret: None },
@@ -922,7 +917,6 @@ impl<'a> CompletionContext<'a> {
         };
         self.completion_location =
             determine_location(&self.sema, original_file, offset, &name_like);
-        self.prev_sibling = determine_prev_sibling(&name_like);
         self.impl_def = self
             .sema
             .token_ancestors_with_macros(self.token.clone())
@@ -1169,6 +1163,13 @@ impl<'a> CompletionContext<'a> {
                     find_node_in_file_compensated(original_file, &record_expr).zip(Some(true));
             }
         };
+        let after_if_expr = |node: SyntaxNode| {
+            let prev_expr = (|| {
+                let prev_sibling = non_trivia_sibling(node.into(), Direction::Prev)?.into_node()?;
+                ast::ExprStmt::cast(prev_sibling)?.expr()
+            })();
+            matches!(prev_expr, Some(ast::Expr::IfExpr(_)))
+        };
 
         // We do not want to generate path completions when we are sandwiched between an item decl signature and its body.
         // ex. trait Foo $0 {}
@@ -1226,7 +1227,9 @@ impl<'a> CompletionContext<'a> {
                         path_ctx.has_call_parens = it.syntax().parent().map_or(false, |it| ast::CallExpr::can_cast(it.kind()));
                         let in_block_expr = is_in_block(it.syntax());
                         let in_loop_body = is_in_loop_body(it.syntax());
-                        Some(PathKind::Expr { in_block_expr, in_loop_body })
+                        let after_if_expr = after_if_expr(it.syntax().clone());
+
+                        Some(PathKind::Expr { in_block_expr, in_loop_body, after_if_expr })
                     },
                     ast::TupleStructPat(it) => {
                         path_ctx.has_call_parens = true;
@@ -1274,8 +1277,9 @@ impl<'a> CompletionContext<'a> {
                                return Some(parent.and_then(ast::MacroExpr::cast).map(|it| {
                                     let in_loop_body = is_in_loop_body(it.syntax());
                                     let in_block_expr = is_in_block(it.syntax());
+                                    let after_if_expr = after_if_expr(it.syntax().clone());
                                     fill_record_expr(it.syntax());
-                                    PathKind::Expr { in_block_expr, in_loop_body }
+                                    PathKind::Expr { in_block_expr, in_loop_body, after_if_expr }
                                 }));
                             },
                         }
