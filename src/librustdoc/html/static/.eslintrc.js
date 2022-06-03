@@ -74,5 +74,6 @@ module.exports = {
         "no-invalid-regexp": "error",
         "no-import-assign": "error",
         "no-self-compare": "error",
+        "no-template-curly-in-string": "error",
     }
 };
