@@ -3,7 +3,7 @@
 use crate::{
     completions::module_or_fn_macro,
     context::{ItemListKind, PathCompletionCtx, PathKind, PathQualifierCtx},
-    CompletionContext, CompletionItem, CompletionItemKind, Completions,
+    CompletionContext, Completions,
 };
 
 pub(crate) fn complete_item_list(acc: &mut Completions, ctx: &CompletionContext) {
@@ -24,7 +24,7 @@ pub(crate) fn complete_item_list(acc: &mut Completions, ctx: &CompletionContext)
         }) => (is_absolute_path, qualifier, None),
         _ => return,
     };
-    let mut add_keyword = |kw, snippet| add_keyword(acc, ctx, kw, snippet);
+    let mut add_keyword = |kw, snippet| acc.add_keyword_snippet(ctx, kw, snippet);
 
     let in_item_list = matches!(kind, Some(ItemListKind::SourceFile | ItemListKind::Module) | None);
     let in_assoc_non_trait_impl = matches!(kind, Some(ItemListKind::Impl | ItemListKind::Trait));
@@ -120,24 +120,4 @@ pub(crate) fn complete_item_list(acc: &mut Completions, ctx: &CompletionContext)
         }
         None => {}
     }
-}
-
-pub(super) fn add_keyword(acc: &mut Completions, ctx: &CompletionContext, kw: &str, snippet: &str) {
-    let mut item = CompletionItem::new(CompletionItemKind::Keyword, ctx.source_range(), kw);
-
-    match ctx.config.snippet_cap {
-        Some(cap) => {
-            if snippet.ends_with('}') && ctx.incomplete_let {
-                // complete block expression snippets with a trailing semicolon, if inside an incomplete let
-                cov_mark::hit!(let_semi);
-                item.insert_snippet(cap, format!("{};", snippet));
-            } else {
-                item.insert_snippet(cap, snippet);
-            }
-        }
-        None => {
-            item.insert_text(if snippet.contains('$') { kw } else { snippet });
-        }
-    };
-    item.add_to(acc);
 }

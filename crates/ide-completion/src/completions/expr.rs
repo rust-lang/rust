@@ -178,8 +178,7 @@ pub(crate) fn complete_expr_path(acc: &mut Completions, ctx: &CompletionContext)
             });
 
             if !is_func_update {
-                let mut add_keyword =
-                    |kw, snippet| super::keyword::add_keyword(acc, ctx, kw, snippet);
+                let mut add_keyword = |kw, snippet| acc.add_keyword_snippet(ctx, kw, snippet);
 
                 if ctx.expects_expression() {
                     if !in_block_expr {
