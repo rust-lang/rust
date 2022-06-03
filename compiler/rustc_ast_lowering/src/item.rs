@@ -1374,7 +1374,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 .map(|predicate| self.lower_where_predicate(predicate)),
         );
 
-        let mut params: Vec<_> = self.lower_generic_params_mut(&generics.params).collect();
+        let mut params: SmallVec<[hir::GenericParam<'hir>; 4]> =
+            self.lower_generic_params_mut(&generics.params).collect();
         let has_where_clause = !generics.where_clause.predicates.is_empty();
         let where_clause_span = self.lower_span(generics.where_clause.span);
         let span = self.lower_span(generics.span);
