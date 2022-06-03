@@ -1099,6 +1099,8 @@ fn go(world: &WorldSnapshot) { go(w$0) }
 "#,
             expect![[r#"
                 lc world [type+name+local]
+                st WorldSnapshot {…} []
+                st &WorldSnapshot {…} [type]
                 st WorldSnapshot []
                 fn go(…) []
             "#]],
@@ -1197,6 +1199,8 @@ fn main() {
                 lc s [name+local]
                 lc &mut s [type+name+local]
                 st S []
+                st &mut S [type]
+                st S []
                 fn main() []
                 fn foo(…) []
             "#]],
@@ -1266,6 +1270,8 @@ fn main() {
                 lc m [local]
                 lc t [local]
                 lc &t [type+local]
+                st S []
+                st &S [type]
                 st T []
                 st S []
                 fn main() []
@@ -1311,6 +1317,8 @@ fn main() {
                 lc m [local]
                 lc t [local]
                 lc &mut t [type+local]
+                st S []
+                st &mut S [type]
                 st T []
                 st S []
                 fn main() []
@@ -1405,6 +1413,8 @@ fn main() {
 }
 "#,
             expect![[r#"
+                st S []
+                st &S [type]
                 st T []
                 st S []
                 fn main() []

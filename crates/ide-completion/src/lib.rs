@@ -169,11 +169,9 @@ pub fn completions(
             completions::mod_::complete_mod(acc, ctx);
             completions::pattern::complete_pattern(acc, ctx);
             completions::postfix::complete_postfix(acc, ctx);
-            completions::record::complete_record_literal(acc, ctx);
             completions::record::complete_record(acc, ctx);
             completions::snippet::complete_expr_snippet(acc, ctx);
             completions::snippet::complete_item_snippet(acc, ctx);
-            completions::trait_impl::complete_trait_impl(acc, ctx);
             completions::r#type::complete_type_path(acc, ctx);
             completions::r#type::complete_inferred_type(acc, ctx);
             completions::use_::complete_use_tree(acc, ctx);

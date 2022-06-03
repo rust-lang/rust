@@ -43,6 +43,10 @@ use syntax::{
 use text_edit::TextEdit;
 
 use crate::{
+    context::{
+        IdentContext, ItemListKind, NameContext, NameKind, NameRefContext, PathCompletionCtx,
+        PathKind,
+    },
     CompletionContext, CompletionItem, CompletionItemKind, CompletionRelevance, Completions,
 };
 
@@ -54,7 +58,6 @@ enum ImplCompletionKind {
     Const,
 }
 
-// FIXME: Make this a submodule of [`item_list`]
 pub(crate) fn complete_trait_impl(acc: &mut Completions, ctx: &CompletionContext) {
     if let Some((kind, replacement_range, impl_def)) = completion_match(ctx) {
         if let Some(hir_impl) = ctx.sema.to_def(&impl_def) {
@@ -77,73 +80,49 @@ pub(crate) fn complete_trait_impl(acc: &mut Completions, ctx: &CompletionContext
     }
 }
 
-// FIXME: This should be lifted out so that we can do proper smart item keyword completions
 fn completion_match(ctx: &CompletionContext) -> Option<(ImplCompletionKind, TextRange, ast::Impl)> {
-    let token = ctx.token.clone();
-
-    // For keyword without name like `impl .. { fn $0 }`, the current position is inside
-    // the whitespace token, which is outside `FN` syntax node.
-    // We need to follow the previous token in this case.
-    let mut token_before_ws = token.clone();
-    if token.kind() == SyntaxKind::WHITESPACE {
-        token_before_ws = token.prev_token()?;
-    }
-
-    let parent_kind = token_before_ws.parent().map_or(SyntaxKind::EOF, |it| it.kind());
-    if token.parent().map(|n| n.kind()) == Some(SyntaxKind::ASSOC_ITEM_LIST)
-        && matches!(
-            token_before_ws.kind(),
-            SyntaxKind::SEMICOLON | SyntaxKind::R_CURLY | SyntaxKind::L_CURLY
-        )
-    {
-        let impl_def = ast::Impl::cast(token.parent()?.parent()?)?;
-        let kind = ImplCompletionKind::All;
-        let replacement_range = TextRange::empty(ctx.position.offset);
-        Some((kind, replacement_range, impl_def))
-    } else {
-        let impl_item_offset = match token_before_ws.kind() {
-            // `impl .. { const $0 }`
-            // ERROR      0
-            //   CONST_KW <- *
-            T![const] => 0,
-            // `impl .. { fn/type $0 }`
-            // FN/TYPE_ALIAS  0
-            //   FN_KW        <- *
-            T![fn] | T![type] => 0,
-            // `impl .. { fn/type/const foo$0 }`
-            // FN/TYPE_ALIAS/CONST  1
-            //  NAME                0
-            //    IDENT             <- *
-            SyntaxKind::IDENT if parent_kind == SyntaxKind::NAME => 1,
-            // `impl .. { foo$0 }`
-            // MACRO_CALL       3
-            //  PATH            2
-            //    PATH_SEGMENT  1
-            //      NAME_REF    0
-            //        IDENT     <- *
-            SyntaxKind::IDENT if parent_kind == SyntaxKind::NAME_REF => 3,
-            _ => return None,
-        };
-
-        let impl_item = token_before_ws.ancestors().nth(impl_item_offset)?;
-        // Must directly belong to an impl block.
-        // IMPL
-        //   ASSOC_ITEM_LIST
-        //     <item>
-        let impl_def = ast::Impl::cast(impl_item.parent()?.parent()?)?;
-        let kind = match impl_item.kind() {
-            // `impl ... { const $0 fn/type/const }`
-            _ if token_before_ws.kind() == T![const] => ImplCompletionKind::Const,
-            SyntaxKind::CONST | SyntaxKind::ERROR => ImplCompletionKind::Const,
-            SyntaxKind::TYPE_ALIAS => ImplCompletionKind::TypeAlias,
-            SyntaxKind::FN => ImplCompletionKind::Fn,
-            SyntaxKind::MACRO_CALL => ImplCompletionKind::All,
-            _ => return None,
-        };
-
-        let replacement_range = replacement_range(ctx, &impl_item);
-
-        Some((kind, replacement_range, impl_def))
+    match &ctx.ident_ctx {
+        IdentContext::Name(NameContext { name, kind, .. }) => {
+            let kind = match kind {
+                NameKind::Const => ImplCompletionKind::Const,
+                NameKind::Function => ImplCompletionKind::Fn,
+                NameKind::TypeAlias => ImplCompletionKind::TypeAlias,
+                _ => return None,
+            };
+            let token = ctx.token.clone();
+            let item = match name {
+                Some(name) => name.syntax().parent(),
+                None => {
+                    if token.kind() == SyntaxKind::WHITESPACE { token.prev_token()? } else { token }
+                        .parent()
+                }
+            }?;
+            Some((
+                kind,
+                replacement_range(ctx, &item),
+                // item -> ASSOC_ITEM_LIST -> IMPL
+                ast::Impl::cast(item.parent()?.parent()?)?,
+            ))
+        }
+        IdentContext::NameRef(NameRefContext {
+            nameref,
+            path_ctx:
+                Some(
+                    path_ctx @ PathCompletionCtx {
+                        kind: PathKind::Item { kind: ItemListKind::TraitImpl },
+                        ..
+                    },
+                ),
+            ..
+        }) if path_ctx.is_trivial_path() => Some((
+            ImplCompletionKind::All,
+            match nameref {
+                Some(name) => name.syntax().text_range(),
+                None => TextRange::empty(ctx.position.offset),
+            },
+            ctx.impl_def.clone()?,
+        )),
+        _ => None,
     }
 }
 

@@ -46,12 +46,14 @@ fn complete_undotted_self(acc: &mut Completions, ctx: &CompletionContext) {
         return;
     }
     match ctx.path_context() {
-        Some(PathCompletionCtx {
-            is_absolute_path: false,
-            qualifier: None,
-            kind: PathKind::Expr { .. },
-            ..
-        }) if !ctx.is_path_disallowed() => {}
+        Some(
+            path_ctx @ PathCompletionCtx {
+                is_absolute_path: false,
+                qualifier: None,
+                kind: PathKind::Expr { .. },
+                ..
+            },
+        ) if path_ctx.is_trivial_path() && ctx.qualifier_ctx.none() => {}
         _ => return,
     }
 

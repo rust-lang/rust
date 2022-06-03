@@ -8,11 +8,7 @@ use crate::{context::NameRefContext, CompletionContext, Completions};
 
 pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionContext) {
     let item = match ctx.nameref_ctx() {
-        Some(NameRefContext { keyword: Some(item), record_expr: None, .. })
-            if !ctx.is_non_trivial_path() =>
-        {
-            item
-        }
+        Some(NameRefContext { keyword: Some(item), record_expr: None, .. }) => item,
         _ => return,
     };
 

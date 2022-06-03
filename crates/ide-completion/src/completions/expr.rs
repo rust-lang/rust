@@ -11,32 +11,38 @@ use crate::{
 
 pub(crate) fn complete_expr_path(acc: &mut Completions, ctx: &CompletionContext) {
     let _p = profile::span("complete_expr_path");
-    if ctx.is_path_disallowed() {
-        return;
-    }
 
-    let (is_absolute_path, qualifier, in_block_expr, in_loop_body, is_func_update, after_if_expr) =
-        match ctx.nameref_ctx() {
-            Some(NameRefContext {
-                path_ctx:
-                    Some(PathCompletionCtx {
-                        kind: PathKind::Expr { in_block_expr, in_loop_body, after_if_expr },
-                        is_absolute_path,
-                        qualifier,
-                        ..
-                    }),
-                record_expr,
-                ..
-            }) => (
-                *is_absolute_path,
-                qualifier,
-                *in_block_expr,
-                *in_loop_body,
-                record_expr.as_ref().map_or(false, |&(_, it)| it),
-                *after_if_expr,
-            ),
-            _ => return,
-        };
+    let (
+        is_absolute_path,
+        qualifier,
+        in_block_expr,
+        in_loop_body,
+        is_func_update,
+        after_if_expr,
+        wants_mut_token,
+    ) = match ctx.nameref_ctx() {
+        Some(NameRefContext {
+            path_ctx:
+                Some(PathCompletionCtx {
+                    kind:
+                        PathKind::Expr { in_block_expr, in_loop_body, after_if_expr, ref_expr_parent },
+                    is_absolute_path,
+                    qualifier,
+                    ..
+                }),
+            record_expr,
+            ..
+        }) if ctx.qualifier_ctx.none() => (
+            *is_absolute_path,
+            qualifier,
+            *in_block_expr,
+            *in_loop_body,
+            record_expr.as_ref().map_or(false, |&(_, it)| it),
+            *after_if_expr,
+            ref_expr_parent.as_ref().map(|it| it.mut_token().is_none()).unwrap_or(false),
+        ),
+        _ => return,
+    };
 
     let scope_def_applicable = |def| {
         use hir::{GenericParam::*, ModuleDef::*};
@@ -164,12 +170,43 @@ pub(crate) fn complete_expr_path(acc: &mut Completions, ctx: &CompletionContext)
         None if is_absolute_path => acc.add_crate_roots(ctx),
         None => {
             acc.add_nameref_keywords_with_colon(ctx);
-            if let Some(hir::Adt::Enum(e)) =
+            if let Some(adt) =
                 ctx.expected_type.as_ref().and_then(|ty| ty.strip_references().as_adt())
             {
-                super::enum_variants_with_paths(acc, ctx, e, |acc, ctx, variant, path| {
-                    acc.add_qualified_enum_variant(ctx, variant, path)
-                });
+                let self_ty =
+                    (|| ctx.sema.to_def(ctx.impl_def.as_ref()?)?.self_ty(ctx.db).as_adt())();
+                let complete_self = self_ty == Some(adt);
+
+                match adt {
+                    hir::Adt::Struct(strukt) => {
+                        let path = ctx
+                            .module
+                            .find_use_path(ctx.db, hir::ModuleDef::from(strukt))
+                            .filter(|it| it.len() > 1);
+
+                        acc.add_struct_literal(ctx, strukt, path, None);
+
+                        if complete_self {
+                            acc.add_struct_literal(ctx, strukt, None, Some(hir::known::SELF_TYPE));
+                        }
+                    }
+                    hir::Adt::Union(un) => {
+                        let path = ctx
+                            .module
+                            .find_use_path(ctx.db, hir::ModuleDef::from(un))
+                            .filter(|it| it.len() > 1);
+
+                        acc.add_union_literal(ctx, un, path, None);
+                        if complete_self {
+                            acc.add_union_literal(ctx, un, None, Some(hir::known::SELF_TYPE));
+                        }
+                    }
+                    hir::Adt::Enum(e) => {
+                        super::enum_variants_with_paths(acc, ctx, e, |acc, ctx, variant, path| {
+                            acc.add_qualified_enum_variant(ctx, variant, path)
+                        });
+                    }
+                }
             }
             ctx.process_all_names(&mut |name, def| {
                 if scope_def_applicable(def) {
@@ -180,20 +217,18 @@ pub(crate) fn complete_expr_path(acc: &mut Completions, ctx: &CompletionContext)
             if !is_func_update {
                 let mut add_keyword = |kw, snippet| acc.add_keyword_snippet(ctx, kw, snippet);
 
-                if ctx.expects_expression() {
-                    if !in_block_expr {
-                        add_keyword("unsafe", "unsafe {\n    $0\n}");
-                    }
-                    add_keyword("match", "match $1 {\n    $0\n}");
-                    add_keyword("while", "while $1 {\n    $0\n}");
-                    add_keyword("while let", "while let $1 = $2 {\n    $0\n}");
-                    add_keyword("loop", "loop {\n    $0\n}");
-                    add_keyword("if", "if $1 {\n    $0\n}");
-                    add_keyword("if let", "if let $1 = $2 {\n    $0\n}");
-                    add_keyword("for", "for $1 in $2 {\n    $0\n}");
-                    add_keyword("true", "true");
-                    add_keyword("false", "false");
+                if !in_block_expr {
+                    add_keyword("unsafe", "unsafe {\n    $0\n}");
                 }
+                add_keyword("match", "match $1 {\n    $0\n}");
+                add_keyword("while", "while $1 {\n    $0\n}");
+                add_keyword("while let", "while let $1 = $2 {\n    $0\n}");
+                add_keyword("loop", "loop {\n    $0\n}");
+                add_keyword("if", "if $1 {\n    $0\n}");
+                add_keyword("if let", "if let $1 = $2 {\n    $0\n}");
+                add_keyword("for", "for $1 in $2 {\n    $0\n}");
+                add_keyword("true", "true");
+                add_keyword("false", "false");
 
                 if ctx.previous_token_is(T![if])
                     || ctx.previous_token_is(T![while])
@@ -207,7 +242,7 @@ pub(crate) fn complete_expr_path(acc: &mut Completions, ctx: &CompletionContext)
                     add_keyword("else if", "else if $1 {\n    $0\n}");
                 }
 
-                if ctx.expects_ident_ref_expr() {
+                if wants_mut_token {
                     add_keyword("mut", "mut ");
                 }
 

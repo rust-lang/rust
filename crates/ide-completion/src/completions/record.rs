@@ -71,43 +71,6 @@ pub(crate) fn complete_record(acc: &mut Completions, ctx: &CompletionContext) ->
     Some(())
 }
 
-pub(crate) fn complete_record_literal(
-    acc: &mut Completions,
-    ctx: &CompletionContext,
-) -> Option<()> {
-    if !ctx.expects_expression() {
-        return None;
-    }
-
-    match ctx.expected_type.as_ref()?.as_adt()? {
-        hir::Adt::Struct(strukt) if ctx.path_qual().is_none() => {
-            let path = ctx
-                .module
-                .find_use_path(ctx.db, hir::ModuleDef::from(strukt))
-                .filter(|it| it.len() > 1);
-
-            acc.add_struct_literal(ctx, strukt, path, None);
-
-            let impl_ = ctx.impl_def.as_ref()?;
-            let impl_adt = ctx.sema.to_def(impl_)?.self_ty(ctx.db).as_adt()?;
-            if hir::Adt::Struct(strukt) == impl_adt {
-                acc.add_struct_literal(ctx, strukt, None, Some(hir::known::SELF_TYPE));
-            }
-        }
-        hir::Adt::Union(un) if ctx.path_qual().is_none() => {
-            let path = ctx
-                .module
-                .find_use_path(ctx.db, hir::ModuleDef::from(un))
-                .filter(|it| it.len() > 1);
-
-            acc.add_union_literal(ctx, un, path, None);
-        }
-        _ => {}
-    };
-
-    Some(())
-}
-
 #[cfg(test)]
 mod tests {
     use crate::tests::check_edit;
