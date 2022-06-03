@@ -41,7 +41,7 @@ declare_lint! {
     /// calling `std::mem::drop` on the expression is clearer and helps convey
     /// intent.
     pub LET_UNDERSCORE_DROP,
-    Warn,
+    Allow,
     "non-binding let on a type that implements `Drop`"
 }
 
@@ -104,7 +104,7 @@ declare_lint! {
     /// expression to immediately drop. Usually, it's better to explicitly handle
     /// the `must_use` expression.
     pub LET_UNDERSCORE_MUST_USE,
-    Warn,
+    Allow,
     "non-binding let on a expression marked `must_use`"
 }
 
