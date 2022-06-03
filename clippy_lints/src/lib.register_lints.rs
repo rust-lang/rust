@@ -380,6 +380,7 @@ store.register_lints(&[
     misc_early::UNNEEDED_WILDCARD_PATTERN,
     misc_early::UNSEPARATED_LITERAL_SUFFIX,
     misc_early::ZERO_PREFIXED_LITERAL,
+    mismatching_type_param_order::MISMATCHING_TYPE_PARAM_ORDER,
     missing_const_for_fn::MISSING_CONST_FOR_FN,
     missing_doc::MISSING_DOCS_IN_PRIVATE_ITEMS,
     missing_enforced_import_rename::MISSING_ENFORCED_IMPORT_RENAMES,
