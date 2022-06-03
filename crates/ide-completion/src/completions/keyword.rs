@@ -2,35 +2,40 @@
 //! - `self`, `super` and `crate`, as these are considered part of path completions.
 //! - `await`, as this is a postfix completion we handle this in the postfix completions.
 
+use syntax::ast::Item;
+
 use crate::{
-    context::{NameRefContext, PathKind},
-    CompletionContext, CompletionItem, CompletionItemKind, Completions,
+    context::NameRefContext, CompletionContext, CompletionItem, CompletionItemKind, Completions,
 };
 
 pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionContext) {
-    if matches!(ctx.nameref_ctx(), Some(NameRefContext { record_expr: Some(_), .. })) {
-        cov_mark::hit!(no_keyword_completion_in_record_lit);
-        return;
-    }
-    if ctx.is_non_trivial_path() {
-        cov_mark::hit!(no_keyword_completion_in_non_trivial_path);
-        return;
-    }
-    if ctx.pattern_ctx.is_some() {
-        return;
-    }
+    let item = match ctx.nameref_ctx() {
+        Some(NameRefContext { keyword: Some(item), record_expr: None, .. })
+            if !ctx.is_non_trivial_path() =>
+        {
+            item
+        }
+        _ => return,
+    };
 
     let mut add_keyword = |kw, snippet| add_keyword(acc, ctx, kw, snippet);
 
-    if let Some(PathKind::Vis { .. }) = ctx.path_kind() {
-        return;
-    }
-    if ctx.has_unfinished_impl_or_trait_prev_sibling() {
-        add_keyword("where", "where");
-        if ctx.has_impl_prev_sibling() {
-            add_keyword("for", "for");
+    match item {
+        Item::Impl(it) => {
+            if it.for_token().is_none() && it.trait_().is_none() && it.self_ty().is_some() {
+                add_keyword("for", "for");
+            }
+            add_keyword("where", "where");
         }
-        return;
+        Item::Enum(_)
+        | Item::Fn(_)
+        | Item::Struct(_)
+        | Item::Trait(_)
+        | Item::TypeAlias(_)
+        | Item::Union(_) => {
+            add_keyword("where", "where");
+        }
+        _ => (),
     }
 }
 

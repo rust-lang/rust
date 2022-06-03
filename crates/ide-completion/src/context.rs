@@ -185,6 +185,8 @@ pub(super) struct NameRefContext {
     // FIXME: these fields are actually disjoint -> enum
     pub(super) dot_access: Option<DotAccess>,
     pub(super) path_ctx: Option<PathCompletionCtx>,
+    /// Position where we are only interested in keyword completions
+    pub(super) keyword: Option<ast::Item>,
     /// The record expression this nameref is a field of
     pub(super) record_expr: Option<(ast::RecordExpr, bool)>,
 }
@@ -341,21 +343,6 @@ impl<'a> CompletionContext<'a> {
 
     pub(crate) fn expects_ident_ref_expr(&self) -> bool {
         matches!(self.completion_location, Some(ImmediateLocation::RefExpr))
-    }
-
-    /// Whether the cursor is right after a trait or impl header.
-    /// trait Foo ident$0
-    // FIXME: This probably shouldn't exist
-    pub(crate) fn has_unfinished_impl_or_trait_prev_sibling(&self) -> bool {
-        matches!(
-            self.prev_sibling,
-            Some(ImmediatePrevSibling::ImplDefType | ImmediatePrevSibling::TraitDefName)
-        )
-    }
-
-    // FIXME: This probably shouldn't exist
-    pub(crate) fn has_impl_prev_sibling(&self) -> bool {
-        matches!(self.prev_sibling, Some(ImmediatePrevSibling::ImplDefType))
     }
 
     pub(crate) fn after_if(&self) -> bool {
@@ -1092,8 +1079,13 @@ impl<'a> CompletionContext<'a> {
     ) -> (NameRefContext, Option<PatternContext>) {
         let nameref = find_node_at_offset(&original_file, name_ref.syntax().text_range().start());
 
-        let mut nameref_ctx =
-            NameRefContext { dot_access: None, path_ctx: None, nameref, record_expr: None };
+        let mut nameref_ctx = NameRefContext {
+            dot_access: None,
+            path_ctx: None,
+            nameref,
+            record_expr: None,
+            keyword: None,
+        };
 
         if let Some(record_field) = ast::RecordExprField::for_field_name(&name_ref) {
             nameref_ctx.record_expr =
@@ -1190,7 +1182,7 @@ impl<'a> CompletionContext<'a> {
                 syntax::algo::non_trivia_sibling(node.into(), syntax::Direction::Prev)
             {
                 if let Some(item) = ast::Item::cast(n) {
-                    match item {
+                    let is_inbetween = match &item {
                         ast::Item::Const(it) => it.body().is_none(),
                         ast::Item::Enum(it) => it.variant_list().is_none(),
                         ast::Item::ExternBlock(it) => it.extern_item_list().is_none(),
@@ -1203,13 +1195,13 @@ impl<'a> CompletionContext<'a> {
                         ast::Item::TypeAlias(it) => it.ty().is_none(),
                         ast::Item::Union(it) => it.record_field_list().is_none(),
                         _ => false,
+                    };
+                    if is_inbetween {
+                        return Some(item);
                     }
-                } else {
-                    false
                 }
-            } else {
-                false
             }
+            None
         };
 
         let kind = path.syntax().ancestors().find_map(|it| {
@@ -1222,7 +1214,8 @@ impl<'a> CompletionContext<'a> {
                     ast::PathExpr(it) => {
                         if let Some(p) = it.syntax().parent() {
                             if ast::ExprStmt::can_cast(p.kind()) {
-                                if inbetween_body_and_decl_check(p) {
+                                if let Some(kind) = inbetween_body_and_decl_check(p) {
+                                    nameref_ctx.keyword = Some(kind);
                                     return Some(None);
                                 }
                             }
@@ -1250,7 +1243,8 @@ impl<'a> CompletionContext<'a> {
                         Some(PathKind::Pat)
                     },
                     ast::MacroCall(it) => {
-                        if inbetween_body_and_decl_check(it.syntax().clone()) {
+                        if let Some(kind) = inbetween_body_and_decl_check(it.syntax().clone()) {
+                            nameref_ctx.keyword = Some(kind);
                             return Some(None);
                         }
 

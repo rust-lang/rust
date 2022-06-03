@@ -108,7 +108,6 @@ fn in_item_list_after_attr() {
 
 #[test]
 fn in_qualified_path() {
-    cov_mark::check!(no_keyword_completion_in_non_trivial_path);
     check(
         r#"crate::$0"#,
         expect![[r#"

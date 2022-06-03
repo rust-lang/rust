@@ -76,26 +76,66 @@ fn after_target_name_in_impl() {
             kw where
         "#]],
     );
-    // FIXME: This should not emit `kw for`
+    check(
+        r"impl Trait f$0",
+        expect![[r#"
+            kw for
+            kw where
+        "#]],
+    );
     check(
         r"impl Trait for Type $0",
         expect![[r#"
-            kw for
             kw where
         "#]],
     );
 }
 
 #[test]
-fn after_struct_name() {
-    // FIXME: This should emit `kw where`
-    check(r"struct Struct $0", expect![[r#""#]]);
-}
-
-#[test]
-fn after_fn_name() {
-    // FIXME: This should emit `kw where`
-    check(r"fn func() $0", expect![[r#""#]]);
+fn completes_where() {
+    check(
+        r"struct Struct $0",
+        expect![[r#"
+        kw where
+    "#]],
+    );
+    check(
+        r"struct Struct $0 {}",
+        expect![[r#"
+        kw where
+    "#]],
+    );
+    // FIXME: This shouldn't be completed here
+    check(
+        r"struct Struct $0 ()",
+        expect![[r#"
+        kw where
+    "#]],
+    );
+    check(
+        r"fn func() $0",
+        expect![[r#"
+        kw where
+    "#]],
+    );
+    check(
+        r"enum Enum $0",
+        expect![[r#"
+        kw where
+    "#]],
+    );
+    check(
+        r"enum Enum $0 {}",
+        expect![[r#"
+        kw where
+    "#]],
+    );
+    check(
+        r"trait Trait $0 {}",
+        expect![[r#"
+        kw where
+    "#]],
+    );
 }
 
 #[test]

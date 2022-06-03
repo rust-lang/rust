@@ -36,7 +36,7 @@ pub(crate) fn complete_item_list(acc: &mut Completions, ctx: &CompletionContext)
     let in_block = matches!(kind, None);
 
     'block: loop {
-        if path_qualifier.is_some() {
+        if ctx.is_non_trivial_path() {
             break 'block;
         }
         if !in_trait_impl {

@@ -21,8 +21,6 @@ use crate::tests::check_pattern_is_applicable;
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub(crate) enum ImmediatePrevSibling {
     IfExpr,
-    TraitDefName,
-    ImplDefType,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -80,17 +78,6 @@ pub(crate) fn determine_prev_sibling(name_like: &ast::NameLike) -> Option<Immedi
                         _ => return None,
                     }
                 }
-            },
-            ast::Trait(it) => if it.assoc_item_list().is_none() {
-                    ImmediatePrevSibling::TraitDefName
-                } else {
-                    return None
-            },
-            ast::Impl(it) => if it.assoc_item_list().is_none()
-                && (it.for_token().is_none() || it.self_ty().is_some()) {
-                    ImmediatePrevSibling::ImplDefType
-                } else {
-                    return None
             },
             _ => return None,
         }
@@ -340,22 +327,6 @@ mod tests {
     #[test]
     fn test_ref_expr_loc() {
         check_location(r"fn my_fn() { let x = &m$0 foo; }", ImmediateLocation::RefExpr);
-    }
-
-    #[test]
-    fn test_impl_prev_sibling() {
-        check_prev_sibling(r"impl A w$0 ", ImmediatePrevSibling::ImplDefType);
-        check_prev_sibling(r"impl A w$0 {}", ImmediatePrevSibling::ImplDefType);
-        check_prev_sibling(r"impl A for A w$0 ", ImmediatePrevSibling::ImplDefType);
-        check_prev_sibling(r"impl A for A w$0 {}", ImmediatePrevSibling::ImplDefType);
-        check_prev_sibling(r"impl A for w$0 {}", None);
-        check_prev_sibling(r"impl A for w$0", None);
-    }
-
-    #[test]
-    fn test_trait_prev_sibling() {
-        check_prev_sibling(r"trait A w$0 ", ImmediatePrevSibling::TraitDefName);
-        check_prev_sibling(r"trait A w$0 {}", ImmediatePrevSibling::TraitDefName);
     }
 
     #[test]
