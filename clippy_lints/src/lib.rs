@@ -171,6 +171,7 @@ mod absurd_extreme_comparisons;
 mod almost_complete_letter_range;
 mod approx_const;
 mod as_conversions;
+mod as_underscore;
 mod asm_syntax;
 mod assertions_on_constants;
 mod assign_ops;
@@ -919,6 +920,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_early_pass(move || Box::new(almost_complete_letter_range::AlmostCompleteLetterRange::new(msrv)));
     store.register_late_pass(|| Box::new(swap_ptr_to_ref::SwapPtrToRef));
     store.register_late_pass(|| Box::new(mismatching_type_param_order::TypeParamMismatch));
+    store.register_late_pass(|| Box::new(as_underscore::AsUnderscore));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 

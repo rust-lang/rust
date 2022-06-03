@@ -37,6 +37,7 @@ store.register_lints(&[
     almost_complete_letter_range::ALMOST_COMPLETE_LETTER_RANGE,
     approx_const::APPROX_CONSTANT,
     as_conversions::AS_CONVERSIONS,
+    as_underscore::AS_UNDERSCORE,
     asm_syntax::INLINE_ASM_X86_ATT_SYNTAX,
     asm_syntax::INLINE_ASM_X86_INTEL_SYNTAX,
     assertions_on_constants::ASSERTIONS_ON_CONSTANTS,
