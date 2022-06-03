@@ -39,13 +39,7 @@ pub(crate) enum TypeAnnotation {
 /// from which file the nodes are.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum ImmediateLocation {
-    Impl,
-    Trait,
-    TupleField,
     RefExpr,
-    IdentPat,
-    StmtList,
-    ItemList,
     TypeBound,
     /// Original file ast node
     TypeAnnotation(TypeAnnotation),
@@ -140,30 +134,14 @@ pub(crate) fn determine_location(
             _ => parent,
         },
         // SourceFile
-        None => {
-            return match node.kind() {
-                MACRO_ITEMS | SOURCE_FILE => Some(ImmediateLocation::ItemList),
-                _ => None,
-            }
-        }
+        None => return None,
     };
 
     let res = match_ast! {
         match parent {
-            ast::IdentPat(_) => ImmediateLocation::IdentPat,
-            ast::StmtList(_) => ImmediateLocation::StmtList,
-            ast::SourceFile(_) => ImmediateLocation::ItemList,
-            ast::ItemList(_) => ImmediateLocation::ItemList,
             ast::RefExpr(_) => ImmediateLocation::RefExpr,
-            ast::TupleField(_) => ImmediateLocation::TupleField,
-            ast::TupleFieldList(_) => ImmediateLocation::TupleField,
             ast::TypeBound(_) => ImmediateLocation::TypeBound,
             ast::TypeBoundList(_) => ImmediateLocation::TypeBound,
-            ast::AssocItemList(it) => match it.syntax().parent().map(|it| it.kind()) {
-                Some(IMPL) => ImmediateLocation::Impl,
-                Some(TRAIT) => ImmediateLocation::Trait,
-                _ => return None,
-            },
             ast::GenericArgList(_) => sema
                 .find_node_at_offset_with_macros(original_file, offset)
                 .map(ImmediateLocation::GenericArgList)?,
@@ -360,53 +338,8 @@ mod tests {
     }
 
     #[test]
-    fn test_trait_loc() {
-        check_location(r"trait A { f$0 }", ImmediateLocation::Trait);
-        check_location(r"trait A { #[attr] f$0 }", ImmediateLocation::Trait);
-        check_location(r"trait A { f$0 fn f() {} }", ImmediateLocation::Trait);
-        check_location(r"trait A { fn f() {} f$0 }", ImmediateLocation::Trait);
-        check_location(r"trait A$0 {}", None);
-        check_location(r"trait A { fn f$0 }", None);
-    }
-
-    #[test]
-    fn test_impl_loc() {
-        check_location(r"impl A { f$0 }", ImmediateLocation::Impl);
-        check_location(r"impl A { #[attr] f$0 }", ImmediateLocation::Impl);
-        check_location(r"impl A { f$0 fn f() {} }", ImmediateLocation::Impl);
-        check_location(r"impl A { fn f() {} f$0 }", ImmediateLocation::Impl);
-        check_location(r"impl A$0 {}", None);
-        check_location(r"impl A { fn f$0 }", None);
-    }
-
-    #[test]
-    fn test_block_expr_loc() {
-        check_location(r"fn my_fn() { let a = 2; f$0 }", ImmediateLocation::StmtList);
-        check_location(r"fn my_fn() { f$0 f }", ImmediateLocation::StmtList);
-    }
-
-    #[test]
-    fn test_ident_pat_loc() {
-        check_location(r"fn my_fn(m$0) {}", ImmediateLocation::IdentPat);
-        check_location(r"fn my_fn() { let m$0 }", ImmediateLocation::IdentPat);
-        check_location(r"fn my_fn(&m$0) {}", ImmediateLocation::IdentPat);
-        check_location(r"fn my_fn() { let &m$0 }", ImmediateLocation::IdentPat);
-    }
-
-    #[test]
     fn test_ref_expr_loc() {
         check_location(r"fn my_fn() { let x = &m$0 foo; }", ImmediateLocation::RefExpr);
-    }
-
-    #[test]
-    fn test_item_list_loc() {
-        check_location(r"i$0", ImmediateLocation::ItemList);
-        check_location(r"#[attr] i$0", ImmediateLocation::ItemList);
-        check_location(r"fn f() {} i$0", ImmediateLocation::ItemList);
-        check_location(r"mod foo { f$0 }", ImmediateLocation::ItemList);
-        check_location(r"mod foo { #[attr] f$0 }", ImmediateLocation::ItemList);
-        check_location(r"mod foo { fn f() {} f$0 }", ImmediateLocation::ItemList);
-        check_location(r"mod foo$0 {}", None);
     }
 
     #[test]

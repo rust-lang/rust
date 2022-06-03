@@ -334,14 +334,6 @@ impl<'a> CompletionContext<'a> {
         self.dot_receiver().is_some()
     }
 
-    pub(crate) fn expects_assoc_item(&self) -> bool {
-        matches!(self.completion_location, Some(ImmediateLocation::Trait | ImmediateLocation::Impl))
-    }
-
-    pub(crate) fn expects_item(&self) -> bool {
-        matches!(self.completion_location, Some(ImmediateLocation::ItemList))
-    }
-
     // FIXME: This shouldn't exist
     pub(crate) fn expects_generic_arg(&self) -> bool {
         matches!(self.completion_location, Some(ImmediateLocation::GenericArgList(_)))
