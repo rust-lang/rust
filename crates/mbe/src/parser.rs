@@ -135,6 +135,14 @@ fn next_op<'a>(first: &tt::TokenTree, src: &mut TtIter<'a>, mode: Mode) -> Resul
                         let id = lit.id;
                         Op::Var { name, kind, id }
                     }
+                    tt::Leaf::Punct(punct @ tt::Punct { char: '$', .. }) => match mode {
+                        Mode::Pattern => {
+                            return Err(ParseError::unexpected(
+                                "`$$` is not allowed on the pattern side",
+                            ))
+                        }
+                        Mode::Template => Op::Leaf(tt::Leaf::Punct(*punct)),
+                    },
                     tt::Leaf::Punct(_) | tt::Leaf::Literal(_) => {
                         return Err(ParseError::expected("expected ident"))
                     }
