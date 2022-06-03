@@ -183,6 +183,16 @@ message_on_add = """\
 """
 message_on_remove = "Issue #{number}'s nomination request has been removed."
 
+[notify-zulip."I-types-nominated"]
+zulip_stream = 326866 # #T-types/nominated
+topic = "#{number}: {title}"
+message_on_add = """\
+@*T-types* issue #{number} "{title}" has been nominated for team discussion.
+"""
+message_on_remove = "Issue #{number}'s nomination has been removed. Thanks all for participating!"
+message_on_close = "Issue #{number} has been closed. Thanks for participating!"
+message_on_reopen = "Issue #{number} has been reopened. Pinging @*T-types*."
+
 [notify-zulip."A-edition-2021"]
 required_labels = ["C-bug"]
 zulip_stream = 268952 # #edition 2021
