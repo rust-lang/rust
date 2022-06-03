@@ -430,7 +430,7 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
                         None,
                     )
                     .ok()
-                    .and_then(|val| Some(rustc_middle::mir::ConstantKind::from_value(val, ty)))?;
+                    .map(|val| rustc_middle::mir::ConstantKind::from_value(val, ty))?;
                 let result = miri_to_const(self.lcx.tcx, result);
                 if result.is_some() {
                     self.needed_resolution = true;
@@ -581,16 +581,6 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
     }
 }
 
-fn try_const_to_constant<'tcx>(tcx: TyCtxt<'tcx>, c: ty::Const<'tcx>) -> Option<Constant> {
-    match c.kind() {
-        ty::ConstKind::Value(valtree) => {
-            let const_val = tcx.valtree_to_const_val((c.ty(), valtree));
-            miri_to_const(tcx, mir::ConstantKind::from_value(const_val, c.ty()))
-        },
-        _ => None,
-    }
-}
-
 pub fn miri_to_const<'tcx>(tcx: TyCtxt<'tcx>, result: mir::ConstantKind<'tcx>) -> Option<Constant> {
     use rustc_middle::mir::interpret::ConstValue;
     match result {
@@ -629,8 +619,8 @@ pub fn miri_to_const<'tcx>(tcx: TyCtxt<'tcx>, result: mir::ConstantKind<'tcx>) -
         },
         mir::ConstantKind::Val(ConstValue::ByRef { alloc, offset: _ }, _) => match result.ty().kind() {
             ty::Array(sub_type, len) => match sub_type.kind() {
-                ty::Float(FloatTy::F32) => match try_const_to_constant(tcx, *len) {
-                    Some(Constant::Int(len)) => alloc
+                ty::Float(FloatTy::F32) => match len.try_eval_usize(tcx, ty::ParamEnv::empty()) {
+                    Some(len) => alloc
                         .inner()
                         .inspect_with_uninit_and_ptr_outside_interpreter(0..(4 * len as usize))
                         .to_owned()
@@ -644,8 +634,8 @@ pub fn miri_to_const<'tcx>(tcx: TyCtxt<'tcx>, result: mir::ConstantKind<'tcx>) -
                         .map(Constant::Vec),
                     _ => None,
                 },
-                ty::Float(FloatTy::F64) => match try_const_to_constant(tcx, *len) {
-                    Some(Constant::Int(len)) => alloc
+                ty::Float(FloatTy::F64) => match len.try_eval_usize(tcx, ty::ParamEnv::empty()) {
+                    Some(len) => alloc
                         .inner()
                         .inspect_with_uninit_and_ptr_outside_interpreter(0..(8 * len as usize))
                         .to_owned()

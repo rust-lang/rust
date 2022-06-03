@@ -626,9 +626,8 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
                 let _ = write!(self.out, "{:x}_", bits);
             }
 
-            // HACK(eddyb) because `ty::Const` only supports sized values (for now),
-            // we can't use dereference the const + supporting `str`, we have to specially
-            // handle `&str` and include both `&` ("R") and `str` ("e") prefixes.
+            // FIXME(valtrees): Remove the special case for `str`
+            // here and fully support unsized constants.
             ty::Ref(_, inner_ty, mutbl) => {
                 self.push(match mutbl {
                     hir::Mutability::Not => "R",

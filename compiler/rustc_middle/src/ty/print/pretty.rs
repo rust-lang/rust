@@ -1530,7 +1530,9 @@ pub trait PrettyPrinter<'tcx>:
         }
 
         // fallback
-        if valtree != ty::ValTree::zst() {
+        if valtree == ty::ValTree::zst() {
+            p!(write("<ZST>"));
+        } else {
             p!(write("{:?}", valtree));
         }
         if print_ty {

@@ -2,9 +2,9 @@ use crate::build;
 pub(crate) use crate::build::expr::as_constant::lit_to_mir_constant;
 use crate::build::expr::as_place::PlaceBuilder;
 use crate::build::scope::DropKind;
-use crate::thir::constant::parse_float_into_scalar;
 use crate::thir::pattern::pat_from_hir;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_apfloat::ieee::{Double, Single};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -15,6 +15,7 @@ use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_middle::hir::place::PlaceBase as HirPlaceBase;
 use rustc_middle::middle::region;
 use rustc_middle::mir::interpret::ConstValue;
+use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::*;
 use rustc_middle::thir::{BindingMode, Expr, ExprId, LintLevel, LocalVarId, PatKind, Thir};
 use rustc_middle::ty::subst::Subst;
@@ -1091,6 +1092,62 @@ fn parse_float_into_constval<'tcx>(
     neg: bool,
 ) -> Option<ConstValue<'tcx>> {
     parse_float_into_scalar(num, float_ty, neg).map(ConstValue::Scalar)
+}
+
+pub(crate) fn parse_float_into_scalar(
+    num: Symbol,
+    float_ty: ty::FloatTy,
+    neg: bool,
+) -> Option<Scalar> {
+    let num = num.as_str();
+    match float_ty {
+        ty::FloatTy::F32 => {
+            let Ok(rust_f) = num.parse::<f32>() else { return None };
+            let mut f = num.parse::<Single>().unwrap_or_else(|e| {
+                panic!("apfloat::ieee::Single failed to parse `{}`: {:?}", num, e)
+            });
+
+            assert!(
+                u128::from(rust_f.to_bits()) == f.to_bits(),
+                "apfloat::ieee::Single gave different result for `{}`: \
+                 {}({:#x}) vs Rust's {}({:#x})",
+                rust_f,
+                f,
+                f.to_bits(),
+                Single::from_bits(rust_f.to_bits().into()),
+                rust_f.to_bits()
+            );
+
+            if neg {
+                f = -f;
+            }
+
+            Some(Scalar::from_f32(f))
+        }
+        ty::FloatTy::F64 => {
+            let Ok(rust_f) = num.parse::<f64>() else { return None };
+            let mut f = num.parse::<Double>().unwrap_or_else(|e| {
+                panic!("apfloat::ieee::Double failed to parse `{}`: {:?}", num, e)
+            });
+
+            assert!(
+                u128::from(rust_f.to_bits()) == f.to_bits(),
+                "apfloat::ieee::Double gave different result for `{}`: \
+                 {}({:#x}) vs Rust's {}({:#x})",
+                rust_f,
+                f,
+                f.to_bits(),
+                Double::from_bits(rust_f.to_bits().into()),
+                rust_f.to_bits()
+            );
+
+            if neg {
+                f = -f;
+            }
+
+            Some(Scalar::from_f64(f))
+        }
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////

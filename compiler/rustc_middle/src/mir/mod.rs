@@ -2405,7 +2405,7 @@ impl<'tcx> Operand<'tcx> {
         Operand::Constant(Box::new(Constant {
             span,
             user_ty: None,
-            literal: ConstantKind::Ty(ty::Const::zero_sized(tcx, ty)),
+            literal: ConstantKind::Val(ConstValue::zst(), ty),
         }))
     }
 
@@ -2981,16 +2981,6 @@ impl<'tcx> ConstantKind<'tcx> {
         }
     }
 
-    pub fn try_val(&self, tcx: TyCtxt<'tcx>) -> Option<ConstValue<'tcx>> {
-        match self {
-            ConstantKind::Ty(c) => match c.kind() {
-                ty::ConstKind::Value(v) => Some(tcx.valtree_to_const_val((c.ty(), v))),
-                _ => None,
-            },
-            ConstantKind::Val(v, _) => Some(*v),
-        }
-    }
-
     #[inline]
     pub fn try_to_value(self, tcx: TyCtxt<'tcx>) -> Option<interpret::ConstValue<'tcx>> {
         match self {
@@ -3548,6 +3538,7 @@ fn comma_sep<'tcx>(fmt: &mut Formatter<'_>, elems: Vec<ConstantKind<'tcx>>) -> f
     Ok(())
 }
 
+// FIXME: Move that into `mir/pretty.rs`.
 fn pretty_print_const_value<'tcx>(
     ct: ConstValue<'tcx>,
     ty: Ty<'tcx>,

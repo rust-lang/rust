@@ -11,9 +11,6 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Evaluates a constant without providing any substitutions. This is useful to evaluate consts
     /// that can't take any generic arguments like statics, const items or enum discriminants. If a
     /// generic parameter is used within the constant `ErrorHandled::ToGeneric` will be returned.
-    ///
-    /// Note: Returns a `ConstValue`, which isn't supposed to be used in the type system. In order to
-    /// evaluate to a type-system level constant value use `const_eval_poly_for_typeck`.
     #[instrument(skip(self), level = "debug")]
     pub fn const_eval_poly(self, def_id: DefId) -> EvalToConstValueResult<'tcx> {
         // In some situations def_id will have substitutions within scope, but they aren't allowed
@@ -26,23 +23,6 @@ impl<'tcx> TyCtxt<'tcx> {
         let param_env = self.param_env(def_id).with_reveal_all_normalized(self);
         self.const_eval_global_id(param_env, cid, None)
     }
-
-    /// Evaluates a constant without providing any substitutions. This is useful to evaluate consts
-    /// that can't take any generic arguments like statics, const items or enum discriminants. If a
-    /// generic parameter is used within the constant `ErrorHandled::ToGeneric` will be returned.
-    #[instrument(skip(self), level = "debug")]
-    pub fn const_eval_poly_for_typeck(self, def_id: DefId) -> EvalToValTreeResult<'tcx> {
-        // In some situations def_id will have substitutions within scope, but they aren't allowed
-        // to be used. So we can't use `Instance::mono`, instead we feed unresolved substitutions
-        // into `const_eval` which will return `ErrorHandled::ToGeneric` if any of them are
-        // encountered.
-        let substs = InternalSubsts::identity_for_item(self, def_id);
-        let instance = ty::Instance::new(def_id, substs);
-        let cid = GlobalId { instance, promoted: None };
-        let param_env = self.param_env(def_id).with_reveal_all_normalized(self);
-        self.const_eval_global_id_for_typeck(param_env, cid, None)
-    }
-
     /// Resolves and evaluates a constant.
     ///
     /// The constant can be located on a trait like `<A as B>::C`, in which case the given
