@@ -118,6 +118,7 @@ pub struct FnCtxt<'a, 'tcx> {
 
     /// True if the return type has an Opaque type
     pub(super) return_type_has_opaque: bool,
+    constness: ty::ConstnessArg,
 }
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -145,6 +146,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             inh,
             return_type_pre_known: true,
             return_type_has_opaque: false,
+            constness: {
+                if body_id.is_owner() {
+                    let did = body_id.expect_owner();
+                    if inh.tcx.is_const_fn_raw(did.to_def_id()) || inh.tcx.is_const_default_method(did.to_def_id()) || inh.tcx.def_kind(did.to_def_id()) == hir::def::DefKind::Const {
+                        ty::ConstnessArg::Param
+                    } else {
+                        ty::ConstnessArg::Not
+                    }
+                } else {
+                    // TODO: check correctness
+                    ty::ConstnessArg::Not
+                }
+            },
         }
     }
 
@@ -162,6 +176,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub fn errors_reported_since_creation(&self) -> bool {
         self.tcx.sess.err_count() > self.err_count_on_creation
+    }
+
+    pub fn constness(&self) -> ty::ConstnessArg {
+        self.constness
     }
 }
 

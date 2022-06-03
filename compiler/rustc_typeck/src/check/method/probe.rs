@@ -1549,7 +1549,9 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     let predicate = ty::Binder::dummy(trait_ref).to_predicate(self.tcx);
                     parent_pred = Some(predicate);
                     let obligation = traits::Obligation::new(cause, self.param_env, predicate);
+                    trace!(?obligation);
                     if !self.predicate_may_hold(&obligation) {
+                        trace!("predicate does not hold");
                         result = ProbeResult::NoMatch;
                         if self.probe(|_| {
                             match self.select_trait_candidate(trait_ref) {
@@ -1839,7 +1841,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 };
                 self.next_const_var(self.tcx.type_of(param.def_id), origin).into()
             }
-            GenericParamDefKind::Constness => ty::ConstnessArg::Param.into(),
+            GenericParamDefKind::Constness => self.fcx.constness().into(),
         })
     }
 
