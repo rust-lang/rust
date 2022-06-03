@@ -1907,6 +1907,32 @@ impl<T> RawIterRange<T> {
             }
         }
     }
+
+    /// # Safety
+    /// If DO_CHECK_PTR_RANGE is false, caller must ensure that we never try to iterate
+    /// after yielding all elements.
+    #[cfg_attr(feature = "inline-more", inline)]
+    unsafe fn next_impl<const DO_CHECK_PTR_RANGE: bool>(&mut self) -> Option<Bucket<T>> {
+        loop {
+            if let Some(index) = self.current_group.lowest_set_bit() {
+                self.current_group = self.current_group.remove_lowest_bit();
+                return Some(self.data.next_n(index));
+            }
+
+            if DO_CHECK_PTR_RANGE && self.next_ctrl >= self.end {
+                return None;
+            }
+
+            // We might read past self.end up to the next group boundary,
+            // but this is fine because it only occurs on tables smaller
+            // than the group size where the trailing control bytes are all
+            // EMPTY. On larger tables self.end is guaranteed to be aligned
+            // to the group size (since tables are power-of-two sized).
+            self.current_group = Group::load_aligned(self.next_ctrl).match_full();
+            self.data = self.data.next_n(Group::WIDTH);
+            self.next_ctrl = self.next_ctrl.add(Group::WIDTH);
+        }
+    }
 }
 
 // We make raw iterators unconditionally Send and Sync, and let the PhantomData
@@ -1932,25 +1958,8 @@ impl<T> Iterator for RawIterRange<T> {
     #[cfg_attr(feature = "inline-more", inline)]
     fn next(&mut self) -> Option<Bucket<T>> {
         unsafe {
-            loop {
-                if let Some(index) = self.current_group.lowest_set_bit() {
-                    self.current_group = self.current_group.remove_lowest_bit();
-                    return Some(self.data.next_n(index));
-                }
-
-                if self.next_ctrl >= self.end {
-                    return None;
-                }
-
-                // We might read past self.end up to the next group boundary,
-                // but this is fine because it only occurs on tables smaller
-                // than the group size where the trailing control bytes are all
-                // EMPTY. On larger tables self.end is guaranteed to be aligned
-                // to the group size (since tables are power-of-two sized).
-                self.current_group = Group::load_aligned(self.next_ctrl).match_full();
-                self.data = self.data.next_n(Group::WIDTH);
-                self.next_ctrl = self.next_ctrl.add(Group::WIDTH);
-            }
+            // SAFETY: We set checker flag to true.
+            self.next_impl::<true>()
         }
     }
 
@@ -2128,16 +2137,22 @@ impl<T> Iterator for RawIter<T> {
 
     #[cfg_attr(feature = "inline-more", inline)]
     fn next(&mut self) -> Option<Bucket<T>> {
-        if let Some(b) = self.iter.next() {
-            self.items -= 1;
-            Some(b)
-        } else {
-            // We don't check against items == 0 here to allow the
-            // compiler to optimize away the item count entirely if the
-            // iterator length is never queried.
-            debug_assert_eq!(self.items, 0);
-            None
+        // Inner iterator iterates over buckets
+        // so it can do unnecessary work if we already yielded all items.
+        if self.items == 0 {
+            return None;
         }
+
+        let nxt = unsafe {
+            // SAFETY: We check number of items to yield using `items` field.
+            self.iter.next_impl::<false>()
+        };
+
+        if nxt.is_some() {
+            self.items -= 1;
+        }
+
+        nxt
     }
 
     #[inline]
