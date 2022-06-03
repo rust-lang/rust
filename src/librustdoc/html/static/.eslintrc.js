@@ -75,5 +75,6 @@ module.exports = {
         "no-import-assign": "error",
         "no-self-compare": "error",
         "no-template-curly-in-string": "error",
+        "block-scoped-var": "error",
     }
 };
