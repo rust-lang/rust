@@ -619,7 +619,7 @@ pub fn miri_to_const<'tcx>(tcx: TyCtxt<'tcx>, result: mir::ConstantKind<'tcx>) -
         },
         mir::ConstantKind::Val(ConstValue::ByRef { alloc, offset: _ }, _) => match result.ty().kind() {
             ty::Array(sub_type, len) => match sub_type.kind() {
-                ty::Float(FloatTy::F32) => match len.try_eval_usize(tcx, ty::ParamEnv::empty()) {
+                ty::Float(FloatTy::F32) => match len.to_valtree().try_to_machine_usize(tcx) {
                     Some(len) => alloc
                         .inner()
                         .inspect_with_uninit_and_ptr_outside_interpreter(0..(4 * len as usize))
@@ -634,7 +634,7 @@ pub fn miri_to_const<'tcx>(tcx: TyCtxt<'tcx>, result: mir::ConstantKind<'tcx>) -
                         .map(Constant::Vec),
                     _ => None,
                 },
-                ty::Float(FloatTy::F64) => match len.try_eval_usize(tcx, ty::ParamEnv::empty()) {
+                ty::Float(FloatTy::F64) => match len.to_valtree().try_to_machine_usize(tcx) {
                     Some(len) => alloc
                         .inner()
                         .inspect_with_uninit_and_ptr_outside_interpreter(0..(8 * len as usize))
