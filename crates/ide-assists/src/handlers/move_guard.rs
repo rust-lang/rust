@@ -106,6 +106,10 @@ pub(crate) fn move_arm_cond_to_match_guard(acc: &mut Assists, ctx: &AssistContex
             None
         }
     })?;
+    if ctx.offset() > if_expr.then_branch()?.syntax().text_range().start() {
+        return None;
+    }
+
     let replace_node = replace_node.unwrap_or_else(|| if_expr.syntax().clone());
     let needs_dedent = replace_node != *if_expr.syntax();
     let (conds_blocks, tail) = parse_if_chain(if_expr)?;
@@ -323,7 +327,7 @@ fn main() {
             r#"
 fn main() {
     match 92 {
-        x => if x > 10 { $0false },
+        x => if x > 10$0 { false },
         _ => true
     }
 }
@@ -457,7 +461,7 @@ fn main() {
             r#"
 fn main() {
     match 92 {
-        x => if let 62 = x && true { $0false },
+        x => if let 62 = x $0&& true { false },
         _ => true
     }
 }
@@ -480,7 +484,7 @@ fn main() {
             r#"
 fn main() {
     match 92 {
-        x => if x > 10 { $0 },
+        x => if x $0> 10 {  },
         _ => true
     }
 }
@@ -503,8 +507,8 @@ fn main() {
             r#"
 fn main() {
     match 92 {
-        x => if x > 10 {
-            92;$0
+        x => if$0 x > 10 {
+            92;
             false
         },
         _ => true
@@ -533,8 +537,8 @@ fn main() {
 fn main() {
     match 92 {
         x => {
-            if x > 10 {
-                92;$0
+            if x > $010 {
+                92;
                 false
             }
         }
@@ -563,7 +567,7 @@ fn main() {
             r#"
 fn main() {
     match 92 {
-        x => if x > 10 {$0
+        x => if x > $010 {
             false
         } else {
             true
@@ -593,7 +597,7 @@ fn main() {
 fn main() {
     match 92 {
         x => {
-            if x > 10 {$0
+            if x $0> 10 {
                 false
             } else {
                 true
@@ -622,7 +626,7 @@ fn main() {
             r#"
 fn main() {
     match 92 {
-        x => if x > 10 { $0 } else { },
+        x => if x > $010 {  } else { },
         _ => true
     }
 }
@@ -646,8 +650,8 @@ fn main() {
             r#"
 fn main() {
     match 92 {
-        x => if x > 10 {
-            92;$0
+        x => if$0 x > 10 {
+            92;
             false
         } else {
             true
@@ -679,7 +683,7 @@ fn main() {
             r#"
 fn main() {
     match 92 {
-        x => if x > 10 {$0
+        x => if x $0> 10 {
             false
         } else {
             42;
@@ -713,7 +717,7 @@ fn main() {
 fn main() {
     match 92 {
         x => {
-            if x > 10 {$0
+            if x > $010 {
                 false
             } else {
                 42;
@@ -748,7 +752,7 @@ fn main() {
     match 92 {
         3 => true,
         x => {
-            if x > 10 {$0
+            if x > $010 {
                 false
             } else {
                 92;
@@ -781,7 +785,7 @@ fn main() {
 fn main() {
     match 92 {
         3 => true,
-        x => if x > 10 {$0
+        x => if x > $010 {
             false
         } else {
             92;
@@ -813,7 +817,7 @@ fn main() {
 fn main() {
     match 92 {
         3 => true,
-        x => if x > 10 {$0
+        x => if x $0> 10 {
             false
         } else if x > 5 {
             true
@@ -849,7 +853,7 @@ fn main() {
     match 92 {
         3 => true,
         x => {
-            if x > 10 {$0
+            if x > $010 {
                 false
             } else if x > 5 {
                 true
@@ -885,7 +889,7 @@ fn main() {
 fn main() {
     match 92 {
         3 => 0,
-        x => if x > 10 {$0
+        x => if x $0> 10 {
             1
         } else if x > 5 {
             2
@@ -923,7 +927,7 @@ fn main() {
 fn main() {
     match 92 {
         3 => 0,
-        x => if x > 10 {$0
+        x => if x $0> 10 {
             1
         } else if x > 5 {
             2
@@ -960,7 +964,7 @@ fn main() {
 fn main() {
     match 92 {
         3 => 0,
-        x => if x > 10 {$0
+        x => if x > $010 {
             1
         } else if x > 5 {
             2
