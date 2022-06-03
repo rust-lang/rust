@@ -1,7 +1,10 @@
+use std::cmp::Reverse;
+
+use hir::{db::HirDatabase, Module};
 use ide_db::{
     helpers::mod_path_to_ast,
     imports::{
-        import_assets::{ImportAssets, ImportCandidate},
+        import_assets::{ImportAssets, ImportCandidate, LocatedImport},
         insert_use::{insert_use, ImportScope},
     },
 };
@@ -107,6 +110,19 @@ pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext) -> Option<()> 
 
     // we aren't interested in different namespaces
     proposed_imports.dedup_by(|a, b| a.import_path == b.import_path);
+
+    let current_node = match ctx.covering_element() {
+        NodeOrToken::Node(node) => Some(node),
+        NodeOrToken::Token(token) => token.parent(),
+    };
+
+    let current_module =
+        current_node.as_ref().and_then(|node| ctx.sema.scope(node)).map(|scope| scope.module());
+
+    // prioritize more relevant imports
+    proposed_imports
+        .sort_by_key(|import| Reverse(relevance_score(ctx, import, current_module.as_ref())));
+
     for import in proposed_imports {
         acc.add_group(
             &group_label,
@@ -158,11 +174,135 @@ fn group_label(import_candidate: &ImportCandidate) -> GroupLabel {
     GroupLabel(name)
 }
 
+/// Determine how relevant a given import is in the current context. Higher scores are more
+/// relevant.
+fn relevance_score(
+    ctx: &AssistContext,
+    import: &LocatedImport,
+    current_module: Option<&Module>,
+) -> i32 {
+    let mut score = 0;
+
+    let db = ctx.db();
+
+    let item_module = match import.item_to_import {
+        hir::ItemInNs::Types(item) | hir::ItemInNs::Values(item) => item.module(db),
+        hir::ItemInNs::Macros(makro) => Some(makro.module(db)),
+    };
+
+    match item_module.zip(current_module) {
+        // get the distance between the imported path and the current module
+        // (prefer items that are more local)
+        Some((item_module, current_module)) => {
+            score -= module_distance_hueristic(db, &current_module, &item_module) as i32;
+        }
+
+        // could not find relevant modules, so just use the length of the path as an estimate
+        None => return -(2 * import.import_path.len() as i32),
+    }
+
+    score
+}
+
+/// A heuristic that gives a higher score to modules that are more separated.
+fn module_distance_hueristic(db: &dyn HirDatabase, current: &Module, item: &Module) -> usize {
+    // get the path starting from the item to the respective crate roots
+    let mut current_path = current.path_to_root(db);
+    let mut item_path = item.path_to_root(db);
+
+    // we want paths going from the root to the item
+    current_path.reverse();
+    item_path.reverse();
+
+    // length of the common prefix of the two paths
+    let prefix_length = current_path.iter().zip(&item_path).take_while(|(a, b)| a == b).count();
+
+    // how many modules differ between the two paths (all modules, removing any duplicates)
+    let distinct_length = current_path.len() + item_path.len() - 2 * prefix_length;
+
+    // cost of importing from another crate
+    let crate_boundary_cost = if current.krate() == item.krate() {
+        0
+    } else if item.krate().is_builtin(db) {
+        2
+    } else {
+        4
+    };
+
+    distinct_length + crate_boundary_cost
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    use crate::tests::{check_assist, check_assist_not_applicable, check_assist_target};
+    use hir::Semantics;
+    use ide_db::{
+        assists::AssistResolveStrategy,
+        base_db::{fixture::WithFixture, FileRange},
+        RootDatabase,
+    };
+
+    use crate::tests::{
+        check_assist, check_assist_not_applicable, check_assist_target, TEST_CONFIG,
+    };
+
+    fn check_auto_import_order(before: &str, order: &[&str]) {
+        let (db, file_id, range_or_offset) = RootDatabase::with_range_or_offset(before);
+        let frange = FileRange { file_id, range: range_or_offset.into() };
+
+        let sema = Semantics::new(&db);
+        let config = TEST_CONFIG;
+        let ctx = AssistContext::new(sema, &config, frange);
+        let mut acc = Assists::new(&ctx, AssistResolveStrategy::All);
+        auto_import(&mut acc, &ctx);
+        let assists = acc.finish();
+
+        let labels = assists.iter().map(|assist| assist.label.to_string()).collect::<Vec<_>>();
+
+        assert_eq!(labels, order);
+    }
+
+    #[test]
+    fn prefer_shorter_paths() {
+        let before = r"
+//- /main.rs crate:main deps:foo,bar
+HashMap$0::new();
+
+//- /lib.rs crate:foo
+pub mod collections { pub struct HashMap; }
+
+//- /lib.rs crate:bar
+pub mod collections { pub mod hash_map { pub struct HashMap; } }
+        ";
+
+        check_auto_import_order(
+            before,
+            &["Import `foo::collections::HashMap`", "Import `bar::collections::hash_map::HashMap`"],
+        )
+    }
+
+    #[test]
+    fn prefer_same_crate() {
+        let before = r"
+//- /main.rs crate:main deps:foo
+HashMap$0::new();
+
+mod collections {
+    pub mod hash_map {
+        pub struct HashMap;
+    }
+}
+
+//- /lib.rs crate:foo
+pub struct HashMap;
+        ";
+
+        check_auto_import_order(
+            before,
+            &["Import `collections::hash_map::HashMap`", "Import `foo::HashMap`"],
+        )
+    }
 
     #[test]
     fn not_applicable_if_scope_inside_macro() {
