@@ -592,7 +592,7 @@ pub const unsafe fn align_of_val_raw<T: ?Sized>(val: *const T) -> usize {
 #[stable(feature = "needs_drop", since = "1.21.0")]
 #[rustc_const_stable(feature = "const_mem_needs_drop", since = "1.36.0")]
 #[rustc_diagnostic_item = "needs_drop"]
-pub const fn needs_drop<T>() -> bool {
+pub const fn needs_drop<T: ?Sized>() -> bool {
     intrinsics::needs_drop::<T>()
 }
 
