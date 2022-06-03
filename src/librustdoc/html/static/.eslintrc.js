@@ -71,5 +71,6 @@ module.exports = {
         "no-duplicate-case": "error",
         "no-ex-assign": "error",
         "no-fallthrough": "error",
+        "no-invalid-regexp": "error",
     }
 };
