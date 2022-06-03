@@ -184,7 +184,9 @@ impl<T: ?Sized> *mut T {
         T: Sized,
     {
         // FIXME(strict_provenance_magic): I am magic and should be a compiler intrinsic.
-        self as usize
+        // SAFETY: Pointer-to-integer transmutes are valid (if you are okay with losing the
+        // provenance).
+        unsafe { mem::transmute(self) }
     }
 
     /// Gets the "address" portion of the pointer, and 'exposes' the "provenance" part for future
