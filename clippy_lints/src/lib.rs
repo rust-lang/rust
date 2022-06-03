@@ -312,6 +312,7 @@ mod needless_arbitrary_self_type;
 mod needless_bitwise_bool;
 mod needless_bool;
 mod needless_borrowed_ref;
+mod needless_braces_on_range_literal;
 mod needless_continue;
 mod needless_for_each;
 mod needless_late_init;
@@ -746,6 +747,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_early_pass(|| Box::new(collapsible_if::CollapsibleIf));
     store.register_early_pass(|| Box::new(items_after_statements::ItemsAfterStatements));
     store.register_early_pass(|| Box::new(precedence::Precedence));
+    store.register_early_pass(|| Box::new(needless_braces_on_range_literal::NeedlessBracesOnRangeLiteral));
     store.register_early_pass(|| Box::new(needless_continue::NeedlessContinue));
     store.register_early_pass(|| Box::new(redundant_else::RedundantElse));
     store.register_late_pass(|| Box::new(create_dir::CreateDir));

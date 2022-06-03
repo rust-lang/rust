@@ -1,0 +1,16 @@
+error: needless braces on range literal can be removed
+  --> $DIR/needless_braces_on_range_literal.rs:8:13
+   |
+LL |     let _ = ('a')..=('z');
+   |             ^^^^^ help: try: `'a'`
+   |
+   = note: `-D clippy::needless-braces-on-range-literal` implied by `-D warnings`
+
+error: needless braces on range literal can be removed
+  --> $DIR/needless_braces_on_range_literal.rs:8:21
+   |
+LL |     let _ = ('a')..=('z');
+   |                     ^^^^^ help: try: `'z'`
+
+error: aborting due to 2 previous errors
+
