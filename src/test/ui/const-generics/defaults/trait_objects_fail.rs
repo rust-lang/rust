@@ -26,5 +26,5 @@ fn main() {
     foo(&10_u32);
     //~^ error: the trait bound `u32: Trait` is not satisfied
     bar(&true);
-    //~^ error: the trait bound `bool: Traitor<{_: u8}, {_: u8}>` is not satisfied
+    //~^ error: the trait bound `bool: Traitor<{_: u8}>` is not satisfied
 }

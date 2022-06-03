@@ -149,7 +149,7 @@ pub trait Printer<'tcx>: Sized {
                         // on top of the same path, but without its own generics.
                         _ => {
                             if !generics.params.is_empty() && substs.len() >= generics.count() {
-                                let args = self.generic_args_to_print(generics, substs);
+                                let args = generics.own_substs_no_defaults(self.tcx(), substs);
                                 return self.path_generic_args(
                                     |cx| cx.print_def_path(def_id, parent_substs),
                                     args,
@@ -182,43 +182,6 @@ pub trait Printer<'tcx>: Sized {
                 )
             }
         }
-    }
-
-    fn generic_args_to_print(
-        &self,
-        generics: &'tcx ty::Generics,
-        substs: &'tcx [GenericArg<'tcx>],
-    ) -> &'tcx [GenericArg<'tcx>] {
-        let mut own_params = generics.parent_count..generics.count();
-
-        // Don't print args for `Self` parameters (of traits).
-        if generics.has_self && own_params.start == 0 {
-            own_params.start = 1;
-        }
-
-        // Don't print args that are the defaults of their respective parameters.
-        own_params.end -= generics
-            .params
-            .iter()
-            .rev()
-            .take_while(|param| match param.kind {
-                ty::GenericParamDefKind::Lifetime => false,
-                ty::GenericParamDefKind::Type { has_default, .. } => {
-                    has_default
-                        && substs[param.index as usize]
-                            == GenericArg::from(
-                                self.tcx().bound_type_of(param.def_id).subst(self.tcx(), substs),
-                            )
-                }
-                ty::GenericParamDefKind::Const { has_default } => {
-                    has_default
-                        && substs[param.index as usize]
-                            == GenericArg::from(self.tcx().const_param_default(param.def_id))
-                }
-            })
-            .count();
-
-        &substs[own_params]
     }
 
     fn default_print_impl_path(

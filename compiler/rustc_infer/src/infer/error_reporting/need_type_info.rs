@@ -11,7 +11,7 @@ use rustc_middle::infer::unify_key::ConstVariableOriginKind;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
 use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter, Print, Printer};
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, Subst, SubstsRef};
-use rustc_middle::ty::{self, DefIdTree, GenericParamDefKind, InferConst};
+use rustc_middle::ty::{self, DefIdTree, InferConst};
 use rustc_middle::ty::{Ty, TyCtxt, TypeckResults};
 use rustc_span::symbol::{kw, Ident};
 use rustc_span::{BytePos, Span};
@@ -958,26 +958,8 @@ impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
                 generics.own_substs(substs).iter().position(|&arg| self.generic_arg_is_target(arg))
             {
                 let substs = self.infcx.resolve_vars_if_possible(substs);
-                let num_args = generics
-                    .params
-                    .iter()
-                    .rev()
-                    .filter(|&p| !matches!(p.kind, GenericParamDefKind::Lifetime))
-                    .skip_while(|&param| {
-                        if let Some(default) = param.default_value(tcx) {
-                            // FIXME: Using structural comparisions has a bunch of false negatives.
-                            //
-                            // We should instead try to replace inference variables with placeholders and
-                            // then use `infcx.can_eq`. That probably should be a separate method
-                            // generally used during error reporting.
-                            default.subst(tcx, substs) == substs[param.index as usize]
-                        } else {
-                            false
-                        }
-                    })
-                    .count();
-                let generic_args =
-                    &generics.own_substs(substs)[generics.own_counts().lifetimes..][..num_args];
+                let generic_args = &generics.own_substs_no_defaults(tcx, substs)
+                    [generics.own_counts().lifetimes..];
                 let span = match expr.kind {
                     ExprKind::MethodCall(path, _, _) => path.ident.span,
                     _ => expr.span,

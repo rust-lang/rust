@@ -15,12 +15,12 @@ impl Traitor<1, 2> for u64 {}
 
 
 fn uwu<const N: u8>() -> impl Traitor<N> {
-    //~^ error: the trait bound `u32: Traitor<N, N>` is not satisfied
+    //~^ error: the trait bound `u32: Traitor<N>` is not satisfied
     1_u32
 }
 
 fn owo() -> impl Traitor {
-    //~^ error: the trait bound `u64: Traitor<1_u8, 1_u8>` is not satisfied
+    //~^ error: the trait bound `u64: Traitor` is not satisfied
     1_u64
 }
 
