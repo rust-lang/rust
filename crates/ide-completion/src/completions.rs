@@ -4,6 +4,7 @@ pub(crate) mod attribute;
 pub(crate) mod dot;
 pub(crate) mod expr;
 pub(crate) mod extern_abi;
+pub(crate) mod field;
 pub(crate) mod flyimport;
 pub(crate) mod fn_param;
 pub(crate) mod format_string;

@@ -38,14 +38,13 @@ struct Foo<'lt, T, const C: usize> {
 
 #[test]
 fn tuple_struct_field() {
-    // FIXME: This should emit visibility qualifiers
     check(
         r#"
 struct Foo<'lt, T, const C: usize>(f$0);
 "#,
         expect![[r#"
             en Enum
-            ma makro!(…) macro_rules! makro
+            ma makro!(…)  macro_rules! makro
             md module
             sp Self
             st Foo<…>
@@ -57,6 +56,9 @@ struct Foo<'lt, T, const C: usize>(f$0);
             un Union
             bt u32
             kw crate::
+            kw pub
+            kw pub(crate)
+            kw pub(super)
             kw self::
             kw super::
         "#]],

@@ -286,7 +286,7 @@ fn render_resolution_simple_(
     // Add `<>` for generic types
     let type_path_no_ty_args = matches!(
         ctx.completion.path_context(),
-        Some(PathCompletionCtx { kind: PathKind::Type, has_type_args: false, .. })
+        Some(PathCompletionCtx { kind: PathKind::Type { .. }, has_type_args: false, .. })
     ) && ctx.completion.config.callable.is_some();
     if type_path_no_ty_args {
         if let Some(cap) = ctx.snippet_cap() {

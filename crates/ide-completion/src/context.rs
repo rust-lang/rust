@@ -49,7 +49,9 @@ pub(super) enum PathKind {
         in_block_expr: bool,
         in_loop_body: bool,
     },
-    Type,
+    Type {
+        in_tuple_struct: bool,
+    },
     Attr {
         kind: AttrKind,
         annotated_item_kind: Option<SyntaxKind>,
@@ -1222,7 +1224,9 @@ impl<'a> CompletionContext<'a> {
             // using Option<Option<PathKind>> as extra controlflow
             let kind = match_ast! {
                 match it {
-                    ast::PathType(_) => Some(PathKind::Type),
+                    ast::PathType(it) => Some(PathKind::Type {
+                        in_tuple_struct: it.syntax().parent().map_or(false, |it| ast::TupleField::can_cast(it.kind()))
+                    }),
                     ast::PathExpr(it) => {
                         if let Some(p) = it.syntax().parent() {
                             if ast::ExprStmt::can_cast(p.kind()) {
@@ -1262,7 +1266,7 @@ impl<'a> CompletionContext<'a> {
                         let parent = it.syntax().parent();
                         match parent.as_ref().map(|it| it.kind()) {
                             Some(SyntaxKind::MACRO_PAT) => Some(PathKind::Pat),
-                            Some(SyntaxKind::MACRO_TYPE) => Some(PathKind::Type),
+                            Some(SyntaxKind::MACRO_TYPE) => Some(PathKind::Type { in_tuple_struct: false }),
                             Some(SyntaxKind::ITEM_LIST) => Some(PathKind::Item { kind: ItemListKind::Module }),
                             Some(SyntaxKind::ASSOC_ITEM_LIST) => Some(PathKind::Item { kind: match parent.and_then(|it| it.parent()) {
                                 Some(it) => match_ast! {

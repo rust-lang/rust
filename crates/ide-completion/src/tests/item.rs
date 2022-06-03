@@ -100,7 +100,6 @@ fn after_fn_name() {
 
 #[test]
 fn before_record_field() {
-    // FIXME: This should emit visibility qualifiers
     check(
         r#"
 struct Foo {
@@ -108,6 +107,10 @@ struct Foo {
     pub f: i32,
 }
 "#,
-        expect![[r#""#]],
+        expect![[r#"
+            kw pub
+            kw pub(crate)
+            kw pub(super)
+        "#]],
     )
 }
