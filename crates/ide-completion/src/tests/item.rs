@@ -88,58 +88,19 @@ fn after_target_name_in_impl() {
 
 #[test]
 fn after_struct_name() {
-    // FIXME: This should emit `kw where` only
-    check(
-        r"struct Struct $0",
-        expect![[r#"
-            kw const
-            kw enum
-            kw extern
-            kw fn
-            kw impl
-            kw mod
-            kw pub
-            kw pub(crate)
-            kw pub(super)
-            kw static
-            kw struct
-            kw trait
-            kw type
-            kw union
-            kw unsafe
-            kw use
-        "#]],
-    );
+    // FIXME: This should emit `kw where`
+    check(r"struct Struct $0", expect![[r#""#]]);
 }
 
 #[test]
 fn after_fn_name() {
-    // FIXME: This should emit `kw where` only
-    check(
-        r"fn func() $0",
-        expect![[r#"
-            kw const
-            kw enum
-            kw extern
-            kw fn
-            kw impl
-            kw mod
-            kw pub
-            kw pub(crate)
-            kw pub(super)
-            kw static
-            kw struct
-            kw trait
-            kw type
-            kw union
-            kw unsafe
-            kw use
-        "#]],
-    );
+    // FIXME: This should emit `kw where`
+    check(r"fn func() $0", expect![[r#""#]]);
 }
 
 #[test]
 fn before_record_field() {
+    // FIXME: This should emit visibility qualifiers
     check(
         r#"
 struct Foo {
@@ -147,10 +108,6 @@ struct Foo {
     pub f: i32,
 }
 "#,
-        expect![[r#"
-            kw pub
-            kw pub(crate)
-            kw pub(super)
-        "#]],
+        expect![[r#""#]],
     )
 }

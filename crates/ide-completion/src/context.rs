@@ -71,6 +71,7 @@ pub(super) enum ItemListKind {
     SourceFile,
     Module,
     Impl,
+    TraitImpl,
     Trait,
     ExternBlock,
 }
@@ -335,10 +336,6 @@ impl<'a> CompletionContext<'a> {
         matches!(self.completion_location, Some(ImmediateLocation::Trait | ImmediateLocation::Impl))
     }
 
-    pub(crate) fn expects_non_trait_assoc_item(&self) -> bool {
-        matches!(self.completion_location, Some(ImmediateLocation::Impl))
-    }
-
     pub(crate) fn expects_item(&self) -> bool {
         matches!(self.completion_location, Some(ImmediateLocation::ItemList))
     }
@@ -348,17 +345,8 @@ impl<'a> CompletionContext<'a> {
         matches!(self.completion_location, Some(ImmediateLocation::GenericArgList(_)))
     }
 
-    pub(crate) fn has_block_expr_parent(&self) -> bool {
-        matches!(self.completion_location, Some(ImmediateLocation::StmtList))
-    }
-
     pub(crate) fn expects_ident_ref_expr(&self) -> bool {
         matches!(self.completion_location, Some(ImmediateLocation::RefExpr))
-    }
-
-    pub(crate) fn expect_field(&self) -> bool {
-        matches!(self.completion_location, Some(ImmediateLocation::TupleField))
-            || matches!(self.name_ctx(), Some(NameContext { kind: NameKind::RecordField, .. }))
     }
 
     /// Whether the cursor is right after a trait or impl header.
@@ -1276,10 +1264,19 @@ impl<'a> CompletionContext<'a> {
                             Some(SyntaxKind::MACRO_PAT) => Some(PathKind::Pat),
                             Some(SyntaxKind::MACRO_TYPE) => Some(PathKind::Type),
                             Some(SyntaxKind::ITEM_LIST) => Some(PathKind::Item { kind: ItemListKind::Module }),
-                            Some(SyntaxKind::ASSOC_ITEM_LIST) => Some(PathKind::Item { kind: match parent.and_then(|it| it.parent()).map(|it| it.kind()) {
-                                Some(SyntaxKind::TRAIT) => ItemListKind::Trait,
-                                Some(SyntaxKind::IMPL) => ItemListKind::Impl,
-                                _ => return Some(None),
+                            Some(SyntaxKind::ASSOC_ITEM_LIST) => Some(PathKind::Item { kind: match parent.and_then(|it| it.parent()) {
+                                Some(it) => match_ast! {
+                                    match it {
+                                        ast::Trait(_) => ItemListKind::Trait,
+                                        ast::Impl(it) => if it.trait_().is_some() {
+                                            ItemListKind::TraitImpl
+                                        } else {
+                                            ItemListKind::Impl
+                                        },
+                                        _ => return Some(None)
+                                    }
+                                },
+                                None => return Some(None),
                             } }),
                             Some(SyntaxKind::EXTERN_ITEM_LIST) => Some(PathKind::Item { kind: ItemListKind::ExternBlock }),
                             Some(SyntaxKind::SOURCE_FILE) => Some(PathKind::Item { kind: ItemListKind::SourceFile }),
@@ -1313,12 +1310,18 @@ impl<'a> CompletionContext<'a> {
                     ast::UseTree(_) => Some(PathKind::Use),
                     ast::ItemList(_) => Some(PathKind::Item { kind: ItemListKind::Module }),
                     ast::AssocItemList(it) => Some(PathKind::Item { kind: {
-                            match it.syntax().parent()?.kind() {
-                                SyntaxKind::TRAIT => ItemListKind::Trait,
-                                SyntaxKind::IMPL => ItemListKind::Impl,
-                                _ => return None,
+                        match_ast! {
+                            match (it.syntax().parent()?) {
+                                ast::Trait(_) => ItemListKind::Trait,
+                                ast::Impl(it) => if it.trait_().is_some() {
+                                    ItemListKind::TraitImpl
+                                } else {
+                                    ItemListKind::Impl
+                                },
+                                _ => return None
                             }
-                        }}),
+                        }
+                    }}),
                     ast::ExternItemList(_) => Some(PathKind::Item { kind: ItemListKind::ExternBlock }),
                     ast::SourceFile(_) => Some(PathKind::Item { kind: ItemListKind::SourceFile }),
                     _ => return None,

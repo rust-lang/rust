@@ -2,8 +2,6 @@
 //! - `self`, `super` and `crate`, as these are considered part of path completions.
 //! - `await`, as this is a postfix completion we handle this in the postfix completions.
 
-use syntax::T;
-
 use crate::{
     context::{NameRefContext, PathKind},
     CompletionContext, CompletionItem, CompletionItemKind, Completions,
@@ -24,10 +22,6 @@ pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
 
     let mut add_keyword = |kw, snippet| add_keyword(acc, ctx, kw, snippet);
 
-    let expects_assoc_item = ctx.expects_assoc_item();
-    let has_block_expr_parent = ctx.has_block_expr_parent();
-    let expects_item = ctx.expects_item();
-
     if let Some(PathKind::Vis { .. }) = ctx.path_kind() {
         return;
     }
@@ -37,50 +31,6 @@ pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
             add_keyword("for", "for");
         }
         return;
-    }
-    if ctx.previous_token_is(T![unsafe]) {
-        if expects_item || expects_assoc_item || has_block_expr_parent {
-            add_keyword("fn", "fn $1($2) {\n    $0\n}")
-        }
-
-        if expects_item || has_block_expr_parent {
-            add_keyword("trait", "trait $1 {\n    $0\n}");
-            add_keyword("impl", "impl $1 {\n    $0\n}");
-        }
-
-        return;
-    }
-
-    if ctx.qualifier_ctx.vis_node.is_none()
-        && (expects_item || ctx.expects_non_trait_assoc_item() || ctx.expect_field())
-    {
-        add_keyword("pub(crate)", "pub(crate)");
-        add_keyword("pub(super)", "pub(super)");
-        add_keyword("pub", "pub");
-    }
-
-    if expects_item || expects_assoc_item || has_block_expr_parent {
-        add_keyword("unsafe", "unsafe");
-        add_keyword("fn", "fn $1($2) {\n    $0\n}");
-        add_keyword("const", "const $0");
-        add_keyword("type", "type $0");
-    }
-
-    if expects_item || has_block_expr_parent {
-        if ctx.qualifier_ctx.vis_node.is_none() {
-            add_keyword("impl", "impl $1 {\n    $0\n}");
-            add_keyword("extern", "extern $0");
-        }
-        add_keyword("use", "use $0");
-        add_keyword("trait", "trait $1 {\n    $0\n}");
-        add_keyword("static", "static $0");
-        add_keyword("mod", "mod $0");
-    }
-
-    if expects_item || has_block_expr_parent {
-        add_keyword("enum", "enum $1 {\n    $0\n}");
-        add_keyword("struct", "struct $0");
-        add_keyword("union", "union $1 {\n    $0\n}");
     }
 }
 

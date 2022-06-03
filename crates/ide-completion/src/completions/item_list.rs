@@ -2,22 +2,98 @@
 
 use crate::{
     completions::module_or_fn_macro,
-    context::{PathCompletionCtx, PathKind, PathQualifierCtx},
-    CompletionContext, Completions,
+    context::{ItemListKind, PathCompletionCtx, PathKind, PathQualifierCtx},
+    CompletionContext, CompletionItem, CompletionItemKind, Completions,
 };
 
 pub(crate) fn complete_item_list(acc: &mut Completions, ctx: &CompletionContext) {
     let _p = profile::span("complete_item_list");
 
-    let (&is_absolute_path, path_qualifier, _kind) = match ctx.path_context() {
+    let (&is_absolute_path, path_qualifier, kind) = match ctx.path_context() {
         Some(PathCompletionCtx {
             kind: PathKind::Item { kind },
             is_absolute_path,
             qualifier,
             ..
-        }) => (is_absolute_path, qualifier, kind),
+        }) => (is_absolute_path, qualifier, Some(kind)),
+        Some(PathCompletionCtx {
+            kind: PathKind::Expr { in_block_expr: true, .. },
+            is_absolute_path,
+            qualifier,
+            ..
+        }) => (is_absolute_path, qualifier, None),
         _ => return,
     };
+    let mut add_keyword = |kw, snippet| add_keyword(acc, ctx, kw, snippet);
+
+    let in_item_list = matches!(kind, Some(ItemListKind::SourceFile | ItemListKind::Module) | None);
+    let in_assoc_non_trait_impl = matches!(kind, Some(ItemListKind::Impl | ItemListKind::Trait));
+    let in_extern_block = matches!(kind, Some(ItemListKind::ExternBlock));
+    let in_trait = matches!(kind, Some(ItemListKind::Trait));
+    let in_trait_impl = matches!(kind, Some(ItemListKind::TraitImpl));
+    let in_inherent_impl = matches!(kind, Some(ItemListKind::Impl));
+    let no_qualifiers = ctx.qualifier_ctx.vis_node.is_none();
+    let in_block = matches!(kind, None);
+
+    'block: loop {
+        if path_qualifier.is_some() {
+            break 'block;
+        }
+        if !in_trait_impl {
+            if ctx.qualifier_ctx.unsafe_tok.is_some() {
+                if in_item_list || in_assoc_non_trait_impl {
+                    add_keyword("fn", "fn $1($2) {\n    $0\n}");
+                }
+                if in_item_list {
+                    add_keyword("trait", "trait $1 {\n    $0\n}");
+                    if no_qualifiers {
+                        add_keyword("impl", "impl $1 {\n    $0\n}");
+                    }
+                }
+                break 'block;
+            }
+
+            if in_item_list {
+                add_keyword("enum", "enum $1 {\n    $0\n}");
+                add_keyword("mod", "mod $0");
+                add_keyword("static", "static $0");
+                add_keyword("struct", "struct $0");
+                add_keyword("trait", "trait $1 {\n    $0\n}");
+                add_keyword("union", "union $1 {\n    $0\n}");
+                add_keyword("use", "use $0");
+                if no_qualifiers {
+                    add_keyword("impl", "impl $1 {\n    $0\n}");
+                }
+            }
+
+            if !in_trait && !in_block && no_qualifiers {
+                add_keyword("pub(crate)", "pub(crate)");
+                add_keyword("pub(super)", "pub(super)");
+                add_keyword("pub", "pub");
+            }
+
+            if in_extern_block {
+                add_keyword("fn", "fn $1($2);");
+            } else {
+                if !in_inherent_impl {
+                    if !in_trait {
+                        add_keyword("extern", "extern $0");
+                    }
+                    add_keyword("type", "type $0");
+                }
+
+                add_keyword("fn", "fn $1($2) {\n    $0\n}");
+                add_keyword("unsafe", "unsafe");
+                add_keyword("const", "const $0");
+            }
+        }
+        break 'block;
+    }
+
+    if kind.is_none() {
+        // this is already handled by expression
+        return;
+    }
 
     match path_qualifier {
         Some(PathQualifierCtx { resolution, is_super_chain, .. }) => {
@@ -33,9 +109,7 @@ pub(crate) fn complete_item_list(acc: &mut Completions, ctx: &CompletionContext)
                 acc.add_keyword(ctx, "super::");
             }
         }
-        None if is_absolute_path => {
-            acc.add_crate_roots(ctx);
-        }
+        None if is_absolute_path => acc.add_crate_roots(ctx),
         None if ctx.qualifier_ctx.none() => {
             ctx.process_all_names(&mut |name, def| {
                 if let Some(def) = module_or_fn_macro(ctx.db, def) {
@@ -46,4 +120,24 @@ pub(crate) fn complete_item_list(acc: &mut Completions, ctx: &CompletionContext)
         }
         None => {}
     }
+}
+
+pub(super) fn add_keyword(acc: &mut Completions, ctx: &CompletionContext, kw: &str, snippet: &str) {
+    let mut item = CompletionItem::new(CompletionItemKind::Keyword, ctx.source_range(), kw);
+
+    match ctx.config.snippet_cap {
+        Some(cap) => {
+            if snippet.ends_with('}') && ctx.incomplete_let {
+                // complete block expression snippets with a trailing semicolon, if inside an incomplete let
+                cov_mark::hit!(let_semi);
+                item.insert_snippet(cap, format!("{};", snippet));
+            } else {
+                item.insert_snippet(cap, snippet);
+            }
+        }
+        None => {
+            item.insert_text(if snippet.contains('$') { kw } else { snippet });
+        }
+    };
+    item.add_to(acc);
 }
