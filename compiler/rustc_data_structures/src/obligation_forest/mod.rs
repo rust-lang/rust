@@ -634,17 +634,14 @@ impl<O: ForestObligation> ObligationForest<O> {
                     }
                 }
                 NodeState::Done => {
-                    // This lookup can fail because the contents of
+                    // The removal lookup might fail because the contents of
                     // `self.active_cache` are not guaranteed to match those of
                     // `self.nodes`. See the comment in `process_obligation`
                     // for more details.
-                    if let Some((predicate, _)) =
-                        self.active_cache.remove_entry(&node.obligation.as_cache_key())
-                    {
-                        self.done_cache.insert(predicate);
-                    } else {
-                        self.done_cache.insert(node.obligation.as_cache_key().clone());
-                    }
+                    let cache_key = node.obligation.as_cache_key();
+                    self.active_cache.remove(&cache_key);
+                    self.done_cache.insert(cache_key);
+
                     // Extract the success stories.
                     outcome_cb(&node.obligation);
                     node_rewrites[index] = orig_nodes_len;
