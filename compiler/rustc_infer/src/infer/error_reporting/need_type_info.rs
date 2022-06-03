@@ -2,6 +2,7 @@ use crate::infer::type_variable::TypeVariableOriginKind;
 use crate::infer::InferCtxt;
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir as hir;
+use rustc_hir::def::Res;
 use rustc_hir::def::{CtorOf, DefKind, Namespace};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, Visitor};
@@ -853,12 +854,20 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                             hir::TyKind::Path(hir::QPath::Resolved(_self_ty, path)),
                         ) => {
                             if tcx.res_generics_def_id(path.res) != Some(def.did()) {
-                                bug!(
-                                    "unexpected path: def={:?} substs={:?} path={:?}",
-                                    def,
-                                    substs,
-                                    path,
-                                );
+                                match path.res {
+                                    Res::Def(DefKind::TyAlias, _) => {
+                                        // FIXME: Ideally we should support this. For that
+                                        // we have to map back from the self type to the
+                                        // type alias though. That's difficult.
+                                        //
+                                        // See the `need_type_info/type-alias.rs` test for
+                                        // some examples.
+                                    }
+                                    _ => warn!(
+                                        "unexpected path: def={:?} substs={:?} path={:?}",
+                                        def, substs, path,
+                                    ),
+                                }
                             } else {
                                 return Box::new(
                                     self.resolved_path_inferred_subst_iter(path, substs)
