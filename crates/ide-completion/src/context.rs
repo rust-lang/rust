@@ -43,12 +43,13 @@ pub(crate) enum Visible {
     No,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub(super) enum PathKind {
     Expr {
         in_block_expr: bool,
         in_loop_body: bool,
         after_if_expr: bool,
+        ref_expr_parent: Option<ast::RefExpr>,
     },
     Type {
         in_tuple_struct: bool,
@@ -356,39 +357,12 @@ impl<'a> CompletionContext<'a> {
         matches!(self.completion_location, Some(ImmediateLocation::GenericArgList(_)))
     }
 
-    pub(crate) fn expects_ident_ref_expr(&self) -> bool {
-        matches!(self.completion_location, Some(ImmediateLocation::RefExpr))
-    }
-
-    // FIXME: This shouldn't exist
-    pub(crate) fn is_path_disallowed(&self) -> bool {
-        !self.qualifier_ctx.none()
-            || (matches!(self.name_ctx(), Some(NameContext { .. })) && self.pattern_ctx.is_none())
-            || matches!(self.pattern_ctx, Some(PatternContext { record_pat: Some(_), .. }))
-            || matches!(
-                self.nameref_ctx(),
-                Some(NameRefContext { record_expr: Some((_, false)), .. })
-            )
-    }
-
     pub(crate) fn path_context(&self) -> Option<&PathCompletionCtx> {
         self.nameref_ctx().and_then(|ctx| ctx.path_ctx.as_ref())
     }
 
-    pub(crate) fn expects_expression(&self) -> bool {
-        matches!(self.path_context(), Some(PathCompletionCtx { kind: PathKind::Expr { .. }, .. }))
-    }
-
-    pub(crate) fn is_non_trivial_path(&self) -> bool {
-        self.path_context().as_ref().map_or(false, |it| !it.is_trivial_path())
-    }
-
     pub(crate) fn path_qual(&self) -> Option<&ast::Path> {
         self.path_context().and_then(|it| it.qualifier.as_ref().map(|it| &it.path))
-    }
-
-    pub(crate) fn path_kind(&self) -> Option<PathKind> {
-        self.path_context().map(|it| it.kind)
     }
 
     /// Checks if an item is visible and not `doc(hidden)` at the completion site.
@@ -1210,8 +1184,10 @@ impl<'a> CompletionContext<'a> {
                         let in_block_expr = is_in_block(it.syntax());
                         let in_loop_body = is_in_loop_body(it.syntax());
                         let after_if_expr = after_if_expr(it.syntax().clone());
+                        let ref_expr_parent = path.as_single_name_ref()
+                            .and_then(|_| it.syntax().parent()).and_then(ast::RefExpr::cast);
 
-                        Some(PathKind::Expr { in_block_expr, in_loop_body, after_if_expr })
+                        Some(PathKind::Expr { in_block_expr, in_loop_body, after_if_expr, ref_expr_parent })
                     },
                     ast::TupleStructPat(it) => {
                         path_ctx.has_call_parens = true;
@@ -1261,7 +1237,9 @@ impl<'a> CompletionContext<'a> {
                                     let in_block_expr = is_in_block(it.syntax());
                                     let after_if_expr = after_if_expr(it.syntax().clone());
                                     fill_record_expr(it.syntax());
-                                    PathKind::Expr { in_block_expr, in_loop_body, after_if_expr }
+                                    let ref_expr_parent = path.as_single_name_ref()
+                                        .and_then(|_| it.syntax().parent()).and_then(ast::RefExpr::cast);
+                                    PathKind::Expr { in_block_expr, in_loop_body, after_if_expr, ref_expr_parent }
                                 });
                             },
                         }
@@ -1368,7 +1346,7 @@ impl<'a> CompletionContext<'a> {
                     }
                 }
 
-                if let Some(PathKind::Item { .. }) = kind {
+                if let PathKind::Item { .. } = path_ctx.kind {
                     if qualifier_ctx.none() {
                         if let Some(t) = top.first_token() {
                             if let Some(prev) = t

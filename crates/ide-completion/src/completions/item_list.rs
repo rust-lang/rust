@@ -16,19 +16,23 @@ pub(crate) fn complete_item_list(acc: &mut Completions, ctx: &CompletionContext)
         return;
     }
 
-    let (&is_absolute_path, path_qualifier, kind) = match ctx.path_context() {
-        Some(PathCompletionCtx {
-            kind: PathKind::Item { kind },
-            is_absolute_path,
-            qualifier,
-            ..
-        }) => (is_absolute_path, qualifier, Some(kind)),
-        Some(PathCompletionCtx {
-            kind: PathKind::Expr { in_block_expr: true, .. },
-            is_absolute_path,
-            qualifier,
-            ..
-        }) => (is_absolute_path, qualifier, None),
+    let (&is_absolute_path, path_qualifier, kind, is_trivial_path) = match ctx.path_context() {
+        Some(
+            ctx @ PathCompletionCtx {
+                kind: PathKind::Item { kind },
+                is_absolute_path,
+                qualifier,
+                ..
+            },
+        ) => (is_absolute_path, qualifier, Some(kind), ctx.is_trivial_path()),
+        Some(
+            ctx @ PathCompletionCtx {
+                kind: PathKind::Expr { in_block_expr: true, .. },
+                is_absolute_path,
+                qualifier,
+                ..
+            },
+        ) => (is_absolute_path, qualifier, None, ctx.is_trivial_path()),
         _ => return,
     };
 
@@ -36,7 +40,9 @@ pub(crate) fn complete_item_list(acc: &mut Completions, ctx: &CompletionContext)
         trait_impl::complete_trait_impl(acc, ctx);
     }
 
-    add_keywords(acc, ctx, kind);
+    if is_trivial_path {
+        add_keywords(acc, ctx, kind);
+    }
 
     if kind.is_none() {
         // this is already handled by expression
@@ -71,9 +77,6 @@ pub(crate) fn complete_item_list(acc: &mut Completions, ctx: &CompletionContext)
 }
 
 fn add_keywords(acc: &mut Completions, ctx: &CompletionContext, kind: Option<&ItemListKind>) {
-    if ctx.is_non_trivial_path() {
-        return;
-    }
     let mut add_keyword = |kw, snippet| acc.add_keyword_snippet(ctx, kw, snippet);
 
     let in_item_list = matches!(kind, Some(ItemListKind::SourceFile | ItemListKind::Module) | None);

@@ -8,7 +8,7 @@ use itertools::Itertools;
 use syntax::{AstNode, SyntaxNode, T};
 
 use crate::{
-    context::{CompletionContext, PathKind},
+    context::{CompletionContext, NameRefContext, PathCompletionCtx, PathKind, PatternContext},
     patterns::ImmediateLocation,
     render::{render_resolution_with_import, RenderContext},
 };
@@ -110,16 +110,26 @@ pub(crate) fn import_on_the_fly(acc: &mut Completions, ctx: &CompletionContext) 
     if !ctx.config.enable_imports_on_the_fly {
         return None;
     }
-    if matches!(ctx.path_kind(), Some(PathKind::Vis { .. } | PathKind::Use | PathKind::Item { .. }))
-        || ctx.is_path_disallowed()
-    {
-        return None;
-    }
-    // FIXME: This should be encoded in a different way
-    if ctx.pattern_ctx.is_none() && ctx.path_context().is_none() && !ctx.has_dot_receiver() {
-        // completion inside `ast::Name` of a item declaration
-        return None;
-    }
+    let path_kind = match ctx.nameref_ctx() {
+        Some(NameRefContext { path_ctx: Some(PathCompletionCtx { kind, .. }), .. })
+            if matches!(
+                kind,
+                PathKind::Expr { .. }
+                    | PathKind::Type { .. }
+                    | PathKind::Attr { .. }
+                    | PathKind::Derive
+                    | PathKind::Pat
+            ) =>
+        {
+            Some(kind)
+        }
+        Some(NameRefContext { dot_access: Some(_), .. }) => None,
+        None if matches!(ctx.pattern_ctx, Some(PatternContext { record_pat: None, .. })) => {
+            Some(&PathKind::Pat)
+        }
+        _ => return None,
+    };
+
     let potential_import_name = {
         let token_kind = ctx.token.kind();
         if matches!(token_kind, T![.] | T![::]) {
@@ -138,18 +148,10 @@ pub(crate) fn import_on_the_fly(acc: &mut Completions, ctx: &CompletionContext) 
         return None;
     }
 
-    let path_kind = match ctx.path_kind() {
-        Some(kind) => Some(kind),
-        None if ctx.pattern_ctx.is_some() => Some(PathKind::Pat),
-        None => None,
-    };
     let ns_filter = |import: &LocatedImport| {
         let path_kind = match path_kind {
-            Some(path_kind) => path_kind,
-            None => match import.original_item {
-                ItemInNs::Macros(mac) => return mac.is_fn_like(ctx.db),
-                _ => return true,
-            },
+            Some(it) => it,
+            None => return true,
         };
         match (path_kind, import.original_item) {
             // Aren't handled in flyimport

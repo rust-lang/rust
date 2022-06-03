@@ -30,7 +30,6 @@ pub(crate) enum TypeAnnotation {
 /// from which file the nodes are.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum ImmediateLocation {
-    RefExpr,
     TypeBound,
     /// Original file ast node
     TypeAnnotation(TypeAnnotation),
@@ -80,7 +79,6 @@ pub(crate) fn determine_location(
 
     let res = match_ast! {
         match parent {
-            ast::RefExpr(_) => ImmediateLocation::RefExpr,
             ast::TypeBound(_) => ImmediateLocation::TypeBound,
             ast::TypeBoundList(_) => ImmediateLocation::TypeBound,
             ast::GenericArgList(_) => sema
@@ -247,31 +245,4 @@ fn next_non_trivia_sibling(ele: SyntaxElement) -> Option<SyntaxElement> {
         }
     }
     None
-}
-
-#[cfg(test)]
-mod tests {
-    use syntax::algo::find_node_at_offset;
-
-    use crate::tests::position;
-
-    use super::*;
-
-    fn check_location(code: &str, loc: impl Into<Option<ImmediateLocation>>) {
-        let (db, pos) = position(code);
-
-        let sema = Semantics::new(&db);
-        let original_file = sema.parse(pos.file_id);
-
-        let name_like = find_node_at_offset(original_file.syntax(), pos.offset).unwrap();
-        assert_eq!(
-            determine_location(&sema, original_file.syntax(), pos.offset, &name_like),
-            loc.into()
-        );
-    }
-
-    #[test]
-    fn test_ref_expr_loc() {
-        check_location(r"fn my_fn() { let x = &m$0 foo; }", ImmediateLocation::RefExpr);
-    }
 }
