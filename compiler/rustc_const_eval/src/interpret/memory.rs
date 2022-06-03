@@ -908,11 +908,15 @@ impl<'tcx, 'a, Tag: Provenance, Extra> AllocRefMut<'a, 'tcx, Tag, Extra> {
 }
 
 impl<'tcx, 'a, Tag: Provenance, Extra> AllocRef<'a, 'tcx, Tag, Extra> {
-    pub fn read_scalar(&self, range: AllocRange) -> InterpResult<'tcx, ScalarMaybeUninit<Tag>> {
+    pub fn read_scalar(
+        &self,
+        range: AllocRange,
+        read_provenance: bool,
+    ) -> InterpResult<'tcx, ScalarMaybeUninit<Tag>> {
         let range = self.range.subrange(range);
         let res = self
             .alloc
-            .read_scalar(&self.tcx, range)
+            .read_scalar(&self.tcx, range, read_provenance)
             .map_err(|e| e.to_interp_error(self.alloc_id))?;
         debug!(
             "read_scalar in {} at {:#x}, size {}: {:?}",
@@ -924,8 +928,19 @@ impl<'tcx, 'a, Tag: Provenance, Extra> AllocRef<'a, 'tcx, Tag, Extra> {
         Ok(res)
     }
 
-    pub fn read_ptr_sized(&self, offset: Size) -> InterpResult<'tcx, ScalarMaybeUninit<Tag>> {
-        self.read_scalar(alloc_range(offset, self.tcx.data_layout().pointer_size))
+    pub fn read_integer(
+        &self,
+        offset: Size,
+        size: Size,
+    ) -> InterpResult<'tcx, ScalarMaybeUninit<Tag>> {
+        self.read_scalar(alloc_range(offset, size), /*read_provenance*/ false)
+    }
+
+    pub fn read_pointer(&self, offset: Size) -> InterpResult<'tcx, ScalarMaybeUninit<Tag>> {
+        self.read_scalar(
+            alloc_range(offset, self.tcx.data_layout().pointer_size),
+            /*read_provenance*/ true,
+        )
     }
 
     pub fn check_bytes(

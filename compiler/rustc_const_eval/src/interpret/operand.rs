@@ -15,8 +15,8 @@ use rustc_target::abi::{VariantIdx, Variants};
 
 use super::{
     alloc_range, from_known_layout, mir_assign_valid_types, AllocId, ConstValue, GlobalId,
-    InterpCx, InterpResult, MPlaceTy, Machine, MemPlace, Place, PlaceTy, Pointer, Provenance,
-    Scalar, ScalarMaybeUninit,
+    InterpCx, InterpResult, MPlaceTy, Machine, MemPlace, Place, PlaceTy, Pointer,
+    PointerArithmetic, Provenance, Scalar, ScalarMaybeUninit,
 };
 
 /// An `Immediate` represents a single immediate self-contained Rust value.
@@ -284,11 +284,15 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Abi::Scalar(s) if force => Some(s.primitive()),
             _ => None,
         };
-        if let Some(_s) = scalar_layout {
+        let number_may_have_provenance = !M::enforce_number_no_provenance(self);
+        if let Some(s) = scalar_layout {
             //FIXME(#96185): let size = s.size(self);
             //FIXME(#96185): assert_eq!(size, mplace.layout.size, "abi::Scalar size does not match layout size");
             let size = mplace.layout.size; //FIXME(#96185): remove this line
-            let scalar = alloc.read_scalar(alloc_range(Size::ZERO, size))?;
+            let scalar = alloc.read_scalar(
+                alloc_range(Size::ZERO, size),
+                s.is_ptr() || (number_may_have_provenance && size == self.pointer_size()),
+            )?;
             return Ok(Some(ImmTy { imm: scalar.into(), layout: mplace.layout }));
         }
         let scalar_pair_layout = match mplace.layout.abi {
@@ -306,8 +310,14 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             let (a_size, b_size) = (a.size(self), b.size(self));
             let b_offset = a_size.align_to(b.align(self).abi);
             assert!(b_offset.bytes() > 0); // in `operand_field` we use the offset to tell apart the fields
-            let a_val = alloc.read_scalar(alloc_range(Size::ZERO, a_size))?;
-            let b_val = alloc.read_scalar(alloc_range(b_offset, b_size))?;
+            let a_val = alloc.read_scalar(
+                alloc_range(Size::ZERO, a_size),
+                a.is_ptr() || (number_may_have_provenance && a_size == self.pointer_size()),
+            )?;
+            let b_val = alloc.read_scalar(
+                alloc_range(b_offset, b_size),
+                b.is_ptr() || (number_may_have_provenance && b_size == self.pointer_size()),
+            )?;
             return Ok(Some(ImmTy {
                 imm: Immediate::ScalarPair(a_val, b_val),
                 layout: mplace.layout,

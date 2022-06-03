@@ -264,9 +264,18 @@ impl<Tag, Extra> Allocation<Tag, Extra> {
 
 /// Byte accessors.
 impl<Tag: Provenance, Extra> Allocation<Tag, Extra> {
-    /// The last argument controls whether we error out when there are uninitialized
-    /// or pointer bytes. You should never call this, call `get_bytes` or
-    /// `get_bytes_with_uninit_and_ptr` instead,
+    /// This is the entirely abstraction-violating way to just grab the raw bytes without
+    /// caring about relocations. It just deduplicates some code between `read_scalar`
+    /// and `get_bytes_internal`.
+    fn get_bytes_even_more_internal(&self, range: AllocRange) -> &[u8] {
+        &self.bytes[range.start.bytes_usize()..range.end().bytes_usize()]
+    }
+
+    /// The last argument controls whether we error out when there are uninitialized or pointer
+    /// bytes. However, we *always* error when there are relocations overlapping the edges of the
+    /// range.
+    ///
+    /// You should never call this, call `get_bytes` or `get_bytes_with_uninit_and_ptr` instead,
     ///
     /// This function also guarantees that the resulting pointer will remain stable
     /// even when new allocations are pushed to the `HashMap`. `mem_copy_repeatedly` relies
@@ -287,7 +296,7 @@ impl<Tag: Provenance, Extra> Allocation<Tag, Extra> {
             self.check_relocation_edges(cx, range)?;
         }
 
-        Ok(&self.bytes[range.start.bytes_usize()..range.end().bytes_usize()])
+        Ok(self.get_bytes_even_more_internal(range))
     }
 
     /// Checks that these bytes are initialized and not pointer bytes, and then return them
@@ -373,6 +382,9 @@ impl<Tag: Provenance, Extra> Allocation<Tag, Extra> {
 
     /// Reads a *non-ZST* scalar.
     ///
+    /// If `read_provenance` is `true`, this will also read provenance; otherwise (if the machine
+    /// supports that) provenance is entirely ignored.
+    ///
     /// ZSTs can't be read because in order to obtain a `Pointer`, we need to check
     /// for ZSTness anyway due to integer pointers being valid for ZSTs.
     ///
@@ -382,35 +394,47 @@ impl<Tag: Provenance, Extra> Allocation<Tag, Extra> {
         &self,
         cx: &impl HasDataLayout,
         range: AllocRange,
+        read_provenance: bool,
     ) -> AllocResult<ScalarMaybeUninit<Tag>> {
-        // `get_bytes_with_uninit_and_ptr` tests relocation edges.
-        // We deliberately error when loading data that partially has provenance, or partially
-        // initialized data (that's the check below), into a scalar. The LLVM semantics of this are
-        // unclear so we are conservative. See <https://github.com/rust-lang/rust/issues/69488> for
-        // further discussion.
-        let bytes = self.get_bytes_with_uninit_and_ptr(cx, range)?;
-        // Uninit check happens *after* we established that the alignment is correct.
-        // We must not return `Ok()` for unaligned pointers!
+        if read_provenance {
+            assert_eq!(range.size, cx.data_layout().pointer_size);
+        }
+
+        // First and foremost, if anything is uninit, bail.
         if self.is_init(range).is_err() {
             // This inflates uninitialized bytes to the entire scalar, even if only a few
             // bytes are uninitialized.
             return Ok(ScalarMaybeUninit::Uninit);
         }
-        // Now we do the actual reading.
-        let bits = read_target_uint(cx.data_layout().endian, bytes).unwrap();
-        // See if we got a pointer.
-        if range.size != cx.data_layout().pointer_size {
-            // Not a pointer.
-            // *Now*, we better make sure that the inside is free of relocations too.
-            self.check_relocations(cx, range)?;
-        } else {
-            // Maybe a pointer.
-            if let Some(&prov) = self.relocations.get(&range.start) {
-                let ptr = Pointer::new(prov, Size::from_bytes(bits));
-                return Ok(ScalarMaybeUninit::from_pointer(ptr, cx));
-            }
+
+        // If we are doing a pointer read, and there is a relocation exactly where we
+        // are reading, then we can put data and relocation back together and return that.
+        if read_provenance && let Some(&prov) = self.relocations.get(&range.start) {
+            // We already checked init and relocations, so we can use this function.
+            let bytes = self.get_bytes_even_more_internal(range);
+            let bits = read_target_uint(cx.data_layout().endian, bytes).unwrap();
+            let ptr = Pointer::new(prov, Size::from_bytes(bits));
+            return Ok(ScalarMaybeUninit::from_pointer(ptr, cx));
         }
-        // We don't. Just return the bits.
+
+        // If we are *not* reading a pointer, and we can just ignore relocations,
+        // then do exactly that.
+        if !read_provenance && Tag::OFFSET_IS_ADDR {
+            // We just strip provenance.
+            let bytes = self.get_bytes_even_more_internal(range);
+            let bits = read_target_uint(cx.data_layout().endian, bytes).unwrap();
+            return Ok(ScalarMaybeUninit::Scalar(Scalar::from_uint(bits, range.size)));
+        }
+
+        // It's complicated. Better make sure there is no provenance anywhere.
+        // FIXME: If !OFFSET_IS_ADDR, this is the best we can do. But if OFFSET_IS_ADDR, then
+        // `read_pointer` is true and we ideally would distinguish the following two cases:
+        // - The entire `range` is covered by 2 relocations for the same provenance.
+        //   Then we should return a pointer with that provenance.
+        // - The range has inhomogeneous provenance. Then we should return just the
+        //   underlying bits.
+        let bytes = self.get_bytes(cx, range)?;
+        let bits = read_target_uint(cx.data_layout().endian, bytes).unwrap();
         Ok(ScalarMaybeUninit::Scalar(Scalar::from_uint(bits, range.size)))
     }
 
@@ -513,8 +537,9 @@ impl<Tag: Copy, Extra> Allocation<Tag, Extra> {
         let start = range.start;
         let end = range.end();
 
-        // We need to handle clearing the relocations from parts of a pointer. See
-        // <https://github.com/rust-lang/rust/issues/87184> for details.
+        // We need to handle clearing the relocations from parts of a pointer.
+        // FIXME: Miri should preserve partial relocations; see
+        // https://github.com/rust-lang/miri/issues/2181.
         if first < start {
             if Tag::ERR_ON_PARTIAL_PTR_OVERWRITE {
                 return Err(AllocError::PartialPointerOverwrite(first));
