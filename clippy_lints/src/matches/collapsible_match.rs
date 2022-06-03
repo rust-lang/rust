@@ -6,66 +6,26 @@ use if_chain::if_chain;
 use rustc_errors::MultiSpan;
 use rustc_hir::LangItem::OptionNone;
 use rustc_hir::{Arm, Expr, Guard, HirId, Let, Pat, PatKind};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_lint::LateContext;
 use rustc_span::Span;
 
-declare_clippy_lint! {
-    /// ### What it does
-    /// Finds nested `match` or `if let` expressions where the patterns may be "collapsed" together
-    /// without adding any branches.
-    ///
-    /// Note that this lint is not intended to find _all_ cases where nested match patterns can be merged, but only
-    /// cases where merging would most likely make the code more readable.
-    ///
-    /// ### Why is this bad?
-    /// It is unnecessarily verbose and complex.
-    ///
-    /// ### Example
-    /// ```rust
-    /// fn func(opt: Option<Result<u64, String>>) {
-    ///     let n = match opt {
-    ///         Some(n) => match n {
-    ///             Ok(n) => n,
-    ///             _ => return,
-    ///         }
-    ///         None => return,
-    ///     };
-    /// }
-    /// ```
-    /// Use instead:
-    /// ```rust
-    /// fn func(opt: Option<Result<u64, String>>) {
-    ///     let n = match opt {
-    ///         Some(Ok(n)) => n,
-    ///         _ => return,
-    ///     };
-    /// }
-    /// ```
-    #[clippy::version = "1.50.0"]
-    pub COLLAPSIBLE_MATCH,
-    style,
-    "Nested `match` or `if let` expressions where the patterns may be \"collapsed\" together."
-}
+use super::COLLAPSIBLE_MATCH;
 
-declare_lint_pass!(CollapsibleMatch => [COLLAPSIBLE_MATCH]);
-
-impl<'tcx> LateLintPass<'tcx> for CollapsibleMatch {
-    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
-        match IfLetOrMatch::parse(cx, expr) {
-            Some(IfLetOrMatch::Match(_, arms, _)) => {
-                if let Some(els_arm) = arms.iter().rfind(|arm| arm_is_wild_like(cx, arm)) {
-                    for arm in arms {
-                        check_arm(cx, true, arm.pat, arm.body, arm.guard.as_ref(), Some(els_arm.body));
-                    }
-                }
-            },
-            Some(IfLetOrMatch::IfLet(_, pat, body, els)) => {
-                check_arm(cx, false, pat, body, None, els);
-            },
-            None => {},
+pub(super) fn check_match<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>]) {
+    if let Some(els_arm) = arms.iter().rfind(|arm| arm_is_wild_like(cx, arm)) {
+        for arm in arms {
+            check_arm(cx, true, arm.pat, arm.body, arm.guard.as_ref(), Some(els_arm.body));
         }
     }
+}
+
+pub(super) fn check_if_let<'tcx>(
+    cx: &LateContext<'tcx>,
+    pat: &'tcx Pat<'_>,
+    body: &'tcx Expr<'_>,
+    else_expr: Option<&'tcx Expr<'_>>,
+) {
+    check_arm(cx, false, pat, body, None, else_expr);
 }
 
 fn check_arm<'tcx>(

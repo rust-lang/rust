@@ -1,12 +1,14 @@
 use clippy_utils::source::{snippet_opt, span_starts_with, walk_span_to_context};
-use clippy_utils::{meets_msrv, msrvs};
+use clippy_utils::{higher, meets_msrv, msrvs};
 use rustc_hir::{Arm, Expr, ExprKind, Local, MatchSource, Pat};
 use rustc_lexer::{tokenize, TokenKind};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_middle::lint::in_external_macro;
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::{Span, SpanData, SyntaxContext};
 
+mod collapsible_match;
 mod infallible_destructuring_match;
 mod match_as_ref;
 mod match_bool;
@@ -610,6 +612,44 @@ declare_clippy_lint! {
     "`match` or match-like `if let` that are unnecessary"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Finds nested `match` or `if let` expressions where the patterns may be "collapsed" together
+    /// without adding any branches.
+    ///
+    /// Note that this lint is not intended to find _all_ cases where nested match patterns can be merged, but only
+    /// cases where merging would most likely make the code more readable.
+    ///
+    /// ### Why is this bad?
+    /// It is unnecessarily verbose and complex.
+    ///
+    /// ### Example
+    /// ```rust
+    /// fn func(opt: Option<Result<u64, String>>) {
+    ///     let n = match opt {
+    ///         Some(n) => match n {
+    ///             Ok(n) => n,
+    ///             _ => return,
+    ///         }
+    ///         None => return,
+    ///     };
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// fn func(opt: Option<Result<u64, String>>) {
+    ///     let n = match opt {
+    ///         Some(Ok(n)) => n,
+    ///         _ => return,
+    ///     };
+    /// }
+    /// ```
+    #[clippy::version = "1.50.0"]
+    pub COLLAPSIBLE_MATCH,
+    style,
+    "Nested `match` or `if let` expressions where the patterns may be \"collapsed\" together."
+}
+
 #[derive(Default)]
 pub struct Matches {
     msrv: Option<RustcVersion>,
@@ -644,19 +684,29 @@ impl_lint_pass!(Matches => [
     MATCH_LIKE_MATCHES_MACRO,
     MATCH_SAME_ARMS,
     NEEDLESS_MATCH,
+    COLLAPSIBLE_MATCH,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Matches {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if expr.span.from_expansion() {
+        if in_external_macro(cx.sess(), expr.span) {
             return;
         }
+        let from_expansion = expr.span.from_expansion();
 
         if let ExprKind::Match(ex, arms, source) = expr.kind {
             if !span_starts_with(cx, expr.span, "match") {
                 return;
             }
-            if !contains_cfg_arm(cx, expr, ex, arms) {
+
+            collapsible_match::check_match(cx, arms);
+            if !from_expansion {
+                // These don't depend on a relationship between multiple arms
+                match_wild_err_arm::check(cx, ex, arms);
+                wild_in_or_pats::check(cx, arms);
+            }
+
+            if !from_expansion && !contains_cfg_arm(cx, expr, ex, arms) {
                 if source == MatchSource::Normal {
                     if !(meets_msrv(self.msrv, msrvs::MATCHES_MACRO)
                         && match_like_matches::check_match(cx, expr, ex, arms))
@@ -680,16 +730,32 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
                 }
                 match_ref_pats::check(cx, ex, arms.iter().map(|el| el.pat), expr);
             }
-
-            // These don't depend on a relationship between multiple arms
-            match_wild_err_arm::check(cx, ex, arms);
-            wild_in_or_pats::check(cx, arms);
-        } else {
-            if meets_msrv(self.msrv, msrvs::MATCHES_MACRO) {
-                match_like_matches::check(cx, expr);
+        } else if let Some(if_let) = higher::IfLet::hir(cx, expr) {
+            collapsible_match::check_if_let(cx, if_let.let_pat, if_let.if_then, if_let.if_else);
+            if !from_expansion {
+                if let Some(else_expr) = if_let.if_else {
+                    if meets_msrv(self.msrv, msrvs::MATCHES_MACRO) {
+                        match_like_matches::check_if_let(
+                            cx,
+                            expr,
+                            if_let.let_pat,
+                            if_let.let_expr,
+                            if_let.if_then,
+                            else_expr,
+                        );
+                    }
+                }
+                redundant_pattern_match::check_if_let(
+                    cx,
+                    expr,
+                    if_let.let_pat,
+                    if_let.let_expr,
+                    if_let.if_else.is_some(),
+                );
+                needless_match::check_if_let(cx, expr, &if_let);
             }
+        } else if !from_expansion {
             redundant_pattern_match::check(cx, expr);
-            needless_match::check(cx, expr);
         }
     }
 

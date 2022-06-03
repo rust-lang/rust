@@ -192,7 +192,6 @@ mod casts;
 mod checked_conversions;
 mod cognitive_complexity;
 mod collapsible_if;
-mod collapsible_match;
 mod comparison_chain;
 mod copies;
 mod copy_iterator;
@@ -568,7 +567,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(len_zero::LenZero));
     store.register_late_pass(|| Box::new(attrs::Attributes));
     store.register_late_pass(|| Box::new(blocks_in_if_conditions::BlocksInIfConditions));
-    store.register_late_pass(|| Box::new(collapsible_match::CollapsibleMatch));
     store.register_late_pass(|| Box::new(unicode::Unicode));
     store.register_late_pass(|| Box::new(uninit_vec::UninitVec));
     store.register_late_pass(|| Box::new(unit_hash::UnitHash));
