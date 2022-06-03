@@ -20,8 +20,11 @@ fn main() {
     invalid(1.0); //~ ERROR mismatched types
     extra(""); //~ ERROR this function takes
     missing(); //~ ERROR this function takes
-    swapped("", 1); //~ ERROR arguments to this function are incorrect
-    permuted(Y {}, Z {}, X {}); //~ ERROR arguments to this function are incorrect
+    swapped("", 1); //~ ERROR mismatched types
+    //~^ ERROR mismatched types
+    permuted(Y {}, Z {}, X {}); //~ ERROR mismatched types
+    //~^ ERROR mismatched types
+    //~| ERROR mismatched types
 
     let closure = |x| x;
     closure(); //~ ERROR this function takes

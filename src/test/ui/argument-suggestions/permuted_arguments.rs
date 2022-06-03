@@ -7,7 +7,15 @@ fn many_args(_a: i32, _b: f32, _c: &str, _d: X, _e: Y) {}
 
 fn main() {
   // b, c, a
-  three_args(1.0, "", 1); //~ ERROR arguments to this function are incorrect
+  three_args(1.0, "", 1);
+  //~^ ERROR mismatched types
+  //~| ERROR mismatched types
+  //~| ERROR mismatched types
   // d, e, b, a, c
-  many_args(X {}, Y {}, 1, 1.0, ""); //~ ERROR arguments to this function are incorrect
+  many_args(X {}, Y {}, 1, 1.0, "");
+  //~^ ERROR mismatched types
+  //~| ERROR mismatched types
+  //~| ERROR mismatched types
+  //~| ERROR mismatched types
+  //~| ERROR mismatched types
 }

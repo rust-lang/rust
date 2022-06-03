@@ -17,17 +17,10 @@ LL | impl<B> Add for A<B> where B: Add {
    |      - this type parameter
 ...
 LL |         A(self.0 + rhs.0)
-   |         - ^^^^^^^^^^^^^^ expected type parameter `B`, found associated type
-   |         |
-   |         arguments to this struct are incorrect
+   |           ^^^^^^^^^^^^^^ expected type parameter `B`, found associated type
    |
    = note: expected type parameter `B`
              found associated type `<B as Add>::Output`
-note: tuple struct defined here
-  --> $DIR/missing-bounds.rs:3:8
-   |
-LL | struct A<B>(B);
-   |        ^
 help: consider further restricting this bound
    |
 LL | impl<B> Add for A<B> where B: Add + Add<Output = B> {
@@ -40,17 +33,10 @@ LL | impl<B: Add> Add for C<B> {
    |      - this type parameter
 ...
 LL |         Self(self.0 + rhs.0)
-   |         ---- ^^^^^^^^^^^^^^ expected type parameter `B`, found associated type
-   |         |
-   |         arguments to this function are incorrect
+   |              ^^^^^^^^^^^^^^ expected type parameter `B`, found associated type
    |
    = note: expected type parameter `B`
              found associated type `<B as Add>::Output`
-note: tuple struct defined here
-  --> $DIR/missing-bounds.rs:13:8
-   |
-LL | struct C<B>(B);
-   |        ^
 help: consider further restricting this bound
    |
 LL | impl<B: Add + Add<Output = B>> Add for C<B> {
@@ -76,17 +62,10 @@ LL | impl<B: Add> Add for E<B> where <B as Add>::Output = B {
    |      - this type parameter
 ...
 LL |         Self(self.0 + rhs.0)
-   |         ---- ^^^^^^^^^^^^^^ expected type parameter `B`, found associated type
-   |         |
-   |         arguments to this function are incorrect
+   |              ^^^^^^^^^^^^^^ expected type parameter `B`, found associated type
    |
    = note: expected type parameter `B`
              found associated type `<B as Add>::Output`
-note: tuple struct defined here
-  --> $DIR/missing-bounds.rs:33:8
-   |
-LL | struct E<B>(B);
-   |        ^
 help: consider further restricting this bound
    |
 LL | impl<B: Add + Add<Output = B>> Add for E<B> where <B as Add>::Output = B {

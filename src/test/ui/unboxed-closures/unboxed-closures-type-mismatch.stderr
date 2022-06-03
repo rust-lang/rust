@@ -2,15 +2,8 @@ error[E0308]: mismatched types
   --> $DIR/unboxed-closures-type-mismatch.rs:5:15
    |
 LL |     let z = f(1_usize, 2);
-   |             - ^^^^^^^ expected `isize`, found `usize`
-   |             |
-   |             arguments to this function are incorrect
+   |               ^^^^^^^ expected `isize`, found `usize`
    |
-note: closure defined here
-  --> $DIR/unboxed-closures-type-mismatch.rs:4:17
-   |
-LL |     let mut f = |x: isize, y: isize| -> isize { x + y };
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: change the type of the numeric literal from `usize` to `isize`
    |
 LL |     let z = f(1_isize, 2);

@@ -12,5 +12,12 @@ fn complex(_i: u32, _s: &str, _e: E, _f: F, _g: G, _x: X, _y: Y, _z: Z ) {}
 
 fn main() {
   complex(1.0, H {}, &"", G{}, F::X2, Z {}, X {}, Y {});
-  //~^ ERROR arguments to this function are incorrect
+  //~^ ERROR mismatched types
+  //~| ERROR mismatched types
+  //~| ERROR mismatched types
+  //~| ERROR mismatched types
+  //~| ERROR mismatched types
+  //~| ERROR mismatched types
+  //~| ERROR mismatched types
+  //~| ERROR mismatched types
 }
