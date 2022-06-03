@@ -70,5 +70,13 @@ module.exports = {
         "no-dupe-keys": "error",
         "no-duplicate-case": "error",
         "no-ex-assign": "error",
+        "no-fallthrough": "error",
+        "no-invalid-regexp": "error",
+        "no-import-assign": "error",
+        "no-self-compare": "error",
+        "no-template-curly-in-string": "error",
+        "block-scoped-var": "error",
+        "guard-for-in": "error",
+        "no-alert": "error",
     }
 };
