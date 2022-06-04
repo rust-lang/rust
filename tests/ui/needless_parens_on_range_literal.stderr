@@ -12,5 +12,11 @@ error: needless parenthesis on range literal can be removed
 LL |     let _ = ('a')..=('z');
    |                     ^^^^^ help: try: `'z'`
 
-error: aborting due to 2 previous errors
+error: needless parenthesis on range literal can be removed
+  --> $DIR/needless_parens_on_range_literal.rs:11:19
+   |
+LL |     let _ = (1.)..(2.);
+   |                   ^^^^ help: try: `2.`
+
+error: aborting due to 3 previous errors
 
