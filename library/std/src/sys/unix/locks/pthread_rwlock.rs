@@ -1,5 +1,6 @@
 use crate::cell::UnsafeCell;
 use crate::sync::atomic::{AtomicUsize, Ordering};
+use crate::sys_common::lazy_box::{LazyBox, LazyInit};
 
 pub struct RwLock {
     inner: UnsafeCell<libc::pthread_rwlock_t>,
@@ -7,10 +8,16 @@ pub struct RwLock {
     num_readers: AtomicUsize,
 }
 
-pub type MovableRwLock = Box<RwLock>;
+pub(crate) type MovableRwLock = LazyBox<RwLock>;
 
 unsafe impl Send for RwLock {}
 unsafe impl Sync for RwLock {}
+
+impl LazyInit for RwLock {
+    fn init() -> Box<Self> {
+        Box::new(Self::new())
+    }
+}
 
 impl RwLock {
     pub const fn new() -> RwLock {
@@ -128,7 +135,7 @@ impl RwLock {
         self.raw_unlock();
     }
     #[inline]
-    pub unsafe fn destroy(&self) {
+    unsafe fn destroy(&mut self) {
         let r = libc::pthread_rwlock_destroy(self.inner.get());
         // On DragonFly pthread_rwlock_destroy() returns EINVAL if called on a
         // rwlock that was just initialized with
@@ -139,5 +146,12 @@ impl RwLock {
         } else {
             debug_assert_eq!(r, 0);
         }
+    }
+}
+
+impl Drop for RwLock {
+    #[inline]
+    fn drop(&mut self) {
+        unsafe { self.destroy() };
     }
 }
