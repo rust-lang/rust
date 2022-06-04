@@ -46,7 +46,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::struct_span_err;
+use rustc_errors::{struct_span_err, Applicability};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Namespace, PartialRes, PerNS, Res};
 use rustc_hir::def_id::{DefId, DefPathHash, LocalDefId, CRATE_DEF_ID};
@@ -253,7 +253,7 @@ enum ImplTraitContext {
     /// equivalent to a fresh universal parameter like `fn foo<T: Debug>(x: T)`.
     ///
     /// Newly generated parameters should be inserted into the given `Vec`.
-    Universal(LocalDefId),
+    Universal,
 
     /// Treat `impl Trait` as shorthand for a new opaque type.
     /// Example: `fn foo() -> impl Debug`, where `impl Debug` is conceptually
@@ -857,7 +857,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         itctx: ImplTraitContext,
     ) -> hir::TypeBinding<'hir> {
         debug!("lower_assoc_ty_constraint(constraint={:?}, itctx={:?})", constraint, itctx);
-
         // lower generic arguments of identifier in constraint
         let gen_args = if let Some(ref gen_args) = constraint.gen_args {
             let gen_args_ctor = match gen_args {
@@ -865,12 +864,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     self.lower_angle_bracketed_parameter_data(data, ParamMode::Explicit, itctx).0
                 }
                 GenericArgs::Parenthesized(ref data) => {
-                    let mut err = self.sess.struct_span_err(
-                        gen_args.span(),
-                        "parenthesized generic arguments cannot be used in associated type constraints"
-                    );
-                    // FIXME: try to write a suggestion here
-                    err.emit();
+                    self.assoc_ty_contraint_param_error_emit(data);
                     self.lower_angle_bracketed_parameter_data(
                         &data.as_angle_bracketed_args(),
                         ParamMode::Explicit,
@@ -893,7 +887,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 hir::TypeBindingKind::Equality { term }
             }
             AssocConstraintKind::Bound { ref bounds } => {
-                let mut parent_def_id = self.current_hir_id_owner;
                 // Piggy-back on the `impl Trait` context to figure out the correct behavior.
                 let (desugar_to_impl_trait, itctx) = match itctx {
                     // We are in the return position:
@@ -913,10 +906,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     // so desugar to
                     //
                     //     fn foo(x: dyn Iterator<Item = impl Debug>)
-                    ImplTraitContext::Universal(parent) if self.is_in_dyn_type => {
-                        parent_def_id = parent;
-                        (true, itctx)
-                    }
+                    ImplTraitContext::Universal if self.is_in_dyn_type => (true, itctx),
 
                     // In `type Foo = dyn Iterator<Item: Debug>` we desugar to
                     // `type Foo = dyn Iterator<Item = impl Debug>` but we have to override the
@@ -942,6 +932,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     // Desugar `AssocTy: Bounds` into `AssocTy = impl Bounds`. We do this by
                     // constructing the HIR for `impl bounds...` and then lowering that.
 
+                    let parent_def_id = self.current_hir_id_owner;
                     let impl_trait_node_id = self.resolver.next_node_id();
                     self.resolver.create_def(
                         parent_def_id,
@@ -982,6 +973,42 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             kind,
             span: self.lower_span(constraint.span),
         }
+    }
+
+    fn assoc_ty_contraint_param_error_emit(&self, data: &ParenthesizedArgs) -> () {
+        let mut err = self.sess.struct_span_err(
+            data.span,
+            "parenthesized generic arguments cannot be used in associated type constraints",
+        );
+        // Suggest removing empty parentheses: "Trait()" -> "Trait"
+        if data.inputs.is_empty() {
+            let parentheses_span =
+                data.inputs_span.shrink_to_lo().to(data.inputs_span.shrink_to_hi());
+            err.multipart_suggestion(
+                "remove these parentheses",
+                vec![(parentheses_span, String::new())],
+                Applicability::MaybeIncorrect,
+            );
+        }
+        // Suggest replacing parentheses with angle brackets `Trait(params...)` to `Trait<params...>`
+        else {
+            // Start of parameters to the 1st argument
+            let open_param = data.inputs_span.shrink_to_lo().to(data
+                .inputs
+                .first()
+                .unwrap()
+                .span
+                .shrink_to_lo());
+            // End of last argument to end of parameters
+            let close_param =
+                data.inputs.last().unwrap().span.shrink_to_hi().to(data.inputs_span.shrink_to_hi());
+            err.multipart_suggestion(
+                &format!("use angle brackets instead",),
+                vec![(open_param, String::from("<")), (close_param, String::from(">"))],
+                Applicability::MaybeIncorrect,
+            );
+        }
+        err.emit();
     }
 
     fn lower_generic_arg(
@@ -1184,12 +1211,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             |this| this.lower_param_bounds(bounds, nested_itctx),
                         )
                     }
-                    ImplTraitContext::Universal(parent_def_id) => {
+                    ImplTraitContext::Universal => {
                         // Add a definition for the in-band `Param`.
                         let def_id = self.resolver.local_def_id(def_node_id);
 
-                        let hir_bounds = self
-                            .lower_param_bounds(bounds, ImplTraitContext::Universal(parent_def_id));
+                        let hir_bounds =
+                            self.lower_param_bounds(bounds, ImplTraitContext::Universal);
                         // Set the name to `impl Bound1 + Bound2`.
                         let ident = Ident::from_str_and_span(&pprust::ty_to_string(t), span);
                         let param = hir::GenericParam {
@@ -1399,10 +1426,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
         let inputs = self.arena.alloc_from_iter(inputs.iter().map(|param| {
             if fn_node_id.is_some() {
-                self.lower_ty_direct(
-                    &param.ty,
-                    ImplTraitContext::Universal(self.current_hir_id_owner),
-                )
+                self.lower_ty_direct(&param.ty, ImplTraitContext::Universal)
             } else {
                 self.lower_ty_direct(
                     &param.ty,

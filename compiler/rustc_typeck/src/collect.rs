@@ -1588,41 +1588,20 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
         _ => None,
     };
 
-    let mut opt_self = None;
-    let mut allow_defaults = false;
-
     let no_generics = hir::Generics::empty();
-    let ast_generics = match node {
-        Node::TraitItem(item) => &item.generics,
-
-        Node::ImplItem(item) => &item.generics,
-
+    let ast_generics = node.generics().unwrap_or(&no_generics);
+    let (opt_self, allow_defaults) = match node {
         Node::Item(item) => {
             match item.kind {
-                ItemKind::Fn(.., ref generics, _)
-                | ItemKind::Impl(hir::Impl { ref generics, .. }) => generics,
-
-                ItemKind::TyAlias(_, ref generics)
-                | ItemKind::Enum(_, ref generics)
-                | ItemKind::Struct(_, ref generics)
-                | ItemKind::OpaqueTy(hir::OpaqueTy { ref generics, .. })
-                | ItemKind::Union(_, ref generics) => {
-                    allow_defaults = true;
-                    generics
-                }
-
-                ItemKind::Trait(_, _, ref generics, ..)
-                | ItemKind::TraitAlias(ref generics, ..) => {
+                ItemKind::Trait(..) | ItemKind::TraitAlias(..) => {
                     // Add in the self type parameter.
                     //
                     // Something of a hack: use the node id for the trait, also as
                     // the node id for the Self type parameter.
-                    let param_id = item.def_id;
-
-                    opt_self = Some(ty::GenericParamDef {
+                    let opt_self = Some(ty::GenericParamDef {
                         index: 0,
                         name: kw::SelfUpper,
-                        def_id: param_id.to_def_id(),
+                        def_id,
                         pure_wrt_drop: false,
                         kind: ty::GenericParamDefKind::Type {
                             has_default: false,
@@ -1631,21 +1610,17 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
                         },
                     });
 
-                    allow_defaults = true;
-                    generics
+                    (opt_self, true)
                 }
-
-                _ => &no_generics,
+                ItemKind::TyAlias(..)
+                | ItemKind::Enum(..)
+                | ItemKind::Struct(..)
+                | ItemKind::OpaqueTy(..)
+                | ItemKind::Union(..) => (None, true),
+                _ => (None, false),
             }
         }
-
-        Node::ForeignItem(item) => match item.kind {
-            ForeignItemKind::Static(..) => &no_generics,
-            ForeignItemKind::Fn(_, _, ref generics) => generics,
-            ForeignItemKind::Type => &no_generics,
-        },
-
-        _ => &no_generics,
+        _ => (None, false),
     };
 
     let has_self = opt_self.is_some();
