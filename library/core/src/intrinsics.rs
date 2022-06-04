@@ -1760,21 +1760,21 @@ extern "rust-intrinsic" {
     /// undefined behavior when `x + y > T::MAX` or `x + y < T::MIN`.
     ///
     /// This intrinsic does not have a stable counterpart.
-    #[rustc_const_unstable(feature = "const_int_unchecked_arith", issue = "none")]
+    #[rustc_const_stable(feature = "const_int_unchecked_arith", since = "1.63.0")]
     pub fn unchecked_add<T: Copy>(x: T, y: T) -> T;
 
     /// Returns the result of an unchecked subtraction, resulting in
     /// undefined behavior when `x - y > T::MAX` or `x - y < T::MIN`.
     ///
     /// This intrinsic does not have a stable counterpart.
-    #[rustc_const_unstable(feature = "const_int_unchecked_arith", issue = "none")]
+    #[rustc_const_stable(feature = "const_int_unchecked_arith", since = "1.63.0")]
     pub fn unchecked_sub<T: Copy>(x: T, y: T) -> T;
 
     /// Returns the result of an unchecked multiplication, resulting in
     /// undefined behavior when `x * y > T::MAX` or `x * y < T::MIN`.
     ///
     /// This intrinsic does not have a stable counterpart.
-    #[rustc_const_unstable(feature = "const_int_unchecked_arith", issue = "none")]
+    #[rustc_const_stable(feature = "const_int_unchecked_arith", since = "1.63.0")]
     pub fn unchecked_mul<T: Copy>(x: T, y: T) -> T;
 
     /// Performs rotate left.

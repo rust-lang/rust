@@ -1,5 +1,4 @@
 #![feature(core_intrinsics)]
-#![feature(const_int_unchecked_arith)]
 
 use std::intrinsics;
 
