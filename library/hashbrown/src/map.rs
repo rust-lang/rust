@@ -7060,7 +7060,7 @@ mod test_map {
         a.extend(&create_arr::<i32, 100>(200, 1));
 
         assert_eq!(a.len(), 300);
-        
+
         for item in 0..300 {
             assert_eq!(a[&item], item);
         }
