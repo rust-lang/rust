@@ -138,7 +138,11 @@ impl<T: ?Sized> ThinBox<T> {
     }
 }
 
-/// A pointer to type-erased data, guaranteed to have a header `H` before the pointed-to location.
+/// A pointer to type-erased data, guaranteed to either be:
+/// 1. `NonNull::dangling()`, in the case where both the pointee (`T`) and
+///    metadata (`H`) are ZSTs.
+/// 2. A pointer to a valid `T` that has a header `H` directly before the
+///    pointed-to location.
 struct WithHeader<H>(NonNull<u8>, PhantomData<H>);
 
 impl<H> WithHeader<H> {
@@ -156,16 +160,27 @@ impl<H> WithHeader<H> {
         };
 
         unsafe {
-            let ptr = alloc::alloc(layout);
+            // Note: It's UB to pass a layout with a zero size to `alloc::alloc`, so
+            // we use `layout.dangling()` for this case, which should have a valid
+            // alignment for both `T` and `H`.
+            let ptr = if layout.size() == 0 {
+                // Some paranoia checking, mostly so that the ThinBox tests are
+                // more able to catch issues.
+                debug_assert!(
+                    value_offset == 0 && mem::size_of::<T>() == 0 && mem::size_of::<H>() == 0
+                );
+                layout.dangling()
+            } else {
+                let ptr = alloc::alloc(layout);
+                if ptr.is_null() {
+                    alloc::handle_alloc_error(layout);
+                }
+                // Safety:
+                // - The size is at least `aligned_header_size`.
+                let ptr = ptr.add(value_offset) as *mut _;
 
-            if ptr.is_null() {
-                alloc::handle_alloc_error(layout);
-            }
-            //  Safety:
-            //  -   The size is at least `aligned_header_size`.
-            let ptr = ptr.add(value_offset) as *mut _;
-
-            let ptr = NonNull::new_unchecked(ptr);
+                NonNull::new_unchecked(ptr)
+            };
 
             let result = WithHeader(ptr, PhantomData);
             ptr::write(result.header(), header);
@@ -175,18 +190,28 @@ impl<H> WithHeader<H> {
         }
     }
 
-    //  Safety:
-    //  -   Assumes that `value` can be dereferenced.
+    // Safety:
+    // - Assumes that either `value` can be dereferenced, or is the
+    //   `NonNull::dangling()` we use when both `T` and `H` are ZSTs.
     unsafe fn drop<T: ?Sized>(&self, value: *mut T) {
         unsafe {
+            let value_layout = Layout::for_value_raw(value);
             // SAFETY: Layout must have been computable if we're in drop
-            let (layout, value_offset) =
-                Self::alloc_layout(Layout::for_value_raw(value)).unwrap_unchecked();
+            let (layout, value_offset) = Self::alloc_layout(value_layout).unwrap_unchecked();
 
-            ptr::drop_in_place::<T>(value);
             // We only drop the value because the Pointee trait requires that the metadata is copy
-            // aka trivially droppable
-            alloc::dealloc(self.0.as_ptr().sub(value_offset), layout);
+            // aka trivially droppable.
+            ptr::drop_in_place::<T>(value);
+
+            // Note: Don't deallocate if the layout size is zero, because the pointer
+            // didn't come from the allocator.
+            if layout.size() != 0 {
+                alloc::dealloc(self.0.as_ptr().sub(value_offset), layout);
+            } else {
+                debug_assert!(
+                    value_offset == 0 && mem::size_of::<H>() == 0 && value_layout.size() == 0
+                );
+            }
         }
     }
 
@@ -198,7 +223,9 @@ impl<H> WithHeader<H> {
         //    needed to align the header. Subtracting the header size from the aligned data pointer
         //    will always result in an aligned header pointer, it just may not point to the
         //    beginning of the allocation.
-        unsafe { self.0.as_ptr().sub(Self::header_size()) as *mut H }
+        let hp = unsafe { self.0.as_ptr().sub(Self::header_size()) as *mut H };
+        debug_assert!(hp.is_aligned());
+        hp
     }
 
     fn value(&self) -> *mut u8 {
