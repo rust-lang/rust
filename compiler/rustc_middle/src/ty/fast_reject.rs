@@ -417,6 +417,8 @@ impl DeepRejectCtxt {
                 TreatParams::AsPlaceholder => false,
                 TreatParams::AsInfer => true,
             },
+            (ty::ConstnessArg::Infer, _) => true,
+            (ty::ConstnessArg::Not, ty::ConstnessArg::Required) => true,
             _ => obligation_ct == impl_ct,
         }
     }

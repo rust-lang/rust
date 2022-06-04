@@ -2524,6 +2524,7 @@ define_print_and_forward_display! {
                 ty::ConstnessArg::Not => {},
                 ty::ConstnessArg::Required => p!(write("const ")),
                 ty::ConstnessArg::Param => p!(write("~const ")),
+                ty::ConstnessArg::Infer => p!(write("_const ")), // TODO wonky
             }
         }
         p!(print_def_path(self.0.def_id, self.0.substs));

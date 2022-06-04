@@ -574,7 +574,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             .unwrap_or_else(|| match self.astconv.item_def_id() {
                                 // no information available
                                 // TODO: fall back to `Not`?
-                                None => ty::ConstnessArg::Param,
+                                None => if infer_args { ty::ConstnessArg::Infer } else { ty::ConstnessArg::Param },
                                 Some(context) => {
                                     if tcx.generics_of(context).has_constness_param() {
                                         ty::ConstnessArg::Param
@@ -724,8 +724,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             self_ty,
             trait_ref.path.segments.last().unwrap(),
             true,
-            match constness {
-                hir::Constness::Const => ty::ConstnessArg::Param,
+            match constness { // TODO check this again
+                hir::Constness::Const => ty::ConstnessArg::Required,
                 hir::Constness::NotConst => ty::ConstnessArg::Not,
             },
         )

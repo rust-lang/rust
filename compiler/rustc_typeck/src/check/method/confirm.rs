@@ -397,9 +397,19 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                 _substs: Option<&[subst::GenericArg<'tcx>]>,
                 param: &ty::GenericParamDef,
                 _infer_args: bool,
-                _constness: Option<ty::ConstnessArg>,
+                constness: Option<ty::ConstnessArg>,
             ) -> subst::GenericArg<'tcx> {
-                self.cfcx.var_for_def(self.cfcx.span, param)
+                if let ty::GenericParamDefKind::Constness = param.kind {
+                    let constness = if let Some(constness) = constness {
+                        constness
+                    } else {
+                        self.cfcx.fcx.constness()
+                    };
+                    debug!("inferred_kind constness={constness:?}");
+                    constness.into()
+                } else {
+                    self.cfcx.var_for_def(self.cfcx.span, param)
+                }
             }
         }
         <dyn AstConv<'_>>::create_substs_for_generic_args(

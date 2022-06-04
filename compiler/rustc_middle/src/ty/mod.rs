@@ -315,6 +315,7 @@ pub enum ConstnessArg {
     Required,
     Not,
     Param,
+    Infer,
 }
 
 impl fmt::Display for ConstnessArg {
@@ -323,6 +324,7 @@ impl fmt::Display for ConstnessArg {
             Self::Required => "(constness: required)",
             Self::Not => "(constness: not)",
             Self::Param => "(constness: parameterized)",
+            Self::Infer => "(constness: infer)"
         })
     }
 }

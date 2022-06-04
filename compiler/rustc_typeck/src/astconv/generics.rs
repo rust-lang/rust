@@ -213,7 +213,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             // If we have already computed substitutions for parents, we can use those directly.
             while let Some(&param) = params.peek() {
                 if let Some(&kind) = parent_substs.get(param.index as usize) {
-                    substs.push(kind);
+                    if let subst::GenericArgKind::Constness(ty::ConstnessArg::Infer) = kind.unpack()
+                    {
+                        substs.push(ctx.inferred_kind(None, param, false, None))
+                    } else {
+                        substs.push(kind);
+                    }
                     params.next();
                 } else {
                     break;

@@ -2157,7 +2157,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let impl_substs = self.infcx.fresh_substs_for_item(obligation.cause.span, impl_def_id);
 
-        let impl_trait_ref = impl_trait_ref.subst(self.tcx(), impl_substs);
+        let mut impl_trait_ref = impl_trait_ref.subst(self.tcx(), impl_substs);
+        placeholder_obligation_trait_ref.normalize_constness_equate(self.tcx(), &mut impl_trait_ref);
 
         debug!(?impl_trait_ref);
 
