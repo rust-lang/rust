@@ -67,25 +67,70 @@ pub unsafe fn init(argc: isize, argv: *const *const u8) {
     args::init(argc, argv);
 
     unsafe fn sanitize_standard_fds() {
-        cfg_if::cfg_if! {
-            if #[cfg(not(any(
-                // The standard fds are always available in Miri.
-                miri,
-                target_os = "emscripten",
-                target_os = "fuchsia",
-                target_os = "vxworks",
-                target_os = "l4re",
-            )))] {
-                use crate::sys::os::errno;
-                for fd in 0..3 {
-                    if libc::fcntl(fd, libc::F_GETFD) == -1 && errno() == libc::EBADF {
-                        if libc::open("/dev/null\0".as_ptr().cast(), libc::O_RDWR, 0) == -1 {
-                            // If the stream is closed but we failed to reopen it, abort the
-                            // process. Otherwise we wouldn't preserve the safety of
-                            // operations on the corresponding Rust object Stdin, Stdout, or
-                            // Stderr.
-                            libc::abort();
-                        }
+        // fast path with a single syscall for systems with poll()
+        #[cfg(not(any(
+            miri,
+            target_os = "emscripten",
+            target_os = "fuchsia",
+            target_os = "vxworks",
+            // The poll on Darwin doesn't set POLLNVAL for closed fds.
+            target_os = "macos",
+            target_os = "ios",
+            target_os = "redox",
+            target_os = "l4re",
+        )))]
+        'poll: {
+            use crate::sys::os::errno;
+            let pfds: &mut [_] = &mut [
+                libc::pollfd { fd: 0, events: 0, revents: 0 },
+                libc::pollfd { fd: 1, events: 0, revents: 0 },
+                libc::pollfd { fd: 2, events: 0, revents: 0 },
+            ];
+
+            while libc::poll(pfds.as_mut_ptr(), 3, 0) == -1 {
+                if errno() == libc::EINTR {
+                    continue;
+                }
+                if errno() == libc::EINVAL {
+                    // RLIMIT_NOFILE may be preventing use of poll()
+                    break 'poll;
+                }
+                libc::abort();
+            }
+            for pfd in pfds {
+                if pfd.revents & libc::POLLNVAL == 0 {
+                    continue;
+                }
+                if libc::open("/dev/null\0".as_ptr().cast(), libc::O_RDWR, 0) == -1 {
+                    // If the stream is closed but we failed to reopen it, abort the
+                    // process. Otherwise we wouldn't preserve the safety of
+                    // operations on the corresponding Rust object Stdin, Stdout, or
+                    // Stderr.
+                    libc::abort();
+                }
+            }
+            return;
+        }
+
+        // fallback in case poll isn't available or limited by RLIMIT_NOFILE
+        #[cfg(not(any(
+            // The standard fds are always available in Miri.
+            miri,
+            target_os = "emscripten",
+            target_os = "fuchsia",
+            target_os = "vxworks",
+            target_os = "l4re",
+        )))]
+        {
+            use crate::sys::os::errno;
+            for fd in 0..3 {
+                if libc::fcntl(fd, libc::F_GETFD) == -1 && errno() == libc::EBADF {
+                    if libc::open("/dev/null\0".as_ptr().cast(), libc::O_RDWR, 0) == -1 {
+                        // If the stream is closed but we failed to reopen it, abort the
+                        // process. Otherwise we wouldn't preserve the safety of
+                        // operations on the corresponding Rust object Stdin, Stdout, or
+                        // Stderr.
+                        libc::abort();
                     }
                 }
             }
