@@ -641,7 +641,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(borrow_deref_ref::BorrowDerefRef));
     store.register_late_pass(|| Box::new(no_effect::NoEffect));
     store.register_late_pass(|| Box::new(temporary_assignment::TemporaryAssignment));
-    store.register_late_pass(|| Box::new(transmute::Transmute));
+    store.register_late_pass(move || Box::new(transmute::Transmute::new(msrv)));
     let cognitive_complexity_threshold = conf.cognitive_complexity_threshold;
     store.register_late_pass(move || {
         Box::new(cognitive_complexity::CognitiveComplexity::new(
