@@ -3,9 +3,8 @@
 // Manual edits will be overwritten.
 
 store.register_group(true, "clippy::restriction", Some("clippy_restriction"), vec![
-    LintId::of(arithmetic::FLOAT_ARITHMETIC),
-    LintId::of(arithmetic::INTEGER_ARITHMETIC),
     LintId::of(as_conversions::AS_CONVERSIONS),
+    LintId::of(as_underscore::AS_UNDERSCORE),
     LintId::of(asm_syntax::INLINE_ASM_X86_ATT_SYNTAX),
     LintId::of(asm_syntax::INLINE_ASM_X86_INTEL_SYNTAX),
     LintId::of(attrs::ALLOW_ATTRIBUTES_WITHOUT_REASON),
@@ -32,6 +31,7 @@ store.register_group(true, "clippy::restriction", Some("clippy_restriction"), ve
     LintId::of(literal_representation::DECIMAL_LITERAL_REPRESENTATION),
     LintId::of(map_err_ignore::MAP_ERR_IGNORE),
     LintId::of(matches::REST_PAT_IN_FULLY_BOUND_STRUCTS),
+    LintId::of(matches::TRY_ERR),
     LintId::of(matches::WILDCARD_ENUM_MATCH_ARM),
     LintId::of(mem_forget::MEM_FORGET),
     LintId::of(methods::CLONE_ON_REF_PTR),
@@ -50,6 +50,8 @@ store.register_group(true, "clippy::restriction", Some("clippy_restriction"), ve
     LintId::of(module_style::MOD_MODULE_FILES),
     LintId::of(module_style::SELF_NAMED_MODULE_FILES),
     LintId::of(modulo_arithmetic::MODULO_ARITHMETIC),
+    LintId::of(numeric_arithmetic::FLOAT_ARITHMETIC),
+    LintId::of(numeric_arithmetic::INTEGER_ARITHMETIC),
     LintId::of(panic_in_result_fn::PANIC_IN_RESULT_FN),
     LintId::of(panic_unimplemented::PANIC),
     LintId::of(panic_unimplemented::TODO),
@@ -67,7 +69,6 @@ store.register_group(true, "clippy::restriction", Some("clippy_restriction"), ve
     LintId::of(strings::STRING_SLICE),
     LintId::of(strings::STRING_TO_STRING),
     LintId::of(strings::STR_TO_STRING),
-    LintId::of(try_err::TRY_ERR),
     LintId::of(types::RC_BUFFER),
     LintId::of(types::RC_MUTEX),
     LintId::of(undocumented_unsafe_blocks::UNDOCUMENTED_UNSAFE_BLOCKS),

@@ -1443,7 +1443,7 @@ pub fn is_refutable(cx: &LateContext<'_>, pat: &Pat<'_>) -> bool {
         },
         PatKind::Tuple(pats, _) => are_refutable(cx, pats),
         PatKind::Struct(ref qpath, fields, _) => {
-            is_enum_variant(cx, qpath, pat.hir_id) || are_refutable(cx, fields.iter().map(|field| &*field.pat))
+            is_enum_variant(cx, qpath, pat.hir_id) || are_refutable(cx, fields.iter().map(|field| field.pat))
         },
         PatKind::TupleStruct(ref qpath, pats, _) => is_enum_variant(cx, qpath, pat.hir_id) || are_refutable(cx, pats),
         PatKind::Slice(head, middle, tail) => {
@@ -1658,7 +1658,7 @@ pub fn if_sequence<'tcx>(mut expr: &'tcx Expr<'tcx>) -> (Vec<&'tcx Expr<'tcx>>, 
     let mut blocks: Vec<&Block<'_>> = Vec::new();
 
     while let Some(higher::IfOrIfLet { cond, then, r#else }) = higher::IfOrIfLet::hir(expr) {
-        conds.push(&*cond);
+        conds.push(cond);
         if let ExprKind::Block(block, _) = then.kind {
             blocks.push(block);
         } else {
@@ -1916,7 +1916,17 @@ pub fn fn_def_id(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<DefId> {
                 ..
             },
             ..,
-        ) => cx.typeck_results().qpath_res(qpath, *path_hir_id).opt_def_id(),
+        ) => {
+            // Only return Fn-like DefIds, not the DefIds of statics/consts/etc that contain or
+            // deref to fn pointers, dyn Fn, impl Fn - #8850
+            if let Res::Def(DefKind::Fn | DefKind::Ctor(..) | DefKind::AssocFn, id) =
+                cx.typeck_results().qpath_res(qpath, *path_hir_id)
+            {
+                Some(id)
+            } else {
+                None
+            }
+        },
         _ => None,
     }
 }
@@ -2073,7 +2083,8 @@ static TEST_ITEM_NAMES_CACHE: SyncOnceCell<Mutex<FxHashMap<LocalDefId, Vec<Symbo
 fn with_test_item_names<'tcx>(tcx: TyCtxt<'tcx>, module: LocalDefId, f: impl Fn(&[Symbol]) -> bool) -> bool {
     let cache = TEST_ITEM_NAMES_CACHE.get_or_init(|| Mutex::new(FxHashMap::default()));
     let mut map: MutexGuard<'_, FxHashMap<LocalDefId, Vec<Symbol>>> = cache.lock().unwrap();
-    match map.entry(module) {
+    let value = map.entry(module);
+    match value {
         Entry::Occupied(entry) => f(entry.get()),
         Entry::Vacant(entry) => {
             let mut names = Vec::new();

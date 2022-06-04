@@ -28,7 +28,7 @@ declare_clippy_lint! {
     /// let x = 3.14;
     /// let y = 1_f64 / x;
     /// ```
-    /// Use predefined constants instead:
+    /// Use instead:
     /// ```rust
     /// let x = std::f32::consts::PI;
     /// let y = std::f64::consts::FRAC_1_PI;

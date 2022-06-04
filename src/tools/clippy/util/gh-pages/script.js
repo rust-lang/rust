@@ -232,6 +232,9 @@
                     return true;
                 }
                 searchStr = searchStr.toLowerCase();
+                if (searchStr.startsWith("clippy::")) {
+                    searchStr = searchStr.slice(8);
+                }
 
                 // Search by id
                 if (lint.id.indexOf(searchStr.replace("-", "_")) !== -1) {
@@ -343,17 +346,23 @@ function setTheme(theme, store) {
     let enableNight = false;
     let enableAyu = false;
 
-    if (theme == "ayu") {
-        enableAyu = true;
-    } else if (theme == "coal" || theme == "navy") {
-        enableNight = true;
-    } else if (theme == "rust") {
-        enableHighlight = true;
-    } else {
-        enableHighlight = true;
-        // this makes sure that an unknown theme request gets set to a known one
-        theme = "light";
+    switch(theme) {
+        case "ayu":
+            enableAyu = true;
+            break;
+        case "coal":
+        case "navy":
+            enableNight = true;
+            break;
+        case "rust":
+            enableHighlight = true;
+            break;
+        default:
+            enableHighlight = true;
+            theme = "light";
+            break;
     }
+
     document.getElementsByTagName("body")[0].className = theme;
 
     document.getElementById("styleHighlight").disabled = !enableHighlight;
@@ -368,4 +377,10 @@ function setTheme(theme, store) {
 }
 
 // loading the theme after the initial load
-setTheme(localStorage.getItem('clippy-lint-list-theme'), false);
+const prefersDark = window.matchMedia("(prefers-color-scheme: dark)");
+const theme = localStorage.getItem('clippy-lint-list-theme');
+if (prefersDark.matches && !theme) {
+    setTheme("coal", false);
+} else {
+    setTheme(theme, false);
+}

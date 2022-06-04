@@ -141,7 +141,7 @@ declare_clippy_lint! {
     /// };
     /// ```
     ///
-    /// Could be written as:
+    /// Use instead:
     /// ```ignore
     /// println!("Hello World");
     /// let foo = if … {

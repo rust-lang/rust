@@ -1,0 +1,273 @@
+// run-rustfix
+#![feature(let_chains)]
+#![allow(
+    unused,
+    clippy::assign_op_pattern,
+    clippy::blocks_in_if_conditions,
+    clippy::let_and_return,
+    clippy::let_unit_value,
+    clippy::nonminimal_bool
+)]
+
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::rc::Rc;
+
+struct SignificantDrop;
+impl std::ops::Drop for SignificantDrop {
+    fn drop(&mut self) {
+        println!("dropped");
+    }
+}
+
+fn simple() {
+    
+    let a = "zero";
+
+    
+    
+    let b = 1;
+    let c = 2;
+
+    
+    let d: usize = 1;
+
+    
+    let e = format!("{}", d);
+}
+
+fn main() {
+    
+    let n = 1;
+    let a = match n {
+        1 => "one",
+        _ => {
+            "two"
+        },
+    };
+
+    
+    let b = if n == 3 {
+        "four"
+    } else {
+        "five"
+    };
+
+    
+    let d = if true {
+        let temp = 5;
+        temp
+    } else {
+        15
+    };
+
+    
+    let e = if true {
+        format!("{} {}", a, b)
+    } else {
+        format!("{}", n)
+    };
+
+    
+    let f = match 1 {
+        1 => "three",
+        _ => return,
+    }; // has semi
+
+    
+    let g: usize = if true {
+        5
+    } else {
+        panic!();
+    };
+
+    // Drop order only matters if both are significant
+    
+    let y = SignificantDrop;
+    let x = 1;
+
+    
+    let y = 1;
+    let x = SignificantDrop;
+
+    
+    // types that should be considered insignificant
+    let y = 1;
+    let y = "2";
+    let y = String::new();
+    let y = vec![3.0];
+    let y = HashMap::<usize, usize>::new();
+    let y = BTreeMap::<usize, usize>::new();
+    let y = HashSet::<usize>::new();
+    let y = BTreeSet::<usize>::new();
+    let y = Box::new(4);
+    let x = SignificantDrop;
+}
+
+async fn in_async() -> &'static str {
+    async fn f() -> &'static str {
+        "one"
+    }
+
+    
+    let n = 1;
+    let a = match n {
+        1 => f().await,
+        _ => {
+            "two"
+        },
+    };
+
+    a
+}
+
+const fn in_const() -> &'static str {
+    const fn f() -> &'static str {
+        "one"
+    }
+
+    
+    let n = 1;
+    let a = match n {
+        1 => f(),
+        _ => {
+            "two"
+        },
+    };
+
+    a
+}
+
+fn does_not_lint() {
+    let z;
+    if false {
+        z = 1;
+    }
+
+    let x;
+    let y;
+    if true {
+        x = 1;
+    } else {
+        y = 1;
+    }
+
+    let mut x;
+    if true {
+        x = 5;
+        x = 10 / x;
+    } else {
+        x = 2;
+    }
+
+    let x;
+    let _ = match 1 {
+        1 => x = 10,
+        _ => x = 20,
+    };
+
+    // using tuples would be possible, but not always preferable
+    let x;
+    let y;
+    if true {
+        x = 1;
+        y = 2;
+    } else {
+        x = 3;
+        y = 4;
+    }
+
+    // could match with a smarter heuristic to avoid multiple assignments
+    let x;
+    if true {
+        let mut y = 5;
+        y = 6;
+        x = y;
+    } else {
+        x = 2;
+    }
+
+    let (x, y);
+    if true {
+        x = 1;
+    } else {
+        x = 2;
+    }
+    y = 3;
+
+    macro_rules! assign {
+        ($i:ident) => {
+            $i = 1;
+        };
+    }
+    let x;
+    assign!(x);
+
+    let x;
+    if true {
+        assign!(x);
+    } else {
+        x = 2;
+    }
+
+    macro_rules! in_macro {
+        () => {
+            let x;
+            x = 1;
+
+            let x;
+            if true {
+                x = 1;
+            } else {
+                x = 2;
+            }
+        };
+    }
+    in_macro!();
+
+    // ignore if-lets - https://github.com/rust-lang/rust-clippy/issues/8613
+    let x;
+    if let Some(n) = Some("v") {
+        x = 1;
+    } else {
+        x = 2;
+    }
+
+    let x;
+    if true && let Some(n) = Some("let chains too") {
+        x = 1;
+    } else {
+        x = 2;
+    }
+
+    // ignore mut bindings
+    // https://github.com/shepmaster/twox-hash/blob/b169c16d86eb8ea4a296b0acb9d00ca7e3c3005f/src/sixty_four.rs#L88-L93
+    // https://github.com/dtolnay/thiserror/blob/21c26903e29cb92ba1a7ff11e82ae2001646b60d/tests/test_generics.rs#L91-L100
+    let mut x: usize;
+    x = 1;
+    x = 2;
+    x = 3;
+
+    // should not move the declaration if `x` has a significant drop, and there
+    // is another binding with a significant drop between it and the first usage
+    let x;
+    let y = SignificantDrop;
+    x = SignificantDrop;
+}
+
+#[rustfmt::skip]
+fn issue8911() -> u32 {
+    let x;
+    match 1 {
+        _ if { x = 1; false } => return 1,
+        _ => return 2,
+    }
+
+    let x;
+    if { x = 1; true } {
+        return 1;
+    } else {
+        return 2;
+    }
+
+    3
+}

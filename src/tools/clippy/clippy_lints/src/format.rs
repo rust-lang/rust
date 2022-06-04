@@ -25,12 +25,13 @@ declare_clippy_lint! {
     ///
     /// ### Examples
     /// ```rust
-    ///
-    /// // Bad
     /// let foo = "foo";
     /// format!("{}", foo);
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
+    /// let foo = "foo";
     /// foo.to_owned();
     /// ```
     #[clippy::version = "pre 1.29.0"]

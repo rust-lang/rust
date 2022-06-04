@@ -21,7 +21,7 @@ declare_clippy_lint! {
     ///     bar: bool
     /// }
     ///
-    /// impl std::default::Default for Foo {
+    /// impl Default for Foo {
     ///     fn default() -> Self {
     ///         Self {
     ///             bar: false

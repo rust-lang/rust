@@ -1,47 +1,47 @@
-use clap::{App, Arg, ArgMatches};
+use clap::{Arg, ArgMatches, Command};
 use std::env;
 use std::path::PathBuf;
 
-fn get_clap_config<'a>() -> ArgMatches<'a> {
-    App::new("lintcheck")
+fn get_clap_config() -> ArgMatches {
+    Command::new("lintcheck")
         .about("run clippy on a set of crates and check output")
         .arg(
-            Arg::with_name("only")
+            Arg::new("only")
                 .takes_value(true)
                 .value_name("CRATE")
                 .long("only")
                 .help("Only process a single crate of the list"),
         )
         .arg(
-            Arg::with_name("crates-toml")
+            Arg::new("crates-toml")
                 .takes_value(true)
                 .value_name("CRATES-SOURCES-TOML-PATH")
                 .long("crates-toml")
                 .help("Set the path for a crates.toml where lintcheck should read the sources from"),
         )
         .arg(
-            Arg::with_name("threads")
+            Arg::new("threads")
                 .takes_value(true)
                 .value_name("N")
-                .short("j")
+                .short('j')
                 .long("jobs")
                 .help("Number of threads to use, 0 automatic choice"),
         )
         .arg(
-            Arg::with_name("fix")
+            Arg::new("fix")
                 .long("--fix")
                 .help("Runs cargo clippy --fix and checks if all suggestions apply"),
         )
         .arg(
-            Arg::with_name("filter")
+            Arg::new("filter")
                 .long("--filter")
                 .takes_value(true)
-                .multiple(true)
+                .multiple_occurrences(true)
                 .value_name("clippy_lint_name")
                 .help("Apply a filter to only collect specified lints, this also overrides `allow` attributes"),
         )
         .arg(
-            Arg::with_name("markdown")
+            Arg::new("markdown")
                 .long("--markdown")
                 .help("Change the reports table to use markdown links"),
         )

@@ -146,7 +146,7 @@ fn never_loop_expr(expr: &Expr<'_>, main_loop_id: HirId) -> NeverLoopResult {
             if arms.is_empty() {
                 e
             } else {
-                let arms = never_loop_expr_branch(&mut arms.iter().map(|a| &*a.body), main_loop_id);
+                let arms = never_loop_expr_branch(&mut arms.iter().map(|a| a.body), main_loop_id);
                 combine_seq(e, arms)
             }
         },

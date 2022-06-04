@@ -180,29 +180,24 @@ declare_clippy_lint! {
     /// ### Example
     /// ```rust
     /// # let opt = Some(1);
-    ///
-    /// // Bad
+    /// # let res: Result<i32, std::io::Error> = Ok(1);
     /// for x in opt {
     ///     // ..
     /// }
     ///
-    /// // Good
-    /// if let Some(x) = opt {
+    /// for x in &res {
     ///     // ..
     /// }
     /// ```
     ///
-    /// // or
-    ///
+    /// Use instead:
     /// ```rust
+    /// # let opt = Some(1);
     /// # let res: Result<i32, std::io::Error> = Ok(1);
-    ///
-    /// // Bad
-    /// for x in &res {
+    /// if let Some(x) = opt {
     ///     // ..
     /// }
     ///
-    /// // Good
     /// if let Ok(x) = res {
     ///     // ..
     /// }

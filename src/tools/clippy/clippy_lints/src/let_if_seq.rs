@@ -68,7 +68,7 @@ impl<'tcx> LateLintPass<'tcx> for LetIfSeq {
                 if let hir::ExprKind::If(hir::Expr { kind: hir::ExprKind::DropTemps(cond), ..}, then, else_) = if_.kind;
                 if !is_local_used(cx, *cond, canonical_id);
                 if let hir::ExprKind::Block(then, _) = then.kind;
-                if let Some(value) = check_assign(cx, canonical_id, &*then);
+                if let Some(value) = check_assign(cx, canonical_id, then);
                 if !is_local_used(cx, value, canonical_id);
                 then {
                     let span = stmt.span.to(if_.span);

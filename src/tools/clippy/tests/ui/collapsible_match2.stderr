@@ -78,7 +78,7 @@ LL |             [n] => foo(n),
 error: this `match` can be collapsed into the outer `match`
   --> $DIR/collapsible_match2.rs:60:24
    |
-LL |           Some(ref s) => match &*s {
+LL |           Some(ref s) => match s {
    |  ________________________^
 LL | |             [n] => foo(n),
 LL | |             _ => (),
@@ -88,7 +88,7 @@ LL | |         },
 help: the outer pattern can be modified to include the inner pattern
   --> $DIR/collapsible_match2.rs:60:14
    |
-LL |         Some(ref s) => match &*s {
+LL |         Some(ref s) => match s {
    |              ^^^^^ replace this binding
 LL |             [n] => foo(n),
    |             ^^^ with this pattern

@@ -95,4 +95,10 @@ enum EnumNotEq {
 #[derive(Debug, PartialEq, Clone)]
 struct RustFixWithOtherDerives;
 
+#[derive(PartialEq)]
+struct Generic<T>(T);
+
+#[derive(PartialEq, Eq)]
+struct GenericPhantom<T>(core::marker::PhantomData<T>);
+
 fn main() {}

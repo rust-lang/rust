@@ -103,11 +103,14 @@ declare_clippy_lint! {
     /// let x = 1.2331f64;
     /// let y = 1.2332f64;
     ///
-    /// // Bad
     /// if y == 1.23f64 { }
     /// if y != x {} // where both are floats
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
+    /// # let x = 1.2331f64;
+    /// # let y = 1.2332f64;
     /// let error_margin = f64::EPSILON; // Use an epsilon for comparison
     /// // Or, if Rust <= 1.42, use `std::f64::EPSILON` constant instead.
     /// // let error_margin = std::f64::EPSILON;
@@ -258,10 +261,13 @@ declare_clippy_lint! {
     /// let x: f64 = 1.0;
     /// const ONE: f64 = 1.00;
     ///
-    /// // Bad
     /// if x == ONE { } // where both are floats
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
+    /// # let x: f64 = 1.0;
+    /// # const ONE: f64 = 1.00;
     /// let error_margin = f64::EPSILON; // Use an epsilon for comparison
     /// // Or, if Rust <= 1.42, use `std::f64::EPSILON` constant instead.
     /// // let error_margin = std::f64::EPSILON;

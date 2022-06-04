@@ -7,6 +7,7 @@
 //! during any comparison or mapping. (Please take care of this, it's not fun to spend time on such
 //! a simple mistake)
 
+use crate::renamed_lints::RENAMED_LINTS;
 use crate::utils::internal_lints::{extract_clippy_version_value, is_lint_ref_type};
 
 use clippy_utils::diagnostics::span_lint;
@@ -26,6 +27,7 @@ use rustc_span::{sym, Loc, Span, Symbol};
 use serde::{ser::SerializeStruct, Serialize, Serializer};
 use std::collections::BinaryHeap;
 use std::fmt;
+use std::fmt::Write as _;
 use std::fs::{self, OpenOptions};
 use std::io::prelude::*;
 use std::path::Path;
@@ -82,6 +84,21 @@ This lint has the following configuration variables:
 macro_rules! CONFIGURATION_VALUE_TEMPLATE {
     () => {
         "* `{name}`: `{ty}`: {doc} (defaults to `{default}`)\n"
+    };
+}
+
+macro_rules! RENAMES_SECTION_TEMPLATE {
+    () => {
+        r#"
+### Past names
+
+{names}
+"#
+    };
+}
+macro_rules! RENAME_VALUE_TEMPLATE {
+    () => {
+        "* `{name}`\n"
     };
 }
 
@@ -198,9 +215,10 @@ impl Drop for MetadataCollector {
 
         // Mapping the final data
         let mut lints = std::mem::take(&mut self.lints).into_sorted_vec();
-        lints
-            .iter_mut()
-            .for_each(|x| x.applicability = Some(applicability_info.remove(&x.id).unwrap_or_default()));
+        collect_renames(&mut lints);
+        for x in &mut lints {
+            x.applicability = Some(applicability_info.remove(&x.id).unwrap_or_default());
+        }
 
         // Outputting
         if Path::new(OUTPUT_FILE).exists() {
@@ -527,12 +545,11 @@ fn extract_attr_docs_or_lint(cx: &LateContext<'_>, item: &Item<'_>) -> Option<St
 fn extract_attr_docs(cx: &LateContext<'_>, item: &Item<'_>) -> Option<String> {
     let attrs = cx.tcx.hir().attrs(item.hir_id());
     let mut lines = attrs.iter().filter_map(ast::Attribute::doc_str);
-    let mut docs = String::from(&*lines.next()?.as_str());
+    let mut docs = String::from(lines.next()?.as_str());
     let mut in_code_block = false;
     let mut is_code_block_rust = false;
     for line in lines {
         let line = line.as_str();
-        let line = &*line;
 
         // Rustdoc hides code lines starting with `# ` and this removes them from Clippy's lint list :)
         if is_code_block_rust && line.trim_start().starts_with("# ") {
@@ -641,6 +658,37 @@ fn is_deprecated_lint(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> bool {
     }
 
     false
+}
+
+fn collect_renames(lints: &mut Vec<LintMetadata>) {
+    for lint in lints {
+        let mut collected = String::new();
+        let mut names = vec![lint.id.clone()];
+
+        loop {
+            if let Some(lint_name) = names.pop() {
+                for (k, v) in RENAMED_LINTS {
+                    if_chain! {
+                        if let Some(name) = v.strip_prefix(CLIPPY_LINT_GROUP_PREFIX);
+                        if name == lint_name;
+                        if let Some(past_name) = k.strip_prefix(CLIPPY_LINT_GROUP_PREFIX);
+                        then {
+                            write!(collected, RENAME_VALUE_TEMPLATE!(), name = past_name).unwrap();
+                            names.push(past_name.to_string());
+                        }
+                    }
+                }
+
+                continue;
+            }
+
+            break;
+        }
+
+        if !collected.is_empty() {
+            write!(&mut lint.docs, RENAMES_SECTION_TEMPLATE!(), names = collected).unwrap();
+        }
+    }
 }
 
 // ==================================================================

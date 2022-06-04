@@ -109,5 +109,38 @@ help: ensure to avoid having uses of it in version control
 LL |         2;
    |         ~
 
-error: aborting due to 10 previous errors
+error: `dbg!` macro is intended as a debugging tool
+  --> $DIR/dbg_macro.rs:47:5
+   |
+LL |     dbg!(1);
+   |     ^^^^^^^
+   |
+help: ensure to avoid having uses of it in version control
+   |
+LL |     1;
+   |     ~
+
+error: `dbg!` macro is intended as a debugging tool
+  --> $DIR/dbg_macro.rs:52:5
+   |
+LL |     dbg!(1);
+   |     ^^^^^^^
+   |
+help: ensure to avoid having uses of it in version control
+   |
+LL |     1;
+   |     ~
+
+error: `dbg!` macro is intended as a debugging tool
+  --> $DIR/dbg_macro.rs:58:9
+   |
+LL |         dbg!(1);
+   |         ^^^^^^^
+   |
+help: ensure to avoid having uses of it in version control
+   |
+LL |         1;
+   |         ~
+
+error: aborting due to 13 previous errors
 
