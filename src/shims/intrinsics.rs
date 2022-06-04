@@ -1389,7 +1389,7 @@ fn bool_to_simd_element(b: bool, size: Size) -> Scalar<Tag> {
     Scalar::from_int(val, size)
 }
 
-fn simd_element_to_bool<'tcx>(elem: ImmTy<'tcx, Tag>) -> InterpResult<'tcx, bool> {
+fn simd_element_to_bool(elem: ImmTy<'_, Tag>) -> InterpResult<'_, bool> {
     let val = elem.to_scalar()?.to_int(elem.layout.size)?;
     Ok(match val {
         0 => false,

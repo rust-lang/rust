@@ -89,10 +89,10 @@ pub enum MiriMemoryKind {
     Tls,
 }
 
-impl Into<MemoryKind<MiriMemoryKind>> for MiriMemoryKind {
+impl From<MiriMemoryKind> for MemoryKind<MiriMemoryKind> {
     #[inline(always)]
-    fn into(self) -> MemoryKind<MiriMemoryKind> {
-        MemoryKind::Machine(self)
+    fn from(kind: MiriMemoryKind) -> MemoryKind<MiriMemoryKind> {
+        MemoryKind::Machine(kind)
     }
 }
 
