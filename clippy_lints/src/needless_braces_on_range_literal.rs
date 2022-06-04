@@ -16,7 +16,6 @@
 //! }
 //! ```
 //!
-//! This lint is **warn** by default.
 
 use clippy_utils::{diagnostics::span_lint_and_then, source::snippet_opt};
 use rustc_ast::ast::{Expr, ExprKind};
