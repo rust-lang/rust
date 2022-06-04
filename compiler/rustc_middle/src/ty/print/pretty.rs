@@ -2190,34 +2190,40 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
         // this is not *quite* right and changes the ordering of some output
         // anyways.
         let (new_value, map) = if self.tcx().sess.verbose() {
-            // anon index + 1 (BrEnv takes 0) -> name
-            let mut region_map: FxHashMap<_, _> = Default::default();
-            let bound_vars = value.bound_vars();
-            for var in bound_vars {
-                let ty::BoundVariableKind::Region(var) = var else { continue };
-                match var {
-                    ty::BrAnon(_) | ty::BrEnv => {
-                        start_or_continue(&mut self, "for<", ", ");
-                        let name = next_name(&self);
-                        do_continue(&mut self, name);
-                        region_map.insert(var, ty::BrNamed(CRATE_DEF_ID.to_def_id(), name));
+            let regions: Vec<_> = value
+                .bound_vars()
+                .into_iter()
+                .map(|var| {
+                    let ty::BoundVariableKind::Region(var) = var else {
+                    // This doesn't really matter because it doesn't get used,
+                    // it's just an empty value
+                    return ty::BrAnon(0);
+                };
+                    match var {
+                        ty::BrAnon(_) | ty::BrEnv => {
+                            start_or_continue(&mut self, "for<", ", ");
+                            let name = next_name(&self);
+                            do_continue(&mut self, name);
+                            ty::BrNamed(CRATE_DEF_ID.to_def_id(), name)
+                        }
+                        ty::BrNamed(def_id, kw::UnderscoreLifetime) => {
+                            start_or_continue(&mut self, "for<", ", ");
+                            let name = next_name(&self);
+                            do_continue(&mut self, name);
+                            ty::BrNamed(def_id, name)
+                        }
+                        ty::BrNamed(def_id, name) => {
+                            start_or_continue(&mut self, "for<", ", ");
+                            do_continue(&mut self, name);
+                            ty::BrNamed(def_id, name)
+                        }
                     }
-                    ty::BrNamed(def_id, kw::UnderscoreLifetime) => {
-                        start_or_continue(&mut self, "for<", ", ");
-                        let name = next_name(&self);
-                        do_continue(&mut self, name);
-                        region_map.insert(var, ty::BrNamed(def_id, name));
-                    }
-                    ty::BrNamed(_, name) => {
-                        start_or_continue(&mut self, "for<", ", ");
-                        do_continue(&mut self, name);
-                    }
-                }
-            }
+                })
+                .collect();
             start_or_continue(&mut self, "", "> ");
 
             self.tcx.replace_late_bound_regions(value.clone(), |br| {
-                let kind = region_map[&br.kind];
+                let kind = regions[br.var.as_usize()];
                 self.tcx.mk_region(ty::ReLateBound(
                     ty::INNERMOST,
                     ty::BoundRegion { var: br.var, kind },
