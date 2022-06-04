@@ -30,5 +30,43 @@ error: `find(..).map(..)` can be simplified as `find_map(..)`
 LL |     let _ = vec.iter().find(|f| f.field.is_ok()).map(|f| f.field.clone().unwrap());
    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `find_map(|f| f.field.clone().ok())`
 
-error: aborting due to 5 previous errors
+error: `find(..).map(..)` can be simplified as `find_map(..)`
+  --> $DIR/manual_find_map.rs:58:24
+   |
+LL |     let _ = vec.iter().find(|f| f.field.is_ok()).map(|f| f.field.as_ref().unwrap());
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `find_map(|f| f.field.as_ref().ok())`
+
+error: `find(..).map(..)` can be simplified as `find_map(..)`
+  --> $DIR/manual_find_map.rs:62:10
+   |
+LL |           .find(|f| f.field.is_ok())
+   |  __________^
+LL | |         .map(|f| f.field.as_deref().unwrap());
+   | |_____________________________________________^ help: try: `find_map(|f| f.field.as_deref().ok())`
+
+error: `find(..).map(..)` can be simplified as `find_map(..)`
+  --> $DIR/manual_find_map.rs:67:10
+   |
+LL |           .find(|f| f.field.is_ok())
+   |  __________^
+LL | |         .map(|f| f.field.as_mut().unwrap());
+   | |___________________________________________^ help: try: `find_map(|f| f.field.as_mut().ok())`
+
+error: `find(..).map(..)` can be simplified as `find_map(..)`
+  --> $DIR/manual_find_map.rs:72:10
+   |
+LL |           .find(|f| f.field.is_ok())
+   |  __________^
+LL | |         .map(|f| f.field.as_deref_mut().unwrap());
+   | |_________________________________________________^ help: try: `find_map(|f| f.field.as_deref_mut().ok())`
+
+error: `find(..).map(..)` can be simplified as `find_map(..)`
+  --> $DIR/manual_find_map.rs:77:10
+   |
+LL |           .find(|f| f.field.is_ok())
+   |  __________^
+LL | |         .map(|f| f.field.to_owned().unwrap());
+   | |_____________________________________________^ help: try: `find_map(|f| f.field.to_owned().ok())`
+
+error: aborting due to 10 previous errors
 

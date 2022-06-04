@@ -50,8 +50,30 @@ fn issue_8920() {
     }];
     let _ = vec.iter().find(|f| f.field.is_some()).map(|f| f.field.clone().unwrap());
 
-    let vec = vec![ResultFoo {
+    let mut vec = vec![ResultFoo {
         field: Ok(String::from("str")),
     }];
     let _ = vec.iter().find(|f| f.field.is_ok()).map(|f| f.field.clone().unwrap());
+
+    let _ = vec.iter().find(|f| f.field.is_ok()).map(|f| f.field.as_ref().unwrap());
+
+    let _ = vec
+        .iter()
+        .find(|f| f.field.is_ok())
+        .map(|f| f.field.as_deref().unwrap());
+
+    let _ = vec
+        .iter_mut()
+        .find(|f| f.field.is_ok())
+        .map(|f| f.field.as_mut().unwrap());
+
+    let _ = vec
+        .iter_mut()
+        .find(|f| f.field.is_ok())
+        .map(|f| f.field.as_deref_mut().unwrap());
+
+    let _ = vec
+        .iter()
+        .find(|f| f.field.is_ok())
+        .map(|f| f.field.to_owned().unwrap());
 }

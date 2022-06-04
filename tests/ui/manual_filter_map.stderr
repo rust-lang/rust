@@ -32,5 +32,45 @@ error: `filter(..).map(..)` can be simplified as `filter_map(..)`
 LL |     let _ = vec.iter().filter(|f| f.field.is_ok()).map(|f| f.field.clone().unwrap());
    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `filter_map(|f| f.field.clone().ok())`
 
-error: aborting due to 5 previous errors
+error: `filter(..).map(..)` can be simplified as `filter_map(..)`
+  --> $DIR/manual_filter_map.rs:63:10
+   |
+LL |           .filter(|f| f.field.is_ok())
+   |  __________^
+LL | |         .map(|f| f.field.as_ref().unwrap());
+   | |___________________________________________^ help: try: `filter_map(|f| f.field.as_ref().ok())`
+
+error: `filter(..).map(..)` can be simplified as `filter_map(..)`
+  --> $DIR/manual_filter_map.rs:68:10
+   |
+LL |           .filter(|f| f.field.is_ok())
+   |  __________^
+LL | |         .map(|f| f.field.as_deref().unwrap());
+   | |_____________________________________________^ help: try: `filter_map(|f| f.field.as_deref().ok())`
+
+error: `filter(..).map(..)` can be simplified as `filter_map(..)`
+  --> $DIR/manual_filter_map.rs:73:10
+   |
+LL |           .filter(|f| f.field.is_ok())
+   |  __________^
+LL | |         .map(|f| f.field.as_mut().unwrap());
+   | |___________________________________________^ help: try: `filter_map(|f| f.field.as_mut().ok())`
+
+error: `filter(..).map(..)` can be simplified as `filter_map(..)`
+  --> $DIR/manual_filter_map.rs:78:10
+   |
+LL |           .filter(|f| f.field.is_ok())
+   |  __________^
+LL | |         .map(|f| f.field.as_deref_mut().unwrap());
+   | |_________________________________________________^ help: try: `filter_map(|f| f.field.as_deref_mut().ok())`
+
+error: `filter(..).map(..)` can be simplified as `filter_map(..)`
+  --> $DIR/manual_filter_map.rs:83:10
+   |
+LL |           .filter(|f| f.field.is_ok())
+   |  __________^
+LL | |         .map(|f| f.field.to_owned().unwrap());
+   | |_____________________________________________^ help: try: `filter_map(|f| f.field.to_owned().ok())`
+
+error: aborting due to 10 previous errors
 
