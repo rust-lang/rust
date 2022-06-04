@@ -1364,29 +1364,26 @@ impl<'a> Builder<'a> {
         // get some support for setting `--check-cfg` within build script, it's the least invasive
         // hack that still let's us have cfg checking for the vast majority of the codebase.
         if stage != 0 {
-            // Enable cfg checking of cargo features for everything but std.
+            // Enable cfg checking of cargo features for everything but std and also enable cfg
+            // checking of names and values.
             //
             // Note: `std`, `alloc` and `core` imports some dependencies by #[path] (like
-            // backtrace, core_simd, std_float, ...), those dependencies have their own features
-            // but cargo isn't involved in the #[path] and so cannot pass the complete list of
-            // features, so for that reason we don't enable checking of features for std.
+            // backtrace, core_simd, std_float, ...), those dependencies have their own
+            // features but cargo isn't involved in the #[path] process and so cannot pass the
+            // complete list of features, so for that reason we don't enable checking of
+            // features for std crates.
+            cargo.arg(if mode != Mode::Std {
+                "-Zcheck-cfg=names,values,features"
+            } else {
+                "-Zcheck-cfg=names,values"
+            });
+
+            // Add extra cfg not defined in/by rustc
             //
-            // FIXME: Re-enable this after the beta bump as apperently rustc-perf doesn't use the
-            // beta cargo. See https://github.com/rust-lang/rust/pull/96984#issuecomment-1126678773
-            // #[cfg(not(bootstrap))]
-            // if mode != Mode::Std {
-            //     cargo.arg("-Zcheck-cfg-features"); // -Zcheck-cfg=features after bump
-            // }
-
-            // Enable cfg checking of well known names/values
-            rustflags
-                .arg("-Zunstable-options")
-                // Enable checking of well known names
-                .arg("--check-cfg=names()")
-                // Enable checking of well known values
-                .arg("--check-cfg=values()");
-
-            // Add extra cfg not defined in rustc
+            // Note: Altrough it would seems that "-Zunstable-options" to `rustflags` is useless as
+            // cargo would implicitly add it, it was discover that sometimes bootstrap only use
+            // `rustflags` without `cargo` making it required.
+            rustflags.arg("-Zunstable-options");
             for (restricted_mode, name, values) in EXTRA_CHECK_CFGS {
                 if *restricted_mode == None || *restricted_mode == Some(mode) {
                     // Creating a string of the values by concatenating each value:
