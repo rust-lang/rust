@@ -175,74 +175,72 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
                 })
             }
         }
+    }
+}
 
-        fn build_and_emit_lint(
-            lint: LintDiagnosticBuilder<'_, ()>,
-            local: &hir::Local<'_>,
-            init_span: rustc_span::Span,
-            msg: &str,
-        ) {
-            lint.build(msg)
-                .span_suggestion_verbose(
-                    local.pat.span,
-                    "consider binding to an unused variable",
-                    "_unused",
-                    Applicability::MachineApplicable,
-                )
-                .span_suggestion_verbose(
-                    init_span,
-                    "consider explicitly droping with `std::mem::drop`",
-                    "drop(...)",
-                    Applicability::HasPlaceholders,
-                )
-                .emit();
+fn build_and_emit_lint(
+    lint: LintDiagnosticBuilder<'_, ()>,
+    local: &hir::Local<'_>,
+    init_span: rustc_span::Span,
+    msg: &str,
+) {
+    lint.build(msg)
+        .span_suggestion_verbose(
+            local.pat.span,
+            "consider binding to an unused variable",
+            "_unused",
+            Applicability::MachineApplicable,
+        )
+        .span_suggestion_verbose(
+            init_span,
+            "consider explicitly droping with `std::mem::drop`",
+            "drop(...)",
+            Applicability::HasPlaceholders,
+        )
+        .emit();
+}
+
+// return true if `ty` is a type that is marked as `must_use`
+fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
+    match ty.kind() {
+        ty::Adt(adt, _) => has_must_use_attr(cx, adt.did()),
+        ty::Foreign(ref did) => has_must_use_attr(cx, *did),
+        ty::Slice(ty)
+        | ty::Array(ty, _)
+        | ty::RawPtr(ty::TypeAndMut { ty, .. })
+        | ty::Ref(_, ty, _) => {
+            // for the Array case we don't need to care for the len == 0 case
+            // because we don't want to lint functions returning empty arrays
+            is_must_use_ty(cx, *ty)
         }
-
-        // return true if `ty` is a type that is marked as `must_use`
-        fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
-            match ty.kind() {
-                ty::Adt(adt, _) => has_must_use_attr(cx, adt.did()),
-                ty::Foreign(ref did) => has_must_use_attr(cx, *did),
-                ty::Slice(ty)
-                | ty::Array(ty, _)
-                | ty::RawPtr(ty::TypeAndMut { ty, .. })
-                | ty::Ref(_, ty, _) => {
-                    // for the Array case we don't need to care for the len == 0 case
-                    // because we don't want to lint functions returning empty arrays
-                    is_must_use_ty(cx, *ty)
-                }
-                ty::Tuple(substs) => substs.iter().any(|ty| is_must_use_ty(cx, ty)),
-                ty::Opaque(ref def_id, _) => {
-                    for (predicate, _) in cx.tcx.explicit_item_bounds(*def_id) {
-                        if let ty::PredicateKind::Trait(trait_predicate) =
-                            predicate.kind().skip_binder()
-                        {
-                            if has_must_use_attr(cx, trait_predicate.trait_ref.def_id) {
-                                return true;
-                            }
-                        }
+        ty::Tuple(substs) => substs.iter().any(|ty| is_must_use_ty(cx, ty)),
+        ty::Opaque(ref def_id, _) => {
+            for (predicate, _) in cx.tcx.explicit_item_bounds(*def_id) {
+                if let ty::PredicateKind::Trait(trait_predicate) = predicate.kind().skip_binder() {
+                    if has_must_use_attr(cx, trait_predicate.trait_ref.def_id) {
+                        return true;
                     }
-                    false
                 }
-                ty::Dynamic(binder, _) => {
-                    for predicate in binder.iter() {
-                        if let ty::ExistentialPredicate::Trait(ref trait_ref) =
-                            predicate.skip_binder()
-                        {
-                            if has_must_use_attr(cx, trait_ref.def_id) {
-                                return true;
-                            }
-                        }
-                    }
-                    false
-                }
-                _ => false,
             }
+            false
         }
+        ty::Dynamic(binder, _) => {
+            for predicate in binder.iter() {
+                if let ty::ExistentialPredicate::Trait(ref trait_ref) = predicate.skip_binder() {
+                    if has_must_use_attr(cx, trait_ref.def_id) {
+                        return true;
+                    }
+                }
+            }
+            false
+        }
+        _ => false,
+    }
+}
 
-        // check if expr is calling method or function with #[must_use] attribute
-        fn is_must_use_func_call(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
-            let did = match expr.kind {
+// check if expr is calling method or function with #[must_use] attribute
+fn is_must_use_func_call(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
+    let did = match expr.kind {
                 hir::ExprKind::Call(path, _) if let hir::ExprKind::Path(ref qpath) = path.kind => {
                     if let hir::def::Res::Def(_, did) = cx.qpath_res(qpath, path.hir_id) {
                         Some(did)
@@ -256,15 +254,13 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
                 _ => None,
             };
 
-            did.map_or(false, |did| has_must_use_attr(cx, did))
-        }
+    did.map_or(false, |did| has_must_use_attr(cx, did))
+}
 
-        // returns true if DefId contains a `#[must_use]` attribute
-        fn has_must_use_attr(cx: &LateContext<'_>, did: hir::def_id::DefId) -> bool {
-            cx.tcx
-                .get_attrs(did, rustc_span::sym::must_use)
-                .find(|a| a.has_name(rustc_span::sym::must_use))
-                .is_some()
-        }
-    }
+// returns true if DefId contains a `#[must_use]` attribute
+fn has_must_use_attr(cx: &LateContext<'_>, did: hir::def_id::DefId) -> bool {
+    cx.tcx
+        .get_attrs(did, rustc_span::sym::must_use)
+        .find(|a| a.has_name(rustc_span::sym::must_use))
+        .is_some()
 }
