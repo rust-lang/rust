@@ -405,7 +405,7 @@ store.register_lints(&[
     needless_bool::BOOL_COMPARISON,
     needless_bool::NEEDLESS_BOOL,
     needless_borrowed_ref::NEEDLESS_BORROWED_REFERENCE,
-    needless_braces_on_range_literal::NEEDLESS_BRACES_ON_RANGE_LITERAL,
+    needless_parens_on_range_literal::NEEDLESS_PARENS_ON_RANGE_LITERAL,
     needless_continue::NEEDLESS_CONTINUE,
     needless_for_each::NEEDLESS_FOR_EACH,
     needless_late_init::NEEDLESS_LATE_INIT,

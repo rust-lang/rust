@@ -90,7 +90,7 @@ store.register_group(true, "clippy::style", Some("clippy_style"), vec![
     LintId::of(misc_early::REDUNDANT_PATTERN),
     LintId::of(mut_mutex_lock::MUT_MUTEX_LOCK),
     LintId::of(mut_reference::UNNECESSARY_MUT_PASSED),
-    LintId::of(needless_braces_on_range_literal::NEEDLESS_BRACES_ON_RANGE_LITERAL),
+    LintId::of(needless_parens_on_range_literal::NEEDLESS_PARENS_ON_RANGE_LITERAL),
     LintId::of(needless_late_init::NEEDLESS_LATE_INIT),
     LintId::of(neg_multiply::NEG_MULTIPLY),
     LintId::of(new_without_default::NEW_WITHOUT_DEFAULT),
