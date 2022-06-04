@@ -148,32 +148,15 @@ impl<'tcx> ReachableContext<'tcx> {
                 hir::TraitItemKind::Fn(_, hir::TraitFn::Required(_))
                 | hir::TraitItemKind::Type(..) => false,
             },
-            Some(Node::ImplItem(impl_item)) => {
-                match impl_item.kind {
-                    hir::ImplItemKind::Const(..) => true,
-                    hir::ImplItemKind::Fn(..) => {
-                        let attrs = self.tcx.codegen_fn_attrs(def_id);
-                        let generics = self.tcx.generics_of(def_id);
-                        if generics.requires_monomorphization(self.tcx) || attrs.requests_inline() {
-                            true
-                        } else {
-                            let hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id);
-                            let impl_did = self.tcx.hir().get_parent_item(hir_id);
-                            // Check the impl. If the generics on the self
-                            // type of the impl require inlining, this method
-                            // does too.
-                            match self.tcx.hir().expect_item(impl_did).kind {
-                                hir::ItemKind::Impl { .. } => {
-                                    let generics = self.tcx.generics_of(impl_did);
-                                    generics.requires_monomorphization(self.tcx)
-                                }
-                                _ => false,
-                            }
-                        }
-                    }
-                    hir::ImplItemKind::TyAlias(_) => false,
+            Some(Node::ImplItem(impl_item)) => match impl_item.kind {
+                hir::ImplItemKind::Const(..) => true,
+                hir::ImplItemKind::Fn(..) => {
+                    let hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id);
+                    let impl_did = self.tcx.hir().get_parent_item(hir_id);
+                    method_might_be_inlined(self.tcx, impl_item, impl_did)
                 }
-            }
+                hir::ImplItemKind::TyAlias(_) => false,
+            },
             Some(_) => false,
             None => false, // This will happen for default methods.
         }
