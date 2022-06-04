@@ -1,7 +1,7 @@
 use clippy_utils::{
     diagnostics::span_lint_and_then,
     higher,
-    source::{snippet, snippet_opt},
+    source::{snippet, snippet_with_applicability},
 };
 
 use rustc_ast::ast;
@@ -62,12 +62,12 @@ fn check_for_parens(cx: &LateContext<'_>, e: &Expr<'_>, is_start: bool) {
         // inspect the source code of the expression for parenthesis
         if snippet_enclosed_in_parenthesis(&snippet(cx, e.span, ""));
         then {
+            let mut applicability = Applicability::MachineApplicable;
             span_lint_and_then(cx, NEEDLESS_PARENS_ON_RANGE_LITERAL, e.span,
                 "needless parenthesis on range literal can be removed",
                 |diag| {
-                        if let Some(suggestion) = snippet_opt(cx, literal.span) {
-                        diag.span_suggestion(e.span, "try", suggestion, Applicability::MachineApplicable);
-                    }
+                    let suggestion = snippet_with_applicability(cx, literal.span, "_", &mut applicability);
+                    diag.span_suggestion(e.span, "try", suggestion, applicability);
                 });
         }
     }
