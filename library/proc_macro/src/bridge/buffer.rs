@@ -18,6 +18,7 @@ unsafe impl Sync for Buffer {}
 unsafe impl Send for Buffer {}
 
 impl Default for Buffer {
+    #[inline]
     fn default() -> Self {
         Self::from(vec![])
     }
@@ -25,26 +26,31 @@ impl Default for Buffer {
 
 impl Deref for Buffer {
     type Target = [u8];
+    #[inline]
     fn deref(&self) -> &[u8] {
         unsafe { slice::from_raw_parts(self.data as *const u8, self.len) }
     }
 }
 
 impl DerefMut for Buffer {
+    #[inline]
     fn deref_mut(&mut self) -> &mut [u8] {
         unsafe { slice::from_raw_parts_mut(self.data, self.len) }
     }
 }
 
 impl Buffer {
+    #[inline]
     pub(super) fn new() -> Self {
         Self::default()
     }
 
+    #[inline]
     pub(super) fn clear(&mut self) {
         self.len = 0;
     }
 
+    #[inline]
     pub(super) fn take(&mut self) -> Self {
         mem::take(self)
     }
@@ -53,6 +59,7 @@ impl Buffer {
     // because in the case of small arrays, codegen can be more efficient
     // (avoiding a memmove call). With extend_from_slice, LLVM at least
     // currently is not able to make that optimization.
+    #[inline]
     pub(super) fn extend_from_array<const N: usize>(&mut self, xs: &[u8; N]) {
         if xs.len() > (self.capacity - self.len) {
             let b = self.take();
@@ -64,6 +71,7 @@ impl Buffer {
         }
     }
 
+    #[inline]
     pub(super) fn extend_from_slice(&mut self, xs: &[u8]) {
         if xs.len() > (self.capacity - self.len) {
             let b = self.take();
@@ -75,6 +83,7 @@ impl Buffer {
         }
     }
 
+    #[inline]
     pub(super) fn push(&mut self, v: u8) {
         // The code here is taken from Vec::push, and we know that reserve()
         // will panic if we're exceeding isize::MAX bytes and so there's no need
@@ -91,22 +100,26 @@ impl Buffer {
 }
 
 impl Write for Buffer {
+    #[inline]
     fn write(&mut self, xs: &[u8]) -> io::Result<usize> {
         self.extend_from_slice(xs);
         Ok(xs.len())
     }
 
+    #[inline]
     fn write_all(&mut self, xs: &[u8]) -> io::Result<()> {
         self.extend_from_slice(xs);
         Ok(())
     }
 
+    #[inline]
     fn flush(&mut self) -> io::Result<()> {
         Ok(())
     }
 }
 
 impl Drop for Buffer {
+    #[inline]
     fn drop(&mut self) {
         let b = self.take();
         (b.drop)(b);
