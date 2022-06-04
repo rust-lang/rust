@@ -12,7 +12,7 @@ use std::cell::RefCell;
 use std::fs::File;
 use std::io::BufWriter;
 use std::time::{Duration, Instant};
-use sysinfo::{ProcessorExt, System, SystemExt};
+use sysinfo::{CpuExt, System, SystemExt};
 
 pub(crate) struct BuildMetrics {
     state: RefCell<MetricsState>,
@@ -79,7 +79,7 @@ impl BuildMetrics {
         step.duration_excluding_children_sec += elapsed;
 
         state.system_info.refresh_cpu();
-        let cpu = state.system_info.processors().iter().map(|p| p.cpu_usage()).sum::<f32>();
+        let cpu = state.system_info.cpus().iter().map(|p| p.cpu_usage()).sum::<f32>();
         step.cpu_usage_time_sec += cpu as f64 / 100.0 * elapsed.as_secs_f64();
     }
 
@@ -94,8 +94,8 @@ impl BuildMetrics {
         system.refresh_memory();
 
         let system_stats = JsonInvocationSystemStats {
-            cpu_threads_count: system.processors().len(),
-            cpu_model: system.processors()[0].brand().into(),
+            cpu_threads_count: system.cpus().len(),
+            cpu_model: system.cpus()[0].brand().into(),
 
             memory_total_bytes: system.total_memory() * 1024,
         };
