@@ -7,7 +7,7 @@ use rustc_hir::def_id::DefId;
 pub(crate) use renderer::{run_format, FormatRenderer};
 
 use crate::clean::{self, ItemId};
-use cache::Cache;
+use crate::html::render::Context;
 
 /// Specifies whether rendering directly implemented trait items or ones from a certain Deref
 /// impl.
@@ -65,7 +65,8 @@ impl Impl {
     // Returns true if this is an implementation on a "local" type, meaning:
     // the type is in the current crate, or the type and the trait are both
     // re-exported by the current crate.
-    pub(crate) fn is_on_local_type(&self, cache: &Cache) -> bool {
+    pub(crate) fn is_on_local_type(&self, cx: &Context<'_>) -> bool {
+        let cache = cx.cache();
         let for_type = &self.inner_impl().for_;
         if let Some(for_type_did) = for_type.def_id(cache) {
             // The "for" type is local if it's in the paths for the current crate.
@@ -78,6 +79,18 @@ impl Impl {
                 // re-exported from some other crate. But they are local with respect to
                 // each other.
                 if for_type_did.krate == trait_did.krate {
+                    return true;
+                }
+                // Hack: many traits and types in std are re-exported from
+                // core or alloc. In general, rustdoc is capable of recognizing
+                // these implementations as being on local types. However, in at
+                // least one case (https://github.com/rust-lang/rust/issues/97610),
+                // rustdoc gets confused and labels an implementation as being on
+                // a foreign type. To make sure that confusion doesn't pass on to
+                // the reader, consider all implementations in std, core, and alloc
+                // to be on local types.
+                let crate_name = cx.tcx().crate_name(trait_did.krate);
+                if matches!(crate_name.as_str(), "std" | "core" | "alloc") {
                     return true;
                 }
             }

@@ -823,7 +823,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
         }
 
         let (local, foreign) =
-            implementors.iter().partition::<Vec<_>, _>(|i| i.is_on_local_type(cache));
+            implementors.iter().partition::<Vec<_>, _>(|i| i.is_on_local_type(cx));
 
         let (mut synthetic, mut concrete): (Vec<&&Impl>, Vec<&&Impl>) =
             local.iter().partition(|i| i.inner_impl().kind.is_auto());
