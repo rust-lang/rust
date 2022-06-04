@@ -20,6 +20,11 @@ use syn::{
 };
 
 #[proc_macro_attribute]
+pub fn dummy(_args: TokenStream, input: TokenStream) -> TokenStream {
+    input
+}
+
+#[proc_macro_attribute]
 pub fn fake_async_trait(_args: TokenStream, input: TokenStream) -> TokenStream {
     let mut item = parse_macro_input!(input as ItemTrait);
     for inner in &mut item.items {
