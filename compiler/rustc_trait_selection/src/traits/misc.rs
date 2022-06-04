@@ -20,7 +20,7 @@ pub fn can_type_implement_copy<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     self_type: Ty<'tcx>,
-    cause: ObligationCause<'tcx>,
+    parent_cause: ObligationCause<'tcx>,
 ) -> Result<(), CopyImplementationError<'tcx>> {
     // FIXME: (@jroesch) float this code up
     tcx.infer_ctxt().enter(|infcx| {
@@ -59,7 +59,7 @@ pub fn can_type_implement_copy<'tcx>(
                     .ty(tcx, traits::InternalSubsts::identity_for_item(tcx, adt.did()))
                     .has_param_types_or_consts()
                 {
-                    cause.clone()
+                    parent_cause.clone()
                 } else {
                     ObligationCause::dummy_with_span(span)
                 };

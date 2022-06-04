@@ -107,6 +107,10 @@ fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
 
             for (field, ty) in fields {
                 let field_span = tcx.def_span(field.did);
+                let field_ty_span = match tcx.hir().get_if_local(field.did) {
+                    Some(hir::Node::Field(field_def)) => field_def.ty.span,
+                    _ => field_span,
+                };
                 err.span_label(field_span, "this field does not implement `Copy`");
                 // Spin up a new FulfillmentContext, so we can get the _precise_ reason
                 // why this field does not implement Copy. This is useful because sometimes
@@ -119,7 +123,7 @@ fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
                         param_env,
                         ty,
                         tcx.lang_items().copy_trait().unwrap(),
-                        traits::ObligationCause::dummy_with_span(field_span),
+                        traits::ObligationCause::dummy_with_span(field_ty_span),
                     );
                     for error in fulfill_cx.select_all_or_error(&infcx) {
                         let error_predicate = error.obligation.predicate;
