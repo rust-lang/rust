@@ -9,7 +9,7 @@ use std::io::{self, Write};
 use std::mem::replace;
 use std::process::{Child, Output};
 
-pub fn read2_abbreviated(mut child: Child, exclude_from_len: &[String]) -> io::Result<Output> {
+pub fn read2_abbreviated(mut child: Child, filter_paths_from_len: &[String]) -> io::Result<Output> {
     let mut stdout = ProcOutput::new();
     let mut stderr = ProcOutput::new();
 
@@ -18,7 +18,7 @@ pub fn read2_abbreviated(mut child: Child, exclude_from_len: &[String]) -> io::R
         child.stdout.take().unwrap(),
         child.stderr.take().unwrap(),
         &mut |is_stdout, data, _| {
-            if is_stdout { &mut stdout } else { &mut stderr }.extend(data, exclude_from_len);
+            if is_stdout { &mut stdout } else { &mut stderr }.extend(data, filter_paths_from_len);
             data.clear();
         },
     )?;
@@ -29,23 +29,30 @@ pub fn read2_abbreviated(mut child: Child, exclude_from_len: &[String]) -> io::R
 
 const HEAD_LEN: usize = 160 * 1024;
 const TAIL_LEN: usize = 256 * 1024;
-const EXCLUDED_PLACEHOLDER_LEN: isize = 32;
+
+// Whenever a path is filtered when counting the length of the output, we need to add some
+// placeholder length to ensure a compiler emitting only filtered paths doesn't cause a OOM.
+//
+// 32 was chosen semi-arbitrarily: it was the highest power of two that still allowed the test
+// suite to pass at the moment of implementing path filtering.
+const FILTERED_PATHS_PLACEHOLDER_LEN: usize = 32;
 
 enum ProcOutput {
-    Full { bytes: Vec<u8>, excluded_len: isize },
+    Full { bytes: Vec<u8>, filtered_len: usize },
     Abbreviated { head: Vec<u8>, skipped: usize, tail: Box<[u8]> },
 }
 
 impl ProcOutput {
     fn new() -> Self {
-        ProcOutput::Full { bytes: Vec::new(), excluded_len: 0 }
+        ProcOutput::Full { bytes: Vec::new(), filtered_len: 0 }
     }
 
-    fn extend(&mut self, data: &[u8], exclude_from_len: &[String]) {
+    fn extend(&mut self, data: &[u8], filter_paths_from_len: &[String]) {
         let new_self = match *self {
-            ProcOutput::Full { ref mut bytes, ref mut excluded_len } => {
+            ProcOutput::Full { ref mut bytes, ref mut filtered_len } => {
                 let old_len = bytes.len();
                 bytes.extend_from_slice(data);
+                *filtered_len += data.len();
 
                 // We had problems in the past with tests failing only in some environments,
                 // due to the length of the base path pushing the output size over the limit.
@@ -58,21 +65,25 @@ impl ProcOutput {
                 // The compiler emitting only excluded strings is addressed by adding a
                 // placeholder size for each excluded segment, which will eventually reach
                 // the configured threshold.
-                for pattern in exclude_from_len {
-                    let pattern_bytes = pattern.as_bytes();
-                    // We start matching `pattern_bytes - 1` into the previously loaded data,
-                    // to account for the fact a pattern might be included across multiple
-                    // `extend` calls. Starting from `- 1` avoids double-counting patterns.
-                    let matches = (&bytes[(old_len.saturating_sub(pattern_bytes.len() - 1))..])
-                        .windows(pattern_bytes.len())
-                        .filter(|window| window == &pattern_bytes)
+                for path in filter_paths_from_len {
+                    let path_bytes = path.as_bytes();
+                    // We start matching `path_bytes - 1` into the previously loaded data,
+                    // to account for the fact a path_bytes might be included across multiple
+                    // `extend` calls. Starting from `- 1` avoids double-counting paths.
+                    let matches = (&bytes[(old_len.saturating_sub(path_bytes.len() - 1))..])
+                        .windows(path_bytes.len())
+                        .filter(|window| window == &path_bytes)
                         .count();
-                    *excluded_len += matches as isize
-                        * (EXCLUDED_PLACEHOLDER_LEN - pattern_bytes.len() as isize);
+                    *filtered_len -= matches * path_bytes.len();
+
+                    // We can't just remove the length of the filtered path from the output lenght,
+                    // otherwise a compiler emitting only filtered paths would OOM compiletest. Add
+                    // a fixed placeholder length for each path to prevent that.
+                    *filtered_len += matches * FILTERED_PATHS_PLACEHOLDER_LEN;
                 }
 
                 let new_len = bytes.len();
-                if (new_len as isize + *excluded_len) as usize <= HEAD_LEN + TAIL_LEN {
+                if *filtered_len <= HEAD_LEN + TAIL_LEN {
                     return;
                 }
 
