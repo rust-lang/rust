@@ -1728,8 +1728,8 @@ rustc_queries! {
     query upvars_mentioned(def_id: DefId) -> Option<&'tcx FxIndexMap<hir::HirId, hir::Upvar>> {
         desc { |tcx| "collecting upvars mentioned in `{}`", tcx.def_path_str(def_id) }
     }
-    query maybe_unused_trait_import(def_id: LocalDefId) -> bool {
-        desc { |tcx| "maybe_unused_trait_import for `{}`", tcx.def_path_str(def_id.to_def_id()) }
+    query maybe_unused_trait_imports(_: ()) -> &'tcx FxIndexSet<LocalDefId> {
+        desc { "fetching potentially unused trait imports" }
     }
     query maybe_unused_extern_crates(_: ()) -> &'tcx [(LocalDefId, Span)] {
         desc { "looking up all possibly unused extern crates" }

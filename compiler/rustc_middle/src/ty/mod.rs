@@ -28,7 +28,7 @@ pub use generics::*;
 use rustc_ast as ast;
 use rustc_attr as attr;
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::{Interned, WithStableHash};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::tagged_ptr::CopyTaggedPtr;
@@ -138,7 +138,7 @@ pub struct ResolverOutputs {
     pub has_pub_restricted: bool,
     pub access_levels: AccessLevels,
     pub extern_crate_map: FxHashMap<LocalDefId, CrateNum>,
-    pub maybe_unused_trait_imports: FxHashSet<LocalDefId>,
+    pub maybe_unused_trait_imports: FxIndexSet<LocalDefId>,
     pub maybe_unused_extern_crates: Vec<(LocalDefId, Span)>,
     pub reexport_map: FxHashMap<LocalDefId, Vec<ModChild>>,
     pub glob_map: FxHashMap<LocalDefId, FxHashSet<Symbol>>,

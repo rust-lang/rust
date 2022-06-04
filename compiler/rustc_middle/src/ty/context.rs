@@ -2893,8 +2893,8 @@ pub fn provide(providers: &mut ty::query::Providers) {
         assert_eq!(id, LOCAL_CRATE);
         tcx.crate_name
     };
-    providers.maybe_unused_trait_import =
-        |tcx, id| tcx.resolutions(()).maybe_unused_trait_imports.contains(&id);
+    providers.maybe_unused_trait_imports =
+        |tcx, ()| &tcx.resolutions(()).maybe_unused_trait_imports;
     providers.maybe_unused_extern_crates =
         |tcx, ()| &tcx.resolutions(()).maybe_unused_extern_crates[..];
     providers.names_imported_by_glob_use = |tcx, id| {
