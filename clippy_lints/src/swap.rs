@@ -172,6 +172,7 @@ fn check_manual_swap(cx: &LateContext<'_>, block: &Block<'_>) {
     }
 }
 
+#[allow(clippy::too_many_lines)]
 /// Implementation of the `ALMOST_SWAPPED` lint.
 fn check_suspicious_swap(cx: &LateContext<'_>, block: &Block<'_>) {
     for w in block.stmts.windows(2) {
@@ -220,6 +221,79 @@ fn check_suspicious_swap(cx: &LateContext<'_>, block: &Block<'_>) {
                     });
             }
         }
+
+        let lint_almost_swapped_note = |span, what: String, sugg, lhs, rhs| {
+            span_lint_and_then(
+                cx,
+                ALMOST_SWAPPED,
+                span,
+                &format!("this looks like you are trying to swap{}", what),
+                |diag| {
+                    if !what.is_empty() {
+                        diag.note(&format!(
+                            "maybe you could use `{sugg}::mem::swap({lhs}, {rhs})` or `{sugg}::mem::replace`?"
+                        ));
+                    }
+                },
+            );
+        };
+
+        if let StmtKind::Local(first) = w[0].kind
+            && let StmtKind::Local(second) = w[1].kind
+            && first.span.ctxt() == second.span.ctxt()
+            && let Some(rhs0) = first.init
+            && let Some(rhs1) = second.init
+            && let ExprKind::Path(QPath::Resolved(None, path_l)) = rhs0.kind
+            && let ExprKind::Path(QPath::Resolved(None, path_r)) = rhs1.kind
+            && let PatKind::Binding(_,_, ident_l,_) = first.pat.kind
+            && let PatKind::Binding(_,_, ident_r,_) = second.pat.kind
+            && ident_l.name.as_str() == path_r.segments.iter().map(|el| el.ident.to_string()).collect::<Vec<_>>().join("::")
+            && ident_r.name.as_str() == path_l.segments.iter().map(|el| el.ident.to_string()).collect::<Vec<_>>().join("::") 
+                {
+                    let rhs0 = Sugg::hir_opt(cx, rhs0);
+                    let (what, lhs, rhs) = if let Some(second) = rhs0 {
+                        (
+                            format!(" `{}` and `{}`", ident_l, second),
+                            format!("&mut {}", ident_l),
+                            second.mut_addr().to_string(),
+                        )
+                    } else {
+                        (String::new(), String::new(), String::new())
+                    };
+                    let span = first.span.to(second.span);
+                    let Some(sugg) = std_or_core(cx) else { return };
+
+                    lint_almost_swapped_note(span, what, sugg, lhs, rhs);
+                }
+
+        if let StmtKind::Local(first) = w[0].kind
+            && let StmtKind::Semi(second) = w[1].kind
+            && first.span.ctxt() == second.span.ctxt()
+            && let Some(rhs0) = first.init
+            && let ExprKind::Path(QPath::Resolved(None, path_l)) = rhs0.kind
+            && let PatKind::Binding(_,_, ident_l,_) = first.pat.kind
+            && let ExprKind::Assign(lhs1, rhs1, _) = second.kind
+            && let ExprKind::Path(QPath::Resolved(None, lhs1_path)) = lhs1.kind
+            && let ExprKind::Path(QPath::Resolved(None, rhs1_path)) = rhs1.kind
+            && ident_l.name.as_str() == rhs1_path.segments.iter().map(|el| el.ident.to_string()).collect::<Vec<_>>().join("::")
+            && path_l.segments.iter().map(|el| el.ident.to_string()).collect::<Vec<_>>().join("::") == lhs1_path.segments.iter().map(|el| el.ident.to_string()).collect::<Vec<_>>().join("::") 
+                {
+                    let lhs1 = Sugg::hir_opt(cx, lhs1);
+                    let rhs1 = Sugg::hir_opt(cx, rhs1);
+                    let (what, lhs, rhs) = if let (Some(first),Some(second)) = (lhs1,rhs1) {
+                        (
+                            format!(" `{}` and `{}`", first, second),
+                            first.mut_addr().to_string(),
+                            second.mut_addr().to_string(),
+                        )
+                    } else {
+                        (String::new(), String::new(), String::new())
+                    };
+                    let span = first.span.to(second.span);
+                    let Some(sugg) = std_or_core(cx) else { return };
+
+                    lint_almost_swapped_note(span, what, sugg, lhs, rhs);
+                }
     }
 }
 
