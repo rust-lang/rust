@@ -70,7 +70,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
         }
 
-        bug!("no non-`#[track_caller]` frame found")
+        span_bug!(self.cur_span(), "no non-`#[track_caller]` frame found")
     }
 
     /// Allocate a `const core::panic::Location` with the provided filename and line/column numbers.
