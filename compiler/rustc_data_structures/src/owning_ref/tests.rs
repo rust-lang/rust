@@ -1,3 +1,5 @@
+// FIXME: owning_ref is not sound under stacked borrows. Preferably, get rid of it.
+#[cfg(not(miri))]
 mod owning_ref {
     use super::super::OwningRef;
     use super::super::{BoxRef, Erased, ErasedBoxRef, RcRef};
@@ -361,6 +363,8 @@ mod owning_handle {
     }
 }
 
+// FIXME: owning_ref is not sound under stacked borrows. Preferably, get rid of it.
+#[cfg(not(miri))]
 mod owning_ref_mut {
     use super::super::BoxRef;
     use super::super::{BoxRefMut, Erased, ErasedBoxRefMut, OwningRefMut};
