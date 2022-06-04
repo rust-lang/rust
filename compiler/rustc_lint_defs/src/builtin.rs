@@ -289,6 +289,7 @@ declare_lint! {
     "constant evaluation encountered erroneous expression",
     @future_incompatible = FutureIncompatibleInfo {
         reference: "issue #71800 <https://github.com/rust-lang/rust/issues/71800>",
+        reason: FutureIncompatibilityReason::FutureReleaseErrorReportNow,
     };
     report_in_external_macro
 }
