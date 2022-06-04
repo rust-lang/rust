@@ -5,10 +5,10 @@ LL | pub static FOO: u32 = FOO;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: ...which requires const-evaluating + checking `FOO`...
-  --> $DIR/recursive-static-definition.rs:1:1
+  --> $DIR/recursive-static-definition.rs:1:23
    |
 LL | pub static FOO: u32 = FOO;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                       ^^^
    = note: ...which again requires const-evaluating + checking `FOO`, completing the cycle
    = note: cycle used when running analysis passes on this crate
 
