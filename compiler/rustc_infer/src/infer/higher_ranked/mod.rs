@@ -1,6 +1,7 @@
 //! Helper routines for higher-ranked things. See the `doc` module at
 //! the end of the file for details.
 
+use super::at::SubTrace;
 use super::combine::CombineFields;
 use super::{HigherRankedType, InferCtxt};
 
@@ -17,7 +18,7 @@ impl<'a, 'tcx> CombineFields<'a, 'tcx> {
         a_is_expected: bool,
     ) -> RelateResult<'tcx, Binder<'tcx, T>>
     where
-        T: Relate<'tcx>,
+        T: Relate<'tcx> + SubTrace<'tcx>,
     {
         // Rather than checking the subtype relationship between `a` and `b`
         // as-is, we need to do some extra work here in order to make sure
@@ -44,8 +45,18 @@ impl<'a, 'tcx> CombineFields<'a, 'tcx> {
             debug!("a_prime={:?}", a_prime);
             debug!("b_prime={:?}", b_prime);
 
+            let old_trace = if let Some(new_trace) = T::to_sub_trace(self.tcx(), &self.trace.cause, a_is_expected, a_prime, b_prime) {
+                Some(std::mem::replace(&mut self.trace, new_trace))
+            } else {
+                None
+            };
+
             // Compare types now that bound regions have been replaced.
             let result = self.sub(a_is_expected).relate(a_prime, b_prime)?;
+
+            if let Some(old_trace) = old_trace {
+                self.trace = old_trace;
+            }
 
             debug!("higher_ranked_sub: OK result={:?}", result);
 

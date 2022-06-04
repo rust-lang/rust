@@ -4,8 +4,8 @@ error[E0308]: mismatched types
 LL |         let a = A::reborrow::<'ai, 's>(self.a.clone());
    |             ^ lifetime mismatch
    |
-   = note: expected type `<<A as GenAssoc<T>>::Iter<'s> as Sized>`
-              found type `<<A as GenAssoc<T>>::Iter<'ai> as Sized>`
+   = note: expected trait `<<A as GenAssoc<T>>::Iter<'s> as Sized>`
+              found trait `<<A as GenAssoc<T>>::Iter<'ai> as Sized>`
 note: the lifetime `'s` as defined here...
   --> $DIR/issue-89352.rs:35:13
    |

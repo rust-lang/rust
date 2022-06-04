@@ -81,6 +81,40 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 }
 
+pub trait SubTrace<'tcx> {
+    fn to_sub_trace(
+        tcx: TyCtxt<'tcx>,
+        cause: &ObligationCause<'tcx>,
+        a_is_expected: bool,
+        a: Self,
+        b: Self,
+    ) -> Option<TypeTrace<'tcx>>;
+}
+
+impl<'tcx, T> SubTrace<'tcx> for T {
+    default fn to_sub_trace(
+        _tcx: TyCtxt<'tcx>,
+        _cause: &ObligationCause<'tcx>,
+        _a_is_expected: bool,
+        _a: Self,
+        _b: Self,
+    ) -> Option<TypeTrace<'tcx>> {
+        None
+    }
+}
+
+impl<'tcx, T: ToTrace<'tcx>> SubTrace<'tcx> for T {
+    fn to_sub_trace(
+        tcx: TyCtxt<'tcx>,
+        cause: &ObligationCause<'tcx>,
+        a_is_expected: bool,
+        a: Self,
+        b: Self,
+    ) -> Option<TypeTrace<'tcx>> {
+        Some(T::to_trace(tcx, cause, a_is_expected, a, b))
+    }
+}
+
 pub trait ToTrace<'tcx>: Relate<'tcx> + Copy {
     fn to_trace(
         tcx: TyCtxt<'tcx>,

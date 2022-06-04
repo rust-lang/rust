@@ -20,10 +20,11 @@
 #![feature(label_break_value)]
 #![feature(let_chains)]
 #![feature(let_else)]
-#![feature(min_specialization)]
+#![feature(specialization)]
 #![feature(never_type)]
 #![feature(try_blocks)]
 #![recursion_limit = "512"] // For rustdoc
+#![allow(incomplete_features)]
 
 #[macro_use]
 extern crate rustc_macros;
