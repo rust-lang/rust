@@ -817,7 +817,7 @@ pub struct CurrentSpan<'a, 'mir, 'tcx> {
 
 impl<'a, 'mir, 'tcx> CurrentSpan<'a, 'mir, 'tcx> {
     pub fn get(&mut self) -> Span {
-        *self.span.get_or_insert_with(|| Self::current_span(&self.machine))
+        *self.span.get_or_insert_with(|| Self::current_span(self.machine))
     }
 
     #[inline(never)]
@@ -825,7 +825,7 @@ impl<'a, 'mir, 'tcx> CurrentSpan<'a, 'mir, 'tcx> {
         machine
             .threads
             .active_thread_stack()
-            .into_iter()
+            .iter()
             .rev()
             .find(|frame| {
                 let def_id = frame.instance.def_id();

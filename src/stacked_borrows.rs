@@ -684,9 +684,9 @@ impl Stacks {
         state: &GlobalState,
     ) -> InterpResult<'tcx> {
         trace!("deallocation with tag {:?}: {:?}, size {}", tag, alloc_id, range.size.bytes());
-        let mut state = state.borrow_mut();
+        let state = state.borrow();
         self.for_each_mut(range, |offset, stack, history| {
-            stack.dealloc(tag, (alloc_id, range, offset), &mut state, history)
+            stack.dealloc(tag, (alloc_id, range, offset), &state, history)
         })?;
         Ok(())
     }
