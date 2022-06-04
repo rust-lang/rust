@@ -6370,7 +6370,7 @@ where
     /// let some_iter = [(1, 1), (2, 2)].into_iter();
     /// map.extend(some_iter);
     /// // Replace values with existing keys with new values returned from the iterator.
-    /// // So that the map.get_key1(&1) doesn't return Some(&100).
+    /// // So that the map.get(&1) doesn't return Some(&100).
     /// assert_eq!(map.get(&1), Some(&1));
     ///
     /// let some_vec: Vec<_> = vec![(3, 3), (4, 4)];
@@ -6458,7 +6458,7 @@ where
     /// let some_iter = arr.iter().map(|&(k, v)| (k, v));
     /// map.extend(some_iter);
     /// // Replace values with existing keys with new values returned from the iterator.
-    /// // So that the map.get_key1(&1) doesn't return Some(&100).
+    /// // So that the map.get(&1) doesn't return Some(&100).
     /// assert_eq!(map.get(&1), Some(&1));
     ///
     /// let some_vec: Vec<_> = vec![(3, 3), (4, 4)];
