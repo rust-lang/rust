@@ -1,9 +1,9 @@
 // run-pass
 
-#[path = "dummy.rs"]
+#[path = "auxiliary/dummy_lib.rs"]
 mod lib;
 
-#[path = "dummy.rs"]
+#[path = "auxiliary/dummy_lib.rs"]
 mod main;
 
 fn main() {}
