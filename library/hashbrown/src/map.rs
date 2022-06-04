@@ -5973,6 +5973,66 @@ where
     }
 }
 
+/// Inserts all new key-values from the iterator and replaces values with existing
+/// keys with new values returned from the iterator.
+impl<'a, K, V, S, A> Extend<&'a (K, V)> for HashMap<K, V, S, A>
+where
+    K: Eq + Hash + Copy,
+    V: Copy,
+    S: BuildHasher,
+    A: Allocator + Clone,
+{
+    /// Inserts all new key-values from the iterator to existing `HashMap<K, V, S, A>`.
+    /// Replace values with existing keys with new values returned from the iterator.
+    /// The keys and values must implement [`Copy`] trait.
+    ///
+    /// [`Copy`]: https://doc.rust-lang.org/core/marker/trait.Copy.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::hash_map::HashMap;
+    ///
+    /// let mut map = HashMap::new();
+    /// map.insert(1, 100);
+    ///
+    /// let arr = [(1, 1), (2, 2)];
+    /// let some_iter = arr.iter();
+    /// map.extend(some_iter);
+    /// // Replace values with existing keys with new values returned from the iterator.
+    /// // So that the map.get(&1) doesn't return Some(&100).
+    /// assert_eq!(map.get(&1), Some(&1));
+    ///
+    /// let some_vec: Vec<_> = vec![(3, 3), (4, 4)];
+    /// map.extend(&some_vec);
+    ///
+    /// let some_arr = [(5, 5), (6, 6)];
+    /// map.extend(&some_arr);
+    ///
+    /// let mut vec: Vec<_> = map.into_iter().collect();
+    /// // The `IntoIter` iterator produces items in arbitrary order, so the
+    /// // items must be sorted to test them against a sorted array.
+    /// vec.sort_unstable();
+    /// assert_eq!(vec, [(1, 1), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6)]);
+    /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
+    fn extend<T: IntoIterator<Item = &'a (K, V)>>(&mut self, iter: T) {
+        self.extend(iter.into_iter().map(|&(key, value)| (key, value)));
+    }
+
+    #[inline]
+    #[cfg(feature = "nightly")]
+    fn extend_one(&mut self, &(k, v): &'a (K, V)) {
+        self.insert(k, v);
+    }
+
+    #[inline]
+    #[cfg(feature = "nightly")]
+    fn extend_reserve(&mut self, additional: usize) {
+        Extend::<(K, V)>::extend_reserve(self, additional);
+    }
+}
+
 #[allow(dead_code)]
 fn assert_covariance() {
     fn map_key<'new>(v: HashMap<&'static str, u8>) -> HashMap<&'new str, u8> {
@@ -6960,7 +7020,7 @@ mod test_map {
     }
 
     #[test]
-    fn test_extend_ref() {
+    fn test_extend_ref_k_ref_v() {
         let mut a = HashMap::new();
         a.insert(1, "one");
         let mut b = HashMap::new();
@@ -6973,6 +7033,37 @@ mod test_map {
         assert_eq!(a[&1], "one");
         assert_eq!(a[&2], "two");
         assert_eq!(a[&3], "three");
+    }
+
+    #[test]
+    fn test_extend_ref_kv_tuple() {
+        use std::ops::AddAssign;
+        let mut a = HashMap::new();
+        a.insert(0, 0);
+
+        fn create_arr<T: AddAssign<T> + Copy, const N: usize>(start: T, step: T) -> [(T, T); N] {
+            let mut outs: [(T, T); N] = [(start, start); N];
+            let mut element = step;
+            outs.iter_mut().skip(1).for_each(|(k, v)| {
+                *k += element;
+                *v += element;
+                element += step;
+            });
+            outs
+        }
+
+        let for_iter: Vec<_> = (0..100).map(|i| (i, i)).collect();
+        let iter = for_iter.iter();
+        let vec: Vec<_> = (100..200).map(|i| (i, i)).collect();
+        a.extend(iter);
+        a.extend(&vec);
+        a.extend(&create_arr::<i32, 100>(200, 1));
+
+        assert_eq!(a.len(), 300);
+        
+        for item in 0..300 {
+            assert_eq!(a[&item], item);
+        }
     }
 
     #[test]
