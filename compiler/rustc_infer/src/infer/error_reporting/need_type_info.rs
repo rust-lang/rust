@@ -618,7 +618,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
 
     /// Computes cost for the given source.
     ///
-    /// Sources with a small cost are prefer and should result
+    /// Sources with a small cost are preferred and should result
     /// in a clearer and idiomatic suggestion.
     fn source_cost(&self, source: &InferSource<'tcx>) -> usize {
         #[derive(Clone, Copy)]
@@ -631,6 +631,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                     GenericArgKind::Lifetime(_) => 0, // erased
                     GenericArgKind::Type(ty) => self.ty_cost(ty),
                     GenericArgKind::Const(_) => 3, // some non-zero value
+                    GenericArgKind::Constness(_) => 1,
                 }
             }
             fn ty_cost(self, ty: Ty<'tcx>) -> usize {
@@ -748,6 +749,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
             }
             match inner.unpack() {
                 GenericArgKind::Lifetime(_) => {}
+                GenericArgKind::Constness(_) => {}
                 GenericArgKind::Type(ty) => {
                     if matches!(ty.kind(), ty::Opaque(..) | ty::Closure(..) | ty::Generator(..)) {
                         // Opaque types can't be named by the user right now.

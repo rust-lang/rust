@@ -78,7 +78,7 @@ impl GenericParamDef {
         match self.kind {
             GenericParamDefKind::Type { has_default, .. }
             | GenericParamDefKind::Const { has_default } => has_default,
-            GenericParamDefKind::Lifetime => false,
+            GenericParamDefKind::Lifetime | GenericParamDefKind::Constness => false,
         }
     }
 
