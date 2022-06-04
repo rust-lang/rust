@@ -166,32 +166,32 @@ pub fn report_error<'tcx, 'mir>(
                     match history {
                         Some(TagHistory::Tagged {tag, created: (created_range, created_span), invalidated, protected }) => {
                             let msg = format!("{:?} was created by a retag at offsets {}", tag, HexRange(*created_range));
-                            helps.push((Some(created_span.clone()), msg));
+                            helps.push((Some(*created_span), msg));
                             if let Some((invalidated_range, invalidated_span)) = invalidated {
                                 let msg = format!("{:?} was later invalidated at offsets {}", tag, HexRange(*invalidated_range));
-                                helps.push((Some(invalidated_span.clone()), msg));
+                                helps.push((Some(*invalidated_span), msg));
                             }
                             if let Some((protecting_tag, protecting_tag_span, protection_span)) = protected {
-                                helps.push((Some(protecting_tag_span.clone()), format!("{:?} was protected due to {:?} which was created here", tag, protecting_tag)));
-                                helps.push((Some(protection_span.clone()), "this protector is live for this call".to_string()));
+                                helps.push((Some(*protecting_tag_span), format!("{:?} was protected due to {:?} which was created here", tag, protecting_tag)));
+                                helps.push((Some(*protection_span), "this protector is live for this call".to_string()));
                             }
                         }
                         Some(TagHistory::Untagged{ recently_created, recently_invalidated, matching_created, protected }) => {
                             if let Some((range, span)) = recently_created {
                                 let msg = format!("tag was most recently created at offsets {}", HexRange(*range));
-                                helps.push((Some(span.clone()), msg));
+                                helps.push((Some(*span), msg));
                             }
                             if let Some((range, span)) = recently_invalidated {
                                 let msg = format!("tag was later invalidated at offsets {}", HexRange(*range));
-                                helps.push((Some(span.clone()), msg));
+                                helps.push((Some(*span), msg));
                             }
                             if let Some((range, span)) = matching_created {
                                 let msg = format!("this tag was also created here at offsets {}", HexRange(*range));
-                                helps.push((Some(span.clone()), msg));
+                                helps.push((Some(*span), msg));
                             }
                             if let Some((protecting_tag, protecting_tag_span, protection_span)) = protected {
-                                helps.push((Some(protecting_tag_span.clone()), format!("{:?} was protected due to a tag which was created here", protecting_tag)));
-                                helps.push((Some(protection_span.clone()), "this protector is live for this call".to_string()));
+                                helps.push((Some(*protecting_tag_span), format!("{:?} was protected due to a tag which was created here", protecting_tag)));
+                                helps.push((Some(*protection_span), "this protector is live for this call".to_string()));
                             }
                         }
                         None => {}

@@ -304,7 +304,7 @@ pub struct FileHandler {
     handles: BTreeMap<i32, Box<dyn FileDescriptor>>,
 }
 
-impl<'tcx> FileHandler {
+impl FileHandler {
     pub(crate) fn new(mute_stdout_stderr: bool) -> FileHandler {
         let mut handles: BTreeMap<_, Box<dyn FileDescriptor>> = BTreeMap::new();
         handles.insert(0i32, Box::new(io::stdin()));
