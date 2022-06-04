@@ -3596,7 +3596,6 @@ Released 2018-09-13
 [`needless_bool`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_bool
 [`needless_borrow`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_borrow
 [`needless_borrowed_reference`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_borrowed_reference
-[`needless_parens_on_range_literal`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_parens_on_range_literal
 [`needless_collect`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_collect
 [`needless_continue`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_continue
 [`needless_doctest_main`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_doctest_main
@@ -3606,6 +3605,7 @@ Released 2018-09-13
 [`needless_match`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_match
 [`needless_option_as_deref`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_option_as_deref
 [`needless_option_take`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_option_take
+[`needless_parens_on_range_literal`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_parens_on_range_literal
 [`needless_pass_by_value`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_pass_by_value
 [`needless_question_mark`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_question_mark
 [`needless_range_loop`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_range_loop
