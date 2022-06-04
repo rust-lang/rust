@@ -902,16 +902,14 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
 
     pub fn hash_lifetime(&mut self, lifetime: Lifetime) {
         std::mem::discriminant(&lifetime.name).hash(&mut self.s);
-        if let LifetimeName::Param(ref name) = lifetime.name {
+        if let LifetimeName::Param(param_id, ref name) = lifetime.name {
             std::mem::discriminant(name).hash(&mut self.s);
+            param_id.hash(&mut self.s);
             match name {
                 ParamName::Plain(ref ident) => {
                     ident.name.hash(&mut self.s);
                 },
-                ParamName::Fresh(ref size) => {
-                    size.hash(&mut self.s);
-                },
-                ParamName::Error => {},
+                ParamName::Fresh | ParamName::Error => {},
             }
         }
     }

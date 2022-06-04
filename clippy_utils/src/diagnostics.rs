@@ -274,8 +274,11 @@ pub fn span_lint_and_sugg_for_edges(
             let sm = cx.sess().source_map();
             if let (Ok(line_upper), Ok(line_bottom)) = (sm.lookup_line(sp.lo()), sm.lookup_line(sp.hi())) {
                 let split_idx = MAX_SUGGESTION_HIGHLIGHT_LINES / 2;
-                let span_upper = sm.span_until_char(sp.with_hi(line_upper.sf.lines[line_upper.line + split_idx]), '\n');
-                let span_bottom = sp.with_lo(line_bottom.sf.lines[line_bottom.line - split_idx]);
+                let span_upper = sm.span_until_char(
+                    sp.with_hi(line_upper.sf.lines(|lines| lines[line_upper.line + split_idx])),
+                    '\n',
+                );
+                let span_bottom = sp.with_lo(line_bottom.sf.lines(|lines| lines[line_bottom.line - split_idx]));
 
                 let sugg_lines_vec = sugg.lines().collect::<Vec<&str>>();
                 let sugg_upper = sugg_lines_vec[..split_idx].join("\n");

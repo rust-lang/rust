@@ -358,7 +358,7 @@ fn is_size_pair(ty: Ty<'_>) -> bool {
     }
 }
 
-fn same_except_params(subs1: SubstsRef<'_>, subs2: SubstsRef<'_>) -> bool {
+fn same_except_params<'tcx>(subs1: SubstsRef<'tcx>, subs2: SubstsRef<'tcx>) -> bool {
     // TODO: check const parameters as well. Currently this will consider `Array<5>` the same as
     // `Array<6>`
     for (ty1, ty2) in subs1.types().zip(subs2.types()).filter(|(ty1, ty2)| ty1 != ty2) {

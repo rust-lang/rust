@@ -117,7 +117,9 @@ pub(super) fn check<'tcx>(
                                 let take_expr = sugg::Sugg::hir(cx, take_expr, "<count>");
                                 format!(".take({})", take_expr + sugg::ONE)
                             },
-                            ast::RangeLimits::HalfOpen => format!(".take({})", snippet(cx, take_expr.span, "..")),
+                            ast::RangeLimits::HalfOpen => {
+                                format!(".take({})", snippet(cx, take_expr.span, ".."))
+                            },
                         }
                     }
                 } else {
@@ -262,7 +264,11 @@ impl<'a, 'tcx> VarVisitor<'a, 'tcx> {
                 match res {
                     Res::Local(hir_id) => {
                         let parent_def_id = self.cx.tcx.hir().get_parent_item(expr.hir_id);
-                        let extent = self.cx.tcx.region_scope_tree(parent_def_id).var_scope(hir_id.local_id).unwrap();
+                        let extent = self.cx
+                            .tcx
+                            .region_scope_tree(parent_def_id)
+                            .var_scope(hir_id.local_id)
+                            .unwrap();
                         if index_used_directly {
                             self.indexed_directly.insert(
                                 seqvar.segments[0].ident.name,

@@ -343,7 +343,7 @@ impl fmt::Display for RefPrefix {
         use fmt::Write;
         f.write_char('&')?;
         match self.lt {
-            LifetimeName::Param(ParamName::Plain(name)) => {
+            LifetimeName::Param(_, ParamName::Plain(name)) => {
                 name.fmt(f)?;
                 f.write_char(' ')?;
             },
@@ -395,9 +395,9 @@ impl<'tcx> DerefTy<'tcx> {
 
 fn check_fn_args<'cx, 'tcx: 'cx>(
     cx: &'cx LateContext<'tcx>,
-    tys: &'tcx [Ty<'_>],
-    hir_tys: &'tcx [hir::Ty<'_>],
-    params: &'tcx [Param<'_>],
+    tys: &'tcx [Ty<'tcx>],
+    hir_tys: &'tcx [hir::Ty<'tcx>],
+    params: &'tcx [Param<'tcx>],
 ) -> impl Iterator<Item = PtrArg<'tcx>> + 'cx {
     tys.iter()
         .zip(hir_tys.iter())
