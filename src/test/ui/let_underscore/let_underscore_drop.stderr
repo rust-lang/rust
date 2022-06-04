@@ -5,8 +5,14 @@ LL |     let _ = NontrivialDrop;
    |     ^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: requested on the command line with `-W let-underscore-drop`
-   = help: consider binding to an unused variable
-   = help: consider explicitly droping with `std::mem::drop`
+help: consider binding to an unused variable
+   |
+LL |     let _unused = NontrivialDrop;
+   |         ~~~~~~~
+help: consider explicitly droping with `std::mem::drop`
+   |
+LL |     let _ = drop(...);
+   |             ~~~~~~~~~
 
 warning: 1 warning emitted
 

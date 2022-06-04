@@ -5,8 +5,14 @@ LL |     let _ = MustUseType;
    |     ^^^^^^^^^^^^^^^^^^^^
    |
    = note: requested on the command line with `-W let-underscore-must-use`
-   = help: consider binding to an unused variable
-   = help: consider explicitly droping with `std::mem::drop`
+help: consider binding to an unused variable
+   |
+LL |     let _unused = MustUseType;
+   |         ~~~~~~~
+help: consider explicitly droping with `std::mem::drop`
+   |
+LL |     let _ = drop(...);
+   |             ~~~~~~~~~
 
 warning: non-binding let on a expression marked `must_use`
   --> $DIR/let_underscore_must_use.rs:12:5
@@ -14,8 +20,14 @@ warning: non-binding let on a expression marked `must_use`
 LL |     let _ = must_use_function();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: consider binding to an unused variable
-   = help: consider explicitly droping with `std::mem::drop`
+help: consider binding to an unused variable
+   |
+LL |     let _unused = must_use_function();
+   |         ~~~~~~~
+help: consider explicitly droping with `std::mem::drop`
+   |
+LL |     let _ = drop(...);
+   |             ~~~~~~~~~
 
 warning: 2 warnings emitted
 

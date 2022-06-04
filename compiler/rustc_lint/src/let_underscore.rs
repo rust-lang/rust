@@ -1,6 +1,10 @@
 use crate::{LateContext, LateLintPass, LintContext};
+use rustc_errors::Applicability;
 use rustc_hir as hir;
-use rustc_middle::ty::{self, subst::GenericArgKind, Ty};
+use rustc_middle::{
+    lint::LintDiagnosticBuilder,
+    ty::{self, subst::GenericArgKind, Ty},
+};
 use rustc_span::Symbol;
 
 declare_lint! {
@@ -141,30 +145,60 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
             });
             let is_must_use_ty = is_must_use_ty(cx, cx.typeck_results().expr_ty(init));
             let is_must_use_func_call = is_must_use_func_call(cx, init);
+
             if is_sync_lock {
                 cx.struct_span_lint(LET_UNDERSCORE_LOCK, local.span, |lint| {
-                    lint.build("non-binding let on a synchronization lock")
-                        .help("consider binding to an unused variable")
-                        .help("consider explicitly droping with `std::mem::drop`")
-                        .emit();
+                    build_and_emit_lint(
+                        lint,
+                        local,
+                        init.span,
+                        "non-binding let on a synchronization lock",
+                    )
                 })
             } else if is_must_use_ty || is_must_use_func_call {
                 cx.struct_span_lint(LET_UNDERSCORE_MUST_USE, local.span, |lint| {
-                    lint.build("non-binding let on a expression marked `must_use`")
-                        .help("consider binding to an unused variable")
-                        .help("consider explicitly droping with `std::mem::drop`")
-                        .emit();
+                    build_and_emit_lint(
+                        lint,
+                        local,
+                        init.span,
+                        "non-binding let on a expression marked `must_use`",
+                    );
                 })
             } else if needs_drop {
                 cx.struct_span_lint(LET_UNDERSCORE_DROP, local.span, |lint| {
-                    lint.build("non-binding let on a type that implements `Drop`")
-                        .help("consider binding to an unused variable")
-                        .help("consider explicitly droping with `std::mem::drop`")
-                        .emit();
+                    build_and_emit_lint(
+                        lint,
+                        local,
+                        init.span,
+                        "non-binding let on a type that implements `Drop`",
+                    );
                 })
             }
         }
 
+        fn build_and_emit_lint(
+            lint: LintDiagnosticBuilder<'_, ()>,
+            local: &hir::Local<'_>,
+            init_span: rustc_span::Span,
+            msg: &str,
+        ) {
+            lint.build(msg)
+                .span_suggestion_verbose(
+                    local.pat.span,
+                    "consider binding to an unused variable",
+                    "_unused",
+                    Applicability::MachineApplicable,
+                )
+                .span_suggestion_verbose(
+                    init_span,
+                    "consider explicitly droping with `std::mem::drop`",
+                    "drop(...)",
+                    Applicability::HasPlaceholders,
+                )
+                .emit();
+        }
+
+        // return true if `ty` is a type that is marked as `must_use`
         fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
             match ty.kind() {
                 ty::Adt(adt, _) => has_must_use_attr(cx, adt.did()),
