@@ -5,98 +5,24 @@ use clippy_utils::source::{indent_of, snippet};
 use rustc_errors::{Applicability, Diagnostic};
 use rustc_hir::intravisit::{walk_expr, Visitor};
 use rustc_hir::{Expr, ExprKind, MatchSource};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_lint::{LateContext, LintContext};
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{Ty, TypeAndMut};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::Span;
 
-declare_clippy_lint! {
-    /// ### What it does
-    /// Check for temporaries returned from function calls in a match scrutinee that have the
-    /// `clippy::has_significant_drop` attribute.
-    ///
-    /// ### Why is this bad?
-    /// The `clippy::has_significant_drop` attribute can be added to types whose Drop impls have
-    /// an important side-effect, such as unlocking a mutex, making it important for users to be
-    /// able to accurately understand their lifetimes. When a temporary is returned in a function
-    /// call in a match scrutinee, its lifetime lasts until the end of the match block, which may
-    /// be surprising.
-    ///
-    /// For `Mutex`es this can lead to a deadlock. This happens when the match scrutinee uses a
-    /// function call that returns a `MutexGuard` and then tries to lock again in one of the match
-    /// arms. In that case the `MutexGuard` in the scrutinee will not be dropped until the end of
-    /// the match block and thus will not unlock.
-    ///
-    /// ### Example
-    /// ```rust.ignore
-    /// # use std::sync::Mutex;
-    ///
-    /// # struct State {}
-    ///
-    /// # impl State {
-    /// #     fn foo(&self) -> bool {
-    /// #         true
-    /// #     }
-    ///
-    /// #     fn bar(&self) {}
-    /// # }
-    ///
-    ///
-    /// let mutex = Mutex::new(State {});
-    ///
-    /// match mutex.lock().unwrap().foo() {
-    ///     true => {
-    ///         mutex.lock().unwrap().bar(); // Deadlock!
-    ///     }
-    ///     false => {}
-    /// };
-    ///
-    /// println!("All done!");
-    ///
-    /// ```
-    /// Use instead:
-    /// ```rust
-    /// # use std::sync::Mutex;
-    ///
-    /// # struct State {}
-    ///
-    /// # impl State {
-    /// #     fn foo(&self) -> bool {
-    /// #         true
-    /// #     }
-    ///
-    /// #     fn bar(&self) {}
-    /// # }
-    ///
-    /// let mutex = Mutex::new(State {});
-    ///
-    /// let is_foo = mutex.lock().unwrap().foo();
-    /// match is_foo {
-    ///     true => {
-    ///         mutex.lock().unwrap().bar();
-    ///     }
-    ///     false => {}
-    /// };
-    ///
-    /// println!("All done!");
-    /// ```
-    #[clippy::version = "1.60.0"]
-    pub SIGNIFICANT_DROP_IN_SCRUTINEE,
-    suspicious,
-    "warns when a temporary of a type with a drop with a significant side-effect might have a surprising lifetime"
-}
+use super::SIGNIFICANT_DROP_IN_SCRUTINEE;
 
-declare_lint_pass!(SignificantDropInScrutinee => [SIGNIFICANT_DROP_IN_SCRUTINEE]);
-
-impl<'tcx> LateLintPass<'tcx> for SignificantDropInScrutinee {
-    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
-        if let Some((suggestions, message)) = has_significant_drop_in_scrutinee(cx, expr) {
-            for found in suggestions {
-                span_lint_and_then(cx, SIGNIFICANT_DROP_IN_SCRUTINEE, found.found_span, message, |diag| {
-                    set_diagnostic(diag, cx, expr, found);
-                });
-            }
+pub(super) fn check<'tcx>(
+    cx: &LateContext<'tcx>,
+    expr: &'tcx Expr<'tcx>,
+    scrutinee: &'tcx Expr<'_>,
+    source: MatchSource,
+) {
+    if let Some((suggestions, message)) = has_significant_drop_in_scrutinee(cx, scrutinee, source) {
+        for found in suggestions {
+            span_lint_and_then(cx, SIGNIFICANT_DROP_IN_SCRUTINEE, found.found_span, message, |diag| {
+                set_diagnostic(diag, cx, expr, found);
+            });
         }
     }
 }
@@ -148,28 +74,18 @@ fn set_diagnostic<'tcx>(diag: &mut Diagnostic, cx: &LateContext<'tcx>, expr: &'t
 /// may have a surprising lifetime.
 fn has_significant_drop_in_scrutinee<'tcx, 'a>(
     cx: &'a LateContext<'tcx>,
-    expr: &'tcx Expr<'tcx>,
+    scrutinee: &'tcx Expr<'tcx>,
+    source: MatchSource,
 ) -> Option<(Vec<FoundSigDrop>, &'static str)> {
-    match expr.kind {
-        ExprKind::Match(match_expr, _, source) => {
-            match source {
-                MatchSource::Normal | MatchSource::ForLoopDesugar => {
-                    let mut helper = SigDropHelper::new(cx);
-                    helper.find_sig_drop(match_expr).map(|drops| {
-                        let message = if source == MatchSource::Normal {
-                            "temporary with significant drop in match scrutinee"
-                        } else {
-                            "temporary with significant drop in for loop"
-                        };
-                        (drops, message)
-                    })
-                },
-                // MatchSource of TryDesugar or AwaitDesugar is out of scope for this lint
-                MatchSource::TryDesugar | MatchSource::AwaitDesugar => None,
-            }
-        },
-        _ => None,
-    }
+    let mut helper = SigDropHelper::new(cx);
+    helper.find_sig_drop(scrutinee).map(|drops| {
+        let message = if source == MatchSource::Normal {
+            "temporary with significant drop in match scrutinee"
+        } else {
+            "temporary with significant drop in for loop"
+        };
+        (drops, message)
+    })
 }
 
 struct SigDropHelper<'a, 'tcx> {
