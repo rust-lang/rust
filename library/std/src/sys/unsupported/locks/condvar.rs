@@ -11,9 +11,6 @@ impl Condvar {
     }
 
     #[inline]
-    pub unsafe fn init(&mut self) {}
-
-    #[inline]
     pub unsafe fn notify_one(&self) {}
 
     #[inline]
@@ -26,7 +23,4 @@ impl Condvar {
     pub unsafe fn wait_timeout(&self, _mutex: &Mutex, _dur: Duration) -> bool {
         panic!("condvar wait not supported");
     }
-
-    #[inline]
-    pub unsafe fn destroy(&self) {}
 }
