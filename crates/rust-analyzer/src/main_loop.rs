@@ -8,7 +8,7 @@ use std::{
 
 use always_assert::always;
 use crossbeam_channel::{select, Receiver};
-use ide_db::base_db::{Cancelled, SourceDatabaseExt, VfsPath};
+use ide_db::base_db::{SourceDatabaseExt, VfsPath};
 use lsp_server::{Connection, Notification, Request};
 use lsp_types::notification::Notification as _;
 use vfs::{ChangeKind, FileId};
@@ -796,11 +796,6 @@ impl GlobalState {
                 .into_iter()
                 .filter_map(|file_id| {
                     handlers::publish_diagnostics(&snapshot, file_id)
-                        .map_err(|err| {
-                            if err.is::<Cancelled>() {
-                                tracing::error!("failed to compute diagnostics: {:?}", err);
-                            }
-                        })
                         .ok()
                         .map(|diags| (file_id, diags))
                 })
