@@ -84,6 +84,7 @@
 #![feature(const_option)]
 #![feature(const_option_ext)]
 #![feature(const_result)]
+#![feature(const_intrinsic_copy)]
 #![feature(integer_atomics)]
 #![feature(int_roundings)]
 #![feature(slice_group_by)]

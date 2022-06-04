@@ -1,4 +1,5 @@
 use core::cell::RefCell;
+use core::mem::{self, MaybeUninit};
 use core::num::NonZeroUsize;
 use core::ptr;
 use core::ptr::*;
@@ -780,4 +781,43 @@ fn nonnull_tagged_pointer_with_provenance() {
             })
         }
     }
+}
+
+#[test]
+fn test_const_copy() {
+    const {
+        let ptr1 = &1;
+        let mut ptr2 = &666;
+
+        // Copy ptr1 to ptr2, bytewise.
+        unsafe {
+            ptr::copy(
+                &ptr1 as *const _ as *const MaybeUninit<u8>,
+                &mut ptr2 as *mut _ as *mut MaybeUninit<u8>,
+                mem::size_of::<&i32>(),
+            );
+        }
+
+        // Make sure they still work.
+        assert!(*ptr1 == 1);
+        assert!(*ptr2 == 1);
+    };
+
+    const {
+        let ptr1 = &1;
+        let mut ptr2 = &666;
+
+        // Copy ptr1 to ptr2, bytewise.
+        unsafe {
+            ptr::copy_nonoverlapping(
+                &ptr1 as *const _ as *const MaybeUninit<u8>,
+                &mut ptr2 as *mut _ as *mut MaybeUninit<u8>,
+                mem::size_of::<&i32>(),
+            );
+        }
+
+        // Make sure they still work.
+        assert!(*ptr1 == 1);
+        assert!(*ptr2 == 1);
+    };
 }
