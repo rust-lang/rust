@@ -48,7 +48,6 @@ pub(crate) type Suggestion = (Vec<(Span, String)>, String, Applicability);
 /// similarly named label and whether or not it is reachable.
 pub(crate) type LabelSuggestion = (Ident, bool);
 
-#[derive(Clone, PartialEq, Eq)]
 pub(crate) enum SuggestionTarget {
     /// The target has a similar name as the name used by the programmer (probably a typo)
     SimilarlyNamed,
@@ -56,7 +55,6 @@ pub(crate) enum SuggestionTarget {
     SingleItem,
 }
 
-#[derive(Clone, PartialEq, Eq)]
 pub(crate) struct TypoSuggestion {
     pub candidate: Symbol,
     pub res: Res,
