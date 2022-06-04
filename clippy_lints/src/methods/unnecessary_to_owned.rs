@@ -415,7 +415,7 @@ fn is_cloned_or_copied(cx: &LateContext<'_>, method_name: Symbol, method_def_id:
 /// Returns true if the named method can be used to convert the receiver to its "owned"
 /// representation.
 fn is_to_owned_like(cx: &LateContext<'_>, method_name: Symbol, method_def_id: DefId) -> bool {
-    is_clone_like(cx, &*method_name.as_str(), method_def_id)
+    is_clone_like(cx, method_name.as_str(), method_def_id)
         || is_cow_into_owned(cx, method_name, method_def_id)
         || is_to_string(cx, method_name, method_def_id)
 }

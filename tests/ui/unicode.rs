@@ -1,3 +1,4 @@
+// run-rustfix
 #[warn(clippy::invisible_characters)]
 fn zero() {
     print!("Here >​< is a ZWS, and ​another");

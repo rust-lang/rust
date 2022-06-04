@@ -20,7 +20,6 @@ declare_clippy_lint! {
     /// ```rust
     /// struct Foo(i32);
     ///
-    /// // Bad
     /// impl From<String> for Foo {
     ///     fn from(s: String) -> Self {
     ///         Foo(s.parse().unwrap())
@@ -28,8 +27,8 @@ declare_clippy_lint! {
     /// }
     /// ```
     ///
+    /// Use instead:
     /// ```rust
-    /// // Good
     /// struct Foo(i32);
     ///
     /// impl TryFrom<String> for Foo {

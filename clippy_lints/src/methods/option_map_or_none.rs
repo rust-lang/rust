@@ -97,7 +97,7 @@ pub(super) fn check<'tcx>(
         let func_snippet = snippet(cx, map_arg.span, "..");
         let msg = "called `map_or(None, ..)` on an `Option` value. This can be done more directly by calling \
                        `and_then(..)` instead";
-        return span_lint_and_sugg(
+        span_lint_and_sugg(
             cx,
             OPTION_MAP_OR_NONE,
             expr.span,
@@ -110,7 +110,7 @@ pub(super) fn check<'tcx>(
         let msg = "called `map_or(None, Some)` on a `Result` value. This can be done more directly by calling \
                        `ok()` instead";
         let self_snippet = snippet(cx, recv.span, "..");
-        return span_lint_and_sugg(
+        span_lint_and_sugg(
             cx,
             RESULT_MAP_OR_INTO_OPTION,
             expr.span,

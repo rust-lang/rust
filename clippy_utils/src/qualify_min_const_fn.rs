@@ -121,24 +121,18 @@ fn check_rvalue<'tcx>(
 ) -> McfResult {
     match rvalue {
         Rvalue::ThreadLocalRef(_) => Err((span, "cannot access thread local storage in const fn".into())),
-        Rvalue::Repeat(operand, _) | Rvalue::Use(operand) => check_operand(tcx, operand, span, body),
         Rvalue::Len(place) | Rvalue::Discriminant(place) | Rvalue::Ref(_, _, place) | Rvalue::AddressOf(_, place) => {
             check_place(tcx, *place, span, body)
         },
-        Rvalue::Cast(CastKind::PointerExposeAddress, _, _) => {
-            Err((span, "casting pointers to ints is unstable in const fn".into()))
-        },
-        Rvalue::Cast(CastKind::Misc, operand, _) => {
-            check_operand(tcx, operand, span, body)
-        },
-        Rvalue::Cast(
+        Rvalue::Repeat(operand, _)
+        | Rvalue::Use(operand)
+        | Rvalue::Cast(
             CastKind::PointerFromExposedAddress
+            | CastKind::Misc
             | CastKind::Pointer(PointerCast::MutToConstPointer | PointerCast::ArrayToPointer),
             operand,
-            _
-        ) => {
-            check_operand(tcx, operand, span, body)
-        },
+            _,
+        ) => check_operand(tcx, operand, span, body),
         Rvalue::Cast(
             CastKind::Pointer(
                 PointerCast::UnsafeFnPointer | PointerCast::ClosureFnPointer(_) | PointerCast::ReifyFnPointer,
@@ -162,6 +156,9 @@ fn check_rvalue<'tcx>(
                 // We just can't allow trait objects until we have figured out trait method calls.
                 Err((span, "unsizing casts are not allowed in const fn".into()))
             }
+        },
+        Rvalue::Cast(CastKind::PointerExposeAddress, _, _) => {
+            Err((span, "casting pointers to ints is unstable in const fn".into()))
         },
         // binops are fine on integers
         Rvalue::BinaryOp(_, box (lhs, rhs)) | Rvalue::CheckedBinaryOp(_, box (lhs, rhs)) => {

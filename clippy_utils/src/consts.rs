@@ -478,7 +478,7 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
     fn ifthenelse(&mut self, cond: &Expr<'_>, then: &Expr<'_>, otherwise: Option<&Expr<'_>>) -> Option<Constant> {
         if let Some(Constant::Bool(b)) = self.expr(cond) {
             if b {
-                self.expr(&*then)
+                self.expr(then)
             } else {
                 otherwise.as_ref().and_then(|expr| self.expr(expr))
             }
