@@ -142,18 +142,18 @@ impl WorkspaceBuildScripts {
                             }
                             acc
                         };
-                        let package_build_data =
-                            outputs[package].get_or_insert_with(Default::default);
                         // cargo_metadata crate returns default (empty) path for
                         // older cargos, which is not absolute, so work around that.
-                        if !message.out_dir.as_str().is_empty() {
-                            let out_dir =
-                                AbsPathBuf::assert(PathBuf::from(message.out_dir.into_os_string()));
-                            package_build_data.out_dir = Some(out_dir);
-                            package_build_data.cfgs = cfgs;
+                        let out_dir = message.out_dir.into_os_string();
+                        if !out_dir.is_empty() {
+                            let data = outputs[package].get_or_insert_with(Default::default);
+                            let out_dir = Some(AbsPathBuf::assert(PathBuf::from(out_dir)));
+                            (data.out_dir, data.cfgs) = (out_dir, cfgs);
                         }
-
-                        package_build_data.envs = message.env;
+                        if !message.env.is_empty() {
+                            outputs[package].get_or_insert_with(Default::default).envs =
+                                message.env;
+                        }
                     }
                     Message::CompilerArtifact(message) => {
                         let package = match by_id.get(&message.package_id.repr) {
@@ -195,7 +195,7 @@ impl WorkspaceBuildScripts {
         for package in workspace.packages() {
             if let Some(package_build_data) = &mut outputs[package] {
                 tracing::info!(
-                    "{} BuildScriptOutput: {:?}",
+                    "{}: {:?}",
                     workspace[package].manifest.parent().display(),
                     package_build_data,
                 );
