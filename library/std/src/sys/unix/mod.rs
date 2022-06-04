@@ -1,5 +1,6 @@
 #![allow(missing_docs, nonstandard_style)]
 
+use crate::ffi::CStr;
 use crate::io::ErrorKind;
 
 pub use self::rand::hashmap_random_keys;
@@ -65,6 +66,15 @@ pub unsafe fn init(argc: isize, argv: *const *const u8) {
 
     stack_overflow::init();
     args::init(argc, argv);
+
+    // Normally, `thread::spawn` will call `Thread::set_name` but since this thread
+    // already exists, we have to call it ourselves. We only do this on macos
+    // because some unix-like operating systems such as Linux share process-id and
+    // thread-id for the main thread and so renaming the main thread will rename the
+    // process and we only want to enable this on platforms we've tested.
+    if cfg!(target_os = "macos") {
+        thread::Thread::set_name(&CStr::from_bytes_with_nul_unchecked(b"main\0"));
+    }
 
     unsafe fn sanitize_standard_fds() {
         #[cfg(not(miri))]
