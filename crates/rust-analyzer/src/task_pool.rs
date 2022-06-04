@@ -9,7 +9,13 @@ pub(crate) struct TaskPool<T> {
 
 impl<T> TaskPool<T> {
     pub(crate) fn new(sender: Sender<T>) -> TaskPool<T> {
-        TaskPool { sender, inner: threadpool::ThreadPool::default() }
+        const STACK_SIZE: usize = 8 * 1024 * 1024;
+
+        let inner = threadpool::Builder::new()
+            .thread_name("Worker".into())
+            .thread_stack_size(STACK_SIZE)
+            .build();
+        TaskPool { sender, inner }
     }
 
     pub(crate) fn spawn<F>(&mut self, task: F)
