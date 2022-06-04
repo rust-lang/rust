@@ -415,6 +415,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // There is only one thread, so this always succeeds and returns TRUE.
                 this.write_scalar(Scalar::from_i32(1), dest)?;
             }
+            "GetCurrentThread" if this.frame_in_std() => {
+                let [] = this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
+                this.write_scalar(Scalar::from_machine_isize(1, this), dest)?;
+            }
 
             _ => return Ok(EmulateByNameResult::NotSupported),
         }

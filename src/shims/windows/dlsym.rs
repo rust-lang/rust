@@ -18,6 +18,7 @@ impl Dlsym {
     pub fn from_str<'tcx>(name: &str) -> InterpResult<'tcx, Option<Dlsym>> {
         Ok(match name {
             "GetSystemTimePreciseAsFileTime" => None,
+            "SetThreadDescription" => None,
             "NtWriteFile" => Some(Dlsym::NtWriteFile),
             _ => throw_unsup_format!("unsupported Windows dlsym: {}", name),
         })
