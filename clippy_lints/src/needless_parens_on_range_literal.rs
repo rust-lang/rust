@@ -1,22 +1,3 @@
-//! Checks for parantheses on literals in range statements
-//!
-//! For example, the lint would catch
-//!
-//! ```rust
-//! for i in (0)..10 {
-//!   println!("{i}");
-//! }
-//! ```
-//!
-//! Use instead:
-//!
-//! ```rust
-//! for i in 0..10 {
-//!   println!("{i}");
-//! }
-//! ```
-//!
-
 use clippy_utils::{
     diagnostics::span_lint_and_then,
     higher,
@@ -38,7 +19,22 @@ declare_clippy_lint! {
   /// ### Why is this bad?
   /// Having superflous parenthesis makes the code less legible as the impose an
   /// overhead when reading.
-
+  ///
+  /// ### Example
+  ///
+  /// ```rust
+  /// for i in (0)..10 {
+  ///   println!("{i}");
+  /// }
+  /// ```
+  ///
+  /// Use instead:
+  ///
+  /// ```rust
+  /// for i in 0..10 {
+  ///   println!("{i}");
+  /// }
+  /// ```
   #[clippy::version = "1.63.0"]
   pub NEEDLESS_PARENS_ON_RANGE_LITERAL,
   style,
