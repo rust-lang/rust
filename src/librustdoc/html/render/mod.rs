@@ -2281,11 +2281,10 @@ fn sidebar_trait(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item, t: &clean
         |sym| format!("<a href=\"#{1}.{0}\">{0}</a>", sym, ItemType::Method),
     );
 
-    let cache = cx.cache();
-    if let Some(implementors) = cache.implementors.get(&it.item_id.expect_def_id()) {
+    if let Some(implementors) = cx.cache().implementors.get(&it.item_id.expect_def_id()) {
         let mut res = implementors
             .iter()
-            .filter(|i| !i.is_on_local_type(cache))
+            .filter(|i| !i.is_on_local_type(cx))
             .filter_map(|i| extract_for_impl_name(&i.impl_item, cx))
             .collect::<Vec<_>>();
 
