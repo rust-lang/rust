@@ -40,12 +40,10 @@ impl<'b, T: Write + 'b> Session<'b, T> {
         rustc_span::create_session_if_not_set_then(self.config.edition().into(), |_| {
             if self.config.disable_all_formatting() {
                 // When the input is from stdin, echo back the input.
-                if let Input::Text(ref buf) = input {
-                    if let Err(e) = io::stdout().write_all(buf.as_bytes()) {
-                        return Err(From::from(e));
-                    }
-                }
-                return Ok(FormatReport::new());
+                return match input {
+                    Input::Text(ref buf) => echo_back_stdin(buf),
+                    _ => Ok(FormatReport::new()),
+                };
             }
 
             let config = &self.config.clone();
@@ -94,6 +92,13 @@ fn should_skip_module<T: FormatHandler>(
     false
 }
 
+fn echo_back_stdin(input: &str) -> Result<FormatReport, ErrorKind> {
+    if let Err(e) = io::stdout().write_all(input.as_bytes()) {
+        return Err(From::from(e));
+    }
+    Ok(FormatReport::new())
+}
+
 // Format an entire crate (or subset of the module tree).
 fn format_project<T: FormatHandler>(
     input: Input,
@@ -136,7 +141,8 @@ fn format_project<T: FormatHandler>(
     .visit_crate(&krate)?
     .into_iter()
     .filter(|(path, module)| {
-        !should_skip_module(config, &context, input_is_stdin, &main_file, path, module)
+        input_is_stdin
+            || !should_skip_module(config, &context, input_is_stdin, &main_file, path, module)
     })
     .collect::<Vec<_>>();
 
@@ -146,6 +152,14 @@ fn format_project<T: FormatHandler>(
     context.parse_session.set_silent_emitter();
 
     for (path, module) in files {
+        if input_is_stdin && contains_skip(module.attrs()) {
+            return echo_back_stdin(
+                context
+                    .parse_session
+                    .snippet_provider(module.span)
+                    .entire_snippet(),
+            );
+        }
         should_emit_verbose(input_is_stdin, config, || println!("Formatting {}", path));
         context.format_file(path, &module, is_macro_def)?;
     }
