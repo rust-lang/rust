@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use gccjit::{Function, FunctionPtrType, RValue, ToRValue};
+use gccjit::{Function, FunctionPtrType, RValue, ToRValue, UnaryOp};
 
 use crate::{context::CodegenCx, builder::Builder};
 
@@ -25,7 +25,10 @@ pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(builder: &Builder<'a, 'gcc
                 | "__builtin_ia32_psrlv16si_mask" | "__builtin_ia32_psllv8di_mask" | "__builtin_ia32_psrlv8di_mask"
                 | "__builtin_ia32_permvarsi512_mask" | "__builtin_ia32_vpermilvarps512_mask"
                 | "__builtin_ia32_vpermilvarpd512_mask" | "__builtin_ia32_permvardi512_mask"
-                | "__builtin_ia32_permvarsf512_mask"
+                | "__builtin_ia32_permvarsf512_mask" | "__builtin_ia32_permvarqi512_mask"
+                | "__builtin_ia32_permvarqi256_mask" | "__builtin_ia32_permvarqi128_mask"
+                | "__builtin_ia32_vpmultishiftqb512_mask" | "__builtin_ia32_vpmultishiftqb256_mask"
+                | "__builtin_ia32_vpmultishiftqb128_mask"
                 => {
                 let mut new_args = args.to_vec();
                 let arg3_type = gcc_func.get_param_type(2);
@@ -56,6 +59,23 @@ pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(builder: &Builder<'a, 'gcc
                 new_args.push(first_arg);
                 let arg4_type = gcc_func.get_param_type(3);
                 let minus_one = builder.context.new_rvalue_from_int(arg4_type, -1);
+                new_args.push(minus_one);
+                args = new_args.into();
+            },
+            "__builtin_ia32_vplzcntd_512_mask" | "__builtin_ia32_vplzcntd_256_mask" | "__builtin_ia32_vplzcntd_128_mask"
+                | "__builtin_ia32_vplzcntq_512_mask" | "__builtin_ia32_vplzcntq_256_mask" | "__builtin_ia32_vplzcntq_128_mask"
+                | "__builtin_ia32_vpconflictsi_512_mask" | "__builtin_ia32_vpconflictsi_256_mask"
+                | "__builtin_ia32_vpconflictsi_128_mask" | "__builtin_ia32_vpconflictdi_512_mask"
+                | "__builtin_ia32_vpconflictdi_256_mask" | "__builtin_ia32_vpconflictdi_128_mask" => {
+                let mut new_args = args.to_vec();
+                let arg2_type = gcc_func.get_param_type(1);
+                let vector_type = arg2_type.dyncast_vector().expect("vector type");
+                let zero = builder.context.new_rvalue_zero(vector_type.get_element_type());
+                let num_units = vector_type.get_num_units();
+                let first_arg = builder.context.new_rvalue_from_vector(None, arg2_type, &vec![zero; num_units]);
+                new_args.push(first_arg);
+                let arg3_type = gcc_func.get_param_type(2);
+                let minus_one = builder.context.new_rvalue_from_int(arg3_type, -1);
                 new_args.push(minus_one);
                 args = new_args.into();
             },
@@ -148,12 +168,19 @@ pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(builder: &Builder<'a, 'gcc
             "__builtin_ia32_stmxcsr" => {
                 args = vec![].into();
             },
-            "__builtin_ia32_addcarryx_u64" => {
+            "__builtin_ia32_addcarryx_u64" | "__builtin_ia32_sbb_u64" => {
                 let mut new_args = args.to_vec();
                 let arg2_type = gcc_func.get_param_type(1);
                 let variable = builder.current_func().new_local(None, arg2_type, "addcarryResult");
                 new_args.push(variable.get_address(None));
                 args = new_args.into();
+            },
+            "__builtin_ia32_vpermt2varqi512_mask" | "__builtin_ia32_vpermt2varqi256_mask"
+                | "__builtin_ia32_vpermt2varqi128_mask" => {
+                let mut new_args = args.to_vec();
+                let arg4_type = gcc_func.get_param_type(3);
+                let minus_one = builder.context.new_rvalue_from_int(arg4_type, -1);
+                args = vec![new_args[1], new_args[0], new_args[2], minus_one].into();
             },
             _ => (),
         }
@@ -191,6 +218,12 @@ pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(builder: &Builder<'a, 'gcc
                 let c = builder.context.new_rvalue_from_vector(None, arg3_type, &[new_args[2]; 2]);
                 args = vec![a, b, c, new_args[3]].into();
             },
+            "__builtin_ia32_vfmaddsubpd256" | "__builtin_ia32_vfmaddsubps" | "__builtin_ia32_vfmaddsubps256" => {
+                let mut new_args = args.to_vec();
+                let arg3 = &mut new_args[2];
+                *arg3 = builder.context.new_unary_op(None, UnaryOp::Minus, arg3.get_type(), *arg3);
+                args = new_args.into();
+            },
             _ => (),
         }
     }
@@ -204,7 +237,7 @@ pub fn adjust_intrinsic_return_value<'a, 'gcc, 'tcx>(builder: &Builder<'a, 'gcc,
             let zero = builder.context.new_rvalue_zero(builder.int_type);
             return_value = builder.context.new_vector_access(None, return_value, zero).to_rvalue();
         },
-        "__builtin_ia32_addcarryx_u64" => {
+        "__builtin_ia32_addcarryx_u64" | "__builtin_ia32_sbb_u64" => {
             let last_arg = args.last().expect("last arg");
             let field1 = builder.context.new_field(None, builder.u8_type, "carryFlag");
             let field2 = builder.context.new_field(None, builder.ulonglong_type, "carryResult");
@@ -343,6 +376,48 @@ pub fn intrinsic<'gcc, 'tcx>(name: &str, cx: &CodegenCx<'gcc, 'tcx>) -> Function
         "llvm.ctpop.v8i64" => "__builtin_ia32_vpopcountq_v8di",
         "llvm.ctpop.v4i64" => "__builtin_ia32_vpopcountq_v4di",
         "llvm.ctpop.v2i64" => "__builtin_ia32_vpopcountq_v2di",
+        "llvm.x86.addcarry.64" => "__builtin_ia32_addcarryx_u64",
+        "llvm.x86.subborrow.64" => "__builtin_ia32_sbb_u64",
+        "llvm.floor.v2f64" => "__builtin_ia32_floorpd",
+        "llvm.floor.v4f32" => "__builtin_ia32_floorps",
+        "llvm.ceil.v2f64" => "__builtin_ia32_ceilpd",
+        "llvm.ceil.v4f32" => "__builtin_ia32_ceilps",
+        "llvm.fma.v2f64" => "__builtin_ia32_vfmaddpd",
+        "llvm.fma.v4f64" => "__builtin_ia32_vfmaddpd256",
+        "llvm.fma.v4f32" => "__builtin_ia32_vfmaddps",
+        "llvm.fma.v8f32" => "__builtin_ia32_vfmaddps256",
+        "llvm.ctlz.v16i32" => "__builtin_ia32_vplzcntd_512_mask",
+        "llvm.ctlz.v8i32" => "__builtin_ia32_vplzcntd_256_mask",
+        "llvm.ctlz.v4i32" => "__builtin_ia32_vplzcntd_128_mask",
+        "llvm.ctlz.v8i64" => "__builtin_ia32_vplzcntq_512_mask",
+        "llvm.ctlz.v4i64" => "__builtin_ia32_vplzcntq_256_mask",
+        "llvm.ctlz.v2i64" => "__builtin_ia32_vplzcntq_128_mask",
+        "llvm.ctpop.v32i16" => "__builtin_ia32_vpopcountw_v32hi",
+        "llvm.x86.fma.vfmsub.sd" => "__builtin_ia32_vfmsubsd3",
+        "llvm.x86.fma.vfmsub.ss" => "__builtin_ia32_vfmsubss3",
+        "llvm.x86.fma.vfmsubadd.pd" => "__builtin_ia32_vfmaddsubpd",
+        "llvm.x86.fma.vfmsubadd.pd.256" => "__builtin_ia32_vfmaddsubpd256",
+        "llvm.x86.fma.vfmsubadd.ps" => "__builtin_ia32_vfmaddsubps",
+        "llvm.x86.fma.vfmsubadd.ps.256" => "__builtin_ia32_vfmaddsubps256",
+        "llvm.x86.fma.vfnmadd.sd" => "__builtin_ia32_vfnmaddsd3",
+        "llvm.x86.fma.vfnmadd.ss" => "__builtin_ia32_vfnmaddss3",
+        "llvm.x86.fma.vfnmsub.sd" => "__builtin_ia32_vfnmsubsd3",
+        "llvm.x86.fma.vfnmsub.ss" => "__builtin_ia32_vfnmsubss3",
+        "llvm.x86.avx512.conflict.d.512" => "__builtin_ia32_vpconflictsi_512_mask",
+        "llvm.x86.avx512.conflict.d.256" => "__builtin_ia32_vpconflictsi_256_mask",
+        "llvm.x86.avx512.conflict.d.128" => "__builtin_ia32_vpconflictsi_128_mask",
+        "llvm.x86.avx512.conflict.q.512" => "__builtin_ia32_vpconflictdi_512_mask",
+        "llvm.x86.avx512.conflict.q.256" => "__builtin_ia32_vpconflictdi_256_mask",
+        "llvm.x86.avx512.conflict.q.128" => "__builtin_ia32_vpconflictdi_128_mask",
+        "llvm.x86.avx512.vpermi2var.qi.512" => "__builtin_ia32_vpermt2varqi512_mask",
+        "llvm.x86.avx512.vpermi2var.qi.256" => "__builtin_ia32_vpermt2varqi256_mask",
+        "llvm.x86.avx512.vpermi2var.qi.128" => "__builtin_ia32_vpermt2varqi128_mask",
+        "llvm.x86.avx512.permvar.qi.512" => "__builtin_ia32_permvarqi512_mask",
+        "llvm.x86.avx512.permvar.qi.256" => "__builtin_ia32_permvarqi256_mask",
+        "llvm.x86.avx512.permvar.qi.128" => "__builtin_ia32_permvarqi128_mask",
+        "llvm.x86.avx512.pmultishift.qb.512" => "__builtin_ia32_vpmultishiftqb512_mask",
+        "llvm.x86.avx512.pmultishift.qb.256" => "__builtin_ia32_vpmultishiftqb256_mask",
+        "llvm.x86.avx512.pmultishift.qb.128" => "__builtin_ia32_vpmultishiftqb128_mask",
 
         // The above doc points to unknown builtins for the following, so override them:
         "llvm.x86.avx2.gather.d.d" => "__builtin_ia32_gathersiv4si",
@@ -423,7 +498,14 @@ pub fn intrinsic<'gcc, 'tcx>(name: &str, cx: &CodegenCx<'gcc, 'tcx>) -> Function
         "llvm.x86.aesni.aesenclast.512" => "__builtin_ia32_vaesenclast_v64qi",
         "llvm.x86.aesni.aesdec.512" => "__builtin_ia32_vaesdec_v64qi",
         "llvm.x86.aesni.aesdeclast.512" => "__builtin_ia32_vaesdeclast_v64qi",
-        "llvm.x86.addcarry.64" => "__builtin_ia32_addcarryx_u64",
+        "llvm.x86.avx512bf16.cvtne2ps2bf16.128" => "__builtin_ia32_cvtne2ps2bf16_v8hi",
+        "llvm.x86.avx512bf16.cvtne2ps2bf16.256" => "__builtin_ia32_cvtne2ps2bf16_v16hi",
+        "llvm.x86.avx512bf16.cvtne2ps2bf16.512" => "__builtin_ia32_cvtne2ps2bf16_v32hi",
+        "llvm.x86.avx512bf16.cvtneps2bf16.256" => "__builtin_ia32_cvtneps2bf16_v8sf",
+        "llvm.x86.avx512bf16.cvtneps2bf16.512" => "__builtin_ia32_cvtneps2bf16_v16sf",
+        "llvm.x86.avx512bf16.dpbf16ps.128" => "__builtin_ia32_dpbf16ps_v4sf",
+        "llvm.x86.avx512bf16.dpbf16ps.256" => "__builtin_ia32_dpbf16ps_v8sf",
+        "llvm.x86.avx512bf16.dpbf16ps.512" => "__builtin_ia32_dpbf16ps_v16sf",
 
         // NOTE: this file is generated by https://github.com/GuillaumeGomez/llvmint/blob/master/generate_list.py
         _ => include!("archs.rs"),
