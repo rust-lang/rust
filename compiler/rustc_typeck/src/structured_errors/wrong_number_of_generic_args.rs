@@ -5,7 +5,6 @@ use rustc_errors::{
 };
 use rustc_hir as hir;
 use rustc_middle::hir::map::fn_sig;
-use rustc_middle::middle::resolve_lifetime::LifetimeScopeForPath;
 use rustc_middle::ty::{self as ty, AssocItems, AssocKind, TyCtxt};
 use rustc_session::Session;
 use rustc_span::def_id::DefId;
@@ -299,13 +298,6 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         debug!(?path_hir_id);
 
         if let Some(path_hir_id) = path_hir_id {
-            // We first try to get lifetime name suggestions from scope or elision information.
-            // If none is available we use the parameter definitions
-            if let Some(LifetimeScopeForPath::Elided) = self.tcx.lifetime_scope(path_hir_id) {
-                // Use suggestions of the form `<'_, '_>` in case lifetime can be elided
-                return ["'_"].repeat(num_params_to_take).join(",");
-            }
-
             let mut ret = Vec::new();
             for (id, node) in self.tcx.hir().parent_iter(path_hir_id) {
                 debug!(?id);

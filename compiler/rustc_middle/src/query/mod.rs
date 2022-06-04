@@ -1599,11 +1599,6 @@ rustc_queries! {
         desc { "looking up late bound vars" }
     }
 
-    query lifetime_scope_map(_: LocalDefId) -> Option<FxHashMap<ItemLocalId, LifetimeScopeForPath>> {
-        storage(ArenaCacheSelector<'tcx>)
-        desc { "finds the lifetime scope for an HirId of a PathSegment" }
-    }
-
     query visibility(def_id: DefId) -> ty::Visibility {
         desc { |tcx| "computing visibility of `{}`", tcx.def_path_str(def_id) }
         separate_provide_extern

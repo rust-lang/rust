@@ -6,7 +6,7 @@ use crate::hir::place::Place as HirPlace;
 use crate::infer::canonical::{Canonical, CanonicalVarInfo, CanonicalVarInfos};
 use crate::lint::{struct_lint_level, LintDiagnosticBuilder, LintLevelSource};
 use crate::middle::codegen_fn_attrs::CodegenFnAttrs;
-use crate::middle::resolve_lifetime::{self, LifetimeScopeForPath};
+use crate::middle::resolve_lifetime;
 use crate::middle::stability;
 use crate::mir::interpret::{self, Allocation, ConstAllocation, ConstValue, Scalar};
 use crate::mir::{
@@ -2819,10 +2819,6 @@ impl<'tcx> TyCtxt<'tcx> {
                 })
                 .iter(),
         )
-    }
-
-    pub fn lifetime_scope(self, id: HirId) -> Option<&'tcx LifetimeScopeForPath> {
-        self.lifetime_scope_map(id.owner).as_ref().and_then(|map| map.get(&id.local_id))
     }
 
     /// Whether the `def_id` counts as const fn in the current crate, considering all active
