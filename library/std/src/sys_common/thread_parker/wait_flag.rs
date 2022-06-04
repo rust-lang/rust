@@ -21,13 +21,11 @@
 //! "wait flag").
 //!
 //! `unpark` changes the state to `NOTIFIED`. If the state was `PARKED`, the thread
-//! is or will be sleeping on the wait flag, so we raise it. Only the first thread
-//! to call `unpark` will raise the wait flag, so spurious wakeups are avoided
-//! (this is especially important for semaphores).
+//! is or will be sleeping on the wait flag, so we raise it.
 
 use crate::pin::Pin;
 use crate::sync::atomic::AtomicI8;
-use crate::sync::atomic::Ordering::SeqCst;
+use crate::sync::atomic::Ordering::{Relaxed, SeqCst};
 use crate::sys::wait_flag::WaitFlag;
 use crate::time::Duration;
 
@@ -49,39 +47,48 @@ impl Parker {
 
     // This implementation doesn't require `unsafe` and `Pin`, but other implementations do.
     pub unsafe fn park(self: Pin<&Self>) {
-        // The state values are chosen so that this subtraction changes
-        // `NOTIFIED` to `EMPTY` and `EMPTY` to `PARKED`.
-        let state = self.state.fetch_sub(1, SeqCst);
-        match state {
-            EMPTY => (),
+        match self.state.fetch_sub(1, SeqCst) {
+            // NOTIFIED => EMPTY
             NOTIFIED => return,
+            // EMPTY => PARKED
+            EMPTY => (),
             _ => panic!("inconsistent park state"),
         }
 
-        self.wait_flag.wait();
+        // Avoid waking up from spurious wakeups (these are quite likely, see below).
+        loop {
+            self.wait_flag.wait();
 
-        // We need to do a load here to use `Acquire` ordering.
-        self.state.swap(EMPTY, SeqCst);
+            match self.state.compare_exchange(NOTIFIED, EMPTY, SeqCst, Relaxed) {
+                Ok(_) => return,
+                Err(PARKED) => (),
+                Err(_) => panic!("inconsistent park state"),
+            }
+        }
     }
 
     // This implementation doesn't require `unsafe` and `Pin`, but other implementations do.
     pub unsafe fn park_timeout(self: Pin<&Self>, dur: Duration) {
-        let state = self.state.fetch_sub(1, SeqCst);
-        match state {
-            EMPTY => (),
+        match self.state.fetch_sub(1, SeqCst) {
             NOTIFIED => return,
+            EMPTY => (),
             _ => panic!("inconsistent park state"),
         }
 
-        let wakeup = self.wait_flag.wait_timeout(dur);
-        let state = self.state.swap(EMPTY, SeqCst);
-        if state == NOTIFIED && !wakeup {
-            // The token was made available after the wait timed out, but before
-            // we reset the state, so we need to reset the wait flag to avoid
-            // spurious wakeups. This wait has no timeout, but we know it will
-            // return quickly, as the unparking thread will definitely raise the
-            // flag if it has not already done so.
-            self.wait_flag.wait();
+        self.wait_flag.wait_timeout(dur);
+
+        // Either a wakeup or a timeout occurred. Wakeups may be spurious, as there can be
+        // a race condition when `unpark` is performed between receiving the timeout and
+        // resetting the state, resulting in the eventflag being set unnecessarily. `park`
+        // is protected against this by looping until the token is actually given, but
+        // here we cannot easily tell.
+
+        // Use `swap` to provide acquire ordering (not strictly necessary, but all other
+        // implementations do).
+        match self.state.swap(EMPTY, SeqCst) {
+            NOTIFIED => (),
+            PARKED => (),
+            _ => panic!("inconsistent park state"),
         }
     }
 
