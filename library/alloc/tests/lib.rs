@@ -42,6 +42,9 @@
 #![feature(panic_update_hook)]
 #![feature(slice_flatten)]
 #![feature(thin_box)]
+#![feature(bench_black_box)]
+#![feature(strict_provenance)]
+#![feature(once_cell)]
 
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};

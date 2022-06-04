@@ -420,7 +420,15 @@ impl<'a> AstValidator<'a> {
             .iter()
             .flat_map(|i| i.attrs.as_ref())
             .filter(|attr| {
-                let arr = [sym::allow, sym::cfg, sym::cfg_attr, sym::deny, sym::forbid, sym::warn];
+                let arr = [
+                    sym::allow,
+                    sym::cfg,
+                    sym::cfg_attr,
+                    sym::deny,
+                    sym::expect,
+                    sym::forbid,
+                    sym::warn,
+                ];
                 !arr.contains(&attr.name_or_empty()) && rustc_attr::is_builtin_attr(attr)
             })
             .for_each(|attr| {
@@ -435,7 +443,7 @@ impl<'a> AstValidator<'a> {
                 } else {
                     self.err_handler().span_err(
                         attr.span,
-                        "allow, cfg, cfg_attr, deny, \
+                        "allow, cfg, cfg_attr, deny, expect, \
                 forbid, and warn are the only allowed built-in attributes in function parameters",
                     );
                 }

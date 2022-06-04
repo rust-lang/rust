@@ -1,12 +1,13 @@
 use crate::cell::UnsafeCell;
 use crate::mem::MaybeUninit;
 use crate::sys::cvt_nz;
+use crate::sys_common::lazy_box::{LazyBox, LazyInit};
 
 pub struct Mutex {
     inner: UnsafeCell<libc::pthread_mutex_t>,
 }
 
-pub type MovableMutex = Box<Mutex>;
+pub(crate) type MovableMutex = LazyBox<Mutex>;
 
 #[inline]
 pub unsafe fn raw(m: &Mutex) -> *mut libc::pthread_mutex_t {
@@ -15,6 +16,14 @@ pub unsafe fn raw(m: &Mutex) -> *mut libc::pthread_mutex_t {
 
 unsafe impl Send for Mutex {}
 unsafe impl Sync for Mutex {}
+
+impl LazyInit for Mutex {
+    fn init() -> Box<Self> {
+        let mut mutex = Box::new(Self::new());
+        unsafe { mutex.init() };
+        mutex
+    }
+}
 
 impl Mutex {
     pub const fn new() -> Mutex {
@@ -73,19 +82,26 @@ impl Mutex {
     }
     #[inline]
     #[cfg(not(target_os = "dragonfly"))]
-    pub unsafe fn destroy(&self) {
+    unsafe fn destroy(&mut self) {
         let r = libc::pthread_mutex_destroy(self.inner.get());
         debug_assert_eq!(r, 0);
     }
     #[inline]
     #[cfg(target_os = "dragonfly")]
-    pub unsafe fn destroy(&self) {
+    unsafe fn destroy(&mut self) {
         let r = libc::pthread_mutex_destroy(self.inner.get());
         // On DragonFly pthread_mutex_destroy() returns EINVAL if called on a
         // mutex that was just initialized with libc::PTHREAD_MUTEX_INITIALIZER.
         // Once it is used (locked/unlocked) or pthread_mutex_init() is called,
         // this behaviour no longer occurs.
         debug_assert!(r == 0 || r == libc::EINVAL);
+    }
+}
+
+impl Drop for Mutex {
+    #[inline]
+    fn drop(&mut self) {
+        unsafe { self.destroy() };
     }
 }
 
