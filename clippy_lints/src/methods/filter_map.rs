@@ -181,9 +181,11 @@ pub(super) fn check<'tcx>(
 }
 
 fn acceptable_methods(method: &PathSegment<'_>) -> bool {
-    let methods: [Symbol; 6] = [
+    let methods: [Symbol; 8] = [
         sym::clone,
         sym::as_ref,
+        sym!(copied),
+        sym!(cloned),
         sym!(as_deref),
         sym!(as_mut),
         sym!(as_deref_mut),

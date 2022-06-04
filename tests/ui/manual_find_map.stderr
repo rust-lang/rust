@@ -19,54 +19,76 @@ LL |     let _ = (0..).find(|&n| to_res(n).is_ok()).map(|a| to_res(a).unwrap_or(
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `find_map(|a| to_res(a).ok())`
 
 error: `find(..).map(..)` can be simplified as `find_map(..)`
-  --> $DIR/manual_find_map.rs:51:24
+  --> $DIR/manual_find_map.rs:54:10
    |
-LL |     let _ = vec.iter().find(|f| f.field.is_some()).map(|f| f.field.clone().unwrap());
-   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `find_map(|f| f.field.clone())`
-
-error: `find(..).map(..)` can be simplified as `find_map(..)`
-  --> $DIR/manual_find_map.rs:56:24
-   |
-LL |     let _ = vec.iter().find(|f| f.field.is_ok()).map(|f| f.field.clone().unwrap());
-   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `find_map(|f| f.field.clone().ok())`
-
-error: `find(..).map(..)` can be simplified as `find_map(..)`
-  --> $DIR/manual_find_map.rs:58:24
-   |
-LL |     let _ = vec.iter().find(|f| f.field.is_ok()).map(|f| f.field.as_ref().unwrap());
-   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `find_map(|f| f.field.as_ref().ok())`
-
-error: `find(..).map(..)` can be simplified as `find_map(..)`
-  --> $DIR/manual_find_map.rs:62:10
-   |
-LL |           .find(|f| f.field.is_ok())
+LL |           .find(|f| f.option_field.is_some())
    |  __________^
-LL | |         .map(|f| f.field.as_deref().unwrap());
-   | |_____________________________________________^ help: try: `find_map(|f| f.field.as_deref().ok())`
+LL | |         .map(|f| f.option_field.clone().unwrap());
+   | |_________________________________________________^ help: try: `find_map(|f| f.option_field.clone())`
 
 error: `find(..).map(..)` can be simplified as `find_map(..)`
-  --> $DIR/manual_find_map.rs:67:10
+  --> $DIR/manual_find_map.rs:59:10
    |
-LL |           .find(|f| f.field.is_ok())
+LL |           .find(|f| f.ref_field.is_some())
    |  __________^
-LL | |         .map(|f| f.field.as_mut().unwrap());
-   | |___________________________________________^ help: try: `find_map(|f| f.field.as_mut().ok())`
+LL | |         .map(|f| f.ref_field.cloned().unwrap());
+   | |_______________________________________________^ help: try: `find_map(|f| f.ref_field.cloned())`
 
 error: `find(..).map(..)` can be simplified as `find_map(..)`
-  --> $DIR/manual_find_map.rs:72:10
+  --> $DIR/manual_find_map.rs:64:10
    |
-LL |           .find(|f| f.field.is_ok())
+LL |           .find(|f| f.ref_field.is_some())
    |  __________^
-LL | |         .map(|f| f.field.as_deref_mut().unwrap());
-   | |_________________________________________________^ help: try: `find_map(|f| f.field.as_deref_mut().ok())`
+LL | |         .map(|f| f.ref_field.copied().unwrap());
+   | |_______________________________________________^ help: try: `find_map(|f| f.ref_field.copied())`
 
 error: `find(..).map(..)` can be simplified as `find_map(..)`
-  --> $DIR/manual_find_map.rs:77:10
+  --> $DIR/manual_find_map.rs:69:10
    |
-LL |           .find(|f| f.field.is_ok())
+LL |           .find(|f| f.result_field.is_ok())
    |  __________^
-LL | |         .map(|f| f.field.to_owned().unwrap());
-   | |_____________________________________________^ help: try: `find_map(|f| f.field.to_owned().ok())`
+LL | |         .map(|f| f.result_field.clone().unwrap());
+   | |_________________________________________________^ help: try: `find_map(|f| f.result_field.clone().ok())`
 
-error: aborting due to 10 previous errors
+error: `find(..).map(..)` can be simplified as `find_map(..)`
+  --> $DIR/manual_find_map.rs:74:10
+   |
+LL |           .find(|f| f.result_field.is_ok())
+   |  __________^
+LL | |         .map(|f| f.result_field.as_ref().unwrap());
+   | |__________________________________________________^ help: try: `find_map(|f| f.result_field.as_ref().ok())`
+
+error: `find(..).map(..)` can be simplified as `find_map(..)`
+  --> $DIR/manual_find_map.rs:79:10
+   |
+LL |           .find(|f| f.result_field.is_ok())
+   |  __________^
+LL | |         .map(|f| f.result_field.as_deref().unwrap());
+   | |____________________________________________________^ help: try: `find_map(|f| f.result_field.as_deref().ok())`
+
+error: `find(..).map(..)` can be simplified as `find_map(..)`
+  --> $DIR/manual_find_map.rs:84:10
+   |
+LL |           .find(|f| f.result_field.is_ok())
+   |  __________^
+LL | |         .map(|f| f.result_field.as_mut().unwrap());
+   | |__________________________________________________^ help: try: `find_map(|f| f.result_field.as_mut().ok())`
+
+error: `find(..).map(..)` can be simplified as `find_map(..)`
+  --> $DIR/manual_find_map.rs:89:10
+   |
+LL |           .find(|f| f.result_field.is_ok())
+   |  __________^
+LL | |         .map(|f| f.result_field.as_deref_mut().unwrap());
+   | |________________________________________________________^ help: try: `find_map(|f| f.result_field.as_deref_mut().ok())`
+
+error: `find(..).map(..)` can be simplified as `find_map(..)`
+  --> $DIR/manual_find_map.rs:94:10
+   |
+LL |           .find(|f| f.result_field.is_ok())
+   |  __________^
+LL | |         .map(|f| f.result_field.to_owned().unwrap());
+   | |____________________________________________________^ help: try: `find_map(|f| f.result_field.to_owned().ok())`
+
+error: aborting due to 12 previous errors
 
