@@ -6,7 +6,7 @@ use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
-use rustc_hir::{Expr, ExprKind, PatKind, QPath, UnOp};
+use rustc_hir::{Expr, ExprKind, PatKind, PathSegment, QPath, UnOp};
 use rustc_lint::LateContext;
 use rustc_span::source_map::Span;
 use rustc_span::symbol::{sym, Symbol};
@@ -155,7 +155,15 @@ pub(super) fn check<'tcx>(
                 }
                 false
             };
-            if SpanlessEq::new(cx).expr_fallback(eq_fallback).eq_expr(filter_arg, map_arg);
+
+            if match map_arg.kind {
+                ExprKind::MethodCall(method, [original_arg], _) => {
+                    acceptable_methods(method)
+                        && SpanlessEq::new(cx).expr_fallback(eq_fallback).eq_expr(filter_arg, original_arg)
+                },
+                _ => SpanlessEq::new(cx).expr_fallback(eq_fallback).eq_expr(filter_arg, map_arg)
+            };
+
             then {
                 let span = filter_span.with_hi(expr.span.hi());
                 let (filter_name, lint) = if is_find {
@@ -170,4 +178,19 @@ pub(super) fn check<'tcx>(
                 span_lint_and_sugg(cx, lint, span, &msg, "try", sugg, Applicability::MachineApplicable);
             }
     }
+}
+
+fn acceptable_methods(method: &PathSegment<'_>) -> bool {
+    let methods: [Symbol; 8] = [
+        sym::clone,
+        sym::as_ref,
+        sym!(copied),
+        sym!(cloned),
+        sym!(as_deref),
+        sym!(as_mut),
+        sym!(as_deref_mut),
+        sym!(to_owned),
+    ];
+
+    methods.contains(&method.ident.name)
 }

@@ -18,5 +18,77 @@ error: `filter(..).map(..)` can be simplified as `filter_map(..)`
 LL |     let _ = (0..).filter(|&n| to_res(n).is_ok()).map(|a| to_res(a).unwrap_or(1));
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `filter_map(|a| to_res(a).ok())`
 
-error: aborting due to 3 previous errors
+error: `filter(..).map(..)` can be simplified as `filter_map(..)`
+  --> $DIR/manual_filter_map.rs:54:10
+   |
+LL |           .filter(|f| f.option_field.is_some())
+   |  __________^
+LL | |         .map(|f| f.option_field.clone().unwrap());
+   | |_________________________________________________^ help: try: `filter_map(|f| f.option_field.clone())`
+
+error: `filter(..).map(..)` can be simplified as `filter_map(..)`
+  --> $DIR/manual_filter_map.rs:59:10
+   |
+LL |           .filter(|f| f.ref_field.is_some())
+   |  __________^
+LL | |         .map(|f| f.ref_field.cloned().unwrap());
+   | |_______________________________________________^ help: try: `filter_map(|f| f.ref_field.cloned())`
+
+error: `filter(..).map(..)` can be simplified as `filter_map(..)`
+  --> $DIR/manual_filter_map.rs:64:10
+   |
+LL |           .filter(|f| f.ref_field.is_some())
+   |  __________^
+LL | |         .map(|f| f.ref_field.copied().unwrap());
+   | |_______________________________________________^ help: try: `filter_map(|f| f.ref_field.copied())`
+
+error: `filter(..).map(..)` can be simplified as `filter_map(..)`
+  --> $DIR/manual_filter_map.rs:69:10
+   |
+LL |           .filter(|f| f.result_field.is_ok())
+   |  __________^
+LL | |         .map(|f| f.result_field.clone().unwrap());
+   | |_________________________________________________^ help: try: `filter_map(|f| f.result_field.clone().ok())`
+
+error: `filter(..).map(..)` can be simplified as `filter_map(..)`
+  --> $DIR/manual_filter_map.rs:74:10
+   |
+LL |           .filter(|f| f.result_field.is_ok())
+   |  __________^
+LL | |         .map(|f| f.result_field.as_ref().unwrap());
+   | |__________________________________________________^ help: try: `filter_map(|f| f.result_field.as_ref().ok())`
+
+error: `filter(..).map(..)` can be simplified as `filter_map(..)`
+  --> $DIR/manual_filter_map.rs:79:10
+   |
+LL |           .filter(|f| f.result_field.is_ok())
+   |  __________^
+LL | |         .map(|f| f.result_field.as_deref().unwrap());
+   | |____________________________________________________^ help: try: `filter_map(|f| f.result_field.as_deref().ok())`
+
+error: `filter(..).map(..)` can be simplified as `filter_map(..)`
+  --> $DIR/manual_filter_map.rs:84:10
+   |
+LL |           .filter(|f| f.result_field.is_ok())
+   |  __________^
+LL | |         .map(|f| f.result_field.as_mut().unwrap());
+   | |__________________________________________________^ help: try: `filter_map(|f| f.result_field.as_mut().ok())`
+
+error: `filter(..).map(..)` can be simplified as `filter_map(..)`
+  --> $DIR/manual_filter_map.rs:89:10
+   |
+LL |           .filter(|f| f.result_field.is_ok())
+   |  __________^
+LL | |         .map(|f| f.result_field.as_deref_mut().unwrap());
+   | |________________________________________________________^ help: try: `filter_map(|f| f.result_field.as_deref_mut().ok())`
+
+error: `filter(..).map(..)` can be simplified as `filter_map(..)`
+  --> $DIR/manual_filter_map.rs:94:10
+   |
+LL |           .filter(|f| f.result_field.is_ok())
+   |  __________^
+LL | |         .map(|f| f.result_field.to_owned().unwrap());
+   | |____________________________________________________^ help: try: `filter_map(|f| f.result_field.to_owned().ok())`
+
+error: aborting due to 12 previous errors
 

@@ -35,3 +35,62 @@ fn to_opt<T>(_: T) -> Option<T> {
 fn to_res<T>(_: T) -> Result<T, ()> {
     unimplemented!()
 }
+
+struct Issue8920<'a> {
+    option_field: Option<String>,
+    result_field: Result<String, ()>,
+    ref_field: Option<&'a usize>,
+}
+
+fn issue_8920() {
+    let mut vec = vec![Issue8920 {
+        option_field: Some(String::from("str")),
+        result_field: Ok(String::from("str")),
+        ref_field: Some(&1),
+    }];
+
+    let _ = vec
+        .iter()
+        .filter(|f| f.option_field.is_some())
+        .map(|f| f.option_field.clone().unwrap());
+
+    let _ = vec
+        .iter()
+        .filter(|f| f.ref_field.is_some())
+        .map(|f| f.ref_field.cloned().unwrap());
+
+    let _ = vec
+        .iter()
+        .filter(|f| f.ref_field.is_some())
+        .map(|f| f.ref_field.copied().unwrap());
+
+    let _ = vec
+        .iter()
+        .filter(|f| f.result_field.is_ok())
+        .map(|f| f.result_field.clone().unwrap());
+
+    let _ = vec
+        .iter()
+        .filter(|f| f.result_field.is_ok())
+        .map(|f| f.result_field.as_ref().unwrap());
+
+    let _ = vec
+        .iter()
+        .filter(|f| f.result_field.is_ok())
+        .map(|f| f.result_field.as_deref().unwrap());
+
+    let _ = vec
+        .iter_mut()
+        .filter(|f| f.result_field.is_ok())
+        .map(|f| f.result_field.as_mut().unwrap());
+
+    let _ = vec
+        .iter_mut()
+        .filter(|f| f.result_field.is_ok())
+        .map(|f| f.result_field.as_deref_mut().unwrap());
+
+    let _ = vec
+        .iter()
+        .filter(|f| f.result_field.is_ok())
+        .map(|f| f.result_field.to_owned().unwrap());
+}
