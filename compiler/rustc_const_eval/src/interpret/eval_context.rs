@@ -126,7 +126,9 @@ pub struct Frame<'mir, 'tcx, Tag: Provenance = AllocId, Extra = ()> {
     /// this frame (can happen e.g. during frame initialization, and during unwinding on
     /// frames without cleanup code).
     /// We basically abuse `Result` as `Either`.
-    pub(super) loc: Result<mir::Location, Span>,
+    ///
+    /// Needs to be public because ConstProp does unspeakable things to it.
+    pub loc: Result<mir::Location, Span>,
 }
 
 /// What we store about a frame in an interpreter backtrace.
@@ -320,6 +322,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> LayoutOfHelpers<'tcx> for InterpC
 
     #[inline]
     fn layout_tcx_at_span(&self) -> Span {
+        // Using the cheap root span for performance.
         self.tcx.span
     }
 
