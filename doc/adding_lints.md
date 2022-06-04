@@ -516,11 +516,12 @@ declare_clippy_lint! {
     /// ### Example
     ///
     /// ```rust,ignore
-    /// // Bad
-    /// Insert a short example of code that triggers the lint
-    ///
-    /// // Good
-    /// Insert a short example of improved code that doesn't trigger the lint
+    /// // A short example of code that triggers the lint
+    /// ```
+    /// 
+    /// Use instead:
+    /// ```rust,ignore
+    /// // A short example of improved code that doesn't trigger the lint
     /// ```
     #[clippy::version = "1.29.0"]
     pub FOO_FUNCTIONS,

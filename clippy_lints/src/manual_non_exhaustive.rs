@@ -113,7 +113,7 @@ impl EarlyLintPass for ManualNonExhaustiveStruct {
             let mut iter = fields.iter().filter_map(|f| match f.vis.kind {
                 VisibilityKind::Public => None,
                 VisibilityKind::Inherited => Some(Ok(f)),
-                _ => Some(Err(())),
+                VisibilityKind::Restricted { .. } => Some(Err(())),
             });
             if let Some(Ok(field)) = iter.next()
                 && iter.next().is_none()

@@ -13,7 +13,8 @@ use rustc_lint::LateContext;
 use rustc_middle::mir::interpret::{ConstValue, Scalar};
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, Subst};
 use rustc_middle::ty::{
-    self, AdtDef, Binder, FnSig, IntTy, Predicate, PredicateKind, Ty, TyCtxt, TypeFoldable, UintTy, VariantDiscr,
+    self, AdtDef, Binder, FnSig, IntTy, ParamEnv, Predicate, PredicateKind, Ty, TyCtxt, TypeFoldable, UintTy,
+    VariantDiscr,
 };
 use rustc_span::symbol::Ident;
 use rustc_span::{sym, Span, Symbol, DUMMY_SP};
@@ -152,17 +153,28 @@ pub fn implements_trait<'tcx>(
     trait_id: DefId,
     ty_params: &[GenericArg<'tcx>],
 ) -> bool {
+    implements_trait_with_env(cx.tcx, cx.param_env, ty, trait_id, ty_params)
+}
+
+/// Same as `implements_trait` but allows using a `ParamEnv` different from the lint context.
+pub fn implements_trait_with_env<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param_env: ParamEnv<'tcx>,
+    ty: Ty<'tcx>,
+    trait_id: DefId,
+    ty_params: &[GenericArg<'tcx>],
+) -> bool {
     // Clippy shouldn't have infer types
     assert!(!ty.needs_infer());
 
-    let ty = cx.tcx.erase_regions(ty);
+    let ty = tcx.erase_regions(ty);
     if ty.has_escaping_bound_vars() {
         return false;
     }
-    let ty_params = cx.tcx.mk_substs(ty_params.iter());
-    cx.tcx.infer_ctxt().enter(|infcx| {
+    let ty_params = tcx.mk_substs(ty_params.iter());
+    tcx.infer_ctxt().enter(|infcx| {
         infcx
-            .type_implements_trait(trait_id, ty, ty_params, cx.param_env)
+            .type_implements_trait(trait_id, ty, ty_params, param_env)
             .must_apply_modulo_regions()
     })
 }

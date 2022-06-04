@@ -7,7 +7,8 @@
 
 use clippy_utils::attrs::is_doc_hidden;
 use clippy_utils::diagnostics::span_lint;
-use rustc_ast::ast;
+use if_chain::if_chain;
+use rustc_ast::ast::{self, MetaItem, MetaItemKind};
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty::{self, DefIdTree};
@@ -57,6 +58,20 @@ impl MissingDoc {
         *self.doc_hidden_stack.last().expect("empty doc_hidden_stack")
     }
 
+    fn has_include(meta: Option<MetaItem>) -> bool {
+        if_chain! {
+            if let Some(meta) = meta;
+            if let MetaItemKind::List(list) = meta.kind;
+            if let Some(meta) = list.get(0);
+            if let Some(name) = meta.ident();
+            then {
+                name.name == sym::include
+            } else {
+                false
+            }
+        }
+    }
+
     fn check_missing_docs_attrs(
         &self,
         cx: &LateContext<'_>,
@@ -80,7 +95,9 @@ impl MissingDoc {
             return;
         }
 
-        let has_doc = attrs.iter().any(|a| a.doc_str().is_some());
+        let has_doc = attrs
+            .iter()
+            .any(|a| a.doc_str().is_some() || Self::has_include(a.meta()));
         if !has_doc {
             span_lint(
                 cx,

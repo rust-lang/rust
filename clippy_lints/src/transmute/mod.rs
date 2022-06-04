@@ -59,7 +59,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub USELESS_TRANSMUTE,
-    nursery,
+    complexity,
     "transmutes that have the same to and from types or could be a cast/coercion"
 }
 

@@ -1,5 +1,13 @@
+// run-rustfix
 #![feature(let_chains)]
-#![allow(unused, clippy::nonminimal_bool, clippy::let_unit_value)]
+#![allow(
+    unused,
+    clippy::assign_op_pattern,
+    clippy::blocks_in_if_conditions,
+    clippy::let_and_return,
+    clippy::let_unit_value,
+    clippy::nonminimal_bool
+)]
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::rc::Rc;
@@ -9,6 +17,22 @@ impl std::ops::Drop for SignificantDrop {
     fn drop(&mut self) {
         println!("dropped");
     }
+}
+
+fn simple() {
+    let a;
+    a = "zero";
+
+    let b;
+    let c;
+    b = 1;
+    c = 2;
+
+    let d: usize;
+    d = 1;
+
+    let e;
+    e = format!("{}", d);
 }
 
 fn main() {
@@ -228,4 +252,22 @@ fn does_not_lint() {
     let x;
     let y = SignificantDrop;
     x = SignificantDrop;
+}
+
+#[rustfmt::skip]
+fn issue8911() -> u32 {
+    let x;
+    match 1 {
+        _ if { x = 1; false } => return 1,
+        _ => return 2,
+    }
+
+    let x;
+    if { x = 1; true } {
+        return 1;
+    } else {
+        return 2;
+    }
+
+    3
 }
