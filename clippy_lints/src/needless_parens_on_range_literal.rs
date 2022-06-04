@@ -75,15 +75,13 @@ fn check_for_parens(cx: &LateContext<'_>, e: &Expr<'_>, is_start: bool) {
 
 impl<'tcx> LateLintPass<'tcx> for NeedlessParensOnRangeLiteral {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        // if let higher::Range { start, end, limits } = &e.kind {
-        if let Some(higher::Range {
-            start: Some(start),
-            end: Some(end),
-            ..
-        }) = higher::Range::hir(expr)
-        {
-            check_for_parens(cx, start, true);
-            check_for_parens(cx, end, false);
+        if let Some(higher::Range { start, end, .. }) = higher::Range::hir(expr) {
+            if let Some(start) = start {
+                check_for_parens(cx, start, true);
+            }
+            if let Some(end) = end {
+                check_for_parens(cx, end, false);
+            }
         }
     }
 }
