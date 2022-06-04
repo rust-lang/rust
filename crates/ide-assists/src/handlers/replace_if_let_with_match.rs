@@ -256,6 +256,7 @@ fn pick_pattern_and_expr_order(
 ) -> Option<(ast::Pat, ast::Expr, ast::Expr)> {
     let res = match (pat, pat2) {
         (ast::Pat::WildcardPat(_), _) => return None,
+        (pat, ast::Pat::WildcardPat(_)) => (pat, expr, expr2),
         (pat, _) if is_empty_expr(&expr2) => (pat, expr, expr2),
         (_, pat) if is_empty_expr(&expr) => (pat, expr2, expr),
         (pat, pat2) => match (binds_name(sema, &pat), binds_name(sema, &pat2)) {
@@ -969,6 +970,30 @@ impl VariantData {
         }
     }
 }           "#,
+        )
+    }
+
+    #[test]
+    fn test_replace_match_with_if_let_forces_else() {
+        check_assist(
+            replace_match_with_if_let,
+            r#"
+fn main() {
+    match$0 0 {
+        0 => (),
+        _ => code(),
+    }
+}
+"#,
+            r#"
+fn main() {
+    if let 0 = 0 {
+        ()
+    } else {
+        code()
+    }
+}
+"#,
         )
     }
 }
