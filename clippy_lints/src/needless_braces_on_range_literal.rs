@@ -8,7 +8,7 @@
 //! }
 //! ```
 //!
-//! And suggest this:
+//! Use instead:
 //!
 //! ```rust
 //! for i in 0..10 {
