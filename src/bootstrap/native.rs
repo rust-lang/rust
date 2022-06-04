@@ -300,6 +300,9 @@ impl Step for Llvm {
 
         if builder.config.llvm_profile_generate {
             cfg.define("LLVM_BUILD_INSTRUMENTED", "IR");
+            if let Ok(llvm_profile_dir) = std::env::var("LLVM_PROFILE_DIR") {
+                cfg.define("LLVM_PROFILE_DATA_DIR", llvm_profile_dir);
+            }
             cfg.define("LLVM_BUILD_RUNTIME", "No");
         }
         if let Some(path) = builder.config.llvm_profile_use.as_ref() {
