@@ -7,11 +7,11 @@ extern "C" {
         /// Bar
         //~^ ERROR documentation comments cannot be applied to function
         #[must_use]
-        //~^ ERROR allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in
+        //~^ ERROR allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
         /// Baz
         //~^ ERROR documentation comments cannot be applied to function
         #[no_mangle] b: i32,
-        //~^ ERROR allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in
+        //~^ ERROR allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
     );
 }
 
@@ -23,11 +23,11 @@ type FnType = fn(
     /// Bar
     //~^ ERROR documentation comments cannot be applied to function
     #[must_use]
-    //~^ ERROR allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in
+    //~^ ERROR allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
     /// Baz
     //~^ ERROR documentation comments cannot be applied to function
     #[no_mangle] b: i32,
-    //~^ ERROR allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in
+    //~^ ERROR allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
 );
 
 pub fn foo(
@@ -38,11 +38,11 @@ pub fn foo(
     /// Bar
     //~^ ERROR documentation comments cannot be applied to function
     #[must_use]
-    //~^ ERROR allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in
+    //~^ ERROR allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
     /// Baz
     //~^ ERROR documentation comments cannot be applied to function
     #[no_mangle] b: i32,
-    //~^ ERROR allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in
+    //~^ ERROR allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
 ) {}
 
 struct SelfStruct {}
@@ -58,11 +58,11 @@ impl SelfStruct {
         /// Baz
         //~^ ERROR documentation comments cannot be applied to function
         #[must_use]
-        //~^ ERROR allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in
+        //~^ ERROR allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
         /// Qux
         //~^ ERROR documentation comments cannot be applied to function
         #[no_mangle] b: i32,
-        //~^ ERROR allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in
+        //~^ ERROR allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
     ) {}
 
     fn issue_64682_associated_fn(
@@ -73,11 +73,11 @@ impl SelfStruct {
         /// Baz
         //~^ ERROR documentation comments cannot be applied to function
         #[must_use]
-        //~^ ERROR allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in
+        //~^ ERROR allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
         /// Qux
         //~^ ERROR documentation comments cannot be applied to function
         #[no_mangle] b: i32,
-        //~^ ERROR allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in
+        //~^ ERROR allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
     ) {}
 }
 
@@ -94,11 +94,11 @@ impl RefStruct {
         /// Baz
         //~^ ERROR documentation comments cannot be applied to function
         #[must_use]
-        //~^ ERROR allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in
+        //~^ ERROR allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
         /// Qux
         //~^ ERROR documentation comments cannot be applied to function
         #[no_mangle] b: i32,
-        //~^ ERROR allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in
+        //~^ ERROR allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
     ) {}
 }
 trait RefTrait {
@@ -113,11 +113,11 @@ trait RefTrait {
         /// Baz
         //~^ ERROR documentation comments cannot be applied to function
         #[must_use]
-        //~^ ERROR allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in
+        //~^ ERROR allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
         /// Qux
         //~^ ERROR documentation comments cannot be applied to function
         #[no_mangle] b: i32,
-        //~^ ERROR allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in
+        //~^ ERROR allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
     ) {}
 
     fn issue_64682_associated_fn(
@@ -128,11 +128,11 @@ trait RefTrait {
         /// Baz
         //~^ ERROR documentation comments cannot be applied to function
         #[must_use]
-        //~^ ERROR allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in
+        //~^ ERROR allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
         /// Qux
         //~^ ERROR documentation comments cannot be applied to function
         #[no_mangle] b: i32,
-        //~^ ERROR allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in
+        //~^ ERROR allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
     ) {}
 }
 
@@ -148,11 +148,11 @@ impl RefTrait for RefStruct {
         /// Baz
         //~^ ERROR documentation comments cannot be applied to function
         #[must_use]
-        //~^ ERROR allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in
+        //~^ ERROR allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
         /// Qux
         //~^ ERROR documentation comments cannot be applied to function
         #[no_mangle] b: i32,
-        //~^ ERROR allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in
+        //~^ ERROR allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
     ) {}
 }
 
@@ -165,10 +165,10 @@ fn main() {
         /// Bar
         //~^ ERROR documentation comments cannot be applied to function
         #[must_use]
-        //~^ ERROR allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in
+        //~^ ERROR allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
         /// Baz
         //~^ ERROR documentation comments cannot be applied to function
         #[no_mangle] b: i32
-        //~^ ERROR allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in
+        //~^ ERROR allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
     | {};
 }
