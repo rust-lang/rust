@@ -7,9 +7,22 @@ use rustc_lint::LateContext;
 use rustc_span::symbol::sym;
 
 /// Checks for `for` loops over `Option`s and `Result`s.
-pub(super) fn check(cx: &LateContext<'_>, pat: &Pat<'_>, arg: &Expr<'_>) {
+pub(super) fn check(cx: &LateContext<'_>, pat: &Pat<'_>, arg: &Expr<'_>, method_name: Option<&str>) {
     let ty = cx.typeck_results().expr_ty(arg);
     if is_type_diagnostic_item(cx, ty, sym::Option) {
+        let help_string = if let Some(method_name) = method_name {
+            format!(
+                "consider replacing `for {0} in {1}.{method_name}()` with `if let Some({0}) = {1}`",
+                snippet(cx, pat.span, "_"),
+                snippet(cx, arg.span, "_")
+            )
+        } else {
+            format!(
+                "consider replacing `for {0} in {1}` with `if let Some({0}) = {1}`",
+                snippet(cx, pat.span, "_"),
+                snippet(cx, arg.span, "_")
+            )
+        };
         span_lint_and_help(
             cx,
             FOR_LOOPS_OVER_FALLIBLES,
@@ -20,13 +33,22 @@ pub(super) fn check(cx: &LateContext<'_>, pat: &Pat<'_>, arg: &Expr<'_>) {
                 snippet(cx, arg.span, "_")
             ),
             None,
-            &format!(
-                "consider replacing `for {0} in {1}` with `if let Some({0}) = {1}`",
-                snippet(cx, pat.span, "_"),
-                snippet(cx, arg.span, "_")
-            ),
+            &help_string,
         );
     } else if is_type_diagnostic_item(cx, ty, sym::Result) {
+        let help_string = if let Some(method_name) = method_name {
+            format!(
+                "consider replacing `for {0} in {1}.{method_name}()` with `if let Ok({0}) = {1}`",
+                snippet(cx, pat.span, "_"),
+                snippet(cx, arg.span, "_")
+            )
+        } else {
+            format!(
+                "consider replacing `for {0} in {1}` with `if let Ok({0}) = {1}`",
+                snippet(cx, pat.span, "_"),
+                snippet(cx, arg.span, "_")
+            )
+        };
         span_lint_and_help(
             cx,
             FOR_LOOPS_OVER_FALLIBLES,
@@ -37,11 +59,7 @@ pub(super) fn check(cx: &LateContext<'_>, pat: &Pat<'_>, arg: &Expr<'_>) {
                 snippet(cx, arg.span, "_")
             ),
             None,
-            &format!(
-                "consider replacing `for {0} in {1}` with `if let Ok({0}) = {1}`",
-                snippet(cx, pat.span, "_"),
-                snippet(cx, arg.span, "_")
-            ),
+            &help_string,
         );
     }
 }
