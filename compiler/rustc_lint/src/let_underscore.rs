@@ -55,7 +55,7 @@ declare_lint! {
     /// of at end of scope, which is typically incorrect.
     ///
     /// ### Example
-    /// ```rust
+    /// ```compile_fail
     /// use std::sync::{Arc, Mutex};
     /// use std::thread;
     /// let data = Arc::new(Mutex::new(0));
@@ -83,7 +83,7 @@ declare_lint! {
     /// calling `std::mem::drop` on the expression is clearer and helps convey
     /// intent.
     pub LET_UNDERSCORE_LOCK,
-    Warn,
+    Deny,
     "non-binding let on a synchronization lock"
 }
 
