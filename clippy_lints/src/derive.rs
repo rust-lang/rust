@@ -11,7 +11,9 @@ use rustc_hir::{
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::subst::GenericArg;
-use rustc_middle::ty::{self, BoundConstness, ImplPolarity, ParamEnv, PredicateKind, TraitPredicate, TraitRef, Ty};
+use rustc_middle::ty::{
+    self, BoundConstness, ImplPolarity, ParamEnv, PredicateKind, TraitPredicate, TraitRef, Ty, Visibility,
+};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 use rustc_span::sym;
@@ -459,6 +461,7 @@ impl<'tcx> Visitor<'tcx> for UnsafeVisitor<'_, 'tcx> {
 fn check_partial_eq_without_eq<'tcx>(cx: &LateContext<'tcx>, span: Span, trait_ref: &hir::TraitRef<'_>, ty: Ty<'tcx>) {
     if_chain! {
         if let ty::Adt(adt, substs) = ty.kind();
+        if cx.tcx.visibility(adt.did()) == Visibility::Public;
         if let Some(eq_trait_def_id) = cx.tcx.get_diagnostic_item(sym::Eq);
         if let Some(peq_trait_def_id) = cx.tcx.get_diagnostic_item(sym::PartialEq);
         if let Some(def_id) = trait_ref.trait_def_id();
