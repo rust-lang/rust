@@ -122,11 +122,13 @@ impl Context<'_> {
         if minify {
             let contents = contents.as_ref();
             let contents = if resource.extension() == Some(OsStr::new("css")) {
-                minifier::css::minify(contents).map_err(|e| {
-                    Error::new(format!("failed to minify CSS file: {}", e), resource.path(self))
-                })?
+                minifier::css::minify(contents)
+                    .map_err(|e| {
+                        Error::new(format!("failed to minify CSS file: {}", e), resource.path(self))
+                    })?
+                    .to_string()
             } else {
-                minifier::js::minify(contents)
+                minifier::js::minify(contents).to_string()
             };
             self.write_shared(resource, contents, emit)
         } else {
