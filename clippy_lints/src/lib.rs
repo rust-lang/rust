@@ -181,7 +181,6 @@ mod bool_assert_comparison;
 mod booleans;
 mod borrow_deref_ref;
 mod cargo;
-mod case_sensitive_file_extension_comparisons;
 mod casts;
 mod checked_conversions;
 mod cognitive_complexity;
@@ -852,9 +851,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(strings::StringToString));
     store.register_late_pass(|| Box::new(zero_sized_map_values::ZeroSizedMapValues));
     store.register_late_pass(|| Box::new(vec_init_then_push::VecInitThenPush::default()));
-    store.register_late_pass(|| {
-        Box::new(case_sensitive_file_extension_comparisons::CaseSensitiveFileExtensionComparisons)
-    });
     store.register_late_pass(|| Box::new(redundant_slicing::RedundantSlicing));
     store.register_late_pass(|| Box::new(from_str_radix_10::FromStrRadix10));
     store.register_late_pass(move || Box::new(if_then_some_else_none::IfThenSomeElseNone::new(msrv)));

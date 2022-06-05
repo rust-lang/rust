@@ -2,6 +2,7 @@ mod bind_instead_of_map;
 mod bytecount;
 mod bytes_count_to_len;
 mod bytes_nth;
+mod case_sensitive_file_extension_comparisons;
 mod chars_cmp;
 mod chars_cmp_with_unwrap;
 mod chars_last_cmp;
@@ -2428,6 +2429,34 @@ declare_clippy_lint! {
     "Using `bytes().count()` when `len()` performs the same functionality"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for calls to `ends_with` with possible file extensions
+    /// and suggests to use a case-insensitive approach instead.
+    ///
+    /// ### Why is this bad?
+    /// `ends_with` is case-sensitive and may not detect files with a valid extension.
+    ///
+    /// ### Example
+    /// ```rust
+    /// fn is_rust_file(filename: &str) -> bool {
+    ///     filename.ends_with(".rs")
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// fn is_rust_file(filename: &str) -> bool {
+    ///     let filename = std::path::Path::new(filename);
+    ///     filename.extension()
+    ///         .map_or(false, |ext| ext.eq_ignore_ascii_case("rs"))
+    /// }
+    /// ```
+    #[clippy::version = "1.51.0"]
+    pub CASE_SENSITIVE_FILE_EXTENSION_COMPARISONS,
+    pedantic,
+    "Checks for calls to ends_with with case-sensitive file extensions"
+}
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Option<RustcVersion>,
@@ -2534,6 +2563,7 @@ impl_lint_pass!(Methods => [
     ITER_ON_EMPTY_COLLECTIONS,
     NAIVE_BYTECOUNT,
     BYTES_COUNT_TO_LEN,
+    CASE_SENSITIVE_FILE_EXTENSION_COMPARISONS,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -2800,6 +2830,10 @@ impl Methods {
                 },
                 ("drain", [arg]) => {
                     iter_with_drain::check(cx, expr, recv, span, arg);
+                },
+                ("ends_with", [arg]) => {
+                    if let ExprKind::MethodCall(_, _, span) = expr.kind {
+                    case_sensitive_file_extension_comparisons::check(cx, expr, span, recv, arg);
                 },
                 ("expect", [_]) => match method_call(recv) {
                     Some(("ok", [recv], _)) => ok_expect::check(cx, expr, recv),
