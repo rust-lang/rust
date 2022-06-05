@@ -1,0 +1,32 @@
+error: unnecessary allocation, use `&` instead
+  --> $DIR/unused-allocation.rs:5:15
+   |
+LL |     let foo = (box [1, 2, 3]).len();
+   |               ^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/unused-allocation.rs:2:9
+   |
+LL | #![deny(unused_allocation)]
+   |         ^^^^^^^^^^^^^^^^^
+
+error: unnecessary allocation, use `&mut` instead
+  --> $DIR/unused-allocation.rs:6:15
+   |
+LL |     let one = (box vec![1]).pop();
+   |               ^^^^^^^^^^^^^
+
+error: unnecessary allocation, use `&` instead
+  --> $DIR/unused-allocation.rs:8:15
+   |
+LL |     let foo = Box::new([1, 2, 3]).len();
+   |               ^^^^^^^^
+
+error: unnecessary allocation, use `&mut` instead
+  --> $DIR/unused-allocation.rs:9:15
+   |
+LL |     let one = Box::new(vec![1]).pop();
+   |               ^^^^^^^^
+
+error: aborting due to 4 previous errors
+
