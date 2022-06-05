@@ -8,10 +8,10 @@ mod inner {
 
     #[allow(clippy::map_err_ignore)]
     pub fn do_alloc<A: Allocator>(alloc: &A, layout: Layout) -> Result<NonNull<u8>, ()> {
-        alloc
-            .allocate(layout)
-            .map(|ptr| ptr.as_non_null_ptr())
-            .map_err(|_| ())
+        match alloc.allocate(layout) {
+            Ok(ptr) => Ok(ptr.as_non_null_ptr()),
+            Err(_) => Err(()),
+        }
     }
 
     #[cfg(feature = "bumpalo")]
