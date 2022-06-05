@@ -3,7 +3,7 @@ use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_middle::{
     lint::LintDiagnosticBuilder,
-    ty::{self, subst::GenericArgKind, Ty},
+    ty::{self, Ty},
 };
 use rustc_span::Symbol;
 
@@ -114,12 +114,10 @@ declare_lint! {
 
 declare_lint_pass!(LetUnderscore => [LET_UNDERSCORE_DROP, LET_UNDERSCORE_LOCK, LET_UNDERSCORE_MUST_USE]);
 
-const SYNC_GUARD_PATHS: [&[&str]; 5] = [
-    &["std", "sync", "mutex", "MutexGuard"],
-    &["std", "sync", "rwlock", "RwLockReadGuard"],
-    &["std", "sync", "rwlock", "RwLockWriteGuard"],
-    &["parking_lot", "raw_mutex", "RawMutex"],
-    &["parking_lot", "raw_rwlock", "RawRwLock"],
+const SYNC_GUARD_SYMBOLS: [Symbol; 3] = [
+    rustc_span::sym::MutexGuard,
+    rustc_span::sym::RwLockReadGuard,
+    rustc_span::sym::RwLockWriteGuard,
 ];
 
 impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
@@ -134,19 +132,12 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
             if !init_ty.needs_drop(cx.tcx, cx.param_env) {
                 return;
             }
-            let is_sync_lock = init_ty.walk().any(|inner| match inner.unpack() {
-                GenericArgKind::Type(inner_ty) => {
-                    SYNC_GUARD_PATHS.iter().any(|guard_path| match inner_ty.kind() {
-                        ty::Adt(adt, _) => {
-                            let ty_path = cx.get_def_path(adt.did());
-                            guard_path.iter().map(|x| Symbol::intern(x)).eq(ty_path.iter().copied())
-                        }
-                        _ => false,
-                    })
-                }
-
-                GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => false,
-            });
+            let is_sync_lock = match init_ty.kind() {
+                ty::Adt(adt, _) => SYNC_GUARD_SYMBOLS
+                    .iter()
+                    .any(|guard_symbol| cx.tcx.is_diagnostic_item(*guard_symbol, adt.did())),
+                _ => false,
+            };
             let is_must_use_ty = is_must_use_ty(cx, cx.typeck_results().expr_ty(init));
             let is_must_use_func_call = is_must_use_func_call(cx, init);
 
