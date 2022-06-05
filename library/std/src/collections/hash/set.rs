@@ -588,7 +588,7 @@ where
     /// Visits the values representing the intersection,
     /// i.e., the values that are both in `self` and `other`.
     ///
-    /// Note: When an equal element is present in `self` and `other`
+    /// When an equal element is present in `self` and `other`
     /// then the resulting `Intersection` may yield references to
     /// one or the other, which will be visible in properties of `T`
     /// not participating in the `Eq` implementation.
