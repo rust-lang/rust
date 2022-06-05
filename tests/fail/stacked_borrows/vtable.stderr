@@ -1,0 +1,25 @@
+error: Undefined Behavior: type validation failed: encountered vtable pointer does not have permission to read drop function pointer
+  --> RUSTLIB/core/src/ptr/metadata.rs:LL:CC
+   |
+LL |     unsafe { PtrRepr { components: PtrComponents { data_address, metadata } }.const_ptr }
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered vtable pointer does not have permission to read drop function pointer
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+           
+   = note: inside `std::ptr::from_raw_parts::<dyn Foo>` at RUSTLIB/core/src/ptr/metadata.rs:LL:CC
+note: inside `uwu` at $DIR/vtable.rs:LL:CC
+  --> $DIR/vtable.rs:LL:CC
+   |
+LL |     core::ptr::from_raw_parts(thin, unsafe { core::mem::transmute(meta) })
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: inside `main` at $DIR/vtable.rs:LL:CC
+  --> $DIR/vtable.rs:LL:CC
+   |
+LL |         let _ = uwu(ptr, core::mem::transmute(meta));
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+
