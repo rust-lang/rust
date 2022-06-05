@@ -4,8 +4,8 @@ use rustc_target::spec::abi::Abi;
 
 use crate::*;
 use shims::foreign_items::EmulateByNameResult;
-use shims::posix::fs::EvalContextExt as _;
-use shims::posix::thread::EvalContextExt as _;
+use shims::unix::fs::EvalContextExt as _;
+use shims::unix::thread::EvalContextExt as _;
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {

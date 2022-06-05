@@ -1,7 +1,7 @@
 mod backtrace;
 pub mod foreign_items;
 pub mod intrinsics;
-pub mod posix;
+pub mod unix;
 pub mod windows;
 
 pub mod dlsym;

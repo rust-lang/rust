@@ -2,13 +2,13 @@ use rustc_middle::mir;
 use rustc_target::spec::abi::Abi;
 
 use crate::*;
-use shims::posix::dlsym as posix;
+use shims::unix::dlsym as unix;
 use shims::windows::dlsym as windows;
 
 #[derive(Debug, Copy, Clone)]
 #[allow(non_camel_case_types)]
 pub enum Dlsym {
-    Posix(posix::Dlsym),
+    Posix(unix::Dlsym),
     Windows(windows::Dlsym),
 }
 
@@ -18,7 +18,7 @@ impl Dlsym {
     pub fn from_str<'tcx>(name: &[u8], target_os: &str) -> InterpResult<'tcx, Option<Dlsym>> {
         let name = &*String::from_utf8_lossy(name);
         Ok(match target_os {
-            "linux" | "macos" => posix::Dlsym::from_str(name, target_os)?.map(Dlsym::Posix),
+            "linux" | "macos" => unix::Dlsym::from_str(name, target_os)?.map(Dlsym::Posix),
             "windows" => windows::Dlsym::from_str(name)?.map(Dlsym::Windows),
             os => bug!("dlsym not implemented for target_os {}", os),
         })
@@ -38,7 +38,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
         match dlsym {
             Dlsym::Posix(dlsym) =>
-                posix::EvalContextExt::call_dlsym(this, dlsym, abi, args, dest, ret),
+                unix::EvalContextExt::call_dlsym(this, dlsym, abi, args, dest, ret),
             Dlsym::Windows(dlsym) =>
                 windows::EvalContextExt::call_dlsym(this, dlsym, abi, args, dest, ret),
         }
