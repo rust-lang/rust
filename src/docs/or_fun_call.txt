@@ -1,0 +1,26 @@
+### What it does
+Checks for calls to `.or(foo(..))`, `.unwrap_or(foo(..))`,
+etc., and suggests to use `or_else`, `unwrap_or_else`, etc., or
+`unwrap_or_default` instead.
+
+### Why is this bad?
+The function will always be called and potentially
+allocate an object acting as the default.
+
+### Known problems
+If the function has side-effects, not calling it will
+change the semantic of the program, but you shouldn't rely on that anyway.
+
+### Example
+```
+foo.unwrap_or(String::new());
+```
+
+Use instead:
+```
+foo.unwrap_or_else(String::new);
+
+// or
+
+foo.unwrap_or_default();
+```

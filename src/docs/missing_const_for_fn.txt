@@ -1,0 +1,40 @@
+### What it does
+Suggests the use of `const` in functions and methods where possible.
+
+### Why is this bad?
+Not having the function const prevents callers of the function from being const as well.
+
+### Known problems
+Const functions are currently still being worked on, with some features only being available
+on nightly. This lint does not consider all edge cases currently and the suggestions may be
+incorrect if you are using this lint on stable.
+
+Also, the lint only runs one pass over the code. Consider these two non-const functions:
+
+```
+fn a() -> i32 {
+    0
+}
+fn b() -> i32 {
+    a()
+}
+```
+
+When running Clippy, the lint will only suggest to make `a` const, because `b` at this time
+can't be const as it calls a non-const function. Making `a` const and running Clippy again,
+will suggest to make `b` const, too.
+
+### Example
+```
+fn new() -> Self {
+    Self { random_number: 42 }
+}
+```
+
+Could be a const fn:
+
+```
+const fn new() -> Self {
+    Self { random_number: 42 }
+}
+```

@@ -1,0 +1,21 @@
+### What it does
+Checks for the inclusion of large files via `include_bytes!()`
+and `include_str!()`
+
+### Why is this bad?
+Including large files can increase the size of the binary
+
+### Example
+```
+let included_str = include_str!("very_large_file.txt");
+let included_bytes = include_bytes!("very_large_file.txt");
+```
+
+Use instead:
+```
+use std::fs;
+
+// You can load the file at runtime
+let string = fs::read_to_string("very_large_file.txt")?;
+let bytes = fs::read("very_large_file.txt")?;
+```

@@ -1,0 +1,16 @@
+### What it does
+Checks for binding to underscore prefixed variable without side-effects.
+
+### Why is this bad?
+Unlike dead code, these bindings are actually
+executed. However, as they have no effect and shouldn't be used further on, all they
+do is make the code less readable.
+
+### Known problems
+Further usage of this variable is not checked, which can lead to false positives if it is
+used later in the code.
+
+### Example
+```
+let _i_serve_no_purpose = 1;
+```

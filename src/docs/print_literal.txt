@@ -1,0 +1,20 @@
+### What it does
+This lint warns about the use of literals as `print!`/`println!` args.
+
+### Why is this bad?
+Using literals as `println!` args is inefficient
+(c.f., https://github.com/matthiaskrgr/rust-str-bench) and unnecessary
+(i.e., just put the literal in the format string)
+
+### Known problems
+Will also warn with macro calls as arguments that expand to literals
+-- e.g., `println!("{}", env!("FOO"))`.
+
+### Example
+```
+println!("{}", "foo");
+```
+use the literal without formatting:
+```
+println!("foo");
+```

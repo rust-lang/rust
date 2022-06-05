@@ -1,0 +1,12 @@
+### What it does
+Checks for use of the non-existent `=*`, `=!` and `=-`
+operators.
+
+### Why is this bad?
+This is either a typo of `*=`, `!=` or `-=` or
+confusing.
+
+### Example
+```
+a =- 42; // confusing, should it be `a -= 42` or `a = -42`?
+```

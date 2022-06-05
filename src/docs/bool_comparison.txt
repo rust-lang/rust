@@ -1,0 +1,18 @@
+### What it does
+Checks for expressions of the form `x == true`,
+`x != true` and order comparisons such as `x < true` (or vice versa) and
+suggest using the variable directly.
+
+### Why is this bad?
+Unnecessary code.
+
+### Example
+```
+if x == true {}
+if y == false {}
+```
+use `x` directly:
+```
+if x {}
+if !y {}
+```

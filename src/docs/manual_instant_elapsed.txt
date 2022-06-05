@@ -1,0 +1,21 @@
+### What it does
+Lints subtraction between `Instant::now()` and another `Instant`.
+
+### Why is this bad?
+It is easy to accidentally write `prev_instant - Instant::now()`, which will always be 0ns
+as `Instant` subtraction saturates.
+
+`prev_instant.elapsed()` also more clearly signals intention.
+
+### Example
+```
+use std::time::Instant;
+let prev_instant = Instant::now();
+let duration = Instant::now() - prev_instant;
+```
+Use instead:
+```
+use std::time::Instant;
+let prev_instant = Instant::now();
+let duration = prev_instant.elapsed();
+```

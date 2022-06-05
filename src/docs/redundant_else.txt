@@ -1,0 +1,30 @@
+### What it does
+Checks for `else` blocks that can be removed without changing semantics.
+
+### Why is this bad?
+The `else` block adds unnecessary indentation and verbosity.
+
+### Known problems
+Some may prefer to keep the `else` block for clarity.
+
+### Example
+```
+fn my_func(count: u32) {
+    if count == 0 {
+        print!("Nothing to do");
+        return;
+    } else {
+        print!("Moving on...");
+    }
+}
+```
+Use instead:
+```
+fn my_func(count: u32) {
+    if count == 0 {
+        print!("Nothing to do");
+        return;
+    }
+    print!("Moving on...");
+}
+```

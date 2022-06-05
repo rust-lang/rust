@@ -1,0 +1,15 @@
+### What it does
+Checks for erasing operations, e.g., `x * 0`.
+
+### Why is this bad?
+The whole expression can be replaced by zero.
+This is most likely not the intended outcome and should probably be
+corrected
+
+### Example
+```
+let x = 1;
+0 / x;
+0 * x;
+x & 0;
+```

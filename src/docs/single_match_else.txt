@@ -1,0 +1,29 @@
+### What it does
+Checks for matches with two arms where an `if let else` will
+usually suffice.
+
+### Why is this bad?
+Just readability – `if let` nests less than a `match`.
+
+### Known problems
+Personal style preferences may differ.
+
+### Example
+Using `match`:
+
+```
+match x {
+    Some(ref foo) => bar(foo),
+    _ => bar(&other_ref),
+}
+```
+
+Using `if let` with `else`:
+
+```
+if let Some(ref foo) = x {
+    bar(foo);
+} else {
+    bar(&other_ref);
+}
+```

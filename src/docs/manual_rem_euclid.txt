@@ -1,0 +1,17 @@
+### What it does
+Checks for an expression like `((x % 4) + 4) % 4` which is a common manual reimplementation
+of `x.rem_euclid(4)`.
+
+### Why is this bad?
+It's simpler and more readable.
+
+### Example
+```
+let x: i32 = 24;
+let rem = ((x % 4) + 4) % 4;
+```
+Use instead:
+```
+let x: i32 = 24;
+let rem = x.rem_euclid(4);
+```

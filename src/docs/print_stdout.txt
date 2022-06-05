@@ -1,0 +1,21 @@
+### What it does
+Checks for printing on *stdout*. The purpose of this lint
+is to catch debugging remnants.
+
+### Why is this bad?
+People often print on *stdout* while debugging an
+application and might forget to remove those prints afterward.
+
+### Known problems
+* Only catches `print!` and `println!` calls.
+* The lint level is unaffected by crate attributes. The level can still
+  be set for functions, modules and other items. To change the level for
+  the entire crate, please use command line flags. More information and a
+  configuration example can be found in [clippy#6610].
+
+[clippy#6610]: https://github.com/rust-lang/rust-clippy/issues/6610#issuecomment-977120558
+
+### Example
+```
+println!("Hello world!");
+```
