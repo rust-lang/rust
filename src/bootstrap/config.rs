@@ -550,6 +550,7 @@ define_config! {
         dist_stage: Option<u32> = "dist-stage",
         bench_stage: Option<u32> = "bench-stage",
         patch_binaries_for_nix: Option<bool> = "patch-binaries-for-nix",
+        metrics: Option<bool> = "metrics",
     }
 }
 

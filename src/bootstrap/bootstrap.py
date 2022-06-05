@@ -837,6 +837,9 @@ class RustBuild(object):
             args.append("--locked")
         if self.use_vendored_sources:
             args.append("--frozen")
+        if self.get_toml("metrics", "build"):
+            args.append("--features")
+            args.append("build-metrics")
         run(args, env=env, verbose=self.verbose)
 
     def build_triple(self):

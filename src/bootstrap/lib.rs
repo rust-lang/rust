@@ -150,6 +150,9 @@ mod tool;
 mod toolstate;
 pub mod util;
 
+#[cfg(feature = "build-metrics")]
+mod metrics;
+
 #[cfg(windows)]
 mod job;
 
@@ -312,6 +315,9 @@ pub struct Build {
     prerelease_version: Cell<Option<u32>>,
     tool_artifacts:
         RefCell<HashMap<TargetSelection, HashMap<String, (&'static str, PathBuf, Vec<String>)>>>,
+
+    #[cfg(feature = "build-metrics")]
+    metrics: metrics::BuildMetrics,
 }
 
 #[derive(Debug)]
@@ -501,6 +507,9 @@ impl Build {
             delayed_failures: RefCell::new(Vec::new()),
             prerelease_version: Cell::new(None),
             tool_artifacts: Default::default(),
+
+            #[cfg(feature = "build-metrics")]
+            metrics: metrics::BuildMetrics::init(),
         };
 
         build.verbose("finding compilers");
@@ -695,6 +704,9 @@ impl Build {
             }
             process::exit(1);
         }
+
+        #[cfg(feature = "build-metrics")]
+        self.metrics.persist(self);
     }
 
     /// Clear out `dir` if `input` is newer.
