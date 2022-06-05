@@ -1037,6 +1037,7 @@ symbols! {
         out,
         overlapping_marker_traits,
         owned_box,
+        owned_box_new,
         packed,
         panic,
         panic_2015,
