@@ -755,7 +755,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     if (!legalMove)
       goto endCheck;
 
-    std::vector<Value *> args;
+    SmallVector<Value *, 4> args;
 #if LLVM_VERSION_MAJOR >= 14
     for (unsigned i = 0; i < op->arg_size(); ++i)
 #else
@@ -1058,8 +1058,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
                     oldB) != reverseBlocks[fwd].end();
     }
 
-    auto eraseBlocks = [&](const SmallVectorImpl<BasicBlock *> &blocks,
-                           BasicBlock *bret) {
+    auto eraseBlocks = [&](ArrayRef<BasicBlock *> blocks, BasicBlock *bret) {
       SmallVector<BasicBlock *, 2> revtopo;
       {
         SmallPtrSet<BasicBlock *, 2> seen;
@@ -1952,7 +1951,7 @@ Value *GradientUtils::cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc,
             erase(stores[i]);
           }
 
-          std::vector<User *> users;
+          SmallVector<User *, 4> users;
           for (auto u : found->first->users()) {
             users.push_back(u);
           }
@@ -2076,7 +2075,7 @@ Value *GradientUtils::cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc,
           }
 
           // uses of the alloc
-          std::vector<User *> users;
+          SmallVector<User *, 4> users;
           for (auto u : found->first->users()) {
             users.push_back(u);
           }
@@ -3319,9 +3318,9 @@ bool GradientUtils::shouldRecompute(const Value *val,
 GradientUtils *GradientUtils::CreateFromClone(
     EnzymeLogic &Logic, unsigned width, Function *todiff,
     TargetLibraryInfo &TLI, TypeAnalysis &TA, FnTypeInfo &oldTypeInfo,
-    DIFFE_TYPE retType, const std::vector<DIFFE_TYPE> &constant_args,
-    bool returnUsed, bool shadowReturnUsed,
-    std::map<AugmentedStruct, int> &returnMapping, bool omp) {
+    DIFFE_TYPE retType, ArrayRef<DIFFE_TYPE> constant_args, bool returnUsed,
+    bool shadowReturnUsed, std::map<AugmentedStruct, int> &returnMapping,
+    bool omp) {
   assert(!todiff->empty());
   Function *oldFunc = todiff;
 
@@ -3418,9 +3417,8 @@ GradientUtils *GradientUtils::CreateFromClone(
 DiffeGradientUtils *DiffeGradientUtils::CreateFromClone(
     EnzymeLogic &Logic, DerivativeMode mode, unsigned width, Function *todiff,
     TargetLibraryInfo &TLI, TypeAnalysis &TA, FnTypeInfo &oldTypeInfo,
-    DIFFE_TYPE retType, bool diffeReturnArg,
-    const std::vector<DIFFE_TYPE> &constant_args, ReturnType returnValue,
-    Type *additionalArg, bool omp) {
+    DIFFE_TYPE retType, bool diffeReturnArg, ArrayRef<DIFFE_TYPE> constant_args,
+    ReturnType returnValue, Type *additionalArg, bool omp) {
   assert(!todiff->empty());
   Function *oldFunc = todiff;
   assert(mode == DerivativeMode::ReverseModeGradient ||
@@ -5515,7 +5513,7 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
               lim = v.CreateAdd(lim, ConstantInt::get(lim->getType(), 1), "",
                                 true, true);
 
-              std::vector<Instruction *> toErase;
+              SmallVector<Instruction *, 4> toErase;
               {
 #if LLVM_VERSION_MAJOR >= 12
                 SCEVExpander Exp(SE,
@@ -6284,7 +6282,7 @@ nofast:;
   assert(reverseBlocks.size());
   LimitContext lctx(/*ReverseLimit*/ reverseBlocks.size() > 0, ctx);
   AllocaInst *cache = createCacheForScope(lctx, T, "", /*shouldFree*/ true);
-  std::vector<BasicBlock *> targets;
+  SmallVector<BasicBlock *, 4> targets;
   {
     size_t idx = 0;
     std::map<BasicBlock * /*storingblock*/,

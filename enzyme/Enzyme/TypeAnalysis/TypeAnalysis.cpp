@@ -40,6 +40,8 @@
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/raw_ostream.h"
 
+#include "llvm/ADT/SmallSet.h"
+
 #include "llvm/IR/InlineAsm.h"
 
 #include "../Utils.h"
@@ -1340,10 +1342,9 @@ void TypeAnalyzer::visitStoreInst(StoreInst &I) {
 // Give a list of sets representing the legal set of values at a given index
 // return a set of all possible combinations of those values
 template <typename T>
-std::set<std::vector<T>> getSet(const std::vector<std::set<T>> &todo,
-                                size_t idx) {
+std::set<SmallVector<T, 4>> getSet(ArrayRef<std::set<T>> todo, size_t idx) {
   assert(idx < todo.size());
-  std::set<std::vector<T>> out;
+  std::set<SmallVector<T, 4>> out;
   if (idx == 0) {
     for (auto val : todo[0]) {
       out.insert({val});
@@ -1431,7 +1432,7 @@ void TypeAnalyzer::visitGetElementPtrInst(GetElementPtrInst &gep) {
     updateAnalysis(gep.getPointerOperand(),
                    TypeTree(getAnalysis(&gep).Inner0()).Only(-1), &gep);
 
-  std::vector<std::set<Value *>> idnext;
+  SmallVector<std::set<Value *>, 4> idnext;
 
   for (auto &a : gep.indices()) {
     auto iset = fntypeinfo.knownIntegralValues(a, DT, intseen, SE);
@@ -1459,7 +1460,8 @@ void TypeAnalyzer::visitGetElementPtrInst(GetElementPtrInst &gep) {
     pointerData0 = pointerAnalysis.Data0();
 
   bool seenIdx = false;
-  for (auto vec : getSet(idnext, idnext.size() - 1)) {
+
+  for (auto vec : getSet<Value *>(idnext, idnext.size() - 1)) {
     auto g2 = GetElementPtrInst::Create(gep.getSourceElementType(),
                                         gep.getOperand(0), vec);
 #if LLVM_VERSION_MAJOR > 6
@@ -1536,10 +1538,10 @@ void TypeAnalyzer::visitPHINode(PHINode &phi) {
     vals.push_back(op);
   }
 
-  std::vector<BinaryOperator *> bos;
+  SmallVector<BinaryOperator *, 4> bos;
 
   // Unique values that propagate into this phi
-  std::vector<Value *> UniqueValues;
+  SmallVector<Value *, 4> UniqueValues;
 
   while (vals.size()) {
     Value *todo = vals.front();
@@ -2083,7 +2085,7 @@ void TypeAnalyzer::visitShuffleVectorInst(ShuffleVectorInst &I) {
 
 void TypeAnalyzer::visitExtractValueInst(ExtractValueInst &I) {
   auto &dl = fntypeinfo.Function->getParent()->getDataLayout();
-  std::vector<Value *> vec;
+  SmallVector<Value *, 4> vec;
   vec.push_back(ConstantInt::get(Type::getInt64Ty(I.getContext()), 0));
   for (auto ind : I.indices()) {
     vec.push_back(ConstantInt::get(Type::getInt32Ty(I.getContext()), ind));
@@ -2116,8 +2118,8 @@ void TypeAnalyzer::visitExtractValueInst(ExtractValueInst &I) {
 
 void TypeAnalyzer::visitInsertValueInst(InsertValueInst &I) {
   auto &dl = fntypeinfo.Function->getParent()->getDataLayout();
-  std::vector<Value *> vec;
-  vec.push_back(ConstantInt::get(Type::getInt64Ty(I.getContext()), 0));
+  SmallVector<Value *, 4> vec = {
+      ConstantInt::get(Type::getInt64Ty(I.getContext()), 0)};
   for (auto ind : I.indices()) {
     vec.push_back(ConstantInt::get(Type::getInt32Ty(I.getContext()), ind));
   }
@@ -3377,7 +3379,7 @@ void TypeAnalyzer::visitInvokeInst(InvokeInst &call) {
   TypeTree Result;
 
   IRBuilder<> B(&call);
-  std::vector<Value *> args;
+  SmallVector<Value *, 4> args;
 #if LLVM_VERSION_MAJOR >= 14
   for (auto &val : call.args())
 #else
@@ -3468,8 +3470,8 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
     auto customrule = interprocedural.CustomRules.find(funcName.str());
     if (customrule != interprocedural.CustomRules.end()) {
       auto returnAnalysis = getAnalysis(&call);
-      std::vector<TypeTree> args;
-      std::vector<std::set<int64_t>> knownValues;
+      SmallVector<TypeTree, 4> args;
+      SmallVector<std::set<int64_t>, 4> knownValues;
 #if LLVM_VERSION_MAJOR >= 14
       for (auto &arg : call.args())
 #else
@@ -3480,6 +3482,7 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
         knownValues.push_back(
             fntypeinfo.knownIntegralValues((Value *)arg, DT, intseen, SE));
       }
+
       bool err = customrule->second(direction, returnAnalysis, args,
                                     knownValues, &call);
       if (err) {

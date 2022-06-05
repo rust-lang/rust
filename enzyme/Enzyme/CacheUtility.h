@@ -238,9 +238,11 @@ public:
   /// every loop, this returns pair of the LoopContext and the limit of that
   /// loop Both the vector of Chunks and vector of Loops within a Chunk go from
   /// innermost loop to outermost loop.
-  typedef std::vector<std::pair<
-      /*sublimit*/ llvm::Value *,
-      /*loop limits*/ std::vector<std::pair<LoopContext, llvm::Value *>>>>
+  typedef llvm::SmallVector<std::pair<
+                                /*sublimit*/ llvm::Value *,
+                                /*loop limits*/ llvm::SmallVector<
+                                    std::pair<LoopContext, llvm::Value *>, 4>>,
+                            0>
       SubLimitType;
   SubLimitType getSubLimits(bool inForwardPass, llvm::IRBuilder<> *RB,
                             LimitContext ctx, llvm::Value *extraSize = nullptr);
@@ -266,7 +268,7 @@ private:
   /// the IRBuilder<>
   llvm::Value *computeIndexOfChunk(
       bool inForwardPass, llvm::IRBuilder<> &v,
-      const std::vector<std::pair<LoopContext, llvm::Value *>> &containedloops,
+      llvm::ArrayRef<std::pair<LoopContext, llvm::Value *>> containedloops,
       const llvm::ValueToValueMapTy &available);
 
 private:
@@ -292,7 +294,7 @@ protected:
   /// is stored as a vector explicitly to order theses instructions in such a
   /// way that they can be erased by iterating in reverse order.
   std::map<llvm::AllocaInst *,
-           std::vector<llvm::AssertingVH<llvm::Instruction>>>
+           llvm::SmallVector<llvm::AssertingVH<llvm::Instruction>, 4>>
       scopeInstructions;
 
   /// A map of allocations to a set of instructions which free memory as part of
@@ -302,7 +304,8 @@ protected:
 
   /// A map of allocations to a set of instructions which allocate memory as
   /// part of the cache
-  std::map<llvm::AllocaInst *, std::vector<llvm::AssertingVH<llvm::CallInst>>>
+  std::map<llvm::AllocaInst *,
+           llvm::SmallVector<llvm::AssertingVH<llvm::CallInst>, 4>>
       scopeAllocs;
 
   /// Perform the final load from the cache, applying requisite invariant

@@ -271,7 +271,7 @@ static inline bool OnlyUsedInOMP(AllocaInst *AI) {
 /// therefore may not be reachable in the reverse pass) must be upgraded.
 static inline void UpgradeAllocasToMallocs(Function *NewF,
                                            DerivativeMode mode) {
-  std::vector<AllocaInst *> ToConvert;
+  SmallVector<AllocaInst *, 4> ToConvert;
 
   for (auto &BB : *NewF) {
     for (auto &I : BB) {
@@ -562,7 +562,7 @@ void PreProcessCache::ReplaceReallocs(Function *NewF, bool mem2reg) {
     FAM.invalidate(*NewF, PA);
   }
 
-  std::vector<CallInst *> ToConvert;
+  SmallVector<CallInst *, 4> ToConvert;
   std::map<CallInst *, Value *> reallocSizes;
   IntegerType *T = nullptr;
 
@@ -581,7 +581,7 @@ void PreProcessCache::ReplaceReallocs(Function *NewF, bool mem2reg) {
     }
   }
 
-  std::vector<AllocaInst *> memoryLocations;
+  SmallVector<AllocaInst *, 4> memoryLocations;
 
   for (auto CI : ToConvert) {
     assert(T);
@@ -730,7 +730,7 @@ template <typename T>
 static void SimplifyMPIQueries(Function &NewF, FunctionAnalysisManager &FAM) {
   DominatorTree &DT = FAM.getResult<DominatorTreeAnalysis>(NewF);
   SmallVector<T *, 4> Todo;
-  SmallVector<T *, 0> OMPBounds;
+  SmallVector<T *, 4> OMPBounds;
   for (auto &BB : NewF) {
     for (auto &I : BB) {
       if (auto CI = dyn_cast<T>(&I)) {
@@ -1133,7 +1133,7 @@ Function *PreProcessCache::preprocessForClone(Function *F,
   }
 
   {
-    std::vector<CallInst *> ItersToErase;
+    SmallVector<CallInst *, 4> ItersToErase;
     for (auto &BB : *NewF) {
       for (auto &I : BB) {
 
@@ -1168,8 +1168,8 @@ Function *PreProcessCache::preprocessForClone(Function *F,
   // Assume allocations do not return null
   {
     TargetLibraryInfo &TLI = FAM.getResult<TargetLibraryAnalysis>(*F);
-    SmallVector<Instruction *, 0> CmpsToErase;
-    SmallVector<BasicBlock *, 0> BranchesToErase;
+    SmallVector<Instruction *, 4> CmpsToErase;
+    SmallVector<BasicBlock *, 4> BranchesToErase;
     for (auto &BB : *NewF) {
       for (auto &I : BB) {
         if (auto IC = dyn_cast<ICmpInst>(&I)) {
@@ -1206,8 +1206,8 @@ Function *PreProcessCache::preprocessForClone(Function *F,
   SimplifyMPIQueries<InvokeInst>(*NewF, FAM);
 
   if (EnzymeLowerGlobals) {
-    std::vector<CallInst *> Calls;
-    std::vector<ReturnInst *> Returns;
+    SmallVector<CallInst *, 4> Calls;
+    SmallVector<ReturnInst *, 4> Returns;
     for (BasicBlock &BB : *NewF) {
       for (Instruction &I : BB) {
         if (auto CI = dyn_cast<CallInst>(&I)) {
@@ -1417,7 +1417,7 @@ Function *PreProcessCache::preprocessForClone(Function *F,
             }
             assert(replaced && "unhandled constantexpr");
 
-            std::vector<std::pair<Instruction *, size_t>> uses;
+            SmallVector<std::pair<Instruction *, size_t>, 4> uses;
             for (Use &U : GV->uses()) {
               if (auto I = dyn_cast<Instruction>(U.getUser())) {
                 if (I->getParent()->getParent() == NewF) {
@@ -1580,7 +1580,7 @@ Function *PreProcessCache::preprocessForClone(Function *F,
   }
 
   {
-    std::vector<Instruction *> ToErase;
+    SmallVector<Instruction *, 4> ToErase;
     for (auto &BB : *NewF) {
       for (auto &I : BB) {
         if (auto MTI = dyn_cast<MemTransferInst>(&I)) {
@@ -1765,9 +1765,9 @@ Function *PreProcessCache::preprocessForClone(Function *F,
 
 FunctionType *getFunctionTypeForClone(
     llvm::FunctionType *FTy, DerivativeMode mode, unsigned width,
-    llvm::Type *additionalArg, const std::vector<DIFFE_TYPE> &constant_args,
+    llvm::Type *additionalArg, llvm::ArrayRef<DIFFE_TYPE> constant_args,
     bool diffeReturnArg, ReturnType returnValue, DIFFE_TYPE returnType) {
-  std::vector<Type *> RetTypes;
+  SmallVector<Type *, 4> RetTypes;
   if (returnValue == ReturnType::ArgsWithReturn ||
       returnValue == ReturnType::Return) {
     if (returnType != DIFFE_TYPE::CONSTANT &&
@@ -1788,7 +1788,7 @@ FunctionType *getFunctionTypeForClone(
       RetTypes.push_back(FTy->getReturnType());
     }
   }
-  std::vector<Type *> ArgTypes;
+  SmallVector<Type *, 4> ArgTypes;
 
   // The user might be deleting arguments to the function by specifying them in
   // the VMap.  If so, we need to not add the arguments to the arg ty vector
@@ -1849,7 +1849,7 @@ FunctionType *getFunctionTypeForClone(
 
 Function *PreProcessCache::CloneFunctionWithReturns(
     DerivativeMode mode, unsigned width, Function *&F,
-    ValueToValueMapTy &ptrInputs, const std::vector<DIFFE_TYPE> &constant_args,
+    ValueToValueMapTy &ptrInputs, ArrayRef<DIFFE_TYPE> constant_args,
     SmallPtrSetImpl<Value *> &constants, SmallPtrSetImpl<Value *> &nonconstant,
     SmallPtrSetImpl<Value *> &returnvals, ReturnType returnValue,
     DIFFE_TYPE returnType, Twine name, ValueToValueMapTy *VMapO,

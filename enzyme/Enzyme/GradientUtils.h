@@ -175,7 +175,7 @@ public:
   SmallPtrSet<const CallInst *, 1> forwardDeallocations;
 
   // Map of primal block to corresponding block(s) in reverse
-  std::map<BasicBlock *, std::vector<BasicBlock *>> reverseBlocks;
+  std::map<BasicBlock *, SmallVector<BasicBlock *, 4>> reverseBlocks;
   // Map of block in reverse to corresponding primal block
   std::map<BasicBlock *, BasicBlock *> reverseBlockToPrimal;
 
@@ -186,7 +186,7 @@ public:
   ValueMap<PHINode *, WeakTrackingVH> fictiousPHIs;
   ValueToValueMapTy originalToNewFn;
   ValueToValueMapTy newToOriginalFn;
-  std::vector<CallInst *> originalCalls;
+  SmallVector<CallInst *, 4> originalCalls;
 
   SmallPtrSet<Instruction *, 4> unnecessaryIntermediates;
 
@@ -998,7 +998,7 @@ public:
     auto found = reverseBlockToPrimal.find(currentBlock);
     assert(found != reverseBlockToPrimal.end());
 
-    std::vector<BasicBlock *> &vec = reverseBlocks[found->second];
+    SmallVector<BasicBlock *, 4> &vec = reverseBlocks[found->second];
     assert(vec.size());
     assert(vec.back() == currentBlock);
 
@@ -1153,9 +1153,7 @@ public:
   Value *cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc, int idx,
                          bool ignoreType = false, bool replace = true);
 
-  const SmallVectorImpl<WeakTrackingVH> &getTapeValues() const {
-    return addedTapeVals;
-  }
+  ArrayRef<WeakTrackingVH> getTapeValues() const { return addedTapeVals; }
 
 public:
   AAResults &OrigAA;
@@ -1257,7 +1255,7 @@ public:
   CreateFromClone(EnzymeLogic &Logic, unsigned width, Function *todiff,
                   TargetLibraryInfo &TLI, TypeAnalysis &TA,
                   FnTypeInfo &oldTypeInfo, DIFFE_TYPE retType,
-                  const std::vector<DIFFE_TYPE> &constant_args, bool returnUsed,
+                  ArrayRef<DIFFE_TYPE> constant_args, bool returnUsed,
                   bool shadowReturnUsed,
                   std::map<AugmentedStruct, int> &returnMapping, bool omp);
 
@@ -1384,7 +1382,7 @@ public:
         erase(v);
       }
     }
-    std::vector<std::pair<PHINode *, Value *>> phis;
+    SmallVector<std::pair<PHINode *, Value *>, 4> phis;
     for (auto pair : fictiousPHIs)
       phis.emplace_back(pair.first, pair.second);
     fictiousPHIs.clear();
@@ -1941,8 +1939,7 @@ public:
   CreateFromClone(EnzymeLogic &Logic, DerivativeMode mode, unsigned width,
                   Function *todiff, TargetLibraryInfo &TLI, TypeAnalysis &TA,
                   FnTypeInfo &oldTypeInfo, DIFFE_TYPE retType,
-                  bool diffeReturnArg,
-                  const std::vector<DIFFE_TYPE> &constant_args,
+                  bool diffeReturnArg, ArrayRef<DIFFE_TYPE> constant_args,
                   ReturnType returnValue, Type *additionalArg, bool omp);
 
 private:
@@ -2004,10 +2001,9 @@ public:
   }
 
   // Returns created select instructions, if any
-  std::vector<SelectInst *> addToDiffe(Value *val, Value *dif,
-                                       IRBuilder<> &BuilderM, Type *addingType,
-                                       ArrayRef<Value *> idxs = {},
-                                       Value *mask = nullptr) {
+  SmallVector<SelectInst *, 4>
+  addToDiffe(Value *val, Value *dif, IRBuilder<> &BuilderM, Type *addingType,
+             ArrayRef<Value *> idxs = {}, Value *mask = nullptr) {
     assert(mode == DerivativeMode::ReverseModeGradient ||
            mode == DerivativeMode::ReverseModeCombined);
 
@@ -2016,7 +2012,7 @@ public:
     if (auto inst = dyn_cast<Instruction>(val))
       assert(inst->getParent()->getParent() == oldFunc);
 
-    std::vector<SelectInst *> addedSelects;
+    SmallVector<SelectInst *, 4> addedSelects;
 
     auto faddForNeg = [&](Value *old, Value *inc) {
       if (auto bi = dyn_cast<BinaryOperator>(inc)) {

@@ -412,8 +412,8 @@ struct CacheAnalysis {
       return {};
     }
 
-    std::vector<Value *> args;
-    std::vector<bool> args_safe;
+    SmallVector<Value *, 4> args;
+    SmallVector<bool, 4> args_safe;
 
     // First, we need to propagate the uncacheable status from the parent
     // function to the callee.
@@ -594,7 +594,7 @@ void calculateUnusedValuesInFunction(
     Function &func, llvm::SmallPtrSetImpl<const Value *> &unnecessaryValues,
     llvm::SmallPtrSetImpl<const Instruction *> &unnecessaryInstructions,
     bool returnValue, DerivativeMode mode, GradientUtils *gutils,
-    TargetLibraryInfo &TLI, const std::vector<DIFFE_TYPE> &constant_args,
+    TargetLibraryInfo &TLI, ArrayRef<DIFFE_TYPE> constant_args,
     const llvm::SmallPtrSetImpl<BasicBlock *> &oldUnreachable) {
   std::map<UsageKey, bool> CacheResults;
   for (auto pair : gutils->knownRecomputeHeuristic) {
@@ -1113,8 +1113,8 @@ static inline llvm::raw_ostream &operator<<(llvm::raw_ostream &os,
 bool legalCombinedForwardReverse(
     CallInst *origop,
     const std::map<ReturnInst *, StoreInst *> &replacedReturns,
-    std::vector<Instruction *> &postCreate,
-    std::vector<Instruction *> &userReplace, GradientUtils *gutils,
+    SmallVectorImpl<Instruction *> &postCreate,
+    SmallVectorImpl<Instruction *> &userReplace, GradientUtils *gutils,
     const SmallPtrSetImpl<const Instruction *> &unnecessaryInstructions,
     const SmallPtrSetImpl<BasicBlock *> &oldUnreachable,
     const bool subretused) {
@@ -1497,7 +1497,7 @@ void restoreCache(
   // One must use this temporary map to first create all the replacements
   // prior to actually replacing to ensure that getSubLimits has the same
   // behavior and unwrap behavior for all replacements.
-  std::vector<std::pair<Value *, Value *>> newIToNextI;
+  SmallVector<std::pair<Value *, Value *>, 4> newIToNextI;
 
   for (const auto &m : mapping) {
     if (m.first.second == CacheType::Self &&
@@ -1526,7 +1526,7 @@ void restoreCache(
     }
   }
 
-  std::map<Value *, std::vector<Instruction *>> unwrapToOrig;
+  std::map<Value *, SmallVector<Instruction *, 4>> unwrapToOrig;
   for (auto pair : gutils->unwrappedLoads)
     unwrapToOrig[pair.second].push_back(const_cast<Instruction *>(pair.first));
   gutils->unwrappedLoads.clear();
@@ -1584,8 +1584,8 @@ void restoreCache(
   // TODO can also insert to topLevel as well [note this requires putting the
   // intrinsic at the correct location]
   for (auto &BB : *gutils->oldFunc) {
-    std::vector<BasicBlock *> unreachables;
-    std::vector<BasicBlock *> reachables;
+    SmallVector<BasicBlock *, 4> unreachables;
+    SmallVector<BasicBlock *, 4> reachables;
     for (auto Succ : successors(&BB)) {
       if (guaranteedUnreachable.find(Succ) != guaranteedUnreachable.end()) {
         unreachables.push_back(Succ);
@@ -1648,9 +1648,9 @@ void restoreCache(
 
 //! return structtype if recursive function
 const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
-    Function *todiff, DIFFE_TYPE retType,
-    const std::vector<DIFFE_TYPE> &constant_args, TypeAnalysis &TA,
-    bool returnUsed, bool shadowReturnUsed, const FnTypeInfo &oldTypeInfo_,
+    Function *todiff, DIFFE_TYPE retType, ArrayRef<DIFFE_TYPE> constant_args,
+    TypeAnalysis &TA, bool returnUsed, bool shadowReturnUsed,
+    const FnTypeInfo &oldTypeInfo_,
     const std::map<Argument *, bool> _uncacheable_args, bool forceAnonymousTape,
     unsigned width, bool AtomicAdd, bool omp) {
   if (returnUsed)
@@ -1663,12 +1663,19 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
   FnTypeInfo oldTypeInfo = preventTypeAnalysisLoops(oldTypeInfo_, todiff);
 
   assert(constant_args.size() == todiff->getFunctionType()->getNumParams());
-  AugmentedCacheKey tup =
-      std::make_tuple(todiff, retType, constant_args,
-                      std::map<Argument *, bool>(_uncacheable_args.begin(),
-                                                 _uncacheable_args.end()),
-                      returnUsed, shadowReturnUsed, oldTypeInfo,
-                      forceAnonymousTape, AtomicAdd, omp, width);
+  AugmentedCacheKey tup = {todiff,
+                           retType,
+                           constant_args,
+                           std::map<Argument *, bool>(_uncacheable_args.begin(),
+                                                      _uncacheable_args.end()),
+                           returnUsed,
+                           shadowReturnUsed,
+                           oldTypeInfo,
+                           forceAnonymousTape,
+                           AtomicAdd,
+                           omp,
+                           width};
+
   auto found = AugmentedCachedFunctions.find(tup);
   if (found != AugmentedCachedFunctions.end()) {
     return found->second;
@@ -1702,7 +1709,9 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
                   "Massaging provided custom augmented forward pass to handle "
                   "constant argumented");
       SmallVector<Type *, 3> dupargs;
-      std::vector<DIFFE_TYPE> next_constant_args(constant_args);
+      SmallVector<DIFFE_TYPE, 4> next_constant_args =
+          SmallVector<DIFFE_TYPE, 4>(constant_args.begin(),
+                                     constant_args.end());
       {
         auto OFT = todiff->getFunctionType();
         for (size_t act_idx = 0; act_idx < constant_args.size(); act_idx++) {
@@ -1969,7 +1978,7 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
 
     // Don't create derivatives for code that results in termination
     if (guaranteedUnreachable.find(&oBB) != guaranteedUnreachable.end()) {
-      std::vector<Instruction *> toerase;
+      SmallVector<Instruction *, 4> toerase;
 
       // For having the prints still exist on bugs, check if indeed unused
       for (auto &I : oBB) {
@@ -2115,10 +2124,11 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
     report_fatal_error("function failed verification (2)");
   }
 
-  std::vector<Type *> RetTypes(
-      cast<StructType>(gutils->newFunc->getReturnType())->elements());
+  StructType *sty = cast<StructType>(gutils->newFunc->getReturnType());
+  SmallVector<Type *, 4> RetTypes(sty->elements().begin(),
+                                  sty->elements().end());
 
-  std::vector<Type *> MallocTypes;
+  SmallVector<Type *, 4> MallocTypes;
 
   for (auto a : gutils->getTapeValues()) {
     MallocTypes.push_back(a->getType());
@@ -2195,7 +2205,7 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
   }
 
   ValueToValueMapTy VMap;
-  std::vector<Type *> ArgTypes;
+  SmallVector<Type *, 4> ArgTypes;
   for (const Argument &I : nf->args()) {
     ArgTypes.push_back(I.getType());
   }
@@ -2460,7 +2470,7 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
       IRBuilder<> B(user);
       auto n = user->getName().str();
       user->setName("");
-      std::vector<Value *> args(user->arg_begin(), user->arg_end());
+      SmallVector<Value *, 4> args(user->arg_begin(), user->arg_end());
       auto rep = B.CreateCall(NewF, args);
       rep->copyIRFlags(user);
       rep->setAttributes(user->getAttributes());
@@ -2468,7 +2478,7 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
       rep->setTailCallKind(user->getTailCallKind());
       rep->setDebugLoc(gutils->getNewFromOriginal(user->getDebugLoc()));
       assert(user);
-      std::vector<ExtractValueInst *> torep;
+      SmallVector<ExtractValueInst *, 4> torep;
       for (auto u : user->users()) {
         assert(u);
         if (auto ei = dyn_cast<ExtractValueInst>(u)) {
@@ -2591,11 +2601,9 @@ void createTerminator(DiffeGradientUtils *gutils, BasicBlock *oBB,
 }
 
 void createInvertedTerminator(DiffeGradientUtils *gutils,
-                              const std::vector<DIFFE_TYPE> &argTypes,
-                              BasicBlock *oBB, AllocaInst *retAlloca,
-                              AllocaInst *dretAlloca, unsigned extraArgs,
-                              DIFFE_TYPE retType) {
-  TypeResults &TR = gutils->TR;
+                              ArrayRef<DIFFE_TYPE> argTypes, BasicBlock *oBB,
+                              AllocaInst *retAlloca, AllocaInst *dretAlloca,
+                              unsigned extraArgs, DIFFE_TYPE retType) {
   LoopContext loopContext;
   BasicBlock *BB = cast<BasicBlock>(gutils->getNewFromOriginal(oBB));
   bool inLoop = gutils->getContext(BB, loopContext);
@@ -2604,7 +2612,7 @@ void createInvertedTerminator(DiffeGradientUtils *gutils,
   IRBuilder<> Builder(BB2);
   Builder.setFastMathFlags(getFast());
 
-  std::map<BasicBlock *, std::vector<BasicBlock *>> targetToPreds;
+  std::map<BasicBlock *, SmallVector<BasicBlock *, 4>> targetToPreds;
   for (auto pred : predecessors(BB)) {
     targetToPreds[gutils->getReverseOrLatchMerge(pred, BB)].emplace_back(pred);
   }
@@ -2663,7 +2671,7 @@ void createInvertedTerminator(DiffeGradientUtils *gutils,
   // PHINodes to replace that will contain true iff the predecessor was given
   // basicblock
   std::map<BasicBlock *, PHINode *> replacePHIs;
-  std::vector<SelectInst *> selects;
+  SmallVector<SelectInst *, 4> selects;
 
   IRBuilder<> phibuilder(BB2);
   bool setphi = false;
@@ -2683,7 +2691,7 @@ void createInvertedTerminator(DiffeGradientUtils *gutils,
               7) /
              8;
 
-    auto PNtype = TR.intType(size, orig, /*necessary*/ false);
+    auto PNtype = gutils->TR.intType(size, orig, /*necessary*/ false);
 
     // TODO remove explicit type check and only use PNtype
     if (PNtype == BaseType::Anything || PNtype == BaseType::Pointer ||
@@ -2705,14 +2713,15 @@ void createInvertedTerminator(DiffeGradientUtils *gutils,
         raw_string_ostream ss(str);
         ss << "Cannot deduce type of phi " << *orig;
         CustomErrorHandler(str.c_str(), wrap(orig), ErrorType::NoType,
-                           &TR.analyzer);
+                           &gutils->TR.analyzer);
       }
       llvm::errs() << *gutils->oldFunc->getParent() << "\n";
       llvm::errs() << *gutils->oldFunc << "\n";
       llvm::errs() << " for orig " << *orig << " saw "
-                   << TR.intType(size, orig, /*necessary*/ false).str() << " - "
+                   << gutils->TR.intType(size, orig, /*necessary*/ false).str()
+                   << " - "
                    << "\n";
-      TR.intType(size, orig, /*necessary*/ true);
+      gutils->TR.intType(size, orig, /*necessary*/ true);
     }
 
     auto prediff = gutils->diffe(orig, Builder);
@@ -2886,7 +2895,7 @@ void createInvertedTerminator(DiffeGradientUtils *gutils,
   }
 
   if (inLoop && BB == loopContext.header) {
-    std::map<BasicBlock *, std::vector<BasicBlock *>> targetToPreds;
+    std::map<BasicBlock *, SmallVector<BasicBlock *, 4>> targetToPreds;
     for (auto pred : predecessors(BB)) {
       if (pred == loopContext.preheader)
         continue;
@@ -3569,7 +3578,7 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
     // Don't create derivatives for code that results in termination
     if (guaranteedUnreachable.find(&oBB) != guaranteedUnreachable.end()) {
       auto newBB = cast<BasicBlock>(gutils->getNewFromOriginal(&oBB));
-      std::vector<BasicBlock *> toRemove;
+      SmallVector<BasicBlock *, 4> toRemove;
       if (auto II = dyn_cast<InvokeInst>(oBB.getTerminator())) {
         toRemove.push_back(
             cast<BasicBlock>(gutils->getNewFromOriginal(II->getNormalDest())));
@@ -3763,10 +3772,9 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
 }
 
 Function *EnzymeLogic::CreateForwardDiff(
-    Function *todiff, DIFFE_TYPE retType,
-    const std::vector<DIFFE_TYPE> &constant_args, TypeAnalysis &TA,
-    bool returnUsed, DerivativeMode mode, bool freeMemory, unsigned width,
-    llvm::Type *additionalArg, const FnTypeInfo &oldTypeInfo_,
+    Function *todiff, DIFFE_TYPE retType, ArrayRef<DIFFE_TYPE> constant_args,
+    TypeAnalysis &TA, bool returnUsed, DerivativeMode mode, bool freeMemory,
+    unsigned width, llvm::Type *additionalArg, const FnTypeInfo &oldTypeInfo_,
     const std::map<Argument *, bool> _uncacheable_args,
     const AugmentedReturn *augmenteddata, bool omp) {
   assert(retType != DIFFE_TYPE::OUT_DIFF);
@@ -3779,11 +3787,17 @@ Function *EnzymeLogic::CreateForwardDiff(
   if (retType != DIFFE_TYPE::CONSTANT)
     assert(!todiff->getReturnType()->isVoidTy());
 
-  ForwardCacheKey tup =
-      std::make_tuple(todiff, retType, constant_args,
-                      std::map<Argument *, bool>(_uncacheable_args.begin(),
-                                                 _uncacheable_args.end()),
-                      returnUsed, mode, width, additionalArg, oldTypeInfo);
+  ForwardCacheKey tup = {todiff,
+                         retType,
+                         constant_args,
+                         std::map<Argument *, bool>(_uncacheable_args.begin(),
+                                                    _uncacheable_args.end()),
+                         returnUsed,
+                         mode,
+                         width,
+                         additionalArg,
+                         oldTypeInfo};
+
   if (ForwardCachedFunctions.find(tup) != ForwardCachedFunctions.end()) {
     return ForwardCachedFunctions.find(tup)->second;
   }
@@ -3849,7 +3863,7 @@ Function *EnzymeLogic::CreateForwardDiff(
 
     SmallVector<Type *, 2> curTypes;
     bool legal = true;
-    std::vector<DIFFE_TYPE> nextConstantArgs;
+    SmallVector<DIFFE_TYPE, 4> nextConstantArgs;
     for (auto tup : llvm::zip(todiff->args(), constant_args)) {
       auto &arg = std::get<0>(tup);
       curTypes.push_back(arg.getType());
@@ -4126,7 +4140,7 @@ Function *EnzymeLogic::CreateForwardDiff(
     // Don't create derivatives for code that results in termination
     if (guaranteedUnreachable.find(&oBB) != guaranteedUnreachable.end()) {
       auto newBB = cast<BasicBlock>(gutils->getNewFromOriginal(&oBB));
-      std::vector<BasicBlock *> toRemove;
+      SmallVector<BasicBlock *, 4> toRemove;
       if (auto II = dyn_cast<InvokeInst>(oBB.getTerminator())) {
         toRemove.push_back(
             cast<BasicBlock>(gutils->getNewFromOriginal(II->getNormalDest())));
@@ -4141,7 +4155,7 @@ Function *EnzymeLogic::CreateForwardDiff(
         sucBB->removePredecessor(newBB);
       }
 
-      std::vector<Instruction *> toerase;
+      SmallVector<Instruction *, 4> toerase;
       for (auto &I : oBB) {
         toerase.push_back(&I);
       }

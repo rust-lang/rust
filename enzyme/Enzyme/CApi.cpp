@@ -184,9 +184,8 @@ EnzymeTypeAnalysisRef CreateTypeAnalysis(EnzymeLogicRef Log,
   for (size_t i = 0; i < numRules; i++) {
     CustomRuleType rule = customRules[i];
     TA->CustomRules[customRuleNames[i]] =
-        [=](int direction, TypeTree &returnTree,
-            std::vector<TypeTree> &argTrees,
-            std::vector<std::set<int64_t>> &knownValues,
+        [=](int direction, TypeTree &returnTree, ArrayRef<TypeTree> argTrees,
+            ArrayRef<std::set<int64_t>> knownValues,
             CallInst *call) -> uint8_t {
       CTypeTreeRef creturnTree = (CTypeTreeRef)(&returnTree);
       CTypeTreeRef *cargs = new CTypeTreeRef[argTrees.size()];
@@ -403,9 +402,9 @@ LLVMValueRef EnzymeCreateForwardDiff(
     uint8_t freeMemory, unsigned width, LLVMTypeRef additionalArg,
     CFnTypeInfo typeInfo, uint8_t *_uncacheable_args,
     size_t uncacheable_args_size, EnzymeAugmentedReturnPtr augmented) {
-  std::vector<DIFFE_TYPE> nconstant_args((DIFFE_TYPE *)constant_args,
-                                         (DIFFE_TYPE *)constant_args +
-                                             constant_args_size);
+  SmallVector<DIFFE_TYPE, 4> nconstant_args((DIFFE_TYPE *)constant_args,
+                                            (DIFFE_TYPE *)constant_args +
+                                                constant_args_size);
   std::map<llvm::Argument *, bool> uncacheable_args;
   size_t argnum = 0;
   for (auto &arg : cast<Function>(unwrap(todiff))->args()) {
@@ -462,9 +461,9 @@ EnzymeAugmentedReturnPtr EnzymeCreateAugmentedPrimal(
     size_t uncacheable_args_size, uint8_t forceAnonymousTape, unsigned width,
     uint8_t AtomicAdd) {
 
-  std::vector<DIFFE_TYPE> nconstant_args((DIFFE_TYPE *)constant_args,
-                                         (DIFFE_TYPE *)constant_args +
-                                             constant_args_size);
+  SmallVector<DIFFE_TYPE, 4> nconstant_args((DIFFE_TYPE *)constant_args,
+                                            (DIFFE_TYPE *)constant_args +
+                                                constant_args_size);
   std::map<llvm::Argument *, bool> uncacheable_args;
   size_t argnum = 0;
   for (auto &arg : cast<Function>(unwrap(todiff))->args()) {

@@ -994,7 +994,7 @@ ScalarEvolution::ExitLimit MustExitScalarEvolution::howManyLessThans(
         if (!hasFlags(Flags, SCEV::FlagNW) && canAssumeNoSelfWrap(AR)) {
           Flags = setFlags(Flags, SCEV::FlagNW);
 
-          SmallVector<const SCEV *> Operands{AR->operands()};
+          SmallVector<const SCEV *, 4> Operands{AR->operands()};
           Flags = StrengthenNoWrapFlags(this, scAddRecExpr, Operands, Flags);
 
           setNoWrapFlags(const_cast<SCEVAddRecExpr *>(AR), Flags);
