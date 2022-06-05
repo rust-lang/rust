@@ -1,4 +1,4 @@
-// run-pass
+// check-pass
 // compile-flags: -W let_underscore_drop
 
 struct NontrivialDrop;
