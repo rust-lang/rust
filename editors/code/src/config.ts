@@ -60,14 +60,7 @@ export class Config {
 
         if (!requiresReloadOpt) return;
 
-        const userResponse = await vscode.window.showInformationMessage(
-            `Changing "${requiresReloadOpt}" requires a reload`,
-            "Reload now"
-        );
-
-        if (userResponse === "Reload now") {
-            await vscode.commands.executeCommand("rust-analyzer.reload");
-        }
+        await vscode.commands.executeCommand("rust-analyzer.reload");
     }
 
     // We don't do runtime config validation here for simplicity. More on stackoverflow:
