@@ -1,11 +1,12 @@
 // run-rustfix
 #![feature(label_break_value)]
 fn main() {
-    // FIXME(waffle): add this back
-    // #[allow(unused_labels)]
-    // 'label: 1 + 1; // ERROR expected `while`, `for`, `loop` or `{` after a label
+    let _ = 'label: 1 + 1; //~ ERROR expected `while`, `for`, `loop` or `{` after a label
 
+    'label: match () { () => {}, }; //~ ERROR expected `while`, `for`, `loop` or `{` after a label
     'label: match () { () => break 'label, }; //~ ERROR expected `while`, `for`, `loop` or `{` after a label
+    #[allow(unused_labels)]
+    'label: match () { () => 'lp: loop { break 'lp 0 }, }; //~ ERROR expected `while`, `for`, `loop` or `{` after a label
 
     let x = 1;
     let _i = 'label: match x { //~ ERROR expected `while`, `for`, `loop` or `{` after a label

@@ -1557,6 +1557,8 @@ impl<'a> Parser<'a> {
 
             // Continue as an expression in an effort to recover on `'label: non_block_expr`.
             let expr = self.parse_expr().map(|expr| {
+                let span = expr.span;
+
                 let found_labeled_breaks = {
                     struct FindLabeledBreaksVisitor(bool);
 
@@ -1573,13 +1575,22 @@ impl<'a> Parser<'a> {
                     vis.0
                 };
 
-                // Suggestion involves adding a (as of time of writing this, unstable) labeled block
-                // so if the label is not used, just return the unmodified expression
+                // Suggestion involves adding a (as of time of writing this, unstable) labeled block.
+                //
+                // If there are no breaks that may use this label, suggest removing the label and
+                // recover to the unmodified expression.
                 if !found_labeled_breaks {
+                    let msg = "consider removing the label";
+                    err.span_suggestion_verbose(
+                        lo.until(span),
+                        msg,
+                        "",
+                        Applicability::MachineApplicable,
+                    );
+
                     return expr;
                 }
 
-                let span = expr.span;
                 let sugg_msg = "consider enclosing expression in a block";
                 let suggestions = vec![
                     (span.shrink_to_lo(), "{".to_owned()),
