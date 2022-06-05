@@ -30,7 +30,18 @@
 //! used to make sure a value in a thread's view is not overwritten by a write that occured earlier than the one in the existing view.
 //! In our implementation, this is detected using read information attached to store elements, as there is no data strucutre representing reads.
 //!
-//! Safe/sound Rust allows for more operations on atomic locations than the C++20 atomic API was intended to allow, such as non-atomically accessing
+//! The C++ memory model is built around the notion of an 'atomic object', so it would be natural
+//! to attach store buffers to atomic objects. However, Rust follows LLVM in that it only has
+//! 'atomic accesses'. Therefore Miri cannot know when and where atomic 'objects' are being
+//! created or destroyed, to manage its store buffers. Instead, we hence lazily create an
+//! atomic object on the first atomic access to a given region, and we destroy that object
+//! on the next non-atomic or imperfectly overlapping atomic access to that region.
+//! These lazy (de)allocations happen in memory_accessed() on non-atomic accesses, and
+//! get_or_create_store_buffer() on atomic accesses. This mostly works well, but it does
+//! lead to some issues (https://github.com/rust-lang/miri/issues/2164).
+//!
+//! One consequence of this difference is that safe/sound Rust allows for more operations on atomic locations
+//! than the C++20 atomic API was intended to allow, such as non-atomically accessing
 //! a previously atomically accessed location, or accessing previously atomically accessed locations with a differently sized operation
 //! (such as accessing the top 16 bits of an AtomicU32). These senarios are generally undiscussed in formalisations of C++ memory model.
 //! In Rust, these operations can only be done through a `&mut AtomicFoo` reference or one derived from it, therefore these operations
@@ -156,8 +167,8 @@ impl StoreBufferAlloc {
         }
     }
 
-    /// Gets a store buffer associated with an atomic object in this allocation
-    /// Or creates one with the specified initial value
+    /// Gets a store buffer associated with an atomic object in this allocation,
+    /// or creates one with the specified initial value if no atomic object exists yet.
     fn get_or_create_store_buffer<'tcx>(
         &self,
         range: AllocRange,
