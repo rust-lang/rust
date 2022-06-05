@@ -746,86 +746,117 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
             self.diagnostic_metadata.current_function = Some((fn_kind, sp));
         }
         debug!("(resolving function) entering function");
-        let declaration = fn_kind.decl();
 
         // Create a value rib for the function.
         self.with_rib(ValueNS, rib_kind, |this| {
             // Create a label rib for the function.
             this.with_label_rib(FnItemRibKind, |this| {
-                let async_node_id = fn_kind.header().and_then(|h| h.asyncness.opt_return_id());
+                match fn_kind {
+                    FnKind::Fn(_, _, sig, _, generics, body) => {
+                        this.visit_generics(generics);
 
-                if let FnKind::Fn(_, _, _, _, generics, _) = fn_kind {
-                    this.visit_generics(generics);
-                }
+                        let declaration = &sig.decl;
+                        let async_node_id = sig.header.asyncness.opt_return_id();
 
-                if let Some(async_node_id) = async_node_id {
-                    // In `async fn`, argument-position elided lifetimes
-                    // must be transformed into fresh generic parameters so that
-                    // they can be applied to the opaque `impl Trait` return type.
-                    this.with_lifetime_rib(
-                        LifetimeRibKind::AnonymousCreateParameter(fn_id),
-                        |this| {
+                        // Argument-position elided lifetimes must be transformed into fresh
+                        // generic parameters.  This is especially useful for `async fn`, where
+                        // these fresh generic parameters can be applied to the opaque `impl Trait`
+                        // return type.
+                        this.with_lifetime_rib(
+                            if async_node_id.is_some() {
+                                LifetimeRibKind::AnonymousCreateParameter(fn_id)
+                            } else {
+                                LifetimeRibKind::AnonymousPassThrough(fn_id, false)
+                            },
                             // Add each argument to the rib.
-                            this.resolve_params(&declaration.inputs)
-                        },
-                    );
-
-                    // Construct the list of in-scope lifetime parameters for async lowering.
-                    // We include all lifetime parameters, either named or "Fresh".
-                    // The order of those parameters does not matter, as long as it is
-                    // deterministic.
-                    let mut extra_lifetime_params =
-                        this.r.extra_lifetime_params_map.get(&fn_id).cloned().unwrap_or_default();
-                    for rib in this.lifetime_ribs.iter().rev() {
-                        extra_lifetime_params.extend(
-                            rib.bindings
-                                .iter()
-                                .map(|(&ident, &(node_id, res))| (ident, node_id, res)),
+                            |this| this.resolve_params(&declaration.inputs),
                         );
-                        match rib.kind {
-                            LifetimeRibKind::Item => break,
-                            LifetimeRibKind::AnonymousCreateParameter(id) => {
-                                if let Some(earlier_fresh) =
-                                    this.r.extra_lifetime_params_map.get(&id)
-                                {
-                                    extra_lifetime_params.extend(earlier_fresh);
+
+                        // Construct the list of in-scope lifetime parameters for async lowering.
+                        // We include all lifetime parameters, either named or "Fresh".
+                        // The order of those parameters does not matter, as long as it is
+                        // deterministic.
+                        if let Some(async_node_id) = async_node_id {
+                            let mut extra_lifetime_params = this
+                                .r
+                                .extra_lifetime_params_map
+                                .get(&fn_id)
+                                .cloned()
+                                .unwrap_or_default();
+                            for rib in this.lifetime_ribs.iter().rev() {
+                                extra_lifetime_params.extend(
+                                    rib.bindings
+                                        .iter()
+                                        .map(|(&ident, &(node_id, res))| (ident, node_id, res)),
+                                );
+                                match rib.kind {
+                                    LifetimeRibKind::Item => break,
+                                    LifetimeRibKind::AnonymousCreateParameter(binder) => {
+                                        if let Some(earlier_fresh) =
+                                            this.r.extra_lifetime_params_map.get(&binder)
+                                        {
+                                            extra_lifetime_params.extend(earlier_fresh);
+                                        }
+                                    }
+                                    _ => {}
                                 }
                             }
-                            _ => {}
+                            this.r
+                                .extra_lifetime_params_map
+                                .insert(async_node_id, extra_lifetime_params);
+                        }
+
+                        this.with_lifetime_rib(
+                            LifetimeRibKind::AnonymousPassThrough(
+                                // For async fn, the return type appears inside a custom
+                                // `impl Future` RPIT, so we override the binder's id.
+                                async_node_id.unwrap_or(fn_id),
+                                true,
+                            ),
+                            |this| visit::walk_fn_ret_ty(this, &declaration.output),
+                        );
+
+                        if let Some(body) = body {
+                            // Ignore errors in function bodies if this is rustdoc
+                            // Be sure not to set this until the function signature has been resolved.
+                            let previous_state = replace(&mut this.in_func_body, true);
+                            // Resolve the function body, potentially inside the body of an async closure
+                            this.with_lifetime_rib(
+                                LifetimeRibKind::AnonymousPassThrough(fn_id, false),
+                                |this| this.visit_block(body),
+                            );
+
+                            debug!("(resolving function) leaving function");
+                            this.in_func_body = previous_state;
                         }
                     }
-                    this.r.extra_lifetime_params_map.insert(async_node_id, extra_lifetime_params);
+                    FnKind::Closure(declaration, body) => {
+                        // Do not attempt to create generic lifetime parameters.
+                        // FIXME: Revisit this decision once `for<>` bounds on closures become a
+                        // thing.
+                        this.with_lifetime_rib(
+                            LifetimeRibKind::AnonymousPassThrough(fn_id, false),
+                            // Add each argument to the rib.
+                            |this| this.resolve_params(&declaration.inputs),
+                        );
+                        this.with_lifetime_rib(
+                            LifetimeRibKind::AnonymousPassThrough(fn_id, true),
+                            |this| visit::walk_fn_ret_ty(this, &declaration.output),
+                        );
 
-                    this.with_lifetime_rib(
-                        LifetimeRibKind::AnonymousPassThrough(async_node_id, true),
-                        |this| visit::walk_fn_ret_ty(this, &declaration.output),
-                    );
-                } else {
-                    // Add each argument to the rib.
-                    this.with_lifetime_rib(
-                        LifetimeRibKind::AnonymousPassThrough(fn_id, false),
-                        |this| this.resolve_params(&declaration.inputs),
-                    );
-                    this.with_lifetime_rib(
-                        LifetimeRibKind::AnonymousPassThrough(fn_id, true),
-                        |this| visit::walk_fn_ret_ty(this, &declaration.output),
-                    );
-                };
+                        // Ignore errors in function bodies if this is rustdoc
+                        // Be sure not to set this until the function signature has been resolved.
+                        let previous_state = replace(&mut this.in_func_body, true);
+                        // Resolve the function body, potentially inside the body of an async closure
+                        this.with_lifetime_rib(
+                            LifetimeRibKind::AnonymousPassThrough(fn_id, false),
+                            |this| this.visit_expr(body),
+                        );
 
-                // Ignore errors in function bodies if this is rustdoc
-                // Be sure not to set this until the function signature has been resolved.
-                let previous_state = replace(&mut this.in_func_body, true);
-                // Resolve the function body, potentially inside the body of an async closure
-                this.with_lifetime_rib(
-                    LifetimeRibKind::AnonymousPassThrough(fn_id, false),
-                    |this| match fn_kind {
-                        FnKind::Fn(.., body) => walk_list!(this, visit_block, body),
-                        FnKind::Closure(_, body) => this.visit_expr(body),
-                    },
-                );
-
-                debug!("(resolving function) leaving function");
-                this.in_func_body = previous_state;
+                        debug!("(resolving function) leaving function");
+                        this.in_func_body = previous_state;
+                    }
+                }
             })
         });
         self.diagnostic_metadata.current_function = previous_value;
