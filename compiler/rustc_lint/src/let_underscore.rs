@@ -129,7 +129,11 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
         }
         if let Some(init) = local.init {
             let init_ty = cx.typeck_results().expr_ty(init);
-            let needs_drop = init_ty.needs_drop(cx.tcx, cx.param_env);
+            // If the type has a trivial Drop implementation, then it doesn't
+            // matter that we drop the value immediately.
+            if !init_ty.needs_drop(cx.tcx, cx.param_env) {
+                return;
+            }
             let is_sync_lock = init_ty.walk().any(|inner| match inner.unpack() {
                 GenericArgKind::Type(inner_ty) => {
                     SYNC_GUARD_PATHS.iter().any(|guard_path| match inner_ty.kind() {
@@ -164,7 +168,7 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
                         "non-binding let on a expression marked `must_use`",
                     );
                 })
-            } else if needs_drop {
+            } else {
                 cx.struct_span_lint(LET_UNDERSCORE_DROP, local.span, |lint| {
                     build_and_emit_lint(
                         lint,
