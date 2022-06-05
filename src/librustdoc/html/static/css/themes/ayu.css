@@ -281,9 +281,13 @@ details.undocumented > summary::before {
 	color: #000;
 }
 
+/* Created this empty rule to satisfy the theme checks. */
+.stab.empty-impl {}
+
 .stab.unstable,
 .stab.deprecated,
-.stab.portability {
+.stab.portability,
+.stab.empty-impl {
 	color: #c5c5c5;
 	background: #314559 !important;
 	border-style: none !important;
