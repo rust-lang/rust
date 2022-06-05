@@ -30,14 +30,14 @@ impl MaybeLiveLocals {
 }
 
 impl<'tcx> AnalysisDomain<'tcx> for MaybeLiveLocals {
-    type Domain = BitSet<Local>;
+    type Domain = ChunkedBitSet<Local>;
     type Direction = Backward;
 
     const NAME: &'static str = "liveness";
 
     fn bottom_value(&self, body: &mir::Body<'tcx>) -> Self::Domain {
         // bottom = not live
-        BitSet::new_empty(body.local_decls.len())
+        ChunkedBitSet::new_empty(body.local_decls.len())
     }
 
     fn initialize_start_block(&self, _: &mir::Body<'tcx>, _: &mut Self::Domain) {
