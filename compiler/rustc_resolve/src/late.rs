@@ -238,7 +238,7 @@ enum LifetimeRibKind {
     /// `body_id` is an anonymous constant and `lifetime_ref` is non-static.
     AnonConst,
 
-    /// Create a new anonymous region parameter and reference it.
+    /// Create a new anonymous lifetime parameter and reference it.
     ///
     /// If `report_in_path`, report an error when encountering lifetime elision in a path:
     /// ```ignore
@@ -1279,13 +1279,13 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         for i in &mut indices {
             let rib = &self.lifetime_ribs[i];
             let normalized_ident = ident.normalize_to_macros_2_0();
-            if let Some(&(_, region)) = rib.bindings.get(&normalized_ident) {
-                self.record_lifetime_res(lifetime.id, region);
+            if let Some(&(_, res)) = rib.bindings.get(&normalized_ident) {
+                self.record_lifetime_res(lifetime.id, res);
 
-                if let LifetimeRes::Param { param, .. } = region {
+                if let LifetimeRes::Param { param, .. } = res {
                     match self.lifetime_uses.entry(param) {
                         Entry::Vacant(v) => {
-                            debug!("First use of {:?} at {:?}", region, ident.span);
+                            debug!("First use of {:?} at {:?}", res, ident.span);
                             let use_set = self
                                 .lifetime_ribs
                                 .iter()
@@ -1310,7 +1310,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                             v.insert(use_set);
                         }
                         Entry::Occupied(mut o) => {
-                            debug!("Many uses of {:?} at {:?}", region, ident.span);
+                            debug!("Many uses of {:?} at {:?}", res, ident.span);
                             *o.get_mut() = LifetimeUseSet::Many;
                         }
                     }
@@ -1433,13 +1433,13 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         );
         debug!(?def_id);
 
-        let region = LifetimeRes::Fresh { param: def_id, binder: item_node_id };
+        let res = LifetimeRes::Fresh { param: def_id, binder: item_node_id };
         self.r.extra_lifetime_params_map.entry(item_node_id).or_insert_with(Vec::new).push((
             ident,
             def_node_id,
-            region,
+            res,
         ));
-        region
+        res
     }
 
     #[tracing::instrument(level = "debug", skip(self))]
