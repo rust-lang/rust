@@ -66,7 +66,7 @@ export class Config {
         );
 
         if (userResponse === "Reload now") {
-            await vscode.commands.executeCommand("workbench.action.reloadWindow");
+            await vscode.commands.executeCommand("rust-analyzer.reload");
         }
     }
 
