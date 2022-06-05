@@ -1149,9 +1149,8 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust
-    /// #![feature(box_syntax)]
     /// fn main() {
-    ///     let a = (box [1, 2, 3]).len();
+    ///     let a = (Box::new([1, 2, 3])).len();
     /// }
     /// ```
     ///
@@ -1159,8 +1158,8 @@ declare_lint! {
     ///
     /// ### Explanation
     ///
-    /// When a `box` expression is immediately coerced to a reference, then
-    /// the allocation is unnecessary, and a reference (using `&` or `&mut`)
+    /// When a `Box::new()` expression is immediately coerced to a reference,
+    /// then the allocation is unnecessary, and a reference (using `&` or `&mut`)
     /// should be used instead to avoid the allocation.
     pub(super) UNUSED_ALLOCATION,
     Warn,
@@ -1171,14 +1170,35 @@ declare_lint_pass!(UnusedAllocation => [UNUSED_ALLOCATION]);
 
 impl<'tcx> LateLintPass<'tcx> for UnusedAllocation {
     fn check_expr(&mut self, cx: &LateContext<'_>, e: &hir::Expr<'_>) {
-        match e.kind {
-            hir::ExprKind::Box(_) => {}
+        let span = match e.kind {
+            hir::ExprKind::Box(_) => {
+                // Ideally, we'd underline the `box` part of the expression here,
+                // but at this point we have lost the span of the `box` keyword.
+                // Constructing a span from the inner and the entire expression's
+                // span won't work in many cases, so we just return the entire
+                // span of the `box foo`.
+                e.span
+            }
+            hir::ExprKind::Call(ref callee, _) => {
+                // Look for Box::new(foo)
+                if let hir::ExprKind::Path(ref qpath) = callee.kind &&
+                    // `Res::Local` indicates a closure
+                    let Res::Def(_, def_id) = cx.qpath_res(qpath, callee.hir_id) &&
+                    let Some(owned_box_new_def_id) = cx.tcx.lang_items().owned_box_new() &&
+                    def_id == owned_box_new_def_id
+                {
+                    // We have a Box::new() call here
+                    callee.span
+                } else {
+                    return
+                }
+            }
             _ => return,
-        }
+        };
 
         for adj in cx.typeck_results().expr_adjustments(e) {
             if let adjustment::Adjust::Borrow(adjustment::AutoBorrow::Ref(_, m)) = adj.kind {
-                cx.struct_span_lint(UNUSED_ALLOCATION, e.span, |lint| {
+                cx.struct_span_lint(UNUSED_ALLOCATION, span, |lint| {
                     lint.build(match m {
                         adjustment::AutoBorrowMutability::Not => fluent::lint::unused_allocation,
                         adjustment::AutoBorrowMutability::Mut { .. } => {
