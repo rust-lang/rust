@@ -138,7 +138,7 @@ impl StoreBufferAlloc {
     /// before without data race, we can determine that the non-atomic access fully happens
     /// after all the prior atomic accesses so the location no longer needs to exhibit
     /// any weak memory behaviours until further atomic accesses.
-    pub fn memory_accessed<'tcx>(&self, range: AllocRange, global: &GlobalState) {
+    pub fn memory_accessed(&self, range: AllocRange, global: &GlobalState) {
         if !global.ongoing_action_data_race_free() {
             let mut buffers = self.store_buffers.borrow_mut();
             let access_type = buffers.access_type(range);

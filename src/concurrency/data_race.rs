@@ -939,11 +939,7 @@ impl VClockAlloc {
 
     /// Detect racing atomic read and writes (not data races)
     /// on every byte of the current access range
-    pub(super) fn race_free_with_atomic<'tcx>(
-        &self,
-        range: AllocRange,
-        global: &GlobalState,
-    ) -> bool {
+    pub(super) fn race_free_with_atomic(&self, range: AllocRange, global: &GlobalState) -> bool {
         if global.race_detecting() {
             let (_, clocks) = global.current_thread_state();
             let alloc_ranges = self.alloc_ranges.borrow();
