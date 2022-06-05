@@ -549,7 +549,6 @@ macro_rules! write {
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "writeln_macro")]
-#[allow_internal_unstable(format_args_ln)]
 macro_rules! writeln {
     ($dst:expr $(,)?) => {
         $crate::write!($dst, "\n")
@@ -896,12 +895,7 @@ pub(crate) mod builtin {
     }
 
     /// Same as [`format_args`], but adds a newline in the end.
-    #[unstable(
-        feature = "format_args_ln",
-        issue = "none",
-        reason = "`format_args_ln` is only for internal \
-                  language use and is subject to change"
-    )]
+    #[stable(feature = "format_args_ln", since = "1.63.0")]
     #[allow_internal_unstable(fmt_internals)]
     #[cfg_attr(bootstrap, rustc_builtin_macro(format_args_nl))]
     #[cfg_attr(not(bootstrap), rustc_builtin_macro)]

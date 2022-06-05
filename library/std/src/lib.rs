@@ -318,7 +318,6 @@
 #![feature(core_panic)]
 #![feature(custom_test_frameworks)]
 #![feature(edition_panic)]
-#![feature(format_args_ln)]
 #![feature(log_syntax)]
 #![feature(once_cell)]
 #![feature(saturating_int_impl)]

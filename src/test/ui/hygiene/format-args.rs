@@ -1,7 +1,6 @@
 // check-pass
 
 #![allow(non_upper_case_globals)]
-#![feature(format_args_ln)]
 
 static arg0: () = ();
 
