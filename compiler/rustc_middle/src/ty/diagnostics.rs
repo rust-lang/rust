@@ -1,9 +1,10 @@
 //! Diagnostics related methods for `Ty`.
 
-use crate::ty::subst::{GenericArg, GenericArgKind};
+use std::ops::ControlFlow;
+
 use crate::ty::{
-    ConstKind, DefIdTree, ExistentialPredicate, ExistentialProjection, ExistentialTraitRef,
-    InferTy, ProjectionTy, Term, Ty, TyCtxt, TypeAndMut,
+    fold::TypeFoldable, Const, ConstKind, DefIdTree, ExistentialPredicate, InferTy, Ty, TyCtxt,
+    TypeVisitor,
 };
 
 use rustc_data_structures::fx::FxHashMap;
@@ -75,72 +76,7 @@ impl<'tcx> Ty<'tcx> {
 
     /// Whether the type can be safely suggested during error recovery.
     pub fn is_suggestable(self, tcx: TyCtxt<'tcx>) -> bool {
-        fn generic_arg_is_suggestible<'tcx>(arg: GenericArg<'tcx>, tcx: TyCtxt<'tcx>) -> bool {
-            match arg.unpack() {
-                GenericArgKind::Type(ty) => ty.is_suggestable(tcx),
-                GenericArgKind::Const(c) => const_is_suggestable(c.val()),
-                _ => true,
-            }
-        }
-
-        fn const_is_suggestable(kind: ConstKind<'_>) -> bool {
-            match kind {
-                ConstKind::Infer(..)
-                | ConstKind::Bound(..)
-                | ConstKind::Placeholder(..)
-                | ConstKind::Error(..) => false,
-                _ => true,
-            }
-        }
-
-        // FIXME(compiler-errors): Some types are still not good to suggest,
-        // specifically references with lifetimes within the function. Not
-        //sure we have enough information to resolve whether a region is
-        // temporary, so I'll leave this as a fixme.
-
-        match self.kind() {
-            FnDef(..)
-            | Closure(..)
-            | Infer(..)
-            | Generator(..)
-            | GeneratorWitness(..)
-            | Bound(_, _)
-            | Placeholder(_)
-            | Error(_) => false,
-            Opaque(did, substs) => {
-                let parent = tcx.parent(*did);
-                if let hir::def::DefKind::TyAlias | hir::def::DefKind::AssocTy = tcx.def_kind(parent)
-                    && let Opaque(parent_did, _) = tcx.type_of(parent).kind()
-                    && parent_did == did
-                {
-                    substs.iter().all(|a| generic_arg_is_suggestible(a, tcx))
-                } else {
-                    false
-                }
-            }
-            Dynamic(dty, _) => dty.iter().all(|pred| match pred.skip_binder() {
-                ExistentialPredicate::Trait(ExistentialTraitRef { substs, .. }) => {
-                    substs.iter().all(|a| generic_arg_is_suggestible(a, tcx))
-                }
-                ExistentialPredicate::Projection(ExistentialProjection {
-                    substs, term, ..
-                }) => {
-                    let term_is_suggestable = match term {
-                        Term::Ty(ty) => ty.is_suggestable(tcx),
-                        Term::Const(c) => const_is_suggestable(c.val()),
-                    };
-                    term_is_suggestable && substs.iter().all(|a| generic_arg_is_suggestible(a, tcx))
-                }
-                _ => true,
-            }),
-            Projection(ProjectionTy { substs: args, .. }) | Adt(_, args) => {
-                args.iter().all(|a| generic_arg_is_suggestible(a, tcx))
-            }
-            Tuple(args) => args.iter().all(|ty| ty.is_suggestable(tcx)),
-            Slice(ty) | RawPtr(TypeAndMut { ty, .. }) | Ref(_, ty, _) => ty.is_suggestable(tcx),
-            Array(ty, c) => ty.is_suggestable(tcx) && const_is_suggestable(c.val()),
-            _ => true,
-        }
+        self.visit_with(&mut IsSuggestableVisitor { tcx }).is_continue()
     }
 }
 
@@ -461,5 +397,69 @@ impl<'v> hir::intravisit::Visitor<'v> for StaticLifetimeVisitor<'v> {
         {
             self.0.push(lt.span);
         }
+    }
+}
+
+pub struct IsSuggestableVisitor<'tcx> {
+    tcx: TyCtxt<'tcx>,
+}
+
+impl<'tcx> TypeVisitor<'tcx> for IsSuggestableVisitor<'tcx> {
+    type BreakTy = ();
+
+    fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+        match t.kind() {
+            FnDef(..)
+            | Closure(..)
+            | Infer(..)
+            | Generator(..)
+            | GeneratorWitness(..)
+            | Bound(_, _)
+            | Placeholder(_)
+            | Error(_) => {
+                return ControlFlow::Break(());
+            }
+
+            Opaque(did, _) => {
+                let parent = self.tcx.parent(*did);
+                if let hir::def::DefKind::TyAlias | hir::def::DefKind::AssocTy = self.tcx.def_kind(parent)
+                    && let Opaque(parent_did, _) = self.tcx.type_of(parent).kind()
+                    && parent_did == did
+                {
+                    // Okay
+                } else {
+                    return ControlFlow::Break(());
+                }
+            }
+
+            Dynamic(dty, _) => {
+                for pred in *dty {
+                    match pred.skip_binder() {
+                        ExistentialPredicate::Trait(_) | ExistentialPredicate::Projection(_) => {
+                            // Okay
+                        }
+                        _ => return ControlFlow::Break(()),
+                    }
+                }
+            }
+
+            _ => {}
+        }
+
+        t.super_visit_with(self)
+    }
+
+    fn visit_const(&mut self, c: Const<'tcx>) -> ControlFlow<Self::BreakTy> {
+        match c.val() {
+            ConstKind::Infer(..)
+            | ConstKind::Bound(..)
+            | ConstKind::Placeholder(..)
+            | ConstKind::Error(..) => {
+                return ControlFlow::Break(());
+            }
+            _ => {}
+        }
+
+        c.super_visit_with(self)
     }
 }
