@@ -21,12 +21,12 @@ fn for_loops_over_fallibles() {
     }
 
     // check over a `Result`
-    for x in result.into_iter() {
+    for x in result.iter_mut() {
         println!("{}", x);
     }
 
     // check over a `Result`
-    for x in result.iter_mut() {
+    for x in result.into_iter() {
         println!("{}", x);
     }
 
