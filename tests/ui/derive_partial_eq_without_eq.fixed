@@ -52,7 +52,7 @@ impl PartialEq for ManualPartialEqImpl {
 }
 
 // Generic fields should be properly checked for Eq-ness
-#[derive(PartialEq)]
+#[derive(PartialEq, Eq)]
 pub struct GenericNotEq<T: Eq, U: PartialEq> {
     foo: T,
     bar: U,
@@ -95,7 +95,7 @@ pub enum EnumNotEq {
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct RustFixWithOtherDerives;
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Eq)]
 pub struct Generic<T>(T);
 
 #[derive(PartialEq, Eq)]
