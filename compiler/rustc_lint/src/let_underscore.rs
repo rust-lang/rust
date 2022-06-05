@@ -11,7 +11,7 @@ declare_lint! {
     /// scope.
     ///
     /// ### Example
-    /// ```rust
+    /// ```
     /// struct SomeStruct;
     /// impl Drop for SomeStruct {
     ///     fn drop(&mut self) {
@@ -20,6 +20,7 @@ declare_lint! {
     /// }
     ///
     /// fn main() {
+    ///    #[warn(let_underscore_drop)]
     ///     // SomeStuct is dropped immediately instead of at end of scope,
     ///     // so "Dropping SomeStruct" is printed before "end of main".
     ///     // The order of prints would be reversed if SomeStruct was bound to
@@ -28,6 +29,9 @@ declare_lint! {
     ///     println!("end of main");
     /// }
     /// ```
+    ///
+    /// {{produces}}
+    ///
     /// ### Explanation
     ///
     /// Statements which assign an expression to an underscore causes the
@@ -66,6 +70,9 @@ declare_lint! {
     ///     *lock += 1;
     /// });
     /// ```
+    ///
+    /// {{produces}}
+    ///
     /// ### Explanation
     ///
     /// Statements which assign an expression to an underscore causes the
