@@ -4,9 +4,9 @@
 
 store.register_group(true, "clippy::pedantic", Some("clippy_pedantic"), vec![
     LintId::of(attrs::INLINE_ALWAYS),
-    LintId::of(borrow_as_ptr::BORROW_AS_PTR),
     LintId::of(bytecount::NAIVE_BYTECOUNT),
     LintId::of(case_sensitive_file_extension_comparisons::CASE_SENSITIVE_FILE_EXTENSION_COMPARISONS),
+    LintId::of(casts::BORROW_AS_PTR),
     LintId::of(casts::CAST_LOSSLESS),
     LintId::of(casts::CAST_POSSIBLE_TRUNCATION),
     LintId::of(casts::CAST_POSSIBLE_WRAP),

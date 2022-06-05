@@ -1,4 +1,5 @@
 mod as_underscore;
+mod borrow_as_ptr;
 mod cast_abs_to_unsigned;
 mod cast_enum_constructor;
 mod cast_lossless;
@@ -17,7 +18,7 @@ mod ptr_as_ptr;
 mod unnecessary_cast;
 mod utils;
 
-use clippy_utils::is_hir_ty_cfg_dependant;
+use clippy_utils::{is_hir_ty_cfg_dependant, meets_msrv, msrvs};
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
@@ -535,6 +536,39 @@ declare_clippy_lint! {
     "detects `as _` conversion"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for the usage of `&expr as *const T` or
+    /// `&mut expr as *mut T`, and suggest using `ptr::addr_of` or
+    /// `ptr::addr_of_mut` instead.
+    ///
+    /// ### Why is this bad?
+    /// This would improve readability and avoid creating a reference
+    /// that points to an uninitialized value or unaligned place.
+    /// Read the `ptr::addr_of` docs for more information.
+    ///
+    /// ### Example
+    /// ```rust
+    /// let val = 1;
+    /// let p = &val as *const i32;
+    ///
+    /// let mut val_mut = 1;
+    /// let p_mut = &mut val_mut as *mut i32;
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// let val = 1;
+    /// let p = std::ptr::addr_of!(val);
+    ///
+    /// let mut val_mut = 1;
+    /// let p_mut = std::ptr::addr_of_mut!(val_mut);
+    /// ```
+    #[clippy::version = "1.60.0"]
+    pub BORROW_AS_PTR,
+    pedantic,
+    "borrowing just to cast to a raw pointer"
+}
+
 pub struct Casts {
     msrv: Option<RustcVersion>,
 }
@@ -565,6 +599,7 @@ impl_lint_pass!(Casts => [
     CAST_ENUM_CONSTRUCTOR,
     CAST_ABS_TO_UNSIGNED,
     AS_UNDERSCORE,
+    BORROW_AS_PTR,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Casts {
@@ -607,6 +642,10 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
             }
 
             as_underscore::check(cx, expr, cast_to_hir);
+
+            if meets_msrv(self.msrv, msrvs::BORROW_AS_PTR) {
+                borrow_as_ptr::check(cx, expr, cast_expr, cast_to_hir);
+            }
         }
 
         cast_ref_to_mut::check(cx, expr);

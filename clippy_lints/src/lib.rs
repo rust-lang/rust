@@ -179,7 +179,6 @@ mod await_holding_invalid;
 mod blocks_in_if_conditions;
 mod bool_assert_comparison;
 mod booleans;
-mod borrow_as_ptr;
 mod borrow_deref_ref;
 mod bytecount;
 mod bytes_count_to_len;
@@ -893,7 +892,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(return_self_not_must_use::ReturnSelfNotMustUse));
     store.register_late_pass(|| Box::new(init_numbered_fields::NumberedFields));
     store.register_early_pass(|| Box::new(single_char_lifetime_names::SingleCharLifetimeNames));
-    store.register_late_pass(move || Box::new(borrow_as_ptr::BorrowAsPtr::new(msrv)));
     store.register_late_pass(move || Box::new(manual_bits::ManualBits::new(msrv)));
     store.register_late_pass(|| Box::new(default_union_representation::DefaultUnionRepresentation));
     store.register_early_pass(|| Box::new(doc_link_with_quotes::DocLinkWithQuotes));
