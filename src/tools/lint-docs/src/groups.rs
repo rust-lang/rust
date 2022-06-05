@@ -8,6 +8,7 @@ use std::process::Command;
 /// Descriptions of rustc lint groups.
 static GROUP_DESCRIPTIONS: &[(&str, &str)] = &[
     ("unused", "Lints that detect things being declared but not used, or excess syntax"),
+    ("let-underscore", "Lints that detect wildcard let bindings that are likely to be invalid"),
     ("rustdoc", "Rustdoc-specific lints"),
     ("rust-2018-idioms", "Lints to nudge you toward idiomatic features of Rust 2018"),
     ("nonstandard-style", "Violation of standard naming conventions"),
