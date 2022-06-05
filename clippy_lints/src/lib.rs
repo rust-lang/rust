@@ -273,7 +273,6 @@ mod manual_non_exhaustive;
 mod manual_rem_euclid;
 mod manual_retain;
 mod manual_strip;
-mod map_clone;
 mod map_err_ignore;
 mod map_unit_fn;
 mod match_result_ok;
@@ -628,8 +627,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(move || Box::new(needless_question_mark::NeedlessQuestionMark));
     store.register_late_pass(move || Box::new(casts::Casts::new(msrv)));
     store.register_early_pass(move || Box::new(unnested_or_patterns::UnnestedOrPatterns::new(msrv)));
-    store.register_late_pass(move || Box::new(map_clone::MapClone::new(msrv)));
-
     store.register_late_pass(|| Box::new(size_of_in_element_count::SizeOfInElementCount));
     store.register_late_pass(|| Box::new(same_name_method::SameNameMethod));
     let max_suggested_slice_pattern_length = conf.max_suggested_slice_pattern_length;

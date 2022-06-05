@@ -45,6 +45,7 @@ mod iterator_step_by_zero;
 mod manual_ok_or;
 mod manual_saturating_arithmetic;
 mod manual_str_repeat;
+mod map_clone;
 mod map_collect_result_unit;
 mod map_flatten;
 mod map_identity;
@@ -2511,6 +2512,35 @@ declare_clippy_lint! {
     "finds patterns that can be encoded more concisely with `Option::ok_or`"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of `map(|x| x.clone())` or
+    /// dereferencing closures for `Copy` types, on `Iterator` or `Option`,
+    /// and suggests `cloned()` or `copied()` instead
+    ///
+    /// ### Why is this bad?
+    /// Readability, this can be written more concisely
+    ///
+    /// ### Example
+    /// ```rust
+    /// let x = vec![42, 43];
+    /// let y = x.iter();
+    /// let z = y.map(|i| *i);
+    /// ```
+    ///
+    /// The correct use would be:
+    ///
+    /// ```rust
+    /// let x = vec![42, 43];
+    /// let y = x.iter();
+    /// let z = y.cloned();
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub MAP_CLONE,
+    style,
+    "using `iterator.map(|x| x.clone())`, or dereferencing closures for `Copy` types"
+}
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Option<RustcVersion>,
@@ -2620,6 +2650,7 @@ impl_lint_pass!(Methods => [
     CASE_SENSITIVE_FILE_EXTENSION_COMPARISONS,
     GET_FIRST,
     MANUAL_OK_OR,
+    MAP_CLONE,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -2949,6 +2980,9 @@ impl Methods {
                     }
                 },
                 (name @ ("map" | "map_err"), [m_arg]) => {
+                    if name == "map" {
+                        map_clone::check(cx, expr, recv, m_arg, self.msrv);
+                    }
                     if let Some((name, [recv2, args @ ..], span2)) = method_call(recv) {
                         match (name, args) {
                             ("as_mut", []) => option_as_ref_deref::check(cx, expr, recv2, m_arg, true, self.msrv),
