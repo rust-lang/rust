@@ -42,6 +42,7 @@ mod iter_overeager_cloned;
 mod iter_skip_next;
 mod iter_with_drain;
 mod iterator_step_by_zero;
+mod manual_ok_or;
 mod manual_saturating_arithmetic;
 mod manual_str_repeat;
 mod map_collect_result_unit;
@@ -2484,6 +2485,32 @@ declare_clippy_lint! {
     "Using `x.get(0)` when `x.first()` is simpler"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    ///
+    /// Finds patterns that reimplement `Option::ok_or`.
+    ///
+    /// ### Why is this bad?
+    ///
+    /// Concise code helps focusing on behavior instead of boilerplate.
+    ///
+    /// ### Examples
+    /// ```rust
+    /// let foo: Option<i32> = None;
+    /// foo.map_or(Err("error"), |v| Ok(v));
+    /// ```
+    ///
+    /// Use instead:
+    /// ```rust
+    /// let foo: Option<i32> = None;
+    /// foo.ok_or("error");
+    /// ```
+    #[clippy::version = "1.49.0"]
+    pub MANUAL_OK_OR,
+    pedantic,
+    "finds patterns that can be encoded more concisely with `Option::ok_or`"
+}
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Option<RustcVersion>,
@@ -2592,6 +2619,7 @@ impl_lint_pass!(Methods => [
     BYTES_COUNT_TO_LEN,
     CASE_SENSITIVE_FILE_EXTENSION_COMPARISONS,
     GET_FIRST,
+    MANUAL_OK_OR,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -2936,7 +2964,10 @@ impl Methods {
                     }
                     map_identity::check(cx, expr, recv, m_arg, name, span);
                 },
-                ("map_or", [def, map]) => option_map_or_none::check(cx, expr, recv, def, map),
+                ("map_or", [def, map]) => {
+                    option_map_or_none::check(cx, expr, recv, def, map);
+                    manual_ok_or::check(cx, expr, recv, def, map);
+                },
                 ("next", []) => {
                     if let Some((name2, [recv2, args2 @ ..], _)) = method_call(recv) {
                         match (name2, args2) {

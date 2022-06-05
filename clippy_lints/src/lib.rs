@@ -270,7 +270,6 @@ mod manual_bits;
 mod manual_empty_string_creations;
 mod manual_instant_elapsed;
 mod manual_non_exhaustive;
-mod manual_ok_or;
 mod manual_rem_euclid;
 mod manual_retain;
 mod manual_strip;
@@ -838,7 +837,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(stable_sort_primitive::StableSortPrimitive));
     store.register_late_pass(|| Box::new(repeat_once::RepeatOnce));
     store.register_late_pass(|| Box::new(unwrap_in_result::UnwrapInResult));
-    store.register_late_pass(|| Box::new(manual_ok_or::ManualOkOr));
     store.register_late_pass(|| Box::new(semicolon_if_nothing_returned::SemicolonIfNothingReturned));
     store.register_late_pass(|| Box::new(async_yields_async::AsyncYieldsAsync));
     let disallowed_methods = conf.disallowed_methods.clone();
