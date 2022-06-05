@@ -1303,7 +1303,9 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                     | LifetimeRibKind::AnonymousCreateParameter { .. } => {
                                         Some(LifetimeUseSet::One { use_span: ident.span, use_ctxt })
                                     }
-                                    _ => None,
+                                    LifetimeRibKind::Generics { .. }
+                                    | LifetimeRibKind::ConstGeneric
+                                    | LifetimeRibKind::AnonConst => None,
                                 })
                                 .unwrap_or(LifetimeUseSet::Many);
                             debug!(?use_ctxt, ?use_set);
@@ -1390,7 +1392,9 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     return;
                 }
                 LifetimeRibKind::Item => break,
-                _ => {}
+                LifetimeRibKind::Generics { .. }
+                | LifetimeRibKind::ConstGeneric
+                | LifetimeRibKind::AnonConst => {}
             }
         }
         // This resolution is wrong, it passes the work to HIR lifetime resolution.
@@ -1576,7 +1580,9 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                         }
                         break;
                     }
-                    _ => {}
+                    LifetimeRibKind::Generics { .. }
+                    | LifetimeRibKind::ConstGeneric
+                    | LifetimeRibKind::AnonConst => {}
                 }
             }
 
