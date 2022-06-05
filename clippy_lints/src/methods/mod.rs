@@ -51,6 +51,7 @@ mod map_err_ignore;
 mod map_flatten;
 mod map_identity;
 mod map_unwrap_or;
+mod mut_mutex_lock;
 mod needless_option_as_deref;
 mod needless_option_take;
 mod no_effect_replace;
@@ -2642,6 +2643,42 @@ declare_clippy_lint! {
     "`map_err` should not ignore the original error"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for `&mut Mutex::lock` calls
+    ///
+    /// ### Why is this bad?
+    /// `Mutex::lock` is less efficient than
+    /// calling `Mutex::get_mut`. In addition you also have a statically
+    /// guarantee that the mutex isn't locked, instead of just a runtime
+    /// guarantee.
+    ///
+    /// ### Example
+    /// ```rust
+    /// use std::sync::{Arc, Mutex};
+    ///
+    /// let mut value_rc = Arc::new(Mutex::new(42_u8));
+    /// let value_mutex = Arc::get_mut(&mut value_rc).unwrap();
+    ///
+    /// let mut value = value_mutex.lock().unwrap();
+    /// *value += 1;
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// use std::sync::{Arc, Mutex};
+    ///
+    /// let mut value_rc = Arc::new(Mutex::new(42_u8));
+    /// let value_mutex = Arc::get_mut(&mut value_rc).unwrap();
+    ///
+    /// let value = value_mutex.get_mut().unwrap();
+    /// *value += 1;
+    /// ```
+    #[clippy::version = "1.49.0"]
+    pub MUT_MUTEX_LOCK,
+    style,
+    "`&mut Mutex::lock` does unnecessary locking"
+}
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Option<RustcVersion>,
@@ -2753,6 +2790,7 @@ impl_lint_pass!(Methods => [
     MANUAL_OK_OR,
     MAP_CLONE,
     MAP_ERR_IGNORE,
+    MUT_MUTEX_LOCK,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -3080,6 +3118,9 @@ impl Methods {
                             iter_overeager_cloned::check(cx, expr, recv, recv2, false, false);
                         }
                     }
+                },
+                ("lock", []) => {
+                    mut_mutex_lock::check(cx, expr, recv, span);
                 },
                 (name @ ("map" | "map_err"), [m_arg]) => {
                     if name == "map" {

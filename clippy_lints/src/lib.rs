@@ -291,7 +291,6 @@ mod mixed_read_write_in_expression;
 mod module_style;
 mod mut_key;
 mod mut_mut;
-mod mut_mutex_lock;
 mod mut_reference;
 mod mutable_debug_assertion;
 mod mutex_atomic;
@@ -815,7 +814,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(if_let_mutex::IfLetMutex));
     store.register_late_pass(|| Box::new(if_not_else::IfNotElse));
     store.register_late_pass(|| Box::new(equatable_if_let::PatternEquality));
-    store.register_late_pass(|| Box::new(mut_mutex_lock::MutMutexLock));
     store.register_late_pass(|| Box::new(manual_async_fn::ManualAsyncFn));
     store.register_late_pass(|| Box::new(vec_resize_to_zero::VecResizeToZero));
     store.register_late_pass(|| Box::new(panic_in_result_fn::PanicInResultFn));
