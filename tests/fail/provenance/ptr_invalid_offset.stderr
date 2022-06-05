@@ -8,8 +8,8 @@ LL |         unsafe { intrinsics::offset(self, count) }
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
            
    = note: inside `std::ptr::const_ptr::<impl *const u8>::offset` at RUSTLIB/core/src/ptr/const_ptr.rs:LL:CC
-note: inside `main` at $DIR/strict-provenance-offset.rs:LL:CC
-  --> $DIR/strict-provenance-offset.rs:LL:CC
+note: inside `main` at $DIR/ptr_invalid_offset.rs:LL:CC
+  --> $DIR/ptr_invalid_offset.rs:LL:CC
    |
 LL |     let _ = unsafe { roundtrip.offset(1) };
    |                      ^^^^^^^^^^^^^^^^^^^
