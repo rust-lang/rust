@@ -1,6 +1,8 @@
-// compile-flags: -Z simulate-remapped-rust-src-base=/rustc/xyz -Z ui-testing=no
-// only-x86_64-unknown-linux-gnu
-//---^ Limiting target as the above unstable flags don't play well on some environment.
+// ignore-test
+// FIXME(#97682):
+// The `-Z simulate-remapped-rust-src-base=/rustc/xyz -Z ui-testing=no` flags
+// don't work well and make UI test fail on some env.
+// Once it starts to work fine, we could re-enable them here.
 
 struct MyError;
 impl std::error::Error for MyError {}
