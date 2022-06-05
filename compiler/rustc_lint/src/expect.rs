@@ -19,16 +19,16 @@ fn check_expectations(tcx: TyCtxt<'_>, tool_filter: Option<Symbol>) {
     let lint_expectations = &tcx.lint_levels(()).lint_expectations;
 
     for (id, expectation) in lint_expectations {
-        if !fulfilled_expectations.contains(id)
-            && tool_filter.map_or(true, |filter| expectation.lint_tool == Some(filter))
-        {
-            // This check will always be true, since `lint_expectations` only
-            // holds stable ids
-            if let LintExpectationId::Stable { hir_id, .. } = id {
+        // This check will always be true, since `lint_expectations` only
+        // holds stable ids
+        if let LintExpectationId::Stable { hir_id, .. } = id {
+            if !fulfilled_expectations.contains(&id)
+                && tool_filter.map_or(true, |filter| expectation.lint_tool == Some(filter))
+            {
                 emit_unfulfilled_expectation_lint(tcx, *hir_id, expectation);
-            } else {
-                unreachable!("at this stage all `LintExpectationId`s are stable");
             }
+        } else {
+            unreachable!("at this stage all `LintExpectationId`s are stable");
         }
     }
 }

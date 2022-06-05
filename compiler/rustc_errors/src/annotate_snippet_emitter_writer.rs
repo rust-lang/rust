@@ -87,7 +87,7 @@ fn annotation_type_for_level(level: Level) -> AnnotationType {
         Level::Bug | Level::DelayedBug | Level::Fatal | Level::Error { .. } => {
             AnnotationType::Error
         }
-        Level::Warning => AnnotationType::Warning,
+        Level::Warning(_) => AnnotationType::Warning,
         Level::Note | Level::OnceNote => AnnotationType::Note,
         Level::Help => AnnotationType::Help,
         // FIXME(#59346): Not sure how to map this level
