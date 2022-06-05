@@ -118,7 +118,7 @@ fn completion_match(ctx: &CompletionContext) -> Option<(ImplCompletionKind, Text
             ImplCompletionKind::All,
             match nameref {
                 Some(name) => name.syntax().text_range(),
-                None => TextRange::empty(ctx.position.offset),
+                None => ctx.source_range(),
             },
             ctx.impl_def.clone()?,
         )),
@@ -681,6 +681,27 @@ trait Test {
 
 impl Test for () {
     type S$0
+}
+"#,
+            "
+trait Test {
+    type SomeType;
+}
+
+impl Test for () {
+    type SomeType = $0;\n\
+}
+",
+        );
+        check_edit(
+            "type SomeType",
+            r#"
+trait Test {
+    type SomeType;
+}
+
+impl Test for () {
+    type$0
 }
 "#,
             "
