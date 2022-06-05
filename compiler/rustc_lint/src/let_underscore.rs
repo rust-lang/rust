@@ -259,8 +259,5 @@ fn is_must_use_func_call(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
 
 // returns true if DefId contains a `#[must_use]` attribute
 fn has_must_use_attr(cx: &LateContext<'_>, did: hir::def_id::DefId) -> bool {
-    cx.tcx
-        .get_attrs(did, rustc_span::sym::must_use)
-        .find(|a| a.has_name(rustc_span::sym::must_use))
-        .is_some()
+    cx.tcx.has_attr(did, rustc_span::sym::must_use)
 }
