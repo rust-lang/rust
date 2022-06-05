@@ -191,8 +191,8 @@ fn assignment_suggestions<'tcx>(
                 assignment.rhs_span.shrink_to_hi().with_hi(assignment.span.hi()),
             ]
         })
-        .map(|span| Some((span, String::new())))
-        .collect::<Option<Vec<(Span, String)>>>()?;
+        .map(|span| (span, String::new()))
+        .collect::<Vec<(Span, String)>>();
 
     match suggestions.len() {
         // All of `exprs` are never types
