@@ -49,6 +49,10 @@ pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(builder: &Builder<'a, 'gcc
                 | "__builtin_ia32_prorvd256_mask" | "__builtin_ia32_prorvd128_mask" | "__builtin_ia32_prolvq256_mask"
                 | "__builtin_ia32_prolvq128_mask" | "__builtin_ia32_prorvq256_mask" | "__builtin_ia32_prorvq128_mask"
                 | "__builtin_ia32_permvardi256_mask" | "__builtin_ia32_permvardf512_mask" | "__builtin_ia32_permvardf256_mask"
+                | "__builtin_ia32_pmulhuw512_mask" | "__builtin_ia32_pmulhw512_mask" | "__builtin_ia32_pmulhrsw512_mask"
+                | "__builtin_ia32_pmaxuw512_mask" | "__builtin_ia32_pmaxub512_mask" | "__builtin_ia32_pmaxsw512_mask"
+                | "__builtin_ia32_pmaxsb512_mask" | "__builtin_ia32_pminuw512_mask" | "__builtin_ia32_pminub512_mask"
+                | "__builtin_ia32_pminsw512_mask" | "__builtin_ia32_pminsb512_mask"
                 => {
                 let mut new_args = args.to_vec();
                 let arg3_type = gcc_func.get_param_type(2);
@@ -63,8 +67,22 @@ pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(builder: &Builder<'a, 'gcc
                 args = new_args.into();
             },
             "__builtin_ia32_vplzcntd_512_mask" | "__builtin_ia32_vplzcntd_256_mask" | "__builtin_ia32_vplzcntd_128_mask"
-                | "__builtin_ia32_vplzcntq_512_mask" | "__builtin_ia32_vplzcntq_256_mask" | "__builtin_ia32_vplzcntq_128_mask"
-                | "__builtin_ia32_vpconflictsi_512_mask" | "__builtin_ia32_vpconflictsi_256_mask"
+                | "__builtin_ia32_vplzcntq_512_mask" | "__builtin_ia32_vplzcntq_256_mask" | "__builtin_ia32_vplzcntq_128_mask" => {
+                let mut new_args = args.to_vec();
+                // Remove last arg as it doesn't seem to be used in GCC and is always false.
+                new_args.pop();
+                let arg2_type = gcc_func.get_param_type(1);
+                let vector_type = arg2_type.dyncast_vector().expect("vector type");
+                let zero = builder.context.new_rvalue_zero(vector_type.get_element_type());
+                let num_units = vector_type.get_num_units();
+                let first_arg = builder.context.new_rvalue_from_vector(None, arg2_type, &vec![zero; num_units]);
+                new_args.push(first_arg);
+                let arg3_type = gcc_func.get_param_type(2);
+                let minus_one = builder.context.new_rvalue_from_int(arg3_type, -1);
+                new_args.push(minus_one);
+                args = new_args.into();
+            },
+            "__builtin_ia32_vpconflictsi_512_mask" | "__builtin_ia32_vpconflictsi_256_mask"
                 | "__builtin_ia32_vpconflictsi_128_mask" | "__builtin_ia32_vpconflictdi_512_mask"
                 | "__builtin_ia32_vpconflictdi_256_mask" | "__builtin_ia32_vpconflictdi_128_mask" => {
                 let mut new_args = args.to_vec();
@@ -177,7 +195,7 @@ pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(builder: &Builder<'a, 'gcc
             },
             "__builtin_ia32_vpermt2varqi512_mask" | "__builtin_ia32_vpermt2varqi256_mask"
                 | "__builtin_ia32_vpermt2varqi128_mask" => {
-                let mut new_args = args.to_vec();
+                let new_args = args.to_vec();
                 let arg4_type = gcc_func.get_param_type(3);
                 let minus_one = builder.context.new_rvalue_from_int(arg4_type, -1);
                 args = vec![new_args[1], new_args[0], new_args[2], minus_one].into();
@@ -282,6 +300,12 @@ pub fn ignore_arg_cast(func_name: &str, index: usize, args_len: usize) -> bool {
         },
         // NOTE: the LLVM intrinsic receives 3 floats, but the GCC builtin requires 3 vectors.
         "__builtin_ia32_vfmaddss3_round" | "__builtin_ia32_vfmaddsd3_round" => return true,
+        "__builtin_ia32_vplzcntd_512_mask" | "__builtin_ia32_vplzcntd_256_mask" | "__builtin_ia32_vplzcntd_128_mask"
+            | "__builtin_ia32_vplzcntq_512_mask" | "__builtin_ia32_vplzcntq_256_mask" | "__builtin_ia32_vplzcntq_128_mask" => {
+            if index == args_len - 1 {
+                return true;
+            }
+        },
         _ => (),
     }
 
@@ -418,6 +442,14 @@ pub fn intrinsic<'gcc, 'tcx>(name: &str, cx: &CodegenCx<'gcc, 'tcx>) -> Function
         "llvm.x86.avx512.pmultishift.qb.512" => "__builtin_ia32_vpmultishiftqb512_mask",
         "llvm.x86.avx512.pmultishift.qb.256" => "__builtin_ia32_vpmultishiftqb256_mask",
         "llvm.x86.avx512.pmultishift.qb.128" => "__builtin_ia32_vpmultishiftqb128_mask",
+        "llvm.ctpop.v16i16" => "__builtin_ia32_vpopcountw_v16hi",
+        "llvm.ctpop.v8i16" => "__builtin_ia32_vpopcountw_v8hi",
+        "llvm.ctpop.v64i8" => "__builtin_ia32_vpopcountb_v64qi",
+        "llvm.ctpop.v32i8" => "__builtin_ia32_vpopcountb_v32qi",
+        "llvm.ctpop.v16i8" => "__builtin_ia32_vpopcountb_v16qi",
+        "llvm.x86.avx512.mask.vpshufbitqmb.512" => "__builtin_ia32_vpshufbitqmb512_mask",
+        "llvm.x86.avx512.mask.vpshufbitqmb.256" => "__builtin_ia32_vpshufbitqmb256_mask",
+        "llvm.x86.avx512.mask.vpshufbitqmb.128" => "__builtin_ia32_vpshufbitqmb128_mask",
 
         // The above doc points to unknown builtins for the following, so override them:
         "llvm.x86.avx2.gather.d.d" => "__builtin_ia32_gathersiv4si",
@@ -506,6 +538,11 @@ pub fn intrinsic<'gcc, 'tcx>(name: &str, cx: &CodegenCx<'gcc, 'tcx>) -> Function
         "llvm.x86.avx512bf16.dpbf16ps.128" => "__builtin_ia32_dpbf16ps_v4sf",
         "llvm.x86.avx512bf16.dpbf16ps.256" => "__builtin_ia32_dpbf16ps_v8sf",
         "llvm.x86.avx512bf16.dpbf16ps.512" => "__builtin_ia32_dpbf16ps_v16sf",
+        "llvm.x86.pclmulqdq.512" => "__builtin_ia32_vpclmulqdq_v8di",
+        "llvm.x86.pclmulqdq.256" => "__builtin_ia32_vpclmulqdq_v4di",
+        "llvm.x86.avx512.pmulhu.w.512" => "__builtin_ia32_pmulhuw512_mask",
+        "llvm.x86.avx512.pmulh.w.512" => "__builtin_ia32_pmulhw512_mask",
+        "llvm.x86.avx512.pmul.hr.sw.512" => "__builtin_ia32_pmulhrsw512_mask",
 
         // NOTE: this file is generated by https://github.com/GuillaumeGomez/llvmint/blob/master/generate_list.py
         _ => include!("archs.rs"),

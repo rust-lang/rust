@@ -275,19 +275,19 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
     }
 
     fn function_ptr_call(&mut self, func_ptr: RValue<'gcc>, args: &[RValue<'gcc>], _funclet: Option<&Funclet>) -> RValue<'gcc> {
-        let args = self.check_ptr_call("call", func_ptr, args);
+        let gcc_func = func_ptr.get_type().dyncast_function_ptr_type().expect("function ptr");
+        let func_name = format!("{:?}", func_ptr);
+        let args = llvm::adjust_intrinsic_arguments(&self, gcc_func, args.into(), &func_name);
+        let args = self.check_ptr_call("call", func_ptr, &*args);
 
         // gccjit requires to use the result of functions, even when it's not used.
         // That's why we assign the result to a local or call add_eval().
-        let gcc_func = func_ptr.get_type().dyncast_function_ptr_type().expect("function ptr");
         let return_type = gcc_func.get_return_type();
         let void_type = self.context.new_type::<()>();
         let current_func = self.block.get_function();
 
         if return_type != void_type {
             unsafe { RETURN_VALUE_COUNT += 1 };
-            let func_name = format!("{:?}", func_ptr);
-            let args = llvm::adjust_intrinsic_arguments(&self, gcc_func, args, &func_name);
             let return_value = self.cx.context.new_call_through_ptr(None, func_ptr, &args);
             let return_value = llvm::adjust_intrinsic_return_value(&self, return_value, &func_name, &args);
             let result = current_func.new_local(None, return_value.get_type(), &format!("ptrReturnValue{}", unsafe { RETURN_VALUE_COUNT }));
