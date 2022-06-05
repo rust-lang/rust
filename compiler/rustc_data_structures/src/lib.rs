@@ -26,6 +26,7 @@
 #![feature(test)]
 #![feature(thread_id_value)]
 #![feature(vec_into_raw_parts)]
+#![feature(ptr_sub_ptr)]
 #![allow(rustc::default_hash_types)]
 #![allow(rustc::potential_query_instability)]
 
@@ -76,7 +77,6 @@ pub mod jobserver;
 pub mod macros;
 pub mod map_in_place;
 pub mod obligation_forest;
-pub mod owning_ref;
 pub mod sip128;
 pub mod small_c_str;
 pub mod small_str;
@@ -103,6 +103,7 @@ pub mod vec_map;
 pub mod work_queue;
 pub use atomic_ref::AtomicRef;
 pub mod frozen;
+pub mod owned_slice;
 pub mod sso;
 pub mod steal;
 pub mod tagged_ptr;
