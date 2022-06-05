@@ -435,7 +435,7 @@ fn foo() {
 }
 "#,
         expect![[r#"
-            ev TupleVariant(…) TupleVariant
+            ev TupleVariant TupleVariant
         "#]],
     );
     check_empty(
@@ -450,7 +450,7 @@ fn foo() {
 }
 "#,
         expect![[r#"
-            ev RecordVariant {…} RecordVariant
+            ev RecordVariant RecordVariant
         "#]],
     );
 }

@@ -600,8 +600,8 @@ fn func() {
 }
 "#,
         expect![[r#"
-            fn variant    fn() -> Enum
-            ev Variant(…) Variant
+            fn variant fn() -> Enum
+            ev Variant Variant
         "#]],
     );
 }

@@ -173,6 +173,28 @@ impl Foo {
 }
 
 #[test]
+fn enum_no_parens_in_qualified_use_tree() {
+    cov_mark::check!(no_parens_in_use_item);
+    cov_mark::check!(enum_plain_qualified_use_tree);
+    check(
+        r#"
+use Foo::$0
+
+enum Foo {
+    UnitVariant,
+    TupleVariant(),
+    RecordVariant {},
+}
+"#,
+        expect![[r#"
+            ev RecordVariant RecordVariant
+            ev TupleVariant  TupleVariant
+            ev UnitVariant   UnitVariant
+        "#]],
+    );
+}
+
+#[test]
 fn self_qualified_use_tree() {
     check(
         r#"
