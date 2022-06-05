@@ -1,5 +1,6 @@
 // ignore-windows: Concurrency on Windows is not supported yet.
 // compile-flags: -Zmiri-ignore-leaks
+// error-pattern:
 
 // https://plv.mpi-sws.org/scfix/paper.pdf
 // 2.2 Second Problem: SC Fences are Too Weak
@@ -70,12 +71,12 @@ fn test_cpp20_rwc_syncs() {
     let b = j2.join().unwrap();
     let c = j3.join().unwrap();
 
+    // We cannot write assert_ne!() since ui_test's fail
+    // tests expect exit status 1, whereas panics produce 101.
+    // Our ui_test does not yet support overriding failure status codes.
     if (b, c) == (0, 0) {
-        // FIXME: the standalone compiletest-rs needs to support
-        // failure-status header to allow us to write assert_ne!((b, c), (0, 0))
-        // https://rustc-dev-guide.rust-lang.org/tests/headers.html#miscellaneous-headers
-        // because panic exits with 101 but compile-rs expects 1
-        let _ = unsafe { std::mem::MaybeUninit::<*const u32>::uninit().assume_init() }; //~ ERROR uninitialized
+        // This *should* be unreachable, but Miri will reach it.
+        std::process::exit(1);
     }
 }
 
