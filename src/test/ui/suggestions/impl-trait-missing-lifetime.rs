@@ -6,14 +6,15 @@
 fn f(_: impl Iterator<Item = &'_ ()>) {}
 
 // But that lifetime does not participate in resolution.
-fn g(x: impl Iterator<Item = &'_ ()>) -> Option<&'_ ()> { x.next() }
+fn g(mut x: impl Iterator<Item = &'_ ()>) -> Option<&'_ ()> { x.next() }
 //~^ ERROR missing lifetime specifier
 
 // This is understood as `fn foo<'_1>(_: impl Iterator<Item = &'_1 ()>) {}`.
 async fn h(_: impl Iterator<Item = &'_ ()>) {}
 
 // But that lifetime does not participate in resolution.
-async fn i(x: impl Iterator<Item = &'_ ()>) -> Option<&'_ ()> { x.next() }
+async fn i(mut x: impl Iterator<Item = &'_ ()>) -> Option<&'_ ()> { x.next() }
 //~^ ERROR missing lifetime specifier
+//~| ERROR lifetime may not live long enough
 
 fn main() {}

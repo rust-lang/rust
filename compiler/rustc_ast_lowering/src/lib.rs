@@ -1835,7 +1835,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         debug!(?self.captured_lifetimes);
         let name = match res {
             LifetimeRes::Param { mut param, binder } => {
-                debug_assert_ne!(ident.name, kw::UnderscoreLifetime);
                 let p_name = ParamName::Plain(ident);
                 if let Some(mut captured_lifetimes) = self.captured_lifetimes.take() {
                     if !captured_lifetimes.binders_to_ignore.contains(&binder) {
