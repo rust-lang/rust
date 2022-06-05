@@ -24,6 +24,7 @@ mod filter_next;
 mod flat_map_identity;
 mod flat_map_option;
 mod from_iter_instead_of_collect;
+mod get_first;
 mod get_last_with_len;
 mod get_unwrap;
 mod implicit_clone;
@@ -2457,6 +2458,32 @@ declare_clippy_lint! {
     "Checks for calls to ends_with with case-sensitive file extensions"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for using `x.get(0)` instead of
+    /// `x.first()`.
+    ///
+    /// ### Why is this bad?
+    /// Using `x.first()` is easier to read and has the same
+    /// result.
+    ///
+    /// ### Example
+    /// ```rust
+    /// let x = vec![2, 3, 5];
+    /// let first_element = x.get(0);
+    /// ```
+    ///
+    /// Use instead:
+    /// ```rust
+    /// let x = vec![2, 3, 5];
+    /// let first_element = x.first();
+    /// ```
+    #[clippy::version = "1.63.0"]
+    pub GET_FIRST,
+    style,
+    "Using `x.get(0)` when `x.first()` is simpler"
+}
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Option<RustcVersion>,
@@ -2564,6 +2591,7 @@ impl_lint_pass!(Methods => [
     NAIVE_BYTECOUNT,
     BYTES_COUNT_TO_LEN,
     CASE_SENSITIVE_FILE_EXTENSION_COMPARISONS,
+    GET_FIRST,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -2833,7 +2861,8 @@ impl Methods {
                 },
                 ("ends_with", [arg]) => {
                     if let ExprKind::MethodCall(_, _, span) = expr.kind {
-                    case_sensitive_file_extension_comparisons::check(cx, expr, span, recv, arg);
+                        case_sensitive_file_extension_comparisons::check(cx, expr, span, recv, arg);
+                    }
                 },
                 ("expect", [_]) => match method_call(recv) {
                     Some(("ok", [recv], _)) => ok_expect::check(cx, expr, recv),
@@ -2867,7 +2896,10 @@ impl Methods {
                         inspect_for_each::check(cx, expr, span2);
                     }
                 },
-                ("get", [arg]) => get_last_with_len::check(cx, expr, recv, arg),
+                ("get", [arg]) => {
+                    get_first::check(cx, expr, recv, arg);
+                    get_last_with_len::check(cx, expr, recv, arg);
+                },
                 ("get_or_insert_with", [arg]) => unnecessary_lazy_eval::check(cx, expr, recv, arg, "get_or_insert"),
                 ("is_file", []) => filetype_is_file::check(cx, expr, recv),
                 ("is_digit", [radix]) => is_digit_ascii_radix::check(cx, expr, recv, radix, self.msrv),
