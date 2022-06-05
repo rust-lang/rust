@@ -69,6 +69,8 @@ pub fn encode_and_write_metadata(
     let metadata_tmpdir = MaybeTempDir::new(metadata_tmpdir, tcx.sess.opts.cg.save_temps);
     let metadata_filename = metadata_tmpdir.as_ref().join(METADATA_FILENAME);
 
+    // Always create a file at `metadata_filename`, even if we have nothing to write to it.
+    // This simplifies the creation of the output `out_filename` when requested.
     match metadata_kind {
         MetadataKind::None => {
             std::fs::File::create(&metadata_filename).unwrap_or_else(|e| {
@@ -86,6 +88,9 @@ pub fn encode_and_write_metadata(
 
     let _prof_timer = tcx.sess.prof.generic_activity("write_crate_metadata");
 
+    // If the user requests metadata as output, rename `metadata_filename`
+    // to the expected output `out_filename`.  The match above should ensure
+    // this file always exists.
     let need_metadata_file = tcx.sess.opts.output_types.contains_key(&OutputType::Metadata);
     let (metadata_filename, metadata_tmpdir) = if need_metadata_file {
         if let Err(e) = non_durable_rename(&metadata_filename, &out_filename) {
@@ -102,6 +107,7 @@ pub fn encode_and_write_metadata(
         (metadata_filename, Some(metadata_tmpdir))
     };
 
+    // Load metadata back to memory: codegen may need to include it in object files.
     let metadata =
         EncodedMetadata::from_path(metadata_filename, metadata_tmpdir).unwrap_or_else(|e| {
             tcx.sess.fatal(&format!("failed to create encoded metadata from file: {}", e))
