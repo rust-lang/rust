@@ -294,11 +294,10 @@ pub trait Machine<'mir, 'tcx>: Sized {
     fn ptr_from_addr_cast(
         ecx: &InterpCx<'mir, 'tcx, Self>,
         addr: u64,
-    ) -> Pointer<Option<Self::PointerTag>>;
+    ) -> InterpResult<'tcx, Pointer<Option<Self::PointerTag>>>;
 
-    // FIXME: Transmuting an integer to a pointer should just always return a `None`
-    // provenance, but that causes problems with function pointers in Miri.
     /// Hook for returning a pointer from a transmute-like operation on an addr.
+    /// This is only needed to support Miri's (unsound) "allow-ptr-int-transmute" flag.
     fn ptr_from_addr_transmute(
         ecx: &InterpCx<'mir, 'tcx, Self>,
         addr: u64,
@@ -519,8 +518,10 @@ pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
     fn ptr_from_addr_cast(
         _ecx: &InterpCx<$mir, $tcx, Self>,
         addr: u64,
-    ) -> Pointer<Option<AllocId>> {
-        Pointer::new(None, Size::from_bytes(addr))
+    ) -> InterpResult<$tcx, Pointer<Option<AllocId>>> {
+        // Allow these casts, but make the pointer not dereferenceable.
+        // (I.e., they behave like transmutation.)
+        Ok(Pointer::new(None, Size::from_bytes(addr)))
     }
 
     #[inline(always)]
