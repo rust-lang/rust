@@ -207,6 +207,13 @@ enum Scope<'a> {
         /// In some cases not allowing late bounds allows us to avoid ICEs.
         /// This is almost ways set to true.
         allow_late_bound: bool,
+
+        /// If this binder comes from a where clause, specify how it was created.
+        /// This is used to diagnose inaccessible lifetimes in APIT:
+        /// ```ignore (illustrative)
+        /// fn foo(x: impl for<'a> Trait<'a, Assoc = impl Copy + 'a>) {}
+        /// ```
+        where_bound_origin: Option<hir::PredicateOrigin>,
     },
 
     /// Lifetimes introduced by a fn are scoped to the call-site for that fn,
@@ -277,8 +284,9 @@ impl<'a> fmt::Debug for TruncatedScopeDebug<'a> {
                 opaque_type_parent,
                 scope_type,
                 hir_id,
-                s: _,
                 allow_late_bound,
+                where_bound_origin,
+                s: _,
             } => f
                 .debug_struct("Binder")
                 .field("lifetimes", lifetimes)
@@ -286,8 +294,9 @@ impl<'a> fmt::Debug for TruncatedScopeDebug<'a> {
                 .field("opaque_type_parent", opaque_type_parent)
                 .field("scope_type", scope_type)
                 .field("hir_id", hir_id)
-                .field("s", &"..")
                 .field("allow_late_bound", allow_late_bound)
+                .field("where_bound_origin", where_bound_origin)
+                .field("s", &"..")
                 .finish(),
             Scope::Body { id, s: _ } => {
                 f.debug_struct("Body").field("id", id).field("s", &"..").finish()
@@ -638,6 +647,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     opaque_type_parent: false,
                     scope_type: BinderScopeType::Normal,
                     allow_late_bound: true,
+                    where_bound_origin: None,
                 };
                 self.with(scope, move |this| intravisit::walk_fn(this, fk, fd, b, s, hir_id));
             }
@@ -753,6 +763,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     scope_type: BinderScopeType::Normal,
                     s: ROOT_SCOPE,
                     allow_late_bound: false,
+                    where_bound_origin: None,
                 };
                 self.with(scope, |this| {
                     let scope = Scope::TraitRefBoundary { s: this.scope };
@@ -818,6 +829,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     opaque_type_parent: false,
                     scope_type: BinderScopeType::Normal,
                     allow_late_bound: true,
+                    where_bound_origin: None,
                 };
                 self.with(scope, |this| {
                     // a bare fn has no bounds, so everything
@@ -1006,6 +1018,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                             opaque_type_parent: false,
                             scope_type: BinderScopeType::Normal,
                             allow_late_bound: false,
+                            where_bound_origin: None,
                         };
                         this.with(scope, |this| {
                             this.visit_generics(generics);
@@ -1026,6 +1039,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                         opaque_type_parent: false,
                         scope_type: BinderScopeType::Normal,
                         allow_late_bound: false,
+                        where_bound_origin: None,
                     };
                     self.with(scope, |this| {
                         let scope = Scope::TraitRefBoundary { s: this.scope };
@@ -1084,6 +1098,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     opaque_type_parent: true,
                     scope_type: BinderScopeType::Normal,
                     allow_late_bound: false,
+                    where_bound_origin: None,
                 };
                 self.with(scope, |this| {
                     let scope = Scope::TraitRefBoundary { s: this.scope };
@@ -1151,6 +1166,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     opaque_type_parent: true,
                     scope_type: BinderScopeType::Normal,
                     allow_late_bound: true,
+                    where_bound_origin: None,
                 };
                 self.with(scope, |this| {
                     let scope = Scope::TraitRefBoundary { s: this.scope };
@@ -1266,6 +1282,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                         ref bounded_ty,
                         bounds,
                         ref bound_generic_params,
+                        origin,
                         ..
                     }) => {
                         let (lifetimes, binders): (FxIndexMap<LocalDefId, Region>, Vec<_>) =
@@ -1296,6 +1313,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                             opaque_type_parent: false,
                             scope_type: BinderScopeType::Normal,
                             allow_late_bound: true,
+                            where_bound_origin: Some(origin),
                         };
                         this.with(scope, |this| {
                             this.visit_ty(&bounded_ty);
@@ -1368,6 +1386,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     opaque_type_parent: false,
                     scope_type,
                     allow_late_bound: true,
+                    where_bound_origin: None,
                 };
                 self.with(scope, |this| {
                     intravisit::walk_param_bound(this, bound);
@@ -1420,6 +1439,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
             opaque_type_parent: false,
             scope_type,
             allow_late_bound: true,
+            where_bound_origin: None,
         };
         self.with(scope, |this| {
             walk_list!(this, visit_generic_param, trait_ref.bound_generic_params);
@@ -1680,6 +1700,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             opaque_type_parent: true,
             scope_type: BinderScopeType::Normal,
             allow_late_bound: true,
+            where_bound_origin: None,
         };
         self.with(scope, walk);
     }
@@ -1783,12 +1804,48 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             }
 
             self.insert_lifetime(lifetime_ref, def);
-        } else {
-            self.tcx.sess.delay_span_bug(
-                lifetime_ref.span,
-                &format!("Could not resolve {:?} in scope {:#?}", lifetime_ref, self.scope,),
-            );
+            return;
         }
+
+        // We may fail to resolve higher-ranked lifetimes that are mentionned by APIT.
+        // AST-based resolution does not care for impl-trait desugaring, which are the
+        // responibility of lowering.  This may create a mismatch between the resolution
+        // AST found (`region_def_id`) which points to HRTB, and what HIR allows.
+        // ```
+        // fn foo(x: impl for<'a> Trait<'a, Assoc = impl Copy + 'a>) {}
+        // ```
+        //
+        // In such case, walk back the binders to diagnose it properly.
+        let mut scope = self.scope;
+        loop {
+            match *scope {
+                Scope::Binder {
+                    where_bound_origin: Some(hir::PredicateOrigin::ImplTrait), ..
+                } => {
+                    let mut err = self.tcx.sess.struct_span_err(
+                        lifetime_ref.span,
+                        "`impl Trait` can only mention lifetimes bound at the fn or impl level",
+                    );
+                    err.span_note(self.tcx.def_span(region_def_id), "lifetime declared here");
+                    err.emit();
+                    return;
+                }
+                Scope::Root => break,
+                Scope::Binder { s, .. }
+                | Scope::Body { s, .. }
+                | Scope::Elision { s, .. }
+                | Scope::ObjectLifetimeDefault { s, .. }
+                | Scope::Supertrait { s, .. }
+                | Scope::TraitRefBoundary { s, .. } => {
+                    scope = s;
+                }
+            }
+        }
+
+        self.tcx.sess.delay_span_bug(
+            lifetime_ref.span,
+            &format!("Could not resolve {:?} in scope {:#?}", lifetime_ref, self.scope,),
+        );
     }
 
     fn visit_segment_args(
