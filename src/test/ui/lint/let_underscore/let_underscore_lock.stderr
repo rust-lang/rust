@@ -1,5 +1,5 @@
 error: non-binding let on a synchronization lock
-  --> $DIR/let_underscore_lock.rs:5:5
+  --> $DIR/let_underscore_lock.rs:6:5
    |
 LL |     let _ = data.lock().unwrap();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
