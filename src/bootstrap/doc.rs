@@ -737,6 +737,7 @@ tool_doc!(
     ["rustfmt-nightly", "rustfmt-config_proc_macro"],
 );
 tool_doc!(Clippy, "clippy", "src/tools/clippy", ["clippy_utils"]);
+tool_doc!(Miri, "miri", "src/tools/miri", ["miri"]);
 
 #[derive(Ord, PartialOrd, Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct ErrorIndex {
