@@ -1597,6 +1597,16 @@ fn add_pre_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor)
 
 /// Add a link script embedded in the target, if applicable.
 fn add_link_script(cmd: &mut dyn Linker, sess: &Session, tmpdir: &Path, crate_type: CrateType) {
+    fn is_script_arg(arg: &str) -> bool {
+        arg.starts_with("--script")
+            || arg.starts_with("-T")
+            || arg.starts_with("--default-script")
+            || arg.starts_with("-dT")
+    }
+    // Omit the embedded linker script if a user supplied one
+    if sess.opts.cg.link_args.iter().any(|arg| is_script_arg(arg)) {
+        return;
+    }
     match (crate_type, &sess.target.link_script) {
         (CrateType::Cdylib | CrateType::Executable, Some(script)) => {
             if !sess.target.linker_is_gnu {
