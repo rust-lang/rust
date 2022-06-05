@@ -47,6 +47,7 @@ mod manual_saturating_arithmetic;
 mod manual_str_repeat;
 mod map_clone;
 mod map_collect_result_unit;
+mod map_err_ignore;
 mod map_flatten;
 mod map_identity;
 mod map_unwrap_or;
@@ -2541,6 +2542,106 @@ declare_clippy_lint! {
     "using `iterator.map(|x| x.clone())`, or dereferencing closures for `Copy` types"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for instances of `map_err(|_| Some::Enum)`
+    ///
+    /// ### Why is this bad?
+    /// This `map_err` throws away the original error rather than allowing the enum to contain and report the cause of the error
+    ///
+    /// ### Example
+    /// Before:
+    /// ```rust
+    /// use std::fmt;
+    ///
+    /// #[derive(Debug)]
+    /// enum Error {
+    ///     Indivisible,
+    ///     Remainder(u8),
+    /// }
+    ///
+    /// impl fmt::Display for Error {
+    ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    ///         match self {
+    ///             Error::Indivisible => write!(f, "could not divide input by three"),
+    ///             Error::Remainder(remainder) => write!(
+    ///                 f,
+    ///                 "input is not divisible by three, remainder = {}",
+    ///                 remainder
+    ///             ),
+    ///         }
+    ///     }
+    /// }
+    ///
+    /// impl std::error::Error for Error {}
+    ///
+    /// fn divisible_by_3(input: &str) -> Result<(), Error> {
+    ///     input
+    ///         .parse::<i32>()
+    ///         .map_err(|_| Error::Indivisible)
+    ///         .map(|v| v % 3)
+    ///         .and_then(|remainder| {
+    ///             if remainder == 0 {
+    ///                 Ok(())
+    ///             } else {
+    ///                 Err(Error::Remainder(remainder as u8))
+    ///             }
+    ///         })
+    /// }
+    ///  ```
+    ///
+    ///  After:
+    ///  ```rust
+    /// use std::{fmt, num::ParseIntError};
+    ///
+    /// #[derive(Debug)]
+    /// enum Error {
+    ///     Indivisible(ParseIntError),
+    ///     Remainder(u8),
+    /// }
+    ///
+    /// impl fmt::Display for Error {
+    ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    ///         match self {
+    ///             Error::Indivisible(_) => write!(f, "could not divide input by three"),
+    ///             Error::Remainder(remainder) => write!(
+    ///                 f,
+    ///                 "input is not divisible by three, remainder = {}",
+    ///                 remainder
+    ///             ),
+    ///         }
+    ///     }
+    /// }
+    ///
+    /// impl std::error::Error for Error {
+    ///     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+    ///         match self {
+    ///             Error::Indivisible(source) => Some(source),
+    ///             _ => None,
+    ///         }
+    ///     }
+    /// }
+    ///
+    /// fn divisible_by_3(input: &str) -> Result<(), Error> {
+    ///     input
+    ///         .parse::<i32>()
+    ///         .map_err(Error::Indivisible)
+    ///         .map(|v| v % 3)
+    ///         .and_then(|remainder| {
+    ///             if remainder == 0 {
+    ///                 Ok(())
+    ///             } else {
+    ///                 Err(Error::Remainder(remainder as u8))
+    ///             }
+    ///         })
+    /// }
+    /// ```
+    #[clippy::version = "1.48.0"]
+    pub MAP_ERR_IGNORE,
+    restriction,
+    "`map_err` should not ignore the original error"
+}
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Option<RustcVersion>,
@@ -2651,6 +2752,7 @@ impl_lint_pass!(Methods => [
     GET_FIRST,
     MANUAL_OK_OR,
     MAP_CLONE,
+    MAP_ERR_IGNORE,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -2982,6 +3084,8 @@ impl Methods {
                 (name @ ("map" | "map_err"), [m_arg]) => {
                     if name == "map" {
                         map_clone::check(cx, expr, recv, m_arg, self.msrv);
+                    } else {
+                        map_err_ignore::check(cx, expr, m_arg);
                     }
                     if let Some((name, [recv2, args @ ..], span2)) = method_call(recv) {
                         match (name, args) {

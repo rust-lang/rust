@@ -273,7 +273,6 @@ mod manual_non_exhaustive;
 mod manual_rem_euclid;
 mod manual_retain;
 mod manual_strip;
-mod map_err_ignore;
 mod map_unit_fn;
 mod match_result_ok;
 mod matches;
@@ -636,7 +635,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
             msrv,
         ))
     });
-    store.register_late_pass(|| Box::new(map_err_ignore::MapErrIgnore));
     store.register_late_pass(|| Box::new(shadow::Shadow::default()));
     store.register_late_pass(|| Box::new(unit_types::UnitTypes));
     store.register_late_pass(|| Box::new(loops::Loops));
