@@ -1901,6 +1901,31 @@ where
     }
 }
 
+#[stable(since = "1.61.0")]
+impl<T: ToOwned> ToOwned for Option<T> {
+    type Owned = Self<T::Owned>;
+    
+    #[inline]
+    fn to_owned(&self) -> Self::Owned {
+        match self {
+            Some(x) => Some(x.to_owned()),
+            None => None,
+        }
+    }
+    
+    #[inline]
+    //#[unstable(feature = "toowned_clone_into", issue = "41263")]
+    // FIXME: I've no idea if that's how it's supposed to be implemented. Never used clone_into() myself.
+    fn clone_into(&self, target: &mut Self::Owned) {
+        match (self, source) {
+            (Some(source), Some(target)) => source.clone_into(target),
+            (source, target) => *target = source.to_owned(),
+        }
+    }
+}
+
+
+
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_default_impls", issue = "87864")]
 impl<T> const Default for Option<T> {

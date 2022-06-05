@@ -553,3 +553,17 @@ fn zip_unzip_roundtrip() {
     let a = z.unzip();
     assert_eq!(a, (x, y));
 }
+
+#[test]
+fn test_to_owned() {
+    assert_eq!(Some("foo").to_owned(), Some(String::from("foo"));
+    assert_eq!(None::<&str>.to_owned(), None::<String>);
+    
+    let mut y = None;
+    Some("foo").clone_into(&mut y);
+    assert_eq!(y, Some(String::from("foo")));
+    Some("bar").clone_into(&mut y);
+    assert_eq!(y, Some(String::from("bar")));
+    None::<&str>.clone_into(&mut y);
+    assert_eq!(y, None);
+}
