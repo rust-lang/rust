@@ -188,6 +188,10 @@ declare_clippy_lint! {
     /// for x in &res {
     ///     // ..
     /// }
+    ///
+    /// for x in res.iter() {
+    ///     // ..
+    /// }
     /// ```
     ///
     /// Use instead:
@@ -695,10 +699,14 @@ fn check_for_loop_arg(cx: &LateContext<'_>, pat: &Pat<'_>, arg: &Expr<'_>) {
         let method_name = method.ident.as_str();
         // check for looping over x.iter() or x.iter_mut(), could use &x or &mut x
         match method_name {
-            "iter" | "iter_mut" => explicit_iter_loop::check(cx, self_arg, arg, method_name),
+            "iter" | "iter_mut" => {
+                explicit_iter_loop::check(cx, self_arg, arg, method_name);
+                for_loops_over_fallibles::check(cx, pat, self_arg, Some(method_name));
+            },
             "into_iter" => {
                 explicit_iter_loop::check(cx, self_arg, arg, method_name);
                 explicit_into_iter_loop::check(cx, self_arg, arg);
+                for_loops_over_fallibles::check(cx, pat, self_arg, Some(method_name));
             },
             "next" => {
                 next_loop_linted = iter_next_loop::check(cx, arg);
@@ -708,6 +716,6 @@ fn check_for_loop_arg(cx: &LateContext<'_>, pat: &Pat<'_>, arg: &Expr<'_>) {
     }
 
     if !next_loop_linted {
-        for_loops_over_fallibles::check(cx, pat, arg);
+        for_loops_over_fallibles::check(cx, pat, arg, None);
     }
 }
