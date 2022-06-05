@@ -74,7 +74,7 @@ pub fn encode_and_write_metadata(
             std::fs::File::create(&metadata_filename).unwrap_or_else(|e| {
                 tcx.sess.fatal(&format!(
                     "failed to create the file {}: {}",
-                    out_filename.display(),
+                    metadata_filename.display(),
                     e
                 ))
             });
