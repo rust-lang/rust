@@ -1593,8 +1593,8 @@ impl<'a> Parser<'a> {
 
                 let sugg_msg = "consider enclosing expression in a block";
                 let suggestions = vec![
-                    (span.shrink_to_lo(), "{".to_owned()),
-                    (span.shrink_to_hi(), "}".to_owned()),
+                    (span.shrink_to_lo(), "{ ".to_owned()),
+                    (span.shrink_to_hi(), " }".to_owned()),
                 ];
 
                 err.multipart_suggestion_verbose(

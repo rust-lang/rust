@@ -30,8 +30,8 @@ LL |     'label: match () { () => break 'label, };
    |
 help: consider enclosing expression in a block
    |
-LL |     'label: {match () { () => break 'label, }};
-   |             +                                +
+LL |     'label: { match () { () => break 'label, } };
+   |             +                                  +
 
 error: expected `while`, `for`, `loop` or `{` after a label
   --> $DIR/recover-labeled-non-block-expr.rs:9:13
@@ -41,8 +41,8 @@ LL |     'label: match () { () => 'lp: loop { break 'lp 0 }, };
    |
 help: consider enclosing expression in a block
    |
-LL |     'label: {match () { () => 'lp: loop { break 'lp 0 }, }};
-   |             +                                             +
+LL |     'label: { match () { () => 'lp: loop { break 'lp 0 }, } };
+   |             +                                               +
 
 error: expected `while`, `for`, `loop` or `{` after a label
   --> $DIR/recover-labeled-non-block-expr.rs:12:22
@@ -52,7 +52,7 @@ LL |     let _i = 'label: match x {
    |
 help: consider enclosing expression in a block
    |
-LL ~     let _i = 'label: {match x {
+LL ~     let _i = 'label: { match x {
 LL |         0 => 42,
 LL |         1 if false => break 'label 17,
 LL |         1 => {
@@ -68,8 +68,8 @@ LL |     let _val = 'label: (1, if other == 3 { break 'label (2, 3) } else { oth
    |
 help: consider enclosing expression in a block
    |
-LL |     let _val = 'label: {(1, if other == 3 { break 'label (2, 3) } else { other })};
-   |                        +                                                         +
+LL |     let _val = 'label: { (1, if other == 3 { break 'label (2, 3) } else { other }) };
+   |                        +                                                           +
 
 error: aborting due to 6 previous errors
 
