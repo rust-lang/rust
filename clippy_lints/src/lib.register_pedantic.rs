@@ -4,7 +4,6 @@
 
 store.register_group(true, "clippy::pedantic", Some("clippy_pedantic"), vec![
     LintId::of(attrs::INLINE_ALWAYS),
-    LintId::of(bytecount::NAIVE_BYTECOUNT),
     LintId::of(case_sensitive_file_extension_comparisons::CASE_SENSITIVE_FILE_EXTENSION_COMPARISONS),
     LintId::of(casts::BORROW_AS_PTR),
     LintId::of(casts::CAST_LOSSLESS),
@@ -64,6 +63,7 @@ store.register_group(true, "clippy::pedantic", Some("clippy_pedantic"), vec![
     LintId::of(methods::IMPLICIT_CLONE),
     LintId::of(methods::INEFFICIENT_TO_STRING),
     LintId::of(methods::MAP_UNWRAP_OR),
+    LintId::of(methods::NAIVE_BYTECOUNT),
     LintId::of(methods::UNNECESSARY_JOIN),
     LintId::of(misc::USED_UNDERSCORE_BINDING),
     LintId::of(mismatching_type_param_order::MISMATCHING_TYPE_PARAM_ORDER),

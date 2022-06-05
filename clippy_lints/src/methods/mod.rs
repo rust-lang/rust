@@ -1,4 +1,5 @@
 mod bind_instead_of_map;
+mod bytecount;
 mod bytes_nth;
 mod chars_cmp;
 mod chars_cmp_with_unwrap;
@@ -82,7 +83,9 @@ use bind_instead_of_map::BindInsteadOfMap;
 use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
 use clippy_utils::ty::{contains_adt_constructor, contains_ty, implements_trait, is_copy, is_type_diagnostic_item};
-use clippy_utils::{contains_return, get_trait_def_id, iter_input_pats, meets_msrv, msrvs, paths, return_ty};
+use clippy_utils::{
+    contains_return, get_trait_def_id, is_trait_method, iter_input_pats, meets_msrv, msrvs, paths, return_ty,
+};
 use if_chain::if_chain;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
@@ -2368,6 +2371,37 @@ declare_clippy_lint! {
     "Iterator for empty array"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for naive byte counts
+    ///
+    /// ### Why is this bad?
+    /// The [`bytecount`](https://crates.io/crates/bytecount)
+    /// crate has methods to count your bytes faster, especially for large slices.
+    ///
+    /// ### Known problems
+    /// If you have predominantly small slices, the
+    /// `bytecount::count(..)` method may actually be slower. However, if you can
+    /// ensure that less than 2³²-1 matches arise, the `naive_count_32(..)` can be
+    /// faster in those cases.
+    ///
+    /// ### Example
+    /// ```rust
+    /// # let vec = vec![1_u8];
+    /// let count = vec.iter().filter(|x| **x == 0u8).count();
+    /// ```
+    ///
+    /// Use instead:
+    /// ```rust,ignore
+    /// # let vec = vec![1_u8];
+    /// let count = bytecount::count(&vec, 0u8);
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub NAIVE_BYTECOUNT,
+    pedantic,
+    "use of naive `<slice>.filter(|&x| x == y).count()` to count byte values"
+}
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Option<RustcVersion>,
@@ -2471,7 +2505,8 @@ impl_lint_pass!(Methods => [
     NO_EFFECT_REPLACE,
     OBFUSCATED_IF_ELSE,
     ITER_ON_SINGLE_ITEMS,
-    ITER_ON_EMPTY_COLLECTIONS
+    ITER_ON_EMPTY_COLLECTIONS,
+    NAIVE_BYTECOUNT,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -2726,12 +2761,13 @@ impl Methods {
                     },
                     _ => {},
                 },
-                ("count", []) => match method_call(recv) {
+                ("count", []) if is_trait_method(cx, expr, sym::Iterator) => match method_call(recv) {
                     Some(("cloned", [recv2], _)) => iter_overeager_cloned::check(cx, expr, recv, recv2, true, false),
                     Some((name2 @ ("into_iter" | "iter" | "iter_mut"), [recv2], _)) => {
                         iter_count::check(cx, expr, recv2, name2);
                     },
                     Some(("map", [_, arg], _)) => suspicious_map::check(cx, expr, recv, arg),
+                    Some(("filter", [recv2, arg], _)) => bytecount::check(cx, expr, recv2, arg),
                     _ => {},
                 },
                 ("drain", [arg]) => {

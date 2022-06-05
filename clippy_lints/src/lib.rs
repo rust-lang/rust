@@ -180,7 +180,6 @@ mod blocks_in_if_conditions;
 mod bool_assert_comparison;
 mod booleans;
 mod borrow_deref_ref;
-mod bytecount;
 mod bytes_count_to_len;
 mod cargo;
 mod case_sensitive_file_extension_comparisons;
@@ -718,7 +717,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     );
     store.register_late_pass(move || Box::new(pass_by_ref_or_value));
     store.register_late_pass(|| Box::new(ref_option_ref::RefOptionRef));
-    store.register_late_pass(|| Box::new(bytecount::ByteCount));
     store.register_late_pass(|| Box::new(infinite_iter::InfiniteIter));
     store.register_late_pass(|| Box::new(inline_fn_without_body::InlineFnWithoutBody));
     store.register_late_pass(|| Box::new(useless_conversion::UselessConversion::default()));
