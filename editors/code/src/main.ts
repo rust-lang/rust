@@ -15,6 +15,23 @@ let ctx: Ctx | undefined;
 
 const RUST_PROJECT_CONTEXT_NAME = "inRustProject";
 
+let TRACE_OUTPUT_CHANNEL: vscode.OutputChannel | null = null;
+export function traceOutputChannel() {
+    if (!TRACE_OUTPUT_CHANNEL) {
+        TRACE_OUTPUT_CHANNEL = vscode.window.createOutputChannel(
+            "Rust Analyzer Language Server Trace"
+        );
+    }
+    return TRACE_OUTPUT_CHANNEL;
+}
+let OUTPUT_CHANNEL: vscode.OutputChannel | null = null;
+export function outputChannel() {
+    if (!OUTPUT_CHANNEL) {
+        OUTPUT_CHANNEL = vscode.window.createOutputChannel("Rust Analyzer Language Server");
+    }
+    return OUTPUT_CHANNEL;
+}
+
 export interface RustAnalyzerExtensionApi {
     client: lc.LanguageClient;
 }
@@ -110,7 +127,7 @@ async function initCommonContext(context: vscode.ExtensionContext, ctx: Ctx) {
     // Reloading is inspired by @DanTup maneuver: https://github.com/microsoft/vscode/issues/45774#issuecomment-373423895
     ctx.registerCommand("reload", (_) => async () => {
         void vscode.window.showInformationMessage("Reloading rust-analyzer...");
-        await deactivate();
+        await doDeactivate();
         while (context.subscriptions.length > 0) {
             try {
                 context.subscriptions.pop()!.dispose();
@@ -165,6 +182,14 @@ async function initCommonContext(context: vscode.ExtensionContext, ctx: Ctx) {
 }
 
 export async function deactivate() {
+    TRACE_OUTPUT_CHANNEL?.dispose();
+    TRACE_OUTPUT_CHANNEL = null;
+    OUTPUT_CHANNEL?.dispose();
+    OUTPUT_CHANNEL = null;
+    await doDeactivate();
+}
+
+async function doDeactivate() {
     await setContextValue(RUST_PROJECT_CONTEXT_NAME, undefined);
     await ctx?.client.stop();
     ctx = undefined;
