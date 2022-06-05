@@ -959,7 +959,7 @@ pub fn expand_format_args<'cx>(
     expand_format_args_impl(ecx, sp, tts, false)
 }
 
-pub fn expand_format_args_nl<'cx>(
+pub fn expand_format_args_ln<'cx>(
     ecx: &'cx mut ExtCtxt<'_>,
     sp: Span,
     tts: TokenStream,

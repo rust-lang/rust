@@ -351,12 +351,12 @@ pub struct FormatArgsExpn<'tcx> {
 }
 
 impl<'tcx> FormatArgsExpn<'tcx> {
-    /// Parses an expanded `format_args!` or `format_args_nl!` invocation
+    /// Parses an expanded `format_args!` or `format_args_ln!` invocation
     pub fn parse(cx: &LateContext<'_>, expr: &'tcx Expr<'tcx>) -> Option<Self> {
         macro_backtrace(expr.span).find(|macro_call| {
             matches!(
                 cx.tcx.item_name(macro_call.def_id),
-                sym::const_format_args | sym::format_args | sym::format_args_nl
+                sym::const_format_args | sym::format_args | sym::format_args_ln
             )
         })?;
         let mut format_string_span: Option<Span> = None;

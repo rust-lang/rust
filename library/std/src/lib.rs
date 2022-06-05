@@ -318,7 +318,7 @@
 #![feature(core_panic)]
 #![feature(custom_test_frameworks)]
 #![feature(edition_panic)]
-#![feature(format_args_nl)]
+#![feature(format_args_ln)]
 #![feature(log_syntax)]
 #![feature(once_cell)]
 #![feature(saturating_int_impl)]
@@ -593,7 +593,7 @@ pub use core::{
 #[allow(deprecated)]
 pub use core::{
     assert, assert_matches, cfg, column, compile_error, concat, concat_idents, const_format_args,
-    env, file, format_args, format_args_nl, include, include_bytes, include_str, line, log_syntax,
+    env, file, format_args, format_args_ln, include, include_bytes, include_str, line, log_syntax,
     module_path, option_env, stringify, trace_macros,
 };
 

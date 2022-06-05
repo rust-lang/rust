@@ -56,7 +56,7 @@ pub use crate::hash::macros::Hash;
 #[doc(no_inline)]
 pub use crate::{
     assert, cfg, column, compile_error, concat, concat_idents, env, file, format_args,
-    format_args_nl, include, include_bytes, include_str, line, log_syntax, module_path, option_env,
+    format_args_ln, include, include_bytes, include_str, line, log_syntax, module_path, option_env,
     stringify, trace_macros,
 };
 

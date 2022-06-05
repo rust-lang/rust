@@ -97,13 +97,13 @@ macro_rules! print {
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "println_macro")]
-#[allow_internal_unstable(print_internals, format_args_nl)]
+#[allow_internal_unstable(print_internals, format_args_ln)]
 macro_rules! println {
     () => {
         $crate::print!("\n")
     };
     ($($arg:tt)*) => {{
-        $crate::io::_print($crate::format_args_nl!($($arg)*));
+        $crate::io::_print($crate::format_args_ln!($($arg)*));
     }};
 }
 
@@ -163,13 +163,13 @@ macro_rules! eprint {
 #[macro_export]
 #[stable(feature = "eprint", since = "1.19.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "eprintln_macro")]
-#[allow_internal_unstable(print_internals, format_args_nl)]
+#[allow_internal_unstable(print_internals, format_args_ln)]
 macro_rules! eprintln {
     () => {
         $crate::eprint!("\n")
     };
     ($($arg:tt)*) => {{
-        $crate::io::_eprint($crate::format_args_nl!($($arg)*));
+        $crate::io::_eprint($crate::format_args_ln!($($arg)*));
     }};
 }
 
