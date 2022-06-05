@@ -7,6 +7,7 @@ import { WorkspaceEdit } from "vscode";
 import { Workspace } from "./ctx";
 import { updateConfig } from "./config";
 import { substituteVariablesInEnv } from "./config";
+import { outputChannel, traceOutputChannel } from "./main";
 import { randomUUID } from "crypto";
 
 export interface Env {
@@ -82,9 +83,6 @@ export async function createClient(
         run,
         debug: run,
     };
-    const traceOutputChannel = vscode.window.createOutputChannel(
-        "Rust Analyzer Language Server Trace"
-    );
 
     let initializationOptions = vscode.workspace.getConfiguration("rust-analyzer");
 
@@ -104,7 +102,8 @@ export async function createClient(
         documentSelector: [{ scheme: "file", language: "rust" }],
         initializationOptions,
         diagnosticCollectionName: "rustc",
-        traceOutputChannel,
+        traceOutputChannel: traceOutputChannel(),
+        outputChannel: outputChannel(),
         middleware: {
             async provideHover(
                 document: vscode.TextDocument,
