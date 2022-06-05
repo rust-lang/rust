@@ -1,5 +1,6 @@
 mod bind_instead_of_map;
 mod bytecount;
+mod bytes_count_to_len;
 mod bytes_nth;
 mod chars_cmp;
 mod chars_cmp_with_unwrap;
@@ -2402,6 +2403,31 @@ declare_clippy_lint! {
     "use of naive `<slice>.filter(|&x| x == y).count()` to count byte values"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// It checks for `str::bytes().count()` and suggests replacing it with
+    /// `str::len()`.
+    ///
+    /// ### Why is this bad?
+    /// `str::bytes().count()` is longer and may not be as performant as using
+    /// `str::len()`.
+    ///
+    /// ### Example
+    /// ```rust
+    /// "hello".bytes().count();
+    /// String::from("hello").bytes().count();
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// "hello".len();
+    /// String::from("hello").len();
+    /// ```
+    #[clippy::version = "1.62.0"]
+    pub BYTES_COUNT_TO_LEN,
+    complexity,
+    "Using `bytes().count()` when `len()` performs the same functionality"
+}
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Option<RustcVersion>,
@@ -2507,6 +2533,7 @@ impl_lint_pass!(Methods => [
     ITER_ON_SINGLE_ITEMS,
     ITER_ON_EMPTY_COLLECTIONS,
     NAIVE_BYTECOUNT,
+    BYTES_COUNT_TO_LEN,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -2768,6 +2795,7 @@ impl Methods {
                     },
                     Some(("map", [_, arg], _)) => suspicious_map::check(cx, expr, recv, arg),
                     Some(("filter", [recv2, arg], _)) => bytecount::check(cx, expr, recv2, arg),
+                    Some(("bytes", [recv2], _)) => bytes_count_to_len::check(cx, expr, recv, recv2),
                     _ => {},
                 },
                 ("drain", [arg]) => {
