@@ -317,6 +317,30 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                     let hir::ParamName::Plain(name) = p.name else { return None };
                     Some(name.to_string())
                 }));
+                // Suggest `'static` when in const/static item-like.
+                if let hir::Node::Item(hir::Item {
+                    kind: hir::ItemKind::Static { .. } | hir::ItemKind::Const { .. },
+                    ..
+                })
+                | hir::Node::TraitItem(hir::TraitItem {
+                    kind: hir::TraitItemKind::Const { .. },
+                    ..
+                })
+                | hir::Node::ImplItem(hir::ImplItem {
+                    kind: hir::ImplItemKind::Const { .. },
+                    ..
+                })
+                | hir::Node::ForeignItem(hir::ForeignItem {
+                    kind: hir::ForeignItemKind::Static { .. },
+                    ..
+                })
+                | hir::Node::AnonConst(..) = node
+                {
+                    ret.extend(
+                        std::iter::repeat("'static".to_owned())
+                            .take(num_params_to_take.saturating_sub(ret.len())),
+                    );
+                }
                 if ret.len() >= num_params_to_take {
                     return ret[..num_params_to_take].join(", ");
                 }
