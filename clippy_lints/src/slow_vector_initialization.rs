@@ -23,15 +23,16 @@ declare_clippy_lint! {
     /// ```rust
     /// # use core::iter::repeat;
     /// # let len = 4;
-    ///
-    /// // Bad
     /// let mut vec1 = Vec::with_capacity(len);
     /// vec1.resize(len, 0);
     ///
     /// let mut vec2 = Vec::with_capacity(len);
     /// vec2.extend(repeat(0).take(len));
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
+    /// # let len = 4;
     /// let mut vec1 = vec![0; len];
     /// let mut vec2 = vec![0; len];
     /// ```

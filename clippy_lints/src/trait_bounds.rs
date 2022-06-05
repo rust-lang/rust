@@ -29,8 +29,7 @@ declare_clippy_lint! {
     /// pub fn foo<T>(t: T) where T: Copy, T: Clone {}
     /// ```
     ///
-    /// Could be written as:
-    ///
+    /// Use instead:
     /// ```rust
     /// pub fn foo<T>(t: T) where T: Copy + Clone {}
     /// ```

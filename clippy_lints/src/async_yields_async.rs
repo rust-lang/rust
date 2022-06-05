@@ -24,6 +24,7 @@ declare_clippy_lint! {
     ///   };
     /// }
     /// ```
+    ///
     /// Use instead:
     /// ```rust
     /// async fn foo() {}

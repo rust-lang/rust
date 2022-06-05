@@ -21,11 +21,12 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// // Bad
     /// // format!() returns a `String`
     /// let s: String = format!("hello").into();
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
     /// let s: String = format!("hello");
     /// ```
     #[clippy::version = "1.45.0"]

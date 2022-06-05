@@ -76,12 +76,13 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust,ignore
-    /// // Bad
     /// pub fn foo(x: *const u8) {
     ///     println!("{}", unsafe { *x });
     /// }
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust,ignore
     /// pub unsafe fn foo(x: *const u8) {
     ///     println!("{}", unsafe { *x });
     /// }

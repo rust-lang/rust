@@ -19,12 +19,13 @@ declare_clippy_lint! {
     /// This only catches integers (for now).
     ///
     /// ### Example
-    /// ```ignore
-    /// // Bad
+    /// ```rust,ignore
     /// let a = x * -1;
+    /// ```
     ///
-    /// // Good
-    /// let b = -x;
+    /// Use instead:
+    /// ```rust,ignore
+    /// let a = -x;
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub NEG_MULTIPLY,

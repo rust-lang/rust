@@ -45,16 +45,13 @@ declare_clippy_lint! {
     /// dereferences, e.g., changing `*x` to `x` within the function.
     ///
     /// ### Example
-    /// ```rust,ignore
-    /// // Bad
-    /// fn foo(ref x: u8) -> bool {
-    ///     true
-    /// }
+    /// ```rust
+    /// fn foo(ref _x: u8) {}
+    /// ```
     ///
-    /// // Good
-    /// fn foo(x: &u8) -> bool {
-    ///     true
-    /// }
+    /// Use instead:
+    /// ```rust
+    /// fn foo(_x: &u8) {}
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub TOPLEVEL_REF_ARG,
@@ -73,11 +70,12 @@ declare_clippy_lint! {
     /// ### Example
     /// ```rust
     /// # let x = 1.0;
-    ///
-    /// // Bad
     /// if x == f32::NAN { }
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
+    /// # let x = 1.0f32;
     /// if x.is_nan() { }
     /// ```
     #[clippy::version = "pre 1.29.0"]
@@ -139,7 +137,8 @@ declare_clippy_lint! {
     /// # let y = String::from("foo");
     /// if x.to_owned() == y {}
     /// ```
-    /// Could be written as
+    ///
+    /// Use instead:
     /// ```rust
     /// # let x = "foo";
     /// # let y = String::from("foo");
@@ -232,10 +231,11 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// // Bad
     /// let a = 0 as *const u32;
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
     /// let a = std::ptr::null::<u32>();
     /// ```
     #[clippy::version = "pre 1.29.0"]

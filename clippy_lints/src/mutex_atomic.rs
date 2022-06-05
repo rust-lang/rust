@@ -27,12 +27,13 @@ declare_clippy_lint! {
     /// ### Example
     /// ```rust
     /// # let y = true;
-    ///
-    /// // Bad
     /// # use std::sync::Mutex;
     /// let x = Mutex::new(&y);
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
+    /// # let y = true;
     /// # use std::sync::atomic::AtomicBool;
     /// let x = AtomicBool::new(y);
     /// ```
@@ -60,8 +61,10 @@ declare_clippy_lint! {
     /// ```rust
     /// # use std::sync::Mutex;
     /// let x = Mutex::new(0usize);
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
     /// # use std::sync::atomic::AtomicUsize;
     /// let x = AtomicUsize::new(0usize);
     /// ```

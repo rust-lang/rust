@@ -20,13 +20,12 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// // Bad
     /// let x = vec![2, 3, 5];
     /// let first_element = x.get(0);
     /// ```
+    ///
     /// Use instead:
     /// ```rust
-    /// // Good
     /// let x = vec![2, 3, 5];
     /// let first_element = x.first();
     /// ```

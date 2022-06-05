@@ -17,11 +17,12 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// // Bad
     /// assert_eq!("a".is_empty(), false);
     /// assert_ne!("a".is_empty(), true);
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
     /// assert!(!"a".is_empty());
     /// ```
     #[clippy::version = "1.53.0"]

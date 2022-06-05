@@ -18,7 +18,7 @@ declare_clippy_lint! {
     /// Dereferencing and then borrowing a reference value has no effect in most cases.
     ///
     /// ### Known problems
-    /// false negative on such code:
+    /// False negative on such code:
     /// ```
     /// let x = &12;
     /// let addr_x = &x as *const _ as usize;
@@ -29,17 +29,20 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
+    /// fn foo(_x: &str) {}
+    ///
     /// let s = &String::new();
     ///
-    /// // Bad
     /// let a: &String = &* s;
     /// foo(&*s);
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
+    /// # fn foo(_x: &str) {}
+    /// # let s = &String::new();
     /// let a: &String = s;
     /// foo(&**s);
-    ///
-    /// fn foo(_: &str){ }
     /// ```
     #[clippy::version = "1.59.0"]
     pub BORROW_DEREF_REF,

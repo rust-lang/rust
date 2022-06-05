@@ -30,8 +30,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     ///
-    /// Could be written as:
-    ///
+    /// Use instead:
     /// ```rust
     /// #[derive(Default)]
     /// struct Foo {
@@ -45,7 +44,6 @@ declare_clippy_lint! {
     /// specialized than what derive will produce. This lint can't detect the manual `impl`
     /// has exactly equal bounds, and therefore this lint is disabled for types with
     /// generic parameters.
-    ///
     #[clippy::version = "1.57.0"]
     pub DERIVABLE_IMPLS,
     complexity,

@@ -23,12 +23,13 @@ declare_clippy_lint! {
     /// complexity.
     ///
     /// ### Example
-    /// ```rust,ignore
-    /// // Bad
-    /// let a = (|| 42)()
+    /// ```rust
+    /// let a = (|| 42)();
+    /// ```
     ///
-    /// // Good
-    /// let a = 42
+    /// Use instead:
+    /// ```rust
+    /// let a = 42;
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub REDUNDANT_CLOSURE_CALL,

@@ -38,12 +38,14 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// // Bad
     /// enum Test {
     ///     A(i32),
     ///     B([i32; 8000]),
     /// }
+    /// ```
     ///
+    /// Use instead:
+    /// ```rust
     /// // Possibly better
     /// enum Test2 {
     ///     A(i32),

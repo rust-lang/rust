@@ -23,10 +23,12 @@ declare_clippy_lint! {
     /// ### Example
     /// ```rust
     /// # let x = 1;
-    /// // Bad
     /// let x = &x;
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
+    /// # let x = 1;
     /// let y = &x; // use different variable name
     /// ```
     #[clippy::version = "pre 1.29.0"]
@@ -79,11 +81,14 @@ declare_clippy_lint! {
     /// # let y = 1;
     /// # let z = 2;
     /// let x = y;
-    ///
-    /// // Bad
     /// let x = z; // shadows the earlier binding
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
+    /// # let y = 1;
+    /// # let z = 2;
+    /// let x = y;
     /// let w = z; // use different variable name
     /// ```
     #[clippy::version = "pre 1.29.0"]

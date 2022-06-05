@@ -43,13 +43,16 @@ declare_clippy_lint! {
     /// ```rust
     /// # fn bar(stool: &str) {}
     /// # let x = Some("abc");
-    /// // Bad
     /// match x {
     ///     Some(ref foo) => bar(foo),
     ///     _ => (),
     /// }
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
+    /// # fn bar(stool: &str) {}
+    /// # let x = Some("abc");
     /// if let Some(ref foo) = x {
     ///     bar(foo);
     /// }
@@ -114,14 +117,15 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust,ignore
-    /// // Bad
     /// match x {
     ///     &A(ref y) => foo(y),
     ///     &B => bar(),
     ///     _ => frob(&x),
     /// }
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust,ignore
     /// match *x {
     ///     A(ref y) => foo(y),
     ///     B => bar(),
@@ -227,13 +231,16 @@ declare_clippy_lint! {
     /// ```rust
     /// let x: Option<()> = None;
     ///
-    /// // Bad
     /// let r: Option<&()> = match x {
     ///     None => None,
     ///     Some(ref v) => Some(v),
     /// };
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
+    /// let x: Option<()> = None;
+    ///
     /// let r: Option<&()> = x.as_ref();
     /// ```
     #[clippy::version = "pre 1.29.0"]
@@ -257,13 +264,16 @@ declare_clippy_lint! {
     /// ```rust
     /// # enum Foo { A(usize), B(usize) }
     /// # let x = Foo::B(1);
-    /// // Bad
     /// match x {
     ///     Foo::A(_) => {},
     ///     _ => {},
     /// }
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
+    /// # enum Foo { A(usize), B(usize) }
+    /// # let x = Foo::B(1);
     /// match x {
     ///     Foo::A(_) => {},
     ///     Foo::B(_) => {},
@@ -290,14 +300,17 @@ declare_clippy_lint! {
     /// ```rust
     /// # enum Foo { A, B, C }
     /// # let x = Foo::B;
-    /// // Bad
     /// match x {
     ///     Foo::A => {},
     ///     Foo::B => {},
     ///     _ => {},
     /// }
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
+    /// # enum Foo { A, B, C }
+    /// # let x = Foo::B;
     /// match x {
     ///     Foo::A => {},
     ///     Foo::B => {},
@@ -320,14 +333,17 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// // Bad
-    /// match "foo" {
+    /// # let s = "foo";
+    /// match s {
     ///     "a" => {},
     ///     "bar" | _ => {},
     /// }
+    /// ```
     ///
-    /// // Good
-    /// match "foo" {
+    /// Use instead:
+    /// ```rust
+    /// # let s = "foo";
+    /// match s {
     ///     "a" => {},
     ///     _ => {},
     /// }
@@ -389,15 +405,17 @@ declare_clippy_lint! {
     /// ```rust
     /// # let a = 1;
     /// # let b = 2;
-    ///
-    /// // Bad
     /// match (a, b) {
     ///     (c, d) => {
     ///         // useless match
     ///     }
     /// }
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
+    /// # let a = 1;
+    /// # let b = 2;
     /// let (c, d) = (a, b);
     /// ```
     #[clippy::version = "1.43.0"]
@@ -419,13 +437,16 @@ declare_clippy_lint! {
     /// # struct A { a: i32 }
     /// let a = A { a: 5 };
     ///
-    /// // Bad
     /// match a {
     ///     A { a: 5, .. } => {},
     ///     _ => {},
     /// }
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
+    /// # struct A { a: i32 }
+    /// # let a = A { a: 5 };
     /// match a {
     ///     A { a: 5 } => {},
     ///     _ => {},
@@ -509,7 +530,6 @@ declare_clippy_lint! {
     /// ```rust
     /// let x = Some(5);
     ///
-    /// // Bad
     /// let a = match x {
     ///     Some(0) => true,
     ///     _ => false,
@@ -520,8 +540,11 @@ declare_clippy_lint! {
     /// } else {
     ///     false
     /// };
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
+    /// let x = Some(5);
     /// let a = matches!(x, Some(0));
     /// ```
     #[clippy::version = "1.47.0"]
@@ -695,19 +718,18 @@ declare_clippy_lint! {
     /// let arr = vec![0, 1, 2, 3];
     /// let idx = 1;
     ///
-    /// // Bad
     /// match arr[idx] {
     ///     0 => println!("{}", 0),
     ///     1 => println!("{}", 3),
     ///     _ => {},
     /// }
     /// ```
+    ///
     /// Use instead:
     /// ```rust, no_run
     /// let arr = vec![0, 1, 2, 3];
     /// let idx = 1;
     ///
-    /// // Good
     /// match arr.get(idx) {
     ///     Some(0) => println!("{}", 0),
     ///     Some(1) => println!("{}", 3),

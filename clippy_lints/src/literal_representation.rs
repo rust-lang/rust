@@ -22,11 +22,16 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// // Bad
-    /// let x: u64 = 61864918973511;
+    /// # let _: u64 =
+    /// 61864918973511
+    /// # ;
+    /// ```
     ///
-    /// // Good
-    /// let x: u64 = 61_864_918_973_511;
+    /// Use instead:
+    /// ```rust
+    /// # let _: u64 =
+    /// 61_864_918_973_511
+    /// # ;
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub UNREADABLE_LITERAL,
@@ -66,11 +71,16 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// // Bad
-    /// let x: u64 = 618_64_9189_73_511;
+    /// # let _: u64 =
+    /// 618_64_9189_73_511
+    /// # ;
+    /// ```
     ///
-    /// // Good
-    /// let x: u64 = 61_864_918_973_511;
+    /// Use instead:
+    /// ```rust
+    /// # let _: u64 =
+    /// 61_864_918_973_511
+    /// # ;
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub INCONSISTENT_DIGIT_GROUPING,
@@ -125,9 +135,11 @@ declare_clippy_lint! {
     /// readable than a decimal representation.
     ///
     /// ### Example
+    /// ```text
     /// `255` => `0xFF`
     /// `65_535` => `0xFFFF`
     /// `4_042_322_160` => `0xF0F0_F0F0`
+    /// ```
     #[clippy::version = "pre 1.29.0"]
     pub DECIMAL_LITERAL_REPRESENTATION,
     restriction,

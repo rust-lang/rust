@@ -45,13 +45,11 @@ declare_clippy_lint! {
     /// `std::mem::drop` conveys your intention better and is less error-prone.
     ///
     /// ### Example
-    ///
-    /// Bad:
     /// ```rust,ignore
     /// let _ = mutex.lock();
     /// ```
     ///
-    /// Good:
+    /// Use instead:
     /// ```rust,ignore
     /// let _lock = mutex.lock();
     /// ```
@@ -75,24 +73,20 @@ declare_clippy_lint! {
     /// better and is less error-prone.
     ///
     /// ### Example
-    ///
-    /// Bad:
-    /// ```rust,ignore
-    /// struct Droppable;
-    /// impl Drop for Droppable {
-    ///     fn drop(&mut self) {}
-    /// }
+    /// ```rust
+    /// # struct DroppableItem;
     /// {
-    ///     let _ = Droppable;
-    ///     //               ^ dropped here
+    ///     let _ = DroppableItem;
+    ///     //                   ^ dropped here
     ///     /* more code */
     /// }
     /// ```
     ///
-    /// Good:
-    /// ```rust,ignore
+    /// Use instead:
+    /// ```rust
+    /// # struct DroppableItem;
     /// {
-    ///     let _droppable = Droppable;
+    ///     let _droppable = DroppableItem;
     ///     /* more code */
     ///     // dropped at end of scope
     /// }

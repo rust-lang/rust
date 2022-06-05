@@ -88,10 +88,11 @@ use rustc_session::Session;
 ///     ///
 ///     /// ### Example
 ///     /// ```rust
-///     /// // Bad
 ///     /// Insert a short example of code that triggers the lint
+///     /// ```
 ///     ///
-///     /// // Good
+///     /// Use instead:
+///     /// ```rust
 ///     /// Insert a short example of improved code that doesn't trigger the lint
 ///     /// ```
 ///     pub LINT_NAME,

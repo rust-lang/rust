@@ -48,10 +48,11 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```ignore
-    /// // Bad
     /// fn foo(&Vec<u32>) { .. }
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```ignore
     /// fn foo(&[u32]) { .. }
     /// ```
     #[clippy::version = "pre 1.29.0"]
@@ -70,15 +71,18 @@ declare_clippy_lint! {
     /// method instead
     ///
     /// ### Example
-    /// ```ignore
-    /// // Bad
-    /// if x == ptr::null {
-    ///     ..
-    /// }
+    /// ```rust,ignore
+    /// use std::ptr;
     ///
-    /// // Good
+    /// if x == ptr::null {
+    ///     // ..
+    /// }
+    /// ```
+    ///
+    /// Use instead:
+    /// ```rust,ignore
     /// if x.is_null() {
-    ///     ..
+    ///     // ..
     /// }
     /// ```
     #[clippy::version = "pre 1.29.0"]
@@ -129,12 +133,12 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```ignore
-    /// // Bad. Undefined behavior
+    /// // Undefined behavior
     /// unsafe { std::slice::from_raw_parts(ptr::null(), 0); }
     /// ```
     ///
+    /// Use instead:
     /// ```ignore
-    /// // Good
     /// unsafe { std::slice::from_raw_parts(NonNull::dangling().as_ptr(), 0); }
     /// ```
     #[clippy::version = "1.53.0"]

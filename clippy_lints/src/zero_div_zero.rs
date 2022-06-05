@@ -14,10 +14,11 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// // Bad
     /// let nan = 0.0f32 / 0.0;
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
     /// let nan = f32::NAN;
     /// ```
     #[clippy::version = "pre 1.29.0"]

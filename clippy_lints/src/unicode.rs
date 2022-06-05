@@ -41,7 +41,8 @@ declare_clippy_lint! {
     /// ```rust
     /// let x = String::from("€");
     /// ```
-    /// Could be written as:
+    ///
+    /// Use instead:
     /// ```rust
     /// let x = String::from("\u{20ac}");
     /// ```
