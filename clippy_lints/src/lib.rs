@@ -170,7 +170,6 @@ mod renamed_lints;
 mod almost_complete_letter_range;
 mod approx_const;
 mod as_conversions;
-mod as_underscore;
 mod asm_syntax;
 mod assertions_on_constants;
 mod assertions_on_result_states;
@@ -923,7 +922,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_early_pass(move || Box::new(almost_complete_letter_range::AlmostCompleteLetterRange::new(msrv)));
     store.register_late_pass(|| Box::new(swap_ptr_to_ref::SwapPtrToRef));
     store.register_late_pass(|| Box::new(mismatching_type_param_order::TypeParamMismatch));
-    store.register_late_pass(|| Box::new(as_underscore::AsUnderscore));
     store.register_late_pass(|| Box::new(read_zero_byte_vec::ReadZeroByteVec));
     store.register_late_pass(|| Box::new(default_instead_of_iter_empty::DefaultIterEmpty));
     store.register_late_pass(move || Box::new(manual_rem_euclid::ManualRemEuclid::new(msrv)));

@@ -4,11 +4,11 @@
 
 store.register_group(true, "clippy::restriction", Some("clippy_restriction"), vec![
     LintId::of(as_conversions::AS_CONVERSIONS),
-    LintId::of(as_underscore::AS_UNDERSCORE),
     LintId::of(asm_syntax::INLINE_ASM_X86_ATT_SYNTAX),
     LintId::of(asm_syntax::INLINE_ASM_X86_INTEL_SYNTAX),
     LintId::of(assertions_on_result_states::ASSERTIONS_ON_RESULT_STATES),
     LintId::of(attrs::ALLOW_ATTRIBUTES_WITHOUT_REASON),
+    LintId::of(casts::AS_UNDERSCORE),
     LintId::of(casts::FN_TO_NUMERIC_CAST_ANY),
     LintId::of(create_dir::CREATE_DIR),
     LintId::of(dbg_macro::DBG_MACRO),

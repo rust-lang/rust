@@ -1,3 +1,4 @@
+mod as_underscore;
 mod cast_abs_to_unsigned;
 mod cast_enum_constructor;
 mod cast_lossless;
@@ -506,6 +507,34 @@ declare_clippy_lint! {
     "casting the result of `abs()` to an unsigned integer can panic"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Check for the usage of `as _` conversion using inferred type.
+    ///
+    /// ### Why is this bad?
+    /// The conversion might include lossy conversion and dangerous cast that might go
+    /// undetected due to the type being inferred.
+    ///
+    /// The lint is allowed by default as using `_` is less wordy than always specifying the type.
+    ///
+    /// ### Example
+    /// ```rust
+    /// fn foo(n: usize) {}
+    /// let n: u16 = 256;
+    /// foo(n as _);
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// fn foo(n: usize) {}
+    /// let n: u16 = 256;
+    /// foo(n as usize);
+    /// ```
+    #[clippy::version = "1.63.0"]
+    pub AS_UNDERSCORE,
+    restriction,
+    "detects `as _` conversion"
+}
+
 pub struct Casts {
     msrv: Option<RustcVersion>,
 }
@@ -534,7 +563,8 @@ impl_lint_pass!(Casts => [
     PTR_AS_PTR,
     CAST_ENUM_TRUNCATION,
     CAST_ENUM_CONSTRUCTOR,
-    CAST_ABS_TO_UNSIGNED
+    CAST_ABS_TO_UNSIGNED,
+    AS_UNDERSCORE,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Casts {
@@ -547,8 +577,8 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
             return;
         }
 
-        if let ExprKind::Cast(cast_expr, cast_to) = expr.kind {
-            if is_hir_ty_cfg_dependant(cx, cast_to) {
+        if let ExprKind::Cast(cast_expr, cast_to_hir) = expr.kind {
+            if is_hir_ty_cfg_dependant(cx, cast_to_hir) {
                 return;
             }
             let (cast_from, cast_to) = (
@@ -575,6 +605,8 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
                 cast_lossless::check(cx, expr, cast_expr, cast_from, cast_to, self.msrv);
                 cast_enum_constructor::check(cx, expr, cast_expr, cast_from);
             }
+
+            as_underscore::check(cx, expr, cast_to_hir);
         }
 
         cast_ref_to_mut::check(cx, expr);
