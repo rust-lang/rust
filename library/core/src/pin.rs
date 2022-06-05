@@ -593,6 +593,17 @@ impl<P: Deref> Pin<P> {
         unsafe { Pin::new_unchecked(&*self.pointer) }
     }
 
+    /// Return a reference to the `pointer`.
+    ///
+    /// Since this function takes an immutable reference of `Pin<P>`,
+    /// it is impossible to move or move out from the pinned `pointer`.
+    ///
+    /// Thus it is safe to call this function.
+    #[inline(always)]
+    pub const fn as_inner_ref(&self) -> &P {
+        &self.p
+    }
+
     /// Unwraps this `Pin<P>` returning the underlying pointer.
     ///
     /// # Safety
