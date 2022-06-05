@@ -2112,50 +2112,68 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     ) {
         debug!("resolve_implementation");
         // If applicable, create a rib for the type parameters.
-        self.with_generic_param_rib(&generics.params, ItemRibKind(HasGenericParams::Yes), LifetimeRibKind::Generics { span: generics.span, binder: item_id, kind: LifetimeBinderKind::ImplBlock }, |this| {
-            // Dummy self type for better errors if `Self` is used in the trait path.
-            this.with_self_rib(Res::SelfTy { trait_: None, alias_to: None }, |this| {
-                this.with_lifetime_rib(LifetimeRibKind::AnonymousCreateParameter(item_id), |this| {
-                    // Resolve the trait reference, if necessary.
-                    this.with_optional_trait_ref(opt_trait_reference.as_ref(), self_type, |this, trait_id| {
-                        let item_def_id = this.r.local_def_id(item_id);
+        self.with_generic_param_rib(
+            &generics.params,
+            ItemRibKind(HasGenericParams::Yes),
+            LifetimeRibKind::Generics {
+                span: generics.span,
+                binder: item_id,
+                kind: LifetimeBinderKind::ImplBlock
+            },
+            |this| {
+                // Dummy self type for better errors if `Self` is used in the trait path.
+                this.with_self_rib(Res::SelfTy { trait_: None, alias_to: None }, |this| {
+                    this.with_lifetime_rib(
+                        LifetimeRibKind::AnonymousCreateParameter(item_id),
+                        |this| {
+                            // Resolve the trait reference, if necessary.
+                            this.with_optional_trait_ref(
+                                opt_trait_reference.as_ref(),
+                                self_type,
+                                |this, trait_id| {
+                                    let item_def_id = this.r.local_def_id(item_id);
 
-                        // Register the trait definitions from here.
-                        if let Some(trait_id) = trait_id {
-                            this.r.trait_impls.entry(trait_id).or_default().push(item_def_id);
-                        }
+                                    // Register the trait definitions from here.
+                                    if let Some(trait_id) = trait_id {
+                                        this.r.trait_impls.entry(trait_id).or_default().push(item_def_id);
+                                    }
 
-                        let item_def_id = item_def_id.to_def_id();
-                        let res =
-                            Res::SelfTy { trait_: trait_id, alias_to: Some((item_def_id, false)) };
-                        this.with_self_rib(res, |this| {
-                            if let Some(trait_ref) = opt_trait_reference.as_ref() {
-                                // Resolve type arguments in the trait path.
-                                visit::walk_trait_ref(this, trait_ref);
-                            }
-                            // Resolve the self type.
-                            this.visit_ty(self_type);
-                            // Resolve the generic parameters.
-                            this.visit_generics(generics);
+                                    let item_def_id = item_def_id.to_def_id();
+                                    let res = Res::SelfTy {
+                                        trait_: trait_id,
+                                        alias_to: Some((item_def_id, false)),
+                                    };
+                                    this.with_self_rib(res, |this| {
+                                        if let Some(trait_ref) = opt_trait_reference.as_ref() {
+                                            // Resolve type arguments in the trait path.
+                                            visit::walk_trait_ref(this, trait_ref);
+                                        }
+                                        // Resolve the self type.
+                                        this.visit_ty(self_type);
+                                        // Resolve the generic parameters.
+                                        this.visit_generics(generics);
 
-                            // Resolve the items within the impl.
-                            this.with_lifetime_rib(LifetimeRibKind::AnonymousPassThrough(item_id,false),
-                                |this| {
-                                    this.with_current_self_type(self_type, |this| {
-                                        this.with_self_rib_ns(ValueNS, Res::SelfCtor(item_def_id), |this| {
-                                            debug!("resolve_implementation with_self_rib_ns(ValueNS, ...)");
-                                            for item in impl_items {
-                                                this.resolve_impl_item(&**item);
-                                            }
-                                        });
+                                        // Resolve the items within the impl.
+                                        this.with_lifetime_rib(LifetimeRibKind::AnonymousPassThrough(item_id,false),
+                                            |this| {
+                                                this.with_current_self_type(self_type, |this| {
+                                                    this.with_self_rib_ns(ValueNS, Res::SelfCtor(item_def_id), |this| {
+                                                        debug!("resolve_implementation with_self_rib_ns(ValueNS, ...)");
+                                                        for item in impl_items {
+                                                            this.resolve_impl_item(&**item);
+                                                        }
+                                                    });
+                                                });
+                                            },
+                                        );
                                     });
                                 },
                             );
-                        });
-                    });
+                        },
+                    );
                 });
-            });
-        });
+            },
+        );
     }
 
     fn resolve_impl_item(&mut self, item: &'ast AssocItem) {
