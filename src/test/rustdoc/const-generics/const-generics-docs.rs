@@ -37,7 +37,6 @@ pub struct Foo<const N: usize> where u8: Trait<N>;
 pub struct Bar<T, const N: usize>([T; N]);
 
 // @has foo/struct.Foo.html '//div[@id="impl-Foo%3CM%3E"]/h3[@class="code-header in-band"]' 'impl<const M: usize> Foo<M> where u8: Trait<M>'
->>>>>>> 083cf2a97a8... rustdoc: Add more semantic information to impl ids
 impl<const M: usize> Foo<M> where u8: Trait<M> {
     // @has - '//*[@id="associatedconstant.FOO_ASSOC"]' 'pub const FOO_ASSOC: usize'
     pub const FOO_ASSOC: usize = M + 13;
