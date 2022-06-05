@@ -13,6 +13,7 @@ use rustc_ast::tokenstream::Spacing;
 use rustc_ast::util::classify;
 use rustc_ast::util::literal::LitError;
 use rustc_ast::util::parser::{prec_let_scrutinee_needs_par, AssocOp, Fixity};
+use rustc_ast::visit::Visitor;
 use rustc_ast::StmtKind;
 use rustc_ast::{self as ast, AttrStyle, AttrVec, CaptureBy, ExprField, Lit, UnOp, DUMMY_NODE_ID};
 use rustc_ast::{AnonConst, BinOp, BinOpKind, FnDecl, FnRetTy, MacCall, Param, Ty, TyKind};
@@ -1556,6 +1557,28 @@ impl<'a> Parser<'a> {
 
             // Continue as an expression in an effort to recover on `'label: non_block_expr`.
             let expr = self.parse_expr().map(|expr| {
+                let found_labeled_breaks = {
+                    struct FindLabeledBreaksVisitor(bool);
+
+                    impl<'ast> Visitor<'ast> for FindLabeledBreaksVisitor {
+                        fn visit_expr_post(&mut self, ex: &'ast Expr) {
+                            if let ExprKind::Break(Some(_label), _) = ex.kind {
+                                self.0 = true;
+                            }
+                        }
+                    }
+
+                    let mut vis = FindLabeledBreaksVisitor(false);
+                    vis.visit_expr(&expr);
+                    vis.0
+                };
+
+                // Suggestion involves adding a (as of time of writing this, unstable) labeled block
+                // so if the label is not used, just return the unmodified expression
+                if !found_labeled_breaks {
+                    return expr;
+                }
+
                 let span = expr.span;
                 let sugg_msg = "consider enclosing expression in a block";
                 let suggestions = vec![

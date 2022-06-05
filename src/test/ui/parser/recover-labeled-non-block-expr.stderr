@@ -1,16 +1,5 @@
 error: expected `while`, `for`, `loop` or `{` after a label
-  --> $DIR/recover-labeled-non-block-expr.rs:5:13
-   |
-LL |     'label: 1 + 1;
-   |             ^ expected `while`, `for`, `loop` or `{` after a label
-   |
-help: consider enclosing expression in a block
-   |
-LL |     'label: {1 + 1};
-   |             +     +
-
-error: expected `while`, `for`, `loop` or `{` after a label
-  --> $DIR/recover-labeled-non-block-expr.rs:7:13
+  --> $DIR/recover-labeled-non-block-expr.rs:8:13
    |
 LL |     'label: match () { () => break 'label, };
    |             ^^^^^ expected `while`, `for`, `loop` or `{` after a label
@@ -21,7 +10,7 @@ LL |     'label: {match () { () => break 'label, }};
    |             +                                +
 
 error: expected `while`, `for`, `loop` or `{` after a label
-  --> $DIR/recover-labeled-non-block-expr.rs:10:22
+  --> $DIR/recover-labeled-non-block-expr.rs:11:22
    |
 LL |     let _i = 'label: match x {
    |                      ^^^^^ expected `while`, `for`, `loop` or `{` after a label
@@ -37,7 +26,7 @@ LL |                 break 'label 13
  ...
 
 error: expected `while`, `for`, `loop` or `{` after a label
-  --> $DIR/recover-labeled-non-block-expr.rs:24:24
+  --> $DIR/recover-labeled-non-block-expr.rs:25:24
    |
 LL |     let _val = 'label: (1, if other == 3 { break 'label (2, 3) } else { other });
    |                        ^ expected `while`, `for`, `loop` or `{` after a label
@@ -47,5 +36,5 @@ help: consider enclosing expression in a block
 LL |     let _val = 'label: {(1, if other == 3 { break 'label (2, 3) } else { other })};
    |                        +                                                         +
 
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors
 
