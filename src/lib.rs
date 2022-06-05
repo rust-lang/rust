@@ -7,19 +7,16 @@
 #![feature(io_error_more)]
 #![warn(rust_2018_idioms)]
 #![allow(
-    clippy::cast_lossless,
     clippy::collapsible_else_if,
     clippy::collapsible_if,
     clippy::comparison_chain,
     clippy::enum_variant_names,
     clippy::field_reassign_with_default,
-    clippy::from_over_into,
-    clippy::if_same_then_else,
     clippy::manual_map,
-    clippy::needless_lifetimes,
     clippy::new_without_default,
     clippy::single_match,
-    clippy::useless_format
+    clippy::useless_format,
+    clippy::derive_partial_eq_without_eq
 )]
 
 extern crate rustc_apfloat;

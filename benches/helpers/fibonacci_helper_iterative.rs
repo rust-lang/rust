@@ -9,7 +9,7 @@ fn fib(n: usize) -> usize {
     for _ in 0..n {
         let c = a;
         a = b;
-        b = c + b;
+        b += c;
     }
     a
 }

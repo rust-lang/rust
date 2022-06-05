@@ -535,9 +535,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 throw_ub_format!(
                     "unlocked a PTHREAD_MUTEX_NORMAL mutex that was not locked by the current thread"
                 );
-            } else if kind == this.eval_libc("PTHREAD_MUTEX_ERRORCHECK")? {
-                this.eval_libc_i32("EPERM")
-            } else if kind == this.eval_libc("PTHREAD_MUTEX_RECURSIVE")? {
+            } else if kind == this.eval_libc("PTHREAD_MUTEX_ERRORCHECK")?
+                || kind == this.eval_libc("PTHREAD_MUTEX_RECURSIVE")?
+            {
                 this.eval_libc_i32("EPERM")
             } else {
                 throw_unsup_format!("called pthread_mutex_unlock on an unsupported type of mutex");
@@ -642,6 +642,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let id = rwlock_get_or_create_id(this, rwlock_op)?;
         let active_thread = this.get_active_thread();
 
+        #[allow(clippy::if_same_then_else)]
         if this.rwlock_reader_unlock(id, active_thread) {
             Ok(0)
         } else if this.rwlock_writer_unlock(id, active_thread) {

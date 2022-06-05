@@ -72,20 +72,10 @@ jobs:
         shell: bash
         run: |
           if [[ ${{ github.event_name }} == 'schedule' ]]; then
-            RUSTC_HASH=$(git ls-remote https://github.com/rust-lang/rust.git master | awk '{print $1}')
+            ./rustup-toolchain HEAD --host ${{ matrix.host_target }}
           else
-            RUSTC_HASH=$(< rust-version)
+            ./rustup-toolchain "" --host ${{ matrix.host_target }}
           fi
-          # We need a nightly cargo for parts of the cargo miri test suite.
-          rustup-toolchain-install-master \
-            -f \
-            -n master "$RUSTC_HASH" \
-            -c cargo \
-            -c rust-src \
-            -c rustc-dev \
-            -c llvm-tools \
-            --host ${{ matrix.host_target }}
-          rustup default master
 
       - name: Show Rust version
         run: |
@@ -97,26 +87,35 @@ jobs:
         run: bash ./ci.sh
 
   fmt:
-    name: check formatting (ignored by bors)
+    name: formatting (ignored by bors)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - name: Install latest nightly
-        uses: actions-rs/toolchain@v1
-        with:
-            toolchain: nightly
-            components: rustfmt
-            default: true
-      - name: Check formatting (miri)
-        uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --all -- --check
-      - name: Check formatting (cargo-miri)
-        uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --manifest-path cargo-miri/Cargo.toml --all -- --check
+        run: |
+          rustup toolchain install nightly --component rustfmt
+          rustup override set nightly
+      - name: Formatting (miri, ui_test)
+        run: cargo fmt --all --check
+      - name: Formatting (cargo-miri)
+        run: cargo fmt --manifest-path cargo-miri/Cargo.toml --all --check
+
+  clippy:
+    name: clippy (ignored by bors)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install required toolchain
+        # We need a toolchain that can actually build Miri, just a nightly won't do.
+        run: |
+          cargo install rustup-toolchain-install-master # TODO: cache this?
+          ./rustup-toolchain "" -c clippy
+      - name: Clippy (miri)
+        run: cargo clippy --all-targets -- -D warnings
+      #- name: Clippy (ui_test)
+      #  run: cargo clippy --manifest-path ui_test/Cargo.toml --all-targets -- -D warnings
+      - name: Clippy (cargo-miri)
+        run: cargo clippy --manifest-path cargo-miri/Cargo.toml --all-targets -- -D warnings
 
   # These jobs doesn't actually test anything, but they're only used to tell
   # bors the build completed, as there is no practical way to detect when a
