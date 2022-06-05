@@ -827,7 +827,7 @@ impl Diagnostic {
         self
     }
 
-    pub fn styled_message(&self) -> &Vec<(DiagnosticMessage, Style)> {
+    pub fn styled_message(&self) -> &[(DiagnosticMessage, Style)] {
         &self.message
     }
 
@@ -888,11 +888,11 @@ impl Diagnostic {
         &self,
     ) -> (
         &Level,
-        &Vec<(DiagnosticMessage, Style)>,
+        &[(DiagnosticMessage, Style)],
         &Option<DiagnosticId>,
         &MultiSpan,
         &Result<Vec<CodeSuggestion>, SuggestionsDisabled>,
-        Option<&Vec<SubDiagnostic>>,
+        Option<&[SubDiagnostic]>,
     ) {
         (
             &self.level,

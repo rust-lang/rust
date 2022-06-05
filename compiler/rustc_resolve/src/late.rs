@@ -631,7 +631,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                         span,
                     },
                     |this| {
-                        this.visit_generic_param_vec(&bare_fn.generic_params, false);
+                        this.visit_generic_params(&bare_fn.generic_params, false);
                         this.with_lifetime_rib(
                             LifetimeRibKind::AnonymousPassThrough(ty.id, false),
                             |this| walk_list!(this, visit_param, &bare_fn.decl.inputs),
@@ -662,7 +662,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                 span,
             },
             |this| {
-                this.visit_generic_param_vec(&tref.bound_generic_params, false);
+                this.visit_generic_params(&tref.bound_generic_params, false);
                 this.smart_resolve_path(
                     tref.trait_ref.ref_id,
                     None,
@@ -833,7 +833,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
     }
 
     fn visit_generics(&mut self, generics: &'ast Generics) {
-        self.visit_generic_param_vec(
+        self.visit_generic_params(
             &generics.params,
             self.diagnostic_metadata.current_self_item.is_some(),
         );
@@ -941,7 +941,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                         span,
                     },
                     |this| {
-                        this.visit_generic_param_vec(&bound_generic_params, false);
+                        this.visit_generic_params(&bound_generic_params, false);
                         this.visit_ty(bounded_ty);
                         for bound in bounds {
                             this.visit_param_bound(bound, BoundKind::Bound)
@@ -1116,7 +1116,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         }
     }
 
-    fn visit_generic_param_vec(&mut self, params: &'ast Vec<GenericParam>, add_self_upper: bool) {
+    fn visit_generic_params(&mut self, params: &'ast [GenericParam], add_self_upper: bool) {
         // For type parameter defaults, we have to ban access
         // to following type parameters, as the InternalSubsts can only
         // provide previous type parameters as they're built. We
@@ -1870,7 +1870,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
     fn with_generic_param_rib<'c, F>(
         &'c mut self,
-        params: &'c Vec<GenericParam>,
+        params: &'c [GenericParam],
         kind: RibKind<'a>,
         lifetime_kind: LifetimeRibKind,
         f: F,

@@ -352,7 +352,7 @@ pub fn same_type_modulo_infer<'tcx>(a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
 }
 
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
-    pub fn report_region_errors(&self, errors: &Vec<RegionResolutionError<'tcx>>) {
+    pub fn report_region_errors(&self, errors: &[RegionResolutionError<'tcx>]) {
         debug!("report_region_errors(): {} errors to start", errors.len());
 
         // try to pre-process the errors, which will group some of them

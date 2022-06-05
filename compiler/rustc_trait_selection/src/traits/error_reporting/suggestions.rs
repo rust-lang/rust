@@ -146,11 +146,13 @@ impl<'tcx, 'a> GeneratorData<'tcx, 'a> {
     /// that are live across the yield of this generator
     fn get_generator_interior_types(
         &self,
-    ) -> ty::Binder<'tcx, &Vec<GeneratorInteriorTypeCause<'tcx>>> {
+    ) -> ty::Binder<'tcx, &[GeneratorInteriorTypeCause<'tcx>]> {
         match self {
-            GeneratorData::Local(typeck_result) => typeck_result.generator_interior_types.as_ref(),
+            GeneratorData::Local(typeck_result) => {
+                typeck_result.generator_interior_types.as_deref()
+            }
             GeneratorData::Foreign(generator_diagnostic_data) => {
-                generator_diagnostic_data.generator_interior_types.as_ref()
+                generator_diagnostic_data.generator_interior_types.as_deref()
             }
         }
     }
