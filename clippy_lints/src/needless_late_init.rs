@@ -185,12 +185,12 @@ fn assignment_suggestions<'tcx>(
 
     let suggestions = assignments
         .iter()
-        .map(|assignment| assignment.span.until(assignment.rhs_span))
-        .chain(
-            assignments
-                .iter()
-                .map(|assignment| assignment.rhs_span.shrink_to_hi().with_hi(assignment.span.hi())),
-        )
+        .flat_map(|assignment| {
+            [
+                assignment.span.until(assignment.rhs_span),
+                assignment.rhs_span.shrink_to_hi().with_hi(assignment.span.hi()),
+            ]
+        })
         .map(|span| Some((span, String::new())))
         .collect::<Option<Vec<(Span, String)>>>()?;
 
