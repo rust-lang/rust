@@ -317,12 +317,7 @@ fn register_builtins(store: &mut LintStore, no_interleave_lints: bool) {
         REDUNDANT_SEMICOLONS
     );
 
-    add_lint_group!(
-        "let_underscore",
-        LET_UNDERSCORE_DROP,
-        LET_UNDERSCORE_LOCK,
-        LET_UNDERSCORE_MUST_USE
-    );
+    add_lint_group!("let_underscore", LET_UNDERSCORE_DROP, LET_UNDERSCORE_LOCK);
 
     add_lint_group!(
         "rust_2018_idioms",

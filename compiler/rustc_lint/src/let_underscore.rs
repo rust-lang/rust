@@ -1,10 +1,7 @@
 use crate::{LateContext, LateLintPass, LintContext};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
-use rustc_middle::{
-    lint::LintDiagnosticBuilder,
-    ty::{self, Ty},
-};
+use rustc_middle::{lint::LintDiagnosticBuilder, ty};
 use rustc_span::Symbol;
 
 declare_lint! {
@@ -87,32 +84,7 @@ declare_lint! {
     "non-binding let on a synchronization lock"
 }
 
-declare_lint! {
-    /// The `let_underscore_must_use` lint checks for statements which don't bind
-    /// a `must_use` expression to anything, causing the lock to be released
-    /// immediately instead of at end of scope, which is typically incorrect.
-    ///
-    /// ### Example
-    /// ```rust
-    /// #[must_use]
-    /// struct SomeStruct;
-    ///
-    /// fn main() {
-    ///     // SomeStuct is dropped immediately instead of at end of scope.
-    ///     let _ = SomeStruct;
-    /// }
-    /// ```
-    /// ### Explanation
-    ///
-    /// Statements which assign an expression to an underscore causes the
-    /// expression to immediately drop. Usually, it's better to explicitly handle
-    /// the `must_use` expression.
-    pub LET_UNDERSCORE_MUST_USE,
-    Allow,
-    "non-binding let on a expression marked `must_use`"
-}
-
-declare_lint_pass!(LetUnderscore => [LET_UNDERSCORE_DROP, LET_UNDERSCORE_LOCK, LET_UNDERSCORE_MUST_USE]);
+declare_lint_pass!(LetUnderscore => [LET_UNDERSCORE_DROP, LET_UNDERSCORE_LOCK]);
 
 const SYNC_GUARD_SYMBOLS: [Symbol; 3] = [
     rustc_span::sym::MutexGuard,
@@ -138,8 +110,6 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
                     .any(|guard_symbol| cx.tcx.is_diagnostic_item(*guard_symbol, adt.did())),
                 _ => false,
             };
-            let is_must_use_ty = is_must_use_ty(cx, cx.typeck_results().expr_ty(init));
-            let is_must_use_func_call = is_must_use_func_call(cx, init);
 
             if is_sync_lock {
                 cx.struct_span_lint(LET_UNDERSCORE_LOCK, local.span, |lint| {
@@ -149,15 +119,6 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
                         init.span,
                         "non-binding let on a synchronization lock",
                     )
-                })
-            } else if is_must_use_ty || is_must_use_func_call {
-                cx.struct_span_lint(LET_UNDERSCORE_MUST_USE, local.span, |lint| {
-                    build_and_emit_lint(
-                        lint,
-                        local,
-                        init.span,
-                        "non-binding let on a expression marked `must_use`",
-                    );
                 })
             } else {
                 cx.struct_span_lint(LET_UNDERSCORE_DROP, local.span, |lint| {
@@ -193,66 +154,4 @@ fn build_and_emit_lint(
             Applicability::HasPlaceholders,
         )
         .emit();
-}
-
-// return true if `ty` is a type that is marked as `must_use`
-fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
-    match ty.kind() {
-        ty::Adt(adt, _) => has_must_use_attr(cx, adt.did()),
-        ty::Foreign(ref did) => has_must_use_attr(cx, *did),
-        ty::Slice(ty)
-        | ty::Array(ty, _)
-        | ty::RawPtr(ty::TypeAndMut { ty, .. })
-        | ty::Ref(_, ty, _) => {
-            // for the Array case we don't need to care for the len == 0 case
-            // because we don't want to lint functions returning empty arrays
-            is_must_use_ty(cx, *ty)
-        }
-        ty::Tuple(substs) => substs.iter().any(|ty| is_must_use_ty(cx, ty)),
-        ty::Opaque(ref def_id, _) => {
-            for (predicate, _) in cx.tcx.explicit_item_bounds(*def_id) {
-                if let ty::PredicateKind::Trait(trait_predicate) = predicate.kind().skip_binder() {
-                    if has_must_use_attr(cx, trait_predicate.trait_ref.def_id) {
-                        return true;
-                    }
-                }
-            }
-            false
-        }
-        ty::Dynamic(binder, _) => {
-            for predicate in binder.iter() {
-                if let ty::ExistentialPredicate::Trait(ref trait_ref) = predicate.skip_binder() {
-                    if has_must_use_attr(cx, trait_ref.def_id) {
-                        return true;
-                    }
-                }
-            }
-            false
-        }
-        _ => false,
-    }
-}
-
-// check if expr is calling method or function with #[must_use] attribute
-fn is_must_use_func_call(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
-    let did = match expr.kind {
-                hir::ExprKind::Call(path, _) if let hir::ExprKind::Path(ref qpath) = path.kind => {
-                    if let hir::def::Res::Def(_, did) = cx.qpath_res(qpath, path.hir_id) {
-                        Some(did)
-                    } else {
-                        None
-                    }
-                },
-                hir::ExprKind::MethodCall(..) => {
-                    cx.typeck_results().type_dependent_def_id(expr.hir_id)
-                }
-                _ => None,
-            };
-
-    did.map_or(false, |did| has_must_use_attr(cx, did))
-}
-
-// returns true if DefId contains a `#[must_use]` attribute
-fn has_must_use_attr(cx: &LateContext<'_>, did: hir::def_id::DefId) -> bool {
-    cx.tcx.has_attr(did, rustc_span::sym::must_use)
 }
