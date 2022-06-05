@@ -518,16 +518,26 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
             return Ok(SchedulingAction::ExecuteTimeoutCallback);
         }
         // No callbacks scheduled, pick a regular thread to execute.
-        // We need to pick a new thread for execution.
-        for (id, thread) in self.threads.iter_enumerated() {
+        // The active thread blocked or yielded. So we go search for another enabled thread.
+        // Curcially, we start searching at the current active thread ID, rather than at 0, since we
+        // want to avoid always scheduling threads 0 and 1 without ever making progress in thread 2.
+        //
+        // `skip(N)` means we start iterating at thread N, so we skip 1 more to start just *after*
+        // the active thread. Then after that we look at `take(N)`, i.e., the threads *before* the
+        // active thread.
+        let threads = self
+            .threads
+            .iter_enumerated()
+            .skip(self.active_thread.index() + 1)
+            .chain(self.threads.iter_enumerated().take(self.active_thread.index()));
+        for (id, thread) in threads {
+            debug_assert_ne!(self.active_thread, id);
             if thread.state == ThreadState::Enabled {
-                if !self.yield_active_thread || id != self.active_thread {
-                    self.active_thread = id;
-                    if let Some(data_race) = data_race {
-                        data_race.thread_set_active(self.active_thread);
-                    }
-                    break;
+                self.active_thread = id;
+                if let Some(data_race) = data_race {
+                    data_race.thread_set_active(self.active_thread);
                 }
+                break;
             }
         }
         self.yield_active_thread = false;
