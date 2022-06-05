@@ -338,6 +338,10 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                         { "invalid drop function pointer in vtable (not pointing to a function)" },
                     err_ub!(InvalidVtableDropFn(..)) =>
                         { "invalid drop function pointer in vtable (function has incompatible signature)" },
+                    // Stacked Borrows errors can happen here, see https://github.com/rust-lang/miri/issues/2123.
+                    // (We assume there are no other MachineStop errors possible here.)
+                    InterpError::MachineStop(_) =>
+                        { "vtable pointer does not have permission to read drop function pointer" },
                 );
                 try_validation!(
                     self.ecx.read_size_and_align_from_vtable(vtable),
@@ -347,6 +351,10 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                     err_ub!(InvalidVtableAlignment(msg)) =>
                         { "invalid vtable: alignment {}", msg },
                     err_unsup!(ReadPointerAsBytes) => { "invalid size or align in vtable" },
+                    // Stacked Borrows errors can happen here, see https://github.com/rust-lang/miri/issues/2123.
+                    // (We assume there are no other MachineStop errors possible here.)
+                    InterpError::MachineStop(_) =>
+                        { "vtable pointer does not have permission to read size and alignment" },
                 );
                 // FIXME: More checks for the vtable.
             }
