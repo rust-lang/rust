@@ -14,10 +14,10 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 declare_clippy_lint! {
   /// ### What it does
   /// The lint checks for parenthesis on literals in range statements that are
-  /// superflous.
+  /// superfluous.
   ///
   /// ### Why is this bad?
-  /// Having superflous parenthesis makes the code less legible as the impose an
+  /// Having superfluous parenthesis makes the code less readable
   /// overhead when reading.
   ///
   /// ### Example
@@ -57,7 +57,7 @@ fn check_for_parens(cx: &LateContext<'_>, e: &Expr<'_>, is_start: bool) {
     }
     if_chain! {
         if let ExprKind::Lit(ref literal) = e.kind;
-        // the indicator that paranthese surround the literal is that span of the expression and the literal differ
+        // the indicator that parenthesis surround the literal is that the span of the expression and the literal differ
         if (literal.span.data().hi - literal.span.data().lo) != (e.span.data().hi - e.span.data().lo);
         // inspect the source code of the expression for parenthesis
         if snippet_enclosed_in_parenthesis(&snippet(cx, e.span, ""));
