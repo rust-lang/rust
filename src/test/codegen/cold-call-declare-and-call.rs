@@ -3,7 +3,9 @@
 #![crate_type = "lib"]
 #![feature(rust_cold_cc)]
 
-// CHECK: define coldcc void @this_should_never_happen(i16
+// wasm marks the definition as `dso_local`, so allow that as optional.
+
+// CHECK: define{{( dso_local)?}} coldcc void @this_should_never_happen(i16
 // CHECK: call coldcc void @this_should_never_happen(i16
 
 #[no_mangle]
