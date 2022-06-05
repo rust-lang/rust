@@ -16,10 +16,9 @@ pub enum TerminationInfo {
     Exit(i64),
     Abort(String),
     UnsupportedInIsolation(String),
-    ExperimentalUb {
+    StackedBorrowsUb {
         msg: String,
         help: Option<String>,
-        url: String,
         history: Option<TagHistory>,
     },
     Deadlock,
@@ -43,7 +42,7 @@ impl fmt::Display for TerminationInfo {
             Exit(code) => write!(f, "the evaluated program completed with exit code {}", code),
             Abort(msg) => write!(f, "{}", msg),
             UnsupportedInIsolation(msg) => write!(f, "{}", msg),
-            ExperimentalUb { msg, .. } => write!(f, "{}", msg),
+            StackedBorrowsUb { msg, .. } => write!(f, "{}", msg),
             Deadlock => write!(f, "the evaluated program deadlocked"),
             MultipleSymbolDefinitions { link_name, .. } =>
                 write!(f, "multiple definitions of symbol `{}`", link_name),
@@ -146,7 +145,7 @@ pub fn report_error<'tcx, 'mir>(
                 Exit(code) => return Some(*code),
                 Abort(_) => Some("abnormal termination"),
                 UnsupportedInIsolation(_) => Some("unsupported operation"),
-                ExperimentalUb { .. } => Some("Undefined Behavior"),
+                StackedBorrowsUb { .. } => Some("Undefined Behavior"),
                 Deadlock => Some("deadlock"),
                 MultipleSymbolDefinitions { .. } | SymbolShimClashing { .. } => None,
             };
@@ -157,11 +156,12 @@ pub fn report_error<'tcx, 'mir>(
                         (None, format!("pass the flag `-Zmiri-disable-isolation` to disable isolation;")),
                         (None, format!("or pass `-Zmiri-isolation-error=warn` to configure Miri to return an error code from isolated operations (if supported for that operation) and continue with a warning")),
                     ],
-                ExperimentalUb { url, help, history, .. } => {
+                StackedBorrowsUb { help, history, .. } => {
+                    let url = "https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md";
                     msg.extend(help.clone());
                     let mut helps = vec![
-                        (None, format!("this indicates a potential bug in the program: it performed an invalid operation, but the rules it violated are still experimental")),
-                        (None, format!("see {} for further information", url)),
+                        (None, format!("this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental")),
+                        (None, format!("see {url} for further information")),
                     ];
                     match history {
                         Some(TagHistory::Tagged {tag, created: (created_range, created_span), invalidated, protected }) => {
