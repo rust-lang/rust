@@ -9,11 +9,9 @@ use super::{
 };
 
 pub trait Direction {
-    fn is_forward() -> bool;
+    const IS_FORWARD: bool;
 
-    fn is_backward() -> bool {
-        !Self::is_forward()
-    }
+    const IS_BACKWARD: bool = !Self::IS_FORWARD;
 
     /// Applies all effects between the given `EffectIndex`s.
     ///
@@ -68,9 +66,7 @@ pub trait Direction {
 pub struct Backward;
 
 impl Direction for Backward {
-    fn is_forward() -> bool {
-        false
-    }
+    const IS_FORWARD: bool = false;
 
     fn apply_effects_in_block<'tcx, A>(
         analysis: &A,
@@ -338,9 +334,7 @@ where
 pub struct Forward;
 
 impl Direction for Forward {
-    fn is_forward() -> bool {
-        true
-    }
+    const IS_FORWARD: bool = true;
 
     fn apply_effects_in_block<'tcx, A>(
         analysis: &A,

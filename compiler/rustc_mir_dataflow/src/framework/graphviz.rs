@@ -216,7 +216,7 @@ where
         // Write the full dataflow state immediately after the terminator if it differs from the
         // state at block entry.
         self.results.seek_to_block_end(block);
-        if self.results.get() != &block_start_state || A::Direction::is_backward() {
+        if self.results.get() != &block_start_state || A::Direction::IS_BACKWARD {
             let after_terminator_name = match terminator.kind {
                 mir::TerminatorKind::Call { target: Some(_), .. } => "(on unwind)",
                 _ => "(on end)",
@@ -390,7 +390,7 @@ where
         let mut afters = diffs.after.into_iter();
 
         let next_in_dataflow_order = |it: &mut std::vec::IntoIter<_>| {
-            if A::Direction::is_forward() { it.next().unwrap() } else { it.next_back().unwrap() }
+            if A::Direction::IS_FORWARD { it.next().unwrap() } else { it.next_back().unwrap() }
         };
 
         for (i, statement) in body[block].statements.iter().enumerate() {
@@ -527,7 +527,7 @@ where
         _block_data: &mir::BasicBlockData<'tcx>,
         _block: BasicBlock,
     ) {
-        if A::Direction::is_forward() {
+        if A::Direction::IS_FORWARD {
             self.prev_state.clone_from(state);
         }
     }
@@ -538,7 +538,7 @@ where
         _block_data: &mir::BasicBlockData<'tcx>,
         _block: BasicBlock,
     ) {
-        if A::Direction::is_backward() {
+        if A::Direction::IS_BACKWARD {
             self.prev_state.clone_from(state);
         }
     }
