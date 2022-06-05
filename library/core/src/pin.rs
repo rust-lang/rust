@@ -599,6 +599,7 @@ impl<P: Deref> Pin<P> {
     /// it is impossible to move or move out from the pinned `pointer`.
     ///
     /// Thus it is safe to call this function.
+    #[rustc_const_unstable(feature = "const_pin", issue = "76654")]
     #[inline(always)]
     pub const fn as_inner_ref(&self) -> &P {
         &self.p
