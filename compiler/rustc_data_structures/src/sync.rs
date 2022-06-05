@@ -14,14 +14,11 @@
 //!
 //! `MTRef` is an immutable reference if cfg!(parallel_compiler), and a mutable reference otherwise.
 //!
-//! `rustc_erase_owner!` erases an OwningRef owner into Erased or Erased + Send + Sync
-//! depending on the value of cfg!(parallel_compiler).
 
-use crate::owning_ref::{Erased, OwningRef};
+use crate::owned_slice::OwnedSlice;
 use std::collections::HashMap;
 use std::hash::{BuildHasher, Hash};
 use std::ops::{Deref, DerefMut};
-
 pub use std::sync::atomic::Ordering;
 pub use std::sync::atomic::Ordering::SeqCst;
 
@@ -32,13 +29,6 @@ cfg_if! {
 
         impl<T: ?Sized> Send for T {}
         impl<T: ?Sized> Sync for T {}
-
-        #[macro_export]
-        macro_rules! rustc_erase_owner {
-            ($v:expr) => {
-                $v.erase_owner()
-            }
-        }
 
         use std::ops::Add;
         use std::panic::{resume_unwind, catch_unwind, AssertUnwindSafe};
@@ -162,7 +152,7 @@ cfg_if! {
             }
         }
 
-        pub type MetadataRef = OwningRef<Box<dyn Erased>, [u8]>;
+        pub type MetadataRef = OwnedSlice<Box<dyn Deref<Target = [u8]>>, u8>;
 
         pub use std::rc::Rc as Lrc;
         pub use std::rc::Weak as Weak;
@@ -342,20 +332,11 @@ cfg_if! {
             t.into_par_iter().for_each(for_each)
         }
 
-        pub type MetadataRef = OwningRef<Box<dyn Erased + Send + Sync>, [u8]>;
+        pub type MetadataRef = OwnedSlice<Box<dyn Deref<Target = [u8]> + Send + Sync>, u8>;
 
         /// This makes locks panic if they are already held.
         /// It is only useful when you are running in a single thread
         const ERROR_CHECKING: bool = false;
-
-        #[macro_export]
-        macro_rules! rustc_erase_owner {
-            ($v:expr) => {{
-                let v = $v;
-                ::rustc_data_structures::sync::assert_send_val(&v);
-                v.erase_send_sync_owner()
-            }}
-        }
     }
 }
 

@@ -24,8 +24,6 @@ extern crate proc_macro;
 extern crate rustc_macros;
 #[macro_use]
 extern crate rustc_middle;
-#[macro_use]
-extern crate rustc_data_structures;
 
 pub use rmeta::{provide, provide_extern};
 

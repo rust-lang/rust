@@ -56,18 +56,13 @@ mod cstore_impl;
 #[derive(Clone)]
 pub(crate) struct MetadataBlob(Lrc<MetadataRef>);
 
-// This is needed so we can create an OwningRef into the blob.
-// The data behind a `MetadataBlob` has a stable address because it is
-// contained within an Rc/Arc.
-unsafe impl rustc_data_structures::owning_ref::StableAddress for MetadataBlob {}
-
-// This is needed so we can create an OwningRef into the blob.
+// This is needed so we can create an OwnedSlice into the blob.
 impl std::ops::Deref for MetadataBlob {
-    type Target = [u8];
+    type Target = MetadataRef;
 
     #[inline]
-    fn deref(&self) -> &[u8] {
-        &self.0[..]
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
 

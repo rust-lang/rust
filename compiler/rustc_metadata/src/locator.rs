@@ -217,7 +217,6 @@ use crate::rmeta::{rustc_version, MetadataBlob, METADATA_HEADER};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::memmap::Mmap;
-use rustc_data_structures::owning_ref::OwningRef;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::MetadataRef;
 use rustc_errors::{struct_span_err, FatalError};
@@ -231,6 +230,7 @@ use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 use rustc_target::spec::{Target, TargetTriple};
 
+use rustc_data_structures::owned_slice::OwnedSlice;
 use snap::read::FrameDecoder;
 use std::fmt::Write as _;
 use std::io::{Read, Result as IoResult, Write};
@@ -774,7 +774,7 @@ fn get_metadata_section<'p>(
             // don't have to grow the buffer as much.
             let mut inflated = Vec::with_capacity(compressed_bytes.len());
             match FrameDecoder::new(compressed_bytes).read_to_end(&mut inflated) {
-                Ok(_) => rustc_erase_owner!(OwningRef::new(inflated).map_owner_box()),
+                Ok(_) => OwnedSlice::new(Box::new(inflated)),
                 Err(_) => {
                     return Err(MetadataError::LoadFailure(format!(
                         "failed to decompress metadata: {}",
@@ -799,7 +799,7 @@ fn get_metadata_section<'p>(
                 ))
             })?;
 
-            rustc_erase_owner!(OwningRef::new(mmap).map_owner_box())
+            OwnedSlice::new(Box::new(mmap))
         }
     };
     let blob = MetadataBlob::new(raw_bytes);

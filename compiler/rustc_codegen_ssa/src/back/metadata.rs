@@ -13,8 +13,7 @@ use object::{
 use snap::write::FrameEncoder;
 
 use rustc_data_structures::memmap::Mmap;
-use rustc_data_structures::owning_ref::OwningRef;
-use rustc_data_structures::rustc_erase_owner;
+use rustc_data_structures::owned_slice::OwnedSlice;
 use rustc_data_structures::sync::MetadataRef;
 use rustc_metadata::EncodedMetadata;
 use rustc_session::cstore::MetadataLoader;
@@ -44,8 +43,11 @@ fn load_metadata_with(
         File::open(path).map_err(|e| format!("failed to open file '{}': {}", path.display(), e))?;
     let data = unsafe { Mmap::map(file) }
         .map_err(|e| format!("failed to mmap file '{}': {}", path.display(), e))?;
-    let metadata = OwningRef::new(data).try_map(f)?;
-    return Ok(rustc_erase_owner!(metadata.map_owner_box()));
+
+    let metadata: MetadataRef = OwnedSlice::new(Box::new(data));
+    let metadata = metadata.try_map(f)?;
+
+    Ok(metadata)
 }
 
 impl MetadataLoader for DefaultMetadataLoader {
