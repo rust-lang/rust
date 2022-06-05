@@ -735,6 +735,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         if tcx.sess.meta_stats() {
             self.opaque.flush();
 
+            // Rewind and re-read all the metadata to count the zero bytes we wrote.
             let pos_before_rewind = self.opaque.file().stream_position().unwrap();
             let mut zero_bytes = 0;
             self.opaque.file().rewind().unwrap();
