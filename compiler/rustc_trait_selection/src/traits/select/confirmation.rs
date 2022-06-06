@@ -1207,7 +1207,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                             .require_lang_item(LangItem::Destruct, None),
                                         substs: self.tcx().mk_substs_trait(
                                             nested_ty,
-                                            &[ty::ConstnessArg::Required.into()],
+                                            &[ty::ConstnessArg::Param.into()],
                                         ),
                                     },
                                     polarity: ty::ImplPolarity::Positive,
@@ -1235,7 +1235,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                 def_id: self.tcx().require_lang_item(LangItem::Destruct, None),
                                 substs: self.tcx().mk_substs_trait(
                                     nested_ty,
-                                    &[ty::ConstnessArg::Required.into()],
+                                    &[ty::ConstnessArg::Param.into()],
                                 ),
                             },
                             polarity: ty::ImplPolarity::Positive,

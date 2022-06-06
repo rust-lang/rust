@@ -161,7 +161,7 @@ impl Qualif for NeedsNonConstDrop {
             ty::Binder::dummy(ty::TraitPredicate {
                 trait_ref: ty::TraitRef {
                     def_id: destruct,
-                    substs: cx.tcx.mk_substs_trait(ty, &[ty::ConstnessArg::Required.into()]),
+                    substs: cx.tcx.mk_substs_trait(ty, &[ty::ConstnessArg::Param.into()]),
                 },
                 polarity: ty::ImplPolarity::Positive,
             }),
@@ -176,7 +176,7 @@ impl Qualif for NeedsNonConstDrop {
 
             if !matches!(
                 impl_src,
-                ImplSource::ConstDestruct(_) | ImplSource::Param(_, ty::ConstnessArg::Required)
+                ImplSource::ConstDestruct(_) | ImplSource::Param(_, ty::ConstnessArg::Required | ty::ConstnessArg::Param)
             ) {
                 // If our const destruct candidate is not ConstDestruct or implied by the param env,
                 // then it's bad

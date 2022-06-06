@@ -4,7 +4,7 @@ use super::SubregionOrigin;
 use crate::infer::combine::ConstEquateRelation;
 use crate::infer::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::traits::Obligation;
-use rustc_middle::ty::relate::{Cause, Relate, RelateResult, TypeRelation};
+use rustc_middle::ty::relate::{self, Cause, Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::visit::TypeVisitable;
 use rustc_middle::ty::TyVar;
 use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt};
@@ -200,6 +200,21 @@ impl<'tcx> TypeRelation<'tcx> for Sub<'_, '_, 'tcx> {
     {
         self.fields.higher_ranked_sub(a, b, self.a_is_expected)?;
         Ok(a)
+    }
+
+    fn constness_args(
+        &mut self,
+        a: ty::ConstnessArg,
+        b: ty::ConstnessArg,
+    ) -> RelateResult<'tcx, ty::ConstnessArg> {
+        trace!(?a, ?b);
+        match (a, b) {
+            (ty::ConstnessArg::Required, _) => Ok(a),
+            (a, ty::ConstnessArg::Infer) => Ok(a),
+            (ty::ConstnessArg::Infer, b) => Ok(b),
+            (a, ty::ConstnessArg::Not) => Ok(a),
+            _ => relate::super_relate_constness(self, a, b),
+        }
     }
 }
 

@@ -725,7 +725,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             trait_ref.path.segments.last().unwrap(),
             true,
             match constness { // TODO check this again
-                hir::Constness::Const => ty::ConstnessArg::Required,
+                hir::Constness::Const => ty::ConstnessArg::Param,
                 hir::Constness::NotConst => ty::ConstnessArg::Not,
             },
         )

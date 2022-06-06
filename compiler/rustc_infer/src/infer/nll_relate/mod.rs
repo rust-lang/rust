@@ -784,6 +784,15 @@ where
 
         Ok(a)
     }
+
+    fn constness_args(
+        &mut self,
+        a: ty::ConstnessArg,
+        b: ty::ConstnessArg,
+    ) -> RelateResult<'tcx, ty::ConstnessArg> {
+        // TODO.
+        relate::super_relate_constness(self, a, b)
+    }
 }
 
 impl<'tcx, D> ConstEquateRelation<'tcx> for TypeRelating<'_, 'tcx, D>
@@ -1076,5 +1085,14 @@ where
         let result = self.relate(a.skip_binder(), a.skip_binder())?;
         self.first_free_index.shift_out(1);
         Ok(a.rebind(result))
+    }
+
+    fn constness_args(
+        &mut self,
+        a: ty::ConstnessArg,
+        b: ty::ConstnessArg,
+    ) -> RelateResult<'tcx, ty::ConstnessArg> {
+        // TODO
+        relate::super_relate_constness(self, a, b)
     }
 }

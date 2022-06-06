@@ -7,7 +7,7 @@ use super::Subtype;
 
 use crate::infer::combine::ConstEquateRelation;
 use crate::traits::{ObligationCause, PredicateObligation};
-use rustc_middle::ty::relate::{Relate, RelateResult, TypeRelation};
+use rustc_middle::ty::relate::{super_relate_constness, Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 
 /// "Least upper bound" (common supertype)
@@ -109,6 +109,14 @@ impl<'tcx> TypeRelation<'tcx> for Lub<'_, '_, 'tcx> {
         } else {
             Ok(ty::Binder::dummy(self.relate(a.skip_binder(), b.skip_binder())?))
         }
+    }
+
+    fn constness_args(
+        &mut self,
+        a: ty::ConstnessArg,
+        b: ty::ConstnessArg,
+    ) -> RelateResult<'tcx, ty::ConstnessArg> {
+        super_relate_constness(self, a, b)
     }
 }
 

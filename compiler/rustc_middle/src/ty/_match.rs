@@ -121,4 +121,18 @@ impl<'tcx> TypeRelation<'tcx> for Match<'tcx> {
     {
         Ok(a.rebind(self.relate(a.skip_binder(), b.skip_binder())?))
     }
+
+    fn constness_args(
+        &mut self,
+        a: ty::ConstnessArg,
+        b: ty::ConstnessArg,
+    ) -> RelateResult<'tcx, ty::ConstnessArg> {
+        match (a, b) {
+            (_, ty::ConstnessArg::Infer) => return Ok(a),
+            (ty::ConstnessArg::Infer, _) => {
+                return Err(TypeError::ConstnessArgMismatch(relate::expected_found(self, a, b)));
+            }
+            _ => relate::super_relate_constness(self, a, b),
+        }
+    }
 }

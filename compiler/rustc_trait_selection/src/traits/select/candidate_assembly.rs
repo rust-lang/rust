@@ -423,8 +423,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         // Keep only those bounds which may apply, and propagate overflow if it occurs.
         for bound in matching_bounds {
-            // FIXME(oli-obk): it is suspicious that we are dropping the constness and
-            // polarity here.
+            // FIXME(oli-obk): it is suspicious that we are dropping the polarity here.
             let wc = self.where_clause_may_apply(stack, bound.map_bound(|t| t.trait_ref))?;
             if wc.may_apply() {
                 candidates.vec.push(ParamCandidate(bound));

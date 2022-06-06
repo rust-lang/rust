@@ -4,7 +4,7 @@
 use crate::hir::def_id::{DefId, LocalDefId};
 use rustc_errors::{struct_span_err, ErrorGuaranteed};
 use rustc_middle::ty::error::TypeError;
-use rustc_middle::ty::relate::{Relate, RelateResult, TypeRelation};
+use rustc_middle::ty::relate::{super_relate_constness, Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::util::IgnoreRegions;
 use rustc_middle::ty::{self, Predicate, Ty, TyCtxt};
@@ -322,5 +322,12 @@ impl<'tcx> TypeRelation<'tcx> for SimpleEqRelation<'tcx> {
         self.relate(anon_a.skip_binder(), anon_b.skip_binder())?;
 
         Ok(a)
+    }
+    fn constness_args(
+        &mut self,
+        a: ty::ConstnessArg,
+        b: ty::ConstnessArg,
+    ) -> RelateResult<'tcx, ty::ConstnessArg> {
+        super_relate_constness(self, a, b)
     }
 }

@@ -99,6 +99,12 @@ pub trait TypeRelation<'tcx>: Sized {
     ) -> RelateResult<'tcx, ty::Binder<'tcx, T>>
     where
         T: Relate<'tcx>;
+
+    fn constness_args(
+        &mut self,
+        a: ty::ConstnessArg,
+        b: ty::ConstnessArg,
+    ) -> RelateResult<'tcx, ty::ConstnessArg>;
 }
 
 pub trait Relate<'tcx>: TypeFoldable<'tcx> + Copy {
@@ -141,7 +147,11 @@ pub fn relate_substs<'tcx, R: TypeRelation<'tcx>>(
     b_subst: SubstsRef<'tcx>,
 ) -> RelateResult<'tcx, SubstsRef<'tcx>> {
     relation.tcx().mk_substs(iter::zip(a_subst, b_subst).map(|(a, b)| {
-        relation.relate_with_variance(ty::Invariant, ty::VarianceDiagInfo::default(), a, b)
+        if let GenericArgKind::Constness(_) = a.unpack() && let GenericArgKind::Constness(_) = b.unpack() {
+            relation.relate(a, b)
+        } else {
+            relation.relate_with_variance(ty::Invariant, ty::VarianceDiagInfo::default(), a, b)
+        }
     }))
 }
 
@@ -232,11 +242,7 @@ impl<'tcx> Relate<'tcx> for ty::ConstnessArg {
         a: ty::ConstnessArg,
         b: ty::ConstnessArg,
     ) -> RelateResult<'tcx, ty::ConstnessArg> {
-        if a == b {
-            Ok(a)
-        } else {
-            Err(TypeError::ConstnessArgMismatch(expected_found(relation, a, b)))
-        }
+        relation.constness_args(a, b)
     }
 }
 
@@ -658,6 +664,20 @@ pub fn super_relate_consts<'tcx, R: TypeRelation<'tcx>>(
         _ => false,
     };
     if is_match { Ok(a) } else { Err(TypeError::ConstMismatch(expected_found(relation, a, b))) }
+}
+
+pub fn super_relate_constness<'tcx, R: TypeRelation<'tcx>>(
+    relation: &mut R,
+    a: ty::ConstnessArg,
+    b: ty::ConstnessArg,
+) -> RelateResult<'tcx, ty::ConstnessArg> {
+    match (a, b) {
+        (ty::ConstnessArg::Infer, _) | (_, ty::ConstnessArg::Infer) => {
+            bug!("var types encountered in super_relate_contness: {a:?} {b:?}");
+        }
+        (a, b) if a == b => Ok(a),
+        _ => Err(TypeError::ConstnessArgMismatch(expected_found(relation, a, b))),
+    }
 }
 
 impl<'tcx> Relate<'tcx> for &'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>> {

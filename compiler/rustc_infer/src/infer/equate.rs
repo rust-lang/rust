@@ -160,6 +160,15 @@ impl<'tcx> TypeRelation<'tcx> for Equate<'_, '_, 'tcx> {
         }
         Ok(a)
     }
+
+    fn constness_args(
+        &mut self,
+        a: ty::ConstnessArg,
+        b: ty::ConstnessArg,
+    ) -> RelateResult<'tcx, ty::ConstnessArg> {
+        // TODO handle infer
+        relate::super_relate_constness(self, a, b)
+    }
 }
 
 impl<'tcx> ConstEquateRelation<'tcx> for Equate<'_, '_, 'tcx> {

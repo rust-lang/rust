@@ -767,6 +767,15 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
             _ => relate::super_relate_consts(self, c, c),
         }
     }
+
+    fn constness_args(
+        &mut self,
+        a: ty::ConstnessArg,
+        b: ty::ConstnessArg,
+    ) -> RelateResult<'tcx, ty::ConstnessArg> {
+        assert_eq!(a, b);
+        Ok(a)
+    }
 }
 
 pub trait ConstEquateRelation<'tcx>: TypeRelation<'tcx> {
@@ -997,5 +1006,13 @@ impl<'tcx> TypeRelation<'tcx> for ConstInferUnifier<'_, 'tcx> {
             }
             _ => relate::super_relate_consts(self, c, c),
         }
+    }
+    fn constness_args(
+        &mut self,
+        a: ty::ConstnessArg,
+        b: ty::ConstnessArg,
+    ) -> RelateResult<'tcx, ty::ConstnessArg> {
+        assert_eq!(a, b);
+        Ok(a)
     }
 }
