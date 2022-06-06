@@ -13,7 +13,6 @@ use rustc_middle::ty::{self, EarlyBinder, FloatTy, ScalarInt, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::Symbol;
 use std::cmp::Ordering::{self, Equal};
-use std::convert::TryInto;
 use std::hash::{Hash, Hasher};
 use std::iter;
 
@@ -130,12 +129,10 @@ impl Constant {
         match (left, right) {
             (&Self::Str(ref ls), &Self::Str(ref rs)) => Some(ls.cmp(rs)),
             (&Self::Char(ref l), &Self::Char(ref r)) => Some(l.cmp(r)),
-            (&Self::Int(l), &Self::Int(r)) => {
-                if let ty::Int(int_ty) = *cmp_type.kind() {
-                    Some(sext(tcx, l, int_ty).cmp(&sext(tcx, r, int_ty)))
-                } else {
-                    Some(l.cmp(&r))
-                }
+            (&Self::Int(l), &Self::Int(r)) => match *cmp_type.kind() {
+                ty::Int(int_ty) => Some(sext(tcx, l, int_ty).cmp(&sext(tcx, r, int_ty))),
+                ty::Uint(_) => Some(l.cmp(&r)),
+                _ => bug!("Not an int type"),
             },
             (&Self::F64(l), &Self::F64(r)) => l.partial_cmp(&r),
             (&Self::F32(l), &Self::F32(r)) => l.partial_cmp(&r),
@@ -352,7 +349,7 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
         }
     }
 
-    #[allow(clippy::cast_possible_wrap)]
+    #[expect(clippy::cast_possible_wrap)]
     fn constant_not(&self, o: &Constant, ty: Ty<'_>) -> Option<Constant> {
         use self::Constant::{Bool, Int};
         match *o {

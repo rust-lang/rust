@@ -474,7 +474,7 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `unknown_lints` lint detects unrecognized lint attribute.
+    /// The `unknown_lints` lint detects unrecognized lint attributes.
     ///
     /// ### Example
     ///

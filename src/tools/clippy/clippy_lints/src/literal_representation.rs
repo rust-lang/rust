@@ -204,7 +204,6 @@ impl WarningType {
     }
 }
 
-#[allow(clippy::module_name_repetitions)]
 #[derive(Copy, Clone)]
 pub struct LiteralDigitGrouping {
     lint_fraction_readability: bool,
@@ -432,7 +431,7 @@ impl LiteralDigitGrouping {
     }
 }
 
-#[allow(clippy::module_name_repetitions)]
+#[expect(clippy::module_name_repetitions)]
 #[derive(Copy, Clone)]
 pub struct DecimalLiteralRepresentation {
     threshold: u64,

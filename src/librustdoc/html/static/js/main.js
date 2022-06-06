@@ -63,7 +63,7 @@ function showMain() {
     removeClass(document.getElementById(MAIN_ID), "hidden");
 }
 
-(function () {
+(function() {
     window.rootPath = getVar("root-path");
     window.currentCrate = getVar("current-crate");
     window.searchJS =  resourcePath("search", ".js");
@@ -97,12 +97,12 @@ function showMain() {
 //
 // So I guess you could say things are getting pretty interoperable.
 function getVirtualKey(ev) {
-    if ("key" in ev && typeof ev.key != "undefined") {
+    if ("key" in ev && typeof ev.key !== "undefined") {
         return ev.key;
     }
 
     const c = ev.charCode || ev.keyCode;
-    if (c == 27) {
+    if (c === 27) {
         return "Escape";
     }
     return String.fromCharCode(c);
@@ -929,7 +929,7 @@ function loadCss(cssFileName) {
     searchState.setup();
 }());
 
-(function () {
+(function() {
     let reset_button_timeout = null;
 
     window.copy_path = but => {

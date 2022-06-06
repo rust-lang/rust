@@ -1,26 +1,5 @@
-error: const trait implementations may not use non-const default functions
-  --> $DIR/impl-with-default-fn-fail.rs:17:1
-   |
-LL | / impl const Tr for S {
-LL | |     fn req(&self) {}
-LL | | }
-   | |_^
-   |
-   = note: `prov` not implemented
-
-error: const trait implementations may not use non-const default functions
-  --> $DIR/impl-with-default-fn-fail.rs:27:1
-   |
-LL | / impl const Tr for u32 {
-LL | |     fn req(&self) {}
-LL | |     fn default() {}
-LL | | }
-   | |_^
-   |
-   = note: `prov` not implemented
-
 error[E0046]: not all trait items implemented, missing: `req`
-  --> $DIR/impl-with-default-fn-fail.rs:21:1
+  --> $DIR/impl-with-default-fn-fail.rs:12:1
    |
 LL |     fn req(&self);
    |     -------------- `req` from trait
@@ -28,6 +7,6 @@ LL |     fn req(&self);
 LL | impl const Tr for u16 {
    | ^^^^^^^^^^^^^^^^^^^^^ missing `req` in implementation
 
-error: aborting due to 3 previous errors
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0046`.

@@ -1,13 +1,13 @@
 error: higher-ranked lifetime error
-  --> $DIR/issue-59311.rs:17:5
+  --> $DIR/issue-59311.rs:21:5
    |
 LL |     v.t(|| {});
    |     ^^^^^^^^^^
    |
-   = note: could not prove [closure@$DIR/issue-59311.rs:17:9: 17:14] well-formed
+   = note: could not prove [closure@$DIR/issue-59311.rs:21:9: 21:14] well-formed
 
 error: higher-ranked lifetime error
-  --> $DIR/issue-59311.rs:17:9
+  --> $DIR/issue-59311.rs:21:9
    |
 LL |     v.t(|| {});
    |         ^^^^^

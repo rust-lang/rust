@@ -6,10 +6,7 @@ use crate::middle::codegen_fn_attrs::CodegenFnAttrs;
 use crate::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
 use crate::middle::lib_features::LibFeatures;
 use crate::middle::privacy::AccessLevels;
-use crate::middle::region;
-use crate::middle::resolve_lifetime::{
-    LifetimeScopeForPath, ObjectLifetimeDefault, Region, ResolveLifetimes,
-};
+use crate::middle::resolve_lifetime::{ObjectLifetimeDefault, Region, ResolveLifetimes};
 use crate::middle::stability::{self, DeprecationEntry};
 use crate::mir;
 use crate::mir::interpret::GlobalId;
@@ -38,7 +35,7 @@ use crate::ty::{self, AdtSizedConstraint, CrateInherentImpls, ParamEnvAnd, Ty, T
 use rustc_ast as ast;
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_attr as attr;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::Lrc;

@@ -44,7 +44,6 @@ struct MutVarsDelegate {
 }
 
 impl<'tcx> MutVarsDelegate {
-    #[allow(clippy::similar_names)]
     fn update(&mut self, cat: &PlaceWithHirId<'tcx>) {
         match cat.place.base {
             PlaceBase::Local(id) => {
@@ -74,7 +73,7 @@ impl<'tcx> Delegate<'tcx> for MutVarsDelegate {
         self.update(cmt);
     }
 
-    fn fake_read(&mut self, _: rustc_typeck::expr_use_visitor::Place<'tcx>, _: FakeReadCause, _: HirId) {}
+    fn fake_read(&mut self, _: &rustc_typeck::expr_use_visitor::PlaceWithHirId<'tcx>, _: FakeReadCause, _: HirId) {}
 }
 
 pub struct ParamBindingIdCollector {

@@ -1,5 +1,8 @@
 use crate::diagnostic::IntoDiagnosticArg;
-use crate::{Diagnostic, DiagnosticId, DiagnosticMessage, DiagnosticStyledString, ErrorGuaranteed};
+use crate::{
+    Diagnostic, DiagnosticId, DiagnosticMessage, DiagnosticStyledString, ErrorGuaranteed,
+    SubdiagnosticMessage,
+};
 use crate::{Handler, Level, MultiSpan, StashKey};
 use rustc_lint_defs::Applicability;
 
@@ -88,7 +91,7 @@ mod sealed_level_is_error {
     use crate::Level;
 
     /// Sealed helper trait for statically checking that a `Level` is an error.
-    crate trait IsError<const L: Level> {}
+    pub(crate) trait IsError<const L: Level> {}
 
     impl IsError<{ Level::Bug }> for () {}
     impl IsError<{ Level::DelayedBug }> for () {}
@@ -101,7 +104,7 @@ mod sealed_level_is_error {
 impl<'a> DiagnosticBuilder<'a, ErrorGuaranteed> {
     /// Convenience function for internal use, clients should use one of the
     /// `struct_*` methods on [`Handler`].
-    crate fn new_guaranteeing_error<M: Into<DiagnosticMessage>, const L: Level>(
+    pub(crate) fn new_guaranteeing_error<M: Into<DiagnosticMessage>, const L: Level>(
         handler: &'a Handler,
         message: M,
     ) -> Self
@@ -168,7 +171,7 @@ impl EmissionGuarantee for ErrorGuaranteed {
 impl<'a> DiagnosticBuilder<'a, ()> {
     /// Convenience function for internal use, clients should use one of the
     /// `struct_*` methods on [`Handler`].
-    crate fn new<M: Into<DiagnosticMessage>>(
+    pub(crate) fn new<M: Into<DiagnosticMessage>>(
         handler: &'a Handler,
         level: Level,
         message: M,
@@ -179,7 +182,7 @@ impl<'a> DiagnosticBuilder<'a, ()> {
 
     /// Creates a new `DiagnosticBuilder` with an already constructed
     /// diagnostic.
-    crate fn new_diagnostic(handler: &'a Handler, diagnostic: Diagnostic) -> Self {
+    pub(crate) fn new_diagnostic(handler: &'a Handler, diagnostic: Diagnostic) -> Self {
         debug!("Created new diagnostic");
         Self {
             inner: DiagnosticBuilderInner {
@@ -210,14 +213,14 @@ impl EmissionGuarantee for () {
 impl<'a> DiagnosticBuilder<'a, !> {
     /// Convenience function for internal use, clients should use one of the
     /// `struct_*` methods on [`Handler`].
-    crate fn new_fatal(handler: &'a Handler, message: impl Into<DiagnosticMessage>) -> Self {
+    pub(crate) fn new_fatal(handler: &'a Handler, message: impl Into<DiagnosticMessage>) -> Self {
         let diagnostic = Diagnostic::new_with_code(Level::Fatal, None, message);
         Self::new_diagnostic_fatal(handler, diagnostic)
     }
 
     /// Creates a new `DiagnosticBuilder` with an already constructed
     /// diagnostic.
-    crate fn new_diagnostic_fatal(handler: &'a Handler, diagnostic: Diagnostic) -> Self {
+    pub(crate) fn new_diagnostic_fatal(handler: &'a Handler, diagnostic: Diagnostic) -> Self {
         debug!("Created new diagnostic");
         Self {
             inner: DiagnosticBuilderInner {
@@ -395,7 +398,7 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
     /// the diagnostic was constructed. However, the label span is *not* considered a
     /// ["primary span"][`MultiSpan`]; only the `Span` supplied when creating the diagnostic is
     /// primary.
-    pub fn span_label(&mut self, span: Span, label: impl Into<DiagnosticMessage>) -> &mut Self);
+    pub fn span_label(&mut self, span: Span, label: impl Into<SubdiagnosticMessage>) -> &mut Self);
 
     forward!(
     /// Labels all the given spans with the provided label.
@@ -430,25 +433,29 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
         found: DiagnosticStyledString,
     ) -> &mut Self);
 
-    forward!(pub fn note(&mut self, msg: impl Into<DiagnosticMessage>) -> &mut Self);
-    forward!(pub fn note_once(&mut self, msg: impl Into<DiagnosticMessage>) -> &mut Self);
+    forward!(pub fn note(&mut self, msg: impl Into<SubdiagnosticMessage>) -> &mut Self);
+    forward!(pub fn note_once(&mut self, msg: impl Into<SubdiagnosticMessage>) -> &mut Self);
     forward!(pub fn span_note(
         &mut self,
         sp: impl Into<MultiSpan>,
-        msg: impl Into<DiagnosticMessage>,
+        msg: impl Into<SubdiagnosticMessage>,
     ) -> &mut Self);
     forward!(pub fn span_note_once(
         &mut self,
         sp: impl Into<MultiSpan>,
-        msg: impl Into<DiagnosticMessage>,
+        msg: impl Into<SubdiagnosticMessage>,
     ) -> &mut Self);
-    forward!(pub fn warn(&mut self, msg: impl Into<DiagnosticMessage>) -> &mut Self);
-    forward!(pub fn span_warn(&mut self, sp: impl Into<MultiSpan>, msg: &str) -> &mut Self);
-    forward!(pub fn help(&mut self, msg: impl Into<DiagnosticMessage>) -> &mut Self);
+    forward!(pub fn warn(&mut self, msg: impl Into<SubdiagnosticMessage>) -> &mut Self);
+    forward!(pub fn span_warn(
+        &mut self,
+        sp: impl Into<MultiSpan>,
+        msg: impl Into<SubdiagnosticMessage>,
+    ) -> &mut Self);
+    forward!(pub fn help(&mut self, msg: impl Into<SubdiagnosticMessage>) -> &mut Self);
     forward!(pub fn span_help(
         &mut self,
         sp: impl Into<MultiSpan>,
-        msg: impl Into<DiagnosticMessage>,
+        msg: impl Into<SubdiagnosticMessage>,
     ) -> &mut Self);
     forward!(pub fn help_use_latest_edition(&mut self,) -> &mut Self);
     forward!(pub fn set_is_lint(&mut self,) -> &mut Self);
@@ -457,67 +464,67 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
 
     forward!(pub fn multipart_suggestion(
         &mut self,
-        msg: impl Into<DiagnosticMessage>,
+        msg: impl Into<SubdiagnosticMessage>,
         suggestion: Vec<(Span, String)>,
         applicability: Applicability,
     ) -> &mut Self);
     forward!(pub fn multipart_suggestion_verbose(
         &mut self,
-        msg: impl Into<DiagnosticMessage>,
+        msg: impl Into<SubdiagnosticMessage>,
         suggestion: Vec<(Span, String)>,
         applicability: Applicability,
     ) -> &mut Self);
     forward!(pub fn tool_only_multipart_suggestion(
         &mut self,
-        msg: impl Into<DiagnosticMessage>,
+        msg: impl Into<SubdiagnosticMessage>,
         suggestion: Vec<(Span, String)>,
         applicability: Applicability,
     ) -> &mut Self);
     forward!(pub fn span_suggestion(
         &mut self,
         sp: Span,
-        msg: impl Into<DiagnosticMessage>,
+        msg: impl Into<SubdiagnosticMessage>,
         suggestion: impl ToString,
         applicability: Applicability,
     ) -> &mut Self);
     forward!(pub fn span_suggestions(
         &mut self,
         sp: Span,
-        msg: impl Into<DiagnosticMessage>,
+        msg: impl Into<SubdiagnosticMessage>,
         suggestions: impl Iterator<Item = String>,
         applicability: Applicability,
     ) -> &mut Self);
     forward!(pub fn multipart_suggestions(
         &mut self,
-        msg: impl Into<DiagnosticMessage>,
+        msg: impl Into<SubdiagnosticMessage>,
         suggestions: impl Iterator<Item = Vec<(Span, String)>>,
         applicability: Applicability,
     ) -> &mut Self);
     forward!(pub fn span_suggestion_short(
         &mut self,
         sp: Span,
-        msg: impl Into<DiagnosticMessage>,
+        msg: impl Into<SubdiagnosticMessage>,
         suggestion: impl ToString,
         applicability: Applicability,
     ) -> &mut Self);
     forward!(pub fn span_suggestion_verbose(
         &mut self,
         sp: Span,
-        msg: impl Into<DiagnosticMessage>,
+        msg: impl Into<SubdiagnosticMessage>,
         suggestion: impl ToString,
         applicability: Applicability,
     ) -> &mut Self);
     forward!(pub fn span_suggestion_hidden(
         &mut self,
         sp: Span,
-        msg: impl Into<DiagnosticMessage>,
+        msg: impl Into<SubdiagnosticMessage>,
         suggestion: impl ToString,
         applicability: Applicability,
     ) -> &mut Self);
     forward!(pub fn tool_only_span_suggestion(
         &mut self,
         sp: Span,
-        msg: impl Into<DiagnosticMessage>,
+        msg: impl Into<SubdiagnosticMessage>,
         suggestion: impl ToString,
         applicability: Applicability,
     ) -> &mut Self);

@@ -224,7 +224,7 @@ fn calc_unused_spans(
 }
 
 impl Resolver<'_> {
-    crate fn check_unused(&mut self, krate: &ast::Crate) {
+    pub(crate) fn check_unused(&mut self, krate: &ast::Crate) {
         for import in self.potentially_unused_imports.iter() {
             match import.kind {
                 _ if import.used.get()

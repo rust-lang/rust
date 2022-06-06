@@ -3,12 +3,12 @@
 //! why we call this module `mbe`. For external documentation, prefer the
 //! official terminology: "declarative macros".
 
-crate mod macro_check;
-crate mod macro_parser;
-crate mod macro_rules;
-crate mod metavar_expr;
-crate mod quoted;
-crate mod transcribe;
+pub(crate) mod macro_check;
+pub(crate) mod macro_parser;
+pub(crate) mod macro_rules;
+pub(crate) mod metavar_expr;
+pub(crate) mod quoted;
+pub(crate) mod transcribe;
 
 use metavar_expr::MetaVarExpr;
 use rustc_ast::token::{Delimiter, NonterminalKind, Token, TokenKind};

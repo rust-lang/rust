@@ -41,10 +41,10 @@ type Res = def::Res<NodeId>;
 /// Not modularized, can shadow previous `macro_rules` bindings, etc.
 #[derive(Debug)]
 pub struct MacroRulesBinding<'a> {
-    crate binding: &'a NameBinding<'a>,
+    pub(crate) binding: &'a NameBinding<'a>,
     /// `macro_rules` scope into which the `macro_rules` item was planted.
-    crate parent_macro_rules_scope: MacroRulesScopeRef<'a>,
-    crate ident: Ident,
+    pub(crate) parent_macro_rules_scope: MacroRulesScopeRef<'a>,
+    pub(crate) ident: Ident,
 }
 
 /// The scope introduced by a `macro_rules!` macro.
@@ -74,7 +74,10 @@ pub(crate) type MacroRulesScopeRef<'a> = Interned<'a, Cell<MacroRulesScope<'a>>>
 /// Macro namespace is separated into two sub-namespaces, one for bang macros and
 /// one for attribute-like macros (attributes, derives).
 /// We ignore resolutions from one sub-namespace when searching names in scope for another.
-crate fn sub_namespace_match(candidate: Option<MacroKind>, requirement: Option<MacroKind>) -> bool {
+pub(crate) fn sub_namespace_match(
+    candidate: Option<MacroKind>,
+    requirement: Option<MacroKind>,
+) -> bool {
     #[derive(PartialEq)]
     enum SubNS {
         Bang,
@@ -140,7 +143,7 @@ fn registered_idents(
     registered
 }
 
-crate fn registered_attrs_and_tools(
+pub(crate) fn registered_attrs_and_tools(
     sess: &Session,
     attrs: &[ast::Attribute],
 ) -> (FxHashSet<Ident>, FxHashSet<Ident>) {
@@ -440,11 +443,22 @@ impl<'a> ResolverExpand for Resolver<'a> {
                 PathResult::NonModule(partial_res) if partial_res.unresolved_segments() == 0 => {
                     return Ok(true);
                 }
+                PathResult::NonModule(..) |
+                // HACK(Urgau): This shouldn't be necessary
+                PathResult::Failed { is_error_from_last_segment: false, .. } => {
+                    self.session
+                        .struct_span_err(span, "not sure whether the path is accessible or not")
+                        .note("the type may have associated items, but we are currently not checking them")
+                        .emit();
+
+                    // If we get a partially resolved NonModule in one namespace, we should get the
+                    // same result in any other namespaces, so we can return early.
+                    return Ok(false);
+                }
                 PathResult::Indeterminate => indeterminate = true,
-                // FIXME: `resolve_path` is not ready to report partially resolved paths
-                // correctly, so we just report an error if the path was reported as unresolved.
-                // This needs to be fixed for `cfg_accessible` to be useful.
-                PathResult::NonModule(..) | PathResult::Failed { .. } => {}
+                // We can only be sure that a path doesn't exist after having tested all the
+                // posibilities, only at that time we can return false.
+                PathResult::Failed { .. } => {}
                 PathResult::Module(_) => panic!("unexpected path resolution"),
             }
         }
@@ -453,10 +467,6 @@ impl<'a> ResolverExpand for Resolver<'a> {
             return Err(Indeterminate);
         }
 
-        self.session
-            .struct_span_err(span, "not sure whether the path is accessible or not")
-            .span_note(span, "`cfg_accessible` is not fully implemented")
-            .emit();
         Ok(false)
     }
 
@@ -651,7 +661,7 @@ impl<'a> Resolver<'a> {
         res.map(|res| (self.get_macro(res), res))
     }
 
-    crate fn finalize_macro_resolutions(&mut self) {
+    pub(crate) fn finalize_macro_resolutions(&mut self) {
         let check_consistency = |this: &mut Self,
                                  path: &[Segment],
                                  span,
@@ -839,7 +849,7 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    crate fn check_reserved_macro_name(&mut self, ident: Ident, res: Res) {
+    pub(crate) fn check_reserved_macro_name(&mut self, ident: Ident, res: Res) {
         // Reserve some names that are not quite covered by the general check
         // performed on `Resolver::builtin_attrs`.
         if ident.name == sym::cfg || ident.name == sym::cfg_attr {
@@ -856,7 +866,7 @@ impl<'a> Resolver<'a> {
     /// Compile the macro into a `SyntaxExtension` and its rule spans.
     ///
     /// Possibly replace its expander to a pre-defined one for built-in macros.
-    crate fn compile_macro(
+    pub(crate) fn compile_macro(
         &mut self,
         item: &ast::Item,
         edition: Edition,

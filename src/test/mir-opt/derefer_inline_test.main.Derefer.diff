@@ -1,0 +1,69 @@
+- // MIR for `main` before Derefer
++ // MIR for `main` after Derefer
+  
+  fn main() -> () {
+      let mut _0: ();                      // return place in scope 0 at $DIR/derefer_inline_test.rs:9:11: 9:11
+      let _1: std::boxed::Box<std::boxed::Box<u32>>; // in scope 0 at $DIR/derefer_inline_test.rs:10:5: 10:12
+      let mut _2: usize;                   // in scope 0 at $DIR/derefer_inline_test.rs:10:5: 10:12
+      let mut _3: usize;                   // in scope 0 at $DIR/derefer_inline_test.rs:10:5: 10:12
+      let mut _4: *mut u8;                 // in scope 0 at $DIR/derefer_inline_test.rs:10:5: 10:12
+      let mut _5: std::boxed::Box<std::boxed::Box<u32>>; // in scope 0 at $DIR/derefer_inline_test.rs:10:5: 10:12
+      let mut _6: ();                      // in scope 0 at $DIR/derefer_inline_test.rs:10:11: 10:12
+      scope 1 {
+      }
+  
+      bb0: {
+          StorageLive(_1);                 // scope 0 at $DIR/derefer_inline_test.rs:10:5: 10:12
+          _2 = SizeOf(std::boxed::Box<u32>); // scope 1 at $DIR/derefer_inline_test.rs:10:5: 10:12
+          _3 = AlignOf(std::boxed::Box<u32>); // scope 1 at $DIR/derefer_inline_test.rs:10:5: 10:12
+          _4 = alloc::alloc::exchange_malloc(move _2, move _3) -> bb1; // scope 1 at $DIR/derefer_inline_test.rs:10:5: 10:12
+                                           // mir::Constant
+                                           // + span: $DIR/derefer_inline_test.rs:10:5: 10:12
+                                           // + literal: Const { ty: unsafe fn(usize, usize) -> *mut u8 {alloc::alloc::exchange_malloc}, val: Value(Scalar(<ZST>)) }
+      }
+  
+      bb1: {
+          StorageLive(_5);                 // scope 0 at $DIR/derefer_inline_test.rs:10:5: 10:12
+          _5 = ShallowInitBox(move _4, std::boxed::Box<u32>); // scope 0 at $DIR/derefer_inline_test.rs:10:5: 10:12
+          (*_5) = f() -> [return: bb2, unwind: bb5]; // scope 0 at $DIR/derefer_inline_test.rs:10:9: 10:12
+                                           // mir::Constant
+                                           // + span: $DIR/derefer_inline_test.rs:10:9: 10:10
+                                           // + literal: Const { ty: fn() -> Box<u32> {f}, val: Value(Scalar(<ZST>)) }
+      }
+  
+      bb2: {
+          _1 = move _5;                    // scope 0 at $DIR/derefer_inline_test.rs:10:5: 10:12
+          goto -> bb3;                     // scope 0 at $DIR/derefer_inline_test.rs:10:11: 10:12
+      }
+  
+      bb3: {
+          StorageDead(_5);                 // scope 0 at $DIR/derefer_inline_test.rs:10:11: 10:12
+          drop(_1) -> [return: bb4, unwind: bb6]; // scope 0 at $DIR/derefer_inline_test.rs:10:12: 10:13
+      }
+  
+      bb4: {
+          StorageDead(_1);                 // scope 0 at $DIR/derefer_inline_test.rs:10:12: 10:13
+          _0 = const ();                   // scope 0 at $DIR/derefer_inline_test.rs:9:11: 11:2
+          return;                          // scope 0 at $DIR/derefer_inline_test.rs:11:2: 11:2
+      }
+  
+      bb5 (cleanup): {
+          goto -> bb8;                     // scope 0 at $DIR/derefer_inline_test.rs:10:11: 10:12
+      }
+  
+      bb6 (cleanup): {
+          resume;                          // scope 0 at $DIR/derefer_inline_test.rs:9:1: 11:2
+      }
+  
+      bb7 (cleanup): {
+          _6 = alloc::alloc::box_free::<Box<u32>, std::alloc::Global>(move (_5.0: std::ptr::Unique<std::boxed::Box<u32>>), move (_5.1: std::alloc::Global)) -> bb6; // scope 0 at $DIR/derefer_inline_test.rs:10:11: 10:12
+                                           // mir::Constant
+                                           // + span: $DIR/derefer_inline_test.rs:10:11: 10:12
+                                           // + literal: Const { ty: unsafe fn(Unique<Box<u32>>, std::alloc::Global) {alloc::alloc::box_free::<Box<u32>, std::alloc::Global>}, val: Value(Scalar(<ZST>)) }
+      }
+  
+      bb8 (cleanup): {
+          goto -> bb7;                     // scope 0 at $DIR/derefer_inline_test.rs:10:11: 10:12
+      }
+  }
+  

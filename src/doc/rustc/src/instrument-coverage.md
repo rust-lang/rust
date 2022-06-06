@@ -1,4 +1,4 @@
-# `instrument-coverage`
+# Instrumentation-based Code Coverage
 
 ## Introduction
 

@@ -5,6 +5,7 @@
 //! assume that HTML output is desired, although it may be possible to redesign
 //! them in the future to instead emit any format desired.
 
+use std::borrow::Cow;
 use std::cell::Cell;
 use std::fmt;
 use std::iter;
@@ -33,7 +34,7 @@ use crate::html::render::Context;
 use super::url_parts_builder::estimate_item_path_byte_length;
 use super::url_parts_builder::UrlPartsBuilder;
 
-crate trait Print {
+pub(crate) trait Print {
     fn print(self, buffer: &mut Buffer);
 }
 
@@ -59,7 +60,7 @@ impl Print for &'_ str {
 }
 
 #[derive(Debug, Clone)]
-crate struct Buffer {
+pub(crate) struct Buffer {
     for_html: bool,
     buffer: String,
 }
@@ -82,63 +83,63 @@ impl core::fmt::Write for Buffer {
 }
 
 impl Buffer {
-    crate fn empty_from(v: &Buffer) -> Buffer {
+    pub(crate) fn empty_from(v: &Buffer) -> Buffer {
         Buffer { for_html: v.for_html, buffer: String::new() }
     }
 
-    crate fn html() -> Buffer {
+    pub(crate) fn html() -> Buffer {
         Buffer { for_html: true, buffer: String::new() }
     }
 
-    crate fn new() -> Buffer {
+    pub(crate) fn new() -> Buffer {
         Buffer { for_html: false, buffer: String::new() }
     }
 
-    crate fn is_empty(&self) -> bool {
+    pub(crate) fn is_empty(&self) -> bool {
         self.buffer.is_empty()
     }
 
-    crate fn into_inner(self) -> String {
+    pub(crate) fn into_inner(self) -> String {
         self.buffer
     }
 
-    crate fn insert_str(&mut self, idx: usize, s: &str) {
+    pub(crate) fn insert_str(&mut self, idx: usize, s: &str) {
         self.buffer.insert_str(idx, s);
     }
 
-    crate fn push_str(&mut self, s: &str) {
+    pub(crate) fn push_str(&mut self, s: &str) {
         self.buffer.push_str(s);
     }
 
-    crate fn push_buffer(&mut self, other: Buffer) {
+    pub(crate) fn push_buffer(&mut self, other: Buffer) {
         self.buffer.push_str(&other.buffer);
     }
 
     // Intended for consumption by write! and writeln! (std::fmt) but without
     // the fmt::Result return type imposed by fmt::Write (and avoiding the trait
     // import).
-    crate fn write_str(&mut self, s: &str) {
+    pub(crate) fn write_str(&mut self, s: &str) {
         self.buffer.push_str(s);
     }
 
     // Intended for consumption by write! and writeln! (std::fmt) but without
     // the fmt::Result return type imposed by fmt::Write (and avoiding the trait
     // import).
-    crate fn write_fmt(&mut self, v: fmt::Arguments<'_>) {
+    pub(crate) fn write_fmt(&mut self, v: fmt::Arguments<'_>) {
         use fmt::Write;
         self.buffer.write_fmt(v).unwrap();
     }
 
-    crate fn to_display<T: Print>(mut self, t: T) -> String {
+    pub(crate) fn to_display<T: Print>(mut self, t: T) -> String {
         t.print(&mut self);
         self.into_inner()
     }
 
-    crate fn is_for_html(&self) -> bool {
+    pub(crate) fn is_for_html(&self) -> bool {
         self.for_html
     }
 
-    crate fn reserve(&mut self, additional: usize) {
+    pub(crate) fn reserve(&mut self, additional: usize) {
         self.buffer.reserve(additional)
     }
 }
@@ -158,7 +159,7 @@ fn comma_sep<T: fmt::Display>(
     })
 }
 
-crate fn print_generic_bounds<'a, 'tcx: 'a>(
+pub(crate) fn print_generic_bounds<'a, 'tcx: 'a>(
     bounds: &'a [clean::GenericBound],
     cx: &'a Context<'tcx>,
 ) -> impl fmt::Display + 'a + Captures<'tcx> {
@@ -176,7 +177,7 @@ crate fn print_generic_bounds<'a, 'tcx: 'a>(
 }
 
 impl clean::GenericParamDef {
-    crate fn print<'a, 'tcx: 'a>(
+    pub(crate) fn print<'a, 'tcx: 'a>(
         &'a self,
         cx: &'a Context<'tcx>,
     ) -> impl fmt::Display + 'a + Captures<'tcx> {
@@ -239,7 +240,7 @@ impl clean::GenericParamDef {
 }
 
 impl clean::Generics {
-    crate fn print<'a, 'tcx: 'a>(
+    pub(crate) fn print<'a, 'tcx: 'a>(
         &'a self,
         cx: &'a Context<'tcx>,
     ) -> impl fmt::Display + 'a + Captures<'tcx> {
@@ -262,7 +263,7 @@ impl clean::Generics {
 /// * The Generics from which to emit a where-clause.
 /// * The number of spaces to indent each line with.
 /// * Whether the where-clause needs to add a comma and newline after the last bound.
-crate fn print_where_clause<'a, 'tcx: 'a>(
+pub(crate) fn print_where_clause<'a, 'tcx: 'a>(
     gens: &'a clean::Generics,
     cx: &'a Context<'tcx>,
     indent: usize,
@@ -372,13 +373,13 @@ crate fn print_where_clause<'a, 'tcx: 'a>(
 }
 
 impl clean::Lifetime {
-    crate fn print(&self) -> impl fmt::Display + '_ {
+    pub(crate) fn print(&self) -> impl fmt::Display + '_ {
         self.0.as_str()
     }
 }
 
 impl clean::Constant {
-    crate fn print(&self, tcx: TyCtxt<'_>) -> impl fmt::Display + '_ {
+    pub(crate) fn print(&self, tcx: TyCtxt<'_>) -> impl fmt::Display + '_ {
         let expr = self.expr(tcx);
         display_fn(
             move |f| {
@@ -419,7 +420,7 @@ impl clean::PolyTrait {
 }
 
 impl clean::GenericBound {
-    crate fn print<'a, 'tcx: 'a>(
+    pub(crate) fn print<'a, 'tcx: 'a>(
         &'a self,
         cx: &'a Context<'tcx>,
     ) -> impl fmt::Display + 'a + Captures<'tcx> {
@@ -457,7 +458,7 @@ impl clean::GenericArgs {
                             f.write_str("&lt;")?;
                         }
                         let mut comma = false;
-                        for arg in args {
+                        for arg in args.iter() {
                             if comma {
                                 f.write_str(", ")?;
                             }
@@ -468,7 +469,7 @@ impl clean::GenericArgs {
                                 write!(f, "{}", arg.print(cx))?;
                             }
                         }
-                        for binding in bindings {
+                        for binding in bindings.iter() {
                             if comma {
                                 f.write_str(", ")?;
                             }
@@ -489,7 +490,7 @@ impl clean::GenericArgs {
                 clean::GenericArgs::Parenthesized { inputs, output } => {
                     f.write_str("(")?;
                     let mut comma = false;
-                    for ty in inputs {
+                    for ty in inputs.iter() {
                         if comma {
                             f.write_str(", ")?;
                         }
@@ -516,7 +517,7 @@ impl clean::GenericArgs {
 }
 
 // Possible errors when computing href link source for a `DefId`
-crate enum HrefError {
+pub(crate) enum HrefError {
     /// This item is known to rustdoc, but from a crate that does not have documentation generated.
     ///
     /// This can only happen for non-local items.
@@ -543,17 +544,17 @@ crate enum HrefError {
 }
 
 // Panics if `syms` is empty.
-crate fn join_with_double_colon(syms: &[Symbol]) -> String {
+pub(crate) fn join_with_double_colon(syms: &[Symbol]) -> String {
     let mut s = String::with_capacity(estimate_item_path_byte_length(syms.len()));
-    s.push_str(&syms[0].as_str());
+    s.push_str(syms[0].as_str());
     for sym in &syms[1..] {
         s.push_str("::");
-        s.push_str(&sym.as_str());
+        s.push_str(sym.as_str());
     }
     s
 }
 
-crate fn href_with_root_path(
+pub(crate) fn href_with_root_path(
     did: DefId,
     cx: &Context<'_>,
     root_path: Option<&str>,
@@ -633,14 +634,17 @@ crate fn href_with_root_path(
     Ok((url_parts.finish(), shortty, fqp.to_vec()))
 }
 
-crate fn href(did: DefId, cx: &Context<'_>) -> Result<(String, ItemType, Vec<Symbol>), HrefError> {
+pub(crate) fn href(
+    did: DefId,
+    cx: &Context<'_>,
+) -> Result<(String, ItemType, Vec<Symbol>), HrefError> {
     href_with_root_path(did, cx, None)
 }
 
 /// Both paths should only be modules.
 /// This is because modules get their own directories; that is, `std::vec` and `std::vec::Vec` will
 /// both need `../iter/trait.Iterator.html` to get at the iterator trait.
-crate fn href_relative_parts<'fqp>(
+pub(crate) fn href_relative_parts<'fqp>(
     fqp: &'fqp [Symbol],
     relative_to_fqp: &[Symbol],
 ) -> Box<dyn Iterator<Item = Symbol> + 'fqp> {
@@ -787,7 +791,7 @@ fn tybounds<'a, 'tcx: 'a>(
     })
 }
 
-crate fn anchor<'a, 'cx: 'a>(
+pub(crate) fn anchor<'a, 'cx: 'a>(
     did: DefId,
     text: Symbol,
     cx: &'cx Context<'_>,
@@ -877,11 +881,16 @@ fn fmt_type<'cx>(
                 }
             }
         }
-        clean::Slice(ref t) => {
-            primitive_link(f, PrimitiveType::Slice, "[", cx)?;
-            fmt::Display::fmt(&t.print(cx), f)?;
-            primitive_link(f, PrimitiveType::Slice, "]", cx)
-        }
+        clean::Slice(ref t) => match **t {
+            clean::Generic(name) => {
+                primitive_link(f, PrimitiveType::Slice, &format!("[{name}]"), cx)
+            }
+            _ => {
+                primitive_link(f, PrimitiveType::Slice, "[", cx)?;
+                fmt::Display::fmt(&t.print(cx), f)?;
+                primitive_link(f, PrimitiveType::Slice, "]", cx)
+            }
+        },
         clean::Array(ref t, ref n) => {
             primitive_link(f, PrimitiveType::Array, "[", cx)?;
             fmt::Display::fmt(&t.print(cx), f)?;
@@ -920,23 +929,12 @@ fn fmt_type<'cx>(
                 clean::Slice(ref bt) => {
                     // `BorrowedRef{ ... Slice(T) }` is `&[T]`
                     match **bt {
-                        clean::Generic(_) => {
-                            if f.alternate() {
-                                primitive_link(
-                                    f,
-                                    PrimitiveType::Slice,
-                                    &format!("{}{}{}[{:#}]", amp, lt, m, bt.print(cx)),
-                                    cx,
-                                )
-                            } else {
-                                primitive_link(
-                                    f,
-                                    PrimitiveType::Slice,
-                                    &format!("{}{}{}[{}]", amp, lt, m, bt.print(cx)),
-                                    cx,
-                                )
-                            }
-                        }
+                        clean::Generic(name) => primitive_link(
+                            f,
+                            PrimitiveType::Slice,
+                            &format!("{amp}{lt}{m}[{name}]"),
+                            cx,
+                        ),
                         _ => {
                             primitive_link(
                                 f,
@@ -982,11 +980,7 @@ fn fmt_type<'cx>(
                 write!(f, "impl {}", print_generic_bounds(bounds, cx))
             }
         }
-        clean::QPath { ref assoc, ref self_type, ref trait_, ref self_def_id } => {
-            let should_show_cast = !trait_.segments.is_empty()
-                && self_def_id
-                    .zip(Some(trait_.def_id()))
-                    .map_or(!self_type.is_self_type(), |(id, trait_)| id != trait_);
+        clean::QPath { ref assoc, ref self_type, ref trait_, should_show_cast } => {
             if f.alternate() {
                 if should_show_cast {
                     write!(f, "<{:#} as {:#}>::", self_type.print(cx), trait_.print(cx))?
@@ -1031,7 +1025,7 @@ fn fmt_type<'cx>(
 }
 
 impl clean::Type {
-    crate fn print<'b, 'a: 'b, 'tcx: 'a>(
+    pub(crate) fn print<'b, 'a: 'b, 'tcx: 'a>(
         &'a self,
         cx: &'a Context<'tcx>,
     ) -> impl fmt::Display + 'b + Captures<'tcx> {
@@ -1040,7 +1034,7 @@ impl clean::Type {
 }
 
 impl clean::Path {
-    crate fn print<'b, 'a: 'b, 'tcx: 'a>(
+    pub(crate) fn print<'b, 'a: 'b, 'tcx: 'a>(
         &'a self,
         cx: &'a Context<'tcx>,
     ) -> impl fmt::Display + 'b + Captures<'tcx> {
@@ -1049,7 +1043,7 @@ impl clean::Path {
 }
 
 impl clean::Impl {
-    crate fn print<'a, 'tcx: 'a>(
+    pub(crate) fn print<'a, 'tcx: 'a>(
         &'a self,
         use_absolute: bool,
         cx: &'a Context<'tcx>,
@@ -1070,7 +1064,7 @@ impl clean::Impl {
                 write!(f, " for ")?;
             }
 
-            if let Some(ref ty) = self.kind.as_blanket_ty() {
+            if let Some(ty) = self.kind.as_blanket_ty() {
                 fmt_type(ty, f, use_absolute, cx)?;
             } else {
                 fmt_type(&self.for_, f, use_absolute, cx)?;
@@ -1083,7 +1077,7 @@ impl clean::Impl {
 }
 
 impl clean::Arguments {
-    crate fn print<'a, 'tcx: 'a>(
+    pub(crate) fn print<'a, 'tcx: 'a>(
         &'a self,
         cx: &'a Context<'tcx>,
     ) -> impl fmt::Display + 'a + Captures<'tcx> {
@@ -1107,7 +1101,7 @@ impl clean::Arguments {
 }
 
 impl clean::FnRetTy {
-    crate fn print<'a, 'tcx: 'a>(
+    pub(crate) fn print<'a, 'tcx: 'a>(
         &'a self,
         cx: &'a Context<'tcx>,
     ) -> impl fmt::Display + 'a + Captures<'tcx> {
@@ -1142,7 +1136,7 @@ impl clean::BareFunctionDecl {
 }
 
 impl clean::FnDecl {
-    crate fn print<'b, 'a: 'b, 'tcx: 'a>(
+    pub(crate) fn print<'b, 'a: 'b, 'tcx: 'a>(
         &'a self,
         cx: &'a Context<'tcx>,
     ) -> impl fmt::Display + 'b + Captures<'tcx> {
@@ -1174,7 +1168,7 @@ impl clean::FnDecl {
     /// * `indent`: The number of spaces to indent each successive line with, if line-wrapping is
     ///   necessary.
     /// * `asyncness`: Whether the function is async or not.
-    crate fn full_print<'a, 'tcx: 'a>(
+    pub(crate) fn full_print<'a, 'tcx: 'a>(
         &'a self,
         header_len: usize,
         indent: usize,
@@ -1291,14 +1285,16 @@ impl clean::FnDecl {
 }
 
 impl clean::Visibility {
-    crate fn print_with_space<'a, 'tcx: 'a>(
+    pub(crate) fn print_with_space<'a, 'tcx: 'a>(
         self,
         item_did: ItemId,
         cx: &'a Context<'tcx>,
     ) -> impl fmt::Display + 'a + Captures<'tcx> {
-        let to_print = match self {
-            clean::Public => "pub ".to_owned(),
-            clean::Inherited => String::new(),
+        use std::fmt::Write as _;
+
+        let to_print: Cow<'static, str> = match self {
+            clean::Public => "pub ".into(),
+            clean::Inherited => "".into(),
             clean::Visibility::Restricted(vis_did) => {
                 // FIXME(camelid): This may not work correctly if `item_did` is a module.
                 //                 However, rustdoc currently never displays a module's
@@ -1306,17 +1302,16 @@ impl clean::Visibility {
                 let parent_module = find_nearest_parent_module(cx.tcx(), item_did.expect_def_id());
 
                 if vis_did.is_crate_root() {
-                    "pub(crate) ".to_owned()
+                    "pub(crate) ".into()
                 } else if parent_module == Some(vis_did) {
                     // `pub(in foo)` where `foo` is the parent module
                     // is the same as no visibility modifier
-                    String::new()
+                    "".into()
                 } else if parent_module
-                    .map(|parent| find_nearest_parent_module(cx.tcx(), parent))
-                    .flatten()
+                    .and_then(|parent| find_nearest_parent_module(cx.tcx(), parent))
                     == Some(vis_did)
                 {
-                    "pub(super) ".to_owned()
+                    "pub(super) ".into()
                 } else {
                     let path = cx.tcx().def_path(vis_did);
                     debug!("path={:?}", path);
@@ -1326,20 +1321,20 @@ impl clean::Visibility {
 
                     let mut s = "pub(in ".to_owned();
                     for seg in &path.data[..path.data.len() - 1] {
-                        s.push_str(&format!("{}::", seg.data.get_opt_name().unwrap()));
+                        let _ = write!(s, "{}::", seg.data.get_opt_name().unwrap());
                     }
-                    s.push_str(&format!("{}) ", anchor));
-                    s
+                    let _ = write!(s, "{}) ", anchor);
+                    s.into()
                 }
             }
         };
-        display_fn(move |f| f.write_str(&to_print))
+        display_fn(move |f| write!(f, "{}", to_print))
     }
 
     /// This function is the same as print_with_space, except that it renders no links.
     /// It's used for macros' rendered source view, which is syntax highlighted and cannot have
     /// any HTML in it.
-    crate fn to_src_with_space<'a, 'tcx: 'a>(
+    pub(crate) fn to_src_with_space<'a, 'tcx: 'a>(
         self,
         tcx: TyCtxt<'tcx>,
         item_did: DefId,
@@ -1359,9 +1354,7 @@ impl clean::Visibility {
                     // `pub(in foo)` where `foo` is the parent module
                     // is the same as no visibility modifier
                     String::new()
-                } else if parent_module
-                    .map(|parent| find_nearest_parent_module(tcx, parent))
-                    .flatten()
+                } else if parent_module.and_then(|parent| find_nearest_parent_module(tcx, parent))
                     == Some(vis_did)
                 {
                     "pub(super) ".to_owned()
@@ -1374,7 +1367,7 @@ impl clean::Visibility {
     }
 }
 
-crate trait PrintWithSpace {
+pub(crate) trait PrintWithSpace {
     fn print_with_space(&self) -> &str;
 }
 
@@ -1405,7 +1398,10 @@ impl PrintWithSpace for hir::Mutability {
     }
 }
 
-crate fn print_constness_with_space(c: &hir::Constness, s: Option<ConstStability>) -> &'static str {
+pub(crate) fn print_constness_with_space(
+    c: &hir::Constness,
+    s: Option<ConstStability>,
+) -> &'static str {
     match (c, s) {
         // const stable or when feature(staged_api) is not set
         (
@@ -1419,7 +1415,7 @@ crate fn print_constness_with_space(c: &hir::Constness, s: Option<ConstStability
 }
 
 impl clean::Import {
-    crate fn print<'a, 'tcx: 'a>(
+    pub(crate) fn print<'a, 'tcx: 'a>(
         &'a self,
         cx: &'a Context<'tcx>,
     ) -> impl fmt::Display + 'a + Captures<'tcx> {
@@ -1443,7 +1439,7 @@ impl clean::Import {
 }
 
 impl clean::ImportSource {
-    crate fn print<'a, 'tcx: 'a>(
+    pub(crate) fn print<'a, 'tcx: 'a>(
         &'a self,
         cx: &'a Context<'tcx>,
     ) -> impl fmt::Display + 'a + Captures<'tcx> {
@@ -1466,7 +1462,7 @@ impl clean::ImportSource {
 }
 
 impl clean::TypeBinding {
-    crate fn print<'a, 'tcx: 'a>(
+    pub(crate) fn print<'a, 'tcx: 'a>(
         &'a self,
         cx: &'a Context<'tcx>,
     ) -> impl fmt::Display + 'a + Captures<'tcx> {
@@ -1500,7 +1496,7 @@ impl clean::TypeBinding {
     }
 }
 
-crate fn print_abi_with_space(abi: Abi) -> impl fmt::Display {
+pub(crate) fn print_abi_with_space(abi: Abi) -> impl fmt::Display {
     display_fn(move |f| {
         let quot = if f.alternate() { "\"" } else { "&quot;" };
         match abi {
@@ -1510,12 +1506,12 @@ crate fn print_abi_with_space(abi: Abi) -> impl fmt::Display {
     })
 }
 
-crate fn print_default_space<'a>(v: bool) -> &'a str {
+pub(crate) fn print_default_space<'a>(v: bool) -> &'a str {
     if v { "default " } else { "" }
 }
 
 impl clean::GenericArg {
-    crate fn print<'a, 'tcx: 'a>(
+    pub(crate) fn print<'a, 'tcx: 'a>(
         &'a self,
         cx: &'a Context<'tcx>,
     ) -> impl fmt::Display + 'a + Captures<'tcx> {
@@ -1529,7 +1525,7 @@ impl clean::GenericArg {
 }
 
 impl clean::types::Term {
-    crate fn print<'a, 'tcx: 'a>(
+    pub(crate) fn print<'a, 'tcx: 'a>(
         &'a self,
         cx: &'a Context<'tcx>,
     ) -> impl fmt::Display + 'a + Captures<'tcx> {
@@ -1540,7 +1536,9 @@ impl clean::types::Term {
     }
 }
 
-crate fn display_fn(f: impl FnOnce(&mut fmt::Formatter<'_>) -> fmt::Result) -> impl fmt::Display {
+pub(crate) fn display_fn(
+    f: impl FnOnce(&mut fmt::Formatter<'_>) -> fmt::Result,
+) -> impl fmt::Display {
     struct WithFormatter<F>(Cell<Option<F>>);
 
     impl<F> fmt::Display for WithFormatter<F>

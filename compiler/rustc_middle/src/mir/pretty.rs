@@ -1007,10 +1007,11 @@ fn write_user_type_annotations(
     for (index, annotation) in body.user_type_annotations.iter_enumerated() {
         writeln!(
             w,
-            "| {:?}: {:?} at {}",
+            "| {:?}: user_ty: {:?}, span: {}, inferred_ty: {:?}",
             index.index(),
             annotation.user_ty,
-            tcx.sess.source_map().span_to_embeddable_string(annotation.span)
+            tcx.sess.source_map().span_to_embeddable_string(annotation.span),
+            annotation.inferred_ty,
         )?;
     }
     if !body.user_type_annotations.is_empty() {

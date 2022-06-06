@@ -1,8 +1,10 @@
-error[E0109]: type arguments are not allowed for this type
+error[E0109]: type arguments are not allowed on module `marker`
   --> $DIR/issue-22706.rs:1:29
    |
 LL | fn is_copy<T: ::std::marker<i32>::Copy>() {}
-   |                             ^^^ type argument not allowed
+   |                      ------ ^^^ type argument not allowed
+   |                      |
+   |                      not allowed on this
 
 error: aborting due to previous error
 

@@ -4,41 +4,11 @@ mod tests;
 pub mod state;
 pub use state::{print_crate, AnnNode, Comments, PpAnn, PrintState, State};
 
+use rustc_ast as ast;
 use rustc_ast::token::{Nonterminal, Token, TokenKind};
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
-use rustc_ast::{self as ast, AstDeref};
 
 use std::borrow::Cow;
-
-pub trait AstPrettyPrint {
-    fn pretty_print(&self) -> String;
-}
-
-impl<T: AstDeref<Target: AstPrettyPrint>> AstPrettyPrint for T {
-    fn pretty_print(&self) -> String {
-        self.ast_deref().pretty_print()
-    }
-}
-
-macro_rules! impl_ast_pretty_print {
-    ($($T:ty => $method:ident),+ $(,)?) => {
-        $(
-            impl AstPrettyPrint for $T {
-                fn pretty_print(&self) -> String {
-                    State::new().$method(self)
-                }
-            }
-        )+
-    };
-}
-
-impl_ast_pretty_print! {
-    ast::Item => item_to_string,
-    ast::AssocItem => assoc_item_to_string,
-    ast::ForeignItem => foreign_item_to_string,
-    ast::Expr => expr_to_string,
-    ast::Stmt => stmt_to_string,
-}
 
 pub fn nonterminal_to_string(nt: &Nonterminal) -> String {
     State::new().nonterminal_to_string(nt)

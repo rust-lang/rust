@@ -1,8 +1,6 @@
-error[E0282]: type annotations needed for `(_,)`
+error[E0282]: type annotations needed
   --> $DIR/issue-20261.rs:4:11
    |
-LL |     for (ref i,) in [].iter() {
-   |                     --------- this method call resolves to `std::slice::Iter<'_, T>`
 LL |         i.clone();
    |           ^^^^^ cannot infer type
    |

@@ -72,6 +72,8 @@ declare_features! (
     /// Allows `T: ?const Trait` syntax in bounds.
     (removed, const_trait_bound_opt_out, "1.42.0", Some(67794), None,
      Some("Removed in favor of `~const` bound in #![feature(const_trait_impl)]")),
+    /// Allows using `crate` as visibility modifier, synonymous with `pub(crate)`.
+    (removed, crate_visibility_modifier, "1.63.0", Some(53120), None, Some("removed in favor of `pub(crate)`")),
     /// Allows using custom attributes (RFC 572).
     (removed, custom_attribute, "1.0.0", Some(29642), None,
      Some("removed in favor of `#![register_tool]` and `#![register_attr]`")),

@@ -150,6 +150,9 @@ mod tool;
 mod toolstate;
 pub mod util;
 
+#[cfg(feature = "build-metrics")]
+mod metrics;
+
 #[cfg(windows)]
 mod job;
 
@@ -312,6 +315,9 @@ pub struct Build {
     prerelease_version: Cell<Option<u32>>,
     tool_artifacts:
         RefCell<HashMap<TargetSelection, HashMap<String, (&'static str, PathBuf, Vec<String>)>>>,
+
+    #[cfg(feature = "build-metrics")]
+    metrics: metrics::BuildMetrics,
 }
 
 #[derive(Debug)]
@@ -501,6 +507,9 @@ impl Build {
             delayed_failures: RefCell::new(Vec::new()),
             prerelease_version: Cell::new(None),
             tool_artifacts: Default::default(),
+
+            #[cfg(feature = "build-metrics")]
+            metrics: metrics::BuildMetrics::init(),
         };
 
         build.verbose("finding compilers");
@@ -556,27 +565,24 @@ impl Build {
         }
 
         // check_submodule
-        if self.config.fast_submodules {
-            let checked_out_hash = output(
-                Command::new("git").args(&["rev-parse", "HEAD"]).current_dir(&absolute_path),
-            );
-            // update_submodules
-            let recorded = output(
-                Command::new("git")
-                    .args(&["ls-tree", "HEAD"])
-                    .arg(relative_path)
-                    .current_dir(&self.config.src),
-            );
-            let actual_hash = recorded
-                .split_whitespace()
-                .nth(2)
-                .unwrap_or_else(|| panic!("unexpected output `{}`", recorded));
+        let checked_out_hash =
+            output(Command::new("git").args(&["rev-parse", "HEAD"]).current_dir(&absolute_path));
+        // update_submodules
+        let recorded = output(
+            Command::new("git")
+                .args(&["ls-tree", "HEAD"])
+                .arg(relative_path)
+                .current_dir(&self.config.src),
+        );
+        let actual_hash = recorded
+            .split_whitespace()
+            .nth(2)
+            .unwrap_or_else(|| panic!("unexpected output `{}`", recorded));
 
-            // update_submodule
-            if actual_hash == checked_out_hash.trim_end() {
-                // already checked out
-                return;
-            }
+        // update_submodule
+        if actual_hash == checked_out_hash.trim_end() {
+            // already checked out
+            return;
         }
 
         println!("Updating submodule {}", relative_path.display());
@@ -692,12 +698,15 @@ impl Build {
         // Check for postponed failures from `test --no-fail-fast`.
         let failures = self.delayed_failures.borrow();
         if failures.len() > 0 {
-            println!("\n{} command(s) did not execute successfully:\n", failures.len());
+            eprintln!("\n{} command(s) did not execute successfully:\n", failures.len());
             for failure in failures.iter() {
-                println!("  - {}\n", failure);
+                eprintln!("  - {}\n", failure);
             }
             process::exit(1);
         }
+
+        #[cfg(feature = "build-metrics")]
+        self.metrics.persist(self);
     }
 
     /// Clear out `dir` if `input` is newer.
@@ -723,7 +732,7 @@ impl Build {
     fn std_features(&self, target: TargetSelection) -> String {
         let mut features = "panic-unwind".to_string();
 
-        match self.config.llvm_libunwind {
+        match self.config.llvm_libunwind(target) {
             LlvmLibunwind::InTree => features.push_str(" llvm-libunwind"),
             LlvmLibunwind::System => features.push_str(" system-llvm-libunwind"),
             LlvmLibunwind::No => {}

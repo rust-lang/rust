@@ -81,10 +81,17 @@ pub fn trait_obligations<'a, 'tcx>(
     body_id: hir::HirId,
     trait_ref: &ty::TraitRef<'tcx>,
     span: Span,
-    item: Option<&'tcx hir::Item<'tcx>>,
+    item: &'tcx hir::Item<'tcx>,
 ) -> Vec<traits::PredicateObligation<'tcx>> {
-    let mut wf =
-        WfPredicates { infcx, param_env, body_id, span, out: vec![], recursion_depth: 0, item };
+    let mut wf = WfPredicates {
+        infcx,
+        param_env,
+        body_id,
+        span,
+        out: vec![],
+        recursion_depth: 0,
+        item: Some(item),
+    };
     wf.compute_trait_ref(trait_ref, Elaborate::All);
     debug!(obligations = ?wf.out);
     wf.normalize()

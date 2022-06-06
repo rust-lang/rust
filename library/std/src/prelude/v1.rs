@@ -95,7 +95,3 @@ pub use crate::string::{String, ToString};
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)]
 pub use crate::vec::Vec;
-
-#[cfg(bootstrap)]
-#[unstable(feature = "cstr_internals", issue = "none")]
-pub use alloc::ffi::CStrExt;

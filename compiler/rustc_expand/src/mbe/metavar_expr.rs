@@ -9,7 +9,7 @@ use rustc_span::Span;
 
 /// A meta-variable expression, for expansions based on properties of meta-variables.
 #[derive(Debug, Clone, PartialEq, Encodable, Decodable)]
-crate enum MetaVarExpr {
+pub(crate) enum MetaVarExpr {
     /// The number of repetitions of an identifier, optionally limited to a number
     /// of outer-most repetition depths. If the depth limit is `None` then the depth is unlimited.
     Count(Ident, Option<usize>),
@@ -28,7 +28,7 @@ crate enum MetaVarExpr {
 
 impl MetaVarExpr {
     /// Attempt to parse a meta-variable expression from a token stream.
-    crate fn parse<'sess>(
+    pub(crate) fn parse<'sess>(
         input: &TokenStream,
         outer_span: Span,
         sess: &'sess ParseSess,
@@ -62,7 +62,7 @@ impl MetaVarExpr {
         Ok(rslt)
     }
 
-    crate fn ident(&self) -> Option<Ident> {
+    pub(crate) fn ident(&self) -> Option<Ident> {
         match *self {
             MetaVarExpr::Count(ident, _) | MetaVarExpr::Ignore(ident) => Some(ident),
             MetaVarExpr::Index(..) | MetaVarExpr::Length(..) => None,

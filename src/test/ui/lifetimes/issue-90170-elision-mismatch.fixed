@@ -1,3 +1,8 @@
+// FIXME(nll): On NLL stabilization, this should be replaced by
+// `issue-90170-elision-mismatch-nll.rs`. Compiletest has
+// problems with rustfix and revisions.
+// ignore-compare-mode-nll
+
 // run-rustfix
 
 pub fn foo<'a>(x: &mut Vec<&'a u8>, y: &'a u8) { x.push(y); } //~ ERROR lifetime mismatch

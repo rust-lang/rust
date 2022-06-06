@@ -16,46 +16,30 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
         used_trait_imports.extend(imports.iter());
     }
 
-    for id in tcx.hir().items() {
-        if matches!(tcx.def_kind(id.def_id), DefKind::Use) {
-            if tcx.visibility(id.def_id).is_public() {
-                continue;
-            }
-            let item = tcx.hir().item(id);
-            if item.span.is_dummy() {
-                continue;
-            }
-            if let hir::ItemKind::Use(path, _) = item.kind {
-                check_import(tcx, &mut used_trait_imports, item.item_id(), path.span);
-            }
+    for &id in tcx.maybe_unused_trait_imports(()) {
+        debug_assert_eq!(tcx.def_kind(id), DefKind::Use);
+        if tcx.visibility(id).is_public() {
+            continue;
         }
+        if used_trait_imports.contains(&id) {
+            continue;
+        }
+        let item = tcx.hir().expect_item(id);
+        if item.span.is_dummy() {
+            continue;
+        }
+        let hir::ItemKind::Use(path, _) = item.kind else { unreachable!() };
+        tcx.struct_span_lint_hir(lint::builtin::UNUSED_IMPORTS, item.hir_id(), path.span, |lint| {
+            let msg = if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(path.span) {
+                format!("unused import: `{}`", snippet)
+            } else {
+                "unused import".to_owned()
+            };
+            lint.build(&msg).emit();
+        });
     }
 
     unused_crates_lint(tcx);
-}
-
-fn check_import<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    used_trait_imports: &mut FxHashSet<LocalDefId>,
-    item_id: hir::ItemId,
-    span: Span,
-) {
-    if !tcx.maybe_unused_trait_import(item_id.def_id) {
-        return;
-    }
-
-    if used_trait_imports.contains(&item_id.def_id) {
-        return;
-    }
-
-    tcx.struct_span_lint_hir(lint::builtin::UNUSED_IMPORTS, item_id.hir_id(), span, |lint| {
-        let msg = if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(span) {
-            format!("unused import: `{}`", snippet)
-        } else {
-            "unused import".to_owned()
-        };
-        lint.build(&msg).emit();
-    });
 }
 
 fn unused_crates_lint(tcx: TyCtxt<'_>) {

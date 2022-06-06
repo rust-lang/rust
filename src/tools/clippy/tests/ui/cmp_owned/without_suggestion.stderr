@@ -13,7 +13,7 @@ LL |     y.to_owned() == **x;
    |     ^^^^^^^^^^^^^^^^^^^ try implementing the comparison without allocating
 
 error: this creates an owned instance just for comparison
-  --> $DIR/without_suggestion.rs:18:9
+  --> $DIR/without_suggestion.rs:22:9
    |
 LL |         self.to_owned() == *other
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^ try implementing the comparison without allocating

@@ -144,7 +144,7 @@ pub const unsafe fn from_raw_parts_mut<'a, T>(data: *mut T, len: usize) -> &'a m
 
 /// Converts a reference to T into a slice of length 1 (without copying).
 #[stable(feature = "from_ref", since = "1.28.0")]
-#[rustc_const_unstable(feature = "const_slice_from_ref", issue = "90206")]
+#[rustc_const_stable(feature = "const_slice_from_ref_shared", since = "1.63.0")]
 #[must_use]
 pub const fn from_ref<T>(s: &T) -> &[T] {
     array::from_ref(s)
@@ -213,7 +213,8 @@ pub const fn from_mut<T>(s: &mut T) -> &mut [T] {
 ///
 /// [valid]: ptr#safety
 #[unstable(feature = "slice_from_ptr_range", issue = "89792")]
-pub unsafe fn from_ptr_range<'a, T>(range: Range<*const T>) -> &'a [T] {
+#[rustc_const_unstable(feature = "const_slice_from_ptr_range", issue = "89792")]
+pub const unsafe fn from_ptr_range<'a, T>(range: Range<*const T>) -> &'a [T] {
     // SAFETY: the caller must uphold the safety contract for `from_ptr_range`.
     unsafe { from_raw_parts(range.start, range.end.sub_ptr(range.start)) }
 }
@@ -263,7 +264,8 @@ pub unsafe fn from_ptr_range<'a, T>(range: Range<*const T>) -> &'a [T] {
 ///
 /// [valid]: ptr#safety
 #[unstable(feature = "slice_from_ptr_range", issue = "89792")]
-pub unsafe fn from_mut_ptr_range<'a, T>(range: Range<*mut T>) -> &'a mut [T] {
+#[rustc_const_unstable(feature = "const_slice_from_mut_ptr_range", issue = "89792")]
+pub const unsafe fn from_mut_ptr_range<'a, T>(range: Range<*mut T>) -> &'a mut [T] {
     // SAFETY: the caller must uphold the safety contract for `from_mut_ptr_range`.
     unsafe { from_raw_parts_mut(range.start, range.end.sub_ptr(range.start)) }
 }

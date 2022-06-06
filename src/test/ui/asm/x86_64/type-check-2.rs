@@ -13,10 +13,8 @@ fn main() {
 
         let x: u64;
         asm!("{}", in(reg) x);
-        //~^ ERROR use of possibly-uninitialized variable: `x`
         let mut y: u64;
         asm!("{}", inout(reg) y);
-        //~^ ERROR use of possibly-uninitialized variable: `y`
         let _ = y;
 
         // Outputs require mutable places
@@ -24,9 +22,7 @@ fn main() {
         let v: Vec<u64> = vec![0, 1, 2];
         asm!("{}", in(reg) v[0]);
         asm!("{}", out(reg) v[0]);
-        //~^ ERROR cannot borrow `v` as mutable, as it is not declared as mutable
         asm!("{}", inout(reg) v[0]);
-        //~^ ERROR cannot borrow `v` as mutable, as it is not declared as mutable
 
         // Sym operands must point to a function or static
 
@@ -35,6 +31,8 @@ fn main() {
         asm!("{}", sym S);
         asm!("{}", sym main);
         asm!("{}", sym C);
+        //~^ ERROR invalid `sym` operand
+        asm!("{}", sym x);
         //~^ ERROR invalid `sym` operand
 
         // Register operands must be Copy

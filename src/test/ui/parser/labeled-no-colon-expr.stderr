@@ -47,6 +47,12 @@ error: expected `while`, `for`, `loop` or `{` after a label
    |
 LL |     'l4 0;
    |         ^ expected `while`, `for`, `loop` or `{` after a label
+   |
+help: consider removing the label
+   |
+LL -     'l4 0;
+LL +     0;
+   | 
 
 error: labeled expression must be followed by `:`
   --> $DIR/labeled-no-colon-expr.rs:8:9

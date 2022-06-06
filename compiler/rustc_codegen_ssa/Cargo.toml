@@ -16,6 +16,7 @@ jobserver = "0.1.22"
 tempfile = "3.2"
 thorin-dwp = "0.2"
 pathdiff = "0.2.0"
+serde_json = "1.0.59"
 snap = "1"
 smallvec = { version = "1.6.1", features = ["union", "may_dangle"] }
 regex = "1.4"

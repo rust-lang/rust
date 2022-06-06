@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/issue-40000.rs:6:9
+  --> $DIR/issue-40000.rs:10:9
    |
 LL |     foo(bar);
    |         ^^^ one type is more general than the other
@@ -8,7 +8,7 @@ LL |     foo(bar);
               found trait object `dyn Fn(&i32)`
 
 error[E0308]: mismatched types
-  --> $DIR/issue-40000.rs:6:9
+  --> $DIR/issue-40000.rs:10:9
    |
 LL |     foo(bar);
    |         ^^^ one type is more general than the other

@@ -5,7 +5,6 @@
 //! This API is completely unstable and subject to change.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
-#![feature(crate_visibility_modifier)]
 #![feature(let_chains)]
 #![feature(let_else)]
 #![feature(extern_types)]
@@ -305,8 +304,8 @@ impl CodegenBackend for LlvmCodegenBackend {
           local stack variable in the ABI.)
 
     basic
-        Generate stack canaries in functions with:
-        - local variables of `[T; N]` type, where `T` is byte-sized and `N` > 8.
+        Generate stack canaries in functions with local variables of `[T; N]`
+        type, where `T` is byte-sized and `N` >= 8.
 
     none
         Do not generate stack canaries.

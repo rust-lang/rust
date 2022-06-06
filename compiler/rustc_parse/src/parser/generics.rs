@@ -51,7 +51,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    crate fn parse_const_param(
+    pub(crate) fn parse_const_param(
         &mut self,
         preceding_attrs: Vec<Attribute>,
     ) -> PResult<'a, GenericParam> {

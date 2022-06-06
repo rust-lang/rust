@@ -20,7 +20,7 @@ fn smoke() {
 #[test]
 fn drop_full() {
     let (tx, _rx) = sync_channel::<Box<isize>>(1);
-    tx.send(box 1).unwrap();
+    tx.send(Box::new(1)).unwrap();
 }
 
 #[test]
@@ -238,7 +238,7 @@ fn oneshot_single_thread_send_port_close() {
     // Testing that the sender cleans up the payload if receiver is closed
     let (tx, rx) = sync_channel::<Box<i32>>(0);
     drop(rx);
-    assert!(tx.send(box 0).is_err());
+    assert!(tx.send(Box::new(0)).is_err());
 }
 
 #[test]
@@ -257,7 +257,7 @@ fn oneshot_single_thread_recv_chan_close() {
 #[test]
 fn oneshot_single_thread_send_then_recv() {
     let (tx, rx) = sync_channel::<Box<i32>>(1);
-    tx.send(box 10).unwrap();
+    tx.send(Box::new(10)).unwrap();
     assert!(*rx.recv().unwrap() == 10);
 }
 
@@ -333,7 +333,7 @@ fn oneshot_multi_task_recv_then_send() {
         assert!(*rx.recv().unwrap() == 10);
     });
 
-    tx.send(box 10).unwrap();
+    tx.send(Box::new(10)).unwrap();
 }
 
 #[test]
@@ -398,7 +398,7 @@ fn oneshot_multi_thread_send_recv_stress() {
     for _ in 0..stress_factor() {
         let (tx, rx) = sync_channel::<Box<i32>>(0);
         let _t = thread::spawn(move || {
-            tx.send(box 10).unwrap();
+            tx.send(Box::new(10)).unwrap();
         });
         assert!(*rx.recv().unwrap() == 10);
     }
@@ -418,7 +418,7 @@ fn stream_send_recv_stress() {
             }
 
             thread::spawn(move || {
-                tx.send(box i).unwrap();
+                tx.send(Box::new(i)).unwrap();
                 send(tx, i + 1);
             });
         }

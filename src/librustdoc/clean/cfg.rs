@@ -21,7 +21,7 @@ use crate::html::escape::Escape;
 mod tests;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-crate enum Cfg {
+pub(crate) enum Cfg {
     /// Accepts all configurations.
     True,
     /// Denies all configurations.
@@ -37,9 +37,9 @@ crate enum Cfg {
 }
 
 #[derive(PartialEq, Debug)]
-crate struct InvalidCfgError {
-    crate msg: &'static str,
-    crate span: Span,
+pub(crate) struct InvalidCfgError {
+    pub(crate) msg: &'static str,
+    pub(crate) span: Span,
 }
 
 impl Cfg {
@@ -56,7 +56,7 @@ impl Cfg {
         }
     }
 
-    crate fn parse_without(
+    pub(crate) fn parse_without(
         cfg: &MetaItem,
         exclude: &FxHashSet<Cfg>,
     ) -> Result<Option<Cfg>, InvalidCfgError> {
@@ -117,7 +117,7 @@ impl Cfg {
     ///
     /// If the content is not properly formatted, it will return an error indicating what and where
     /// the error is.
-    crate fn parse(cfg: &MetaItem) -> Result<Cfg, InvalidCfgError> {
+    pub(crate) fn parse(cfg: &MetaItem) -> Result<Cfg, InvalidCfgError> {
         Self::parse_without(cfg, &FxHashSet::default()).map(|ret| ret.unwrap())
     }
 
@@ -125,7 +125,7 @@ impl Cfg {
     ///
     /// Equivalent to `attr::cfg_matches`.
     // FIXME: Actually make use of `features`.
-    crate fn matches(&self, parse_sess: &ParseSess, features: Option<&Features>) -> bool {
+    pub(crate) fn matches(&self, parse_sess: &ParseSess, features: Option<&Features>) -> bool {
         match *self {
             Cfg::False => false,
             Cfg::True => true,

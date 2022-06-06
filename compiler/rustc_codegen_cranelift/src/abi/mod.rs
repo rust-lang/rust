@@ -312,13 +312,14 @@ pub(crate) fn codegen_terminator_call<'tcx>(
     source_info: mir::SourceInfo,
     func: &Operand<'tcx>,
     args: &[Operand<'tcx>],
-    mir_dest: Option<(Place<'tcx>, BasicBlock)>,
+    destination: Place<'tcx>,
+    target: Option<BasicBlock>,
 ) {
     let fn_ty = fx.monomorphize(func.ty(fx.mir, fx.tcx));
     let fn_sig =
         fx.tcx.normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), fn_ty.fn_sig(fx.tcx));
 
-    let destination = mir_dest.map(|(place, bb)| (codegen_place(fx, place), bb));
+    let ret_place = codegen_place(fx, destination);
 
     // Handle special calls like instrinsics and empty drop glue.
     let instance = if let ty::FnDef(def_id, substs) = *fn_ty.kind() {
@@ -333,7 +334,8 @@ pub(crate) fn codegen_terminator_call<'tcx>(
                 &fx.tcx.symbol_name(instance).name,
                 substs,
                 args,
-                destination,
+                ret_place,
+                target,
             );
             return;
         }
@@ -344,14 +346,15 @@ pub(crate) fn codegen_terminator_call<'tcx>(
                     fx,
                     instance,
                     args,
-                    destination,
+                    ret_place,
+                    target,
                     source_info,
                 );
                 return;
             }
             InstanceDef::DropGlue(_, None) => {
                 // empty drop glue - a nop.
-                let (_, dest) = destination.expect("Non terminating drop_in_place_real???");
+                let dest = target.expect("Non terminating drop_in_place_real???");
                 let ret_block = fx.get_block(dest);
                 fx.bcx.ins().jump(ret_block, &[]);
                 return;
@@ -377,7 +380,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
         .unwrap_or(false);
     if is_cold {
         fx.bcx.set_cold_block(fx.bcx.current_block().unwrap());
-        if let Some((_place, destination_block)) = destination {
+        if let Some(destination_block) = target {
             fx.bcx.set_cold_block(fx.get_block(destination_block));
         }
     }
@@ -459,7 +462,6 @@ pub(crate) fn codegen_terminator_call<'tcx>(
         }
     };
 
-    let ret_place = destination.map(|(place, _)| place);
     self::returning::codegen_with_call_return_arg(fx, &fn_abi.ret, ret_place, |fx, return_ptr| {
         let call_args = return_ptr
             .into_iter()
@@ -511,7 +513,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
         call_inst
     });
 
-    if let Some((_, dest)) = destination {
+    if let Some(dest) = target {
         let ret_block = fx.get_block(dest);
         fx.bcx.ins().jump(ret_block, &[]);
     } else {

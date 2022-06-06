@@ -9,6 +9,7 @@ pub static RENAMED_LINTS: &[(&str, &str)] = &[
     ("clippy::cyclomatic_complexity", "clippy::cognitive_complexity"),
     ("clippy::disallowed_method", "clippy::disallowed_methods"),
     ("clippy::disallowed_type", "clippy::disallowed_types"),
+    ("clippy::eval_order_dependence", "clippy::mixed_read_write_in_expression"),
     ("clippy::for_loop_over_option", "clippy::for_loops_over_fallibles"),
     ("clippy::for_loop_over_result", "clippy::for_loops_over_fallibles"),
     ("clippy::identity_conversion", "clippy::useless_conversion"),

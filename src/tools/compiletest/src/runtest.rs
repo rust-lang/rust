@@ -28,7 +28,7 @@ use std::hash::{Hash, Hasher};
 use std::io::prelude::*;
 use std::io::{self, BufReader};
 use std::path::{Path, PathBuf};
-use std::process::{Command, ExitStatus, Output, Stdio};
+use std::process::{Child, Command, ExitStatus, Output, Stdio};
 use std::str;
 
 use glob::glob;
@@ -929,6 +929,16 @@ impl<'test> TestCx<'test> {
                             "add-auto-load-safe-path {}\n",
                             rust_pp_module_abs_path.replace(r"\", r"\\")
                         ));
+
+                        let output_base_dir = self.output_base_dir().to_str().unwrap().to_owned();
+
+                        // Add the directory containing the output binary to
+                        // include embedded pretty printers to GDB's script
+                        // auto loading safe path
+                        script_str.push_str(&format!(
+                            "add-auto-load-safe-path {}\n",
+                            output_base_dir.replace(r"\", r"\\")
+                        ));
                     }
                 }
                 _ => {
@@ -1735,6 +1745,28 @@ impl<'test> TestCx<'test> {
         dylib
     }
 
+    fn read2_abbreviated(&self, child: Child) -> Output {
+        let mut filter_paths_from_len = Vec::new();
+        let mut add_path = |path: &Path| {
+            let path = path.display().to_string();
+            let windows = path.replace("\\", "\\\\");
+            if windows != path {
+                filter_paths_from_len.push(windows);
+            }
+            filter_paths_from_len.push(path);
+        };
+
+        // List of paths that will not be measured when determining whether the output is larger
+        // than the output truncation threshold.
+        //
+        // Note: avoid adding a subdirectory of an already filtered directory here, otherwise the
+        // same slice of text will be double counted and the truncation might not happen.
+        add_path(&self.config.src_base);
+        add_path(&self.config.build_base);
+
+        read2_abbreviated(child, &filter_paths_from_len).expect("failed to read output")
+    }
+
     fn compose_and_run(
         &self,
         mut command: Command,
@@ -1769,8 +1801,7 @@ impl<'test> TestCx<'test> {
             child.stdin.as_mut().unwrap().write_all(input.as_bytes()).unwrap();
         }
 
-        let Output { status, stdout, stderr } =
-            read2_abbreviated(child).expect("failed to read output");
+        let Output { status, stdout, stderr } = self.read2_abbreviated(child);
 
         let result = ProcRes {
             status,
@@ -2959,7 +2990,7 @@ impl<'test> TestCx<'test> {
             }
         }
 
-        let output = cmd.spawn().and_then(read2_abbreviated).expect("failed to spawn `make`");
+        let output = self.read2_abbreviated(cmd.spawn().expect("failed to spawn `make`"));
         if !output.status.success() {
             let res = ProcRes {
                 status: output.status,
@@ -3112,7 +3143,7 @@ impl<'test> TestCx<'test> {
         let expected_fixed = self.load_expected_output(UI_FIXED);
 
         let modes_to_prune = vec![CompareMode::Nll];
-        self.prune_duplicate_outputs(&modes_to_prune);
+        self.check_and_prune_duplicate_outputs(&proc_res, &[], &modes_to_prune);
 
         let mut errors = self.load_compare_outputs(&proc_res, TestOutput::Compile, explicit);
         let rustfix_input = json::rustfix_diagnostics_only(&proc_res.stderr);
@@ -3730,28 +3761,54 @@ impl<'test> TestCx<'test> {
         if self.config.bless { 0 } else { 1 }
     }
 
-    fn prune_duplicate_output(&self, mode: CompareMode, kind: &str, canon_content: &str) {
-        let examined_path = expected_output_path(&self.testpaths, self.revision, &Some(mode), kind);
+    fn check_and_prune_duplicate_outputs(
+        &self,
+        proc_res: &ProcRes,
+        modes: &[CompareMode],
+        require_same_modes: &[CompareMode],
+    ) {
+        for kind in UI_EXTENSIONS {
+            let canon_comparison_path =
+                expected_output_path(&self.testpaths, self.revision, &None, kind);
 
-        let examined_content =
-            self.load_expected_output_from_path(&examined_path).unwrap_or_else(|_| String::new());
+            let canon = match self.load_expected_output_from_path(&canon_comparison_path) {
+                Ok(canon) => canon,
+                _ => continue,
+            };
+            let bless = self.config.bless;
+            let check_and_prune_duplicate_outputs = |mode: &CompareMode, require_same: bool| {
+                let examined_path =
+                    expected_output_path(&self.testpaths, self.revision, &Some(mode.clone()), kind);
 
-        if canon_content == examined_content {
-            self.delete_file(&examined_path);
-        }
-    }
+                // If there is no output, there is nothing to do
+                let examined_content = match self.load_expected_output_from_path(&examined_path) {
+                    Ok(content) => content,
+                    _ => return,
+                };
 
-    fn prune_duplicate_outputs(&self, modes: &[CompareMode]) {
-        if self.config.bless {
-            for kind in UI_EXTENSIONS {
-                let canon_comparison_path =
-                    expected_output_path(&self.testpaths, self.revision, &None, kind);
+                let is_duplicate = canon == examined_content;
 
-                if let Ok(canon) = self.load_expected_output_from_path(&canon_comparison_path) {
-                    for mode in modes {
-                        self.prune_duplicate_output(mode.clone(), kind, &canon);
+                match (bless, require_same, is_duplicate) {
+                    // If we're blessing and the output is the same, then delete the file.
+                    (true, _, true) => {
+                        self.delete_file(&examined_path);
                     }
+                    // If we want them to be the same, but they are different, then error.
+                    // We do this wether we bless or not
+                    (_, true, false) => {
+                        self.fatal_proc_rec(
+                            &format!("`{}` should not have different output from base test!", kind),
+                            proc_res,
+                        );
+                    }
+                    _ => {}
                 }
+            };
+            for mode in modes {
+                check_and_prune_duplicate_outputs(mode, false);
+            }
+            for mode in require_same_modes {
+                check_and_prune_duplicate_outputs(mode, true);
             }
         }
     }

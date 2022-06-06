@@ -5,12 +5,12 @@
 
 #[rustc_macro_transparency = "semitransparent"]
 macro m($a:lifetime) {
-    fn g<$a, 'a>() {} //~ ERROR lifetime name `'a` declared twice
+    fn g<$a, 'a>() {} //~ ERROR the name `'a` is already used for a generic parameter
 }
 
 #[rustc_macro_transparency = "transparent"]
 macro n($a:lifetime) {
-    fn h<$a, 'a>() {} //~ ERROR lifetime name `'a` declared twice
+    fn h<$a, 'a>() {} //~ ERROR the name `'a` is already used for a generic parameter
 }
 
 m!('a);

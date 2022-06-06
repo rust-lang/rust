@@ -1,11 +1,12 @@
 error: lifetime may not live long enough
-  --> $DIR/ret-impl-trait-one.rs:10:85
+  --> $DIR/ret-impl-trait-one.rs:14:85
    |
 LL |   async fn async_ret_impl_trait3<'a, 'b>(a: &'a u8, b: &'b u8) -> impl Trait<'a> + 'b {
    |  ________________________________--__--_______________________________________________^
    | |                                |   |
    | |                                |   lifetime `'b` defined here
    | |                                lifetime `'a` defined here
+LL | |
 LL | |
 LL | |     (a, b)
 LL | | }
@@ -14,7 +15,7 @@ LL | | }
    = help: consider adding the following bound: `'a: 'b`
 
 error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
-  --> $DIR/ret-impl-trait-one.rs:16:80
+  --> $DIR/ret-impl-trait-one.rs:21:80
    |
 LL |   async fn async_ret_impl_trait1<'a, 'b>(a: &'a u8, b: &'b u8) -> impl Trait<'a> {
    |  ____________________________________--__________________________________________^

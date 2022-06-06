@@ -14,7 +14,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// after the current enclosing `ExprKind::Scope` has ended, so
     /// please do *not* return it from functions to avoid bad
     /// miscompiles.
-    crate fn as_local_operand(
+    pub(crate) fn as_local_operand(
         &mut self,
         block: BasicBlock,
         expr: &Expr<'tcx>,
@@ -73,7 +73,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// value to the stack.
     ///
     /// See #68034 for more details.
-    crate fn as_local_call_operand(
+    pub(crate) fn as_local_call_operand(
         &mut self,
         block: BasicBlock,
         expr: &Expr<'tcx>,
@@ -97,7 +97,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Like `as_local_call_operand`, except that the argument will
     /// not be valid once `scope` ends.
     #[instrument(level = "debug", skip(self, scope))]
-    crate fn as_operand(
+    pub(crate) fn as_operand(
         &mut self,
         mut block: BasicBlock,
         scope: Option<region::Scope>,
@@ -132,7 +132,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
-    crate fn as_call_operand(
+    pub(crate) fn as_call_operand(
         &mut self,
         mut block: BasicBlock,
         scope: Option<region::Scope>,

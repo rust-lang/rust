@@ -1620,7 +1620,7 @@ pub fn remove_file<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// # Platform-specific behavior
 ///
 /// This function currently corresponds to the `stat` function on Unix
-/// and the `GetFileAttributesEx` function on Windows.
+/// and the `GetFileInformationByHandle` function on Windows.
 /// Note that, this [may change in the future][changes].
 ///
 /// [changes]: io#platform-specific-behavior
@@ -1654,7 +1654,7 @@ pub fn metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
 /// # Platform-specific behavior
 ///
 /// This function currently corresponds to the `lstat` function on Unix
-/// and the `GetFileAttributesEx` function on Windows.
+/// and the `GetFileInformationByHandle` function on Windows.
 /// Note that, this [may change in the future][changes].
 ///
 /// [changes]: io#platform-specific-behavior

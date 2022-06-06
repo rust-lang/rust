@@ -1,8 +1,9 @@
 // run-pass
 // needs-unwind
 // ignore-wasm32-bare compiled with panic=abort by default
-// revisions: mir thir
+// revisions: mir thir strict
 // [thir]compile-flags: -Zthir-unsafeck
+// [strict]compile-flags: -Zstrict-init-checks
 // ignore-tidy-linelength
 
 // This test checks panic emitted from `mem::{uninitialized,zeroed}`.
@@ -53,6 +54,8 @@ enum LR_NonZero {
     Left(num::NonZeroI64),
     Right(num::NonZeroI64),
 }
+
+struct ZeroSized;
 
 fn test_panic_msg<T>(op: impl (FnOnce() -> T) + panic::UnwindSafe, msg: &str) {
     let err = panic::catch_unwind(op).err();
@@ -228,11 +231,40 @@ fn main() {
         let _val = mem::zeroed::<[!; 0]>();
         let _val = mem::uninitialized::<MaybeUninit<bool>>();
         let _val = mem::uninitialized::<[!; 0]>();
+        let _val = mem::uninitialized::<()>();
+        let _val = mem::uninitialized::<ZeroSized>();
 
-        // These are UB because they have not been officially blessed, but we await the resolution
-        // of <https://github.com/rust-lang/unsafe-code-guidelines/issues/71> before doing
-        // anything about that.
-        let _val = mem::uninitialized::<i32>();
-        let _val = mem::uninitialized::<*const ()>();
+        if cfg!(strict) {
+            test_panic_msg(
+                || mem::uninitialized::<i32>(),
+                "attempted to leave type `i32` uninitialized, which is invalid"
+            );
+
+            test_panic_msg(
+                || mem::uninitialized::<*const ()>(),
+                "attempted to leave type `*const ()` uninitialized, which is invalid"
+            );
+
+            test_panic_msg(
+                || mem::uninitialized::<[i32; 1]>(),
+                "attempted to leave type `[i32; 1]` uninitialized, which is invalid"
+            );
+
+            test_panic_msg(
+                || mem::zeroed::<NonNull<()>>(),
+                "attempted to zero-initialize type `core::ptr::non_null::NonNull<()>`, which is invalid"
+            );
+
+            test_panic_msg(
+                || mem::zeroed::<[NonNull<()>; 1]>(),
+                "attempted to zero-initialize type `[core::ptr::non_null::NonNull<()>; 1]`, which is invalid"
+            );
+        } else {
+            // These are UB because they have not been officially blessed, but we await the resolution
+            // of <https://github.com/rust-lang/unsafe-code-guidelines/issues/71> before doing
+            // anything about that.
+            let _val = mem::uninitialized::<i32>();
+            let _val = mem::uninitialized::<*const ()>();
+        }
     }
 }

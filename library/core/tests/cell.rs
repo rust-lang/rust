@@ -73,11 +73,13 @@ fn ref_and_refmut_have_sensible_show() {
     let refcell = RefCell::new("foo");
 
     let refcell_refmut = refcell.borrow_mut();
-    assert!(format!("{refcell_refmut:?}").contains("foo"));
+    assert_eq!(format!("{refcell_refmut}"), "foo"); // Display
+    assert!(format!("{refcell_refmut:?}").contains("foo")); // Debug
     drop(refcell_refmut);
 
     let refcell_ref = refcell.borrow();
-    assert!(format!("{refcell_ref:?}").contains("foo"));
+    assert_eq!(format!("{refcell_ref}"), "foo"); // Display
+    assert!(format!("{refcell_ref:?}").contains("foo")); // Debug
     drop(refcell_ref);
 }
 

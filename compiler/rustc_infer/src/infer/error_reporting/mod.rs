@@ -72,7 +72,7 @@ use rustc_middle::ty::{
     subst::{GenericArgKind, Subst, SubstsRef},
     Binder, EarlyBinder, List, Region, Ty, TyCtxt, TypeFoldable,
 };
-use rustc_span::{sym, BytePos, DesugaringKind, Pos, Span};
+use rustc_span::{sym, symbol::kw, BytePos, DesugaringKind, Pos, Span};
 use rustc_target::spec::abi;
 use std::ops::ControlFlow;
 use std::{cmp, fmt, iter};
@@ -161,35 +161,45 @@ fn msg_span_from_early_bound_and_free_regions<'tcx>(
             {
                 sp = param.span;
             }
-            (format!("the lifetime `{}` as defined here", br.name), sp)
+            let text = if br.has_name() {
+                format!("the lifetime `{}` as defined here", br.name)
+            } else {
+                format!("the anonymous lifetime as defined here")
+            };
+            (text, sp)
         }
-        ty::ReFree(ty::FreeRegion {
-            bound_region: ty::BoundRegionKind::BrNamed(_, name), ..
-        }) => {
-            let mut sp = sm.guess_head_span(tcx.def_span(scope));
-            if let Some(param) =
-                tcx.hir().get_generics(scope).and_then(|generics| generics.get_named(name))
+        ty::ReFree(ref fr) => {
+            if !fr.bound_region.is_named()
+                && let Some((ty, _)) = find_anon_type(tcx, region, &fr.bound_region)
             {
-                sp = param.span;
-            }
-            (format!("the lifetime `{}` as defined here", name), sp)
-        }
-        ty::ReFree(ref fr) => match fr.bound_region {
-            ty::BrAnon(idx) => {
-                if let Some((ty, _)) = find_anon_type(tcx, region, &fr.bound_region) {
-                    ("the anonymous lifetime defined here".to_string(), ty.span)
-                } else {
-                    (
+                ("the anonymous lifetime defined here".to_string(), ty.span)
+            } else {
+                match fr.bound_region {
+                    ty::BoundRegionKind::BrNamed(_, name) => {
+                        let mut sp = sm.guess_head_span(tcx.def_span(scope));
+                        if let Some(param) =
+                            tcx.hir().get_generics(scope).and_then(|generics| generics.get_named(name))
+                        {
+                            sp = param.span;
+                        }
+                        let text = if name == kw::UnderscoreLifetime {
+                            format!("the anonymous lifetime as defined here")
+                        } else {
+                            format!("the lifetime `{}` as defined here", name)
+                        };
+                        (text, sp)
+                    }
+                    ty::BrAnon(idx) => (
                         format!("the anonymous lifetime #{} defined here", idx + 1),
-                        tcx.def_span(scope),
-                    )
+                        tcx.def_span(scope)
+                    ),
+                    _ => (
+                        format!("the lifetime `{}` as defined here", region),
+                        sm.guess_head_span(tcx.def_span(scope)),
+                    ),
                 }
             }
-            _ => (
-                format!("the lifetime `{}` as defined here", region),
-                sm.guess_head_span(tcx.def_span(scope)),
-            ),
-        },
+        }
         _ => bug!(),
     }
 }
@@ -342,7 +352,7 @@ pub fn same_type_modulo_infer<'tcx>(a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
 }
 
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
-    pub fn report_region_errors(&self, errors: &Vec<RegionResolutionError<'tcx>>) {
+    pub fn report_region_errors(&self, errors: &[RegionResolutionError<'tcx>]) {
         debug!("report_region_errors(): {} errors to start", errors.len());
 
         // try to pre-process the errors, which will group some of them
@@ -609,7 +619,14 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 if !matches!(ty.kind(), ty::Infer(ty::InferTy::TyVar(_) | ty::InferTy::FreshTy(_)))
                 {
                     // don't show type `_`
-                    err.span_label(span, format!("this expression has type `{}`", ty));
+                    if span.desugaring_kind() == Some(DesugaringKind::ForLoop)
+                    && let ty::Adt(def, substs) = ty.kind()
+                    && Some(def.did()) == self.tcx.get_diagnostic_item(sym::Option)
+                    {
+                        err.span_label(span, format!("this is an iterator with items of type `{}`", substs.type_at(0)));
+                    } else {
+                        err.span_label(span, format!("this expression has type `{}`", ty));
+                    }
                 }
                 if let Some(ty::error::ExpectedFound { found, .. }) = exp_found
                     && ty.is_box() && ty.boxed_ty() == found
@@ -1442,6 +1459,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// the message in `secondary_span` as the primary label, and apply the message that would
     /// otherwise be used for the primary label on the `secondary_span` `Span`. This applies on
     /// E0271, like `src/test/ui/issues/issue-39970.stderr`.
+    #[tracing::instrument(
+        level = "debug",
+        skip(self, diag, secondary_span, swap_secondary_and_primary, force_label)
+    )]
     pub fn note_type_err(
         &self,
         diag: &mut Diagnostic,
@@ -1453,7 +1474,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         force_label: bool,
     ) {
         let span = cause.span(self.tcx);
-        debug!("note_type_err cause={:?} values={:?}, terr={:?}", cause, values, terr);
 
         // For some types of errors, expected-found does not make
         // sense, so just ignore the values we were given.
@@ -1621,9 +1641,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             }
         };
 
-        // Ignore msg for object safe coercion
-        // since E0038 message will be printed
         match terr {
+            // Ignore msg for object safe coercion
+            // since E0038 message will be printed
             TypeError::ObjectUnsafeCoercion(_) => {}
             _ => {
                 let mut label_or_note = |span: Span, msg: &str| {
@@ -1774,6 +1794,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         // It reads better to have the error origin as the final
         // thing.
         self.note_error_origin(diag, cause, exp_found, terr);
+
+        debug!(?diag);
     }
 
     fn suggest_tuple_pattern(
@@ -2540,7 +2562,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 ty::ReEarlyBound(ty::EarlyBoundRegion { name, .. })
                 | ty::ReFree(ty::FreeRegion { bound_region: ty::BrNamed(_, name), .. }),
                 _,
-            ) => {
+            ) if name != kw::UnderscoreLifetime => {
                 // Does the required lifetime have a nice name we can print?
                 let mut err = struct_span_err!(
                     self.tcx.sess,

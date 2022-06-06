@@ -1,20 +1,26 @@
-error[E0282]: type annotations needed for `Option<_>`
-  --> $DIR/issue-42234-unknown-receiver-type.rs:10:7
+error[E0282]: type annotations needed
+  --> $DIR/issue-42234-unknown-receiver-type.rs:9:24
    |
 LL |     let x: Option<_> = None;
-   |         - consider giving `x` the explicit type `Option<_>`, where the type parameter `T` is specified
-LL |     x.unwrap().method_that_could_exist_on_some_type();
-   |       ^^^^^^ cannot infer type for type parameter `T`
+   |                        ^^^^ cannot infer type of the type parameter `T` declared on the enum `Option`
    |
    = note: type must be known at this point
+help: consider specifying the generic argument
+   |
+LL |     let x: Option<_> = None::<T>;
+   |                            +++++
 
 error[E0282]: type annotations needed
-  --> $DIR/issue-42234-unknown-receiver-type.rs:16:16
+  --> $DIR/issue-42234-unknown-receiver-type.rs:15:10
    |
 LL |         .sum::<_>()
-   |                ^ cannot infer type for type parameter `S` declared on the associated function `sum`
+   |          ^^^ cannot infer type of the type parameter `S` declared on the associated function `sum`
    |
    = note: type must be known at this point
+help: consider specifying the generic argument
+   |
+LL |         .sum::<S>()
+   |             ~~~~~
 
 error: aborting due to 2 previous errors
 

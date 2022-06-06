@@ -26,6 +26,7 @@
 //!   some memory happens to exist at that address and gets deallocated. This corresponds to writing
 //!   your own allocator: allocating zero-sized objects is not very hard. The canonical way to
 //!   obtain a pointer that is valid for zero-sized accesses is [`NonNull::dangling`].
+//FIXME: mention `ptr::invalid` above, once it is stable.
 //! * All accesses performed by functions in this module are *non-atomic* in the sense
 //!   of [atomic operations] used to synchronize between threads. This means it is
 //!   undefined behavior to perform two concurrent accesses to the same location from different
@@ -507,8 +508,31 @@ pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
 #[rustc_promotable]
 #[rustc_const_stable(feature = "const_ptr_null", since = "1.24.0")]
 #[rustc_diagnostic_item = "ptr_null"]
+#[cfg(bootstrap)]
 pub const fn null<T>() -> *const T {
     invalid(0)
+}
+
+/// Creates a null raw pointer.
+///
+/// # Examples
+///
+/// ```
+/// use std::ptr;
+///
+/// let p: *const i32 = ptr::null();
+/// assert!(p.is_null());
+/// ```
+#[inline(always)]
+#[must_use]
+#[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_promotable]
+#[rustc_const_stable(feature = "const_ptr_null", since = "1.24.0")]
+#[rustc_allow_const_fn_unstable(ptr_metadata)]
+#[rustc_diagnostic_item = "ptr_null"]
+#[cfg(not(bootstrap))]
+pub const fn null<T: ?Sized + Thin>() -> *const T {
+    from_raw_parts(invalid(0), ())
 }
 
 /// Creates a null mutable raw pointer.
@@ -527,14 +551,15 @@ pub const fn null<T>() -> *const T {
 #[rustc_promotable]
 #[rustc_const_stable(feature = "const_ptr_null", since = "1.24.0")]
 #[rustc_diagnostic_item = "ptr_null_mut"]
+#[cfg(bootstrap)]
 pub const fn null_mut<T>() -> *mut T {
     invalid_mut(0)
 }
 
 /// Creates an invalid pointer with the given address.
 ///
-/// This is *currently* equivalent to `addr as *const T` but it expresses the intended semantic
-/// more clearly, and may become important under future memory models.
+/// This is different from `addr as *const T`, which creates a pointer that picks up a previously
+/// exposed provenance. See [`from_exposed_addr`] for more details on that operation.
 ///
 /// The module's top-level documentation discusses the precise meaning of an "invalid"
 /// pointer but essentially this expresses that the pointer is not associated
@@ -542,7 +567,7 @@ pub const fn null_mut<T>() -> *mut T {
 ///
 /// This pointer will have no provenance associated with it and is therefore
 /// UB to read/write/offset. This mostly exists to facilitate things
-/// like ptr::null and NonNull::dangling which make invalid pointers.
+/// like `ptr::null` and `NonNull::dangling` which make invalid pointers.
 ///
 /// (Standard "Zero-Sized-Types get to cheat and lie" caveats apply, although it
 /// may be desirable to give them their own API just to make that 100% clear.)
@@ -555,13 +580,17 @@ pub const fn null_mut<T>() -> *mut T {
 #[unstable(feature = "strict_provenance", issue = "95228")]
 pub const fn invalid<T>(addr: usize) -> *const T {
     // FIXME(strict_provenance_magic): I am magic and should be a compiler intrinsic.
-    addr as *const T
+    // We use transmute rather than a cast so tools like Miri can tell that this
+    // is *not* the same as from_exposed_addr.
+    // SAFETY: every valid integer is also a valid pointer (as long as you don't dereference that
+    // pointer).
+    unsafe { mem::transmute(addr) }
 }
 
 /// Creates an invalid mutable pointer with the given address.
 ///
-/// This is *currently* equivalent to `addr as *mut T` but it expresses the intended semantic
-/// more clearly, and may become important under future memory models.
+/// This is different from `addr as *mut T`, which creates a pointer that picks up a previously
+/// exposed provenance. See [`from_exposed_addr_mut`] for more details on that operation.
 ///
 /// The module's top-level documentation discusses the precise meaning of an "invalid"
 /// pointer but essentially this expresses that the pointer is not associated
@@ -569,7 +598,7 @@ pub const fn invalid<T>(addr: usize) -> *const T {
 ///
 /// This pointer will have no provenance associated with it and is therefore
 /// UB to read/write/offset. This mostly exists to facilitate things
-/// like ptr::null and NonNull::dangling which make invalid pointers.
+/// like `ptr::null` and `NonNull::dangling` which make invalid pointers.
 ///
 /// (Standard "Zero-Sized-Types get to cheat and lie" caveats apply, although it
 /// may be desirable to give them their own API just to make that 100% clear.)
@@ -582,7 +611,11 @@ pub const fn invalid<T>(addr: usize) -> *const T {
 #[unstable(feature = "strict_provenance", issue = "95228")]
 pub const fn invalid_mut<T>(addr: usize) -> *mut T {
     // FIXME(strict_provenance_magic): I am magic and should be a compiler intrinsic.
-    addr as *mut T
+    // We use transmute rather than a cast so tools like Miri can tell that this
+    // is *not* the same as from_exposed_addr.
+    // SAFETY: every valid integer is also a valid pointer (as long as you don't dereference that
+    // pointer).
+    unsafe { mem::transmute(addr) }
 }
 
 /// Convert an address back to a pointer, picking up a previously 'exposed' provenance.
@@ -655,6 +688,28 @@ where
 {
     // FIXME(strict_provenance_magic): I am magic and should be a compiler intrinsic.
     addr as *mut T
+}
+
+/// Creates a null mutable raw pointer.
+///
+/// # Examples
+///
+/// ```
+/// use std::ptr;
+///
+/// let p: *mut i32 = ptr::null_mut();
+/// assert!(p.is_null());
+/// ```
+#[inline(always)]
+#[must_use]
+#[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_promotable]
+#[rustc_const_stable(feature = "const_ptr_null", since = "1.24.0")]
+#[rustc_allow_const_fn_unstable(ptr_metadata)]
+#[rustc_diagnostic_item = "ptr_null_mut"]
+#[cfg(not(bootstrap))]
+pub const fn null_mut<T: ?Sized + Thin>() -> *mut T {
+    from_raw_parts_mut(invalid_mut(0), ())
 }
 
 /// Forms a raw slice from a pointer and a length.
@@ -1823,24 +1878,14 @@ macro_rules! fnptr_impls_safety_abi {
         #[stable(feature = "fnptr_impls", since = "1.4.0")]
         impl<Ret, $($Arg),*> fmt::Pointer for $FnTy {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                // HACK: The intermediate cast as usize is required for AVR
-                // so that the address space of the source function pointer
-                // is preserved in the final function pointer.
-                //
-                // https://github.com/avr-rust/rust/issues/143
-                fmt::Pointer::fmt(&(*self as usize as *const ()), f)
+                fmt::pointer_fmt_inner(*self as usize, f)
             }
         }
 
         #[stable(feature = "fnptr_impls", since = "1.4.0")]
         impl<Ret, $($Arg),*> fmt::Debug for $FnTy {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                // HACK: The intermediate cast as usize is required for AVR
-                // so that the address space of the source function pointer
-                // is preserved in the final function pointer.
-                //
-                // https://github.com/avr-rust/rust/issues/143
-                fmt::Pointer::fmt(&(*self as usize as *const ()), f)
+                fmt::pointer_fmt_inner(*self as usize, f)
             }
         }
     }

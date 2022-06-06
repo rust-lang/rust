@@ -12,7 +12,7 @@ use rustc_errors::Applicability;
 use std::lazy::SyncLazy;
 use std::mem;
 
-crate const CHECK_BARE_URLS: Pass = Pass {
+pub(crate) const CHECK_BARE_URLS: Pass = Pass {
     name: "check-bare-urls",
     run: check_bare_urls,
     description: "detects URLs that are not hyperlinks",
@@ -54,7 +54,7 @@ impl<'a, 'tcx> BareUrlsLinter<'a, 'tcx> {
     }
 }
 
-crate fn check_bare_urls(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
+pub(crate) fn check_bare_urls(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
     BareUrlsLinter { cx }.visit_crate(&krate);
     krate
 }

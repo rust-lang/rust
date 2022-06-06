@@ -1,11 +1,13 @@
 // run-pass
 
 #![feature(generators)]
+#![feature(unboxed_closures, fn_traits)]
 
 #![allow(non_camel_case_types)]
 #![allow(dead_code)]
 #![allow(unreachable_code)]
 #![allow(unused_braces, unused_must_use, unused_parens)]
+#![allow(uncommon_codepoints, confusable_idents)]
 
 #![recursion_limit = "256"]
 
@@ -115,7 +117,7 @@ fn union() {
 }
 
 fn special_characters() {
-    let val = !((|(..):(_,_),__@_|__)((&*"\\",'🤔')/**/,{})=={&[..=..][..];})//
+    let val = !((|(..):(_,_),(|__@_|__)|__)((&*"\\",'🤔')/**/,{})=={&[..=..][..];})//
     ;
     assert!(!val);
 }
@@ -164,6 +166,28 @@ fn monkey_barrel() {
     assert_eq!(val, ());
 }
 
+fn 𝚌𝚘𝚗𝚝𝚒𝚗𝚞𝚎() {
+    type 𝚕𝚘𝚘𝚙 = i32;
+    fn 𝚋𝚛𝚎𝚊𝚔() -> 𝚕𝚘𝚘𝚙 {
+        let 𝚛𝚎𝚝𝚞𝚛𝚗 = 42;
+        return 𝚛𝚎𝚝𝚞𝚛𝚗;
+    }
+    assert_eq!(loop {
+        break 𝚋𝚛𝚎𝚊𝚔 ();
+    }, 42);
+}
+
+fn function() {
+    struct foo;
+    impl FnOnce<()> for foo {
+        type Output = foo;
+        extern "rust-call" fn call_once(self, _args: ()) -> Self::Output {
+            foo
+        }
+    }
+    let foo = foo () ()() ()()() ()()()() ()()()()();
+}
+
 fn bathroom_stall() {
     let mut i = 1;
     matches!(2, _|_|_|_|_|_ if (i+=1) != (i+=1));
@@ -189,5 +213,7 @@ pub fn main() {
     i_yield();
     match_nested_if();
     monkey_barrel();
+    𝚌𝚘𝚗𝚝𝚒𝚗𝚞𝚎();
+    function();
     bathroom_stall();
 }

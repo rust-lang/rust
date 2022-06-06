@@ -381,9 +381,8 @@ pub enum AtomicOrdering {
 impl AtomicOrdering {
     pub fn from_generic(ao: rustc_codegen_ssa::common::AtomicOrdering) -> Self {
         match ao {
-            rustc_codegen_ssa::common::AtomicOrdering::NotAtomic => AtomicOrdering::NotAtomic,
             rustc_codegen_ssa::common::AtomicOrdering::Unordered => AtomicOrdering::Unordered,
-            rustc_codegen_ssa::common::AtomicOrdering::Monotonic => AtomicOrdering::Monotonic,
+            rustc_codegen_ssa::common::AtomicOrdering::Relaxed => AtomicOrdering::Monotonic,
             rustc_codegen_ssa::common::AtomicOrdering::Acquire => AtomicOrdering::Acquire,
             rustc_codegen_ssa::common::AtomicOrdering::Release => AtomicOrdering::Release,
             rustc_codegen_ssa::common::AtomicOrdering::AcquireRelease => {
@@ -775,7 +774,7 @@ pub mod coverageinfo {
     }
 
     impl CounterMappingRegion {
-        crate fn code_region(
+        pub(crate) fn code_region(
             counter: coverage_map::Counter,
             file_id: u32,
             start_line: u32,
@@ -799,7 +798,7 @@ pub mod coverageinfo {
         // This function might be used in the future; the LLVM API is still evolving, as is coverage
         // support.
         #[allow(dead_code)]
-        crate fn branch_region(
+        pub(crate) fn branch_region(
             counter: coverage_map::Counter,
             false_counter: coverage_map::Counter,
             file_id: u32,
@@ -824,7 +823,7 @@ pub mod coverageinfo {
         // This function might be used in the future; the LLVM API is still evolving, as is coverage
         // support.
         #[allow(dead_code)]
-        crate fn expansion_region(
+        pub(crate) fn expansion_region(
             file_id: u32,
             expanded_file_id: u32,
             start_line: u32,
@@ -848,7 +847,7 @@ pub mod coverageinfo {
         // This function might be used in the future; the LLVM API is still evolving, as is coverage
         // support.
         #[allow(dead_code)]
-        crate fn skipped_region(
+        pub(crate) fn skipped_region(
             file_id: u32,
             start_line: u32,
             start_col: u32,
@@ -871,7 +870,7 @@ pub mod coverageinfo {
         // This function might be used in the future; the LLVM API is still evolving, as is coverage
         // support.
         #[allow(dead_code)]
-        crate fn gap_region(
+        pub(crate) fn gap_region(
             counter: coverage_map::Counter,
             file_id: u32,
             start_line: u32,

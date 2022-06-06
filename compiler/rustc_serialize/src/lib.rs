@@ -25,7 +25,5 @@ pub use self::serialize::{Decodable, Decoder, Encodable, Encoder};
 mod collection_impls;
 mod serialize;
 
-pub mod json;
-
 pub mod leb128;
 pub mod opaque;

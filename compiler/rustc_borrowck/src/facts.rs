@@ -25,7 +25,7 @@ impl polonius_engine::FactTypes for RustcFacts {
 
 pub type AllFacts = PoloniusFacts<RustcFacts>;
 
-crate trait AllFactsExt {
+pub(crate) trait AllFactsExt {
     /// Returns `true` if there is a need to gather `AllFacts` given the
     /// current `-Z` flags.
     fn enabled(tcx: TyCtxt<'_>) -> bool;

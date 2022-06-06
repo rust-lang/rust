@@ -46,7 +46,7 @@ declare_clippy_lint! {
 declare_lint_pass!(ManualMap => [MANUAL_MAP]);
 
 impl<'tcx> LateLintPass<'tcx> for ManualMap {
-    #[allow(clippy::too_many_lines)]
+    #[expect(clippy::too_many_lines)]
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         let (scrutinee, then_pat, then_body, else_pat, else_body) = match IfLetOrMatch::parse(cx, expr) {
             Some(IfLetOrMatch::IfLet(scrutinee, pat, body, Some(r#else))) => (scrutinee, pat, body, None, r#else),

@@ -1,3 +1,5 @@
+use crate::check::wfcheck::for_item;
+
 use super::coercion::CoerceMany;
 use super::compare_method::check_type_bounds;
 use super::compare_method::{compare_const_impl, compare_impl_method, compare_ty_impl};
@@ -6,10 +8,11 @@ use super::*;
 use rustc_attr as attr;
 use rustc_errors::{Applicability, ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
+use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{def::Res, ItemKind, Node, PathSegment};
+use rustc_hir::{ItemKind, Node, PathSegment};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{RegionVariableOrigin, TyCtxtInferExt};
 use rustc_infer::traits::Obligation;
@@ -27,7 +30,6 @@ use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt as _;
 use rustc_ty_utils::representability::{self, Representability};
 
-use rustc_hir::def::DefKind;
 use std::iter;
 use std::ops::ControlFlow;
 
@@ -91,7 +93,6 @@ pub(super) fn check_fn<'a, 'tcx>(
     fcx.return_type_pre_known = return_type_pre_known;
 
     let tcx = fcx.tcx;
-    let sess = tcx.sess;
     let hir = tcx.hir();
 
     let declared_ret_ty = fn_sig.output();
@@ -103,12 +104,6 @@ pub(super) fn check_fn<'a, 'tcx>(
             DUMMY_SP,
             param_env,
         ));
-    // HACK(oli-obk): we rewrite the declared return type, too, so that we don't end up inferring all
-    // unconstrained RPIT to have `()` as their hidden type. This would happen because further down we
-    // compare the ret_coercion with declared_ret_ty, and anything uninferred would be inferred to the
-    // opaque type itself. That again would cause writeback to assume we have a recursive call site
-    // and do the sadly stabilized fallback to `()`.
-    let declared_ret_ty = ret_ty;
     fcx.ret_coercion = Some(RefCell::new(CoerceMany::new(ret_ty)));
     fcx.ret_type_span = Some(decl.output.span());
 
@@ -252,91 +247,134 @@ pub(super) fn check_fn<'a, 'tcx>(
             fcx.next_ty_var(TypeVariableOrigin { kind: TypeVariableOriginKind::DynReturnFn, span });
         debug!("actual_return_ty replaced with {:?}", actual_return_ty);
     }
-    fcx.demand_suptype(span, declared_ret_ty, actual_return_ty);
+
+    // HACK(oli-obk, compiler-errors): We should be comparing this against
+    // `declared_ret_ty`, but then anything uninferred would be inferred to
+    // the opaque type itself. That again would cause writeback to assume
+    // we have a recursive call site and do the sadly stabilized fallback to `()`.
+    fcx.demand_suptype(span, ret_ty, actual_return_ty);
 
     // Check that a function marked as `#[panic_handler]` has signature `fn(&PanicInfo) -> !`
     if let Some(panic_impl_did) = tcx.lang_items().panic_impl()
         && panic_impl_did == hir.local_def_id(fn_id).to_def_id()
     {
-        if let Some(panic_info_did) = tcx.lang_items().panic_info() {
-            if *declared_ret_ty.kind() != ty::Never {
-                sess.span_err(decl.output.span(), "return type should be `!`");
-            }
-
-            let inputs = fn_sig.inputs();
-            let span = hir.span(fn_id);
-            if inputs.len() == 1 {
-                let arg_is_panic_info = match *inputs[0].kind() {
-                    ty::Ref(region, ty, mutbl) => match *ty.kind() {
-                        ty::Adt(ref adt, _) => {
-                            adt.did() == panic_info_did
-                                && mutbl == hir::Mutability::Not
-                                && !region.is_static()
-                        }
-                        _ => false,
-                    },
-                    _ => false,
-                };
-
-                if !arg_is_panic_info {
-                    sess.span_err(decl.inputs[0].span, "argument should be `&PanicInfo`");
-                }
-
-                if let Node::Item(item) = hir.get(fn_id)
-                    && let ItemKind::Fn(_, ref generics, _) = item.kind
-                    && !generics.params.is_empty()
-                {
-                            sess.span_err(span, "should have no type parameters");
-                        }
-            } else {
-                let span = sess.source_map().guess_head_span(span);
-                sess.span_err(span, "function should have one argument");
-            }
-        } else {
-            sess.err("language item required, but not found: `panic_info`");
-        }
+        check_panic_info_fn(tcx, panic_impl_did.expect_local(), fn_sig, decl, declared_ret_ty);
     }
 
     // Check that a function marked as `#[alloc_error_handler]` has signature `fn(Layout) -> !`
     if let Some(alloc_error_handler_did) = tcx.lang_items().oom()
         && alloc_error_handler_did == hir.local_def_id(fn_id).to_def_id()
     {
-        if let Some(alloc_layout_did) = tcx.lang_items().alloc_layout() {
-            if *declared_ret_ty.kind() != ty::Never {
-                sess.span_err(decl.output.span(), "return type should be `!`");
-            }
-
-            let inputs = fn_sig.inputs();
-            let span = hir.span(fn_id);
-            if inputs.len() == 1 {
-                let arg_is_alloc_layout = match inputs[0].kind() {
-                    ty::Adt(ref adt, _) => adt.did() == alloc_layout_did,
-                    _ => false,
-                };
-
-                if !arg_is_alloc_layout {
-                    sess.span_err(decl.inputs[0].span, "argument should be `Layout`");
-                }
-
-                if let Node::Item(item) = hir.get(fn_id)
-                    && let ItemKind::Fn(_, ref generics, _) = item.kind
-                    && !generics.params.is_empty()
-                {
-                            sess.span_err(
-                                span,
-                        "`#[alloc_error_handler]` function should have no type parameters",
-                            );
-                        }
-            } else {
-                let span = sess.source_map().guess_head_span(span);
-                sess.span_err(span, "function should have one argument");
-            }
-        } else {
-            sess.err("language item required, but not found: `alloc_layout`");
-        }
+        check_alloc_error_fn(tcx, alloc_error_handler_did.expect_local(), fn_sig, decl, declared_ret_ty);
     }
 
     (fcx, gen_ty)
+}
+
+fn check_panic_info_fn(
+    tcx: TyCtxt<'_>,
+    fn_id: LocalDefId,
+    fn_sig: ty::FnSig<'_>,
+    decl: &hir::FnDecl<'_>,
+    declared_ret_ty: Ty<'_>,
+) {
+    let Some(panic_info_did) = tcx.lang_items().panic_info() else {
+        tcx.sess.err("language item required, but not found: `panic_info`");
+        return;
+    };
+
+    if *declared_ret_ty.kind() != ty::Never {
+        tcx.sess.span_err(decl.output.span(), "return type should be `!`");
+    }
+
+    let span = tcx.def_span(fn_id);
+    let inputs = fn_sig.inputs();
+    if inputs.len() != 1 {
+        let span = tcx.sess.source_map().guess_head_span(span);
+        tcx.sess.span_err(span, "function should have one argument");
+        return;
+    }
+
+    let arg_is_panic_info = match *inputs[0].kind() {
+        ty::Ref(region, ty, mutbl) => match *ty.kind() {
+            ty::Adt(ref adt, _) => {
+                adt.did() == panic_info_did && mutbl == hir::Mutability::Not && !region.is_static()
+            }
+            _ => false,
+        },
+        _ => false,
+    };
+
+    if !arg_is_panic_info {
+        tcx.sess.span_err(decl.inputs[0].span, "argument should be `&PanicInfo`");
+    }
+
+    let DefKind::Fn = tcx.def_kind(fn_id) else {
+        let span = tcx.def_span(fn_id);
+        tcx.sess.span_err(span, "should be a function");
+        return;
+    };
+
+    let generic_counts = tcx.generics_of(fn_id).own_counts();
+    if generic_counts.types != 0 {
+        let span = tcx.def_span(fn_id);
+        tcx.sess.span_err(span, "should have no type parameters");
+    }
+    if generic_counts.consts != 0 {
+        let span = tcx.def_span(fn_id);
+        tcx.sess.span_err(span, "should have no const parameters");
+    }
+}
+
+fn check_alloc_error_fn(
+    tcx: TyCtxt<'_>,
+    fn_id: LocalDefId,
+    fn_sig: ty::FnSig<'_>,
+    decl: &hir::FnDecl<'_>,
+    declared_ret_ty: Ty<'_>,
+) {
+    let Some(alloc_layout_did) = tcx.lang_items().alloc_layout() else {
+        tcx.sess.err("language item required, but not found: `alloc_layout`");
+        return;
+    };
+
+    if *declared_ret_ty.kind() != ty::Never {
+        tcx.sess.span_err(decl.output.span(), "return type should be `!`");
+    }
+
+    let inputs = fn_sig.inputs();
+    if inputs.len() != 1 {
+        let span = tcx.def_span(fn_id);
+        let span = tcx.sess.source_map().guess_head_span(span);
+        tcx.sess.span_err(span, "function should have one argument");
+        return;
+    }
+
+    let arg_is_alloc_layout = match inputs[0].kind() {
+        ty::Adt(ref adt, _) => adt.did() == alloc_layout_did,
+        _ => false,
+    };
+
+    if !arg_is_alloc_layout {
+        tcx.sess.span_err(decl.inputs[0].span, "argument should be `Layout`");
+    }
+
+    let DefKind::Fn = tcx.def_kind(fn_id) else {
+        let span = tcx.def_span(fn_id);
+        tcx.sess.span_err(span, "`#[alloc_error_handler]` should be a function");
+        return;
+    };
+
+    let generic_counts = tcx.generics_of(fn_id).own_counts();
+    if generic_counts.types != 0 {
+        let span = tcx.def_span(fn_id);
+        tcx.sess.span_err(span, "`#[alloc_error_handler]` function should have no type parameters");
+    }
+    if generic_counts.consts != 0 {
+        let span = tcx.def_span(fn_id);
+        tcx.sess
+            .span_err(span, "`#[alloc_error_handler]` function should have no const parameters");
+    }
 }
 
 fn check_struct(tcx: TyCtxt<'_>, def_id: LocalDefId, span: Span) {
@@ -871,6 +909,14 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
                 }
             }
         }
+        DefKind::GlobalAsm => {
+            let it = tcx.hir().item(id);
+            let hir::ItemKind::GlobalAsm(asm) = it.kind else { span_bug!(it.span, "DefKind::GlobalAsm but got {:#?}", it) };
+            for_item(tcx, it).with_fcx(|fcx| {
+                fcx.check_asm(asm, it.hir_id());
+                Default::default()
+            })
+        }
         _ => {}
     }
 }
@@ -1366,6 +1412,8 @@ fn check_enum<'tcx>(
     }
 
     let mut disr_vals: Vec<Discr<'tcx>> = Vec::with_capacity(vs.len());
+    // This tracks the previous variant span (in the loop) incase we need it for diagnostics
+    let mut prev_variant_span: Span = DUMMY_SP;
     for ((_, discr), v) in iter::zip(def.discriminants(tcx), vs) {
         // Check for duplicate discriminant values
         if let Some(i) = disr_vals.iter().position(|&x| x.val == discr.val) {
@@ -1380,42 +1428,59 @@ fn check_enum<'tcx>(
                 Some(ref expr) => tcx.hir().span(expr.hir_id),
                 None => v.span,
             };
-            let display_discr = display_discriminant_value(tcx, v, discr.val);
-            let display_discr_i = display_discriminant_value(tcx, variant_i, disr_vals[i].val);
-            struct_span_err!(
+            let display_discr = format_discriminant_overflow(tcx, v, discr);
+            let display_discr_i = format_discriminant_overflow(tcx, variant_i, disr_vals[i]);
+            let no_disr = v.disr_expr.is_none();
+            let mut err = struct_span_err!(
                 tcx.sess,
-                span,
+                sp,
                 E0081,
-                "discriminant value `{}` already exists",
-                discr.val,
-            )
-            .span_label(i_span, format!("first use of {display_discr_i}"))
-            .span_label(span, format!("enum already has {display_discr}"))
-            .emit();
+                "discriminant value `{}` assigned more than once",
+                discr,
+            );
+
+            err.span_label(i_span, format!("first assignment of {display_discr_i}"));
+            err.span_label(span, format!("second assignment of {display_discr}"));
+
+            if no_disr {
+                err.span_label(
+                    prev_variant_span,
+                    format!(
+                        "assigned discriminant for `{}` was incremented from this discriminant",
+                        v.ident
+                    ),
+                );
+            }
+            err.emit();
         }
+
         disr_vals.push(discr);
+        prev_variant_span = v.span;
     }
 
     check_representable(tcx, sp, def_id);
     check_transparent(tcx, sp, def);
 }
 
-/// Format an enum discriminant value for use in a diagnostic message.
-fn display_discriminant_value<'tcx>(
+/// In the case that a discriminant is both a duplicate and an overflowing literal,
+/// we insert both the assigned discriminant and the literal it overflowed from into the formatted
+/// output. Otherwise we format the discriminant normally.
+fn format_discriminant_overflow<'tcx>(
     tcx: TyCtxt<'tcx>,
     variant: &hir::Variant<'_>,
-    evaluated: u128,
+    dis: Discr<'tcx>,
 ) -> String {
     if let Some(expr) = &variant.disr_expr {
         let body = &tcx.hir().body(expr.body).value;
         if let hir::ExprKind::Lit(lit) = &body.kind
             && let rustc_ast::LitKind::Int(lit_value, _int_kind) = &lit.node
-            && evaluated != *lit_value
+            && dis.val != *lit_value
         {
-                    return format!("`{evaluated}` (overflowed from `{lit_value}`)");
+                    return format!("`{dis}` (overflowed from `{lit_value}`)");
         }
     }
-    format!("`{}`", evaluated)
+
+    format!("`{dis}`")
 }
 
 pub(super) fn check_type_params_are_used<'tcx>(

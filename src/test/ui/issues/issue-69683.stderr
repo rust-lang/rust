@@ -8,7 +8,7 @@ error[E0283]: type annotations needed
   --> $DIR/issue-69683.rs:30:10
    |
 LL |     0u16.foo(b);
-   |          ^^^ cannot infer type for type parameter `I` declared on the trait `Foo`
+   |          ^^^
    |
 note: multiple `impl`s satisfying `u8: Element<_>` found
   --> $DIR/issue-69683.rs:5:1
@@ -26,6 +26,10 @@ LL |     u8: Element<I>,
 LL | {
 LL |     fn foo(self, x: <u8 as Element<I>>::Array);
    |        --- required by a bound in this
+help: try using a fully qualified path to specify the expected types
+   |
+LL |     <u16 as Foo<I>>::foo(0u16, b);
+   |     +++++++++++++++++++++    ~
 
 error: aborting due to 2 previous errors
 

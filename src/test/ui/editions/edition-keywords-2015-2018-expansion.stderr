@@ -6,6 +6,7 @@ LL |     produces_async! {}
    |
    = note: this error originates in the macro `produces_async` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: escape `async` to use it as an identifier
+  --> $DIR/auxiliary/edition-kw-macro-2018.rs:7:19
    |
 LL |     () => (pub fn r#async() {})
    |                   ++

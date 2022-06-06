@@ -49,6 +49,9 @@ use crate::sys::os as os_imp;
 ///     Ok(())
 /// }
 /// ```
+#[doc(alias = "pwd")]
+#[doc(alias = "getcwd")]
+#[doc(alias = "GetCurrentDirectory")]
 #[stable(feature = "env", since = "1.0.0")]
 pub fn current_dir() -> io::Result<PathBuf> {
     os_imp::getcwd()

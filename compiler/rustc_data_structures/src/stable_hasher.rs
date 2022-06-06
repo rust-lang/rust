@@ -632,10 +632,10 @@ fn stable_hash_reduce<HCX, I, C, F>(
     }
 }
 
-/// Controls what data we do or not not hash.
+/// Controls what data we do or do not hash.
 /// Whenever a `HashStable` implementation caches its
 /// result, it needs to include `HashingControls` as part
-/// of the key, to ensure that is does not produce an incorrect
+/// of the key, to ensure that it does not produce an incorrect
 /// result (for example, using a `Fingerprint` produced while
 /// hashing `Span`s when a `Fingerprint` without `Span`s is
 /// being requested)

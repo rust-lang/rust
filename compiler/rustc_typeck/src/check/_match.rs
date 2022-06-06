@@ -56,6 +56,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut all_arms_diverge = Diverges::WarnedAlways;
 
         let expected = orig_expected.adjust_for_branches(self);
+        debug!(?expected);
 
         let mut coercion = {
             let coerce_first = match expected {
@@ -127,6 +128,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Some(&arm.body),
                 arm_ty,
                 Some(&mut |err: &mut Diagnostic| {
+                    let Some(ret) = self.ret_type_span else {
+                        return;
+                    };
+                    let Expectation::IsLast(stmt) = orig_expected else {
+                        return
+                    };
                     let can_coerce_to_return_ty = match self.ret_coercion.as_ref() {
                         Some(ret_coercion) if self.in_tail_expr => {
                             let ret_ty = ret_coercion.borrow().expected_ty();
@@ -138,38 +145,38 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                         _ => false,
                     };
-                    if let (Expectation::IsLast(stmt), Some(ret), true) =
-                        (orig_expected, self.ret_type_span, can_coerce_to_return_ty)
-                    {
-                        let semi_span = expr.span.shrink_to_hi().with_hi(stmt.hi());
-                        let mut ret_span: MultiSpan = semi_span.into();
-                        ret_span.push_span_label(
-                            expr.span,
-                            "this could be implicitly returned but it is a statement, not a \
-                                tail expression"
-                                .to_owned(),
-                        );
-                        ret_span.push_span_label(
-                            ret,
-                            "the `match` arms can conform to this return type".to_owned(),
-                        );
-                        ret_span.push_span_label(
-                            semi_span,
-                            "the `match` is a statement because of this semicolon, consider \
-                                removing it"
-                                .to_owned(),
-                        );
-                        err.span_note(
-                            ret_span,
-                            "you might have meant to return the `match` expression",
-                        );
-                        err.tool_only_span_suggestion(
-                            semi_span,
-                            "remove this semicolon",
-                            String::new(),
-                            Applicability::MaybeIncorrect,
-                        );
+                    if !can_coerce_to_return_ty {
+                        return;
                     }
+
+                    let semi_span = expr.span.shrink_to_hi().with_hi(stmt.hi());
+                    let mut ret_span: MultiSpan = semi_span.into();
+                    ret_span.push_span_label(
+                        expr.span,
+                        "this could be implicitly returned but it is a statement, not a \
+                            tail expression"
+                            .to_owned(),
+                    );
+                    ret_span.push_span_label(
+                        ret,
+                        "the `match` arms can conform to this return type".to_owned(),
+                    );
+                    ret_span.push_span_label(
+                        semi_span,
+                        "the `match` is a statement because of this semicolon, consider \
+                            removing it"
+                            .to_owned(),
+                    );
+                    err.span_note(
+                        ret_span,
+                        "you might have meant to return the `match` expression",
+                    );
+                    err.tool_only_span_suggestion(
+                        semi_span,
+                        "remove this semicolon",
+                        String::new(),
+                        Applicability::MaybeIncorrect,
+                    );
                 }),
                 false,
             );
@@ -199,7 +206,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // We won't diverge unless the scrutinee or all arms diverge.
         self.diverges.set(scrut_diverges | all_arms_diverge);
 
-        coercion.complete(self)
+        let match_ty = coercion.complete(self);
+        debug!(?match_ty);
+        match_ty
     }
 
     fn get_appropriate_arm_semicolon_removal_span(

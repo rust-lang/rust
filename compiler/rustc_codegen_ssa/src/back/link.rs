@@ -5,7 +5,7 @@ use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_errors::{ErrorGuaranteed, Handler};
 use rustc_fs_util::fix_windows_verbatim_for_gcc;
-use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
+use rustc_hir::def_id::CrateNum;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::SymbolExportKind;
 use rustc_session::config::{self, CFGuard, CrateType, DebugInfo, LdImpl, Strip};
@@ -18,6 +18,7 @@ use rustc_session::utils::NativeLibKind;
 /// need out of the shared crate context before we get rid of it.
 use rustc_session::{filesearch, Session};
 use rustc_span::symbol::Symbol;
+use rustc_span::DebuggerVisualizerFile;
 use rustc_target::spec::crt_objects::{CrtObjects, CrtObjectsFallback};
 use rustc_target::spec::{LinkOutputKind, LinkerFlavor, LldFlavor, SplitDebuginfo};
 use rustc_target::spec::{PanicStrategy, RelocModel, RelroLevel, SanitizerSet, Target};
@@ -37,6 +38,7 @@ use regex::Regex;
 use tempfile::Builder as TempFileBuilder;
 
 use std::borrow::Borrow;
+use std::collections::BTreeSet;
 use std::ffi::OsString;
 use std::fs::{File, OpenOptions};
 use std::io::{BufWriter, Write};
@@ -2099,14 +2101,16 @@ fn add_order_independent_options(
     // Pass optimization flags down to the linker.
     cmd.optimize();
 
-    let debugger_visualizer_paths = if sess.target.is_like_msvc {
-        collect_debugger_visualizers(tmpdir, sess, &codegen_results.crate_info)
-    } else {
-        Vec::new()
-    };
+    // Gather the set of NatVis files, if any, and write them out to a temp directory.
+    let natvis_visualizers = collect_natvis_visualizers(
+        tmpdir,
+        sess,
+        &codegen_results.crate_info.local_crate_name,
+        &codegen_results.crate_info.natvis_debugger_visualizers,
+    );
 
-    // Pass debuginfo and strip flags down to the linker.
-    cmd.debuginfo(strip_value(sess), &debugger_visualizer_paths);
+    // Pass debuginfo, NatVis debugger visualizers and strip flags down to the linker.
+    cmd.debuginfo(strip_value(sess), &natvis_visualizers);
 
     // We want to prevent the compiler from accidentally leaking in any system libraries,
     // so by default we tell linkers not to link to any default libraries.
@@ -2125,43 +2129,33 @@ fn add_order_independent_options(
     add_rpath_args(cmd, sess, codegen_results, out_filename);
 }
 
-// Write the debugger visualizer files for each crate to the temp directory and gather the file paths.
-fn collect_debugger_visualizers(
+// Write the NatVis debugger visualizer files for each crate to the temp directory and gather the file paths.
+fn collect_natvis_visualizers(
     tmpdir: &Path,
     sess: &Session,
-    crate_info: &CrateInfo,
+    crate_name: &Symbol,
+    natvis_debugger_visualizers: &BTreeSet<DebuggerVisualizerFile>,
 ) -> Vec<PathBuf> {
-    let mut visualizer_paths = Vec::new();
-    let debugger_visualizers = &crate_info.debugger_visualizers;
-    let mut index = 0;
+    let mut visualizer_paths = Vec::with_capacity(natvis_debugger_visualizers.len());
 
-    for (&cnum, visualizers) in debugger_visualizers {
-        let crate_name = if cnum == LOCAL_CRATE {
-            crate_info.local_crate_name.as_str()
-        } else {
-            crate_info.crate_name[&cnum].as_str()
+    for (index, visualizer) in natvis_debugger_visualizers.iter().enumerate() {
+        let visualizer_out_file = tmpdir.join(format!("{}-{}.natvis", crate_name.as_str(), index));
+
+        match fs::write(&visualizer_out_file, &visualizer.src) {
+            Ok(()) => {
+                visualizer_paths.push(visualizer_out_file);
+            }
+            Err(error) => {
+                sess.warn(
+                    format!(
+                        "Unable to write debugger visualizer file `{}`: {} ",
+                        visualizer_out_file.display(),
+                        error
+                    )
+                    .as_str(),
+                );
+            }
         };
-
-        for visualizer in visualizers {
-            let visualizer_out_file = tmpdir.join(format!("{}-{}.natvis", crate_name, index));
-
-            match fs::write(&visualizer_out_file, &visualizer.src) {
-                Ok(()) => {
-                    visualizer_paths.push(visualizer_out_file.clone());
-                    index += 1;
-                }
-                Err(error) => {
-                    sess.warn(
-                        format!(
-                            "Unable to write debugger visualizer file `{}`: {} ",
-                            visualizer_out_file.display(),
-                            error
-                        )
-                        .as_str(),
-                    );
-                }
-            };
-        }
     }
     visualizer_paths
 }
@@ -2698,37 +2692,20 @@ fn add_gcc_ld_path(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
         if let LinkerFlavor::Gcc = flavor {
             match ld_impl {
                 LdImpl::Lld => {
-                    if sess.target.lld_flavor == LldFlavor::Ld64 {
-                        let tools_path = sess.get_tools_search_paths(false);
-                        let ld64_exe = tools_path
-                            .into_iter()
-                            .map(|p| p.join("gcc-ld"))
-                            .map(|p| {
-                                p.join(if sess.host.is_like_windows { "ld64.exe" } else { "ld64" })
-                            })
-                            .find(|p| p.exists())
-                            .unwrap_or_else(|| sess.fatal("rust-lld (as ld64) not found"));
-                        cmd.cmd().arg({
-                            let mut arg = OsString::from("-fuse-ld=");
-                            arg.push(ld64_exe);
-                            arg
-                        });
-                    } else {
-                        let tools_path = sess.get_tools_search_paths(false);
-                        let lld_path = tools_path
-                            .into_iter()
-                            .map(|p| p.join("gcc-ld"))
-                            .find(|p| {
-                                p.join(if sess.host.is_like_windows { "ld.exe" } else { "ld" })
-                                    .exists()
-                            })
-                            .unwrap_or_else(|| sess.fatal("rust-lld (as ld) not found"));
-                        cmd.cmd().arg({
-                            let mut arg = OsString::from("-B");
-                            arg.push(lld_path);
-                            arg
-                        });
-                    }
+                    let tools_path = sess.get_tools_search_paths(false);
+                    let gcc_ld_dir = tools_path
+                        .into_iter()
+                        .map(|p| p.join("gcc-ld"))
+                        .find(|p| {
+                            p.join(if sess.host.is_like_windows { "ld.exe" } else { "ld" }).exists()
+                        })
+                        .unwrap_or_else(|| sess.fatal("rust-lld (as ld) not found"));
+                    cmd.arg({
+                        let mut arg = OsString::from("-B");
+                        arg.push(gcc_ld_dir);
+                        arg
+                    });
+                    cmd.arg(format!("-Wl,-rustc-lld-flavor={}", sess.target.lld_flavor.as_str()));
                 }
             }
         } else {

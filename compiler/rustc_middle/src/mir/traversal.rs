@@ -310,7 +310,7 @@ pub fn reachable_as_bitset<'tcx>(body: &Body<'tcx>) -> BitSet<BasicBlock> {
 #[derive(Clone)]
 pub struct ReversePostorderIter<'a, 'tcx> {
     body: &'a Body<'tcx>,
-    blocks: &'a Vec<BasicBlock>,
+    blocks: &'a [BasicBlock],
     idx: usize,
 }
 
@@ -358,17 +358,17 @@ impl PostorderCache {
         self.cache = OnceCell::new();
     }
 
-    /// Returns the &Vec<BasicBlocks> represents the postorder graph for this MIR.
+    /// Returns the `&[BasicBlocks]` represents the postorder graph for this MIR.
     #[inline]
-    pub(super) fn compute(&self, body: &Body<'_>) -> &Vec<BasicBlock> {
+    pub(super) fn compute(&self, body: &Body<'_>) -> &[BasicBlock] {
         self.cache.get_or_init(|| Postorder::new(body, START_BLOCK).map(|(bb, _)| bb).collect())
     }
 }
 
 impl<S: serialize::Encoder> serialize::Encodable<S> for PostorderCache {
     #[inline]
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_unit()
+    fn encode(&self, _s: &mut S) -> Result<(), S::Error> {
+        Ok(())
     }
 }
 

@@ -32,70 +32,74 @@ use crate::formats::cache::Cache;
 use crate::passes::collect_intra_doc_links::PreprocessedMarkdownLink;
 use crate::passes::{self, Condition::*};
 
-crate use rustc_session::config::{DebuggingOptions, Input, Options};
+pub(crate) use rustc_session::config::{DebuggingOptions, Input, Options};
 
-crate struct ResolverCaches {
-    crate markdown_links: Option<FxHashMap<String, Vec<PreprocessedMarkdownLink>>>,
-    crate doc_link_resolutions: FxHashMap<(Symbol, Namespace, DefId), Option<Res<NodeId>>>,
+pub(crate) struct ResolverCaches {
+    pub(crate) markdown_links: Option<FxHashMap<String, Vec<PreprocessedMarkdownLink>>>,
+    pub(crate) doc_link_resolutions: FxHashMap<(Symbol, Namespace, DefId), Option<Res<NodeId>>>,
     /// Traits in scope for a given module.
     /// See `collect_intra_doc_links::traits_implemented_by` for more details.
-    crate traits_in_scope: DefIdMap<Vec<TraitCandidate>>,
-    crate all_traits: Option<Vec<DefId>>,
-    crate all_trait_impls: Option<Vec<DefId>>,
-    crate all_macro_rules: FxHashMap<Symbol, Res<NodeId>>,
+    pub(crate) traits_in_scope: DefIdMap<Vec<TraitCandidate>>,
+    pub(crate) all_traits: Option<Vec<DefId>>,
+    pub(crate) all_trait_impls: Option<Vec<DefId>>,
+    pub(crate) all_macro_rules: FxHashMap<Symbol, Res<NodeId>>,
 }
 
-crate struct DocContext<'tcx> {
-    crate tcx: TyCtxt<'tcx>,
+pub(crate) struct DocContext<'tcx> {
+    pub(crate) tcx: TyCtxt<'tcx>,
     /// Name resolver. Used for intra-doc links.
     ///
     /// The `Rc<RefCell<...>>` wrapping is needed because that is what's returned by
     /// [`rustc_interface::Queries::expansion()`].
     // FIXME: see if we can get rid of this RefCell somehow
-    crate resolver: Rc<RefCell<interface::BoxedResolver>>,
-    crate resolver_caches: ResolverCaches,
+    pub(crate) resolver: Rc<RefCell<interface::BoxedResolver>>,
+    pub(crate) resolver_caches: ResolverCaches,
     /// Used for normalization.
     ///
     /// Most of this logic is copied from rustc_lint::late.
-    crate param_env: ParamEnv<'tcx>,
+    pub(crate) param_env: ParamEnv<'tcx>,
     /// Later on moved through `clean::Crate` into `cache`
-    crate external_traits: Rc<RefCell<FxHashMap<DefId, clean::TraitWithExtraInfo>>>,
+    pub(crate) external_traits: Rc<RefCell<FxHashMap<DefId, clean::TraitWithExtraInfo>>>,
     /// Used while populating `external_traits` to ensure we don't process the same trait twice at
     /// the same time.
-    crate active_extern_traits: FxHashSet<DefId>,
+    pub(crate) active_extern_traits: FxHashSet<DefId>,
     // The current set of parameter substitutions,
     // for expanding type aliases at the HIR level:
     /// Table `DefId` of type, lifetime, or const parameter -> substituted type, lifetime, or const
-    crate substs: FxHashMap<DefId, clean::SubstParam>,
+    pub(crate) substs: FxHashMap<DefId, clean::SubstParam>,
     /// Table synthetic type parameter for `impl Trait` in argument position -> bounds
-    crate impl_trait_bounds: FxHashMap<ImplTraitParam, Vec<clean::GenericBound>>,
+    pub(crate) impl_trait_bounds: FxHashMap<ImplTraitParam, Vec<clean::GenericBound>>,
     /// Auto-trait or blanket impls processed so far, as `(self_ty, trait_def_id)`.
     // FIXME(eddyb) make this a `ty::TraitRef<'tcx>` set.
-    crate generated_synthetics: FxHashSet<(Ty<'tcx>, DefId)>,
-    crate auto_traits: Vec<DefId>,
+    pub(crate) generated_synthetics: FxHashSet<(Ty<'tcx>, DefId)>,
+    pub(crate) auto_traits: Vec<DefId>,
     /// The options given to rustdoc that could be relevant to a pass.
-    crate render_options: RenderOptions,
+    pub(crate) render_options: RenderOptions,
     /// This same cache is used throughout rustdoc, including in [`crate::html::render`].
-    crate cache: Cache,
+    pub(crate) cache: Cache,
     /// Used by [`clean::inline`] to tell if an item has already been inlined.
-    crate inlined: FxHashSet<ItemId>,
+    pub(crate) inlined: FxHashSet<ItemId>,
     /// Used by `calculate_doc_coverage`.
-    crate output_format: OutputFormat,
+    pub(crate) output_format: OutputFormat,
 }
 
 impl<'tcx> DocContext<'tcx> {
-    crate fn sess(&self) -> &'tcx Session {
+    pub(crate) fn sess(&self) -> &'tcx Session {
         self.tcx.sess
     }
 
-    crate fn with_param_env<T, F: FnOnce(&mut Self) -> T>(&mut self, def_id: DefId, f: F) -> T {
+    pub(crate) fn with_param_env<T, F: FnOnce(&mut Self) -> T>(
+        &mut self,
+        def_id: DefId,
+        f: F,
+    ) -> T {
         let old_param_env = mem::replace(&mut self.param_env, self.tcx.param_env(def_id));
         let ret = f(self);
         self.param_env = old_param_env;
         ret
     }
 
-    crate fn enter_resolver<F, R>(&self, f: F) -> R
+    pub(crate) fn enter_resolver<F, R>(&self, f: F) -> R
     where
         F: FnOnce(&mut resolve::Resolver<'_>) -> R,
     {
@@ -104,7 +108,11 @@ impl<'tcx> DocContext<'tcx> {
 
     /// Call the closure with the given parameters set as
     /// the substitutions for a type alias' RHS.
-    crate fn enter_alias<F, R>(&mut self, substs: FxHashMap<DefId, clean::SubstParam>, f: F) -> R
+    pub(crate) fn enter_alias<F, R>(
+        &mut self,
+        substs: FxHashMap<DefId, clean::SubstParam>,
+        f: F,
+    ) -> R
     where
         F: FnOnce(&mut Self) -> R,
     {
@@ -116,7 +124,7 @@ impl<'tcx> DocContext<'tcx> {
 
     /// Like `hir().local_def_id_to_hir_id()`, but skips calling it on fake DefIds.
     /// (This avoids a slice-index-out-of-bounds panic.)
-    crate fn as_local_hir_id(tcx: TyCtxt<'_>, item_id: ItemId) -> Option<HirId> {
+    pub(crate) fn as_local_hir_id(tcx: TyCtxt<'_>, item_id: ItemId) -> Option<HirId> {
         match item_id {
             ItemId::DefId(real_id) => {
                 real_id.as_local().map(|def_id| tcx.hir().local_def_id_to_hir_id(def_id))
@@ -126,13 +134,13 @@ impl<'tcx> DocContext<'tcx> {
         }
     }
 
-    crate fn with_all_traits(&mut self, f: impl FnOnce(&mut Self, &[DefId])) {
+    pub(crate) fn with_all_traits(&mut self, f: impl FnOnce(&mut Self, &[DefId])) {
         let all_traits = self.resolver_caches.all_traits.take();
         f(self, all_traits.as_ref().expect("`all_traits` are already borrowed"));
         self.resolver_caches.all_traits = all_traits;
     }
 
-    crate fn with_all_trait_impls(&mut self, f: impl FnOnce(&mut Self, &[DefId])) {
+    pub(crate) fn with_all_trait_impls(&mut self, f: impl FnOnce(&mut Self, &[DefId])) {
         let all_trait_impls = self.resolver_caches.all_trait_impls.take();
         f(self, all_trait_impls.as_ref().expect("`all_trait_impls` are already borrowed"));
         self.resolver_caches.all_trait_impls = all_trait_impls;
@@ -143,7 +151,7 @@ impl<'tcx> DocContext<'tcx> {
 ///
 /// If the given `error_format` is `ErrorOutputType::Json` and no `SourceMap` is given, a new one
 /// will be created for the handler.
-crate fn new_handler(
+pub(crate) fn new_handler(
     error_format: ErrorOutputType,
     source_map: Option<Lrc<source_map::SourceMap>>,
     debugging_opts: &DebuggingOptions,
@@ -194,7 +202,7 @@ crate fn new_handler(
 }
 
 /// Parse, resolve, and typecheck the given crate.
-crate fn create_config(
+pub(crate) fn create_config(
     RustdocOptions {
         input,
         crate_name,
@@ -311,7 +319,7 @@ crate fn create_config(
     }
 }
 
-crate fn run_global_ctxt(
+pub(crate) fn run_global_ctxt(
     tcx: TyCtxt<'_>,
     resolver: Rc<RefCell<interface::BoxedResolver>>,
     resolver_caches: ResolverCaches,
@@ -535,7 +543,7 @@ impl<'tcx> Visitor<'tcx> for EmitIgnoredResolutionErrors<'tcx> {
 /// `DefId` or parameter index (`ty::ParamTy.index`) of a synthetic type parameter
 /// for `impl Trait` in argument position.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-crate enum ImplTraitParam {
+pub(crate) enum ImplTraitParam {
     DefId(DefId),
     ParamIndex(u32),
 }

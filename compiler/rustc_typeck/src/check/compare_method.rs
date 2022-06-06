@@ -28,7 +28,7 @@ use super::{potentially_plural_count, FnCtxt, Inherited};
 /// - `impl_m_span`: span to use for reporting errors
 /// - `trait_m`: the method in the trait
 /// - `impl_trait_ref`: the TraitRef corresponding to the trait implementation
-crate fn compare_impl_method<'tcx>(
+pub(crate) fn compare_impl_method<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_m: &ty::AssocItem,
     impl_m_span: Span,
@@ -660,8 +660,24 @@ fn compare_number_of_generics<'tcx>(
                     _ => None,
                 })
                 .collect();
-            let spans = impl_item.generics.spans();
-            let span = spans.primary_span();
+            let spans = if impl_item.generics.params.is_empty() {
+                vec![impl_item.generics.span]
+            } else {
+                impl_item
+                    .generics
+                    .params
+                    .iter()
+                    .filter(|p| {
+                        matches!(
+                            p.kind,
+                            hir::GenericParamKind::Type { .. }
+                                | hir::GenericParamKind::Const { .. }
+                        )
+                    })
+                    .map(|p| p.span)
+                    .collect::<Vec<Span>>()
+            };
+            let span = spans.first().copied();
 
             let mut err = tcx.sess.struct_span_err_with_code(
                 spans,
@@ -1038,7 +1054,7 @@ fn compare_generic_param_kinds<'tcx>(
     Ok(())
 }
 
-crate fn compare_const_impl<'tcx>(
+pub(crate) fn compare_const_impl<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_c: &ty::AssocItem,
     impl_c_span: Span,
@@ -1144,7 +1160,7 @@ crate fn compare_const_impl<'tcx>(
     });
 }
 
-crate fn compare_ty_impl<'tcx>(
+pub(crate) fn compare_ty_impl<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_ty: &ty::AssocItem,
     impl_ty_span: Span,

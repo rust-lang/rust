@@ -26,7 +26,7 @@ use rustc_target::spec::abi::Abi;
 
 use super::lints;
 
-crate fn mir_built<'tcx>(
+pub(crate) fn mir_built<'tcx>(
     tcx: TyCtxt<'tcx>,
     def: ty::WithOptConstParam<LocalDefId>,
 ) -> &'tcx rustc_data_structures::steal::Steal<Body<'tcx>> {

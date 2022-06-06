@@ -500,7 +500,7 @@ impl<'tcx> TypeFolder<'tcx> for ReverseMapper<'tcx> {
 /// Requires that trait definitions have been processed so that we can
 /// elaborate predicates and walk supertraits.
 #[instrument(skip(tcx, predicates), level = "debug")]
-crate fn required_region_bounds<'tcx>(
+pub(crate) fn required_region_bounds<'tcx>(
     tcx: TyCtxt<'tcx>,
     erased_self_ty: Ty<'tcx>,
     predicates: impl Iterator<Item = ty::Predicate<'tcx>>,

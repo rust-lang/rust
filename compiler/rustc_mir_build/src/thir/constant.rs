@@ -8,7 +8,7 @@ use rustc_span::symbol::Symbol;
 use rustc_target::abi::Size;
 
 // FIXME Once valtrees are available, get rid of this function and the query
-crate fn lit_to_const<'tcx>(
+pub(crate) fn lit_to_const<'tcx>(
     tcx: TyCtxt<'tcx>,
     lit_input: LitToConstInput<'tcx>,
 ) -> Result<ty::Const<'tcx>, LitToConstError> {

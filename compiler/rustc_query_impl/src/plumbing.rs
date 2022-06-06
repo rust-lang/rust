@@ -129,7 +129,7 @@ impl<'tcx> QueryCtxt<'tcx> {
         QueryCtxt { tcx, queries }
     }
 
-    crate fn on_disk_cache(self) -> Option<&'tcx on_disk_cache::OnDiskCache<'tcx>> {
+    pub(crate) fn on_disk_cache(self) -> Option<&'tcx on_disk_cache::OnDiskCache<'tcx>> {
         self.queries.on_disk_cache.as_ref()
     }
 

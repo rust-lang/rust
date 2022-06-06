@@ -58,6 +58,7 @@ pub(crate) use llvm::codegen_llvm_intrinsic_call;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_target::abi::InitKind;
 
 use crate::prelude::*;
 use cranelift_codegen::ir::AtomicRmwOp;
@@ -217,35 +218,42 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     instance: Instance<'tcx>,
     args: &[mir::Operand<'tcx>],
-    destination: Option<(CPlace<'tcx>, BasicBlock)>,
+    destination: CPlace<'tcx>,
+    target: Option<BasicBlock>,
     source_info: mir::SourceInfo,
 ) {
     let intrinsic = fx.tcx.item_name(instance.def_id());
     let substs = instance.substs;
 
-    let ret = match destination {
-        Some((place, _)) => place,
-        None => {
-            // Insert non returning intrinsics here
-            match intrinsic {
-                sym::abort => {
-                    fx.bcx.ins().trap(TrapCode::User(0));
-                }
-                sym::transmute => {
-                    crate::base::codegen_panic(fx, "Transmuting to uninhabited type.", source_info);
-                }
-                _ => unimplemented!("unsupported instrinsic {}", intrinsic),
+    let target = if let Some(target) = target {
+        target
+    } else {
+        // Insert non returning intrinsics here
+        match intrinsic {
+            sym::abort => {
+                fx.bcx.ins().trap(TrapCode::User(0));
             }
-            return;
+            sym::transmute => {
+                crate::base::codegen_panic(fx, "Transmuting to uninhabited type.", source_info);
+            }
+            _ => unimplemented!("unsupported instrinsic {}", intrinsic),
         }
+        return;
     };
 
     if intrinsic.as_str().starts_with("simd_") {
-        self::simd::codegen_simd_intrinsic_call(fx, intrinsic, substs, args, ret, source_info.span);
-        let ret_block = fx.get_block(destination.expect("SIMD intrinsics don't diverge").1);
+        self::simd::codegen_simd_intrinsic_call(
+            fx,
+            intrinsic,
+            substs,
+            args,
+            destination,
+            source_info.span,
+        );
+        let ret_block = fx.get_block(target);
         fx.bcx.ins().jump(ret_block, &[]);
-    } else if codegen_float_intrinsic_call(fx, intrinsic, args, ret) {
-        let ret_block = fx.get_block(destination.expect("Float intrinsics don't diverge").1);
+    } else if codegen_float_intrinsic_call(fx, intrinsic, args, destination) {
+        let ret_block = fx.get_block(target);
         fx.bcx.ins().jump(ret_block, &[]);
     } else {
         codegen_regular_intrinsic_call(
@@ -254,9 +262,9 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
             intrinsic,
             substs,
             args,
-            ret,
-            source_info,
             destination,
+            Some(target),
+            source_info,
         );
     }
 }
@@ -339,8 +347,8 @@ fn codegen_regular_intrinsic_call<'tcx>(
     substs: SubstsRef<'tcx>,
     args: &[mir::Operand<'tcx>],
     ret: CPlace<'tcx>,
+    destination: Option<BasicBlock>,
     source_info: mir::SourceInfo,
-    destination: Option<(CPlace<'tcx>, BasicBlock)>,
 ) {
     let usize_layout = fx.layout_of(fx.tcx.types.usize);
 
@@ -664,7 +672,12 @@ fn codegen_regular_intrinsic_call<'tcx>(
                 return;
             }
 
-            if intrinsic == sym::assert_zero_valid && !layout.might_permit_raw_init(fx, /*zero:*/ true) {
+            if intrinsic == sym::assert_zero_valid
+                && !layout.might_permit_raw_init(
+                    fx,
+                    InitKind::Zero,
+                    fx.tcx.sess.opts.debugging_opts.strict_init_checks) {
+
                 with_no_trimmed_paths!({
                     crate::base::codegen_panic(
                         fx,
@@ -675,7 +688,12 @@ fn codegen_regular_intrinsic_call<'tcx>(
                 return;
             }
 
-            if intrinsic == sym::assert_uninit_valid && !layout.might_permit_raw_init(fx, /*zero:*/ false) {
+            if intrinsic == sym::assert_uninit_valid
+                && !layout.might_permit_raw_init(
+                    fx,
+                    InitKind::Uninit,
+                    fx.tcx.sess.opts.debugging_opts.strict_init_checks) {
+
                 with_no_trimmed_paths!({
                     crate::base::codegen_panic(
                         fx,
@@ -761,7 +779,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
                     if fx.tcx.is_compiler_builtins(LOCAL_CRATE) {
                         // special case for compiler-builtins to avoid having to patch it
                         crate::trap::trap_unimplemented(fx, "128bit atomics not yet supported");
-                        let ret_block = fx.get_block(destination.unwrap().1);
+                        let ret_block = fx.get_block(destination.unwrap());
                         fx.bcx.ins().jump(ret_block, &[]);
                         return;
                     } else {
@@ -789,7 +807,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
                     if fx.tcx.is_compiler_builtins(LOCAL_CRATE) {
                         // special case for compiler-builtins to avoid having to patch it
                         crate::trap::trap_unimplemented(fx, "128bit atomics not yet supported");
-                        let ret_block = fx.get_block(destination.unwrap().1);
+                        let ret_block = fx.get_block(destination.unwrap());
                         fx.bcx.ins().jump(ret_block, &[]);
                         return;
                     } else {
@@ -1130,6 +1148,6 @@ fn codegen_regular_intrinsic_call<'tcx>(
         };
     }
 
-    let ret_block = fx.get_block(destination.unwrap().1);
+    let ret_block = fx.get_block(destination.unwrap());
     fx.bcx.ins().jump(ret_block, &[]);
 }

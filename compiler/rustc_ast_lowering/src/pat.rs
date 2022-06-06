@@ -12,11 +12,11 @@ use rustc_span::symbol::Ident;
 use rustc_span::{source_map::Spanned, Span};
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
-    crate fn lower_pat(&mut self, pattern: &Pat) -> &'hir hir::Pat<'hir> {
+    pub(crate) fn lower_pat(&mut self, pattern: &Pat) -> &'hir hir::Pat<'hir> {
         self.arena.alloc(self.lower_pat_mut(pattern))
     }
 
-    crate fn lower_pat_mut(&mut self, mut pattern: &Pat) -> hir::Pat<'hir> {
+    pub(crate) fn lower_pat_mut(&mut self, mut pattern: &Pat) -> hir::Pat<'hir> {
         ensure_sufficient_stack(|| {
             // loop here to avoid recursion
             let node = loop {
@@ -290,7 +290,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     /// Emit a friendly error for extra `..` patterns in a tuple/tuple struct/slice pattern.
-    crate fn ban_extra_rest_pat(&self, sp: Span, prev_sp: Span, ctx: &str) {
+    pub(crate) fn ban_extra_rest_pat(&self, sp: Span, prev_sp: Span, ctx: &str) {
         self.diagnostic()
             .struct_span_err(sp, &format!("`..` can only be used once per {} pattern", ctx))
             .span_label(sp, &format!("can only be used once per {} pattern", ctx))

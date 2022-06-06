@@ -620,7 +620,6 @@ declare_lint_pass!(Loops => [
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Loops {
-    #[allow(clippy::too_many_lines)]
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         let for_loop = higher::ForLoop::hir(expr);
         if let Some(higher::ForLoop {

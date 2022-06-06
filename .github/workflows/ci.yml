@@ -98,9 +98,6 @@ jobs:
       - name: install WIX
         run: src/ci/scripts/install-wix.sh
         if: success() && !env.SKIP_JOB
-      - name: ensure the build happens on a partition with enough space
-        run: src/ci/scripts/symlink-build-dir.sh
-        if: success() && !env.SKIP_JOB
       - name: disable git crlf conversion
         run: src/ci/scripts/disable-git-crlf-conversion.sh
         if: success() && !env.SKIP_JOB
@@ -496,9 +493,6 @@ jobs:
       - name: install WIX
         run: src/ci/scripts/install-wix.sh
         if: success() && !env.SKIP_JOB
-      - name: ensure the build happens on a partition with enough space
-        run: src/ci/scripts/symlink-build-dir.sh
-        if: success() && !env.SKIP_JOB
       - name: disable git crlf conversion
         run: src/ci/scripts/disable-git-crlf-conversion.sh
         if: success() && !env.SKIP_JOB
@@ -608,9 +602,6 @@ jobs:
         if: success() && !env.SKIP_JOB
       - name: install WIX
         run: src/ci/scripts/install-wix.sh
-        if: success() && !env.SKIP_JOB
-      - name: ensure the build happens on a partition with enough space
-        run: src/ci/scripts/symlink-build-dir.sh
         if: success() && !env.SKIP_JOB
       - name: disable git crlf conversion
         run: src/ci/scripts/disable-git-crlf-conversion.sh

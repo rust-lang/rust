@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/issue-17758.rs:7:9
+  --> $DIR/issue-17758.rs:11:9
    |
 LL | trait Foo<'a> {
    |           -- lifetime `'a` defined here
