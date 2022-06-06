@@ -8,20 +8,27 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 // Adds a label to a loop.
 //
 // ```
-// loop$0 {
-//     break;
-//     continue;
+// fn main() {
+//     loop$0 {
+//         break;
+//         continue;
+//     }
 // }
 // ```
 // ->
 // ```
-// 'loop: loop {
-//     break 'loop;
-//     continue 'loop;
+// fn main() {
+//     'loop: loop {
+//         break 'loop;
+//         continue 'loop;
+//     }
 // }
 // ```
 pub(crate) fn add_label_to_loop(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let loop_expr = ctx.find_node_at_offset::<ast::LoopExpr>()?;
+    if loop_expr.label().is_some() {
+        return None;
+    }
     let loop_body = loop_expr.loop_body().and_then(|it| it.stmt_list());
     let mut related_exprs = vec![];
     related_exprs.push(ast::Expr::LoopExpr(loop_expr.clone()));
@@ -53,7 +60,7 @@ pub(crate) fn add_label_to_loop(acc: &mut Assists, ctx: &AssistContext) -> Optio
                             builder.insert(loop_token.text_range().start(), "'loop: ")
                         }
                     }
-                    _ => todo!(),
+                    _ => {}
                 }
             }
         },
@@ -62,7 +69,7 @@ pub(crate) fn add_label_to_loop(acc: &mut Assists, ctx: &AssistContext) -> Optio
 
 #[cfg(test)]
 mod tests {
-    use crate::tests::check_assist;
+    use crate::tests::{check_assist, check_assist_not_applicable};
 
     use super::*;
 
@@ -72,16 +79,16 @@ mod tests {
             add_label_to_loop,
             r#"
 fn main() {
-    loop$0 { 
-        break; 
-        continue; 
+    loop$0 {
+        break;
+        continue;
     }
 }"#,
             r#"
 fn main() {
-    'loop: loop { 
-        break 'loop; 
-        continue 'loop; 
+    'loop: loop {
+        break 'loop;
+        continue 'loop;
     }
 }"#,
         );
@@ -93,9 +100,9 @@ fn main() {
             add_label_to_loop,
             r#"
 fn main() {
-    loop$0 { 
-        break; 
-        continue; 
+    loop$0 {
+        break;
+        continue;
         loop {
             break;
             continue;
@@ -104,9 +111,9 @@ fn main() {
 }"#,
             r#"
 fn main() {
-    'loop: loop { 
-        break 'loop; 
-        continue 'loop; 
+    'loop: loop {
+        break 'loop;
+        continue 'loop;
         loop {
             break;
             continue;
@@ -122,9 +129,9 @@ fn main() {
             add_label_to_loop,
             r#"
 fn main() {
-    loop { 
-        break; 
-        continue; 
+    loop {
+        break;
+        continue;
         loop$0 {
             break;
             continue;
@@ -133,13 +140,27 @@ fn main() {
 }"#,
             r#"
 fn main() {
-    loop { 
-        break; 
-        continue; 
+    loop {
+        break;
+        continue;
         'loop: loop {
             break 'loop;
             continue 'loop;
         }
+    }
+}"#,
+        );
+    }
+
+    #[test]
+    fn do_not_add_label_if_exists() {
+        check_assist_not_applicable(
+            add_label_to_loop,
+            r#"
+fn main() {
+    'loop: loop$0 {
+        break 'loop;
+        continue 'loop;
     }
 }"#,
         );

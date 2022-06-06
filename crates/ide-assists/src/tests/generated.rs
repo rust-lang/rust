@@ -103,6 +103,29 @@ impl Trait<u32> for () {
 }
 
 #[test]
+fn doctest_add_label_to_loop() {
+    check_doc_test(
+        "add_label_to_loop",
+        r#####"
+fn main() {
+    loop$0 {
+        break;
+        continue;
+    }
+}
+"#####,
+        r#####"
+fn main() {
+    'loop: loop {
+        break 'loop;
+        continue 'loop;
+    }
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_add_lifetime_to_type() {
     check_doc_test(
         "add_lifetime_to_type",
