@@ -1,5 +1,7 @@
 // run-rustfix
 
+#![feature(lint_reasons)]
+
 #[warn(clippy::all, clippy::needless_borrow)]
 #[allow(unused_variables, clippy::unnecessary_mut_passed)]
 fn main() {
@@ -96,3 +98,9 @@ trait Trait {}
 impl<'a> Trait for &'a str {}
 
 fn h(_: &dyn Trait) {}
+
+fn check_expect_suppression() {
+    let a = 5;
+    #[expect(clippy::needless_borrow)]
+    let _ = x(&&a);
+}
