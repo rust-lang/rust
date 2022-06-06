@@ -73,8 +73,12 @@ pub fn run_tests(config: Config) {
             while let Some(path) = todo.pop_front() {
                 if path.is_dir() {
                     // Enqueue everything inside this directory.
-                    for entry in std::fs::read_dir(path).unwrap() {
-                        todo.push_back(entry.unwrap().path());
+                    // We want it sorted, to have some control over scheduling of slow tests.
+                    let mut entries =
+                        std::fs::read_dir(path).unwrap().collect::<Result<Vec<_>, _>>().unwrap();
+                    entries.sort_by_key(|e| e.file_name());
+                    for entry in entries {
+                        todo.push_back(entry.path());
                     }
                 } else if path.extension().map(|ext| ext == "rs").unwrap_or(false) {
                     // Forward .rs files to the test workers.
