@@ -83,5 +83,6 @@ module.exports = {
         "no-floating-decimal": "error",
         "no-implicit-globals": "error",
         "no-implied-eval": "error",
+        "no-label-var": "error",
     }
 };
