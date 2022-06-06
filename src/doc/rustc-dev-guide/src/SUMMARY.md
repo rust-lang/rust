@@ -138,10 +138,11 @@
     - [Two-phase-borrows](./borrow_check/two_phase_borrows.md)
 - [Parameter Environments](./param_env.md)
 - [Errors and Lints](diagnostics.md)
-    - [Creating Errors With SessionDiagnostic](./diagnostics/sessiondiagnostic.md)
+    - [Diagnostic and subdiagnostic structs](./diagnostics/diagnostic-structs.md)
+    - [Translation](./diagnostics/translation.md)
     - [`LintStore`](./diagnostics/lintstore.md)
-    - [Diagnostic Codes](./diagnostics/diagnostic-codes.md)
-    - [Diagnostic Items](./diagnostics/diagnostic-items.md)
+    - [Diagnostic codes](./diagnostics/diagnostic-codes.md)
+    - [Diagnostic items](./diagnostics/diagnostic-items.md)
     - [`ErrorGuaranteed`](./diagnostics/error-guaranteed.md)
 
 # MIR to Binaries

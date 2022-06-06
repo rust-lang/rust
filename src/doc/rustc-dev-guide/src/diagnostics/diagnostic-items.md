@@ -76,7 +76,7 @@ In rustc, diagnostic items are looked up via [`Symbol`]s from inside the
 [`rustc_span::symbol::sym`] module. These can then be mapped to [`DefId`]s
 using [`TyCtxt::get_diagnostic_item()`] or checked if they match a [`DefId`]
 using [`TyCtxt::is_diagnostic_item()`]. When mapping from a diagnostic item to
-a [`DefId`] the method will return a `Option<DefId>`. This can be `None` if
+a [`DefId`], the method will return a `Option<DefId>`. This can be `None` if
 either the symbol isn't a diagnostic item or the type is not registered, for
 instance when compiling with `#[no_std]`. All following examples are based on
 [`DefId`]s and their usage.

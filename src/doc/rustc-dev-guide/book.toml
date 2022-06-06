@@ -38,3 +38,4 @@ warning-policy = "error"
 
 [output.html.redirect]
 "/compiletest.html" = "tests/compiletest.html"
+"/diagnostics/sessiondiagnostic.html" = "diagnostics/diagnostic-structs.html"
