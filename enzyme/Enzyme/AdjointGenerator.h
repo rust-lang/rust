@@ -3914,7 +3914,7 @@ public:
         auto rule = [&](Value *dif0, Value *dif1, Value *dif2) {
           Value *dif = Builder2.CreateFAdd(Builder2.CreateFMul(op0, dif1),
                                            Builder2.CreateFMul(op1, dif0));
-          return Builder2.CreateFAdd(dif, dif0);
+          return Builder2.CreateFAdd(dif, dif2);
         };
 
         Value *dif =
