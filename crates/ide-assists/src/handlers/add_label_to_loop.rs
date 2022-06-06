@@ -1,24 +1,23 @@
 use ide_db::syntax_helpers::node_ext::for_each_break_and_continue_expr;
 use syntax::ast::{self, AstNode, HasLoopBody};
-use syntax::T;
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 
-// Assist: add_lifetime_to_type
+// Assist: add_label_to_loop
 //
-// Adds a new lifetime to a struct, enum or union.
+// Adds a label to a loop.
 //
 // ```
-// struct Point {
-//     x: &u32,
-//     y: u32,
+// loop$0 {
+//     break;
+//     continue;
 // }
 // ```
 // ->
 // ```
-// struct Point<'a> {
-//     x: &'a u32,
-//     y: u32,
+// 'loop: loop {
+//     break 'loop;
+//     continue 'loop;
 // }
 // ```
 pub(crate) fn add_label_to_loop(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
@@ -31,7 +30,6 @@ pub(crate) fn add_label_to_loop(acc: &mut Assists, ctx: &AssistContext) -> Optio
             related_exprs.push(expr)
         }
     });
-    dbg!(loop_expr.syntax().text_range());
 
     acc.add(
         AssistId("add_label_to_loop", AssistKind::Generate),
@@ -44,24 +42,23 @@ pub(crate) fn add_label_to_loop(acc: &mut Assists, ctx: &AssistContext) -> Optio
                         if let Some(break_token) = break_expr.break_token() {
                             builder.insert(break_token.text_range().end(), " 'loop")
                         }
-                    },
+                    }
                     ast::Expr::ContinueExpr(continue_expr) => {
                         if let Some(continue_token) = continue_expr.continue_token() {
                             builder.insert(continue_token.text_range().end(), " 'loop")
                         }
-                    },
+                    }
                     ast::Expr::LoopExpr(loop_expr) => {
                         if let Some(loop_token) = loop_expr.loop_token() {
                             builder.insert(loop_token.text_range().start(), "'loop: ")
                         }
-                    },
-                    _ => todo!()
+                    }
+                    _ => todo!(),
                 }
             }
         },
     )
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -90,4 +87,61 @@ fn main() {
         );
     }
 
+    #[test]
+    fn add_label_to_outer_loop() {
+        check_assist(
+            add_label_to_loop,
+            r#"
+fn main() {
+    loop$0 { 
+        break; 
+        continue; 
+        loop {
+            break;
+            continue;
+        }
+    }
+}"#,
+            r#"
+fn main() {
+    'loop: loop { 
+        break 'loop; 
+        continue 'loop; 
+        loop {
+            break;
+            continue;
+        }
+    }
+}"#,
+        );
+    }
+
+    #[test]
+    fn add_label_to_inner_loop() {
+        check_assist(
+            add_label_to_loop,
+            r#"
+fn main() {
+    loop { 
+        break; 
+        continue; 
+        loop$0 {
+            break;
+            continue;
+        }
+    }
+}"#,
+            r#"
+fn main() {
+    loop { 
+        break; 
+        continue; 
+        'loop: loop {
+            break 'loop;
+            continue 'loop;
+        }
+    }
+}"#,
+        );
+    }
 }
