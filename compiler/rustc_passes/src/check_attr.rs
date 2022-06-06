@@ -317,14 +317,15 @@ impl CheckAttrVisitor<'_> {
 
             Target::Mod | Target::ForeignMod | Target::Impl | Target::Trait => {
                 self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
-                    lint.build("`#[no_coverage]` cannot be done recursively and must be applied to functions directly").emit();
+                    lint.build("`#[no_coverage]` does not propagate into items and must be applied to the contained functions directly").emit();
                 });
                 true
             }
 
             Target::Expression | Target::Statement | Target::Arm => {
                 self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
-                    lint.build("`#[no_coverage]` can only be applied at the function level, not on code directly").emit();
+                    lint.build("`#[no_coverage]` may only be applied to function definitions")
+                        .emit();
                 });
                 true
             }
