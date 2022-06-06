@@ -20,7 +20,6 @@ use rustc_errors::DiagnosticId;
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, DefKind, LifetimeRes, PartialRes, PerNS};
 use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
-use rustc_hir::definitions::DefPathData;
 use rustc_hir::{PrimTy, TraitCandidate};
 use rustc_index::vec::Idx;
 use rustc_middle::ty::DefIdTree;
@@ -1418,31 +1417,20 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     }
 
     #[tracing::instrument(level = "debug", skip(self))]
-    fn create_fresh_lifetime(
-        &mut self,
-        id: NodeId,
-        ident: Ident,
-        item_node_id: NodeId,
-    ) -> LifetimeRes {
+    fn create_fresh_lifetime(&mut self, id: NodeId, ident: Ident, binder: NodeId) -> LifetimeRes {
         debug_assert_eq!(ident.name, kw::UnderscoreLifetime);
         debug!(?ident.span);
-        let item_def_id = self.r.local_def_id(item_node_id);
-        let def_node_id = self.r.next_node_id();
-        let def_id = self.r.create_def(
-            item_def_id,
-            def_node_id,
-            DefPathData::LifetimeNs(kw::UnderscoreLifetime),
-            self.parent_scope.expansion.to_expn_id(),
-            ident.span,
-        );
-        debug!(?def_id);
 
-        let res = LifetimeRes::Fresh { param: def_id, binder: item_node_id };
-        self.r.extra_lifetime_params_map.entry(item_node_id).or_insert_with(Vec::new).push((
-            ident,
-            def_node_id,
-            res,
-        ));
+        // Leave the responsibility to create the `LocalDefId` to lowering.
+        let param = self.r.next_node_id();
+        let res = LifetimeRes::Fresh { param, binder };
+
+        // Record the created lifetime parameter so lowering can pick it up and add it to HIR.
+        self.r
+            .extra_lifetime_params_map
+            .entry(binder)
+            .or_insert_with(Vec::new)
+            .push((ident, param, res));
         res
     }
 

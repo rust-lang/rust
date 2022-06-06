@@ -732,7 +732,9 @@ pub enum LifetimeRes {
     /// Created a generic parameter for an anonymous lifetime.
     Fresh {
         /// Id of the generic parameter that introduced it.
-        param: LocalDefId,
+        ///
+        /// Creating the associated `LocalDefId` is the responsibility of lowering.
+        param: NodeId,
         /// Id of the introducing place. See `Param`.
         binder: NodeId,
     },

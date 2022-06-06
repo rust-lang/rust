@@ -1386,16 +1386,19 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let mut params: SmallVec<[hir::GenericParam<'hir>; 4]> =
             self.lower_generic_params_mut(&generics.params).collect();
+
+        // Introduce extra lifetimes if late resolution tells us to.
+        let extra_lifetimes = self.resolver.take_extra_lifetime_params(parent_node_id);
+        params.extend(extra_lifetimes.into_iter().filter_map(|(ident, node_id, res)| {
+            self.lifetime_res_to_generic_param(ident, node_id, res)
+        }));
+
         let has_where_clause_predicates = !generics.where_clause.predicates.is_empty();
         let where_clause_span = self.lower_span(generics.where_clause.span);
         let span = self.lower_span(generics.span);
         let res = f(self);
 
-        let extra_lifetimes = self.resolver.take_extra_lifetime_params(parent_node_id);
         let impl_trait_defs = std::mem::take(&mut self.impl_trait_defs);
-        params.extend(extra_lifetimes.into_iter().filter_map(|(ident, node_id, res)| {
-            self.lifetime_res_to_generic_param(ident, node_id, res)
-        }));
         params.extend(impl_trait_defs.into_iter());
 
         let impl_trait_bounds = std::mem::take(&mut self.impl_trait_bounds);

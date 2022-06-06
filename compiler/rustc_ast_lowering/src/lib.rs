@@ -731,7 +731,17 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             LifetimeRes::Param { .. } => {
                 (hir::ParamName::Plain(ident), hir::LifetimeParamKind::Explicit)
             }
-            LifetimeRes::Fresh { .. } => (hir::ParamName::Fresh, hir::LifetimeParamKind::Elided),
+            LifetimeRes::Fresh { param, .. } => {
+                // Late resolution delegates to us the creation of the `LocalDefId`.
+                let _def_id = self.create_def(
+                    self.current_hir_id_owner,
+                    param,
+                    DefPathData::LifetimeNs(kw::UnderscoreLifetime),
+                );
+                debug!(?_def_id);
+
+                (hir::ParamName::Fresh, hir::LifetimeParamKind::Elided)
+            }
             LifetimeRes::Static | LifetimeRes::Error => return None,
             res => panic!(
                 "Unexpected lifetime resolution {:?} for {:?} at {:?}",
@@ -1814,8 +1824,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 }
                 hir::LifetimeName::Param(param, p_name)
             }
-            LifetimeRes::Fresh { mut param, binder } => {
+            LifetimeRes::Fresh { param, binder } => {
                 debug_assert_eq!(ident.name, kw::UnderscoreLifetime);
+                let mut param = self.local_def_id(param);
                 if let Some(mut captured_lifetimes) = self.captured_lifetimes.take() {
                     if !captured_lifetimes.binders_to_ignore.contains(&binder) {
                         match captured_lifetimes.captures.entry(param) {
