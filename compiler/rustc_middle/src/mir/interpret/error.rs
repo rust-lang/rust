@@ -428,7 +428,7 @@ pub enum UnsupportedOpInfo {
     /// Encountered a pointer where we needed raw bytes.
     ReadPointerAsBytes,
     /// Overwriting parts of a pointer; the resulting state cannot be represented in our
-    /// `Allocation` data structure.
+    /// `Allocation` data structure. See <https://github.com/rust-lang/miri/issues/2181>.
     PartialPointerOverwrite(Pointer<AllocId>),
     //
     // The variants below are only reachable from CTFE/const prop, miri will never emit them.

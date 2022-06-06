@@ -1,6 +1,5 @@
 // stderr-per-bitwidth
 #![feature(never_type)]
-#![allow(const_err)] // make sure we cannot allow away the errors tested here
 
 use std::mem;
 
@@ -25,10 +24,12 @@ const BAD_ENUM: Enum = unsafe { mem::transmute(1usize) };
 //~^ ERROR is undefined behavior
 
 const BAD_ENUM_PTR: Enum = unsafe { mem::transmute(&1) };
-//~^ ERROR is undefined behavior
+//~^ ERROR any use of this value will cause an error
+//~| WARN this was previously accepted by the compiler but is being phased out
 
 const BAD_ENUM_WRAPPED: Wrap<Enum> = unsafe { mem::transmute(&1) };
-//~^ ERROR is undefined behavior
+//~^ ERROR any use of this value will cause an error
+//~| WARN this was previously accepted by the compiler but is being phased out
 
 // # simple enum with discriminant 2
 
@@ -42,10 +43,12 @@ enum Enum2 {
 const BAD_ENUM2: Enum2 = unsafe { mem::transmute(0usize) };
 //~^ ERROR is undefined behavior
 const BAD_ENUM2_PTR: Enum2 = unsafe { mem::transmute(&0) };
-//~^ ERROR is undefined behavior
+//~^ ERROR any use of this value will cause an error
+//~| WARN this was previously accepted by the compiler but is being phased out
 // something wrapping the enum so that we test layout first, not enum
 const BAD_ENUM2_WRAPPED: Wrap<Enum2> = unsafe { mem::transmute(&0) };
-//~^ ERROR is undefined behavior
+//~^ ERROR any use of this value will cause an error
+//~| WARN this was previously accepted by the compiler but is being phased out
 
 // Undef enum discriminant.
 #[repr(C)]
@@ -58,7 +61,8 @@ const BAD_ENUM2_UNDEF : Enum2 = unsafe { MaybeUninit { uninit: () }.init };
 
 // Pointer value in an enum with a niche that is not just 0.
 const BAD_ENUM2_OPTION_PTR: Option<Enum2> = unsafe { mem::transmute(&0) };
-//~^ ERROR is undefined behavior
+//~^ ERROR any use of this value will cause an error
+//~| WARN this was previously accepted by the compiler but is being phased out
 
 // # valid discriminant for uninhabited variant
 
