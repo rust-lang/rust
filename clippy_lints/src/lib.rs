@@ -324,7 +324,6 @@ mod panic_unimplemented;
 mod partialeq_ne_impl;
 mod partialeq_to_none;
 mod pass_by_ref_or_value;
-mod path_buf_push_overwrite;
 mod pattern_type_mismatch;
 mod precedence;
 mod ptr;
@@ -727,7 +726,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(assertions_on_constants::AssertionsOnConstants));
     store.register_late_pass(|| Box::new(assertions_on_result_states::AssertionsOnResultStates));
     store.register_late_pass(|| Box::new(transmuting_null::TransmutingNull));
-    store.register_late_pass(|| Box::new(path_buf_push_overwrite::PathBufPushOverwrite));
     store.register_late_pass(|| Box::new(inherent_to_string::InherentToString));
     let max_trait_bounds = conf.max_trait_bounds;
     store.register_late_pass(move || Box::new(trait_bounds::TraitBounds::new(max_trait_bounds)));

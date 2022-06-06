@@ -63,6 +63,7 @@ mod option_map_or_none;
 mod option_map_unwrap_or;
 mod or_fun_call;
 mod or_then_unwrap;
+mod path_buf_push_overwrite;
 mod search_is_some;
 mod single_char_add_str;
 mod single_char_insert_string;
@@ -2701,6 +2702,38 @@ declare_clippy_lint! {
     "nonsensical combination of options for opening a file"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    ///* Checks for [push](https://doc.rust-lang.org/std/path/struct.PathBuf.html#method.push)
+    /// calls on `PathBuf` that can cause overwrites.
+    ///
+    /// ### Why is this bad?
+    /// Calling `push` with a root path at the start can overwrite the
+    /// previous defined path.
+    ///
+    /// ### Example
+    /// ```rust
+    /// use std::path::PathBuf;
+    ///
+    /// let mut x = PathBuf::from("/foo");
+    /// x.push("/bar");
+    /// assert_eq!(x, PathBuf::from("/bar"));
+    /// ```
+    /// Could be written:
+    ///
+    /// ```rust
+    /// use std::path::PathBuf;
+    ///
+    /// let mut x = PathBuf::from("/foo");
+    /// x.push("bar");
+    /// assert_eq!(x, PathBuf::from("/foo/bar"));
+    /// ```
+    #[clippy::version = "1.36.0"]
+    pub PATH_BUF_PUSH_OVERWRITE,
+    nursery,
+    "calling `push` with file system root on `PathBuf` can overwrite it"
+}
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Option<RustcVersion>,
@@ -2814,6 +2847,7 @@ impl_lint_pass!(Methods => [
     MAP_ERR_IGNORE,
     MUT_MUTEX_LOCK,
     NONSENSICAL_OPEN_OPTIONS,
+    PATH_BUF_PUSH_OVERWRITE,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -3198,6 +3232,9 @@ impl Methods {
                     if !bind_instead_of_map::ResultOrElseErrInfo::check(cx, expr, recv, arg) {
                         unnecessary_lazy_eval::check(cx, expr, recv, arg, "or");
                     }
+                },
+                ("push", [arg]) => {
+                    path_buf_push_overwrite::check(cx, expr, arg);
                 },
                 ("splitn" | "rsplitn", [count_arg, pat_arg]) => {
                     if let Some((Constant::Int(count), _)) = constant(cx, cx.typeck_results(), count_arg) {
