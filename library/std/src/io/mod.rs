@@ -988,7 +988,7 @@ pub trait Read {
     where
         Self: Sized,
     {
-        Take { inner: self, limit, cursor: 0 }
+        Take { inner: self, limit, cursor: 0, seek_once: false }
     }
 }
 
@@ -2409,6 +2409,7 @@ pub struct Take<T> {
     inner: T,
     limit: u64,
     cursor: u64,
+    seek_once: bool,
 }
 
 impl<T> Take<T> {
@@ -2640,8 +2641,18 @@ impl<T: BufRead> BufRead for Take<T> {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Seek> Seek for Take<T> {
     fn seek(&mut self, pos: SeekFrom) -> Result<u64> {
+        if !self.seek_once {
+            let old_pos = self.inner.stream_position()?;
+            let end = self.inner.seek(SeekFrom::End(0))?;
+            if end != old_pos {
+                self.inner.seek(SeekFrom::Start(old_pos))?;
+            }
+            self.seek_once = true;
+            self.limit = cmp::min(self.limit, end - old_pos);
+        }
         let stream_end = self.cursor + self.limit;
         let position = match pos {
             SeekFrom::Start(k) => Some(cmp::min(k, stream_end)),
