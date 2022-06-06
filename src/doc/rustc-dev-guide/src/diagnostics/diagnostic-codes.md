@@ -1,4 +1,4 @@
-# Diagnostic Codes
+# Diagnostic codes
 We generally try to assign each error message a unique code like `E0123`. These
 codes are defined in the compiler in the `diagnostics.rs` files found in each
 crate, which basically consist of macros. The codes come in two varieties: those
@@ -60,7 +60,7 @@ To actually issue the error, you can use the `struct_span_err!` macro:
 struct_span_err!(self.tcx.sess, // some path to the session here
                  span, // whatever span in the source you want
                  E0592, // your new error code
-                 &format!("text of the error"))
+                 fluent::example::an_error_message)
     .emit() // actually issue the error
 ```
 
@@ -69,8 +69,8 @@ call `.emit()`:
 
 ```rust
 struct_span_err!(...)
-    .span_label(another_span, "something to label in the source")
-    .span_note(another_span, "some separate note, probably avoid these")
+    .span_label(another_span, fluent::example::example_label)
+    .span_note(another_span, fluent::example::separate_note)
     .emit_()
 ```
 

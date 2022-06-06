@@ -1,5 +1,4 @@
 # `ErrorGuaranteed`
-
 The previous sections have been about the error message that a user of the
 compiler sees. But emitting an error can also have a second important side
 effect within the compiler source code: it generates an
@@ -19,7 +18,6 @@ There are some important considerations about the usage of `ErrorGuaranteed`:
   Thus, you should not rely on
   `ErrorGuaranteed` when deciding whether to emit an error, or what kind of error
   to emit.
-
 * `ErrorGuaranteed` should not be used to indicate that a compilation _will
   emit_ an error in the future. It should be used to indicate that an error
   _has already been_ emitted -- that is, the [`emit()`][emit] function has
@@ -29,7 +27,6 @@ There are some important considerations about the usage of `ErrorGuaranteed`:
 
 Thankfully, in most cases, it should be statically impossible to abuse
 `ErrorGuaranteed`.
-
 
 [errorguar]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/struct.ErrorGuaranteed.html
 [rerrors]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/index.html
