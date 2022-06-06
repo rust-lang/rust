@@ -255,6 +255,7 @@ details.undocumented > summary::before {
 	color: #000;
 }
 
+.stab.empty-impl { background: #FFF5D6; border-color: #FFC600; }
 .stab.unstable { background: #FFF5D6; border-color: #FFC600; }
 .stab.deprecated { background: #ffc4c4; border-color: #db7b7b; }
 .stab.portability { background: #F3DFFF; border-color: #b07bdb; }

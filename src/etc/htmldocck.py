@@ -94,6 +94,10 @@ There are a number of supported commands:
   in the specified file. The number of occurrences must match the given
   count.
 
+* `@count PATH XPATH TEXT COUNT` checks for the occurrence of the given XPath
+  with the given text in the specified file. The number of occurrences must
+  match the given count.
+
 * `@snapshot NAME PATH XPATH` creates a snapshot test named NAME.
   A snapshot test captures a subtree of the DOM, at the location
   determined by the XPath, and compares it to a pre-recorded value
@@ -382,9 +386,10 @@ def check_tree_attr(tree, path, attr, pat, regexp):
     return ret
 
 
-def check_tree_text(tree, path, pat, regexp):
+# Returns the number of occurences matching the regex (`regexp`) and the text (`pat`).
+def check_tree_text(tree, path, pat, regexp, stop_at_first):
     path = normalize_xpath(path)
-    ret = False
+    match_count = 0
     try:
         for e in tree.findall(path):
             try:
@@ -392,13 +397,14 @@ def check_tree_text(tree, path, pat, regexp):
             except KeyError:
                 continue
             else:
-                ret = check_string(value, pat, regexp)
-                if ret:
-                    break
+                if check_string(value, pat, regexp):
+                    match_count += 1
+                    if stop_at_first:
+                        break
     except Exception:
         print('Failed to get path "{}"'.format(path))
         raise
-    return ret
+    return match_count
 
 
 def get_tree_count(tree, path):
@@ -518,6 +524,19 @@ def print_err(lineno, context, err, message=None):
         stderr("\t{}".format(context))
 
 
+def get_nb_matching_elements(cache, c, regexp, stop_at_first):
+    tree = cache.get_tree(c.args[0])
+    pat, sep, attr = c.args[1].partition('/@')
+    if sep:  # attribute
+        tree = cache.get_tree(c.args[0])
+        return check_tree_attr(tree, pat, attr, c.args[2], False)
+    else:  # normalized text
+        pat = c.args[1]
+        if pat.endswith('/text()'):
+            pat = pat[:-7]
+        return check_tree_text(cache.get_tree(c.args[0]), pat, c.args[2], regexp, stop_at_first)
+
+
 ERR_COUNT = 0
 
 
@@ -538,16 +557,7 @@ def check_command(c, cache):
                 ret = check_string(cache.get_file(c.args[0]), c.args[1], regexp)
             elif len(c.args) == 3:  # @has/matches <path> <pat> <match> = XML tree test
                 cerr = "`XPATH PATTERN` did not match"
-                tree = cache.get_tree(c.args[0])
-                pat, sep, attr = c.args[1].partition('/@')
-                if sep:  # attribute
-                    tree = cache.get_tree(c.args[0])
-                    ret = check_tree_attr(tree, pat, attr, c.args[2], regexp)
-                else:  # normalized text
-                    pat = c.args[1]
-                    if pat.endswith('/text()'):
-                        pat = pat[:-7]
-                    ret = check_tree_text(cache.get_tree(c.args[0]), pat, c.args[2], regexp)
+                ret = get_nb_matching_elements(cache, c, regexp, True) != 0
             else:
                 raise InvalidCheck('Invalid number of @{} arguments'.format(c.cmd))
 
@@ -557,6 +567,11 @@ def check_command(c, cache):
                 found = get_tree_count(cache.get_tree(c.args[0]), c.args[1])
                 cerr = "Expected {} occurrences but found {}".format(expected, found)
                 ret = expected == found
+            elif len(c.args) == 4:  # @count <path> <pat> <text> <count> = count test
+                expected = int(c.args[3])
+                found = get_nb_matching_elements(cache, c, False, False)
+                cerr = "Expected {} occurrences but found {}".format(expected, found)
+                ret = found == expected
             else:
                 raise InvalidCheck('Invalid number of @{} arguments'.format(c.cmd))
 
