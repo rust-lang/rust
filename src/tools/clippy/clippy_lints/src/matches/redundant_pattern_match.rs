@@ -70,7 +70,7 @@ fn temporaries_need_ordered_drop<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<
                         }
                     }
                 },
-                // the base type is alway taken by reference.
+                // the base type is always taken by reference.
                 // e.g. In `(vec![0])[0]` the vector is a temporary value.
                 ExprKind::Index(base, index) => {
                     if !matches!(base.kind, ExprKind::Path(_)) {
