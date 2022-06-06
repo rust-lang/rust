@@ -988,7 +988,7 @@ pub trait Read {
     where
         Self: Sized,
     {
-        Take { inner: self, limit }
+        Take { inner: self, limit, cursor: 0, seek_once: false }
     }
 }
 
@@ -2408,6 +2408,8 @@ impl<T, U> SizeHint for Chain<T, U> {
 pub struct Take<T> {
     inner: T,
     limit: u64,
+    cursor: u64,
+    seek_once: bool,
 }
 
 impl<T> Take<T> {
@@ -2559,6 +2561,7 @@ impl<T: Read> Read for Take<T> {
 
         let max = cmp::min(buf.len() as u64, self.limit) as usize;
         let n = self.inner.read(&mut buf[..max])?;
+        self.cursor += n as u64;
         self.limit -= n as u64;
         Ok(n)
     }
@@ -2600,11 +2603,12 @@ impl<T: Read> Read for Take<T> {
             }
 
             buf.add_filled(filled);
-
+            self.cursor += filled as u64;
             self.limit -= filled as u64;
         } else {
             self.inner.read_buf(buf)?;
 
+            self.cursor += buf.filled_len().saturating_sub(prev_filled) as u64;
             //inner may unfill
             self.limit -= buf.filled_len().saturating_sub(prev_filled) as u64;
         }
@@ -2623,14 +2627,67 @@ impl<T: BufRead> BufRead for Take<T> {
 
         let buf = self.inner.fill_buf()?;
         let cap = cmp::min(buf.len() as u64, self.limit) as usize;
+        self.cursor = cap as u64;
         Ok(&buf[..cap])
     }
 
     fn consume(&mut self, amt: usize) {
         // Don't let callers reset the limit by passing an overlarge value
         let amt = cmp::min(amt as u64, self.limit) as usize;
+        self.cursor += amt as u64;
         self.limit -= amt as u64;
         self.inner.consume(amt);
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: Seek> Seek for Take<T> {
+    fn seek(&mut self, pos: SeekFrom) -> Result<u64> {
+        if !self.seek_once {
+            let old_pos = self.inner.stream_position()?;
+            let end = self.inner.seek(SeekFrom::End(0))?;
+            if end != old_pos {
+                self.inner.seek(SeekFrom::Start(old_pos))?;
+            }
+            self.seek_once = true;
+            self.limit = cmp::min(self.limit, end - old_pos);
+        }
+        let stream_end = self.cursor + self.limit;
+        let position = match pos {
+            SeekFrom::Start(k) => Some(cmp::min(k, stream_end)),
+            SeekFrom::Current(k) if k < 0 => {
+                if -k as u64 > self.cursor {
+                    None
+                } else {
+                    Some(self.cursor - (-k as u64))
+                }
+            }
+            SeekFrom::Current(k) => Some(cmp::min(self.cursor + k as u64, stream_end)),
+            SeekFrom::End(k) if k >= 0 => Some(stream_end),
+            SeekFrom::End(k) => {
+                if -k as u64 > stream_end {
+                    None
+                } else {
+                    Some(stream_end - (-k) as u64)
+                }
+            }
+        };
+
+        match position {
+            None => Err(ErrorKind::InvalidInput.into()),
+            Some(pos) => {
+                let rel = pos as i64 - self.cursor as i64;
+                self.inner.seek(SeekFrom::Current(rel))?;
+                if rel >= 0 {
+                    self.cursor += rel as u64;
+                    self.limit -= rel as u64;
+                } else {
+                    self.cursor -= -rel as u64;
+                    self.limit += -rel as u64;
+                }
+                Ok(pos)
+            }
+        }
     }
 }
 

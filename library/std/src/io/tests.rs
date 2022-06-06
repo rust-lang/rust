@@ -602,3 +602,68 @@ fn bench_take_read_buf(b: &mut test::Bencher) {
         [255; 128].take(64).read_buf(&mut rbuf).unwrap();
     });
 }
+
+#[test]
+fn test_io_take_seek() {
+    let mut buf = Cursor::new(b"....0123456789abcdef");
+    buf.set_position(4);
+    {
+        let mut stream = buf.by_ref().take(8);
+        assert_eq!(stream.seek(SeekFrom::End(0)).unwrap(), 8);
+        assert_eq!(stream.seek(SeekFrom::End(4)).unwrap(), 8);
+        assert_eq!(stream.seek(SeekFrom::End(-8)).unwrap(), 0);
+        assert_eq!(stream.seek(SeekFrom::End(-9)).unwrap_err().kind(), io::ErrorKind::InvalidInput);
+        let mut bytes: [u8; 2] = [0; 2];
+        assert!(stream.read_exact(&mut bytes).is_ok());
+        assert_eq!(bytes, *b"01");
+        assert_eq!(stream.stream_position().unwrap(), 2);
+        assert_eq!(stream.seek(SeekFrom::Current(2)).unwrap(), 4);
+        assert_eq!(
+            stream.seek(SeekFrom::Current(-5)).unwrap_err().kind(),
+            io::ErrorKind::InvalidInput
+        );
+        assert_eq!(stream.seek(SeekFrom::Start(1)).unwrap(), 1);
+        assert!(stream.read_exact(&mut bytes).is_ok());
+        assert_eq!(bytes, *b"12");
+        assert_eq!(stream.seek(SeekFrom::Current(3)).unwrap(), 6);
+        assert!(stream.read_exact(&mut bytes).is_ok());
+        assert_eq!(bytes, *b"67");
+        assert_eq!(stream.stream_position().unwrap(), 8);
+        // reached end of file.
+        assert!(stream.read_exact(&mut bytes).is_err());
+        assert_eq!(stream.seek(SeekFrom::Current(-3)).unwrap(), 5);
+        let mut res = Vec::new();
+        assert!(stream.read_to_end(&mut res).is_ok());
+        assert_eq!(&res, b"567");
+        assert_eq!(stream.stream_position().unwrap(), 8);
+    }
+    assert_eq!(buf.stream_position().unwrap(), 12);
+}
+
+#[test]
+fn test_io_take_seek_insufficient_bytes() {
+    let mut buf = Cursor::new(b"....0123456789abcdef");
+    buf.set_position(16);
+    {
+        // only four bytes are available.
+        let mut stream = buf.by_ref().take(8);
+        assert_eq!(stream.seek(SeekFrom::Start(10)).unwrap(), 4);
+        assert_eq!(stream.seek(SeekFrom::End(-4)).unwrap(), 0);
+        assert_eq!(stream.seek(SeekFrom::End(1)).unwrap(), 4);
+        assert!(stream.seek(SeekFrom::Current(-5)).is_err());
+        assert_eq!(stream.seek(SeekFrom::Current(-4)).unwrap(), 0);
+        let mut bytes: [u8; 2] = [0; 2];
+        assert!(stream.read_exact(&mut bytes).is_ok());
+        assert_eq!(bytes, *b"cd");
+        assert_eq!(stream.stream_position().unwrap(), 2);
+        let mut res = Vec::new();
+        assert!(stream.read_to_end(&mut res).is_ok());
+        assert_eq!(&res, b"ef");
+        assert_eq!(stream.stream_position().unwrap(), 4);
+        assert!(stream.seek(SeekFrom::Current(-1)).is_ok());
+        assert_eq!(stream.read_exact(&mut bytes).unwrap_err().kind(), io::ErrorKind::UnexpectedEof);
+        assert_eq!(stream.read_to_end(&mut res).unwrap(), 0);
+        assert_eq!(stream.stream_position().unwrap(), 4);
+    }
+    assert_eq!(buf.stream_position().unwrap(), 20);
+}
