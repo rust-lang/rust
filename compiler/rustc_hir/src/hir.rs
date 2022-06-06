@@ -535,7 +535,8 @@ pub struct GenericParamCount {
 pub struct Generics<'hir> {
     pub params: &'hir [GenericParam<'hir>],
     pub predicates: &'hir [WherePredicate<'hir>],
-    pub has_where_clause: bool,
+    pub has_where_clause_predicates: bool,
+    pub has_where_clause_token: bool,
     pub where_clause_span: Span,
     pub span: Span,
 }
@@ -545,7 +546,8 @@ impl<'hir> Generics<'hir> {
         const NOPE: Generics<'_> = Generics {
             params: &[],
             predicates: &[],
-            has_where_clause: false,
+            has_where_clause_predicates: false,
+            has_where_clause_token: false,
             where_clause_span: DUMMY_SP,
             span: DUMMY_SP,
         };
@@ -585,17 +587,11 @@ impl<'hir> Generics<'hir> {
         if self.predicates.is_empty() { None } else { Some(self.where_clause_span) }
     }
 
-    /// The `where_span` under normal circumstances points at either the predicates or the empty
-    /// space where the `where` clause should be. Only of use for diagnostic suggestions.
-    pub fn span_for_predicates_or_empty_place(&self) -> Span {
-        self.where_clause_span
-    }
-
     /// `Span` where further predicates would be suggested, accounting for trailing commas, like
     ///  in `fn foo<T>(t: T) where T: Foo,` so we don't suggest two trailing commas.
     pub fn tail_span_for_predicate_suggestion(&self) -> Span {
-        let end = self.span_for_predicates_or_empty_place().shrink_to_hi();
-        if self.has_where_clause {
+        let end = self.where_clause_span.shrink_to_hi();
+        if self.has_where_clause_predicates {
             self.predicates
                 .iter()
                 .filter(|p| p.in_where_clause())
@@ -605,6 +601,16 @@ impl<'hir> Generics<'hir> {
                 .to(end)
         } else {
             end
+        }
+    }
+
+    pub fn add_where_or_trailing_comma(&self) -> &'static str {
+        if self.has_where_clause_predicates {
+            ","
+        } else if self.has_where_clause_token {
+            ""
+        } else {
+            " where"
         }
     }
 

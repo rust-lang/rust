@@ -2511,7 +2511,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 let pred = format!("{}: {}", bound_kind, sub);
                 let suggestion = format!(
                     "{} {}",
-                    if !generics.predicates.is_empty() { "," } else { " where" },
+                    generics.add_where_or_trailing_comma(),
                     pred,
                 );
                 err.span_suggestion(

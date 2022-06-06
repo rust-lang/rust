@@ -2293,7 +2293,8 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
 
             // If all predicates are inferable, drop the entire clause
             // (including the `where`)
-            if hir_generics.has_where_clause && dropped_predicate_count == num_predicates {
+            if hir_generics.has_where_clause_predicates && dropped_predicate_count == num_predicates
+            {
                 let where_span = hir_generics
                     .where_clause_span()
                     .expect("span of (nonempty) where clause should exist");

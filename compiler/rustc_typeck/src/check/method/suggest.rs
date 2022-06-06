@@ -538,10 +538,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 };
                                 if let Some(hir::Node::Item(hir::Item { kind, .. })) = node {
                                     if let Some(g) = kind.generics() {
-                                        let key = match g.predicates {
-                                            [.., pred] => (pred.span().shrink_to_hi(), false),
-                                            [] => (g.span_for_predicates_or_empty_place(), true),
-                                        };
+                                        let key = (
+                                            g.tail_span_for_predicate_suggestion(),
+                                            g.add_where_or_trailing_comma(),
+                                        );
                                         type_params
                                             .entry(key)
                                             .or_insert_with(FxHashSet::default)
@@ -805,7 +805,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .enumerate()
                         .collect::<Vec<(usize, String)>>();
 
-                    for ((span, empty_where), obligations) in type_params.into_iter() {
+                    for ((span, add_where_or_comma), obligations) in type_params.into_iter() {
                         restrict_type_params = true;
                         // #74886: Sort here so that the output is always the same.
                         let mut obligations = obligations.into_iter().collect::<Vec<_>>();
@@ -819,7 +819,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             ),
                             format!(
                                 "{} {}",
-                                if empty_where { " where" } else { "," },
+                                add_where_or_comma,
                                 obligations.join(", ")
                             ),
                             Applicability::MaybeIncorrect,

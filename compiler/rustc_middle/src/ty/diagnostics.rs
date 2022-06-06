@@ -92,19 +92,14 @@ pub fn suggest_arbitrary_trait_bound(
         _ => {}
     }
     // Suggest a where clause bound for a non-type parameter.
-    let (action, prefix) = if generics.has_where_clause {
-        ("extending the", ", ")
-    } else {
-        ("introducing a", " where ")
-    };
     err.span_suggestion_verbose(
         generics.tail_span_for_predicate_suggestion(),
         &format!(
-            "consider {} `where` bound, but there might be an alternative better way to express \
+            "consider {} `where` clause, but there might be an alternative better way to express \
              this requirement",
-            action,
+             if generics.has_where_clause_token { "extending the" } else { "introducing a" },
         ),
-        format!("{}{}: {}", prefix, param_name, constraint),
+        format!("{} {}: {}", generics.add_where_or_trailing_comma(), param_name, constraint),
         Applicability::MaybeIncorrect,
     );
     true
@@ -257,7 +252,7 @@ pub fn suggest_constraining_type_params<'a>(
             continue;
         }
 
-        if generics.has_where_clause {
+        if generics.has_where_clause_predicates {
             // This part is a bit tricky, because using the `where` clause user can
             // provide zero, one or many bounds for the same type parameter, so we
             // have following cases to consider:

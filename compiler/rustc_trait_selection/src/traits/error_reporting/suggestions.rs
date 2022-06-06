@@ -324,7 +324,7 @@ pub trait InferCtxtExt<'tcx> {
 fn predicate_constraint(generics: &hir::Generics<'_>, pred: String) -> (Span, String) {
     (
         generics.tail_span_for_predicate_suggestion(),
-        format!("{} {}", if generics.has_where_clause { "," } else { " where" }, pred,),
+        format!("{} {}", generics.add_where_or_trailing_comma(), pred),
     )
 }
 
@@ -339,15 +339,16 @@ fn suggest_restriction<'tcx>(
     fn_sig: Option<&hir::FnSig<'_>>,
     projection: Option<&ty::ProjectionTy<'_>>,
     trait_pred: ty::PolyTraitPredicate<'tcx>,
-    super_traits: Option<(&Ident, &hir::GenericBounds<'_>)>,
-) {
     // When we are dealing with a trait, `super_traits` will be `Some`:
     // Given `trait T: A + B + C {}`
     //              -  ^^^^^^^^^ GenericBounds
     //              |
     //              &Ident
-    let span = generics.span_for_predicates_or_empty_place();
-    if span.from_expansion() || span.desugaring_kind().is_some() {
+    super_traits: Option<(&Ident, &hir::GenericBounds<'_>)>,
+) {
+    if generics.where_clause_span.from_expansion()
+        || generics.where_clause_span.desugaring_kind().is_some()
+    {
         return;
     }
     // Given `fn foo(t: impl Trait)` where `Trait` requires assoc type `A`...

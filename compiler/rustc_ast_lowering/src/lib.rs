@@ -1315,7 +1315,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 generics: self.arena.alloc(hir::Generics {
                     params: lifetime_defs,
                     predicates: &[],
-                    has_where_clause: false,
+                    has_where_clause_predicates: false,
+                    has_where_clause_token: false,
                     where_clause_span: lctx.lower_span(span),
                     span: lctx.lower_span(span),
                 }),
@@ -1637,7 +1638,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 generics: this.arena.alloc(hir::Generics {
                     params: generic_params,
                     predicates: &[],
-                    has_where_clause: false,
+                    has_where_clause_predicates: false,
+                    has_where_clause_token: false,
                     where_clause_span: this.lower_span(span),
                     span: this.lower_span(span),
                 }),
