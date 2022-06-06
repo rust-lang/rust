@@ -354,7 +354,6 @@ mod single_char_lifetime_names;
 mod single_component_path_imports;
 mod size_of_in_element_count;
 mod slow_vector_initialization;
-mod stable_sort_primitive;
 mod std_instead_of_core;
 mod strings;
 mod strlen_on_c_strings;
@@ -822,7 +821,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_early_pass(move || Box::new(nonstandard_macro_braces::MacroBraces::new(&macro_matcher)));
     store.register_late_pass(|| Box::new(macro_use::MacroUseImports::default()));
     store.register_late_pass(|| Box::new(pattern_type_mismatch::PatternTypeMismatch));
-    store.register_late_pass(|| Box::new(stable_sort_primitive::StableSortPrimitive));
     store.register_late_pass(|| Box::new(unwrap_in_result::UnwrapInResult));
     store.register_late_pass(|| Box::new(semicolon_if_nothing_returned::SemicolonIfNothingReturned));
     store.register_late_pass(|| Box::new(async_yields_async::AsyncYieldsAsync));

@@ -72,6 +72,7 @@ mod single_char_insert_string;
 mod single_char_pattern;
 mod single_char_push_string;
 mod skip_while_next;
+mod stable_sort_primitive;
 mod str_splitn;
 mod string_extend_chars;
 mod suspicious_map;
@@ -2793,6 +2794,44 @@ declare_clippy_lint! {
     "using `.repeat(1)` instead of `String.clone()`, `str.to_string()` or `slice.to_vec()` "
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// When sorting primitive values (integers, bools, chars, as well
+    /// as arrays, slices, and tuples of such items), it is typically better to
+    /// use an unstable sort than a stable sort.
+    ///
+    /// ### Why is this bad?
+    /// Typically, using a stable sort consumes more memory and cpu cycles.
+    /// Because values which compare equal are identical, preserving their
+    /// relative order (the guarantee that a stable sort provides) means
+    /// nothing, while the extra costs still apply.
+    ///
+    /// ### Known problems
+    ///
+    /// As pointed out in
+    /// [issue #8241](https://github.com/rust-lang/rust-clippy/issues/8241),
+    /// a stable sort can instead be significantly faster for certain scenarios
+    /// (eg. when a sorted vector is extended with new data and resorted).
+    ///
+    /// For more information and benchmarking results, please refer to the
+    /// issue linked above.
+    ///
+    /// ### Example
+    /// ```rust
+    /// let mut vec = vec![2, 1, 3];
+    /// vec.sort();
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// let mut vec = vec![2, 1, 3];
+    /// vec.sort_unstable();
+    /// ```
+    #[clippy::version = "1.47.0"]
+    pub STABLE_SORT_PRIMITIVE,
+    pedantic,
+    "use of sort() when sort_unstable() is equivalent"
+}
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Option<RustcVersion>,
@@ -2909,6 +2948,7 @@ impl_lint_pass!(Methods => [
     PATH_BUF_PUSH_OVERWRITE,
     RANGE_ZIP_WITH_LEN,
     REPEAT_ONCE,
+    STABLE_SORT_PRIMITIVE,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -3299,6 +3339,9 @@ impl Methods {
                 },
                 ("repeat", [arg]) => {
                     repeat_once::check(cx, expr, recv, arg);
+                },
+                ("sort", []) => {
+                    stable_sort_primitive::check(cx, expr, recv);
                 },
                 ("splitn" | "rsplitn", [count_arg, pat_arg]) => {
                     if let Some((Constant::Int(count), _)) = constant(cx, cx.typeck_results(), count_arg) {
