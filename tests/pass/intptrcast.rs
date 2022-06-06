@@ -1,6 +1,4 @@
-// compile-flags: -Zmiri-allow-ptr-int-transmute
-
-// This returns a miri pointer at type usize, if the argument is a proper pointer
+// This strips provenance
 fn transmute_ptr_to_int<T>(x: *const T) -> usize {
     unsafe { std::mem::transmute(x) }
 }
@@ -39,7 +37,7 @@ fn transmute() {
     // transmuting.
     let a: *const i32 = &42;
     let b = transmute_ptr_to_int(a) as u8;
-    let c = a as usize as u8;
+    let c = a as u8;
     assert_eq!(b, c);
 }
 

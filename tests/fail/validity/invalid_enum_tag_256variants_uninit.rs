@@ -1,3 +1,4 @@
+// Even when uninit numbers are allowed, this enum is not.
 // compile-flags: -Zmiri-allow-uninit-numbers
 #![allow(unused, deprecated, invalid_value)]
 
