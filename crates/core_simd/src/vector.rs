@@ -125,6 +125,8 @@ where
     /// assert_eq!(v.as_array(), &[8, 8, 8, 8]);
     /// ```
     pub fn splat(value: T) -> Self {
+        // This is a workaround for `[value; LANES]` generating a loop:
+        // https://github.com/rust-lang/rust/issues/97804
         struct Splat;
         impl<const LANES: usize> Swizzle<1, LANES> for Splat {
             const INDEX: [usize; LANES] = [0; LANES];
