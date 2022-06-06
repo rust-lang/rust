@@ -935,7 +935,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
                     let parent_def_id = self.current_hir_id_owner;
                     let impl_trait_node_id = constraint.impl_trait_id;
-                    
+
                     self.resolver.create_def(
                         parent_def_id,
                         impl_trait_node_id,
