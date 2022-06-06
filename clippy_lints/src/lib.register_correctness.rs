@@ -43,6 +43,7 @@ store.register_group(true, "clippy::correctness", Some("clippy_correctness"), ve
     LintId::of(methods::SUSPICIOUS_SPLITN),
     LintId::of(methods::UNINIT_ASSUMED_INIT),
     LintId::of(methods::UNIT_HASH),
+    LintId::of(methods::VEC_RESIZE_TO_ZERO),
     LintId::of(methods::ZST_OFFSET),
     LintId::of(minmax::MIN_MAX),
     LintId::of(non_octal_unix_permissions::NON_OCTAL_UNIX_PERMISSIONS),
@@ -74,5 +75,4 @@ store.register_group(true, "clippy::correctness", Some("clippy_correctness"), ve
     LintId::of(unnamed_address::VTABLE_ADDRESS_COMPARISONS),
     LintId::of(unused_io_amount::UNUSED_IO_AMOUNT),
     LintId::of(unwrap::PANICKING_UNWRAP),
-    LintId::of(vec_resize_to_zero::VEC_RESIZE_TO_ZERO),
 ])

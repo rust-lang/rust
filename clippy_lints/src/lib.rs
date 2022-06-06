@@ -391,7 +391,6 @@ mod use_self;
 mod useless_conversion;
 mod vec;
 mod vec_init_then_push;
-mod vec_resize_to_zero;
 mod verbose_file_reads;
 mod wildcard_imports;
 mod write;
@@ -803,7 +802,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(if_not_else::IfNotElse));
     store.register_late_pass(|| Box::new(equatable_if_let::PatternEquality));
     store.register_late_pass(|| Box::new(manual_async_fn::ManualAsyncFn));
-    store.register_late_pass(|| Box::new(vec_resize_to_zero::VecResizeToZero));
     store.register_late_pass(|| Box::new(panic_in_result_fn::PanicInResultFn));
     let single_char_binding_names_threshold = conf.single_char_binding_names_threshold;
     store.register_early_pass(move || {

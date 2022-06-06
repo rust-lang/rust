@@ -90,6 +90,7 @@ mod unwrap_or_else_default;
 mod unwrap_used;
 mod useless_asref;
 mod utils;
+mod vec_resize_to_zero;
 mod wrong_self_convention;
 mod zst_offset;
 
@@ -2907,6 +2908,28 @@ declare_clippy_lint! {
     "Use of `Vec::sort_by` when `Vec::sort_by_key` or `Vec::sort` would be clearer"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Finds occurrences of `Vec::resize(0, an_int)`
+    ///
+    /// ### Why is this bad?
+    /// This is probably an argument inversion mistake.
+    ///
+    /// ### Example
+    /// ```rust
+    /// vec!(1, 2, 3, 4, 5).resize(0, 5)
+    /// ```
+    ///
+    /// Use instead:
+    /// ```rust
+    /// vec!(1, 2, 3, 4, 5).clear()
+    /// ```
+    #[clippy::version = "1.46.0"]
+    pub VEC_RESIZE_TO_ZERO,
+    correctness,
+    "emptying a vector with `resize(0, an_int)` instead of `clear()` is probably an argument inversion mistake"
+}
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Option<RustcVersion>,
@@ -3026,6 +3049,7 @@ impl_lint_pass!(Methods => [
     STABLE_SORT_PRIMITIVE,
     UNIT_HASH,
     UNNECESSARY_SORT_BY,
+    VEC_RESIZE_TO_ZERO,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -3419,6 +3443,9 @@ impl Methods {
                 },
                 ("repeat", [arg]) => {
                     repeat_once::check(cx, expr, recv, arg);
+                },
+                ("resize", [count_arg, default_arg]) => {
+                    vec_resize_to_zero::check(cx, expr, count_arg, default_arg, span);
                 },
                 ("sort", []) => {
                     stable_sort_primitive::check(cx, expr, recv);

@@ -1,15 +1,19 @@
 #![warn(clippy::vec_resize_to_zero)]
 
 fn main() {
+    let mut v = vec![1, 2, 3, 4, 5];
+
     // applicable here
-    vec![1, 2, 3, 4, 5].resize(0, 5);
+    v.resize(0, 5);
 
     // not applicable
-    vec![1, 2, 3, 4, 5].resize(2, 5);
+    v.resize(2, 5);
+
+    let mut v = vec!["foo", "bar", "baz"];
 
     // applicable here, but only implemented for integer literals for now
-    vec!["foo", "bar", "baz"].resize(0, "bar");
+    v.resize(0, "bar");
 
     // not applicable
-    vec!["foo", "bar", "baz"].resize(2, "bar")
+    v.resize(2, "bar")
 }
