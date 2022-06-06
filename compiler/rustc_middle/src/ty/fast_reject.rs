@@ -412,13 +412,8 @@ impl DeepRejectCtxt {
         impl_ct: ty::ConstnessArg,
     ) -> bool {
         match (obligation_ct, impl_ct) {
-            (_, ty::ConstnessArg::Param) => true,
-            (ty::ConstnessArg::Param, _) => match self.treat_obligation_params {
-                TreatParams::AsPlaceholder => false,
-                TreatParams::AsInfer => true,
-            },
+            (_, ty::ConstnessArg::Const) => true,
             (ty::ConstnessArg::Infer, _) => true,
-            (ty::ConstnessArg::Not, ty::ConstnessArg::Required) => true,
             _ => obligation_ct == impl_ct,
         }
     }

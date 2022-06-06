@@ -1378,7 +1378,7 @@ pub fn check_type_bounds<'tcx>(
             })
             .into()
         }
-        GenericParamDefKind::Constness => ty::ConstnessArg::Param.into(),
+        GenericParamDefKind::Constness => ty::ConstnessArg::Const.into(),
     });
     let bound_vars = tcx.mk_bound_variable_kinds(bound_vars.into_iter());
     let impl_ty_substs = tcx.intern_substs(&substs);

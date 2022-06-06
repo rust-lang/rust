@@ -312,19 +312,17 @@ impl fmt::Display for BoundConstness {
     Ord
 )]
 pub enum ConstnessArg {
-    Required,
+    Const,
     Not,
-    Param,
     Infer,
 }
 
 impl fmt::Display for ConstnessArg {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(match self {
-            Self::Required => "(constness: required)",
             Self::Not => "(constness: not)",
-            Self::Param => "(constness: parameterized)",
-            Self::Infer => "(constness: infer)"
+            Self::Const => "(constness: const)",
+            Self::Infer => "(constness: infer)",
         })
     }
 }

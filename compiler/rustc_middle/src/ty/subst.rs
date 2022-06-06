@@ -99,9 +99,8 @@ impl<'tcx> GenericArgKind<'tcx> {
                 CONSTNESS_TAG,
                 match carg {
                     ty::ConstnessArg::Not => 0,
-                    ty::ConstnessArg::Required => 0b100,
-                    ty::ConstnessArg::Param => 0b1000,
-                    ty::ConstnessArg::Infer => 0b10000,
+                    ty::ConstnessArg::Const => 0b100,
+                    ty::ConstnessArg::Infer => 0b1000,
                 },
             ),
         };
@@ -181,9 +180,8 @@ impl<'tcx> GenericArg<'tcx> {
                 ))),
                 CONSTNESS_TAG => GenericArgKind::Constness(match ptr & (!TAG_MASK) {
                     0 => ty::ConstnessArg::Not,
-                    0b100 => ty::ConstnessArg::Required,
-                    0b1000 => ty::ConstnessArg::Param,
-                    0b10000 => ty::ConstnessArg::Infer,
+                    0b100 => ty::ConstnessArg::Const,
+                    0b1000 => ty::ConstnessArg::Infer,
                     _ => intrinsics::unreachable(),
                 }),
                 _ => intrinsics::unreachable(),
@@ -613,7 +611,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for SubstFolder<'a, 'tcx> {
     }
 
     fn fold_constness(&mut self, c: ty::ConstnessArg) -> ty::ConstnessArg {
-        if let ty::ConstnessArg::Param | ty::ConstnessArg::Infer = c {
+        if let ty::ConstnessArg::Const | ty::ConstnessArg::Infer = c {
             self.substs
                 .iter()
                 .find_map(|param| match param.unpack() {

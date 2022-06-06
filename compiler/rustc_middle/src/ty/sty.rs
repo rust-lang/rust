@@ -847,9 +847,9 @@ impl<'tcx> TraitRef<'tcx> {
     }
 
     pub fn with_const(mut self, tcx: TyCtxt<'tcx>) -> Self {
-        if self.constness() != ty::ConstnessArg::Required {
+        if self.constness() != ty::ConstnessArg::Const {
             self.substs = tcx.mk_substs(self.substs.iter().map(|arg| match arg.unpack() {
-                ty::subst::GenericArgKind::Constness(_) => ty::ConstnessArg::Required.into(),
+                ty::subst::GenericArgKind::Constness(_) => ty::ConstnessArg::Const.into(),
                 _ => arg,
             }));
         }

@@ -209,7 +209,7 @@ impl<'tcx> TypeRelation<'tcx> for Sub<'_, '_, 'tcx> {
     ) -> RelateResult<'tcx, ty::ConstnessArg> {
         trace!(?a, ?b);
         match (a, b) {
-            (ty::ConstnessArg::Required, _) => Ok(a),
+            (ty::ConstnessArg::Const, _) => Ok(a),
             (a, ty::ConstnessArg::Infer) => Ok(a),
             (ty::ConstnessArg::Infer, b) => Ok(b),
             (a, ty::ConstnessArg::Not) => Ok(a),

@@ -2629,7 +2629,7 @@ impl<'tcx> TyCtxt<'tcx> {
             GenericParamDefKind::Const { .. } => {
                 self.mk_const_param(param.index, param.name, self.type_of(param.def_id)).into()
             }
-            GenericParamDefKind::Constness => ty::ConstnessArg::Param.into(),
+            GenericParamDefKind::Constness => ty::ConstnessArg::Not.into(), // TODO sus
         }
     }
 

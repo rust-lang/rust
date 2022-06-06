@@ -741,7 +741,7 @@ fn bound_vars_for_item<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> SubstsRef<'tcx
             })
             .into(),
         ty::GenericParamDefKind::Constness => {
-            ty::ConstnessArg::Param.into() // TODO Confirm
+            ty::ConstnessArg::Not.into() // TODO Confirm
         }
     })
 }

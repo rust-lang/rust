@@ -1,3 +1,4 @@
+// check-pass
 #![feature(const_trait_impl)]
 
 #[const_trait]

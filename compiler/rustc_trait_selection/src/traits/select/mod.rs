@@ -1199,7 +1199,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     ParamCandidate(trait_pred)
                         if trait_pred.constness() != ty::ConstnessArg::Not =>
                     {
-                        debug_assert_eq!(trait_pred.constness(), ty::ConstnessArg::Param);
+                        debug_assert_eq!(trait_pred.constness(), ty::ConstnessArg::Const);
                     }
                     // auto trait impl
                     AutoImplCandidate(..) => {}

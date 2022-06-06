@@ -736,7 +736,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     });
 
                     match implsrc {
-                        Ok(Some(ImplSource::Param(_, ty::ConstnessArg::Required | ty::ConstnessArg::Param))) => {
+                        Ok(Some(ImplSource::Param(_, ty::ConstnessArg::Const))) => {
                             debug!(
                                 "const_trait_impl: provided {:?} via where-clause in {:?}",
                                 trait_ref, param_env

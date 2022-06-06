@@ -328,7 +328,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         let trait_predicate = self.resolve_vars_if_possible(trait_predicate);
 
                         let predicate_is_const =
-                            ty::ConstnessArg::Required == trait_predicate.skip_binder().constness();
+                            ty::ConstnessArg::Const == trait_predicate.skip_binder().constness();
 
                         if self.tcx.sess.has_errors().is_some()
                             && trait_predicate.references_error()

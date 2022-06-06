@@ -2522,8 +2522,7 @@ define_print_and_forward_display! {
         if cx.tcx().sess.verbose() {
             match self.0.constness() {
                 ty::ConstnessArg::Not => {},
-                ty::ConstnessArg::Required => p!(write("const ")),
-                ty::ConstnessArg::Param => p!(write("~const ")),
+                ty::ConstnessArg::Const => p!(write("~const ")),
                 ty::ConstnessArg::Infer => p!(write("_const ")), // TODO wonky
             }
         }

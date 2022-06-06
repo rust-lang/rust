@@ -381,7 +381,7 @@ fn check_opaque_type_parameter_valid(
                 matches!(*lt, ty::ReEarlyBound(_) | ty::ReFree(_))
             }
             GenericArgKind::Const(ct) => matches!(ct.kind(), ty::ConstKind::Param(_)),
-            GenericArgKind::Constness(ct) => matches!(ct, ty::ConstnessArg::Param),
+            GenericArgKind::Constness(_) => false,
         };
 
         if arg_is_param {

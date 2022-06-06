@@ -150,7 +150,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if body_id.is_owner() {
                     let did = body_id.expect_owner();
                     if inh.tcx.is_const_fn_raw(did.to_def_id()) || inh.tcx.is_const_default_method(did.to_def_id()) || inh.tcx.def_kind(did.to_def_id()) == hir::def::DefKind::Const {
-                        ty::ConstnessArg::Param
+                        ty::ConstnessArg::Const
                     } else {
                         ty::ConstnessArg::Not
                     }

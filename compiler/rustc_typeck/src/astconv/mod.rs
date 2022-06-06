@@ -574,10 +574,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             .unwrap_or_else(|| match self.astconv.item_def_id() {
                                 // no information available
                                 // TODO: fall back to `Not`?
-                                None => if infer_args { ty::ConstnessArg::Infer } else { ty::ConstnessArg::Param },
+                                None => if infer_args { ty::ConstnessArg::Infer } else { ty::ConstnessArg::Not },
                                 Some(context) => {
                                     if tcx.generics_of(context).has_constness_param() {
-                                        ty::ConstnessArg::Param
+                                        ty::ConstnessArg::Const
                                     } else {
                                         // TODO: should use `Required` if we're in a const context
                                         // like `const`/`static` item initializers.
@@ -724,8 +724,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             self_ty,
             trait_ref.path.segments.last().unwrap(),
             true,
-            match constness { // TODO check this again
-                hir::Constness::Const => ty::ConstnessArg::Param,
+            match constness {
+                // TODO check this again
+                hir::Constness::Const => ty::ConstnessArg::Const,
                 hir::Constness::NotConst => ty::ConstnessArg::Not,
             },
         )
@@ -1028,7 +1029,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             match ast_bound {
                 hir::GenericBound::Trait(poly_trait_ref, modifier) => {
                     let constness = match modifier {
-                        hir::TraitBoundModifier::MaybeConst => ty::ConstnessArg::Param,
+                        hir::TraitBoundModifier::MaybeConst => ty::ConstnessArg::Const,
                         hir::TraitBoundModifier::None => ty::ConstnessArg::Not,
                         hir::TraitBoundModifier::Maybe => continue,
                     };
