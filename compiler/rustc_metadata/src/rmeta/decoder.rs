@@ -1486,6 +1486,8 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             .filter(|_| {
                 // Only spend time on further checks if we have what to translate *to*.
                 sess.opts.real_rust_source_base_dir.is_some()
+                    // Some tests need the translation to be always skipped.
+                    && sess.opts.debugging_opts.translate_remapped_path_to_local_path
             })
             .filter(|virtual_dir| {
                 // Don't translate away `/rustc/$hash` if we're still remapping to it,
