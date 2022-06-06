@@ -75,7 +75,7 @@ pub struct MovableRwLock(imp::MovableRwLock);
 impl MovableRwLock {
     /// Creates a new reader-writer lock for use.
     #[inline]
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self(imp::MovableRwLock::new())
     }
 

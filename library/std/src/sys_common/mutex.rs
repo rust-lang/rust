@@ -62,7 +62,7 @@ unsafe impl Sync for MovableMutex {}
 impl MovableMutex {
     /// Creates a new mutex.
     #[inline]
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self(imp::MovableMutex::new())
     }
 
