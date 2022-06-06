@@ -288,14 +288,16 @@ environment variable. We first document the most relevant and most commonly used
   `-Zmiri-disable-isolation` is set.
 * `-Zmiri-ignore-leaks` disables the memory leak checker, and also allows some
   remaining threads to exist when the main thread exits.
-* `-Zmiri-seed=<hex>` configures the seed of the RNG that Miri uses to resolve
-  non-determinism. This RNG is used to pick base addresses for allocations. When
-  isolation is enabled (the default), this is also used to emulate system
-  entropy. The default seed is 0. You can increase test coverage by running Miri
-  multiple times with different seeds.
-  **NOTE**: This entropy is not good enough for cryptographic use! Do not
-  generate secret keys in Miri or perform other kinds of cryptographic
-  operations that rely on proper random numbers.
+* `-Zmiri-preemption-rate` configures the probability that at the end of a basic block, the active
+  thread will be preempted. The default is `0.01` (i.e., 1%). Setting this to `0` disables
+  preemption.
+* `-Zmiri-seed=<hex>` configures the seed of the RNG that Miri uses to resolve non-determinism. This
+  RNG is used to pick base addresses for allocations, to determine preemption and failure of
+  `compare_exchange_weak`, and to control store buffering for weak memory emulation. When isolation
+  is enabled (the default), this is also used to emulate system entropy. The default seed is 0. You
+  can increase test coverage by running Miri multiple times with different seeds. **NOTE**: This
+  entropy is not good enough for cryptographic use! Do not generate secret keys in Miri or perform
+  other kinds of cryptographic operations that rely on proper random numbers.
 * `-Zmiri-strict-provenance` enables [strict
   provenance](https://github.com/rust-lang/rust/issues/95228) checking in Miri. This means that
   casting an integer to a pointer yields a result with 'invalid' provenance, i.e., with provenance

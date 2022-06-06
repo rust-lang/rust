@@ -122,6 +122,8 @@ pub struct MiriConfig {
     /// Whether to ignore any output by the program. This is helpful when debugging miri
     /// as its messages don't get intermingled with the program messages.
     pub mute_stdout_stderr: bool,
+    /// The probability of the active thread being preempted at the end of each basic block.
+    pub preemption_rate: f64,
 }
 
 impl Default for MiriConfig {
@@ -145,12 +147,13 @@ impl Default for MiriConfig {
             tag_raw: false,
             data_race_detector: true,
             weak_memory_emulation: true,
-            cmpxchg_weak_failure_rate: 0.8,
+            cmpxchg_weak_failure_rate: 0.8, // 80%
             measureme_out: None,
             panic_on_unsupported: false,
             backtrace_style: BacktraceStyle::Short,
             provenance_mode: ProvenanceMode::Legacy,
             mute_stdout_stderr: false,
+            preemption_rate: 0.01, // 1%
         }
     }
 }
