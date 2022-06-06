@@ -28,7 +28,7 @@ tree of the Clippy repository.
 To find out if this step is necessary run
 
 ```bash
-# Assumes that the local master branch is up-to-date
+# Assumes that the local master branch of rust-lang/rust-clippy is up-to-date
 $ git fetch upstream
 $ git branch master --contains upstream/beta
 ```
@@ -56,7 +56,8 @@ determined.
 
 ```bash
 # Assuming the current directory corresponds to the Rust repository
-$ git checkout beta
+$ git fetch upstream
+$ git checkout upstream/beta
 $ BETA_SHA=$(git log --oneline -- src/tools/clippy/ | grep -o "Merge commit '[a-f0-9]*' into .*" | head -1 | sed -e "s/Merge commit '\([a-f0-9]*\)' into .*/\1/g")
 ```
 
