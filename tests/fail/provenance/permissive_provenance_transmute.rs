@@ -1,4 +1,4 @@
-// compile-flags: -Zmiri-strict-provenance
+// compile-flags: -Zmiri-permissive-provenance -Zmiri-disable-stacked-borrows
 #![feature(strict_provenance)]
 
 use std::mem;

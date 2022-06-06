@@ -229,9 +229,16 @@ pub fn report_error<'tcx, 'mir>(
             };
             #[rustfmt::skip]
             let helps = match e.kind() {
-                Unsupported(UnsupportedOpInfo::ThreadLocalStatic(_) | UnsupportedOpInfo::ReadExternStatic(_)) =>
+                Unsupported(
+                    UnsupportedOpInfo::ThreadLocalStatic(_) |
+                    UnsupportedOpInfo::ReadExternStatic(_)
+                ) =>
                     panic!("Error should never be raised by Miri: {:?}", e.kind()),
-                Unsupported(_) =>
+                Unsupported(
+                    UnsupportedOpInfo::Unsupported(_) |
+                    UnsupportedOpInfo::PartialPointerOverwrite(_) |
+                    UnsupportedOpInfo::ReadPointerAsBytes
+                ) =>
                     vec![(None, format!("this is likely not a bug in the program; it indicates that the program performed an operation that the interpreter does not support"))],
                 UndefinedBehavior(UndefinedBehaviorInfo::AlignmentCheckFailed { .. })
                     if ecx.machine.check_alignment == AlignmentCheck::Symbolic
@@ -245,7 +252,8 @@ pub fn report_error<'tcx, 'mir>(
                         (None, format!("this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior")),
                         (None, format!("see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information")),
                     ],
-                _ => vec![],
+                InvalidProgram(_) | ResourceExhaustion(_) | MachineStop(_) =>
+                    vec![],
             };
             (Some(title), helps)
         }

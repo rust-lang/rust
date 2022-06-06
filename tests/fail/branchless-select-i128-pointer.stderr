@@ -1,8 +1,10 @@
-error: Undefined Behavior: type validation failed: encountered (potentially part of) a pointer, but expected plain (non-pointer) bytes
+error: Undefined Behavior: type validation failed: encountered a dangling reference (address $HEX is unallocated)
   --> $DIR/branchless-select-i128-pointer.rs:LL:CC
    |
-LL |                 !mask & transmute::<_, TwoPtrs>("false !") | mask & transmute::<_, TwoPtrs>("true !"),
-   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered (potentially part of) a pointer, but expected plain (non-pointer) bytes
+LL | /             transmute::<_, &str>(
+LL | |                 !mask & transmute::<_, TwoPtrs>("false !") | mask & transmute::<_, TwoPtrs>("true !"),
+LL | |             )
+   | |_____________^ type validation failed: encountered a dangling reference (address $HEX is unallocated)
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

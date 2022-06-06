@@ -17,8 +17,8 @@ LL |     let xref2 = &mut *xref1;
 help: <TAG> was later invalidated at offsets [0x0..0x4]
   --> $DIR/illegal_read3.rs:LL:CC
    |
-LL |     let _val = unsafe { *xref1.to };
-   |                         ^^^^^^^^^
+LL |     let _val = unsafe { *xref1.r };
+   |                         ^^^^^^^^
    = note: inside `main` at $DIR/illegal_read3.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
