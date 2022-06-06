@@ -30,7 +30,7 @@ else
     NEW_COMMIT="$1"
 fi
 echo "$NEW_COMMIT" > rust-version
-shift
+shift || true # don't fail if shifting fails
 
 # Check if we already are at that commit.
 CUR_COMMIT=$(rustc +miri --version -v 2>/dev/null | egrep "^commit-hash: " | cut -d " " -f 2)
