@@ -15,7 +15,7 @@ use rustc_infer::infer::{self, TyCtxtInferExt};
 use rustc_infer::traits;
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::subst::GenericArgKind;
-use rustc_middle::ty::{self, Binder, ToPredicate, Ty};
+use rustc_middle::ty::{self, Binder, IsSuggestable, ToPredicate, Ty};
 use rustc_span::symbol::{kw, sym};
 use rustc_span::Span;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
