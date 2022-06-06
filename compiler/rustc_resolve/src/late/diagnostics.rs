@@ -145,6 +145,8 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         let is_expected = &|res| source.is_expected(res);
         let is_enum_variant = &|res| matches!(res, Res::Def(DefKind::Variant, _));
 
+        debug!(?res, ?source);
+
         // Make the base error.
         struct BaseError<'a> {
             msg: String,
@@ -248,6 +250,25 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         let code = source.error_code(res.is_some());
         let mut err =
             self.r.session.struct_span_err_with_code(base_error.span, &base_error.msg, code);
+        if let Some((trait_ref, self_ty)) =
+            self.diagnostic_metadata.currently_processing_impl_trait.clone()
+            && let TyKind::Path(_, self_ty_path) = &self_ty.kind
+            && let PathResult::Module(ModuleOrUniformRoot::Module(module)) = self.resolve_path(&Segment::from_path(self_ty_path), Some(TypeNS), None)
+            && let ModuleKind::Def(DefKind::Trait, ..) = module.kind
+            && trait_ref.path.span == span
+            && let PathSource::Trait(_) = source
+            && let Some(Res::Def(DefKind::Struct, _)) = res
+            && let Ok(self_ty_str) =
+                self.r.session.source_map().span_to_snippet(self_ty.span)
+            && let Ok(trait_ref_str) =
+                self.r.session.source_map().span_to_snippet(trait_ref.path.span)
+        {
+                err.multipart_suggestion(
+                    "consider swapping the struct and the trait",
+                    vec![(trait_ref.path.span, self_ty_str), (self_ty.span, trait_ref_str)],
+                    Applicability::MaybeIncorrect,
+                );
+        }
 
         if let Some(sugg) = base_error.suggestion {
             err.span_suggestion_verbose(sugg.0, sugg.1, sugg.2, Applicability::MaybeIncorrect);

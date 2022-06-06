@@ -1,0 +1,27 @@
+error[E0404]: expected trait, found struct `Struct`
+  --> $DIR/suggest-swapping-self-ty-and-trait-edition-2021.rs:7:13
+   |
+LL | impl<'a, T> Struct<T> for Trait<'a, T> {}
+   |             ^^^^^^^^^ not a trait
+   |
+help: consider swapping the struct and the trait
+   |
+LL | impl<'a, T> Trait<'a, T> for Struct<T> {}
+   |             ~~~~~~~~~~~~     ~~~~~~~~~
+
+error[E0782]: trait objects must include the `dyn` keyword
+  --> $DIR/suggest-swapping-self-ty-and-trait-edition-2021.rs:7:27
+   |
+LL | impl<'a, T> Struct<T> for Trait<'a, T> {}
+   |                           ^^^^^^^^^^^^
+   |
+help: add `dyn` keyword before this trait
+   |
+LL - impl<'a, T> Struct<T> for Trait<'a, T> {}
+LL + impl<'a, T> Struct<T> for dyn Trait<'a, T> {}
+   | 
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0404, E0782.
+For more information about an error, try `rustc --explain E0404`.
