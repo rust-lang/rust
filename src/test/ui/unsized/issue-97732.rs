@@ -15,9 +15,14 @@ impl<S: ?Sized, T: ?Sized> CoerceUnsized<BoxWithZstTail<T>> for BoxWithZstTail<S
 }
 
 pub fn noop_dyn_upcast_with_zst_tail(
-    b: BoxWithZstTail<dyn Send + Sync>,
-) -> BoxWithZstTail<dyn Send> {
+    b: BoxWithZstTail<dyn ToString + Send>,
+) -> BoxWithZstTail<dyn ToString> {
     b
 }
 
-fn main() {}
+fn main() {
+    let original = "foo";
+    let boxed = BoxWithZstTail(Box::new(original) as Box<dyn ToString + Send>, ());
+    let noop_upcasted = noop_dyn_upcast_with_zst_tail(boxed);
+    assert_eq!(original, noop_upcasted.0.to_string());
+}
