@@ -28,7 +28,7 @@ use rustc_span::Symbol;
 use rustc_target::abi::Size;
 use rustc_target::spec::abi::Abi;
 
-use crate::{shims::posix::FileHandler, *};
+use crate::{shims::unix::FileHandler, *};
 
 // Some global facts about the emulated machine.
 pub const PAGE_SIZE: u64 = 4 * 1024; // FIXME: adjust to target architecture
@@ -266,9 +266,9 @@ pub struct Evaluator<'mir, 'tcx> {
     pub(crate) enforce_abi: bool,
 
     /// The table of file descriptors.
-    pub(crate) file_handler: shims::posix::FileHandler,
+    pub(crate) file_handler: shims::unix::FileHandler,
     /// The table of directory descriptors.
-    pub(crate) dir_handler: shims::posix::DirHandler,
+    pub(crate) dir_handler: shims::unix::DirHandler,
 
     /// The "time anchor" for this machine's monotone clock (for `Instant` simulation).
     pub(crate) time_anchor: Instant,

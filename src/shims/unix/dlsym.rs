@@ -2,8 +2,8 @@ use rustc_middle::mir;
 use rustc_target::spec::abi::Abi;
 
 use crate::*;
-use shims::posix::linux::dlsym as linux;
-use shims::posix::macos::dlsym as macos;
+use shims::unix::linux::dlsym as linux;
+use shims::unix::macos::dlsym as macos;
 
 #[derive(Debug, Copy, Clone)]
 pub enum Dlsym {

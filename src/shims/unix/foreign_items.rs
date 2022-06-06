@@ -10,9 +10,9 @@ use rustc_target::spec::abi::Abi;
 
 use crate::*;
 use shims::foreign_items::EmulateByNameResult;
-use shims::posix::fs::EvalContextExt as _;
-use shims::posix::sync::EvalContextExt as _;
-use shims::posix::thread::EvalContextExt as _;
+use shims::unix::fs::EvalContextExt as _;
+use shims::unix::sync::EvalContextExt as _;
+use shims::unix::thread::EvalContextExt as _;
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
@@ -477,8 +477,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // Platform-specific shims
             _ => {
                 match this.tcx.sess.target.os.as_ref() {
-                    "linux" => return shims::posix::linux::foreign_items::EvalContextExt::emulate_foreign_item_by_name(this, link_name, abi, args, dest, ret),
-                    "macos" => return shims::posix::macos::foreign_items::EvalContextExt::emulate_foreign_item_by_name(this, link_name, abi, args, dest, ret),
+                    "linux" => return shims::unix::linux::foreign_items::EvalContextExt::emulate_foreign_item_by_name(this, link_name, abi, args, dest, ret),
+                    "macos" => return shims::unix::macos::foreign_items::EvalContextExt::emulate_foreign_item_by_name(this, link_name, abi, args, dest, ret),
                     _ => unreachable!(),
                 }
             }
