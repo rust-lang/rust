@@ -13,10 +13,13 @@ use rustc_ast::tokenstream::Spacing;
 use rustc_ast::util::classify;
 use rustc_ast::util::literal::LitError;
 use rustc_ast::util::parser::{prec_let_scrutinee_needs_par, AssocOp, Fixity};
+use rustc_ast::visit::Visitor;
+use rustc_ast::StmtKind;
 use rustc_ast::{self as ast, AttrStyle, AttrVec, CaptureBy, ExprField, Lit, UnOp, DUMMY_NODE_ID};
 use rustc_ast::{AnonConst, BinOp, BinOpKind, FnDecl, FnRetTy, MacCall, Param, Ty, TyKind};
 use rustc_ast::{Arm, Async, BlockCheckMode, Expr, ExprKind, Label, Movability, RangeLimits};
 use rustc_ast_pretty::pprust;
+use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, PResult};
 use rustc_session::lint::builtin::BREAK_WITH_LABEL_AND_LOOP;
 use rustc_session::lint::BuiltinLintDiagnostics;
@@ -1548,9 +1551,66 @@ impl<'a> Parser<'a> {
             Ok(self.mk_expr_err(lo))
         } else {
             let msg = "expected `while`, `for`, `loop` or `{` after a label";
-            self.struct_span_err(self.token.span, msg).span_label(self.token.span, msg).emit();
+
+            let mut err = self.struct_span_err(self.token.span, msg);
+            err.span_label(self.token.span, msg);
+
             // Continue as an expression in an effort to recover on `'label: non_block_expr`.
-            self.parse_expr()
+            let expr = self.parse_expr().map(|expr| {
+                let span = expr.span;
+
+                let found_labeled_breaks = {
+                    struct FindLabeledBreaksVisitor(bool);
+
+                    impl<'ast> Visitor<'ast> for FindLabeledBreaksVisitor {
+                        fn visit_expr_post(&mut self, ex: &'ast Expr) {
+                            if let ExprKind::Break(Some(_label), _) = ex.kind {
+                                self.0 = true;
+                            }
+                        }
+                    }
+
+                    let mut vis = FindLabeledBreaksVisitor(false);
+                    vis.visit_expr(&expr);
+                    vis.0
+                };
+
+                // Suggestion involves adding a (as of time of writing this, unstable) labeled block.
+                //
+                // If there are no breaks that may use this label, suggest removing the label and
+                // recover to the unmodified expression.
+                if !found_labeled_breaks {
+                    let msg = "consider removing the label";
+                    err.span_suggestion_verbose(
+                        lo.until(span),
+                        msg,
+                        "",
+                        Applicability::MachineApplicable,
+                    );
+
+                    return expr;
+                }
+
+                let sugg_msg = "consider enclosing expression in a block";
+                let suggestions = vec![
+                    (span.shrink_to_lo(), "{ ".to_owned()),
+                    (span.shrink_to_hi(), " }".to_owned()),
+                ];
+
+                err.multipart_suggestion_verbose(
+                    sugg_msg,
+                    suggestions,
+                    Applicability::MachineApplicable,
+                );
+
+                // Replace `'label: non_block_expr` with `'label: {non_block_expr}` in order to supress future errors about `break 'label`.
+                let stmt = self.mk_stmt(span, StmtKind::Expr(expr));
+                let blk = self.mk_block(vec![stmt], BlockCheckMode::Default, span);
+                self.mk_expr(span, ExprKind::Block(blk, label), ThinVec::new())
+            });
+
+            err.emit();
+            expr
         }?;
 
         if !ate_colon && consume_colon {
