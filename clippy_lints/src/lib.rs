@@ -367,7 +367,6 @@ mod to_digit_is_some;
 mod trailing_empty_array;
 mod trait_bounds;
 mod transmute;
-mod transmuting_null;
 mod types;
 mod undocumented_unsafe_blocks;
 mod unicode;
@@ -723,7 +722,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(move || Box::new(unnecessary_wraps::UnnecessaryWraps::new(avoid_breaking_exported_api)));
     store.register_late_pass(|| Box::new(assertions_on_constants::AssertionsOnConstants));
     store.register_late_pass(|| Box::new(assertions_on_result_states::AssertionsOnResultStates));
-    store.register_late_pass(|| Box::new(transmuting_null::TransmutingNull));
     store.register_late_pass(|| Box::new(inherent_to_string::InherentToString));
     let max_trait_bounds = conf.max_trait_bounds;
     store.register_late_pass(move || Box::new(trait_bounds::TraitBounds::new(max_trait_bounds)));
