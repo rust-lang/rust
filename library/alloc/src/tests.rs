@@ -25,13 +25,13 @@ fn any_move() {
 
     match a.downcast::<i32>() {
         Ok(a) => {
-            assert!(a == Box::new(8));
+            assert!(*a == 8);
         }
         Err(..) => panic!(),
     }
     match b.downcast::<Test>() {
         Ok(a) => {
-            assert!(a == Box::new(Test));
+            assert!(*a == Test);
         }
         Err(..) => panic!(),
     }
