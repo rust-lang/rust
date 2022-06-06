@@ -1,45 +1,19 @@
 use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then};
+use clippy_utils::higher;
 use clippy_utils::source::{snippet, snippet_opt, snippet_with_applicability};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{get_parent_expr, in_constant, is_integer_const, meets_msrv, msrvs, path_to_local};
-use clippy_utils::{higher, SpanlessEq};
 use if_chain::if_chain;
 use rustc_ast::ast::RangeLimits;
 use rustc_errors::Applicability;
-use rustc_hir::{BinOpKind, Expr, ExprKind, HirId, PathSegment, QPath};
+use rustc_hir::{BinOpKind, Expr, ExprKind, HirId};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::{Span, Spanned};
-use rustc_span::sym;
 use std::cmp::Ordering;
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for zipping a collection with the range of
-    /// `0.._.len()`.
-    ///
-    /// ### Why is this bad?
-    /// The code is better expressed with `.enumerate()`.
-    ///
-    /// ### Example
-    /// ```rust
-    /// # let x = vec![1];
-    /// let _ = x.iter().zip(0..x.len());
-    /// ```
-    ///
-    /// Use instead:
-    /// ```rust
-    /// # let x = vec![1];
-    /// let _ = x.iter().enumerate();
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub RANGE_ZIP_WITH_LEN,
-    complexity,
-    "zipping iterator with a range when `enumerate()` would do"
-}
 
 declare_clippy_lint! {
     /// ### What it does
@@ -198,7 +172,6 @@ impl Ranges {
 }
 
 impl_lint_pass!(Ranges => [
-    RANGE_ZIP_WITH_LEN,
     RANGE_PLUS_ONE,
     RANGE_MINUS_ONE,
     REVERSED_EMPTY_RANGES,
@@ -207,16 +180,10 @@ impl_lint_pass!(Ranges => [
 
 impl<'tcx> LateLintPass<'tcx> for Ranges {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        match expr.kind {
-            ExprKind::MethodCall(path, args, _) => {
-                check_range_zip_with_len(cx, path, args, expr.span);
-            },
-            ExprKind::Binary(ref op, l, r) => {
-                if meets_msrv(self.msrv, msrvs::RANGE_CONTAINS) {
-                    check_possible_range_contains(cx, op.node, l, r, expr, expr.span);
-                }
-            },
-            _ => {},
+        if let ExprKind::Binary(ref op, l, r) = expr.kind {
+            if meets_msrv(self.msrv, msrvs::RANGE_CONTAINS) {
+                check_possible_range_contains(cx, op.node, l, r, expr, expr.span);
+            }
         }
 
         check_exclusive_range_plus_one(cx, expr);
@@ -378,34 +345,6 @@ fn check_range_bounds<'a>(cx: &'a LateContext<'_>, ex: &'a Expr<'_>) -> Option<R
         }
     }
     None
-}
-
-fn check_range_zip_with_len(cx: &LateContext<'_>, path: &PathSegment<'_>, args: &[Expr<'_>], span: Span) {
-    if_chain! {
-        if path.ident.as_str() == "zip";
-        if let [iter, zip_arg] = args;
-        // `.iter()` call
-        if let ExprKind::MethodCall(iter_path, [iter_caller, ..], _) = iter.kind;
-        if iter_path.ident.name == sym::iter;
-        // range expression in `.zip()` call: `0..x.len()`
-        if let Some(higher::Range { start: Some(start), end: Some(end), .. }) = higher::Range::hir(zip_arg);
-        if is_integer_const(cx, start, 0);
-        // `.len()` call
-        if let ExprKind::MethodCall(len_path, [len_caller], _) = end.kind;
-        if len_path.ident.name == sym::len;
-        // `.iter()` and `.len()` called on same `Path`
-        if let ExprKind::Path(QPath::Resolved(_, iter_path)) = iter_caller.kind;
-        if let ExprKind::Path(QPath::Resolved(_, len_path)) = len_caller.kind;
-        if SpanlessEq::new(cx).eq_path_segments(iter_path.segments, len_path.segments);
-        then {
-            span_lint(cx,
-                RANGE_ZIP_WITH_LEN,
-                span,
-                &format!("it is more idiomatic to use `{}.iter().enumerate()`",
-                    snippet(cx, iter_caller.span, "_"))
-            );
-        }
-    }
 }
 
 // exclusive range plus one: `x..(y+1)`

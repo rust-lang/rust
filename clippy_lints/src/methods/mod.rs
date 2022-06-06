@@ -64,6 +64,7 @@ mod option_map_unwrap_or;
 mod or_fun_call;
 mod or_then_unwrap;
 mod path_buf_push_overwrite;
+mod range_zip_with_len;
 mod search_is_some;
 mod single_char_add_str;
 mod single_char_insert_string;
@@ -2734,6 +2735,31 @@ declare_clippy_lint! {
     "calling `push` with file system root on `PathBuf` can overwrite it"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for zipping a collection with the range of
+    /// `0.._.len()`.
+    ///
+    /// ### Why is this bad?
+    /// The code is better expressed with `.enumerate()`.
+    ///
+    /// ### Example
+    /// ```rust
+    /// # let x = vec![1];
+    /// let _ = x.iter().zip(0..x.len());
+    /// ```
+    ///
+    /// Use instead:
+    /// ```rust
+    /// # let x = vec![1];
+    /// let _ = x.iter().enumerate();
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub RANGE_ZIP_WITH_LEN,
+    complexity,
+    "zipping iterator with a range when `enumerate()` would do"
+}
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Option<RustcVersion>,
@@ -2848,6 +2874,7 @@ impl_lint_pass!(Methods => [
     MUT_MUTEX_LOCK,
     NONSENSICAL_OPEN_OPTIONS,
     PATH_BUF_PUSH_OVERWRITE,
+    RANGE_ZIP_WITH_LEN,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -3303,6 +3330,13 @@ impl Methods {
                 },
                 ("replace" | "replacen", [arg1, arg2] | [arg1, arg2, _]) => {
                     no_effect_replace::check(cx, expr, arg1, arg2);
+                },
+                ("zip", [arg]) => {
+                    if let ExprKind::MethodCall(name, [iter_recv], _) = recv.kind
+                        && name.ident.name == sym::iter
+                    {
+                        range_zip_with_len::check(cx, expr, iter_recv, arg);
+                    }
                 },
                 _ => {},
             }
