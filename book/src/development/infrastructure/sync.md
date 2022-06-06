@@ -51,6 +51,24 @@ sudo chown --reference=/usr/lib/git-core/git-subtree~ /usr/lib/git-core/git-subt
 > `bash` instead. You can do this by editing the first line of the `git-subtree`
 > script and changing `sh` to `bash`.
 
+## Defining remotes
+
+You may want to define remotes, so you don't have to type out the remote
+addresses on every sync. You can do this with the following commands (these
+commands still have to be run inside the `rust` directory):
+
+```bash
+# Set clippy-upstream remote for pulls
+$ git remote add clippy-upstream https://github.com/rust-lang/rust-clippy
+# Make sure to not push to the upstream repo
+$ git remote set-url --push clippy-upstream DISABLED
+# Set a local remote
+$ git remote add clippy-local /path/to/rust-clippy
+```
+
+> Note: The following sections assume that you have set those remotes with the
+> above remote names.
+
 ## Performing the sync from [`rust-lang/rust`] to Clippy
 
 Here is a TL;DR version of the sync process (all of the following commands have
@@ -64,12 +82,8 @@ to be run inside the `rust` directory):
     # Make sure to change `your-github-name` to your github name in the following command. Also be
     # sure to either use a net-new branch, e.g. `sync-from-rust`, or delete the branch beforehand
     # because changes cannot be fast forwarded and you have to run this command again.
-    git subtree push -P src/tools/clippy git@github.com:your-github-name/rust-clippy sync-from-rust
+    git subtree push -P src/tools/clippy clippy-local sync-from-rust
     ```
-
-    > _Note:_ This will directly push to the remote repository. You can also
-    > push to your local copy by replacing the remote address with
-    > `/path/to/rust-clippy` directory.
 
     > _Note:_ Most of the time you have to create a merge commit in the
     > `rust-clippy` repo (this has to be done in the Clippy repo, not in the
@@ -77,9 +91,16 @@ to be run inside the `rust` directory):
     ```bash
     git fetch upstream  # assuming upstream is the rust-lang/rust remote
     git checkout sync-from-rust
-    git merge upstream/master
+    git merge upstream/master --no-ff
     ```
-4. Open a PR to `rust-lang/rust-clippy` and wait for it to get merged (to
+    > Note: This is one of the few instances where a merge commit is allowed in
+    > a PR.
+4. Bump the nightly version in the Clippy repository by changing the date in the
+   rust-toolchain file to the current date and committing it with the message:
+   ```bash
+   git commit -m "Bump nightly version -> YYYY-MM-DD"
+   ```
+5. Open a PR to `rust-lang/rust-clippy` and wait for it to get merged (to
    accelerate the process ping the `@rust-lang/clippy` team in your PR and/or
    ask them in the [Zulip] stream.)
 
@@ -93,32 +114,9 @@ All of the following commands have to be run inside the `rust` directory.
 2. Sync the `rust-lang/rust-clippy` master to the rust-copy of Clippy:
     ```bash
     git checkout -b sync-from-clippy
-    git subtree pull -P src/tools/clippy https://github.com/rust-lang/rust-clippy master
+    git subtree pull -P src/tools/clippy clippy-upstream master
     ```
 3. Open a PR to [`rust-lang/rust`]
-
-## Defining remotes
-
-You may want to define remotes, so you don't have to type out the remote
-addresses on every sync. You can do this with the following commands (these
-commands still have to be run inside the `rust` directory):
-
-```bash
-# Set clippy-upstream remote for pulls
-$ git remote add clippy-upstream https://github.com/rust-lang/rust-clippy
-# Make sure to not push to the upstream repo
-$ git remote set-url --push clippy-upstream DISABLED
-# Set clippy-origin remote to your fork for pushes
-$ git remote add clippy-origin git@github.com:your-github-name/rust-clippy
-# Set a local remote
-$ git remote add clippy-local /path/to/rust-clippy
-```
-
-You can then sync with the remote names from above, e.g.:
-
-```bash
-$ git subtree push -P src/tools/clippy clippy-local sync-from-rust
-```
 
 [gitgitgadget-pr]: https://github.com/gitgitgadget/git/pull/493
 [subtree]: https://rustc-dev-guide.rust-lang.org/contributing.html#external-dependencies-subtree
