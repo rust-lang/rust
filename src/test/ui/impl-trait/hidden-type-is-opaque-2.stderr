@@ -1,16 +1,16 @@
 error[E0282]: type annotations needed
-  --> $DIR/hidden-type-is-opaque-2.rs:8:17
+  --> $DIR/hidden-type-is-opaque-2.rs:9:9
    |
-LL |     Thunk::new(|mut cont| {
-   |                 ^^^^^^^^ consider giving this closure parameter a type
+LL |         cont.reify_as();
+   |         ^^^^ cannot infer type
    |
    = note: type must be known at this point
 
 error[E0282]: type annotations needed
-  --> $DIR/hidden-type-is-opaque-2.rs:17:17
+  --> $DIR/hidden-type-is-opaque-2.rs:18:9
    |
-LL |     Thunk::new(|mut cont| {
-   |                 ^^^^^^^^ consider giving this closure parameter a type
+LL |         cont.reify_as();
+   |         ^^^^ cannot infer type
    |
    = note: type must be known at this point
 

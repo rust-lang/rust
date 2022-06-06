@@ -231,7 +231,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
 /// This function is not only checking that the dropck obligations are met for
 /// the given type, but it's also currently preventing non-regular recursion in
 /// types from causing stack overflows (dropck_no_diverge_on_nonregular_*.rs).
-crate fn check_drop_obligations<'a, 'tcx>(
+pub(crate) fn check_drop_obligations<'a, 'tcx>(
     rcx: &mut RegionCtxt<'a, 'tcx>,
     ty: Ty<'tcx>,
     span: Span,
@@ -248,7 +248,7 @@ crate fn check_drop_obligations<'a, 'tcx>(
 // This is an implementation of the TypeRelation trait with the
 // aim of simply comparing for equality (without side-effects).
 // It is not intended to be used anywhere else other than here.
-crate struct SimpleEqRelation<'tcx> {
+pub(crate) struct SimpleEqRelation<'tcx> {
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
 }

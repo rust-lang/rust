@@ -1,5 +1,5 @@
 error[E0623]: lifetime mismatch
-  --> $DIR/issue-90170-elision-mismatch.rs:3:47
+  --> $DIR/issue-90170-elision-mismatch.rs:8:47
    |
 LL | pub fn foo(x: &mut Vec<&u8>, y: &u8) { x.push(y); }
    |                        ---      ---           ^ ...but data from `y` flows into `x` here
@@ -13,7 +13,7 @@ LL | pub fn foo<'a>(x: &mut Vec<&'a u8>, y: &'a u8) { x.push(y); }
    |           ++++              ++          ++
 
 error[E0623]: lifetime mismatch
-  --> $DIR/issue-90170-elision-mismatch.rs:5:51
+  --> $DIR/issue-90170-elision-mismatch.rs:10:51
    |
 LL | pub fn foo2(x: &mut Vec<&'_ u8>, y: &u8) { x.push(y); }
    |                         ------      ---           ^ ...but data from `y` flows into `x` here
@@ -27,7 +27,7 @@ LL | pub fn foo2<'a>(x: &mut Vec<&'a u8>, y: &'a u8) { x.push(y); }
    |            ++++              ~~          ++
 
 error[E0623]: lifetime mismatch
-  --> $DIR/issue-90170-elision-mismatch.rs:7:70
+  --> $DIR/issue-90170-elision-mismatch.rs:12:70
    |
 LL | pub fn foo3<'a>(_other: &'a [u8], x: &mut Vec<&u8>, y: &u8) { x.push(y); }
    |                                               ---      ---           ^ ...but data from `y` flows into `x` here

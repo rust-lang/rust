@@ -14,7 +14,6 @@ use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo, SymbolExportKind};
 use rustc_middle::ty::TyCtxt;
-use rustc_serialize::{json, Encoder};
 use rustc_session::config::{self, CrateType, DebugInfo, LinkerPluginLto, Lto, OptLevel, Strip};
 use rustc_session::Session;
 use rustc_span::symbol::Symbol;
@@ -183,7 +182,7 @@ pub trait Linker {
     fn optimize(&mut self);
     fn pgo_gen(&mut self);
     fn control_flow_guard(&mut self);
-    fn debuginfo(&mut self, strip: Strip, debugger_visualizers: &[PathBuf]);
+    fn debuginfo(&mut self, strip: Strip, natvis_debugger_visualizers: &[PathBuf]);
     fn no_crt_objects(&mut self);
     fn no_default_libraries(&mut self);
     fn export_symbols(&mut self, tmpdir: &Path, crate_type: CrateType, symbols: &[String]);
@@ -915,7 +914,7 @@ impl<'a> Linker for MsvcLinker<'a> {
         self.cmd.arg("/guard:cf");
     }
 
-    fn debuginfo(&mut self, strip: Strip, debugger_visualizers: &[PathBuf]) {
+    fn debuginfo(&mut self, strip: Strip, natvis_debugger_visualizers: &[PathBuf]) {
         match strip {
             Strip::None => {
                 // This will cause the Microsoft linker to generate a PDB file
@@ -944,7 +943,7 @@ impl<'a> Linker for MsvcLinker<'a> {
                 }
 
                 // This will cause the Microsoft linker to embed .natvis info for all crates into the PDB file
-                for path in debugger_visualizers {
+                for path in natvis_debugger_visualizers {
                     let mut arg = OsString::from("/NATVIS:");
                     arg.push(path);
                     self.cmd.arg(arg);
@@ -1152,21 +1151,12 @@ impl<'a> Linker for EmLinker<'a> {
         self.cmd.arg("-s");
 
         let mut arg = OsString::from("EXPORTED_FUNCTIONS=");
-        let mut encoded = String::new();
-
-        {
-            let mut encoder = json::Encoder::new(&mut encoded);
-            let res = encoder.emit_seq(symbols.len(), |encoder| {
-                for (i, sym) in symbols.iter().enumerate() {
-                    encoder.emit_seq_elt(i, |encoder| encoder.emit_str(&("_".to_owned() + sym)))?;
-                }
-                Ok(())
-            });
-            if let Err(e) = res {
-                self.sess.fatal(&format!("failed to encode exported symbols: {}", e));
-            }
-        }
+        let encoded = serde_json::to_string(
+            &symbols.iter().map(|sym| "_".to_owned() + sym).collect::<Vec<_>>(),
+        )
+        .unwrap();
         debug!("{}", encoded);
+
         arg.push(encoded);
 
         self.cmd.arg(arg);

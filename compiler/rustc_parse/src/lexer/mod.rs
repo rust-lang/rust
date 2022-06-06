@@ -31,7 +31,7 @@ pub struct UnmatchedBrace {
     pub candidate_span: Option<Span>,
 }
 
-crate fn parse_token_trees<'a>(
+pub(crate) fn parse_token_trees<'a>(
     sess: &'a ParseSess,
     src: &'a str,
     start_pos: BytePos,

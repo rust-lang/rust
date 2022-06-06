@@ -13,7 +13,6 @@
 #![feature(let_else)]
 #![feature(nll)]
 #![feature(test)]
-#![feature(crate_visibility_modifier)]
 #![feature(never_type)]
 #![feature(once_cell)]
 #![feature(type_ascription)]
@@ -71,9 +70,7 @@ extern crate test;
 // See docs in https://github.com/rust-lang/rust/blob/master/compiler/rustc/src/main.rs
 // about jemalloc.
 #[cfg(feature = "jemalloc")]
-extern crate tikv_jemalloc_sys;
-#[cfg(feature = "jemalloc")]
-use tikv_jemalloc_sys as jemalloc_sys;
+extern crate jemalloc_sys;
 
 use std::default::Default;
 use std::env::{self, VarError};
@@ -121,7 +118,7 @@ mod formats;
 // used by the error-index generator, so it needs to be public
 pub mod html;
 mod json;
-crate mod lint;
+pub(crate) mod lint;
 mod markdown;
 mod passes;
 mod scrape_examples;

@@ -31,14 +31,14 @@ use std::fs;
 use std::path::PathBuf;
 
 #[derive(Debug, Clone)]
-crate struct ScrapeExamplesOptions {
+pub(crate) struct ScrapeExamplesOptions {
     output_path: PathBuf,
     target_crates: Vec<String>,
-    crate scrape_tests: bool,
+    pub(crate) scrape_tests: bool,
 }
 
 impl ScrapeExamplesOptions {
-    crate fn new(
+    pub(crate) fn new(
         matches: &getopts::Matches,
         diag: &rustc_errors::Handler,
     ) -> Result<Option<Self>, i32> {
@@ -65,9 +65,9 @@ impl ScrapeExamplesOptions {
 }
 
 #[derive(Encodable, Decodable, Debug, Clone)]
-crate struct SyntaxRange {
-    crate byte_span: (u32, u32),
-    crate line_span: (usize, usize),
+pub(crate) struct SyntaxRange {
+    pub(crate) byte_span: (u32, u32),
+    pub(crate) line_span: (usize, usize),
 }
 
 impl SyntaxRange {
@@ -83,10 +83,10 @@ impl SyntaxRange {
 }
 
 #[derive(Encodable, Decodable, Debug, Clone)]
-crate struct CallLocation {
-    crate call_expr: SyntaxRange,
-    crate call_ident: SyntaxRange,
-    crate enclosing_item: SyntaxRange,
+pub(crate) struct CallLocation {
+    pub(crate) call_expr: SyntaxRange,
+    pub(crate) call_ident: SyntaxRange,
+    pub(crate) enclosing_item: SyntaxRange,
 }
 
 impl CallLocation {
@@ -105,15 +105,15 @@ impl CallLocation {
 }
 
 #[derive(Encodable, Decodable, Debug, Clone)]
-crate struct CallData {
-    crate locations: Vec<CallLocation>,
-    crate url: String,
-    crate display_name: String,
-    crate edition: Edition,
+pub(crate) struct CallData {
+    pub(crate) locations: Vec<CallLocation>,
+    pub(crate) url: String,
+    pub(crate) display_name: String,
+    pub(crate) edition: Edition,
 }
 
-crate type FnCallLocations = FxHashMap<PathBuf, CallData>;
-crate type AllCallLocations = FxHashMap<DefPathHash, FnCallLocations>;
+pub(crate) type FnCallLocations = FxHashMap<PathBuf, CallData>;
+pub(crate) type AllCallLocations = FxHashMap<DefPathHash, FnCallLocations>;
 
 /// Visitor for traversing a crate and finding instances of function calls.
 struct FindCalls<'a, 'tcx> {
@@ -270,7 +270,7 @@ where
     }
 }
 
-crate fn run(
+pub(crate) fn run(
     krate: clean::Crate,
     mut renderopts: config::RenderOptions,
     cache: formats::cache::Cache,
@@ -328,7 +328,7 @@ crate fn run(
 }
 
 // Note: the Handler must be passed in explicitly because sess isn't available while parsing options
-crate fn load_call_locations(
+pub(crate) fn load_call_locations(
     with_examples: Vec<String>,
     diag: &rustc_errors::Handler,
 ) -> Result<AllCallLocations, i32> {

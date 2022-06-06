@@ -2,7 +2,12 @@ error[E0282]: type annotations needed
   --> $DIR/issue-5062.rs:1:29
    |
 LL | fn main() { format!("{:?}", None); }
-   |                             ^^^^ cannot infer type for type parameter `T` declared on the enum `Option`
+   |                             ^^^^ cannot infer type of the type parameter `T` declared on the enum `Option`
+   |
+help: consider specifying the generic argument
+   |
+LL | fn main() { format!("{:?}", None::<T>); }
+   |                                 +++++
 
 error: aborting due to previous error
 

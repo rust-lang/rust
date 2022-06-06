@@ -43,9 +43,9 @@ pub const FROM_FROM: [&str; 4] = ["core", "convert", "From", "from"];
 pub const FROM_ITERATOR_METHOD: [&str; 6] = ["core", "iter", "traits", "collect", "FromIterator", "from_iter"];
 pub const FROM_STR_METHOD: [&str; 5] = ["core", "str", "traits", "FromStr", "from_str"];
 pub const FUTURE_FROM_GENERATOR: [&str; 3] = ["core", "future", "from_generator"];
-#[allow(clippy::invalid_paths)] // internal lints do not know about all external crates
+#[expect(clippy::invalid_paths)] // internal lints do not know about all external crates
 pub const FUTURES_IO_ASYNCREADEXT: [&str; 3] = ["futures_util", "io", "AsyncReadExt"];
-#[allow(clippy::invalid_paths)] // internal lints do not know about all external crates
+#[expect(clippy::invalid_paths)] // internal lints do not know about all external crates
 pub const FUTURES_IO_ASYNCWRITEEXT: [&str; 3] = ["futures_util", "io", "AsyncWriteExt"];
 pub const HASHMAP_CONTAINS_KEY: [&str; 6] = ["std", "collections", "hash", "map", "HashMap", "contains_key"];
 pub const HASHMAP_ENTRY: [&str; 5] = ["std", "collections", "hash", "map", "Entry"];
@@ -63,7 +63,7 @@ pub const IPADDR_V4: [&str; 5] = ["std", "net", "ip", "IpAddr", "V4"];
 pub const IPADDR_V6: [&str; 5] = ["std", "net", "ip", "IpAddr", "V6"];
 pub const ITER_COUNT: [&str; 6] = ["core", "iter", "traits", "iterator", "Iterator", "count"];
 pub const ITER_REPEAT: [&str; 5] = ["core", "iter", "sources", "repeat", "repeat"];
-#[allow(clippy::invalid_paths)] // internal lints do not know about all external crates
+#[expect(clippy::invalid_paths)] // internal lints do not know about all external crates
 pub const ITERTOOLS_NEXT_TUPLE: [&str; 3] = ["itertools", "Itertools", "next_tuple"];
 #[cfg(feature = "internal")]
 pub const KW_MODULE: [&str; 3] = ["rustc_span", "symbol", "kw"];
@@ -117,17 +117,17 @@ pub const RANGE_ARGUMENT_TRAIT: [&str; 3] = ["core", "ops", "RangeBounds"];
 pub const RC_PTR_EQ: [&str; 4] = ["alloc", "rc", "Rc", "ptr_eq"];
 pub const REFCELL_REF: [&str; 3] = ["core", "cell", "Ref"];
 pub const REFCELL_REFMUT: [&str; 3] = ["core", "cell", "RefMut"];
-#[allow(clippy::invalid_paths)] // internal lints do not know about all external crates
+#[expect(clippy::invalid_paths)] // internal lints do not know about all external crates
 pub const REGEX_BUILDER_NEW: [&str; 5] = ["regex", "re_builder", "unicode", "RegexBuilder", "new"];
-#[allow(clippy::invalid_paths)] // internal lints do not know about all external crates
+#[expect(clippy::invalid_paths)] // internal lints do not know about all external crates
 pub const REGEX_BYTES_BUILDER_NEW: [&str; 5] = ["regex", "re_builder", "bytes", "RegexBuilder", "new"];
-#[allow(clippy::invalid_paths)] // internal lints do not know about all external crates
+#[expect(clippy::invalid_paths)] // internal lints do not know about all external crates
 pub const REGEX_BYTES_NEW: [&str; 4] = ["regex", "re_bytes", "Regex", "new"];
-#[allow(clippy::invalid_paths)] // internal lints do not know about all external crates
+#[expect(clippy::invalid_paths)] // internal lints do not know about all external crates
 pub const REGEX_BYTES_SET_NEW: [&str; 5] = ["regex", "re_set", "bytes", "RegexSet", "new"];
-#[allow(clippy::invalid_paths)] // internal lints do not know about all external crates
+#[expect(clippy::invalid_paths)] // internal lints do not know about all external crates
 pub const REGEX_NEW: [&str; 4] = ["regex", "re_unicode", "Regex", "new"];
-#[allow(clippy::invalid_paths)] // internal lints do not know about all external crates
+#[expect(clippy::invalid_paths)] // internal lints do not know about all external crates
 pub const REGEX_SET_NEW: [&str; 5] = ["regex", "re_set", "unicode", "RegexSet", "new"];
 /// Preferably use the diagnostic item `sym::Result` where possible
 pub const RESULT: [&str; 3] = ["core", "result", "Result"];
@@ -169,9 +169,9 @@ pub const SYM_MODULE: [&str; 3] = ["rustc_span", "symbol", "sym"];
 pub const SYNTAX_CONTEXT: [&str; 3] = ["rustc_span", "hygiene", "SyntaxContext"];
 pub const TO_OWNED_METHOD: [&str; 4] = ["alloc", "borrow", "ToOwned", "to_owned"];
 pub const TO_STRING_METHOD: [&str; 4] = ["alloc", "string", "ToString", "to_string"];
-#[allow(clippy::invalid_paths)] // internal lints do not know about all external crates
+#[expect(clippy::invalid_paths)] // internal lints do not know about all external crates
 pub const TOKIO_IO_ASYNCREADEXT: [&str; 5] = ["tokio", "io", "util", "async_read_ext", "AsyncReadExt"];
-#[allow(clippy::invalid_paths)] // internal lints do not know about all external crates
+#[expect(clippy::invalid_paths)] // internal lints do not know about all external crates
 pub const TOKIO_IO_ASYNCWRITEEXT: [&str; 5] = ["tokio", "io", "util", "async_write_ext", "AsyncWriteExt"];
 pub const TRY_FROM: [&str; 4] = ["core", "convert", "TryFrom", "try_from"];
 pub const VEC_AS_MUT_SLICE: [&str; 4] = ["alloc", "vec", "Vec", "as_mut_slice"];

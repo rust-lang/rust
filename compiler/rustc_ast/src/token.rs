@@ -50,12 +50,11 @@ pub enum Delimiter {
     Brace,
     /// `[ ... ]`
     Bracket,
-    /// `/*«*/ ... /*»*/`
+    /// `Ø ... Ø`
     /// An invisible delimiter, that may, for example, appear around tokens coming from a
     /// "macro variable" `$var`. It is important to preserve operator priorities in cases like
     /// `$var * 3` where `$var` is `1 + 2`.
-    /// Invisible delimiters are not directly writable in normal Rust code except as comments.
-    /// Therefore, they might not survive a roundtrip of a token stream through a string.
+    /// Invisible delimiters might not survive roundtrip of a token stream through a string.
     Invisible,
 }
 
@@ -134,7 +133,7 @@ impl LitKind {
         }
     }
 
-    crate fn may_have_suffix(self) -> bool {
+    pub(crate) fn may_have_suffix(self) -> bool {
         matches!(self, Integer | Float | Err)
     }
 }

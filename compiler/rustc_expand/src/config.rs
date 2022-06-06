@@ -347,7 +347,7 @@ impl<'a> StripUnconfigured<'a> {
     /// Gives a compiler warning when the `cfg_attr` contains no attributes and
     /// is in the original source file. Gives a compiler error if the syntax of
     /// the attribute is incorrect.
-    crate fn expand_cfg_attr(&self, attr: Attribute, recursive: bool) -> Vec<Attribute> {
+    pub(crate) fn expand_cfg_attr(&self, attr: Attribute, recursive: bool) -> Vec<Attribute> {
         let Some((cfg_predicate, expanded_attrs)) =
             rustc_parse::parse_cfg_attr(&attr, &self.sess.parse_sess) else {
                 return vec![];
@@ -451,7 +451,7 @@ impl<'a> StripUnconfigured<'a> {
         attrs.iter().all(|attr| !is_cfg(attr) || self.cfg_true(attr))
     }
 
-    crate fn cfg_true(&self, attr: &Attribute) -> bool {
+    pub(crate) fn cfg_true(&self, attr: &Attribute) -> bool {
         let meta_item = match validate_attr::parse_meta(&self.sess.parse_sess, attr) {
             Ok(meta_item) => meta_item,
             Err(mut err) => {
@@ -465,7 +465,7 @@ impl<'a> StripUnconfigured<'a> {
     }
 
     /// If attributes are not allowed on expressions, emit an error for `attr`
-    crate fn maybe_emit_expr_attr_err(&self, attr: &Attribute) {
+    pub(crate) fn maybe_emit_expr_attr_err(&self, attr: &Attribute) {
         if !self.features.map_or(true, |features| features.stmt_expr_attributes) {
             let mut err = feature_err(
                 &self.sess.parse_sess,

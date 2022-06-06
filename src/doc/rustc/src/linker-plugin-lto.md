@@ -1,4 +1,4 @@
-# Linker-plugin-LTO
+# Linker-plugin-based LTO
 
 The `-C linker-plugin-lto` flag allows for deferring the LTO optimization
 to the actual linking step, which in turn allows for performing

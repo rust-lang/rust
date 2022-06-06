@@ -21,9 +21,8 @@ fn check_for_debugger_visualizer<'tcx>(
     let attrs = tcx.hir().attrs(hir_id);
     for attr in attrs {
         if attr.has_name(sym::debugger_visualizer) {
-            let list = match attr.meta_item_list() {
-                Some(list) => list,
-                _ => continue,
+            let Some(list) = attr.meta_item_list() else {
+                continue
             };
 
             let meta_item = match list.len() {
@@ -34,45 +33,35 @@ fn check_for_debugger_visualizer<'tcx>(
                 _ => continue,
             };
 
-            let file = match (meta_item.name_or_empty(), meta_item.value_str()) {
-                (sym::natvis_file, Some(value)) => {
-                    match resolve_path(&tcx.sess.parse_sess, value.as_str(), attr.span) {
-                        Ok(file) => file,
-                        Err(mut err) => {
-                            err.emit();
-                            continue;
-                        }
-                    }
-                }
-                (_, _) => continue,
+            let visualizer_type = match meta_item.name_or_empty() {
+                sym::natvis_file => DebuggerVisualizerType::Natvis,
+                sym::gdb_script_file => DebuggerVisualizerType::GdbPrettyPrinter,
+                _ => continue,
             };
 
-            if file.is_file() {
-                let contents = match std::fs::read(&file) {
-                    Ok(contents) => contents,
-                    Err(err) => {
-                        tcx.sess
-                            .struct_span_err(
-                                attr.span,
-                                &format!(
-                                    "Unable to read contents of file `{}`. {}",
-                                    file.display(),
-                                    err
-                                ),
-                            )
-                            .emit();
-                        continue;
+            let file = match meta_item.value_str() {
+                Some(value) => {
+                    match resolve_path(&tcx.sess.parse_sess, value.as_str(), attr.span) {
+                        Ok(file) => file,
+                        _ => continue,
                     }
-                };
+                }
+                None => continue,
+            };
 
-                debugger_visualizers.insert(DebuggerVisualizerFile::new(
-                    Arc::from(contents),
-                    DebuggerVisualizerType::Natvis,
-                ));
-            } else {
-                tcx.sess
-                    .struct_span_err(attr.span, &format!("{} is not a valid file", file.display()))
-                    .emit();
+            match std::fs::read(&file) {
+                Ok(contents) => {
+                    debugger_visualizers
+                        .insert(DebuggerVisualizerFile::new(Arc::from(contents), visualizer_type));
+                }
+                Err(err) => {
+                    tcx.sess
+                        .struct_span_err(
+                            meta_item.span,
+                            &format!("couldn't read {}: {}", file.display(), err),
+                        )
+                        .emit();
+                }
             }
         }
     }

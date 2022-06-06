@@ -2,13 +2,18 @@ error[E0282]: type annotations needed
   --> $DIR/const_eval_resolve_canonical.rs:26:9
    |
 LL |     let mut _q = Default::default();
-   |         ^^^^^^ consider giving `_q` a type
+   |         ^^^^^^
+   |
+help: consider giving `_q` an explicit type
+   |
+LL |     let mut _q: _ = Default::default();
+   |               +++
 
 error[E0283]: type annotations needed
   --> $DIR/const_eval_resolve_canonical.rs:29:10
    |
 LL |     _q = foo::<_, 2>(_q);
-   |          ^^^^^^^^^^^ cannot infer type
+   |          ^^^^^^^^^^^ cannot infer the value of the constant `{ N + 1 }`
    |
 note: multiple `impl`s satisfying `(): Foo<{ N + 1 }>` found
   --> $DIR/const_eval_resolve_canonical.rs:8:1

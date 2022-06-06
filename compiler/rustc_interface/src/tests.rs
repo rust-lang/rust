@@ -644,8 +644,6 @@ fn test_debugging_options_tracking_hash() {
     // Make sure that changing an [UNTRACKED] option leaves the hash unchanged.
     // This list is in alphabetical order.
     untracked!(assert_incr_state, Some(String::from("loaded")));
-    untracked!(ast_json, true);
-    untracked!(ast_json_noexpand, true);
     untracked!(borrowck, String::from("other"));
     untracked!(deduplicate_diagnostics, false);
     untracked!(dep_tasks, true);

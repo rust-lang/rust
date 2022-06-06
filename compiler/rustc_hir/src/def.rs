@@ -92,6 +92,7 @@ pub enum DefKind {
     /// [RFC 2593]: https://github.com/rust-lang/rfcs/pull/2593
     Ctor(CtorOf, CtorKind),
     /// Associated function: `impl MyStruct { fn associated() {} }`
+    /// or `trait Foo { fn associated() {} }`
     AssocFn,
     /// Associated constant: `trait MyTrait { const ASSOC: usize; }`
     AssocConst,
@@ -670,7 +671,10 @@ impl<Id> Res<Id> {
 
     #[track_caller]
     pub fn expect_non_local<OtherId>(self) -> Res<OtherId> {
-        self.map_id(|_| panic!("unexpected `Res::Local`"))
+        self.map_id(
+            #[track_caller]
+            |_| panic!("unexpected `Res::Local`"),
+        )
     }
 
     pub fn macro_kind(self) -> Option<MacroKind> {

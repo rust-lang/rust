@@ -239,7 +239,7 @@ use std::{cmp, fmt, fs};
 use tracing::{debug, info};
 
 #[derive(Clone)]
-crate struct CrateLocator<'a> {
+pub(crate) struct CrateLocator<'a> {
     // Immutable per-session configuration.
     only_needs_metadata: bool,
     sysroot: &'a Path,
@@ -260,19 +260,19 @@ crate struct CrateLocator<'a> {
 }
 
 #[derive(Clone)]
-crate struct CratePaths {
+pub(crate) struct CratePaths {
     name: Symbol,
     source: CrateSource,
 }
 
 impl CratePaths {
-    crate fn new(name: Symbol, source: CrateSource) -> CratePaths {
+    pub(crate) fn new(name: Symbol, source: CrateSource) -> CratePaths {
         CratePaths { name, source }
     }
 }
 
 #[derive(Copy, Clone, PartialEq)]
-crate enum CrateFlavor {
+pub(crate) enum CrateFlavor {
     Rlib,
     Rmeta,
     Dylib,
@@ -289,7 +289,7 @@ impl fmt::Display for CrateFlavor {
 }
 
 impl<'a> CrateLocator<'a> {
-    crate fn new(
+    pub(crate) fn new(
         sess: &'a Session,
         metadata_loader: &'a dyn MetadataLoader,
         crate_name: Symbol,
@@ -344,7 +344,7 @@ impl<'a> CrateLocator<'a> {
         }
     }
 
-    crate fn reset(&mut self) {
+    pub(crate) fn reset(&mut self) {
         self.crate_rejections.via_hash.clear();
         self.crate_rejections.via_triple.clear();
         self.crate_rejections.via_kind.clear();
@@ -353,7 +353,7 @@ impl<'a> CrateLocator<'a> {
         self.crate_rejections.via_invalid.clear();
     }
 
-    crate fn maybe_load_library_crate(&mut self) -> Result<Option<Library>, CrateError> {
+    pub(crate) fn maybe_load_library_crate(&mut self) -> Result<Option<Library>, CrateError> {
         if !self.exact_paths.is_empty() {
             return self.find_commandline_library();
         }
@@ -728,7 +728,7 @@ impl<'a> CrateLocator<'a> {
         Ok(self.extract_lib(rlibs, rmetas, dylibs)?.map(|(_, lib)| lib))
     }
 
-    crate fn into_error(self, root: Option<CratePaths>) -> CrateError {
+    pub(crate) fn into_error(self, root: Option<CratePaths>) -> CrateError {
         CrateError::LocatorCombined(CombinedLocatorError {
             crate_name: self.crate_name,
             root,
@@ -894,7 +894,7 @@ struct CrateRejections {
 /// Candidate rejection reasons collected during crate search.
 /// If no candidate is accepted, then these reasons are presented to the user,
 /// otherwise they are ignored.
-crate struct CombinedLocatorError {
+pub(crate) struct CombinedLocatorError {
     crate_name: Symbol,
     root: Option<CratePaths>,
     triple: TargetTriple,
@@ -903,7 +903,7 @@ crate struct CombinedLocatorError {
     crate_rejections: CrateRejections,
 }
 
-crate enum CrateError {
+pub(crate) enum CrateError {
     NonAsciiName(Symbol),
     ExternLocationNotExist(Symbol, PathBuf),
     ExternLocationNotFile(Symbol, PathBuf),
@@ -937,7 +937,7 @@ impl fmt::Display for MetadataError<'_> {
 }
 
 impl CrateError {
-    crate fn report(self, sess: &Session, span: Span, missing_core: bool) {
+    pub(crate) fn report(self, sess: &Session, span: Span, missing_core: bool) {
         let mut diag = match self {
             CrateError::NonAsciiName(crate_name) => sess.struct_span_err(
                 span,

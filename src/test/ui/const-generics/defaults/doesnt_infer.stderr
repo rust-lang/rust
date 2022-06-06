@@ -1,10 +1,13 @@
 error[E0282]: type annotations needed for `Foo<N>`
-  --> $DIR/doesnt_infer.rs:11:15
+  --> $DIR/doesnt_infer.rs:11:9
    |
 LL |     let foo = Foo::foo();
-   |         ---   ^^^^^^^^ cannot infer the value of const parameter `N`
-   |         |
-   |         consider giving `foo` the explicit type `Foo<N>`, where the const parameter `N` is specified
+   |         ^^^
+   |
+help: consider giving `foo` an explicit type, where the the value of const parameter `N` is specified
+   |
+LL |     let foo: Foo<N> = Foo::foo();
+   |            ++++++++
 
 error: aborting due to previous error
 

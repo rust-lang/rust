@@ -35,12 +35,12 @@ mod move_errors;
 mod mutability_errors;
 mod region_errors;
 
-crate use bound_region_errors::{ToUniverseInfo, UniverseInfo};
-crate use mutability_errors::AccessKind;
-crate use outlives_suggestion::OutlivesSuggestionBuilder;
-crate use region_errors::{ErrorConstraintInfo, RegionErrorKind, RegionErrors};
-crate use region_name::{RegionName, RegionNameSource};
-crate use rustc_const_eval::util::CallKind;
+pub(crate) use bound_region_errors::{ToUniverseInfo, UniverseInfo};
+pub(crate) use mutability_errors::AccessKind;
+pub(crate) use outlives_suggestion::OutlivesSuggestionBuilder;
+pub(crate) use region_errors::{ErrorConstraintInfo, RegionErrorKind, RegionErrors};
+pub(crate) use region_name::{RegionName, RegionNameSource};
+pub(crate) use rustc_const_eval::util::CallKind;
 use rustc_middle::mir::tcx::PlaceTy;
 
 pub(super) struct IncludingDowncast(pub(super) bool);

@@ -330,7 +330,6 @@ pub trait FromResidual<R = <Self as Try>::Residual> {
     fn from_residual(residual: R) -> Self;
 }
 
-#[cfg(not(bootstrap))]
 #[unstable(
     feature = "yeet_desugar_details",
     issue = "none",

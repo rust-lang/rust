@@ -19,6 +19,7 @@ function showHelp() {
     console.log("  --help                     : show this message then quit");
     console.log("  --tests-folder [PATH]      : location of the .GOML tests folder");
     console.log("  --jobs [NUMBER]            : number of threads to run tests on");
+    console.log("  --executable-path [PATH]   : path of the browser's executable to be used");
 }
 
 function isNumeric(s) {
@@ -34,6 +35,8 @@ function parseOptions(args) {
         "show_text": false,
         "no_headless": false,
         "jobs": -1,
+        "executable_path": null,
+        "no_sandbox": false,
     };
     var correspondances = {
         "--doc-folder": "doc_folder",
@@ -41,13 +44,16 @@ function parseOptions(args) {
         "--debug": "debug",
         "--show-text": "show_text",
         "--no-headless": "no_headless",
+        "--executable-path": "executable_path",
+        "--no-sandbox": "no_sandbox",
     };
 
     for (var i = 0; i < args.length; ++i) {
         if (args[i] === "--doc-folder"
             || args[i] === "--tests-folder"
             || args[i] === "--file"
-            || args[i] === "--jobs") {
+            || args[i] === "--jobs"
+            || args[i] === "--executable-path") {
             i += 1;
             if (i >= args.length) {
                 console.log("Missing argument after `" + args[i - 1] + "` option.");
@@ -68,6 +74,9 @@ function parseOptions(args) {
         } else if (args[i] === "--help") {
             showHelp();
             process.exit(0);
+        } else if (args[i] === "--no-sandbox") {
+            console.log("`--no-sandbox` is being used. Be very careful!");
+            opts[correspondances[args[i]]] = true;
         } else if (correspondances[args[i]]) {
             opts[correspondances[args[i]]] = true;
         } else {
@@ -147,9 +156,16 @@ async function main(argv) {
         if (opts["show_text"]) {
             args.push("--show-text");
         }
+        if (opts["no_sandbox"]) {
+            args.push("--no-sandbox");
+        }
         if (opts["no_headless"]) {
             args.push("--no-headless");
             headless = false;
+        }
+        if (opts["executable_path"] !== null) {
+            args.push("--executable-path");
+            args.push(opts["executable_path"]);
         }
         options.parseArguments(args);
     } catch (error) {

@@ -1,14 +1,16 @@
-use super::LazyQueryDecodable;
 use crate::creader::{CStore, LoadedMacro};
 use crate::foreign_modules;
 use crate::native_libs;
 
 use rustc_ast as ast;
+use rustc_attr::Deprecation;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
+use rustc_middle::arena::ArenaAllocatable;
 use rustc_middle::metadata::ModChild;
 use rustc_middle::middle::exported_symbols::ExportedSymbol;
+use rustc_middle::middle::stability::DeprecationEntry;
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::query::{ExternProviders, Providers};
 use rustc_middle::ty::{self, TyCtxt, Visibility};
@@ -23,15 +25,80 @@ use rustc_data_structures::sync::Lrc;
 use smallvec::SmallVec;
 use std::any::Any;
 
+use super::{Decodable, DecodeContext, DecodeIterator};
+
+trait ProcessQueryValue<'tcx, T> {
+    fn process_decoded(self, _tcx: TyCtxt<'tcx>, _err: impl Fn() -> !) -> T;
+}
+
+impl<T> ProcessQueryValue<'_, Option<T>> for Option<T> {
+    #[inline(always)]
+    fn process_decoded(self, _tcx: TyCtxt<'_>, _err: impl Fn() -> !) -> Option<T> {
+        self
+    }
+}
+
+impl<T> ProcessQueryValue<'_, T> for Option<T> {
+    #[inline(always)]
+    fn process_decoded(self, _tcx: TyCtxt<'_>, err: impl Fn() -> !) -> T {
+        if let Some(value) = self { value } else { err() }
+    }
+}
+
+impl<'tcx, T: ArenaAllocatable<'tcx>> ProcessQueryValue<'tcx, &'tcx T> for Option<T> {
+    #[inline(always)]
+    fn process_decoded(self, tcx: TyCtxt<'tcx>, err: impl Fn() -> !) -> &'tcx T {
+        if let Some(value) = self { tcx.arena.alloc(value) } else { err() }
+    }
+}
+
+impl<T, E> ProcessQueryValue<'_, Result<Option<T>, E>> for Option<T> {
+    #[inline(always)]
+    fn process_decoded(self, _tcx: TyCtxt<'_>, _err: impl Fn() -> !) -> Result<Option<T>, E> {
+        Ok(self)
+    }
+}
+
+impl<'a, 'tcx, T: Copy + Decodable<DecodeContext<'a, 'tcx>>> ProcessQueryValue<'tcx, &'tcx [T]>
+    for Option<DecodeIterator<'a, 'tcx, T>>
+{
+    #[inline(always)]
+    fn process_decoded(self, tcx: TyCtxt<'tcx>, _err: impl Fn() -> !) -> &'tcx [T] {
+        if let Some(iter) = self { tcx.arena.alloc_from_iter(iter) } else { &[] }
+    }
+}
+
+impl ProcessQueryValue<'_, Option<DeprecationEntry>> for Option<Deprecation> {
+    #[inline(always)]
+    fn process_decoded(self, _tcx: TyCtxt<'_>, _err: impl Fn() -> !) -> Option<DeprecationEntry> {
+        self.map(DeprecationEntry::external)
+    }
+}
+
 macro_rules! provide_one {
     (<$lt:tt> $tcx:ident, $def_id:ident, $other:ident, $cdata:ident, $name:ident => { table }) => {
         provide_one! {
             <$lt> $tcx, $def_id, $other, $cdata, $name => {
-                $cdata.root.tables.$name.get($cdata, $def_id.index).decode_query(
-                    $cdata,
-                    $tcx,
-                    || panic!("{:?} does not have a {:?}", $def_id, stringify!($name)),
-                )
+                $cdata
+                    .root
+                    .tables
+                    .$name
+                    .get($cdata, $def_id.index)
+                    .map(|lazy| lazy.decode(($cdata, $tcx)))
+                    .process_decoded($tcx, || panic!("{:?} does not have a {:?}", $def_id, stringify!($name)))
+            }
+        }
+    };
+    (<$lt:tt> $tcx:ident, $def_id:ident, $other:ident, $cdata:ident, $name:ident => { table_direct }) => {
+        provide_one! {
+            <$lt> $tcx, $def_id, $other, $cdata, $name => {
+                // We don't decode `table_direct`, since it's not a Lazy, but an actual value
+                $cdata
+                    .root
+                    .tables
+                    .$name
+                    .get($cdata, $def_id.index)
+                    .process_decoded($tcx, || panic!("{:?} does not have a {:?}", $def_id, stringify!($name)))
             }
         }
     };
@@ -143,15 +210,15 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     lookup_deprecation_entry => { table }
     visibility => { table }
     unused_generic_params => { table }
-    opt_def_kind => { table }
+    opt_def_kind => { table_direct }
     impl_parent => { table }
-    impl_polarity => { table }
-    impl_defaultness => { table }
-    impl_constness => { table }
+    impl_polarity => { table_direct }
+    impl_defaultness => { table_direct }
+    impl_constness => { table_direct }
     coerce_unsized_info => { table }
     mir_const_qualif => { table }
     rendered_const => { table }
-    asyncness => { table }
+    asyncness => { table_direct }
     fn_arg_names => { table }
     generator_kind => { table }
     trait_def => { table }

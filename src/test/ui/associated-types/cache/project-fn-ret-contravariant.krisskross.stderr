@@ -1,5 +1,5 @@
 error[E0623]: lifetime mismatch
-  --> $DIR/project-fn-ret-contravariant.rs:45:5
+  --> $DIR/project-fn-ret-contravariant.rs:52:5
    |
 LL | fn transmute<'a,'b>(x: &'a u32, y: &'b u32) -> (&'a u32, &'b u32) {
    |                        -------                 ------------------
@@ -10,7 +10,7 @@ LL |    (a, b)
    |     ^ ...but data from `y` is returned here
 
 error[E0623]: lifetime mismatch
-  --> $DIR/project-fn-ret-contravariant.rs:45:8
+  --> $DIR/project-fn-ret-contravariant.rs:52:8
    |
 LL | fn transmute<'a,'b>(x: &'a u32, y: &'b u32) -> (&'a u32, &'b u32) {
    |                                    -------     ------------------

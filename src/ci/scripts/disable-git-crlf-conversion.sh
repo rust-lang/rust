@@ -1,6 +1,6 @@
 #!/bin/bash
 # Disable automatic line ending conversion, which is enabled by default on
-# Azure's Windows image. Having the conversion enabled caused regressions both
+# GitHub's Windows image. Having the conversion enabled caused regressions both
 # in our test suite (it broke miri tests) and in the ecosystem, since we
 # started shipping install scripts with CRLF endings instead of the old LF.
 #

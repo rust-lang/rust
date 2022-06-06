@@ -8,7 +8,6 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::{ImplSource, Obligation, ObligationCause};
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
-use rustc_middle::ty::cast::CastTy;
 use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts};
 use rustc_middle::ty::{self, adjustment::PointerCast, Instance, InstanceDef, Ty, TyCtxt};
 use rustc_middle::ty::{Binder, TraitPredicate, TraitRef, TypeFoldable};
@@ -229,18 +228,6 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
 
         // The local type and predicate checks are not free and only relevant for `const fn`s.
         if self.const_kind() == hir::ConstContext::ConstFn {
-            // Prevent const trait methods from being annotated as `stable`.
-            // FIXME: Do this as part of stability checking.
-            if self.is_const_stable_const_fn() {
-                if crate::const_eval::is_parent_const_impl_raw(tcx, def_id) {
-                    self.ccx
-                        .tcx
-                        .sess
-                        .struct_span_err(self.span, "trait methods cannot be stable const fn")
-                        .emit();
-                }
-            }
-
             for (idx, local) in body.local_decls.iter_enumerated() {
                 // Handle the return place below.
                 if idx == RETURN_PLACE || local.internal {
@@ -533,37 +520,31 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             }
 
             Rvalue::Cast(
-                CastKind::Pointer(PointerCast::MutToConstPointer | PointerCast::ArrayToPointer),
-                _,
-                _,
-            ) => {}
-
-            Rvalue::Cast(
                 CastKind::Pointer(
-                    PointerCast::UnsafeFnPointer
+                    PointerCast::MutToConstPointer
+                    | PointerCast::ArrayToPointer
+                    | PointerCast::UnsafeFnPointer
                     | PointerCast::ClosureFnPointer(_)
                     | PointerCast::ReifyFnPointer,
                 ),
                 _,
                 _,
             ) => {
-                // Nothing to do here. Function pointer casts are allowed now.
+                // These are all okay; they only change the type, not the data.
             }
 
             Rvalue::Cast(CastKind::Pointer(PointerCast::Unsize), _, _) => {
-                // Nothing to check here (`check_local_or_return_ty` ensures no trait objects occur
-                // in the type of any local, which also excludes casts).
+                // Unsizing is implemented for CTFE.
             }
 
-            Rvalue::Cast(CastKind::Misc, ref operand, cast_ty) => {
-                let operand_ty = operand.ty(self.body, self.tcx);
-                let cast_in = CastTy::from_ty(operand_ty).expect("bad input type for cast");
-                let cast_out = CastTy::from_ty(cast_ty).expect("bad output type for cast");
-
-                if let (CastTy::Ptr(_) | CastTy::FnPtr, CastTy::Int(_)) = (cast_in, cast_out) {
-                    self.check_op(ops::RawPtrToIntCast);
-                }
+            Rvalue::Cast(CastKind::PointerExposeAddress, _, _) => {
+                self.check_op(ops::RawPtrToIntCast);
             }
+            Rvalue::Cast(CastKind::PointerFromExposedAddress, _, _) => {
+                // Since no pointer can ever get exposed (rejected above), this is easy to support.
+            }
+
+            Rvalue::Cast(CastKind::Misc, _, _) => {}
 
             Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf, _) => {}
             Rvalue::ShallowInitBox(_, _) => {}
@@ -723,8 +704,6 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     }
                 };
 
-                let mut nonconst_call_permission = false;
-
                 // Attempting to call a trait method?
                 if let Some(trait_id) = tcx.trait_of_item(callee) {
                     trace!("attempting to call a trait method");
@@ -786,13 +765,12 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                             }
                         }
                         _ if !tcx.is_const_fn_raw(callee) => {
-                            // At this point, it is only legal when the caller is marked with
-                            // #[default_method_body_is_const], and the callee is in the same
-                            // trait.
-                            let callee_trait = tcx.trait_of_item(callee);
-                            if callee_trait.is_some()
-                                && tcx.has_attr(caller.to_def_id(), sym::default_method_body_is_const)
-                                && callee_trait == tcx.trait_of_item(caller)
+                            // At this point, it is only legal when the caller is in a trait
+                            // marked with #[const_trait], and the callee is in the same trait.
+                            let mut nonconst_call_permission = false;
+                            if let Some(callee_trait) = tcx.trait_of_item(callee)
+                                && tcx.has_attr(callee_trait, sym::const_trait)
+                                && Some(callee_trait) == tcx.trait_of_item(caller)
                                 // Can only call methods when it's `<Self as TheTrait>::f`.
                                 && tcx.types.self_param == substs.type_at(0)
                             {
@@ -886,16 +864,10 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 let is_intrinsic = tcx.is_intrinsic(callee);
 
                 if !tcx.is_const_fn_raw(callee) {
-                    if tcx.trait_of_item(callee).is_some() {
-                        if tcx.has_attr(callee, sym::default_method_body_is_const) {
-                            // To get to here we must have already found a const impl for the
-                            // trait, but for it to still be non-const can be that the impl is
-                            // using default method bodies.
-                            nonconst_call_permission = true;
-                        }
-                    }
-
-                    if !nonconst_call_permission {
+                    if !tcx.is_const_default_method(callee) {
+                        // To get to here we must have already found a const impl for the
+                        // trait, but for it to still be non-const can be that the impl is
+                        // using default method bodies.
                         self.check_op(ops::FnCallNonConst {
                             caller,
                             callee,
@@ -944,7 +916,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 // have no `rustc_const_stable` attributes to be const-unstable as well. This
                 // should be fixed later.
                 let callee_is_unstable_unmarked = tcx.lookup_const_stability(callee).is_none()
-                    && tcx.lookup_stability(callee).map_or(false, |s| s.level.is_unstable());
+                    && tcx.lookup_stability(callee).map_or(false, |s| s.is_unstable());
                 if callee_is_unstable_unmarked {
                     trace!("callee_is_unstable_unmarked");
                     // We do not use `const` modifiers for intrinsic "functions", as intrinsics are

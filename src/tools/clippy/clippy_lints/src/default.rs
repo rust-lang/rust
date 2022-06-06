@@ -110,7 +110,7 @@ impl<'tcx> LateLintPass<'tcx> for Default {
         }
     }
 
-    #[allow(clippy::too_many_lines)]
+    #[expect(clippy::too_many_lines)]
     fn check_block(&mut self, cx: &LateContext<'tcx>, block: &Block<'tcx>) {
         // start from the `let mut _ = _::default();` and look at all the following
         // statements, see if they re-assign the fields of the binding

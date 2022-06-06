@@ -1,5 +1,5 @@
 error[E0310]: the parameter type `T` may not live long enough
-  --> $DIR/issue_74400.rs:12:5
+  --> $DIR/issue_74400.rs:16:5
    |
 LL |     f(data, identity)
    |     ^^^^^^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
@@ -10,7 +10,7 @@ LL | fn g<T: 'static>(data: &[T]) {
    |       +++++++++
 
 error[E0308]: mismatched types
-  --> $DIR/issue_74400.rs:12:5
+  --> $DIR/issue_74400.rs:16:5
    |
 LL |     f(data, identity)
    |     ^^^^^^^^^^^^^^^^^ one type is more general than the other
@@ -18,13 +18,13 @@ LL |     f(data, identity)
    = note: expected type `for<'r> Fn<(&'r T,)>`
               found type `Fn<(&T,)>`
 note: the lifetime requirement is introduced here
-  --> $DIR/issue_74400.rs:8:34
+  --> $DIR/issue_74400.rs:12:34
    |
 LL | fn f<T, S>(data: &[T], key: impl Fn(&T) -> S) {
    |                                  ^^^^^^^^^^^
 
 error: implementation of `FnOnce` is not general enough
-  --> $DIR/issue_74400.rs:12:5
+  --> $DIR/issue_74400.rs:16:5
    |
 LL |     f(data, identity)
    |     ^^^^^^^^^^^^^^^^^ implementation of `FnOnce` is not general enough

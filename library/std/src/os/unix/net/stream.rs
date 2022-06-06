@@ -1,13 +1,4 @@
-#[cfg(any(
-    doc,
-    target_os = "android",
-    target_os = "dragonfly",
-    target_os = "emscripten",
-    target_os = "freebsd",
-    target_os = "linux",
-    target_os = "netbsd",
-    target_os = "openbsd",
-))]
+#[cfg(any(doc, target_os = "android", target_os = "linux"))]
 use super::{recv_vectored_with_ancillary_from, send_vectored_with_ancillary_to, SocketAncillary};
 use super::{sockaddr_un, SocketAddr};
 use crate::fmt;
@@ -511,7 +502,8 @@ impl UnixStream {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(any(target_os = "android", target_os = "linux"), doc = "```no_run")]
+    #[cfg_attr(not(any(target_os = "android", target_os = "linux")), doc = "```ignore")]
     /// #![feature(unix_socket_ancillary_data)]
     /// use std::os::unix::net::{UnixStream, SocketAncillary, AncillaryData};
     /// use std::io::IoSliceMut;
@@ -541,15 +533,7 @@ impl UnixStream {
     ///     Ok(())
     /// }
     /// ```
-    #[cfg(any(
-        target_os = "android",
-        target_os = "dragonfly",
-        target_os = "emscripten",
-        target_os = "freebsd",
-        target_os = "linux",
-        target_os = "netbsd",
-        target_os = "openbsd",
-    ))]
+    #[cfg(any(doc, target_os = "android", target_os = "linux"))]
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     pub fn recv_vectored_with_ancillary(
         &self,
@@ -567,7 +551,8 @@ impl UnixStream {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(any(target_os = "android", target_os = "linux"), doc = "```no_run")]
+    #[cfg_attr(not(any(target_os = "android", target_os = "linux")), doc = "```ignore")]
     /// #![feature(unix_socket_ancillary_data)]
     /// use std::os::unix::net::{UnixStream, SocketAncillary};
     /// use std::io::IoSlice;
@@ -591,15 +576,7 @@ impl UnixStream {
     ///     Ok(())
     /// }
     /// ```
-    #[cfg(any(
-        target_os = "android",
-        target_os = "dragonfly",
-        target_os = "emscripten",
-        target_os = "freebsd",
-        target_os = "linux",
-        target_os = "netbsd",
-        target_os = "openbsd",
-    ))]
+    #[cfg(any(doc, target_os = "android", target_os = "linux"))]
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     pub fn send_vectored_with_ancillary(
         &self,

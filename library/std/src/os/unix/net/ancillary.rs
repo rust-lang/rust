@@ -1,3 +1,5 @@
+// FIXME: This is currently disabled on *BSD.
+
 use super::{sockaddr_un, SocketAddr};
 use crate::io::{self, IoSlice, IoSliceMut};
 use crate::marker::PhantomData;

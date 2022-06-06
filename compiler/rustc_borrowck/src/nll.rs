@@ -42,7 +42,7 @@ pub type PoloniusOutput = Output<RustcFacts>;
 
 /// The output of `nll::compute_regions`. This includes the computed `RegionInferenceContext`, any
 /// closure requirements to propagate, and any generated errors.
-crate struct NllOutput<'tcx> {
+pub(crate) struct NllOutput<'tcx> {
     pub regioncx: RegionInferenceContext<'tcx>,
     pub opaque_type_values: VecMap<DefId, OpaqueHiddenType<'tcx>>,
     pub polonius_input: Option<Box<AllFacts>>,
@@ -457,6 +457,6 @@ impl ToRegionVid for RegionVid {
     }
 }
 
-crate trait ConstraintDescription {
+pub(crate) trait ConstraintDescription {
     fn description(&self) -> &'static str;
 }

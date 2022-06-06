@@ -1,0 +1,68 @@
+error[E0308]: mismatched types
+  --> $DIR/expect-fn-supply-fn.rs:20:52
+   |
+LL |     with_closure_expecting_fn_with_free_region(|x: fn(&'x u32), y| {});
+   |                                                    ^^^^^^^^^^^ lifetime mismatch
+   |
+   = note: expected fn pointer `fn(&u32)`
+              found fn pointer `fn(&'x u32)`
+note: the anonymous lifetime #1 defined here...
+  --> $DIR/expect-fn-supply-fn.rs:20:48
+   |
+LL |     with_closure_expecting_fn_with_free_region(|x: fn(&'x u32), y| {});
+   |                                                ^^^^^^^^^^^^^^^^^^^^^^
+note: ...does not necessarily outlive the lifetime `'x` as defined here
+  --> $DIR/expect-fn-supply-fn.rs:17:36
+   |
+LL | fn expect_free_supply_free_from_fn<'x>(x: &'x u32) {
+   |                                    ^^
+
+error[E0308]: mismatched types
+  --> $DIR/expect-fn-supply-fn.rs:20:52
+   |
+LL |     with_closure_expecting_fn_with_free_region(|x: fn(&'x u32), y| {});
+   |                                                    ^^^^^^^^^^^ lifetime mismatch
+   |
+   = note: expected fn pointer `fn(&u32)`
+              found fn pointer `fn(&'x u32)`
+note: the lifetime `'x` as defined here...
+  --> $DIR/expect-fn-supply-fn.rs:17:36
+   |
+LL | fn expect_free_supply_free_from_fn<'x>(x: &'x u32) {
+   |                                    ^^
+note: ...does not necessarily outlive the anonymous lifetime #1 defined here
+  --> $DIR/expect-fn-supply-fn.rs:20:48
+   |
+LL |     with_closure_expecting_fn_with_free_region(|x: fn(&'x u32), y| {});
+   |                                                ^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+  --> $DIR/expect-fn-supply-fn.rs:38:52
+   |
+LL |     with_closure_expecting_fn_with_free_region(|x: fn(&u32), y| {});
+   |                                                    ^^^^^^^^ one type is more general than the other
+   |
+   = note: expected fn pointer `fn(&u32)`
+              found fn pointer `for<'r> fn(&'r u32)`
+
+error[E0308]: mismatched types
+  --> $DIR/expect-fn-supply-fn.rs:45:53
+   |
+LL |     with_closure_expecting_fn_with_bound_region(|x: fn(&'x u32), y| {});
+   |                                                     ^^^^^^^^^^^ one type is more general than the other
+   |
+   = note: expected fn pointer `for<'r> fn(&'r u32)`
+              found fn pointer `fn(&'x u32)`
+
+error[E0308]: mismatched types
+  --> $DIR/expect-fn-supply-fn.rs:54:53
+   |
+LL |     with_closure_expecting_fn_with_bound_region(|x: Foo<'_>, y| {
+   |                                                     ^^^^^^^ one type is more general than the other
+   |
+   = note: expected fn pointer `for<'r> fn(&'r u32)`
+              found fn pointer `fn(&u32)`
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

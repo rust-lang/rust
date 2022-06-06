@@ -56,8 +56,8 @@ impl SwitchSourceCache {
 
 impl<S: serialize::Encoder> serialize::Encodable<S> for SwitchSourceCache {
     #[inline]
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_unit()
+    fn encode(&self, _s: &mut S) -> Result<(), S::Error> {
+        Ok(())
     }
 }
 

@@ -5,12 +5,12 @@
 
 use std::env;
 use std::fs;
-use std::path::{Component, PathBuf};
+use std::path::{Component, Path, PathBuf};
 use std::process::Command;
 
 use crate::util::t;
 
-use crate::dist::{self, sanitize_sh};
+use crate::dist;
 use crate::tarball::GeneratedTarball;
 use crate::Compiler;
 
@@ -21,6 +21,29 @@ use crate::config::{Config, TargetSelection};
 const SHELL: &str = "bash";
 #[cfg(not(target_os = "illumos"))]
 const SHELL: &str = "sh";
+
+// We have to run a few shell scripts, which choke quite a bit on both `\`
+// characters and on `C:\` paths, so normalize both of them away.
+fn sanitize_sh(path: &Path) -> String {
+    let path = path.to_str().unwrap().replace("\\", "/");
+    return change_drive(unc_to_lfs(&path)).unwrap_or(path);
+
+    fn unc_to_lfs(s: &str) -> &str {
+        s.strip_prefix("//?/").unwrap_or(s)
+    }
+
+    fn change_drive(s: &str) -> Option<String> {
+        let mut ch = s.chars();
+        let drive = ch.next().unwrap_or('C');
+        if ch.next() != Some(':') {
+            return None;
+        }
+        if ch.next() != Some('/') {
+            return None;
+        }
+        Some(format!("/{}/{}", drive, &s[drive.len_utf8() + 2..]))
+    }
+}
 
 fn install_sh(
     builder: &Builder<'_>,

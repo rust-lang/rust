@@ -13,6 +13,7 @@ use crate::ty::subst::{GenericArg, InternalSubsts, Subst, SubstsRef};
 use crate::ty::{self, List, Ty, TyCtxt};
 use crate::ty::{AdtDef, InstanceDef, Region, ScalarInt, UserTypeAnnotationIndex};
 
+use rustc_data_structures::captures::Captures;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::{CtorKind, Namespace};
 use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
@@ -171,12 +172,14 @@ pub enum MirPhase {
     /// terminator means that the auto-generated drop glue will be invoked. Also, `Copy` operands
     /// are allowed for non-`Copy` types.
     DropsLowered = 3,
+    /// After this projections may only contain deref projections as the first element.
+    Derefered = 4,
     /// Beginning with this phase, the following variant is disallowed:
     /// * [`Rvalue::Aggregate`] for any `AggregateKind` except `Array`
     ///
     /// And the following variant is allowed:
     /// * [`StatementKind::SetDiscriminant`]
-    Deaggregated = 4,
+    Deaggregated = 5,
     /// Before this phase, generators are in the "source code" form, featuring `yield` statements
     /// and such. With this phase change, they are transformed into a proper state machine. Running
     /// optimizations before this change can be potentially dangerous because the source code is to
@@ -189,9 +192,9 @@ pub enum MirPhase {
     ///
     /// Beginning with this phase, the following variants are disallowed:
     /// * [`TerminatorKind::Yield`](terminator::TerminatorKind::Yield)
-    /// * [`TerminatorKind::GeneratorDrop](terminator::TerminatorKind::GeneratorDrop)
-    GeneratorsLowered = 5,
-    Optimized = 6,
+    /// * [`TerminatorKind::GeneratorDrop`](terminator::TerminatorKind::GeneratorDrop)
+    GeneratorsLowered = 6,
+    Optimized = 7,
 }
 
 impl MirPhase {
@@ -484,7 +487,7 @@ impl<'tcx> Body<'tcx> {
 
     /// Returns an iterator over all user-declared mutable locals.
     #[inline]
-    pub fn mut_vars_iter<'a>(&'a self) -> impl Iterator<Item = Local> + 'a {
+    pub fn mut_vars_iter<'a>(&'a self) -> impl Iterator<Item = Local> + Captures<'tcx> + 'a {
         (self.arg_count + 1..self.local_decls.len()).filter_map(move |index| {
             let local = Local::new(index);
             let decl = &self.local_decls[local];
@@ -498,7 +501,9 @@ impl<'tcx> Body<'tcx> {
 
     /// Returns an iterator over all user-declared mutable arguments and locals.
     #[inline]
-    pub fn mut_vars_and_args_iter<'a>(&'a self) -> impl Iterator<Item = Local> + 'a {
+    pub fn mut_vars_and_args_iter<'a>(
+        &'a self,
+    ) -> impl Iterator<Item = Local> + Captures<'tcx> + 'a {
         (1..self.local_decls.len()).filter_map(move |index| {
             let local = Local::new(index);
             let decl = &self.local_decls[local];
@@ -665,7 +670,7 @@ impl<T> ClearCrossCrate<T> {
 const TAG_CLEAR_CROSS_CRATE_CLEAR: u8 = 0;
 const TAG_CLEAR_CROSS_CRATE_SET: u8 = 1;
 
-impl<'tcx, E: TyEncoder<'tcx>, T: Encodable<E>> Encodable<E> for ClearCrossCrate<T> {
+impl<E: TyEncoder, T: Encodable<E>> Encodable<E> for ClearCrossCrate<T> {
     #[inline]
     fn encode(&self, e: &mut E) -> Result<(), E::Error> {
         if E::CLEAR_CROSS_CRATE {
@@ -681,7 +686,7 @@ impl<'tcx, E: TyEncoder<'tcx>, T: Encodable<E>> Encodable<E> for ClearCrossCrate
         }
     }
 }
-impl<'tcx, D: TyDecoder<'tcx>, T: Decodable<D>> Decodable<D> for ClearCrossCrate<T> {
+impl<D: TyDecoder, T: Decodable<D>> Decodable<D> for ClearCrossCrate<T> {
     #[inline]
     fn decode(d: &mut D) -> ClearCrossCrate<T> {
         if D::CLEAR_CROSS_CRATE {
@@ -2599,10 +2604,27 @@ pub enum Rvalue<'tcx> {
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 static_assert_size!(Rvalue<'_>, 40);
 
+impl<'tcx> Rvalue<'tcx> {
+    #[inline]
+    pub fn is_pointer_int_cast(&self) -> bool {
+        matches!(self, Rvalue::Cast(CastKind::PointerExposeAddress, _, _))
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
 pub enum CastKind {
-    Misc,
+    /// An exposing pointer to address cast. A cast between a pointer and an integer type, or
+    /// between a function pointer and an integer type.
+    /// See the docs on `expose_addr` for more details.
+    PointerExposeAddress,
+    /// An address-to-pointer cast that picks up an exposed provenance.
+    /// See the docs on `from_exposed_addr` for more details.
+    PointerFromExposedAddress,
+    /// All sorts of pointer-to-pointer casts. Note that reference-to-raw-ptr casts are
+    /// translated into `&raw mut/const *r`, i.e., they are not actually casts.
     Pointer(PointerCast),
+    /// Remaining unclassified casts.
+    Misc,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]

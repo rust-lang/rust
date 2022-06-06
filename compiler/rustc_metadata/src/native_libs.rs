@@ -12,7 +12,7 @@ use rustc_session::Session;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_target::spec::abi::Abi;
 
-crate fn collect(tcx: TyCtxt<'_>) -> Vec<NativeLib> {
+pub(crate) fn collect(tcx: TyCtxt<'_>) -> Vec<NativeLib> {
     let mut collector = Collector { tcx, libs: Vec::new() };
     for id in tcx.hir().items() {
         collector.process_item(id);
@@ -21,7 +21,7 @@ crate fn collect(tcx: TyCtxt<'_>) -> Vec<NativeLib> {
     collector.libs
 }
 
-crate fn relevant_lib(sess: &Session, lib: &NativeLib) -> bool {
+pub(crate) fn relevant_lib(sess: &Session, lib: &NativeLib) -> bool {
     match lib.cfg {
         Some(ref cfg) => attr::cfg_matches(cfg, &sess.parse_sess, CRATE_NODE_ID, None),
         None => true,
@@ -418,10 +418,11 @@ impl<'tcx> Collector<'tcx> {
                             // involved or not, library reordering and kind overriding without
                             // explicit `:rename` in particular.
                             if lib.has_modifiers() || passed_lib.has_modifiers() {
-                                self.tcx.sess.span_err(
-                                    self.tcx.def_span(lib.foreign_module.unwrap()),
-                                    "overriding linking modifiers from command line is not supported"
-                                );
+                                let msg = "overriding linking modifiers from command line is not supported";
+                                match lib.foreign_module {
+                                    Some(def_id) => self.tcx.sess.span_err(self.tcx.def_span(def_id), msg),
+                                    None => self.tcx.sess.err(msg),
+                                };
                             }
                             if passed_lib.kind != NativeLibKind::Unspecified {
                                 lib.kind = passed_lib.kind;

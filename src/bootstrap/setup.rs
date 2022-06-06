@@ -85,12 +85,12 @@ pub fn setup(config: &Config, profile: Profile) {
     let path = &config.config;
 
     if path.exists() {
-        println!(
+        eprintln!(
             "error: you asked `x.py` to setup a new config file, but one already exists at `{}`",
             path.display()
         );
-        println!("help: try adding `profile = \"{}\"` at the top of {}", profile, path.display());
-        println!(
+        eprintln!("help: try adding `profile = \"{}\"` at the top of {}", profile, path.display());
+        eprintln!(
             "note: this will use the configuration in {}",
             profile.include_path(&config.src).display()
         );
@@ -115,7 +115,7 @@ pub fn setup(config: &Config, profile: Profile) {
     println!();
 
     if !rustup_installed() && profile != Profile::User {
-        println!("`rustup` is not installed; cannot link `stage1` toolchain");
+        eprintln!("`rustup` is not installed; cannot link `stage1` toolchain");
     } else if stage_dir_exists(&stage_path[..]) {
         attempt_toolchain_link(&stage_path[..]);
     }
@@ -173,7 +173,7 @@ fn attempt_toolchain_link(stage_path: &str) {
     }
 
     if !ensure_stage1_toolchain_placeholder_exists(stage_path) {
-        println!(
+        eprintln!(
             "Failed to create a template for stage 1 toolchain or confirm that it already exists"
         );
         return;
@@ -184,8 +184,8 @@ fn attempt_toolchain_link(stage_path: &str) {
             "Added `stage1` rustup toolchain; try `cargo +stage1 build` on a separate rust project to run a newly-built toolchain"
         );
     } else {
-        println!("`rustup` failed to link stage 1 build to `stage1` toolchain");
-        println!(
+        eprintln!("`rustup` failed to link stage 1 build to `stage1` toolchain");
+        eprintln!(
             "To manually link stage 1 build to `stage1` toolchain, run:\n
             `rustup toolchain link stage1 {}`",
             &stage_path
@@ -292,8 +292,8 @@ pub fn interactive_path() -> io::Result<Profile> {
         break match parse_with_abbrev(&input) {
             Ok(profile) => profile,
             Err(err) => {
-                println!("error: {}", err);
-                println!("note: press Ctrl+C to exit");
+                eprintln!("error: {}", err);
+                eprintln!("note: press Ctrl+C to exit");
                 continue;
             }
         };
@@ -320,8 +320,8 @@ undesirable, simply delete the `pre-push` file from .git/hooks."
             "y" | "yes" => true,
             "n" | "no" | "" => false,
             _ => {
-                println!("error: unrecognized option '{}'", input.trim());
-                println!("note: press Ctrl+C to exit");
+                eprintln!("error: unrecognized option '{}'", input.trim());
+                eprintln!("note: press Ctrl+C to exit");
                 continue;
             }
         };
@@ -337,7 +337,7 @@ undesirable, simply delete the `pre-push` file from .git/hooks."
         ));
         let dst = git.join("hooks").join("pre-push");
         match fs::hard_link(src, &dst) {
-            Err(e) => println!(
+            Err(e) => eprintln!(
                 "error: could not create hook {}: do you already have the git hook installed?\n{}",
                 dst.display(),
                 e

@@ -1361,7 +1361,7 @@ pub(crate) fn format_struct_struct(
 
 fn get_bytepos_after_visibility(vis: &ast::Visibility, default_span: Span) -> BytePos {
     match vis.kind {
-        ast::VisibilityKind::Crate(..) | ast::VisibilityKind::Restricted { .. } => vis.span.hi(),
+        ast::VisibilityKind::Restricted { .. } => vis.span.hi(),
         _ => default_span.lo(),
     }
 }

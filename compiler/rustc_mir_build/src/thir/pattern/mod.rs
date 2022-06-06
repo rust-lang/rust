@@ -19,30 +19,31 @@ use rustc_middle::mir::interpret::{get_slice_bytes, ConstValue};
 use rustc_middle::mir::interpret::{ErrorHandled, LitToConstError, LitToConstInput};
 use rustc_middle::mir::{self, UserTypeProjection};
 use rustc_middle::mir::{BorrowKind, Field, Mutability};
-use rustc_middle::thir::{Ascription, BindingMode, FieldPat, Pat, PatKind, PatRange, PatTyProj};
+use rustc_middle::thir::{Ascription, BindingMode, FieldPat, Pat, PatKind, PatRange};
 use rustc_middle::ty::subst::{GenericArg, SubstsRef};
+use rustc_middle::ty::CanonicalUserTypeAnnotation;
 use rustc_middle::ty::{self, AdtDef, ConstKind, DefIdTree, Region, Ty, TyCtxt, UserType};
 use rustc_span::{Span, Symbol};
 
 use std::cmp::Ordering;
 
 #[derive(Clone, Debug)]
-crate enum PatternError {
+pub(crate) enum PatternError {
     AssocConstInPattern(Span),
     ConstParamInPattern(Span),
     StaticInPattern(Span),
     NonConstPath(Span),
 }
 
-crate struct PatCtxt<'a, 'tcx> {
-    crate tcx: TyCtxt<'tcx>,
-    crate param_env: ty::ParamEnv<'tcx>,
-    crate typeck_results: &'a ty::TypeckResults<'tcx>,
-    crate errors: Vec<PatternError>,
+pub(crate) struct PatCtxt<'a, 'tcx> {
+    pub(crate) tcx: TyCtxt<'tcx>,
+    pub(crate) param_env: ty::ParamEnv<'tcx>,
+    pub(crate) typeck_results: &'a ty::TypeckResults<'tcx>,
+    pub(crate) errors: Vec<PatternError>,
     include_lint_checks: bool,
 }
 
-crate fn pat_from_hir<'a, 'tcx>(
+pub(crate) fn pat_from_hir<'a, 'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     typeck_results: &'a ty::TypeckResults<'tcx>,
@@ -59,7 +60,7 @@ crate fn pat_from_hir<'a, 'tcx>(
 }
 
 impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
-    crate fn new(
+    pub(crate) fn new(
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         typeck_results: &'a ty::TypeckResults<'tcx>,
@@ -67,12 +68,12 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         PatCtxt { tcx, param_env, typeck_results, errors: vec![], include_lint_checks: false }
     }
 
-    crate fn include_lint_checks(&mut self) -> &mut Self {
+    pub(crate) fn include_lint_checks(&mut self) -> &mut Self {
         self.include_lint_checks = true;
         self
     }
 
-    crate fn lower_pattern(&mut self, pat: &'tcx hir::Pat<'tcx>) -> Pat<'tcx> {
+    pub(crate) fn lower_pattern(&mut self, pat: &'tcx hir::Pat<'tcx>) -> Pat<'tcx> {
         // When implicit dereferences have been inserted in this pattern, the unadjusted lowered
         // pattern has the type that results *after* dereferencing. For example, in this code:
         //
@@ -227,7 +228,8 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 for end in &[lo, hi] {
                     if let Some((_, Some(ascription))) = end {
                         let subpattern = Pat { span: pat.span, ty, kind: Box::new(kind) };
-                        kind = PatKind::AscribeUserType { ascription: *ascription, subpattern };
+                        kind =
+                            PatKind::AscribeUserType { ascription: ascription.clone(), subpattern };
                     }
                 }
 
@@ -432,13 +434,14 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
         if let Some(user_ty) = self.user_substs_applied_to_ty_of_hir_id(hir_id) {
             debug!("lower_variant_or_leaf: kind={:?} user_ty={:?} span={:?}", kind, user_ty, span);
+            let annotation = CanonicalUserTypeAnnotation {
+                user_ty,
+                span,
+                inferred_ty: self.typeck_results.node_type(hir_id),
+            };
             kind = PatKind::AscribeUserType {
                 subpattern: Pat { span, ty, kind: Box::new(kind) },
-                ascription: Ascription {
-                    user_ty: PatTyProj::from_user_type(user_ty),
-                    user_ty_span: span,
-                    variance: ty::Variance::Covariant,
-                },
+                ascription: Ascription { annotation, variance: ty::Variance::Covariant },
             };
         }
 
@@ -499,18 +502,21 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 }
 
                 let user_provided_types = self.typeck_results().user_provided_types();
-                if let Some(u_ty) = user_provided_types.get(id) {
-                    let user_ty = PatTyProj::from_user_type(*u_ty);
+                if let Some(&user_ty) = user_provided_types.get(id) {
+                    let annotation = CanonicalUserTypeAnnotation {
+                        user_ty,
+                        span,
+                        inferred_ty: self.typeck_results().node_type(id),
+                    };
                     Pat {
                         span,
                         kind: Box::new(PatKind::AscribeUserType {
                             subpattern: pattern,
                             ascription: Ascription {
+                                annotation,
                                 /// Note that use `Contravariant` here. See the
                                 /// `variance` field documentation for details.
                                 variance: ty::Variance::Contravariant,
-                                user_ty,
-                                user_ty_span: span,
                             },
                         }),
                         ty: const_.ty(),
@@ -608,7 +614,7 @@ impl<'tcx> UserAnnotatedTyHelpers<'tcx> for PatCtxt<'_, 'tcx> {
     }
 }
 
-crate trait PatternFoldable<'tcx>: Sized {
+pub(crate) trait PatternFoldable<'tcx>: Sized {
     fn fold_with<F: PatternFolder<'tcx>>(&self, folder: &mut F) -> Self {
         self.super_fold_with(folder)
     }
@@ -616,7 +622,7 @@ crate trait PatternFoldable<'tcx>: Sized {
     fn super_fold_with<F: PatternFolder<'tcx>>(&self, folder: &mut F) -> Self;
 }
 
-crate trait PatternFolder<'tcx>: Sized {
+pub(crate) trait PatternFolder<'tcx>: Sized {
     fn fold_pattern(&mut self, pattern: &Pat<'tcx>) -> Pat<'tcx> {
         pattern.super_fold_with(self)
     }
@@ -645,7 +651,7 @@ impl<'tcx, T: PatternFoldable<'tcx>> PatternFoldable<'tcx> for Option<T> {
     }
 }
 
-macro_rules! CloneImpls {
+macro_rules! ClonePatternFoldableImpls {
     (<$lt_tcx:tt> $($ty:ty),+) => {
         $(
             impl<$lt_tcx> PatternFoldable<$lt_tcx> for $ty {
@@ -657,11 +663,11 @@ macro_rules! CloneImpls {
     }
 }
 
-CloneImpls! { <'tcx>
+ClonePatternFoldableImpls! { <'tcx>
     Span, Field, Mutability, Symbol, hir::HirId, usize, ty::Const<'tcx>,
     Region<'tcx>, Ty<'tcx>, BindingMode, AdtDef<'tcx>,
     SubstsRef<'tcx>, &'tcx GenericArg<'tcx>, UserType<'tcx>,
-    UserTypeProjection, PatTyProj<'tcx>
+    UserTypeProjection, CanonicalUserTypeAnnotation<'tcx>
 }
 
 impl<'tcx> PatternFoldable<'tcx> for FieldPat<'tcx> {
@@ -694,14 +700,10 @@ impl<'tcx> PatternFoldable<'tcx> for PatKind<'tcx> {
             PatKind::Wild => PatKind::Wild,
             PatKind::AscribeUserType {
                 ref subpattern,
-                ascription: Ascription { variance, ref user_ty, user_ty_span },
+                ascription: Ascription { ref annotation, variance },
             } => PatKind::AscribeUserType {
                 subpattern: subpattern.fold_with(folder),
-                ascription: Ascription {
-                    user_ty: user_ty.fold_with(folder),
-                    variance,
-                    user_ty_span,
-                },
+                ascription: Ascription { annotation: annotation.fold_with(folder), variance },
             },
             PatKind::Binding { mutability, name, mode, var, ty, ref subpattern, is_primary } => {
                 PatKind::Binding {
@@ -746,7 +748,7 @@ impl<'tcx> PatternFoldable<'tcx> for PatKind<'tcx> {
 }
 
 #[instrument(skip(tcx), level = "debug")]
-crate fn compare_const_vals<'tcx>(
+pub(crate) fn compare_const_vals<'tcx>(
     tcx: TyCtxt<'tcx>,
     a: mir::ConstantKind<'tcx>,
     b: mir::ConstantKind<'tcx>,

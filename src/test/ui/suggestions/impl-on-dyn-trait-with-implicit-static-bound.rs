@@ -1,3 +1,8 @@
+// FIXME(nll): On NLL stabilization, this should be replaced by
+// `impl-on-dyn-trait-with-implicit-static-bound-nll.rs`. Compiletest has
+// problems with rustfix and revisions.
+// ignore-compare-mode-nll
+
 // run-rustfix
 #![allow(dead_code)]
 

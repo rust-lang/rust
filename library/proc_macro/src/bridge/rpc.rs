@@ -7,7 +7,7 @@ use std::num::NonZeroU32;
 use std::ops::Bound;
 use std::str;
 
-pub(super) type Writer = super::buffer::Buffer<u8>;
+pub(super) type Writer = super::buffer::Buffer;
 
 pub(super) trait Encode<S>: Sized {
     fn encode(self, w: &mut Writer, s: &mut S);

@@ -21,7 +21,7 @@ fn dogfood_clippy() {
 
     // "" is the root package
     for package in &["", "clippy_dev", "clippy_lints", "clippy_utils", "rustc_tools_util"] {
-        run_clippy_for_package(package);
+        run_clippy_for_package(package, &[]);
     }
 }
 
@@ -38,7 +38,7 @@ fn run_metadata_collection_lint() {
 
     // Run collection as is
     std::env::set_var("ENABLE_METADATA_COLLECTION", "1");
-    run_clippy_for_package("clippy_lints");
+    run_clippy_for_package("clippy_lints", &["-A", "unfulfilled_lint_expectations"]);
 
     // Check if cargo caching got in the way
     if let Ok(file) = File::open(metadata_output_path) {
@@ -61,10 +61,10 @@ fn run_metadata_collection_lint() {
     .unwrap();
 
     // Running the collection again
-    run_clippy_for_package("clippy_lints");
+    run_clippy_for_package("clippy_lints", &["-A", "unfulfilled_lint_expectations"]);
 }
 
-fn run_clippy_for_package(project: &str) {
+fn run_clippy_for_package(project: &str, args: &[&str]) {
     let root_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
 
     let mut command = Command::new(&*test_utils::CARGO_CLIPPY_PATH);
@@ -76,6 +76,7 @@ fn run_clippy_for_package(project: &str) {
         .arg("--all-targets")
         .arg("--all-features")
         .arg("--")
+        .args(args)
         .args(&["-D", "clippy::all"])
         .args(&["-D", "clippy::pedantic"])
         .arg("-Cdebuginfo=0"); // disable debuginfo to generate less data in the target dir

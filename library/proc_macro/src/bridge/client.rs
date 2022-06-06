@@ -49,7 +49,9 @@ macro_rules! define_handles {
             #[repr(C)]
             pub(crate) struct $oty {
                 handle: handle::Handle,
-                // Prevent Send and Sync impls
+                // Prevent Send and Sync impls. `!Send`/`!Sync` is the usual
+                // way of doing this, but that requires unstable features.
+                // rust-analyzer uses this code and avoids unstable features.
                 _marker: PhantomData<*mut ()>,
             }
 
@@ -133,7 +135,9 @@ macro_rules! define_handles {
             #[derive(Copy, Clone, PartialEq, Eq, Hash)]
             pub(crate) struct $ity {
                 handle: handle::Handle,
-                // Prevent Send and Sync impls
+                // Prevent Send and Sync impls. `!Send`/`!Sync` is the usual
+                // way of doing this, but that requires unstable features.
+                // rust-analyzer uses this code and avoids unstable features.
                 _marker: PhantomData<*mut ()>,
             }
 
@@ -191,7 +195,7 @@ define_handles! {
 // FIXME(eddyb) generate these impls by pattern-matching on the
 // names of methods - also could use the presence of `fn drop`
 // to distinguish between 'owned and 'interned, above.
-// Alternatively, special 'modes" could be listed of types in with_api
+// Alternatively, special "modes" could be listed of types in with_api
 // instead of pattern matching on methods, here and in server decl.
 
 impl Clone for TokenStream {
@@ -250,17 +254,17 @@ macro_rules! define_client_side {
         $(impl $name {
             $(pub(crate) fn $method($($arg: $arg_ty),*) $(-> $ret_ty)* {
                 Bridge::with(|bridge| {
-                    let mut b = bridge.cached_buffer.take();
+                    let mut buf = bridge.cached_buffer.take();
 
-                    b.clear();
-                    api_tags::Method::$name(api_tags::$name::$method).encode(&mut b, &mut ());
-                    reverse_encode!(b; $($arg),*);
+                    buf.clear();
+                    api_tags::Method::$name(api_tags::$name::$method).encode(&mut buf, &mut ());
+                    reverse_encode!(buf; $($arg),*);
 
-                    b = bridge.dispatch.call(b);
+                    buf = bridge.dispatch.call(buf);
 
-                    let r = Result::<_, PanicMessage>::decode(&mut &b[..], &mut ());
+                    let r = Result::<_, PanicMessage>::decode(&mut &buf[..], &mut ());
 
-                    bridge.cached_buffer = b;
+                    bridge.cached_buffer = buf;
 
                     r.unwrap_or_else(|e| panic::resume_unwind(e.into()))
                 })
@@ -353,22 +357,33 @@ impl Bridge<'_> {
     }
 }
 
-/// A client-side "global object" (usually a function pointer),
-/// which may be using a different `proc_macro` from the one
-/// used by the server, but can be interacted with compatibly.
+/// A client-side RPC entry-point, which may be using a different `proc_macro`
+/// from the one used by the server, but can be invoked compatibly.
 ///
-/// N.B., `F` must have FFI-friendly memory layout (e.g., a pointer).
-/// The call ABI of function pointers used for `F` doesn't
-/// need to match between server and client, since it's only
-/// passed between them and (eventually) called by the client.
+/// Note that the (phantom) `I` ("input") and `O` ("output") type parameters
+/// decorate the `Client<I, O>` with the RPC "interface" of the entry-point, but
+/// do not themselves participate in ABI, at all, only facilitate type-checking.
+///
+/// E.g. `Client<TokenStream, TokenStream>` is the common proc macro interface,
+/// used for `#[proc_macro] fn foo(input: TokenStream) -> TokenStream`,
+/// indicating that the RPC input and output will be serialized token streams,
+/// and forcing the use of APIs that take/return `S::TokenStream`, server-side.
 #[repr(C)]
-#[derive(Copy, Clone)]
-pub struct Client<F> {
+pub struct Client<I, O> {
     // FIXME(eddyb) use a reference to the `static COUNTERS`, instead of
     // a wrapper `fn` pointer, once `const fn` can reference `static`s.
     pub(super) get_handle_counters: extern "C" fn() -> &'static HandleCounters,
-    pub(super) run: extern "C" fn(Bridge<'_>, F) -> Buffer<u8>,
-    pub(super) f: F,
+
+    pub(super) run: extern "C" fn(Bridge<'_>) -> Buffer,
+
+    pub(super) _marker: PhantomData<fn(I) -> O>,
+}
+
+impl<I, O> Copy for Client<I, O> {}
+impl<I, O> Clone for Client<I, O> {
+    fn clone(&self) -> Self {
+        *self
+    }
 }
 
 /// Client-side helper for handling client panics, entering the bridge,
@@ -377,22 +392,22 @@ pub struct Client<F> {
 fn run_client<A: for<'a, 's> DecodeMut<'a, 's, ()>, R: Encode<()>>(
     mut bridge: Bridge<'_>,
     f: impl FnOnce(A) -> R,
-) -> Buffer<u8> {
+) -> Buffer {
     // The initial `cached_buffer` contains the input.
-    let mut b = bridge.cached_buffer.take();
+    let mut buf = bridge.cached_buffer.take();
 
     panic::catch_unwind(panic::AssertUnwindSafe(|| {
         bridge.enter(|| {
-            let reader = &mut &b[..];
+            let reader = &mut &buf[..];
             let input = A::decode(reader, &mut ());
 
             // Put the `cached_buffer` back in the `Bridge`, for requests.
-            Bridge::with(|bridge| bridge.cached_buffer = b.take());
+            Bridge::with(|bridge| bridge.cached_buffer = buf.take());
 
             let output = f(input);
 
             // Take the `cached_buffer` back out, for the output value.
-            b = Bridge::with(|bridge| bridge.cached_buffer.take());
+            buf = Bridge::with(|bridge| bridge.cached_buffer.take());
 
             // HACK(eddyb) Separate encoding a success value (`Ok(output)`)
             // from encoding a panic (`Err(e: PanicMessage)`) to avoid
@@ -403,43 +418,43 @@ fn run_client<A: for<'a, 's> DecodeMut<'a, 's, ()>, R: Encode<()>>(
             // this is defensively trying to avoid any accidental panicking
             // reaching the `extern "C"` (which should `abort` but might not
             // at the moment, so this is also potentially preventing UB).
-            b.clear();
-            Ok::<_, ()>(output).encode(&mut b, &mut ());
+            buf.clear();
+            Ok::<_, ()>(output).encode(&mut buf, &mut ());
         })
     }))
     .map_err(PanicMessage::from)
     .unwrap_or_else(|e| {
-        b.clear();
-        Err::<(), _>(e).encode(&mut b, &mut ());
+        buf.clear();
+        Err::<(), _>(e).encode(&mut buf, &mut ());
     });
-    b
+    buf
 }
 
-impl Client<fn(crate::TokenStream) -> crate::TokenStream> {
-    pub const fn expand1(f: fn(crate::TokenStream) -> crate::TokenStream) -> Self {
-        extern "C" fn run(
-            bridge: Bridge<'_>,
-            f: impl FnOnce(crate::TokenStream) -> crate::TokenStream,
-        ) -> Buffer<u8> {
-            run_client(bridge, |input| f(crate::TokenStream(input)).0)
+impl Client<crate::TokenStream, crate::TokenStream> {
+    pub const fn expand1(f: impl Fn(crate::TokenStream) -> crate::TokenStream + Copy) -> Self {
+        Client {
+            get_handle_counters: HandleCounters::get,
+            run: super::selfless_reify::reify_to_extern_c_fn_hrt_bridge(move |bridge| {
+                run_client(bridge, |input| f(crate::TokenStream(input)).0)
+            }),
+            _marker: PhantomData,
         }
-        Client { get_handle_counters: HandleCounters::get, run, f }
     }
 }
 
-impl Client<fn(crate::TokenStream, crate::TokenStream) -> crate::TokenStream> {
+impl Client<(crate::TokenStream, crate::TokenStream), crate::TokenStream> {
     pub const fn expand2(
-        f: fn(crate::TokenStream, crate::TokenStream) -> crate::TokenStream,
+        f: impl Fn(crate::TokenStream, crate::TokenStream) -> crate::TokenStream + Copy,
     ) -> Self {
-        extern "C" fn run(
-            bridge: Bridge<'_>,
-            f: impl FnOnce(crate::TokenStream, crate::TokenStream) -> crate::TokenStream,
-        ) -> Buffer<u8> {
-            run_client(bridge, |(input, input2)| {
-                f(crate::TokenStream(input), crate::TokenStream(input2)).0
-            })
+        Client {
+            get_handle_counters: HandleCounters::get,
+            run: super::selfless_reify::reify_to_extern_c_fn_hrt_bridge(move |bridge| {
+                run_client(bridge, |(input, input2)| {
+                    f(crate::TokenStream(input), crate::TokenStream(input2)).0
+                })
+            }),
+            _marker: PhantomData,
         }
-        Client { get_handle_counters: HandleCounters::get, run, f }
     }
 }
 
@@ -449,17 +464,17 @@ pub enum ProcMacro {
     CustomDerive {
         trait_name: &'static str,
         attributes: &'static [&'static str],
-        client: Client<fn(crate::TokenStream) -> crate::TokenStream>,
+        client: Client<crate::TokenStream, crate::TokenStream>,
     },
 
     Attr {
         name: &'static str,
-        client: Client<fn(crate::TokenStream, crate::TokenStream) -> crate::TokenStream>,
+        client: Client<(crate::TokenStream, crate::TokenStream), crate::TokenStream>,
     },
 
     Bang {
         name: &'static str,
-        client: Client<fn(crate::TokenStream) -> crate::TokenStream>,
+        client: Client<crate::TokenStream, crate::TokenStream>,
     },
 }
 
@@ -475,21 +490,21 @@ impl ProcMacro {
     pub const fn custom_derive(
         trait_name: &'static str,
         attributes: &'static [&'static str],
-        expand: fn(crate::TokenStream) -> crate::TokenStream,
+        expand: impl Fn(crate::TokenStream) -> crate::TokenStream + Copy,
     ) -> Self {
         ProcMacro::CustomDerive { trait_name, attributes, client: Client::expand1(expand) }
     }
 
     pub const fn attr(
         name: &'static str,
-        expand: fn(crate::TokenStream, crate::TokenStream) -> crate::TokenStream,
+        expand: impl Fn(crate::TokenStream, crate::TokenStream) -> crate::TokenStream + Copy,
     ) -> Self {
         ProcMacro::Attr { name, client: Client::expand2(expand) }
     }
 
     pub const fn bang(
         name: &'static str,
-        expand: fn(crate::TokenStream) -> crate::TokenStream,
+        expand: impl Fn(crate::TokenStream) -> crate::TokenStream + Copy,
     ) -> Self {
         ProcMacro::Bang { name, client: Client::expand1(expand) }
     }

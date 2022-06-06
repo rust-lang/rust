@@ -15,7 +15,12 @@ error[E0282]: type annotations needed
   --> $DIR/issue-24036.rs:9:15
    |
 LL |         1 => |c| c + 1,
-   |               ^ consider giving this closure parameter a type
+   |               ^
+   |
+help: consider giving this closure parameter an explicit type
+   |
+LL |         1 => |c: _| c + 1,
+   |                +++
 
 error: aborting due to 2 previous errors
 

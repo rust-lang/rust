@@ -69,13 +69,7 @@ pub fn init_env_logger(env: &str) -> Result<(), Error> {
 
     let verbose_entry_exit = match env::var_os(String::from(env) + "_ENTRY_EXIT") {
         None => false,
-        Some(v) => {
-            if &v == "0" {
-                false
-            } else {
-                true
-            }
-        }
+        Some(v) => &v != "0",
     };
 
     let layer = tracing_tree::HierarchicalLayer::default()

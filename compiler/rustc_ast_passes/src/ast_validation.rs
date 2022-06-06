@@ -420,7 +420,15 @@ impl<'a> AstValidator<'a> {
             .iter()
             .flat_map(|i| i.attrs.as_ref())
             .filter(|attr| {
-                let arr = [sym::allow, sym::cfg, sym::cfg_attr, sym::deny, sym::forbid, sym::warn];
+                let arr = [
+                    sym::allow,
+                    sym::cfg,
+                    sym::cfg_attr,
+                    sym::deny,
+                    sym::expect,
+                    sym::forbid,
+                    sym::warn,
+                ];
                 !arr.contains(&attr.name_or_empty()) && rustc_attr::is_builtin_attr(attr)
             })
             .for_each(|attr| {
@@ -435,7 +443,7 @@ impl<'a> AstValidator<'a> {
                 } else {
                     self.err_handler().span_err(
                         attr.span,
-                        "allow, cfg, cfg_attr, deny, \
+                        "allow, cfg, cfg_attr, deny, expect, \
                 forbid, and warn are the only allowed built-in attributes in function parameters",
                     );
                 }
@@ -1463,10 +1471,9 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         if let GenericBound::Trait(ref poly, modify) = *bound {
             match (ctxt, modify) {
                 (BoundKind::SuperTraits, TraitBoundModifier::Maybe) => {
-                    let mut err = self.err_handler().struct_span_err(
-                        poly.span,
-                        &format!("`?Trait` is not permitted in supertraits"),
-                    );
+                    let mut err = self
+                        .err_handler()
+                        .struct_span_err(poly.span, "`?Trait` is not permitted in supertraits");
                     let path_str = pprust::path_to_string(&poly.trait_ref.path);
                     err.note(&format!("traits are `?{}` by default", path_str));
                     err.emit();
@@ -1474,7 +1481,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 (BoundKind::TraitObject, TraitBoundModifier::Maybe) => {
                     let mut err = self.err_handler().struct_span_err(
                         poly.span,
-                        &format!("`?Trait` is not permitted in trait object types"),
+                        "`?Trait` is not permitted in trait object types",
                     );
                     err.emit();
                 }

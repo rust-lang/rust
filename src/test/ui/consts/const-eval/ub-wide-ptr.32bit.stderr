@@ -1,5 +1,5 @@
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-wide-ptr.rs:38:1
+  --> $DIR/ub-wide-ptr.rs:37:1
    |
 LL | const STR_TOO_LONG: &str = unsafe { mem::transmute((&42u8, 999usize)) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a dangling reference (going beyond the bounds of its allocation)
@@ -10,7 +10,7 @@ LL | const STR_TOO_LONG: &str = unsafe { mem::transmute((&42u8, 999usize)) };
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-wide-ptr.rs:40:1
+  --> $DIR/ub-wide-ptr.rs:39:1
    |
 LL | const NESTED_STR_MUCH_TOO_LONG: (&str,) = (unsafe { mem::transmute((&42, usize::MAX)) },);
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed at .0: encountered invalid reference metadata: slice is bigger than largest supported object
@@ -20,30 +20,27 @@ LL | const NESTED_STR_MUCH_TOO_LONG: (&str,) = (unsafe { mem::transmute((&42, us
                ╾─allocN─╼ ff ff ff ff                         │ ╾──╼....
            }
 
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-wide-ptr.rs:43:1
+error: any use of this value will cause an error
+  --> $DIR/ub-wide-ptr.rs:42:1
    |
 LL | const STR_LENGTH_PTR: &str = unsafe { mem::transmute((&42u8, &3)) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered non-integer slice length in wide pointer
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
    |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 8, align: 4) {
-               ╾─allocN─╼ ╾─allocN─╼                         │ ╾──╼╾──╼
-           }
+   = note: `#[deny(const_err)]` on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
-error[E0080]: it is undefined behavior to use this value
+error: any use of this value will cause an error
   --> $DIR/ub-wide-ptr.rs:46:1
    |
 LL | const MY_STR_LENGTH_PTR: &MyStr = unsafe { mem::transmute((&42u8, &3)) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered non-integer slice length in wide pointer
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
    |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 8, align: 4) {
-               ╾─allocN─╼ ╾─allocN─╼                         │ ╾──╼╾──╼
-           }
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-wide-ptr.rs:48:1
+  --> $DIR/ub-wide-ptr.rs:49:1
    |
 LL | const MY_STR_MUCH_TOO_LONG: &MyStr = unsafe { mem::transmute((&42u8, usize::MAX)) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered invalid reference metadata: slice is bigger than largest supported object
@@ -54,7 +51,7 @@ LL | const MY_STR_MUCH_TOO_LONG: &MyStr = unsafe { mem::transmute((&42u8, usize:
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-wide-ptr.rs:52:1
+  --> $DIR/ub-wide-ptr.rs:53:1
    |
 LL | const STR_NO_INIT: &str = unsafe { mem::transmute::<&[_], _>(&[MaybeUninit::<u8> { uninit: () }]) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed at .<deref>: encountered uninitialized data in `str`
@@ -65,7 +62,7 @@ LL | const STR_NO_INIT: &str = unsafe { mem::transmute::<&[_], _>(&[MaybeUninit:
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-wide-ptr.rs:55:1
+  --> $DIR/ub-wide-ptr.rs:56:1
    |
 LL | const MYSTR_NO_INIT: &MyStr = unsafe { mem::transmute::<&[_], _>(&[MaybeUninit::<u8> { uninit: () }]) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed at .<deref>.0: encountered uninitialized data in `str`
@@ -76,7 +73,7 @@ LL | const MYSTR_NO_INIT: &MyStr = unsafe { mem::transmute::<&[_], _>(&[MaybeUni
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-wide-ptr.rs:62:1
+  --> $DIR/ub-wide-ptr.rs:63:1
    |
 LL | / const SLICE_LENGTH_UNINIT: &[u8] = unsafe {
 LL | |
@@ -91,7 +88,7 @@ LL | | };
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-wide-ptr.rs:68:1
+  --> $DIR/ub-wide-ptr.rs:69:1
    |
 LL | const SLICE_TOO_LONG: &[u8] = unsafe { mem::transmute((&42u8, 999usize)) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a dangling reference (going beyond the bounds of its allocation)
@@ -102,7 +99,7 @@ LL | const SLICE_TOO_LONG: &[u8] = unsafe { mem::transmute((&42u8, 999usize)) };
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-wide-ptr.rs:71:1
+  --> $DIR/ub-wide-ptr.rs:72:1
    |
 LL | const SLICE_TOO_LONG_OVERFLOW: &[u32] = unsafe { mem::transmute((&42u32, isize::MAX)) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered invalid reference metadata: slice is bigger than largest supported object
@@ -112,19 +109,17 @@ LL | const SLICE_TOO_LONG_OVERFLOW: &[u32] = unsafe { mem::transmute((&42u32, is
                ╾─allocN─╼ ff ff ff 7f                         │ ╾──╼....
            }
 
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-wide-ptr.rs:74:1
+error: any use of this value will cause an error
+  --> $DIR/ub-wide-ptr.rs:75:1
    |
 LL | const SLICE_LENGTH_PTR: &[u8] = unsafe { mem::transmute((&42u8, &3)) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered non-integer slice length in wide pointer
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
    |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 8, align: 4) {
-               ╾─allocN─╼ ╾─allocN─╼                         │ ╾──╼╾──╼
-           }
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-wide-ptr.rs:77:1
+  --> $DIR/ub-wide-ptr.rs:79:1
    |
 LL | const SLICE_TOO_LONG_BOX: Box<[u8]> = unsafe { mem::transmute((&42u8, 999usize)) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a dangling box (going beyond the bounds of its allocation)
@@ -134,19 +129,17 @@ LL | const SLICE_TOO_LONG_BOX: Box<[u8]> = unsafe { mem::transmute((&42u8, 999us
                ╾─allocN─╼ e7 03 00 00                         │ ╾──╼....
            }
 
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-wide-ptr.rs:80:1
+error: any use of this value will cause an error
+  --> $DIR/ub-wide-ptr.rs:82:1
    |
 LL | const SLICE_LENGTH_PTR_BOX: Box<[u8]> = unsafe { mem::transmute((&42u8, &3)) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered non-integer slice length in wide pointer
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
    |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 8, align: 4) {
-               ╾─allocN─╼ ╾─allocN─╼                         │ ╾──╼╾──╼
-           }
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-wide-ptr.rs:84:1
+  --> $DIR/ub-wide-ptr.rs:87:1
    |
 LL | const SLICE_CONTENT_INVALID: &[bool] = &[unsafe { mem::transmute(3u8) }];
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed at .<deref>[0]: encountered 0x03, but expected a boolean
@@ -157,7 +150,7 @@ LL | const SLICE_CONTENT_INVALID: &[bool] = &[unsafe { mem::transmute(3u8) }];
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-wide-ptr.rs:90:1
+  --> $DIR/ub-wide-ptr.rs:93:1
    |
 LL | const MYSLICE_PREFIX_BAD: &MySliceBool = &MySlice(unsafe { mem::transmute(3u8) }, [false]);
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed at .<deref>.0: encountered 0x03, but expected a boolean
@@ -168,7 +161,7 @@ LL | const MYSLICE_PREFIX_BAD: &MySliceBool = &MySlice(unsafe { mem::transmute(3
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-wide-ptr.rs:93:1
+  --> $DIR/ub-wide-ptr.rs:96:1
    |
 LL | const MYSLICE_SUFFIX_BAD: &MySliceBool = &MySlice(true, [unsafe { mem::transmute(3u8) }]);
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed at .<deref>.1[0]: encountered 0x03, but expected a boolean
@@ -179,7 +172,7 @@ LL | const MYSLICE_SUFFIX_BAD: &MySliceBool = &MySlice(true, [unsafe { mem::tran
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-wide-ptr.rs:100:1
+  --> $DIR/ub-wide-ptr.rs:103:1
    |
 LL | / const RAW_SLICE_LENGTH_UNINIT: *const [u8] = unsafe {
 LL | |
@@ -194,7 +187,7 @@ LL | | };
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-wide-ptr.rs:108:1
+  --> $DIR/ub-wide-ptr.rs:111:1
    |
 LL | const TRAIT_OBJ_SHORT_VTABLE_1: W<&dyn Trait> = unsafe { mem::transmute(W((&92u8, &3u8))) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed at .0: encountered too small vtable
@@ -205,7 +198,7 @@ LL | const TRAIT_OBJ_SHORT_VTABLE_1: W<&dyn Trait> = unsafe { mem::transmute(W((
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-wide-ptr.rs:111:1
+  --> $DIR/ub-wide-ptr.rs:114:1
    |
 LL | const TRAIT_OBJ_SHORT_VTABLE_2: W<&dyn Trait> = unsafe { mem::transmute(W((&92u8, &3u64))) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed at .0: encountered too small vtable
@@ -216,7 +209,7 @@ LL | const TRAIT_OBJ_SHORT_VTABLE_2: W<&dyn Trait> = unsafe { mem::transmute(W((
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-wide-ptr.rs:114:1
+  --> $DIR/ub-wide-ptr.rs:117:1
    |
 LL | const TRAIT_OBJ_INT_VTABLE: W<&dyn Trait> = unsafe { mem::transmute(W((&92u8, 4usize))) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed at .0: encountered dangling vtable pointer in wide pointer
@@ -227,7 +220,7 @@ LL | const TRAIT_OBJ_INT_VTABLE: W<&dyn Trait> = unsafe { mem::transmute(W((&92u
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-wide-ptr.rs:116:1
+  --> $DIR/ub-wide-ptr.rs:119:1
    |
 LL | const TRAIT_OBJ_UNALIGNED_VTABLE: &dyn Trait = unsafe { mem::transmute((&92u8, &[0u8; 128])) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered unaligned vtable pointer in wide pointer
@@ -238,7 +231,7 @@ LL | const TRAIT_OBJ_UNALIGNED_VTABLE: &dyn Trait = unsafe { mem::transmute((&92
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-wide-ptr.rs:118:1
+  --> $DIR/ub-wide-ptr.rs:121:1
    |
 LL | const TRAIT_OBJ_BAD_DROP_FN_NULL: &dyn Trait = unsafe { mem::transmute((&92u8, &[0usize; 8])) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered invalid drop function pointer in vtable (not pointing to a function)
@@ -249,7 +242,7 @@ LL | const TRAIT_OBJ_BAD_DROP_FN_NULL: &dyn Trait = unsafe { mem::transmute((&92
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-wide-ptr.rs:120:1
+  --> $DIR/ub-wide-ptr.rs:123:1
    |
 LL | const TRAIT_OBJ_BAD_DROP_FN_INT: &dyn Trait = unsafe { mem::transmute((&92u8, &[1usize; 8])) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered invalid drop function pointer in vtable (not pointing to a function)
@@ -260,7 +253,7 @@ LL | const TRAIT_OBJ_BAD_DROP_FN_INT: &dyn Trait = unsafe { mem::transmute((&92u
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-wide-ptr.rs:122:1
+  --> $DIR/ub-wide-ptr.rs:125:1
    |
 LL | const TRAIT_OBJ_BAD_DROP_FN_NOT_FN_PTR: W<&dyn Trait> = unsafe { mem::transmute(W((&92u8, &[&42u8; 8]))) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed at .0: encountered invalid drop function pointer in vtable (not pointing to a function)
@@ -271,7 +264,7 @@ LL | const TRAIT_OBJ_BAD_DROP_FN_NOT_FN_PTR: W<&dyn Trait> = unsafe { mem::trans
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-wide-ptr.rs:126:1
+  --> $DIR/ub-wide-ptr.rs:129:1
    |
 LL | const TRAIT_OBJ_CONTENT_INVALID: &dyn Trait = unsafe { mem::transmute::<_, &bool>(&3u8) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed at .<deref>.<dyn-downcast>: encountered 0x03, but expected a boolean
@@ -282,7 +275,7 @@ LL | const TRAIT_OBJ_CONTENT_INVALID: &dyn Trait = unsafe { mem::transmute::<_, 
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-wide-ptr.rs:130:1
+  --> $DIR/ub-wide-ptr.rs:133:1
    |
 LL | const RAW_TRAIT_OBJ_VTABLE_NULL: *const dyn Trait = unsafe { mem::transmute((&92u8, 0usize)) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered dangling vtable pointer in wide pointer
@@ -293,7 +286,7 @@ LL | const RAW_TRAIT_OBJ_VTABLE_NULL: *const dyn Trait = unsafe { mem::transmute
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-wide-ptr.rs:132:1
+  --> $DIR/ub-wide-ptr.rs:135:1
    |
 LL | const RAW_TRAIT_OBJ_VTABLE_INVALID: *const dyn Trait = unsafe { mem::transmute((&92u8, &3u64)) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered too small vtable
@@ -304,13 +297,13 @@ LL | const RAW_TRAIT_OBJ_VTABLE_INVALID: *const dyn Trait = unsafe { mem::transm
            }
 
 error[E0080]: could not evaluate static initializer
-  --> $DIR/ub-wide-ptr.rs:138:5
+  --> $DIR/ub-wide-ptr.rs:141:5
    |
 LL |     mem::transmute::<_, &dyn Trait>((&92u8, 0usize))
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ memory access failed: null pointer is not a valid pointer
 
 error[E0080]: could not evaluate static initializer
-  --> $DIR/ub-wide-ptr.rs:142:5
+  --> $DIR/ub-wide-ptr.rs:145:5
    |
 LL |     mem::transmute::<_, &dyn Trait>((&92u8, &3u64))
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ memory access failed: allocN has size N, so pointer to 12 bytes starting at offset N is out-of-bounds

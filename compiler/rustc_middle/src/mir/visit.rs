@@ -258,7 +258,7 @@ macro_rules! make_mir_visitor {
                 // for best performance, we want to use an iterator rather
                 // than a for-loop, to avoid calling `body::Body::invalidate` for
                 // each basic block.
-                #[cfg_attr(not(bootstrap), allow(unused_macro_rules))]
+                #[allow(unused_macro_rules)]
                 macro_rules! basic_blocks {
                     (mut) => (body.basic_blocks_mut().iter_enumerated_mut());
                     () => (body.basic_blocks().iter_enumerated());
@@ -280,7 +280,7 @@ macro_rules! make_mir_visitor {
                     self.visit_local_decl(local, & $($mutability)? body.local_decls[local]);
                 }
 
-                #[cfg_attr(not(bootstrap), allow(unused_macro_rules))]
+                #[allow(unused_macro_rules)]
                 macro_rules! type_annotations {
                     (mut) => (body.user_type_annotations.iter_enumerated_mut());
                     () => (body.user_type_annotations.iter_enumerated());
@@ -534,6 +534,7 @@ macro_rules! make_mir_visitor {
                         func,
                         args,
                         destination,
+                        target: _,
                         cleanup: _,
                         from_hir_call: _,
                         fn_span: _
@@ -542,13 +543,11 @@ macro_rules! make_mir_visitor {
                         for arg in args {
                             self.visit_operand(arg, location);
                         }
-                        if let Some((destination, _)) = destination {
-                            self.visit_place(
-                                destination,
-                                PlaceContext::MutatingUse(MutatingUseContext::Call),
-                                location
-                            );
-                        }
+                        self.visit_place(
+                            destination,
+                            PlaceContext::MutatingUse(MutatingUseContext::Call),
+                            location
+                        );
                     }
 
                     TerminatorKind::Assert {
@@ -934,7 +933,7 @@ macro_rules! make_mir_visitor {
                 body: &$($mutability)? Body<'tcx>,
                 location: Location
             ) {
-                #[cfg_attr(not(bootstrap), allow(unused_macro_rules))]
+                #[allow(unused_macro_rules)]
                 macro_rules! basic_blocks {
                     (mut) => (body.basic_blocks_mut());
                     () => (body.basic_blocks());

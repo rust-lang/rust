@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/ex3-both-anon-regions-using-impl-items.rs:6:9
+  --> $DIR/ex3-both-anon-regions-using-impl-items.rs:10:9
    |
 LL |     fn foo(x: &mut Vec<&u8>, y: &u8) {
    |                        -        - let's call the lifetime of this reference `'1`

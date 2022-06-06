@@ -5,7 +5,7 @@ use super::{
 
 use crate::autoderef::Autoderef;
 use crate::infer::InferCtxt;
-use crate::traits::normalize_projection_type;
+use crate::traits::normalize_to;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
@@ -21,7 +21,9 @@ use rustc_hir::lang_items::LangItem;
 use rustc_hir::{AsyncGeneratorKind, GeneratorKind, Node};
 use rustc_middle::hir::map;
 use rustc_middle::ty::{
-    self, suggest_arbitrary_trait_bound, suggest_constraining_type_param, AdtKind, DefIdTree,
+    self,
+    subst::{GenericArgKind, SubstsRef},
+    suggest_arbitrary_trait_bound, suggest_constraining_type_param, AdtKind, DefIdTree,
     GeneratorDiagnosticData, GeneratorInteriorTypeCause, Infer, InferTy, ToPredicate, Ty, TyCtxt,
     TypeFoldable,
 };
@@ -144,11 +146,13 @@ impl<'tcx, 'a> GeneratorData<'tcx, 'a> {
     /// that are live across the yield of this generator
     fn get_generator_interior_types(
         &self,
-    ) -> ty::Binder<'tcx, &Vec<GeneratorInteriorTypeCause<'tcx>>> {
+    ) -> ty::Binder<'tcx, &[GeneratorInteriorTypeCause<'tcx>]> {
         match self {
-            GeneratorData::Local(typeck_result) => typeck_result.generator_interior_types.as_ref(),
+            GeneratorData::Local(typeck_result) => {
+                typeck_result.generator_interior_types.as_deref()
+            }
             GeneratorData::Foreign(generator_diagnostic_data) => {
-                generator_diagnostic_data.generator_interior_types.as_ref()
+                generator_diagnostic_data.generator_interior_types.as_deref()
             }
         }
     }
@@ -458,6 +462,16 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             _ => (false, None),
         };
 
+        let generic_args_have_impl_trait = |args: SubstsRef<'tcx>| -> bool {
+            args.iter().any(|arg| match arg.unpack() {
+                GenericArgKind::Type(ty) => match ty.kind() {
+                    ty::Param(param) => param.name.as_str().starts_with("impl"),
+                    _ => false,
+                },
+                _ => false,
+            })
+        };
+
         // FIXME: Add check for trait bound that is already present, particularly `?Sized` so we
         //        don't suggest `T: Sized + ?Sized`.
         let mut hir_id = body_id;
@@ -588,7 +602,9 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         | hir::ItemKind::TraitAlias(generics, _)
                         | hir::ItemKind::OpaqueTy(hir::OpaqueTy { generics, .. }),
                     ..
-                }) if !param_ty => {
+                }) if !param_ty
+                    && !generic_args_have_impl_trait(trait_pred.skip_binder().trait_ref.substs) =>
+                {
                     // Missing generic type parameter bound.
                     let param_name = self_ty.to_string();
                     let constraint = trait_pred.print_modifiers_and_trait_path().to_string();
@@ -1488,7 +1504,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         expected_ref: ty::PolyTraitRef<'tcx>,
         found: ty::PolyTraitRef<'tcx>,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        crate fn build_fn_sig_string<'tcx>(
+        pub(crate) fn build_fn_sig_string<'tcx>(
             tcx: TyCtxt<'tcx>,
             trait_ref: ty::PolyTraitRef<'tcx>,
         ) -> String {
@@ -2690,55 +2706,43 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 let future_trait = self.tcx.require_lang_item(LangItem::Future, None);
 
                 let self_ty = self.resolve_vars_if_possible(trait_pred.self_ty());
-
-                // Do not check on infer_types to avoid panic in evaluate_obligation.
-                if self_ty.has_infer_types() {
-                    return;
-                }
-                let self_ty = self.tcx.erase_regions(self_ty);
-
                 let impls_future = self.type_implements_trait(
                     future_trait,
-                    self_ty.skip_binder(),
+                    self.tcx.erase_late_bound_regions(self_ty),
                     ty::List::empty(),
                     obligation.param_env,
                 );
+                if !impls_future.must_apply_modulo_regions() {
+                    return;
+                }
 
                 let item_def_id = self.tcx.associated_item_def_ids(future_trait)[0];
                 // `<T as Future>::Output`
-                let projection_ty = ty::ProjectionTy {
-                    // `T`
-                    substs: self.tcx.mk_substs_trait(
-                        trait_pred.self_ty().skip_binder(),
-                        &self.fresh_substs_for_item(span, item_def_id)[1..],
-                    ),
-                    // `Future::Output`
-                    item_def_id,
-                };
-
-                let mut selcx = SelectionContext::new(self);
-
-                let mut obligations = vec![];
-                let normalized_ty = normalize_projection_type(
-                    &mut selcx,
+                let projection_ty = trait_pred.map_bound(|trait_pred| {
+                    self.tcx.mk_projection(
+                        item_def_id,
+                        // Future::Output has no substs
+                        self.tcx.mk_substs_trait(trait_pred.self_ty(), &[]),
+                    )
+                });
+                let projection_ty = normalize_to(
+                    &mut SelectionContext::new(self),
                     obligation.param_env,
-                    projection_ty,
                     obligation.cause.clone(),
-                    0,
-                    &mut obligations,
+                    projection_ty,
+                    &mut vec![],
                 );
 
                 debug!(
                     "suggest_await_before_try: normalized_projection_type {:?}",
-                    self.resolve_vars_if_possible(normalized_ty)
+                    self.resolve_vars_if_possible(projection_ty)
                 );
                 let try_obligation = self.mk_trait_obligation_with_new_self_ty(
                     obligation.param_env,
-                    trait_pred.map_bound(|trait_pred| (trait_pred, normalized_ty.ty().unwrap())),
+                    trait_pred.map_bound(|trait_pred| (trait_pred, projection_ty.skip_binder())),
                 );
                 debug!("suggest_await_before_try: try_trait_obligation {:?}", try_obligation);
                 if self.predicate_may_hold(&try_obligation)
-                    && impls_future.must_apply_modulo_regions()
                     && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span)
                     && snippet.ends_with('?')
                 {

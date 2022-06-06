@@ -56,23 +56,22 @@ pub(super) fn codegen_return_param<'tcx>(
 pub(super) fn codegen_with_call_return_arg<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     ret_arg_abi: &ArgAbi<'tcx, Ty<'tcx>>,
-    ret_place: Option<CPlace<'tcx>>,
+    ret_place: CPlace<'tcx>,
     f: impl FnOnce(&mut FunctionCx<'_, '_, 'tcx>, Option<Value>) -> Inst,
 ) {
     let (ret_temp_place, return_ptr) = match ret_arg_abi.mode {
         PassMode::Ignore => (None, None),
-        PassMode::Indirect { attrs: _, extra_attrs: None, on_stack: _ } => match ret_place {
-            Some(ret_place) if matches!(ret_place.inner(), CPlaceInner::Addr(_, None)) => {
+        PassMode::Indirect { attrs: _, extra_attrs: None, on_stack: _ } => {
+            if matches!(ret_place.inner(), CPlaceInner::Addr(_, None)) {
                 // This is an optimization to prevent unnecessary copies of the return value when
                 // the return place is already a memory place as opposed to a register.
                 // This match arm can be safely removed.
                 (None, Some(ret_place.to_ptr().get_addr(fx)))
-            }
-            _ => {
+            } else {
                 let place = CPlace::new_stack_slot(fx, ret_arg_abi.layout);
                 (Some(place), Some(place.to_ptr().get_addr(fx)))
             }
-        },
+        }
         PassMode::Indirect { attrs: _, extra_attrs: Some(_), on_stack: _ } => {
             unreachable!("unsized return value")
         }
@@ -84,39 +83,25 @@ pub(super) fn codegen_with_call_return_arg<'tcx>(
     match ret_arg_abi.mode {
         PassMode::Ignore => {}
         PassMode::Direct(_) => {
-            if let Some(ret_place) = ret_place {
-                let ret_val = fx.bcx.inst_results(call_inst)[0];
-                ret_place.write_cvalue(fx, CValue::by_val(ret_val, ret_arg_abi.layout));
-            }
+            let ret_val = fx.bcx.inst_results(call_inst)[0];
+            ret_place.write_cvalue(fx, CValue::by_val(ret_val, ret_arg_abi.layout));
         }
         PassMode::Pair(_, _) => {
-            if let Some(ret_place) = ret_place {
-                let ret_val_a = fx.bcx.inst_results(call_inst)[0];
-                let ret_val_b = fx.bcx.inst_results(call_inst)[1];
-                ret_place.write_cvalue(
-                    fx,
-                    CValue::by_val_pair(ret_val_a, ret_val_b, ret_arg_abi.layout),
-                );
-            }
+            let ret_val_a = fx.bcx.inst_results(call_inst)[0];
+            let ret_val_b = fx.bcx.inst_results(call_inst)[1];
+            ret_place
+                .write_cvalue(fx, CValue::by_val_pair(ret_val_a, ret_val_b, ret_arg_abi.layout));
         }
         PassMode::Cast(cast) => {
-            if let Some(ret_place) = ret_place {
-                let results = fx
-                    .bcx
-                    .inst_results(call_inst)
-                    .iter()
-                    .copied()
-                    .collect::<SmallVec<[Value; 2]>>();
-                let result =
-                    super::pass_mode::from_casted_value(fx, &results, ret_place.layout(), cast);
-                ret_place.write_cvalue(fx, result);
-            }
+            let results =
+                fx.bcx.inst_results(call_inst).iter().copied().collect::<SmallVec<[Value; 2]>>();
+            let result =
+                super::pass_mode::from_casted_value(fx, &results, ret_place.layout(), cast);
+            ret_place.write_cvalue(fx, result);
         }
         PassMode::Indirect { attrs: _, extra_attrs: None, on_stack: _ } => {
-            if let (Some(ret_place), Some(ret_temp_place)) = (ret_place, ret_temp_place) {
-                // Both ret_place and ret_temp_place must be Some. If ret_place is None, this is
-                // a non-returning call. If ret_temp_place is None, it is not necessary to copy the
-                // return value.
+            if let Some(ret_temp_place) = ret_temp_place {
+                // If ret_temp_place is None, it is not necessary to copy the return value.
                 let ret_temp_value = ret_temp_place.to_cvalue(fx);
                 ret_place.write_cvalue(fx, ret_temp_value);
             }

@@ -26,7 +26,7 @@ pub fn check<'tcx>(
     expr: &'tcx Expr<'tcx>,
     method_name: Symbol,
     args: &'tcx [Expr<'tcx>],
-    msrv: Option<&RustcVersion>,
+    msrv: Option<RustcVersion>,
 ) {
     if_chain! {
         if let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id);
@@ -65,13 +65,12 @@ fn check_addr_of_expr(
         if let Some(parent) = get_parent_expr(cx, expr);
         if let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Not, _) = parent.kind;
         let adjustments = cx.typeck_results().expr_adjustments(parent).iter().collect::<Vec<_>>();
-        if let Some(target_ty) = match adjustments[..]
-        {
+        if let
             // For matching uses of `Cow::from`
             [
                 Adjustment {
                     kind: Adjust::Deref(None),
-                    ..
+                    target: referent_ty,
                 },
                 Adjustment {
                     kind: Adjust::Borrow(_),
@@ -82,7 +81,7 @@ fn check_addr_of_expr(
             | [
                 Adjustment {
                     kind: Adjust::Deref(None),
-                    ..
+                    target: referent_ty,
                 },
                 Adjustment {
                     kind: Adjust::Borrow(_),
@@ -97,7 +96,7 @@ fn check_addr_of_expr(
             | [
                 Adjustment {
                     kind: Adjust::Deref(None),
-                    ..
+                    target: referent_ty,
                 },
                 Adjustment {
                     kind: Adjust::Deref(Some(OverloadedDeref { .. })),
@@ -107,17 +106,24 @@ fn check_addr_of_expr(
                     kind: Adjust::Borrow(_),
                     target: target_ty,
                 },
-            ] => Some(target_ty),
-            _ => None,
-        };
+            ] = adjustments[..];
         let receiver_ty = cx.typeck_results().expr_ty(receiver);
-        // Only flag cases where the receiver is copyable or the method is `Cow::into_owned`. This
-        // restriction is to ensure there is not overlap between `redundant_clone` and this lint.
-        if is_copy(cx, receiver_ty) || is_cow_into_owned(cx, method_name, method_def_id);
+        let (target_ty, n_target_refs) = peel_mid_ty_refs(*target_ty);
+        let (receiver_ty, n_receiver_refs) = peel_mid_ty_refs(receiver_ty);
+        // Only flag cases satisfying at least one of the following three conditions:
+        // * the referent and receiver types are distinct
+        // * the referent/receiver type is a copyable array
+        // * the method is `Cow::into_owned`
+        // This restriction is to ensure there is no overlap between `redundant_clone` and this
+        // lint. It also avoids the following false positive:
+        //  https://github.com/rust-lang/rust-clippy/issues/8759
+        //   Arrays are a bit of a corner case. Non-copyable arrays are handled by
+        // `redundant_clone`, but copyable arrays are not.
+        if *referent_ty != receiver_ty
+            || (matches!(referent_ty.kind(), ty::Array(..)) && is_copy(cx, *referent_ty))
+            || is_cow_into_owned(cx, method_name, method_def_id);
         if let Some(receiver_snippet) = snippet_opt(cx, receiver.span);
         then {
-            let (target_ty, n_target_refs) = peel_mid_ty_refs(*target_ty);
-            let (receiver_ty, n_receiver_refs) = peel_mid_ty_refs(receiver_ty);
             if receiver_ty == target_ty && n_target_refs >= n_receiver_refs {
                 span_lint_and_sugg(
                     cx,
@@ -192,7 +198,7 @@ fn check_into_iter_call_arg(
     expr: &Expr<'_>,
     method_name: Symbol,
     receiver: &Expr<'_>,
-    msrv: Option<&RustcVersion>,
+    msrv: Option<RustcVersion>,
 ) -> bool {
     if_chain! {
         if let Some(parent) = get_parent_expr(cx, expr);
@@ -207,7 +213,11 @@ fn check_into_iter_call_arg(
             if unnecessary_iter_cloned::check_for_loop_iter(cx, parent, method_name, receiver, true) {
                 return true;
             }
-            let cloned_or_copied = if is_copy(cx, item_ty) && meets_msrv(msrv, &msrvs::ITERATOR_COPIED) { "copied" } else { "cloned" };
+            let cloned_or_copied = if is_copy(cx, item_ty) && meets_msrv(msrv, msrvs::ITERATOR_COPIED) {
+                "copied"
+            } else {
+                "cloned"
+            };
             // The next suggestion may be incorrect because the removal of the `to_owned`-like
             // function could cause the iterator to hold a reference to a resource that is used
             // mutably. See https://github.com/rust-lang/rust-clippy/issues/8148.

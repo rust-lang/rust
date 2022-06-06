@@ -49,6 +49,9 @@ opener = "0.5"
 once_cell = "1.7.2"
 xz2 = "0.1"
 
+# Dependencies needed by the build-metrics feature
+sysinfo = { version = "0.24.1", optional = true }
+
 [target.'cfg(windows)'.dependencies.winapi]
 version = "0.3"
 features = [
@@ -64,3 +67,6 @@ features = [
 
 [dev-dependencies]
 pretty_assertions = "0.7"
+
+[features]
+build-metrics = ["sysinfo"]

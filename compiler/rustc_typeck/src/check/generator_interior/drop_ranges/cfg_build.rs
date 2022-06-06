@@ -249,6 +249,7 @@ impl<'a, 'tcx> DropRangeVisitor<'a, 'tcx> {
                 | hir::Node::Stmt(..)
                 | hir::Node::PathSegment(..)
                 | hir::Node::Ty(..)
+                | hir::Node::TypeBinding(..)
                 | hir::Node::TraitRef(..)
                 | hir::Node::Binding(..)
                 | hir::Node::Pat(..)

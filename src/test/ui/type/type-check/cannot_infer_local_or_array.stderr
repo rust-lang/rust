@@ -1,10 +1,13 @@
 error[E0282]: type annotations needed for `[_; 0]`
-  --> $DIR/cannot_infer_local_or_array.rs:2:13
+  --> $DIR/cannot_infer_local_or_array.rs:2:9
    |
 LL |     let x = [];
-   |         -   ^^ cannot infer type
-   |         |
-   |         consider giving `x` the explicit type `[_; 0]`, with the type parameters specified
+   |         ^
+   |
+help: consider giving `x` an explicit type, where the placeholders `_` are specified
+   |
+LL |     let x: [_; 0] = [];
+   |          ++++++++
 
 error: aborting due to previous error
 

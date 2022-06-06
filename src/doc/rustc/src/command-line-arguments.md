@@ -1,4 +1,4 @@
-# Command-line arguments
+# Command-line Arguments
 
 Here's a list of command-line arguments to `rustc` and what they do.
 

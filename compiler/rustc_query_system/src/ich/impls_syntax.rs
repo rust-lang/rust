@@ -69,7 +69,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for SourceFile {
             external_src: _,
             start_pos,
             end_pos: _,
-            ref lines,
+            lines: _,
             ref multibyte_chars,
             ref non_narrow_chars,
             ref normalized_pos,
@@ -79,11 +79,15 @@ impl<'a> HashStable<StableHashingContext<'a>> for SourceFile {
 
         src_hash.hash_stable(hcx, hasher);
 
-        // We only hash the relative position within this source_file
-        lines.len().hash_stable(hcx, hasher);
-        for &line in lines.iter() {
-            stable_byte_pos(line, start_pos).hash_stable(hcx, hasher);
-        }
+        // We are always in `Lines` form by the time we reach here.
+        assert!(self.lines.borrow().is_lines());
+        self.lines(|lines| {
+            // We only hash the relative position within this source_file
+            lines.len().hash_stable(hcx, hasher);
+            for &line in lines.iter() {
+                stable_byte_pos(line, start_pos).hash_stable(hcx, hasher);
+            }
+        });
 
         // We only hash the relative position within this source_file
         multibyte_chars.len().hash_stable(hcx, hasher);

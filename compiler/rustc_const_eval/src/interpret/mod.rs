@@ -29,5 +29,5 @@ pub use self::place::{MPlaceTy, MemPlace, MemPlaceMeta, Place, PlaceTy};
 pub use self::validity::{CtfeValidationMode, RefTracking};
 pub use self::visitor::{MutValueVisitor, Value, ValueVisitor};
 
-crate use self::intrinsics::eval_nullary_intrinsic;
+pub(crate) use self::intrinsics::eval_nullary_intrinsic;
 use eval_context::{from_known_layout, mir_assign_valid_types};

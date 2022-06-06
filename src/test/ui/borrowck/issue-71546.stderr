@@ -1,0 +1,20 @@
+error[E0310]: the associated type `<&'a V as IntoIterator>::Item` may not live long enough
+  --> $DIR/issue-71546.rs:12:27
+   |
+LL |       let csv_str: String = value
+   |  ___________________________^
+LL | |         .into_iter()
+LL | |         .map(|elem| elem.to_string())
+   | |_____________________________________^
+   |
+   = help: consider adding an explicit lifetime bound `<&'a V as IntoIterator>::Item: 'static`...
+   = note: ...so that the type `<&'a V as IntoIterator>::Item` will meet its required lifetime bounds...
+note: ...that is required by this bound
+  --> $DIR/issue-71546.rs:10:55
+   |
+LL |     for<'a> <&'a V as IntoIterator>::Item: ToString + 'static,
+   |                                                       ^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0310`.

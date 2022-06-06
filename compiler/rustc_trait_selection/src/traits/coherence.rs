@@ -20,7 +20,7 @@ use rustc_hir::CRATE_HIR_ID;
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::{util, TraitEngine};
 use rustc_middle::traits::specialization_graph::OverlapMode;
-use rustc_middle::ty::fast_reject::{self, TreatParams};
+use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{self, ImplSubject, Ty, TyCtxt};
@@ -79,26 +79,21 @@ where
     // Before doing expensive operations like entering an inference context, do
     // a quick check via fast_reject to tell if the impl headers could possibly
     // unify.
+    let drcx = DeepRejectCtxt { treat_obligation_params: TreatParams::AsInfer };
     let impl1_ref = tcx.impl_trait_ref(impl1_def_id);
     let impl2_ref = tcx.impl_trait_ref(impl2_def_id);
-
-    // Check if any of the input types definitely do not unify.
-    if iter::zip(
-        impl1_ref.iter().flat_map(|tref| tref.substs.types()),
-        impl2_ref.iter().flat_map(|tref| tref.substs.types()),
-    )
-    .any(|(ty1, ty2)| {
-        let t1 = fast_reject::simplify_type(tcx, ty1, TreatParams::AsInfer);
-        let t2 = fast_reject::simplify_type(tcx, ty2, TreatParams::AsInfer);
-
-        if let (Some(t1), Some(t2)) = (t1, t2) {
-            // Simplified successfully
-            t1 != t2
-        } else {
-            // Types might unify
-            false
+    let may_overlap = match (impl1_ref, impl2_ref) {
+        (Some(a), Some(b)) => iter::zip(a.substs, b.substs)
+            .all(|(arg1, arg2)| drcx.generic_args_may_unify(arg1, arg2)),
+        (None, None) => {
+            let self_ty1 = tcx.type_of(impl1_def_id);
+            let self_ty2 = tcx.type_of(impl2_def_id);
+            drcx.types_may_unify(self_ty1, self_ty2)
         }
-    }) {
+        _ => bug!("unexpected impls: {impl1_def_id:?} {impl2_def_id:?}"),
+    };
+
+    if !may_overlap {
         // Some types involved are definitely different, so the impls couldn't possibly overlap.
         debug!("overlapping_impls: fast_reject early-exit");
         return no_overlap();
@@ -519,7 +514,7 @@ pub fn orphan_check(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Result<(), OrphanChe
 /// 3. Before this local type, no generic type parameter of the impl must
 ///    be reachable through fundamental types.
 ///     - e.g. `impl<T> Trait<LocalType> for Vec<T>` is fine, as `Vec` is not fundamental.
-///     - while `impl<T> Trait<LocalType for Box<T>` results in an error, as `T` is
+///     - while `impl<T> Trait<LocalType> for Box<T>` results in an error, as `T` is
 ///       reachable through the fundamental type `Box`.
 /// 4. Every type in the local key parameter not known in C, going
 ///    through the parameter's type tree, must appear only as a subtree of

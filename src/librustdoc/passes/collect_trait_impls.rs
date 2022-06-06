@@ -9,16 +9,16 @@ use crate::visit::DocVisitor;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty::DefIdTree;
+use rustc_middle::ty::{self, DefIdTree};
 use rustc_span::symbol::sym;
 
-crate const COLLECT_TRAIT_IMPLS: Pass = Pass {
+pub(crate) const COLLECT_TRAIT_IMPLS: Pass = Pass {
     name: "collect-trait-impls",
     run: collect_trait_impls,
     description: "retrieves trait impls for items in the crate",
 };
 
-crate fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> Crate {
+pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> Crate {
     let synth_impls = cx.sess().time("collect_synthetic_impls", || {
         let mut synth = SyntheticImplCollector { cx, impls: Vec::new() };
         synth.visit_crate(&krate);
@@ -81,8 +81,35 @@ crate fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> Crate
             // Do not calculate blanket impl list for docs that are not going to be rendered.
             // While the `impl` blocks themselves are only in `libcore`, the module with `doc`
             // attached is directly included in `libstd` as well.
+            let tcx = cx.tcx;
             if did.is_local() {
-                for def_id in prim.impls(cx.tcx) {
+                for def_id in prim.impls(tcx).filter(|def_id| {
+                    // Avoid including impl blocks with filled-in generics.
+                    // https://github.com/rust-lang/rust/issues/94937
+                    //
+                    // FIXME(notriddle): https://github.com/rust-lang/rust/issues/97129
+                    //
+                    // This tactic of using inherent impl blocks for getting
+                    // auto traits and blanket impls is a hack. What we really
+                    // want is to check if `[T]` impls `Send`, which has
+                    // nothing to do with the inherent impl.
+                    //
+                    // Rustdoc currently uses these `impl` block as a source of
+                    // the `Ty`, as well as the `ParamEnv`, `SubstsRef`, and
+                    // `Generics`. To avoid relying on the `impl` block, these
+                    // things would need to be created from wholecloth, in a
+                    // form that is valid for use in type inference.
+                    let ty = tcx.type_of(def_id);
+                    match ty.kind() {
+                        ty::Slice(ty)
+                        | ty::Ref(_, ty, _)
+                        | ty::RawPtr(ty::TypeAndMut { ty, .. }) => {
+                            matches!(ty.kind(), ty::Param(..))
+                        }
+                        ty::Tuple(tys) => tys.iter().all(|ty| matches!(ty.kind(), ty::Param(..))),
+                        _ => true,
+                    }
+                }) {
                     let impls = get_auto_trait_and_blanket_impls(cx, def_id);
                     new_items_external.extend(impls.filter(|i| cx.inlined.insert(i.item_id)));
                 }

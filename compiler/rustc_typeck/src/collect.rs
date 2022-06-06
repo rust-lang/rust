@@ -110,7 +110,7 @@ pub struct ItemCtxt<'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 
 #[derive(Default)]
-crate struct HirPlaceholderCollector(crate Vec<Span>);
+pub(crate) struct HirPlaceholderCollector(pub(crate) Vec<Span>);
 
 impl<'v> Visitor<'v> for HirPlaceholderCollector {
     fn visit_ty(&mut self, t: &'v hir::Ty<'v>) {
@@ -144,7 +144,7 @@ struct CollectItemTypesVisitor<'tcx> {
 /// If there are any placeholder types (`_`), emit an error explaining that this is not allowed
 /// and suggest adding type parameters in the appropriate place, taking into consideration any and
 /// all already existing generic type parameters to avoid suggesting a name that is already in use.
-crate fn placeholder_type_error<'tcx>(
+pub(crate) fn placeholder_type_error<'tcx>(
     tcx: TyCtxt<'tcx>,
     generics: Option<&hir::Generics<'_>>,
     placeholder_types: Vec<Span>,
@@ -160,7 +160,7 @@ crate fn placeholder_type_error<'tcx>(
         .emit();
 }
 
-crate fn placeholder_type_error_diag<'tcx>(
+pub(crate) fn placeholder_type_error_diag<'tcx>(
     tcx: TyCtxt<'tcx>,
     generics: Option<&hir::Generics<'_>>,
     placeholder_types: Vec<Span>,
@@ -1364,7 +1364,6 @@ fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<S
 
     fn has_late_bound_regions<'tcx>(
         tcx: TyCtxt<'tcx>,
-        def_id: LocalDefId,
         generics: &'tcx hir::Generics<'tcx>,
         decl: &'tcx hir::FnDecl<'tcx>,
     ) -> Option<Span> {
@@ -1373,14 +1372,9 @@ fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<S
             outer_index: ty::INNERMOST,
             has_late_bound_regions: None,
         };
-        let late_bound_map = tcx.is_late_bound_map(def_id);
-        let is_late_bound = |id| {
-            let id = tcx.hir().local_def_id(id);
-            late_bound_map.map_or(false, |(_, set)| set.contains(&id))
-        };
         for param in generics.params {
             if let GenericParamKind::Lifetime { .. } = param.kind {
-                if is_late_bound(param.hir_id) {
+                if tcx.is_late_bound(param.hir_id) {
                     return Some(param.span);
                 }
             }
@@ -1392,25 +1386,25 @@ fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<S
     match node {
         Node::TraitItem(item) => match item.kind {
             hir::TraitItemKind::Fn(ref sig, _) => {
-                has_late_bound_regions(tcx, item.def_id, &item.generics, sig.decl)
+                has_late_bound_regions(tcx, &item.generics, sig.decl)
             }
             _ => None,
         },
         Node::ImplItem(item) => match item.kind {
             hir::ImplItemKind::Fn(ref sig, _) => {
-                has_late_bound_regions(tcx, item.def_id, &item.generics, sig.decl)
+                has_late_bound_regions(tcx, &item.generics, sig.decl)
             }
             _ => None,
         },
         Node::ForeignItem(item) => match item.kind {
             hir::ForeignItemKind::Fn(fn_decl, _, ref generics) => {
-                has_late_bound_regions(tcx, item.def_id, generics, fn_decl)
+                has_late_bound_regions(tcx, generics, fn_decl)
             }
             _ => None,
         },
         Node::Item(item) => match item.kind {
             hir::ItemKind::Fn(ref sig, .., ref generics, _) => {
-                has_late_bound_regions(tcx, item.def_id, generics, sig.decl)
+                has_late_bound_regions(tcx, generics, sig.decl)
             }
             _ => None,
         },
@@ -1594,41 +1588,20 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
         _ => None,
     };
 
-    let mut opt_self = None;
-    let mut allow_defaults = false;
-
     let no_generics = hir::Generics::empty();
-    let ast_generics = match node {
-        Node::TraitItem(item) => &item.generics,
-
-        Node::ImplItem(item) => &item.generics,
-
+    let ast_generics = node.generics().unwrap_or(&no_generics);
+    let (opt_self, allow_defaults) = match node {
         Node::Item(item) => {
             match item.kind {
-                ItemKind::Fn(.., ref generics, _)
-                | ItemKind::Impl(hir::Impl { ref generics, .. }) => generics,
-
-                ItemKind::TyAlias(_, ref generics)
-                | ItemKind::Enum(_, ref generics)
-                | ItemKind::Struct(_, ref generics)
-                | ItemKind::OpaqueTy(hir::OpaqueTy { ref generics, .. })
-                | ItemKind::Union(_, ref generics) => {
-                    allow_defaults = true;
-                    generics
-                }
-
-                ItemKind::Trait(_, _, ref generics, ..)
-                | ItemKind::TraitAlias(ref generics, ..) => {
+                ItemKind::Trait(..) | ItemKind::TraitAlias(..) => {
                     // Add in the self type parameter.
                     //
                     // Something of a hack: use the node id for the trait, also as
                     // the node id for the Self type parameter.
-                    let param_id = item.def_id;
-
-                    opt_self = Some(ty::GenericParamDef {
+                    let opt_self = Some(ty::GenericParamDef {
                         index: 0,
                         name: kw::SelfUpper,
-                        def_id: param_id.to_def_id(),
+                        def_id,
                         pure_wrt_drop: false,
                         kind: ty::GenericParamDefKind::Type {
                             has_default: false,
@@ -1637,21 +1610,17 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
                         },
                     });
 
-                    allow_defaults = true;
-                    generics
+                    (opt_self, true)
                 }
-
-                _ => &no_generics,
+                ItemKind::TyAlias(..)
+                | ItemKind::Enum(..)
+                | ItemKind::Struct(..)
+                | ItemKind::OpaqueTy(..)
+                | ItemKind::Union(..) => (None, true),
+                _ => (None, false),
             }
         }
-
-        Node::ForeignItem(item) => match item.kind {
-            ForeignItemKind::Static(..) => &no_generics,
-            ForeignItemKind::Fn(_, _, ref generics) => generics,
-            ForeignItemKind::Type => &no_generics,
-        },
-
-        _ => &no_generics,
+        _ => (None, false),
     };
 
     let has_self = opt_self.is_some();
@@ -1671,7 +1640,7 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
         params.push(opt_self);
     }
 
-    let early_lifetimes = early_bound_lifetimes_from_generics(tcx, hir_id.owner, ast_generics);
+    let early_lifetimes = early_bound_lifetimes_from_generics(tcx, ast_generics);
     params.extend(early_lifetimes.enumerate().map(|(i, param)| ty::GenericParamDef {
         name: param.name.ident().name,
         index: own_start + i as u32,
@@ -2054,23 +2023,10 @@ fn impl_polarity(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ImplPolarity {
 /// `resolve_lifetime::early_bound_lifetimes`.
 fn early_bound_lifetimes_from_generics<'a, 'tcx: 'a>(
     tcx: TyCtxt<'tcx>,
-    def_id: LocalDefId,
     generics: &'a hir::Generics<'a>,
 ) -> impl Iterator<Item = &'a hir::GenericParam<'a>> + Captures<'tcx> {
-    let late_bound_map = if generics.params.is_empty() {
-        // This function may be called on `def_id == CRATE_DEF_ID`,
-        // which makes `is_late_bound_map` ICE.  Don't even try if there
-        // is no generic parameter.
-        None
-    } else {
-        tcx.is_late_bound_map(def_id)
-    };
-    let is_late_bound = move |hir_id| {
-        let id = tcx.hir().local_def_id(hir_id);
-        late_bound_map.map_or(false, |(_, set)| set.contains(&id))
-    };
     generics.params.iter().filter(move |param| match param.kind {
-        GenericParamKind::Lifetime { .. } => !is_late_bound(param.hir_id),
+        GenericParamKind::Lifetime { .. } => !tcx.is_late_bound(param.hir_id),
         _ => false,
     })
 }
@@ -2255,7 +2211,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
     // have to be careful to only iterate over early-bound regions.
     let mut index = parent_count
         + has_own_self as u32
-        + early_bound_lifetimes_from_generics(tcx, hir_id.owner, ast_generics).count() as u32;
+        + early_bound_lifetimes_from_generics(tcx, ast_generics).count() as u32;
 
     // Collect the predicates that were written inline by the user on each
     // type parameter (e.g., `<T: Foo>`).
@@ -2454,7 +2410,7 @@ fn trait_explicit_predicates_and_bounds(
     gather_explicit_predicates_of(tcx, def_id.to_def_id())
 }
 
-fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicates<'_> {
+fn explicit_predicates_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> ty::GenericPredicates<'tcx> {
     let def_kind = tcx.def_kind(def_id);
     if let DefKind::Trait = def_kind {
         // Remove bounds on associated types from the predicates, they will be
@@ -2462,7 +2418,7 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
         let predicates_and_bounds = tcx.trait_explicit_predicates_and_bounds(def_id.expect_local());
         let trait_identity_substs = InternalSubsts::identity_for_item(tcx, def_id);
 
-        let is_assoc_item_ty = |ty: Ty<'_>| {
+        let is_assoc_item_ty = |ty: Ty<'tcx>| {
             // For a predicate from a where clause to become a bound on an
             // associated type:
             // * It must use the identity substs of the item.

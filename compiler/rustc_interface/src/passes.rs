@@ -27,7 +27,6 @@ use rustc_passes::{self, hir_stats, layout_test};
 use rustc_plugin_impl as plugin;
 use rustc_query_impl::{OnDiskCache, Queries as TcxQueries};
 use rustc_resolve::{Resolver, ResolverArenas};
-use rustc_serialize::json;
 use rustc_session::config::{CrateType, Input, OutputFilenames, OutputType};
 use rustc_session::cstore::{MetadataLoader, MetadataLoaderDyn};
 use rustc_session::output::{filename_for_input, filename_for_metadata};
@@ -58,10 +57,6 @@ pub fn parse<'a>(sess: &'a Session, input: &Input) -> PResult<'a, ast::Crate> {
             parse_crate_from_source_str(name.clone(), input.clone(), &sess.parse_sess)
         }
     })?;
-
-    if sess.opts.debugging_opts.ast_json_noexpand {
-        println!("{}", json::as_json(&krate));
-    }
 
     if sess.opts.debugging_opts.input_stats {
         eprintln!("Lines of code:             {}", sess.source_map().count_lines());
@@ -423,10 +418,6 @@ pub fn configure_and_expand(
         hir_stats::print_ast_stats(&krate, "POST EXPANSION AST STATS");
     }
 
-    if sess.opts.debugging_opts.ast_json {
-        println!("{}", json::as_json(&krate));
-    }
-
     resolver.resolve_crate(&krate);
 
     // Needs to go *after* expansion to be able to check the results of macro expansion.
@@ -494,13 +485,7 @@ pub fn lower_to_hir<'res, 'tcx>(
     arena: &'tcx rustc_ast_lowering::Arena<'tcx>,
 ) -> &'tcx Crate<'tcx> {
     // Lower AST to HIR.
-    let hir_crate = rustc_ast_lowering::lower_crate(
-        sess,
-        &*krate,
-        resolver,
-        rustc_parse::nt_to_tokenstream,
-        arena,
-    );
+    let hir_crate = rustc_ast_lowering::lower_crate(sess, &*krate, resolver, arena);
 
     // Drop AST to free memory
     sess.time("drop_ast", || std::mem::drop(krate));
@@ -943,7 +928,6 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
                         //
                         // maybe move the check to a MIR pass?
                         tcx.ensure().check_mod_liveness(module);
-                        tcx.ensure().check_mod_intrinsics(module);
                     });
                 });
             }

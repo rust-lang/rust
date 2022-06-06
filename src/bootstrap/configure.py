@@ -407,7 +407,7 @@ if 'target' in config:
         configured_targets.append(target)
 for target in configured_targets:
     targets[target] = sections['target'][:]
-    targets[target][0] = targets[target][0].replace("x86_64-unknown-linux-gnu", target)
+    targets[target][0] = targets[target][0].replace("x86_64-unknown-linux-gnu", "'{}'".format(target))
 
 
 def is_number(value):

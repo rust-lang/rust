@@ -7,23 +7,25 @@
 
 #![allow(clippy::collapsible_else_if)]
 
-use std::ffi::OsStr;
+mod config;
+
+use config::LintcheckConfig;
+
+use std::collections::HashMap;
+use std::env;
 use std::fmt::Write as _;
+use std::fs::write;
+use std::io::ErrorKind;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::{collections::HashMap, io::ErrorKind};
-use std::{
-    env,
-    fs::write,
-    path::{Path, PathBuf},
-    thread,
-    time::Duration,
-};
+use std::thread;
+use std::time::Duration;
 
-use clap::{App, Arg, ArgMatches};
+use cargo_metadata::diagnostic::DiagnosticLevel;
+use cargo_metadata::Message;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use walkdir::{DirEntry, WalkDir};
 
 #[cfg(not(windows))]
@@ -93,37 +95,67 @@ struct Crate {
 #[derive(Debug)]
 struct ClippyWarning {
     crate_name: String,
-    crate_version: String,
     file: String,
-    line: String,
-    column: String,
-    linttype: String,
+    line: usize,
+    column: usize,
+    lint_type: String,
     message: String,
     is_ice: bool,
 }
 
 #[allow(unused)]
 impl ClippyWarning {
+    fn new(cargo_message: Message, krate: &Crate) -> Option<Self> {
+        let diag = match cargo_message {
+            Message::CompilerMessage(message) => message.message,
+            _ => return None,
+        };
+
+        let lint_type = diag.code?.code;
+        if !(lint_type.contains("clippy") || diag.message.contains("clippy"))
+            || diag.message.contains("could not read cargo metadata")
+        {
+            return None;
+        }
+
+        let span = diag.spans.into_iter().find(|span| span.is_primary)?;
+
+        let file = match Path::new(&span.file_name).strip_prefix(env!("CARGO_HOME")) {
+            Ok(stripped) => format!("$CARGO_HOME/{}", stripped.display()),
+            Err(_) => format!(
+                "target/lintcheck/sources/{}-{}/{}",
+                krate.name, krate.version, span.file_name
+            ),
+        };
+
+        Some(Self {
+            crate_name: krate.name.clone(),
+            file,
+            line: span.line_start,
+            column: span.column_start,
+            lint_type,
+            message: diag.message,
+            is_ice: diag.level == DiagnosticLevel::Ice,
+        })
+    }
+
     fn to_output(&self, markdown: bool) -> String {
-        let file = format!("{}-{}/{}", &self.crate_name, &self.crate_version, &self.file);
-        let file_with_pos = format!("{}:{}:{}", &file, &self.line, &self.column);
+        let file_with_pos = format!("{}:{}:{}", &self.file, &self.line, &self.column);
         if markdown {
-            let lint = format!("`{}`", self.linttype);
+            let lint = format!("`{}`", self.lint_type);
+
+            let mut file = self.file.clone();
+            if !file.starts_with('$') {
+                file.insert_str(0, "../");
+            }
 
             let mut output = String::from("| ");
-            let _ = write!(
-                output,
-                "[`{}`](../target/lintcheck/sources/{}#L{})",
-                file_with_pos, file, self.line
-            );
+            let _ = write!(output, "[`{}`]({}#L{})", file_with_pos, file, self.line);
             let _ = write!(output, r#" | {:<50} | "{}" |"#, lint, self.message);
             output.push('\n');
             output
         } else {
-            format!(
-                "target/lintcheck/sources/{} {} \"{}\"\n",
-                file_with_pos, self.linttype, self.message
-            )
+            format!("{} {} \"{}\"\n", file_with_pos, self.lint_type, self.message)
         }
     }
 }
@@ -278,18 +310,17 @@ impl Crate {
         &self,
         cargo_clippy_path: &Path,
         target_dir_index: &AtomicUsize,
-        thread_limit: usize,
         total_crates_to_lint: usize,
-        fix: bool,
+        config: &LintcheckConfig,
         lint_filter: &Vec<String>,
     ) -> Vec<ClippyWarning> {
         // advance the atomic index by one
         let index = target_dir_index.fetch_add(1, Ordering::SeqCst);
         // "loop" the index within 0..thread_limit
-        let thread_index = index % thread_limit;
+        let thread_index = index % config.max_jobs;
         let perc = (index * 100) / total_crates_to_lint;
 
-        if thread_limit == 1 {
+        if config.max_jobs == 1 {
             println!(
                 "{}/{} {}% Linting {} {}",
                 index, total_crates_to_lint, perc, &self.name, &self.version
@@ -305,7 +336,7 @@ impl Crate {
 
         let shared_target_dir = clippy_project_root().join("target/lintcheck/shared_target_dir");
 
-        let mut args = if fix {
+        let mut args = if config.fix {
             vec!["--fix", "--"]
         } else {
             vec!["--", "--message-format=json", "--"]
@@ -356,7 +387,7 @@ impl Crate {
             );
         }
 
-        if fix {
+        if config.fix {
             if let Some(stderr) = stderr
                 .lines()
                 .find(|line| line.contains("failed to automatically apply fixes suggested by rustc to crate"))
@@ -371,125 +402,13 @@ impl Crate {
             return Vec::new();
         }
 
-        let output_lines = stdout.lines();
-        let warnings: Vec<ClippyWarning> = output_lines
-            .into_iter()
-            // get all clippy warnings and ICEs
-            .filter(|line| filter_clippy_warnings(&line))
-            .map(|json_msg| parse_json_message(json_msg, &self))
+        // get all clippy warnings and ICEs
+        let warnings: Vec<ClippyWarning> = Message::parse_stream(stdout.as_bytes())
+            .filter_map(|msg| ClippyWarning::new(msg.unwrap(), &self))
             .collect();
 
         warnings
     }
-}
-
-#[derive(Debug)]
-struct LintcheckConfig {
-    /// max number of jobs to spawn (default 1)
-    max_jobs: usize,
-    /// we read the sources to check from here
-    sources_toml_path: PathBuf,
-    /// we save the clippy lint results here
-    lintcheck_results_path: PathBuf,
-    /// whether to just run --fix and not collect all the warnings
-    fix: bool,
-    /// A list of lints that this lintcheck run should focus on
-    lint_filter: Vec<String>,
-    /// Indicate if the output should support markdown syntax
-    markdown: bool,
-}
-
-impl LintcheckConfig {
-    fn from_clap(clap_config: &ArgMatches) -> Self {
-        // first, check if we got anything passed via the LINTCHECK_TOML env var,
-        // if not, ask clap if we got any value for --crates-toml  <foo>
-        // if not, use the default "lintcheck/lintcheck_crates.toml"
-        let sources_toml = env::var("LINTCHECK_TOML").unwrap_or_else(|_| {
-            clap_config
-                .value_of("crates-toml")
-                .clone()
-                .unwrap_or("lintcheck/lintcheck_crates.toml")
-                .to_string()
-        });
-
-        let markdown = clap_config.is_present("markdown");
-        let sources_toml_path = PathBuf::from(sources_toml);
-
-        // for the path where we save the lint results, get the filename without extension (so for
-        // wasd.toml, use "wasd"...)
-        let filename: PathBuf = sources_toml_path.file_stem().unwrap().into();
-        let lintcheck_results_path = PathBuf::from(format!(
-            "lintcheck-logs/{}_logs.{}",
-            filename.display(),
-            if markdown { "md" } else { "txt" }
-        ));
-
-        // look at the --threads arg, if 0 is passed, ask rayon rayon how many threads it would spawn and
-        // use half of that for the physical core count
-        // by default use a single thread
-        let max_jobs = match clap_config.value_of("threads") {
-            Some(threads) => {
-                let threads: usize = threads
-                    .parse()
-                    .unwrap_or_else(|_| panic!("Failed to parse '{}' to a digit", threads));
-                if threads == 0 {
-                    // automatic choice
-                    // Rayon seems to return thread count so half that for core count
-                    (rayon::current_num_threads() / 2) as usize
-                } else {
-                    threads
-                }
-            },
-            // no -j passed, use a single thread
-            None => 1,
-        };
-        let fix: bool = clap_config.is_present("fix");
-        let lint_filter: Vec<String> = clap_config
-            .values_of("filter")
-            .map(|iter| {
-                iter.map(|lint_name| {
-                    let mut filter = lint_name.replace('_', "-");
-                    if !filter.starts_with("clippy::") {
-                        filter.insert_str(0, "clippy::");
-                    }
-                    filter
-                })
-                .collect()
-            })
-            .unwrap_or_default();
-
-        LintcheckConfig {
-            max_jobs,
-            sources_toml_path,
-            lintcheck_results_path,
-            fix,
-            lint_filter,
-            markdown,
-        }
-    }
-}
-
-/// takes a single json-formatted clippy warnings and returns true (we are interested in that line)
-/// or false (we aren't)
-fn filter_clippy_warnings(line: &str) -> bool {
-    // we want to collect ICEs because clippy might have crashed.
-    // these are summarized later
-    if line.contains("internal compiler error: ") {
-        return true;
-    }
-    // in general, we want all clippy warnings
-    // however due to some kind of bug, sometimes there are absolute paths
-    // to libcore files inside the message
-    // or we end up with cargo-metadata output (https://github.com/rust-lang/rust-clippy/issues/6508)
-
-    // filter out these message to avoid unnecessary noise in the logs
-    if line.contains("clippy::")
-        && !(line.contains("could not read cargo metadata")
-            || (line.contains(".rustup") && line.contains("toolchains")))
-    {
-        return true;
-    }
-    false
 }
 
 /// Builds clippy inside the repo to make sure we have a clippy executable we can use.
@@ -527,10 +446,8 @@ fn read_crates(toml_path: &Path) -> Vec<CrateSource> {
                 path: PathBuf::from(path),
                 options: tk.options.clone(),
             });
-        }
-
-        // if we have multiple versions, save each one
-        if let Some(ref versions) = tk.versions {
+        } else if let Some(ref versions) = tk.versions {
+            // if we have multiple versions, save each one
             versions.iter().for_each(|ver| {
                 crate_sources.push(CrateSource::CratesIo {
                     name: tk.name.clone(),
@@ -538,16 +455,18 @@ fn read_crates(toml_path: &Path) -> Vec<CrateSource> {
                     options: tk.options.clone(),
                 });
             })
-        }
-        // otherwise, we should have a git source
-        if tk.git_url.is_some() && tk.git_hash.is_some() {
+        } else if tk.git_url.is_some() && tk.git_hash.is_some() {
+            // otherwise, we should have a git source
             crate_sources.push(CrateSource::Git {
                 name: tk.name.clone(),
                 url: tk.git_url.clone().unwrap(),
                 commit: tk.git_hash.clone().unwrap(),
                 options: tk.options.clone(),
             });
+        } else {
+            panic!("Invalid crate source: {tk:?}");
         }
+
         // if we have a version as well as a git data OR only one git data, something is funky
         if tk.versions.is_some() && (tk.git_url.is_some() || tk.git_hash.is_some())
             || tk.git_hash.is_some() != tk.git_url.is_some()
@@ -568,57 +487,13 @@ fn read_crates(toml_path: &Path) -> Vec<CrateSource> {
     crate_sources
 }
 
-/// Parse the json output of clippy and return a `ClippyWarning`
-fn parse_json_message(json_message: &str, krate: &Crate) -> ClippyWarning {
-    let jmsg: Value = serde_json::from_str(&json_message).unwrap_or_else(|e| panic!("Failed to parse json:\n{:?}", e));
-
-    let file: String = jmsg["message"]["spans"][0]["file_name"]
-        .to_string()
-        .trim_matches('"')
-        .into();
-
-    let file = if file.contains(".cargo") {
-        // if we deal with macros, a filename may show the origin of a macro which can be inside a dep from
-        // the registry.
-        // don't show the full path in that case.
-
-        // /home/matthias/.cargo/registry/src/github.com-1ecc6299db9ec823/syn-1.0.63/src/custom_keyword.rs
-        let path = PathBuf::from(file);
-        let mut piter = path.iter();
-        // consume all elements until we find ".cargo", so that "/home/matthias" is skipped
-        let _: Option<&OsStr> = piter.find(|x| x == &std::ffi::OsString::from(".cargo"));
-        // collect the remaining segments
-        let file = piter.collect::<PathBuf>();
-        format!("{}", file.display())
-    } else {
-        file
-    };
-
-    ClippyWarning {
-        crate_name: krate.name.to_string(),
-        crate_version: krate.version.to_string(),
-        file,
-        line: jmsg["message"]["spans"][0]["line_start"]
-            .to_string()
-            .trim_matches('"')
-            .into(),
-        column: jmsg["message"]["spans"][0]["text"][0]["highlight_start"]
-            .to_string()
-            .trim_matches('"')
-            .into(),
-        linttype: jmsg["message"]["code"]["code"].to_string().trim_matches('"').into(),
-        message: jmsg["message"]["message"].to_string().trim_matches('"').into(),
-        is_ice: json_message.contains("internal compiler error: "),
-    }
-}
-
 /// Generate a short list of occurring lints-types and their count
 fn gather_stats(clippy_warnings: &[ClippyWarning]) -> (String, HashMap<&String, usize>) {
     // count lint type occurrences
     let mut counter: HashMap<&String, usize> = HashMap::new();
     clippy_warnings
         .iter()
-        .for_each(|wrn| *counter.entry(&wrn.linttype).or_insert(0) += 1);
+        .for_each(|wrn| *counter.entry(&wrn.lint_type).or_insert(0) += 1);
 
     // collect into a tupled list for sorting
     let mut stats: Vec<(&&String, &usize)> = counter.iter().map(|(lint, count)| (lint, count)).collect();
@@ -667,22 +542,14 @@ fn lintcheck_needs_rerun(lintcheck_logs_path: &Path) -> bool {
     logs_modified < clippy_modified
 }
 
-/// lintchecks `main()` function
-///
-/// # Panics
-///
-/// This function panics if the clippy binaries don't exist
-/// or if lintcheck is executed from the wrong directory (aka none-repo-root)
-pub fn main() {
+fn main() {
     // assert that we launch lintcheck from the repo root (via cargo lintcheck)
     if std::fs::metadata("lintcheck/Cargo.toml").is_err() {
         eprintln!("lintcheck needs to be run from clippys repo root!\nUse `cargo lintcheck` alternatively.");
         std::process::exit(3);
     }
 
-    let clap_config = &get_clap_config();
-
-    let config = LintcheckConfig::from_clap(clap_config);
+    let config = LintcheckConfig::new();
 
     println!("Compiling clippy...");
     build_clippy();
@@ -736,76 +603,46 @@ pub fn main() {
         })
         .collect();
 
-    let clippy_warnings: Vec<ClippyWarning> = if let Some(only_one_crate) = clap_config.value_of("only") {
-        // if we don't have the specified crate in the .toml, throw an error
-        if !crates.iter().any(|krate| {
-            let name = match krate {
-                CrateSource::CratesIo { name, .. } | CrateSource::Git { name, .. } | CrateSource::Path { name, .. } => {
-                    name
-                },
-            };
-            name == only_one_crate
-        }) {
-            eprintln!(
-                "ERROR: could not find crate '{}' in lintcheck/lintcheck_crates.toml",
-                only_one_crate
-            );
-            std::process::exit(1);
-        }
+    let crates: Vec<Crate> = crates
+        .into_iter()
+        .filter(|krate| {
+            if let Some(only_one_crate) = &config.only {
+                let name = match krate {
+                    CrateSource::CratesIo { name, .. }
+                    | CrateSource::Git { name, .. }
+                    | CrateSource::Path { name, .. } => name,
+                };
 
-        // only check a single crate that was passed via cmdline
-        crates
-            .into_iter()
-            .map(|krate| krate.download_and_extract())
-            .filter(|krate| krate.name == only_one_crate)
-            .flat_map(|krate| {
-                krate.run_clippy_lints(&cargo_clippy_path, &AtomicUsize::new(0), 1, 1, config.fix, &lint_filter)
-            })
-            .collect()
-    } else {
-        if config.max_jobs > 1 {
-            // run parallel with rayon
+                name == only_one_crate
+            } else {
+                true
+            }
+        })
+        .map(|krate| krate.download_and_extract())
+        .collect();
 
-            // Ask rayon for thread count. Assume that half of that is the number of physical cores
-            // Use one target dir for each core so that we can run N clippys in parallel.
-            // We need to use different target dirs because cargo would lock them for a single build otherwise,
-            // killing the parallelism. However this also means that deps will only be reused half/a
-            // quarter of the time which might result in a longer wall clock runtime
+    if crates.is_empty() {
+        eprintln!(
+            "ERROR: could not find crate '{}' in lintcheck/lintcheck_crates.toml",
+            config.only.unwrap(),
+        );
+        std::process::exit(1);
+    }
 
-            // This helps when we check many small crates with dep-trees that don't have a lot of branches in
-            // order to achieve some kind of parallelism
+    // run parallel with rayon
 
-            // by default, use a single thread
-            let num_cpus = config.max_jobs;
-            let num_crates = crates.len();
+    // This helps when we check many small crates with dep-trees that don't have a lot of branches in
+    // order to achieve some kind of parallelism
 
-            // check all crates (default)
-            crates
-                .into_par_iter()
-                .map(|krate| krate.download_and_extract())
-                .flat_map(|krate| {
-                    krate.run_clippy_lints(
-                        &cargo_clippy_path,
-                        &counter,
-                        num_cpus,
-                        num_crates,
-                        config.fix,
-                        &lint_filter,
-                    )
-                })
-                .collect()
-        } else {
-            // run sequential
-            let num_crates = crates.len();
-            crates
-                .into_iter()
-                .map(|krate| krate.download_and_extract())
-                .flat_map(|krate| {
-                    krate.run_clippy_lints(&cargo_clippy_path, &counter, 1, num_crates, config.fix, &lint_filter)
-                })
-                .collect()
-        }
-    };
+    rayon::ThreadPoolBuilder::new()
+        .num_threads(config.max_jobs)
+        .build_global()
+        .unwrap();
+
+    let clippy_warnings: Vec<ClippyWarning> = crates
+        .par_iter()
+        .flat_map(|krate| krate.run_clippy_lints(&cargo_clippy_path, &counter, crates.len(), &config, &lint_filter))
+        .collect();
 
     // if we are in --fix mode, don't change the log files, terminate here
     if config.fix {
@@ -837,7 +674,7 @@ pub fn main() {
         text.push_str("| file | lint | message |\n");
         text.push_str("| --- | --- | --- |\n");
     }
-    write!(text, "{}", all_msgs.join(""));
+    write!(text, "{}", all_msgs.join("")).unwrap();
     text.push_str("\n\n### ICEs:\n");
     for (cratename, msg) in ices.iter() {
         let _ = write!(text, "{}: '{}'", cratename, msg);
@@ -949,75 +786,10 @@ fn create_dirs(krate_download_dir: &Path, extract_dir: &Path) {
     });
 }
 
-fn get_clap_config<'a>() -> ArgMatches<'a> {
-    App::new("lintcheck")
-        .about("run clippy on a set of crates and check output")
-        .arg(
-            Arg::with_name("only")
-                .takes_value(true)
-                .value_name("CRATE")
-                .long("only")
-                .help("only process a single crate of the list"),
-        )
-        .arg(
-            Arg::with_name("crates-toml")
-                .takes_value(true)
-                .value_name("CRATES-SOURCES-TOML-PATH")
-                .long("crates-toml")
-                .help("set the path for a crates.toml where lintcheck should read the sources from"),
-        )
-        .arg(
-            Arg::with_name("threads")
-                .takes_value(true)
-                .value_name("N")
-                .short("j")
-                .long("jobs")
-                .help("number of threads to use, 0 automatic choice"),
-        )
-        .arg(
-            Arg::with_name("fix")
-                .long("--fix")
-                .help("runs cargo clippy --fix and checks if all suggestions apply"),
-        )
-        .arg(
-            Arg::with_name("filter")
-                .long("--filter")
-                .takes_value(true)
-                .multiple(true)
-                .value_name("clippy_lint_name")
-                .help("apply a filter to only collect specified lints, this also overrides `allow` attributes"),
-        )
-        .arg(
-            Arg::with_name("markdown")
-                .long("--markdown")
-                .help("change the reports table to use markdown links"),
-        )
-        .get_matches()
-}
-
 /// Returns the path to the Clippy project directory
-///
-/// # Panics
-///
-/// Panics if the current directory could not be retrieved, there was an error reading any of the
-/// Cargo.toml files or ancestor directory is the clippy root directory
 #[must_use]
-pub fn clippy_project_root() -> PathBuf {
-    let current_dir = std::env::current_dir().unwrap();
-    for path in current_dir.ancestors() {
-        let result = std::fs::read_to_string(path.join("Cargo.toml"));
-        if let Err(err) = &result {
-            if err.kind() == std::io::ErrorKind::NotFound {
-                continue;
-            }
-        }
-
-        let content = result.unwrap();
-        if content.contains("[package]\nname = \"clippy\"") {
-            return path.to_path_buf();
-        }
-    }
-    panic!("error: Can't determine root of project. Please run inside a Clippy working dir.");
+fn clippy_project_root() -> &'static Path {
+    Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap()
 }
 
 #[test]

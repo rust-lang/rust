@@ -340,7 +340,7 @@ pub(super) fn check_match<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, op
     }
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 fn find_good_method_for_match<'a>(
     cx: &LateContext<'_>,
     arms: &[Arm<'_>],

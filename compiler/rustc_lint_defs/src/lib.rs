@@ -14,6 +14,8 @@ use rustc_span::edition::Edition;
 use rustc_span::{sym, symbol::Ident, Span, Symbol};
 use rustc_target::spec::abi::Abi;
 
+use serde::{Deserialize, Serialize};
+
 pub mod builtin;
 
 #[macro_export]
@@ -34,7 +36,7 @@ macro_rules! pluralize {
 /// All suggestions are marked with an `Applicability`. Tools use the applicability of a suggestion
 /// to determine whether it should be automatically applied or if the user should be consulted
 /// before applying the suggestion.
-#[derive(Copy, Clone, Debug, PartialEq, Hash, Encodable, Decodable)]
+#[derive(Copy, Clone, Debug, PartialEq, Hash, Encodable, Decodable, Serialize, Deserialize)]
 pub enum Applicability {
     /// The suggestion is definitely what the user intended, or maintains the exact meaning of the code.
     /// This suggestion should be automatically applied.

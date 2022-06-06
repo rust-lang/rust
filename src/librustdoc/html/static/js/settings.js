@@ -5,7 +5,7 @@
 
 "use strict";
 
-(function () {
+(function() {
     const isSettingsPage = window.location.pathname.endsWith("/settings.html");
 
     function changeSetting(settingName, value) {
@@ -123,19 +123,18 @@
                     output += `<label for="${js_data_name}-${option}" class="choice">\
                            <input type="radio" name="${js_data_name}" \
                                 id="${js_data_name}-${option}" value="${option}"${checked}>\
-                           ${option}\
+                           <span>${option}</span>\
                          </label>`;
                 });
                 output += "</div></div>";
             } else {
                 // This is a toggle.
                 const checked = setting["default"] === true ? " checked" : "";
-                output += `
-                    <label class="toggle">
-                        <input type="checkbox" id="${js_data_name}"${checked}>
-                        <span class="slider"></span>
-                    </label>
-                    <div>${setting_name}</div>`;
+                output += `<label class="toggle">\
+                        <input type="checkbox" id="${js_data_name}"${checked}>\
+                        <span class="slider"></span>\
+                        <span class="label">${setting_name}</span>\
+                    </label>`;
             }
             output += "</div>";
         }

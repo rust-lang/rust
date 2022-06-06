@@ -1,5 +1,5 @@
 error[E0310]: the parameter type `T` may not live long enough
-  --> $DIR/type_parameters_captured.rs:9:5
+  --> $DIR/type_parameters_captured.rs:13:5
    |
 LL |     x
    |     ^ ...so that the type `T` will meet its required lifetime bounds

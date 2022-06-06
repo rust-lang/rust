@@ -156,7 +156,10 @@ fn test_deep_linear() {
     v
     …
      */
+    #[cfg(not(miri))]
     const NR_NODES: usize = 1 << 14;
+    #[cfg(miri)]
+    const NR_NODES: usize = 1 << 3;
     let mut nodes = vec![];
     for i in 1..NR_NODES {
         nodes.push((i - 1, i));

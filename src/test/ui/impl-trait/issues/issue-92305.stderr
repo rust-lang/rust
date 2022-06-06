@@ -18,7 +18,12 @@ error[E0282]: type annotations needed
   --> $DIR/issue-92305.rs:7:5
    |
 LL |     iter::empty()
-   |     ^^^^^^^^^^^ cannot infer type for type parameter `T` declared on the function `empty`
+   |     ^^^^^^^^^^^ cannot infer type of the type parameter `T` declared on the function `empty`
+   |
+help: consider specifying the generic argument
+   |
+LL |     iter::empty::<T>()
+   |                +++++
 
 error[E0282]: type annotations needed
   --> $DIR/issue-92305.rs:10:35

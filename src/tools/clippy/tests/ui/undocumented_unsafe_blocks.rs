@@ -1,7 +1,7 @@
 // aux-build:proc_macro_unsafe.rs
 
 #![warn(clippy::undocumented_unsafe_blocks)]
-#![allow(clippy::let_unit_value)]
+#![allow(clippy::let_unit_value, clippy::missing_safety_doc)]
 
 extern crate proc_macro_unsafe;
 
@@ -333,5 +333,156 @@ fn interference() {
 pub fn print_binary_tree() {
     println!("{}", unsafe { String::from_utf8_unchecked(vec![]) });
 }
+
+mod unsafe_impl_smoke_test {
+    unsafe trait A {}
+
+    // error: no safety comment
+    unsafe impl A for () {}
+
+    // Safety: ok
+    unsafe impl A for (i32) {}
+
+    mod sub_mod {
+        // error:
+        unsafe impl B for (u32) {}
+        unsafe trait B {}
+    }
+
+    #[rustfmt::skip]
+    mod sub_mod2 {
+        // 
+        // SAFETY: ok
+        // 
+
+        unsafe impl B for (u32) {}
+        unsafe trait B {}
+    }
+}
+
+mod unsafe_impl_from_macro {
+    unsafe trait T {}
+
+    // error
+    macro_rules! no_safety_comment {
+        ($t:ty) => {
+            unsafe impl T for $t {}
+        };
+    }
+
+    // ok
+    no_safety_comment!(());
+
+    // ok
+    macro_rules! with_safety_comment {
+        ($t:ty) => {
+            // SAFETY:
+            unsafe impl T for $t {}
+        };
+    }
+
+    // ok
+    with_safety_comment!((i32));
+}
+
+mod unsafe_impl_macro_and_not_macro {
+    unsafe trait T {}
+
+    // error
+    macro_rules! no_safety_comment {
+        ($t:ty) => {
+            unsafe impl T for $t {}
+        };
+    }
+
+    // ok
+    no_safety_comment!(());
+
+    // error
+    unsafe impl T for (i32) {}
+
+    // ok
+    no_safety_comment!(u32);
+
+    // error
+    unsafe impl T for (bool) {}
+}
+
+#[rustfmt::skip]
+mod unsafe_impl_valid_comment {
+    unsafe trait SaFety {}
+    // SaFety:
+    unsafe impl SaFety for () {}
+
+    unsafe trait MultiLineComment {}
+    // The following impl is safe
+    // ...
+    // Safety: reason
+    unsafe impl MultiLineComment for () {}
+
+    unsafe trait NoAscii {}
+    // 安全 SAFETY: 以下のコードは安全です
+    unsafe impl NoAscii for () {}
+
+    unsafe trait InlineAndPrecedingComment {}
+    // SAFETY:
+    /* comment */ unsafe impl InlineAndPrecedingComment for () {}
+
+    unsafe trait BuriedSafety {}
+    // Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor
+    // incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation
+    // ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in
+    // reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint
+    // occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est
+    // laborum. Safety:
+    // Tellus elementum sagittis vitae et leo duis ut diam quam. Sit amet nulla facilisi
+    // morbi tempus iaculis urna. Amet luctus venenatis lectus magna. At quis risus sed vulputate odio
+    // ut. Luctus venenatis lectus magna fringilla urna. Tortor id aliquet lectus proin nibh nisl
+    // condimentum id venenatis. Vulputate dignissim suspendisse in est ante in nibh mauris cursus.
+    unsafe impl BuriedSafety for () {}
+
+    unsafe trait MultiLineBlockComment {}
+    /* This is a description
+     * Safety: */
+    unsafe impl MultiLineBlockComment for () {}
+}
+
+#[rustfmt::skip]
+mod unsafe_impl_invalid_comment {
+    unsafe trait NoComment {}
+
+    unsafe impl NoComment for () {}
+
+    unsafe trait InlineComment {}
+
+    /* SAFETY: */ unsafe impl InlineComment for () {}
+
+    unsafe trait TrailingComment {}
+
+    unsafe impl TrailingComment for () {} // SAFETY:
+
+    unsafe trait Interference {}
+    // SAFETY:
+    const BIG_NUMBER: i32 = 1000000;
+    unsafe impl Interference for () {}
+}
+
+unsafe trait ImplInFn {}
+
+fn impl_in_fn() {
+    // error
+    unsafe impl ImplInFn for () {}
+
+    // SAFETY: ok
+    unsafe impl ImplInFn for (i32) {}
+}
+
+unsafe trait CrateRoot {}
+
+// error
+unsafe impl CrateRoot for () {}
+
+// SAFETY: ok
+unsafe impl CrateRoot for (i32) {}
 
 fn main() {}

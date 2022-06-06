@@ -13,7 +13,7 @@ use rustc_ast::{
 };
 use rustc_ast_lowering::ResolverAstLowering;
 use rustc_ast_pretty::pprust::path_segment_to_string;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_errors::{
     pluralize, struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
     MultiSpan,
@@ -21,10 +21,11 @@ use rustc_errors::{
 use rustc_hir as hir;
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, CtorOf, DefKind};
-use rustc_hir::def_id::{DefId, CRATE_DEF_ID, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::PrimTy;
 use rustc_session::lint;
 use rustc_session::parse::feature_err;
+use rustc_session::Session;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::lev_distance::find_best_match_for_name;
@@ -59,13 +60,13 @@ impl AssocSuggestion {
     }
 }
 
-crate enum MissingLifetimeSpot<'tcx> {
+pub(crate) enum MissingLifetimeSpot<'tcx> {
     Generics(&'tcx hir::Generics<'tcx>),
     HigherRanked { span: Span, span_type: ForLifetimeSpanType },
     Static,
 }
 
-crate enum ForLifetimeSpanType {
+pub(crate) enum ForLifetimeSpanType {
     BoundEmpty,
     BoundTail,
     TypeEmpty,
@@ -73,14 +74,14 @@ crate enum ForLifetimeSpanType {
 }
 
 impl ForLifetimeSpanType {
-    crate fn descr(&self) -> &'static str {
+    pub(crate) fn descr(&self) -> &'static str {
         match self {
             Self::BoundEmpty | Self::BoundTail => "bound",
             Self::TypeEmpty | Self::TypeTail => "type",
         }
     }
 
-    crate fn suggestion(&self, sugg: &str) -> String {
+    pub(crate) fn suggestion(&self, sugg: &str) -> String {
         match self {
             Self::BoundEmpty | Self::TypeEmpty => format!("for<{}> ", sugg),
             Self::BoundTail | Self::TypeTail => format!(", {}", sugg),
@@ -445,6 +446,8 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 );
             }
         }
+        // Try Levenshtein algorithm.
+        let typo_sugg = self.lookup_typo_candidate(path, ns, is_expected);
         if path.len() == 1 && self.self_type_is_available() {
             if let Some(candidate) = self.lookup_assoc_candidate(ident, ns, is_expected) {
                 let self_is_available = self.self_value_is_available(path[0].ident.span);
@@ -454,7 +457,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                             err.span_suggestion(
                                 span,
                                 "you might have meant to use the available field",
-                                format!("self.{}", path_str),
+                                format!("self.{path_str}"),
                                 Applicability::MachineApplicable,
                             );
                         } else {
@@ -465,7 +468,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                         err.span_suggestion(
                             span,
                             "you might have meant to call the method",
-                            format!("self.{}", path_str),
+                            format!("self.{path_str}"),
                             Applicability::MachineApplicable,
                         );
                     }
@@ -476,11 +479,12 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                         err.span_suggestion(
                             span,
                             &format!("you might have meant to {}", candidate.action()),
-                            format!("Self::{}", path_str),
+                            format!("Self::{path_str}"),
                             Applicability::MachineApplicable,
                         );
                     }
                 }
+                self.r.add_typo_suggestion(&mut err, typo_sugg, ident_span);
                 return (err, candidates);
             }
 
@@ -495,16 +499,14 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
 
                 err.span_suggestion(
                     call_span,
-                    &format!("try calling `{}` as a method", ident),
-                    format!("self.{}({})", path_str, args_snippet),
+                    &format!("try calling `{ident}` as a method"),
+                    format!("self.{path_str}({args_snippet})"),
                     Applicability::MachineApplicable,
                 );
                 return (err, candidates);
             }
         }
 
-        // Try Levenshtein algorithm.
-        let typo_sugg = self.lookup_typo_candidate(path, ns, is_expected);
         // Try context-dependent help if relaxed lookup didn't work.
         if let Some(res) = res {
             if self.smart_resolve_context_dependent_help(
@@ -1221,7 +1223,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
 
     /// Given the target `ident` and `kind`, search for the similarly named associated item
     /// in `self.current_trait_ref`.
-    crate fn find_similarly_named_assoc_item(
+    pub(crate) fn find_similarly_named_assoc_item(
         &mut self,
         ident: Symbol,
         kind: &AssocItemKind,
@@ -1729,7 +1731,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         }
     }
 
-    crate fn report_missing_type_error(
+    pub(crate) fn report_missing_type_error(
         &self,
         path: &[Segment],
     ) -> Option<(Span, &'static str, String, Applicability)> {
@@ -1809,7 +1811,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
 
     /// Given the target `label`, search the `rib_index`th label rib for similarly named labels,
     /// optionally returning the closest match and whether it is reachable.
-    crate fn suggestion_for_label_in_rib(
+    pub(crate) fn suggestion_for_label_in_rib(
         &self,
         rib_index: usize,
         label: Ident,
@@ -1834,7 +1836,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         })
     }
 
-    crate fn maybe_report_lifetime_uses(
+    pub(crate) fn maybe_report_lifetime_uses(
         &mut self,
         generics_span: Span,
         params: &[ast::GenericParam],
@@ -1904,7 +1906,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         }
     }
 
-    crate fn emit_undeclared_lifetime_error(
+    pub(crate) fn emit_undeclared_lifetime_error(
         &self,
         lifetime_ref: &ast::Lifetime,
         outer_lifetime_ref: Option<Ident>,
@@ -2000,7 +2002,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         err.emit();
     }
 
-    crate fn emit_non_static_lt_in_const_generic_error(&self, lifetime_ref: &ast::Lifetime) {
+    pub(crate) fn emit_non_static_lt_in_const_generic_error(&self, lifetime_ref: &ast::Lifetime) {
         struct_span_err!(
             self.r.session,
             lifetime_ref.ident.span,
@@ -2018,7 +2020,10 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
     /// Non-static lifetimes are prohibited in anonymous constants under `min_const_generics`.
     /// This function will emit an error if `generic_const_exprs` is not enabled, the body identified by
     /// `body_id` is an anonymous constant and `lifetime_ref` is non-static.
-    crate fn maybe_emit_forbidden_non_static_lifetime_error(&self, lifetime_ref: &ast::Lifetime) {
+    pub(crate) fn maybe_emit_forbidden_non_static_lifetime_error(
+        &self,
+        lifetime_ref: &ast::Lifetime,
+    ) {
         let feature_active = self.r.session.features_untracked().generic_const_exprs;
         if !feature_active {
             feature_err(
@@ -2032,8 +2037,36 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
     }
 }
 
+/// Report lifetime/lifetime shadowing as an error.
+pub fn signal_lifetime_shadowing(sess: &Session, orig: Ident, shadower: Ident) {
+    let mut err = struct_span_err!(
+        sess,
+        shadower.span,
+        E0496,
+        "lifetime name `{}` shadows a lifetime name that is already in scope",
+        orig.name,
+    );
+    err.span_label(orig.span, "first declared here");
+    err.span_label(shadower.span, format!("lifetime `{}` already in scope", orig.name));
+    err.emit();
+}
+
+/// Shadowing involving a label is only a warning for historical reasons.
+//FIXME: make this a proper lint.
+pub fn signal_label_shadowing(sess: &Session, orig: Span, shadower: Ident) {
+    let name = shadower.name;
+    let shadower = shadower.span;
+    let mut err = sess.struct_span_warn(
+        shadower,
+        &format!("label name `{}` shadows a label name that is already in scope", name),
+    );
+    err.span_label(orig, "first declared here");
+    err.span_label(shadower, format!("label `{}` already in scope", name));
+    err.emit();
+}
+
 impl<'tcx> LifetimeContext<'_, 'tcx> {
-    crate fn report_missing_lifetime_specifiers(
+    pub(crate) fn report_missing_lifetime_specifiers(
         &self,
         spans: Vec<Span>,
         count: usize,
@@ -2048,8 +2081,8 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
     }
 
     /// Returns whether to add `'static` lifetime to the suggested lifetime list.
-    crate fn report_elision_failure(
-        &mut self,
+    pub(crate) fn report_elision_failure(
+        &self,
         diag: &mut Diagnostic,
         params: &[ElisionFailureInfo],
     ) -> bool {
@@ -2126,7 +2159,10 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
         }
     }
 
-    crate fn is_trait_ref_fn_scope(&mut self, trait_ref: &'tcx hir::PolyTraitRef<'tcx>) -> bool {
+    pub(crate) fn is_trait_ref_fn_scope(
+        &mut self,
+        trait_ref: &'tcx hir::PolyTraitRef<'tcx>,
+    ) -> bool {
         if let def::Res::Def(_, did) = trait_ref.trait_ref.path.res {
             if [
                 self.tcx.lang_items().fn_once_trait(),
@@ -2147,14 +2183,31 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
         false
     }
 
-    crate fn add_missing_lifetime_specifiers_label(
+    pub(crate) fn add_missing_lifetime_specifiers_label(
         &self,
         err: &mut Diagnostic,
         mut spans_with_counts: Vec<(Span, usize)>,
-        lifetime_names: &FxHashSet<Symbol>,
-        lifetime_spans: Vec<Span>,
-        params: &[ElisionFailureInfo],
+        in_scope_lifetimes: FxIndexSet<LocalDefId>,
+        params: Option<&[ElisionFailureInfo]>,
     ) {
+        let (mut lifetime_names, lifetime_spans): (FxHashSet<_>, Vec<_>) = in_scope_lifetimes
+            .iter()
+            .filter_map(|def_id| {
+                let name = self.tcx.item_name(def_id.to_def_id());
+                let span = self.tcx.def_ident_span(def_id.to_def_id())?;
+                Some((name, span))
+            })
+            .filter(|&(n, _)| n != kw::UnderscoreLifetime)
+            .unzip();
+
+        if let Some(params) = params {
+            // If there's no lifetime available, suggest `'static`.
+            if self.report_elision_failure(err, params) && lifetime_names.is_empty() {
+                lifetime_names.insert(kw::StaticLifetime);
+            }
+        }
+        let params = params.unwrap_or(&[]);
+
         let snippets: Vec<Option<String>> = spans_with_counts
             .iter()
             .map(|(span, _)| self.tcx.sess.source_map().span_to_snippet(*span).ok())

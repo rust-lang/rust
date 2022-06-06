@@ -9,7 +9,6 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(box_patterns)]
 #![feature(drain_filter)]
-#![feature(crate_visibility_modifier)]
 #![feature(if_let_guard)]
 #![feature(let_chains)]
 #![feature(let_else)]
@@ -29,7 +28,7 @@ use rustc_ast::node_id::NodeMap;
 use rustc_ast::{self as ast, NodeId, CRATE_NODE_ID};
 use rustc_ast::{AngleBracketedArg, Crate, Expr, ExprKind, GenericArg, GenericArgs, LitKind, Path};
 use rustc_ast_lowering::{LifetimeRes, ResolverAstLowering};
-use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, DiagnosticBuilder, ErrorGuaranteed};
@@ -943,7 +942,7 @@ pub struct Resolver<'a> {
     visibilities: FxHashMap<LocalDefId, ty::Visibility>,
     has_pub_restricted: bool,
     used_imports: FxHashSet<NodeId>,
-    maybe_unused_trait_imports: FxHashSet<LocalDefId>,
+    maybe_unused_trait_imports: FxIndexSet<LocalDefId>,
     maybe_unused_extern_crates: Vec<(LocalDefId, Span)>,
 
     /// Privacy errors are delayed until the end in order to deduplicate them.

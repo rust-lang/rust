@@ -36,7 +36,7 @@ impl<'a> Parser<'a> {
 
     /// If `force_capture` is true, forces collection of tokens regardless of whether
     /// or not we have attributes
-    crate fn parse_stmt_without_recovery(
+    pub(crate) fn parse_stmt_without_recovery(
         &mut self,
         capture_semi: bool,
         force_collect: ForceCollect,
@@ -180,7 +180,7 @@ impl<'a> Parser<'a> {
         } else {
             // Since none of the above applied, this is an expression statement macro.
             let e = self.mk_expr(lo.to(hi), ExprKind::MacCall(mac), AttrVec::new());
-            let e = self.maybe_recover_from_bad_qpath(e, true)?;
+            let e = self.maybe_recover_from_bad_qpath(e)?;
             let e = self.parse_dot_or_call_expr_with(e, lo, attrs.into())?;
             let e = self.parse_assoc_expr_with(0, LhsExpr::AlreadyParsed(e))?;
             StmtKind::Expr(e)
@@ -500,7 +500,7 @@ impl<'a> Parser<'a> {
 
     /// Parses the rest of a block expression or function body.
     /// Precondition: already parsed the '{'.
-    crate fn parse_block_tail(
+    pub(crate) fn parse_block_tail(
         &mut self,
         lo: Span,
         s: BlockCheckMode,

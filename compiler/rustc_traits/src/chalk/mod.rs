@@ -3,8 +3,8 @@
 //! In order to call `chalk-solve`, this file must convert a `CanonicalChalkEnvironmentAndGoal` into
 //! a Chalk uncanonical goal. It then calls Chalk, and converts the answer back into rustc solution.
 
-crate mod db;
-crate mod lowering;
+pub(crate) mod db;
+pub(crate) mod lowering;
 
 use rustc_data_structures::fx::FxHashMap;
 
@@ -27,11 +27,11 @@ use crate::chalk::lowering::{ParamsSubstitutor, PlaceholdersCollector, ReversePa
 
 use chalk_solve::Solution;
 
-crate fn provide(p: &mut Providers) {
+pub(crate) fn provide(p: &mut Providers) {
     *p = Providers { evaluate_goal, ..*p };
 }
 
-crate fn evaluate_goal<'tcx>(
+pub(crate) fn evaluate_goal<'tcx>(
     tcx: TyCtxt<'tcx>,
     obligation: CanonicalChalkEnvironmentAndGoal<'tcx>,
 ) -> Result<&'tcx Canonical<'tcx, QueryResponse<'tcx, ()>>, traits::query::NoSolution> {

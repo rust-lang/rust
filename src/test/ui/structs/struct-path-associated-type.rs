@@ -13,7 +13,7 @@ fn f<T: Tr>() {
     //~^ ERROR expected struct, variant or union type, found associated type
     let z = T::A::<u8> {};
     //~^ ERROR expected struct, variant or union type, found associated type
-    //~| ERROR type arguments are not allowed for this type
+    //~| ERROR type arguments are not allowed on this type
     match S {
         T::A {} => {}
         //~^ ERROR expected struct, variant or union type, found associated type
@@ -22,7 +22,7 @@ fn f<T: Tr>() {
 
 fn g<T: Tr<A = S>>() {
     let s = T::A {}; // OK
-    let z = T::A::<u8> {}; //~ ERROR type arguments are not allowed for this type
+    let z = T::A::<u8> {}; //~ ERROR type arguments are not allowed on this type
     match S {
         T::A {} => {} // OK
     }

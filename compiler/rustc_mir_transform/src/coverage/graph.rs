@@ -481,8 +481,8 @@ impl std::fmt::Debug for BcbBranch {
 // FIXME(#78544): MIR InstrumentCoverage: Improve coverage of `#[should_panic]` tests and
 // `catch_unwind()` handlers.
 fn bcb_filtered_successors<'a, 'tcx>(
-    body: &'tcx &'a mir::Body<'tcx>,
-    term_kind: &'tcx TerminatorKind<'tcx>,
+    body: &'a mir::Body<'tcx>,
+    term_kind: &'a TerminatorKind<'tcx>,
 ) -> Box<dyn Iterator<Item = BasicBlock> + 'a> {
     Box::new(
         match &term_kind {
@@ -691,12 +691,9 @@ pub(super) fn find_loop_backedges(
 pub struct ShortCircuitPreorder<
     'a,
     'tcx,
-    F: Fn(
-        &'tcx &'a mir::Body<'tcx>,
-        &'tcx TerminatorKind<'tcx>,
-    ) -> Box<dyn Iterator<Item = BasicBlock> + 'a>,
+    F: Fn(&'a mir::Body<'tcx>, &'a TerminatorKind<'tcx>) -> Box<dyn Iterator<Item = BasicBlock> + 'a>,
 > {
-    body: &'tcx &'a mir::Body<'tcx>,
+    body: &'a mir::Body<'tcx>,
     visited: BitSet<BasicBlock>,
     worklist: Vec<BasicBlock>,
     filtered_successors: F,
@@ -705,14 +702,11 @@ pub struct ShortCircuitPreorder<
 impl<
     'a,
     'tcx,
-    F: Fn(
-        &'tcx &'a mir::Body<'tcx>,
-        &'tcx TerminatorKind<'tcx>,
-    ) -> Box<dyn Iterator<Item = BasicBlock> + 'a>,
+    F: Fn(&'a mir::Body<'tcx>, &'a TerminatorKind<'tcx>) -> Box<dyn Iterator<Item = BasicBlock> + 'a>,
 > ShortCircuitPreorder<'a, 'tcx, F>
 {
     pub fn new(
-        body: &'tcx &'a mir::Body<'tcx>,
+        body: &'a mir::Body<'tcx>,
         filtered_successors: F,
     ) -> ShortCircuitPreorder<'a, 'tcx, F> {
         let worklist = vec![mir::START_BLOCK];
@@ -727,12 +721,9 @@ impl<
 }
 
 impl<
-    'a: 'tcx,
+    'a,
     'tcx,
-    F: Fn(
-        &'tcx &'a mir::Body<'tcx>,
-        &'tcx TerminatorKind<'tcx>,
-    ) -> Box<dyn Iterator<Item = BasicBlock> + 'a>,
+    F: Fn(&'a mir::Body<'tcx>, &'a TerminatorKind<'tcx>) -> Box<dyn Iterator<Item = BasicBlock> + 'a>,
 > Iterator for ShortCircuitPreorder<'a, 'tcx, F>
 {
     type Item = (BasicBlock, &'a BasicBlockData<'tcx>);

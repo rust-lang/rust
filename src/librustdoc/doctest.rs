@@ -40,14 +40,14 @@ use crate::passes::span_of_attrs;
 
 /// Options that apply to all doctests in a crate or Markdown file (for `rustdoc foo.md`).
 #[derive(Clone, Default)]
-crate struct GlobalTestOptions {
+pub(crate) struct GlobalTestOptions {
     /// Whether to disable the default `extern crate my_crate;` when creating doctests.
-    crate no_crate_inject: bool,
+    pub(crate) no_crate_inject: bool,
     /// Additional crate-level attributes to add to doctests.
-    crate attrs: Vec<String>,
+    pub(crate) attrs: Vec<String>,
 }
 
-crate fn run(options: RustdocOptions) -> Result<(), ErrorGuaranteed> {
+pub(crate) fn run(options: RustdocOptions) -> Result<(), ErrorGuaranteed> {
     let input = config::Input::File(options.input.clone());
 
     let invalid_codeblock_attributes_name = crate::lint::INVALID_CODEBLOCK_ATTRIBUTES.name;
@@ -207,7 +207,11 @@ crate fn run(options: RustdocOptions) -> Result<(), ErrorGuaranteed> {
     Ok(())
 }
 
-crate fn run_tests(mut test_args: Vec<String>, nocapture: bool, tests: Vec<test::TestDescAndFn>) {
+pub(crate) fn run_tests(
+    mut test_args: Vec<String>,
+    nocapture: bool,
+    tests: Vec<test::TestDescAndFn>,
+) {
     test_args.insert(0, "rustdoctest".to_string());
     if nocapture {
         test_args.push("--nocapture".to_string());
@@ -224,7 +228,7 @@ fn scrape_test_config(attrs: &[ast::Attribute]) -> GlobalTestOptions {
     let test_attrs: Vec<_> = attrs
         .iter()
         .filter(|a| a.has_name(sym::doc))
-        .flat_map(|a| a.meta_item_list().unwrap_or_else(Vec::new))
+        .flat_map(|a| a.meta_item_list().unwrap_or_default())
         .filter(|a| a.has_name(sym::test))
         .collect();
     let attrs = test_attrs.iter().flat_map(|a| a.meta_item_list().unwrap_or(&[]));
@@ -488,7 +492,7 @@ fn run_test(
 
 /// Transforms a test into code that can be compiled into a Rust binary, and returns the number of
 /// lines before the test code begins as well as if the output stream supports colors or not.
-crate fn make_test(
+pub(crate) fn make_test(
     s: &str,
     crate_name: Option<&str>,
     dont_insert_main: bool,
@@ -734,7 +738,7 @@ fn check_if_attr_is_complete(source: &str, edition: Edition) -> bool {
             }
         };
         // If a parsing error happened, it's very likely that the attribute is incomplete.
-        if !parser.parse_attribute(InnerAttrPolicy::Permitted).is_ok() {
+        if parser.parse_attribute(InnerAttrPolicy::Permitted).is_err() {
             return false;
         }
         // We now check if there is an unclosed delimiter for the attribute. To do so, we look at
@@ -791,7 +795,9 @@ fn partition_source(s: &str, edition: Edition) -> (String, String, String) {
                         // If not, then we append the new line into the pending attribute to check
                         // if this time it's complete...
                         mod_attr_pending.push_str(line);
-                        if !trimline.is_empty() && check_if_attr_is_complete(line, edition) {
+                        if !trimline.is_empty()
+                            && check_if_attr_is_complete(&mod_attr_pending, edition)
+                        {
                             // If it's complete, then we can clear the pending content.
                             mod_attr_pending.clear();
                         }
@@ -840,7 +846,7 @@ fn partition_source(s: &str, edition: Edition) -> (String, String, String) {
     (before, after, crates)
 }
 
-crate trait Tester {
+pub(crate) trait Tester {
     fn add_test(&mut self, test: String, config: LangString, line: usize);
     fn get_line(&self) -> usize {
         0
@@ -848,8 +854,8 @@ crate trait Tester {
     fn register_header(&mut self, _name: &str, _level: u32) {}
 }
 
-crate struct Collector {
-    crate tests: Vec<test::TestDescAndFn>,
+pub(crate) struct Collector {
+    pub(crate) tests: Vec<test::TestDescAndFn>,
 
     // The name of the test displayed to the user, separated by `::`.
     //
@@ -887,7 +893,7 @@ crate struct Collector {
 }
 
 impl Collector {
-    crate fn new(
+    pub(crate) fn new(
         crate_name: Symbol,
         rustdoc_options: RustdocOptions,
         use_headers: bool,
@@ -922,7 +928,7 @@ impl Collector {
         format!("{} - {}(line {})", filename.prefer_local(), item_path, line)
     }
 
-    crate fn set_position(&mut self, position: Span) {
+    pub(crate) fn set_position(&mut self, position: Span) {
         self.position = position;
     }
 

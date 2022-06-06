@@ -1,10 +1,17 @@
-error[E0081]: discriminant value `0` already exists
-  --> $DIR/tag-variant-disr-dup.rs:8:13
+error[E0081]: discriminant value `0` assigned more than once
+  --> $DIR/tag-variant-disr-dup.rs:3:1
    |
-LL |     Black = 0x000000,
-   |             -------- first use of `0`
-LL |     White = 0x000000,
-   |             ^^^^^^^^ enum already has `0`
+LL | / enum Color {
+LL | |
+LL | |     Red = 0xff0000,
+LL | |     Green = 0x00ff00,
+LL | |     Blue = 0x0000ff,
+LL | |     Black = 0x000000,
+   | |             -------- first assignment of `0`
+LL | |     White = 0x000000,
+   | |             -------- second assignment of `0`
+LL | | }
+   | |_^
 
 error: aborting due to previous error
 

@@ -2163,7 +2163,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
         }
     }
 
-    pub fn same_size(self, other: SizeSkeleton<'_>) -> bool {
+    pub fn same_size(self, other: SizeSkeleton<'tcx>) -> bool {
         match (self, other) {
             (SizeSkeleton::Known(a), SizeSkeleton::Known(b)) => a == b,
             (SizeSkeleton::Pointer { tail: a, .. }, SizeSkeleton::Pointer { tail: b, .. }) => {

@@ -362,6 +362,12 @@ pub use self::traits::Iterator;
 )]
 pub use self::range::Step;
 
+#[unstable(
+    feature = "iter_from_generator",
+    issue = "43122",
+    reason = "generators are unstable"
+)]
+pub use self::sources::from_generator;
 #[stable(feature = "iter_empty", since = "1.2.0")]
 pub use self::sources::{empty, Empty};
 #[stable(feature = "iter_from_fn", since = "1.34.0")]

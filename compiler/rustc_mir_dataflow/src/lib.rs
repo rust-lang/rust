@@ -1,6 +1,5 @@
 #![feature(associated_type_defaults)]
 #![feature(box_patterns)]
-#![feature(box_syntax)]
 #![feature(exact_size_is_empty)]
 #![feature(let_else)]
 #![feature(min_specialization)]

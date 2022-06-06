@@ -869,8 +869,6 @@ where
             Ok(src_val) => {
                 assert!(!src.layout.is_unsized(), "cannot have unsized immediates");
                 // Yay, we got a value that we can write directly.
-                // FIXME: Add a check to make sure that if `src` is indirect,
-                // it does not overlap with `dest`.
                 return self.write_immediate_no_validate(*src_val, dest);
             }
             Err(mplace) => mplace,
@@ -890,7 +888,7 @@ where
         });
         assert_eq!(src.meta, dest.meta, "Can only copy between equally-sized instances");
 
-        self.mem_copy(src.ptr, src.align, dest.ptr, dest.align, size, /*nonoverlapping*/ true)
+        self.mem_copy(src.ptr, src.align, dest.ptr, dest.align, size, /*nonoverlapping*/ false)
     }
 
     /// Copies the data from an operand to a place. The layouts may disagree, but they must
@@ -906,16 +904,12 @@ where
         }
         // We still require the sizes to match.
         if src.layout.size != dest.layout.size {
-            // FIXME: This should be an assert instead of an error, but if we transmute within an
-            // array length computation, `typeck` may not have yet been run and errored out. In fact
-            // most likely we *are* running `typeck` right now. Investigate whether we can bail out
-            // on `typeck_results().has_errors` at all const eval entry points.
-            debug!("Size mismatch when transmuting!\nsrc: {:#?}\ndest: {:#?}", src, dest);
-            self.tcx.sess.delay_span_bug(
+            span_bug!(
                 self.cur_span(),
-                "size-changing transmute, should have been caught by transmute checking",
+                "size-changing transmute, should have been caught by transmute checking: {:#?}\ndest: {:#?}",
+                src,
+                dest
             );
-            throw_inval!(TransmuteSizeDiff(src.layout.ty, dest.layout.ty));
         }
         // Unsized copies rely on interpreting `src.meta` with `dest.layout`, we want
         // to avoid that here.
@@ -1011,7 +1005,7 @@ where
         &mut self,
         layout: TyAndLayout<'tcx>,
         kind: MemoryKind<M::MemoryKind>,
-    ) -> InterpResult<'static, MPlaceTy<'tcx, M::PointerTag>> {
+    ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
         let ptr = self.allocate_ptr(layout.size, layout.align.abi, kind)?;
         Ok(MPlaceTy::from_aligned_ptr(ptr.into(), layout))
     }

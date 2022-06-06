@@ -74,7 +74,7 @@ pub struct MovableRwLock(imp::MovableRwLock);
 impl MovableRwLock {
     /// Creates a new reader-writer lock for use.
     pub fn new() -> Self {
-        Self(imp::MovableRwLock::from(imp::RwLock::new()))
+        Self(imp::MovableRwLock::new())
     }
 
     /// Acquires shared access to the underlying lock, blocking the current
@@ -124,11 +124,5 @@ impl MovableRwLock {
     #[inline]
     pub unsafe fn write_unlock(&self) {
         self.0.write_unlock()
-    }
-}
-
-impl Drop for MovableRwLock {
-    fn drop(&mut self) {
-        unsafe { self.0.destroy() };
     }
 }

@@ -198,7 +198,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
     fn check_ty(&mut self, cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>) {
         if_chain! {
             if !hir_ty.span.from_expansion();
-            if meets_msrv(self.msrv.as_ref(), &msrvs::TYPE_ALIAS_ENUM_VARIANTS);
+            if meets_msrv(self.msrv, msrvs::TYPE_ALIAS_ENUM_VARIANTS);
             if let Some(&StackItem::Check {
                 impl_id,
                 in_body,
@@ -225,7 +225,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
         if_chain! {
             if !expr.span.from_expansion();
-            if meets_msrv(self.msrv.as_ref(), &msrvs::TYPE_ALIAS_ENUM_VARIANTS);
+            if meets_msrv(self.msrv, msrvs::TYPE_ALIAS_ENUM_VARIANTS);
             if let Some(&StackItem::Check { impl_id, .. }) = self.stack.last();
             if cx.typeck_results().expr_ty(expr) == cx.tcx.type_of(impl_id);
             then {} else { return; }
@@ -256,7 +256,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
     fn check_pat(&mut self, cx: &LateContext<'_>, pat: &Pat<'_>) {
         if_chain! {
             if !pat.span.from_expansion();
-            if meets_msrv(self.msrv.as_ref(), &msrvs::TYPE_ALIAS_ENUM_VARIANTS);
+            if meets_msrv(self.msrv, msrvs::TYPE_ALIAS_ENUM_VARIANTS);
             if let Some(&StackItem::Check { impl_id, .. }) = self.stack.last();
             if let PatKind::Path(QPath::Resolved(_, path)) = pat.kind;
             if !matches!(path.res, Res::SelfTy { .. } | Res::Def(DefKind::TyParam, _));

@@ -70,7 +70,7 @@ macro_rules! need {
 }
 
 impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
-    #[allow(clippy::too_many_lines)]
+    #[expect(clippy::too_many_lines)]
     fn check_fn(
         &mut self,
         cx: &LateContext<'tcx>,
@@ -343,5 +343,5 @@ impl<'tcx> euv::Delegate<'tcx> for MovedVariablesCtxt {
 
     fn mutate(&mut self, _: &euv::PlaceWithHirId<'tcx>, _: HirId) {}
 
-    fn fake_read(&mut self, _: rustc_typeck::expr_use_visitor::Place<'tcx>, _: FakeReadCause, _: HirId) {}
+    fn fake_read(&mut self, _: &rustc_typeck::expr_use_visitor::PlaceWithHirId<'tcx>, _: FakeReadCause, _: HirId) {}
 }

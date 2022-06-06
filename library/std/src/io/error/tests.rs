@@ -17,10 +17,10 @@ fn test_debug_error() {
     let msg = error_string(code);
     let kind = decode_error_kind(code);
     let err = Error {
-        repr: Repr::new_custom(box Custom {
+        repr: Repr::new_custom(Box::new(Custom {
             kind: ErrorKind::InvalidInput,
-            error: box Error { repr: super::Repr::new_os(code) },
-        }),
+            error: Box::new(Error { repr: super::Repr::new_os(code) }),
+        })),
     };
     let expected = format!(
         "Custom {{ \

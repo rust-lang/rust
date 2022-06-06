@@ -1,5 +1,4 @@
 #![feature(unboxed_closures)]
-#![feature(rustc_attrs)]
 
 // Test for projection cache. We should be able to project distinct
 // lifetimes from `foo` as we reinstantiate it multiple times, but not
@@ -7,6 +6,14 @@
 // an contravariant position, which affects the results.
 
 // revisions: ok oneuse transmute krisskross
+//[ok] check-pass
+//[oneuse] check-pass
+
+// ignore-compare-mode-nll
+// FIXME(nll): When stabilizing, this test should be replaced with
+// `project-fn-ret-contravariant-nll.rs` The two would normally be just
+// revisions, but this test uses revisions heavily, so splitting into
+// a separate test is just easier.
 
 #![allow(dead_code, unused_variables)]
 
@@ -46,5 +53,4 @@ fn transmute<'a,'b>(x: &'a u32, y: &'b u32) -> (&'a u32, &'b u32) {
    //[krisskross]~^ ERROR lifetime mismatch [E0623]
 }
 
-#[rustc_error]
-fn main() { } //[ok,oneuse]~ ERROR fatal error triggered by #[rustc_error]
+fn main() { }

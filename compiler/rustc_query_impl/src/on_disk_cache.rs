@@ -547,11 +547,12 @@ where
     value
 }
 
-impl<'a, 'tcx> TyDecoder<'tcx> for CacheDecoder<'a, 'tcx> {
+impl<'a, 'tcx> TyDecoder for CacheDecoder<'a, 'tcx> {
+    type I = TyCtxt<'tcx>;
     const CLEAR_CROSS_CRATE: bool = false;
 
     #[inline]
-    fn tcx(&self) -> TyCtxt<'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
@@ -569,7 +570,7 @@ impl<'a, 'tcx> TyDecoder<'tcx> for CacheDecoder<'a, 'tcx> {
     where
         F: FnOnce(&mut Self) -> Ty<'tcx>,
     {
-        let tcx = self.tcx();
+        let tcx = self.tcx;
 
         let cache_key = ty::CReaderCacheKey { cnum: None, pos: shorthand };
 
@@ -712,7 +713,7 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for Span {
         let len = BytePos::decode(decoder);
 
         let file_lo = decoder.file_index_to_file(file_lo_index);
-        let lo = file_lo.lines[line_lo - 1] + col_lo;
+        let lo = file_lo.lines(|lines| lines[line_lo - 1] + col_lo);
         let hi = lo + len;
 
         Span::new(lo, hi, ctxt, parent)
@@ -750,7 +751,7 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for DefId {
         // If we get to this point, then all of the query inputs were green,
         // which means that the definition with this hash is guaranteed to
         // still exist in the current compilation session.
-        d.tcx().def_path_hash_to_def_id(def_path_hash, &mut || {
+        d.tcx.def_path_hash_to_def_id(def_path_hash, &mut || {
             panic!("Failed to convert DefPathHash {:?}", def_path_hash)
         })
     }
@@ -788,10 +789,24 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx [rustc_ast::InlineAsm
     }
 }
 
-impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx [Span] {
-    fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {
-        RefDecodable::decode(d)
-    }
+macro_rules! impl_ref_decoder {
+    (<$tcx:tt> $($ty:ty,)*) => {
+        $(impl<'a, $tcx> Decodable<CacheDecoder<'a, $tcx>> for &$tcx [$ty] {
+            fn decode(d: &mut CacheDecoder<'a, $tcx>) -> Self {
+                RefDecodable::decode(d)
+            }
+        })*
+    };
+}
+
+impl_ref_decoder! {<'tcx>
+    Span,
+    rustc_ast::Attribute,
+    rustc_span::symbol::Ident,
+    ty::Variance,
+    rustc_span::def_id::DefId,
+    rustc_span::def_id::LocalDefId,
+    (rustc_middle::middle::exported_symbols::ExportedSymbol<'tcx>, rustc_middle::middle::exported_symbols::SymbolExportInfo),
 }
 
 //- ENCODING -------------------------------------------------------------------
@@ -913,10 +928,11 @@ where
     }
 }
 
-impl<'a, 'tcx, E> TyEncoder<'tcx> for CacheEncoder<'a, 'tcx, E>
+impl<'a, 'tcx, E> TyEncoder for CacheEncoder<'a, 'tcx, E>
 where
     E: 'a + OpaqueEncoder,
 {
+    type I = TyCtxt<'tcx>;
     const CLEAR_CROSS_CRATE: bool = false;
 
     fn position(&self) -> usize {
@@ -976,11 +992,6 @@ where
     E: 'a + OpaqueEncoder,
 {
     type Error = E::Error;
-
-    #[inline]
-    fn emit_unit(&mut self) -> Result<(), Self::Error> {
-        Ok(())
-    }
 
     encoder_methods! {
         emit_usize(usize);

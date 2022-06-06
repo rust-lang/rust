@@ -1,6 +1,6 @@
 use crate::clean::*;
 
-crate trait DocVisitor: Sized {
+pub(crate) trait DocVisitor: Sized {
     fn visit_item(&mut self, item: &Item) {
         self.visit_item_recur(item)
     }
@@ -11,7 +11,6 @@ crate trait DocVisitor: Sized {
             StrippedItem(..) => unreachable!(),
             ModuleItem(i) => {
                 self.visit_mod(i);
-                return;
             }
             StructItem(i) => i.fields.iter().for_each(|x| self.visit_item(x)),
             UnionItem(i) => i.fields.iter().for_each(|x| self.visit_item(x)),

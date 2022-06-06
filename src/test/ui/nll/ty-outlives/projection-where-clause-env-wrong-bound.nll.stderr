@@ -1,5 +1,5 @@
 error[E0309]: the associated type `<T as MyTrait<'_>>::Output` may not live long enough
-  --> $DIR/projection-where-clause-env-wrong-bound.rs:15:5
+  --> $DIR/projection-where-clause-env-wrong-bound.rs:19:5
    |
 LL |     bar::<T::Output>()
    |     ^^^^^^^^^^^^^^^^

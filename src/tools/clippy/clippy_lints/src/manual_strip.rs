@@ -68,7 +68,7 @@ enum StripKind {
 
 impl<'tcx> LateLintPass<'tcx> for ManualStrip {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if !meets_msrv(self.msrv.as_ref(), &msrvs::STR_STRIP_PREFIX) {
+        if !meets_msrv(self.msrv, msrvs::STR_STRIP_PREFIX) {
             return;
         }
 

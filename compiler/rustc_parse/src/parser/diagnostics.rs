@@ -1,8 +1,7 @@
 use super::pat::Expected;
-use super::ty::{AllowPlus, RecoverQuestionMark};
 use super::{
-    BlockMode, CommaRecoveryMode, Parser, PathStyle, RecoverColon, RecoverComma, Restrictions,
-    SemiColonMode, SeqSep, TokenExpectType, TokenType,
+    BlockMode, CommaRecoveryMode, Parser, PathStyle, Restrictions, SemiColonMode, SeqSep,
+    TokenExpectType, TokenType,
 };
 
 use crate::lexer::UnmatchedBrace;
@@ -17,10 +16,10 @@ use rustc_ast::{
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{pluralize, struct_span_err, Diagnostic, EmissionGuarantee, ErrorGuaranteed};
 use rustc_errors::{
-    Applicability, DiagnosticBuilder, DiagnosticMessage, Handler, MultiSpan, PResult,
+    fluent, Applicability, DiagnosticBuilder, DiagnosticMessage, Handler, MultiSpan, PResult,
 };
+use rustc_errors::{pluralize, struct_span_err, Diagnostic, EmissionGuarantee, ErrorGuaranteed};
 use rustc_macros::{SessionDiagnostic, SessionSubdiagnostic};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, Ident};
@@ -132,7 +131,7 @@ impl RecoverQPath for Expr {
 }
 
 /// Control whether the closing delimiter should be consumed when calling `Parser::consume_block`.
-crate enum ConsumeClosingDelim {
+pub(crate) enum ConsumeClosingDelim {
     Yes,
     No,
 }
@@ -254,23 +253,23 @@ struct AmbiguousPlus {
 
 #[derive(SessionDiagnostic)]
 #[error(code = "E0178", slug = "parser-maybe-recover-from-bad-type-plus")]
-struct BadTypePlus<'a> {
+struct BadTypePlus {
     pub ty: String,
     #[primary_span]
     pub span: Span,
     #[subdiagnostic]
-    pub sub: BadTypePlusSub<'a>,
+    pub sub: BadTypePlusSub,
 }
 
-#[derive(SessionSubdiagnostic, Clone, Copy)]
-pub enum BadTypePlusSub<'a> {
+#[derive(SessionSubdiagnostic)]
+pub enum BadTypePlusSub {
     #[suggestion(
         slug = "parser-add-paren",
         code = "{sum_with_parens}",
         applicability = "machine-applicable"
     )]
     AddParen {
-        sum_with_parens: &'a str,
+        sum_with_parens: String,
         #[primary_span]
         span: Span,
     },
@@ -284,6 +283,54 @@ pub enum BadTypePlusSub<'a> {
         #[primary_span]
         span: Span,
     },
+}
+
+#[derive(SessionDiagnostic)]
+#[error(slug = "parser-maybe-recover-from-bad-qpath-stage-2")]
+struct BadQPathStage2 {
+    #[primary_span]
+    #[suggestion(applicability = "maybe-incorrect")]
+    span: Span,
+    ty: String,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(slug = "parser-incorrect-semicolon")]
+struct IncorrectSemicolon<'a> {
+    #[primary_span]
+    #[suggestion_short(applicability = "machine-applicable")]
+    span: Span,
+    #[help]
+    opt_help: Option<()>,
+    name: &'a str,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(slug = "parser-incorrect-use-of-await")]
+struct IncorrectUseOfAwait {
+    #[primary_span]
+    #[suggestion(message = "parentheses-suggestion", applicability = "machine-applicable")]
+    span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(slug = "parser-incorrect-use-of-await")]
+struct IncorrectAwait {
+    #[primary_span]
+    span: Span,
+    #[suggestion(message = "postfix-suggestion", code = "{expr}.await{question_mark}")]
+    sugg_span: (Span, Applicability),
+    expr: String,
+    question_mark: &'static str,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(slug = "parser-in-in-typo")]
+struct InInTypo {
+    #[primary_span]
+    span: Span,
+    #[suggestion(applicability = "machine-applicable")]
+    sugg_span: Span,
 }
 
 // SnapshotParser is used to create a snapshot of the parser
@@ -658,13 +705,10 @@ impl<'a> Parser<'a> {
                     err.delay_as_bug();
                     self.struct_span_err(
                         expr.span,
-                        DiagnosticMessage::fluent("parser-struct-literal-body-without-path"),
+                        fluent::parser::struct_literal_body_without_path,
                     )
                     .multipart_suggestion(
-                        DiagnosticMessage::fluent_attr(
-                            "parser-struct-literal-body-without-path",
-                            "suggestion",
-                        ),
+                        fluent::parser::suggestion,
                         vec![
                             (expr.span.shrink_to_lo(), "{ SomeStruct ".to_string()),
                             (expr.span.shrink_to_hi(), " }".to_string()),
@@ -1236,26 +1280,14 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub(super) fn maybe_report_ambiguous_plus(
-        &mut self,
-        allow_plus: AllowPlus,
-        impl_dyn_multi: bool,
-        ty: &Ty,
-    ) {
-        if matches!(allow_plus, AllowPlus::No) && impl_dyn_multi {
+    pub(super) fn maybe_report_ambiguous_plus(&mut self, impl_dyn_multi: bool, ty: &Ty) {
+        if impl_dyn_multi {
             self.sess.emit_err(AmbiguousPlus { sum_ty: pprust::ty_to_string(&ty), span: ty.span });
         }
     }
 
     /// Swift lets users write `Ty?` to mean `Option<Ty>`. Parse the construct and recover from it.
-    pub(super) fn maybe_recover_from_question_mark(
-        &mut self,
-        ty: P<Ty>,
-        recover_question_mark: RecoverQuestionMark,
-    ) -> P<Ty> {
-        if let RecoverQuestionMark::No = recover_question_mark {
-            return ty;
-        }
+    pub(super) fn maybe_recover_from_question_mark(&mut self, ty: P<Ty>) -> P<Ty> {
         if self.token == token::Question {
             self.bump();
             self.struct_span_err(self.prev_token.span, "invalid `?` in type")
@@ -1275,13 +1307,9 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub(super) fn maybe_recover_from_bad_type_plus(
-        &mut self,
-        allow_plus: AllowPlus,
-        ty: &Ty,
-    ) -> PResult<'a, ()> {
+    pub(super) fn maybe_recover_from_bad_type_plus(&mut self, ty: &Ty) -> PResult<'a, ()> {
         // Do not add `+` to expected tokens.
-        if matches!(allow_plus, AllowPlus::No) || !self.token.is_like_plus() {
+        if !self.token.is_like_plus() {
             return Ok(());
         }
 
@@ -1289,11 +1317,9 @@ impl<'a> Parser<'a> {
         let bounds = self.parse_generic_bounds(None)?;
         let sum_span = ty.span.to(self.prev_token.span);
 
-        let sum_with_parens: String;
-
         let sub = match ty.kind {
             TyKind::Rptr(ref lifetime, ref mut_ty) => {
-                sum_with_parens = pprust::to_string(|s| {
+                let sum_with_parens = pprust::to_string(|s| {
                     s.s.word("&");
                     s.print_opt_lifetime(lifetime);
                     s.print_mutability(mut_ty.mutbl, false);
@@ -1303,7 +1329,7 @@ impl<'a> Parser<'a> {
                     s.pclose()
                 });
 
-                BadTypePlusSub::AddParen { sum_with_parens: &sum_with_parens, span: sum_span }
+                BadTypePlusSub::AddParen { sum_with_parens, span: sum_span }
             }
             TyKind::Ptr(..) | TyKind::BareFn(..) => BadTypePlusSub::ForgotParen { span: sum_span },
             _ => BadTypePlusSub::ExpectPath { span: sum_span },
@@ -1449,10 +1475,9 @@ impl<'a> Parser<'a> {
     pub(super) fn maybe_recover_from_bad_qpath<T: RecoverQPath>(
         &mut self,
         base: P<T>,
-        allow_recovery: bool,
     ) -> PResult<'a, P<T>> {
         // Do not add `::` to expected tokens.
-        if allow_recovery && self.token == token::ModSep {
+        if self.token == token::ModSep {
             if let Some(ty) = base.to_ty() {
                 return self.maybe_recover_from_bad_qpath_stage_2(ty.span, ty);
             }
@@ -1474,15 +1499,10 @@ impl<'a> Parser<'a> {
         path.span = ty_span.to(self.prev_token.span);
 
         let ty_str = self.span_to_snippet(ty_span).unwrap_or_else(|_| pprust::ty_to_string(&ty));
-        self.struct_span_err(path.span, "missing angle brackets in associated item path")
-            .span_suggestion(
-                // This is a best-effort recovery.
-                path.span,
-                "try",
-                format!("<{}>::{}", ty_str, pprust::path_to_string(&path)),
-                Applicability::MaybeIncorrect,
-            )
-            .emit();
+        self.sess.emit_err(BadQPathStage2 {
+            span: path.span,
+            ty: format!("<{}>::{}", ty_str, pprust::path_to_string(&path)),
+        });
 
         let path_span = ty_span.shrink_to_hi(); // Use an empty path since `position == 0`.
         Ok(P(T::recovered(Some(QSelf { ty, path_span, position: 0 }), path)))
@@ -1491,13 +1511,10 @@ impl<'a> Parser<'a> {
     pub fn maybe_consume_incorrect_semicolon(&mut self, items: &[P<Item>]) -> bool {
         if self.token.kind == TokenKind::Semi {
             self.bump();
-            let mut err = self.struct_span_err(self.prev_token.span, "expected item, found `;`");
-            err.span_suggestion_short(
-                self.prev_token.span,
-                "remove this semicolon",
-                String::new(),
-                Applicability::MachineApplicable,
-            );
+
+            let mut err =
+                IncorrectSemicolon { span: self.prev_token.span, opt_help: None, name: "" };
+
             if !items.is_empty() {
                 let previous_item = &items[items.len() - 1];
                 let previous_item_kind_name = match previous_item.kind {
@@ -1510,10 +1527,11 @@ impl<'a> Parser<'a> {
                     _ => None,
                 };
                 if let Some(name) = previous_item_kind_name {
-                    err.help(&format!("{name} declarations are not followed by a semicolon"));
+                    err.opt_help = Some(());
+                    err.name = name;
                 }
             }
-            err.emit();
+            self.sess.emit_err(err);
             true
         } else {
             false
@@ -1598,7 +1616,7 @@ impl<'a> Parser<'a> {
             _ => ExprKind::Await(expr),
         };
         let expr = self.mk_expr(lo.to(sp), kind, attrs);
-        self.maybe_recover_from_bad_qpath(expr, true)
+        self.maybe_recover_from_bad_qpath(expr)
     }
 
     fn recover_await_macro(&mut self) -> PResult<'a, (Span, P<Expr>, bool)> {
@@ -1627,18 +1645,20 @@ impl<'a> Parser<'a> {
     }
 
     fn error_on_incorrect_await(&self, lo: Span, hi: Span, expr: &Expr, is_question: bool) -> Span {
-        let expr_str =
-            self.span_to_snippet(expr.span).unwrap_or_else(|_| pprust::expr_to_string(&expr));
-        let suggestion = format!("{}.await{}", expr_str, if is_question { "?" } else { "" });
-        let sp = lo.to(hi);
-        let app = match expr.kind {
+        let span = lo.to(hi);
+        let applicability = match expr.kind {
             ExprKind::Try(_) => Applicability::MaybeIncorrect, // `await <expr>?`
             _ => Applicability::MachineApplicable,
         };
-        self.struct_span_err(sp, "incorrect use of `await`")
-            .span_suggestion(sp, "`await` is a postfix operation", suggestion, app)
-            .emit();
-        sp
+
+        self.sess.emit_err(IncorrectAwait {
+            span,
+            sugg_span: (span, applicability),
+            expr: self.span_to_snippet(expr.span).unwrap_or_else(|_| pprust::expr_to_string(&expr)),
+            question_mark: if is_question { "?" } else { "" },
+        });
+
+        span
     }
 
     /// If encountering `future.await()`, consumes and emits an error.
@@ -1649,16 +1669,10 @@ impl<'a> Parser<'a> {
             // future.await()
             let lo = self.token.span;
             self.bump(); // (
-            let sp = lo.to(self.token.span);
+            let span = lo.to(self.token.span);
             self.bump(); // )
-            self.struct_span_err(sp, "incorrect use of `await`")
-                .span_suggestion(
-                    sp,
-                    "`await` is not a method call, remove the parentheses",
-                    String::new(),
-                    Applicability::MachineApplicable,
-                )
-                .emit();
+
+            self.sess.emit_err(IncorrectUseOfAwait { span });
         }
     }
 
@@ -1930,14 +1944,10 @@ impl<'a> Parser<'a> {
     pub(super) fn check_for_for_in_in_typo(&mut self, in_span: Span) {
         if self.eat_keyword(kw::In) {
             // a common typo: `for _ in in bar {}`
-            self.struct_span_err(self.prev_token.span, "expected iterable, found keyword `in`")
-                .span_suggestion_short(
-                    in_span.until(self.prev_token.span),
-                    "remove the duplicated `in`",
-                    String::new(),
-                    Applicability::MachineApplicable,
-                )
-                .emit();
+            self.sess.emit_err(InInTypo {
+                span: self.prev_token.span,
+                sugg_span: in_span.until(self.prev_token.span),
+            });
         }
     }
 
@@ -2459,13 +2469,12 @@ impl<'a> Parser<'a> {
 
     /// Some special error handling for the "top-level" patterns in a match arm,
     /// `for` loop, `let`, &c. (in contrast to subpatterns within such).
-    crate fn maybe_recover_colon_colon_in_pat_typo(
+    pub(crate) fn maybe_recover_colon_colon_in_pat_typo(
         &mut self,
         mut first_pat: P<Pat>,
-        ra: RecoverColon,
         expected: Expected,
     ) -> P<Pat> {
-        if RecoverColon::Yes != ra || token::Colon != self.token.kind {
+        if token::Colon != self.token.kind {
             return first_pat;
         }
         if !matches!(first_pat.kind, PatKind::Ident(_, _, None) | PatKind::Path(..))
@@ -2575,7 +2584,7 @@ impl<'a> Parser<'a> {
         first_pat
     }
 
-    crate fn maybe_recover_unexpected_block_label(&mut self) -> bool {
+    pub(crate) fn maybe_recover_unexpected_block_label(&mut self) -> bool {
         let Some(label) = self.eat_label().filter(|_| {
             self.eat(&token::Colon) && self.token.kind == token::OpenDelim(Delimiter::Brace)
         }) else {
@@ -2596,13 +2605,12 @@ impl<'a> Parser<'a> {
 
     /// Some special error handling for the "top-level" patterns in a match arm,
     /// `for` loop, `let`, &c. (in contrast to subpatterns within such).
-    crate fn maybe_recover_unexpected_comma(
+    pub(crate) fn maybe_recover_unexpected_comma(
         &mut self,
         lo: Span,
-        rc: RecoverComma,
         rt: CommaRecoveryMode,
     ) -> PResult<'a, ()> {
-        if rc == RecoverComma::No || self.token != token::Comma {
+        if self.token != token::Comma {
             return Ok(());
         }
 
@@ -2643,7 +2651,7 @@ impl<'a> Parser<'a> {
         Err(err)
     }
 
-    crate fn maybe_recover_bounds_doubled_colon(&mut self, ty: &Ty) -> PResult<'a, ()> {
+    pub(crate) fn maybe_recover_bounds_doubled_colon(&mut self, ty: &Ty) -> PResult<'a, ()> {
         let TyKind::Path(qself, path) = &ty.kind else { return Ok(()) };
         let qself_position = qself.as_ref().map(|qself| qself.position);
         for (i, segments) in path.segments.windows(2).enumerate() {

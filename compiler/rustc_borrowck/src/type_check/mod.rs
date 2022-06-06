@@ -94,7 +94,7 @@ mod canonical;
 mod constraint_conversion;
 pub mod free_region_relations;
 mod input_output;
-crate mod liveness;
+pub(crate) mod liveness;
 mod relate_tys;
 
 /// Type checks the given `mir` in the context of the inference
@@ -162,6 +162,8 @@ pub(crate) fn type_check<'mir, 'tcx>(
         &mut constraints,
     );
 
+    debug!(?normalized_inputs_and_output);
+
     for u in ty::UniverseIndex::ROOT..infcx.universe() {
         let info = UniverseInfo::other();
         constraints.universe_causes.insert(u, info);
@@ -185,6 +187,7 @@ pub(crate) fn type_check<'mir, 'tcx>(
         implicit_region_bound,
         &mut borrowck_context,
         |mut cx| {
+            debug!("inside extra closure of type_check_internal");
             cx.equate_inputs_and_outputs(&body, universal_regions, &normalized_inputs_and_output);
             liveness::generate(
                 &mut cx,
@@ -257,6 +260,7 @@ fn type_check_internal<'a, 'tcx, R>(
     borrowck_context: &'a mut BorrowCheckContext<'a, 'tcx>,
     extra: impl FnOnce(TypeChecker<'a, 'tcx>) -> R,
 ) -> R {
+    debug!("body: {:#?}", body);
     let mut checker = TypeChecker::new(
         infcx,
         body,
@@ -897,28 +901,29 @@ struct BorrowCheckContext<'a, 'tcx> {
     upvars: &'a [Upvar<'tcx>],
 }
 
-crate struct MirTypeckResults<'tcx> {
-    crate constraints: MirTypeckRegionConstraints<'tcx>,
-    crate universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
-    crate opaque_type_values: VecMap<OpaqueTypeKey<'tcx>, (OpaqueHiddenType<'tcx>, OpaqueTyOrigin)>,
+pub(crate) struct MirTypeckResults<'tcx> {
+    pub(crate) constraints: MirTypeckRegionConstraints<'tcx>,
+    pub(crate) universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
+    pub(crate) opaque_type_values:
+        VecMap<OpaqueTypeKey<'tcx>, (OpaqueHiddenType<'tcx>, OpaqueTyOrigin)>,
 }
 
 /// A collection of region constraints that must be satisfied for the
 /// program to be considered well-typed.
-crate struct MirTypeckRegionConstraints<'tcx> {
+pub(crate) struct MirTypeckRegionConstraints<'tcx> {
     /// Maps from a `ty::Placeholder` to the corresponding
     /// `PlaceholderIndex` bit that we will use for it.
     ///
     /// To keep everything in sync, do not insert this set
     /// directly. Instead, use the `placeholder_region` helper.
-    crate placeholder_indices: PlaceholderIndices,
+    pub(crate) placeholder_indices: PlaceholderIndices,
 
     /// Each time we add a placeholder to `placeholder_indices`, we
     /// also create a corresponding "representative" region vid for
     /// that wraps it. This vector tracks those. This way, when we
     /// convert the same `ty::RePlaceholder(p)` twice, we can map to
     /// the same underlying `RegionVid`.
-    crate placeholder_index_to_region: IndexVec<PlaceholderIndex, ty::Region<'tcx>>,
+    pub(crate) placeholder_index_to_region: IndexVec<PlaceholderIndex, ty::Region<'tcx>>,
 
     /// In general, the type-checker is not responsible for enforcing
     /// liveness constraints; this job falls to the region inferencer,
@@ -927,18 +932,18 @@ crate struct MirTypeckRegionConstraints<'tcx> {
     /// not otherwise appear in the MIR -- in particular, the
     /// late-bound regions that it instantiates at call-sites -- and
     /// hence it must report on their liveness constraints.
-    crate liveness_constraints: LivenessValues<RegionVid>,
+    pub(crate) liveness_constraints: LivenessValues<RegionVid>,
 
-    crate outlives_constraints: OutlivesConstraintSet<'tcx>,
+    pub(crate) outlives_constraints: OutlivesConstraintSet<'tcx>,
 
-    crate member_constraints: MemberConstraintSet<'tcx, RegionVid>,
+    pub(crate) member_constraints: MemberConstraintSet<'tcx, RegionVid>,
 
-    crate closure_bounds_mapping:
-        FxHashMap<Location, FxHashMap<(RegionVid, RegionVid), (ConstraintCategory, Span)>>,
+    pub(crate) closure_bounds_mapping:
+        FxHashMap<Location, FxHashMap<(RegionVid, RegionVid), (ConstraintCategory<'tcx>, Span)>>,
 
-    crate universe_causes: FxHashMap<ty::UniverseIndex, UniverseInfo<'tcx>>,
+    pub(crate) universe_causes: FxHashMap<ty::UniverseIndex, UniverseInfo<'tcx>>,
 
-    crate type_tests: Vec<TypeTest<'tcx>>,
+    pub(crate) type_tests: Vec<TypeTest<'tcx>>,
 }
 
 impl<'tcx> MirTypeckRegionConstraints<'tcx> {
@@ -1124,7 +1129,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     fn push_region_constraints(
         &mut self,
         locations: Locations,
-        category: ConstraintCategory,
+        category: ConstraintCategory<'tcx>,
         data: &QueryRegionConstraints<'tcx>,
     ) {
         debug!("constraints generated: {:#?}", data);
@@ -1149,7 +1154,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         sub: Ty<'tcx>,
         sup: Ty<'tcx>,
         locations: Locations,
-        category: ConstraintCategory,
+        category: ConstraintCategory<'tcx>,
     ) -> Fallible<()> {
         // Use this order of parameters because the sup type is usually the
         // "expected" type in diagnostics.
@@ -1162,7 +1167,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
         locations: Locations,
-        category: ConstraintCategory,
+        category: ConstraintCategory<'tcx>,
     ) -> Fallible<()> {
         self.relate_types(expected, ty::Variance::Invariant, found, locations, category)
     }
@@ -1174,7 +1179,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         v: ty::Variance,
         user_ty: &UserTypeProjection,
         locations: Locations,
-        category: ConstraintCategory,
+        category: ConstraintCategory<'tcx>,
     ) -> Fallible<()> {
         let annotated_type = self.user_type_annotations[user_ty.base].inferred_ty;
         let mut curr_projected_ty = PlaceTy::from_ty(annotated_type);
@@ -1211,6 +1216,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     #[instrument(skip(self, body, location), level = "debug")]
     fn check_stmt(&mut self, body: &Body<'tcx>, stmt: &Statement<'tcx>, location: Location) {
         let tcx = self.tcx();
+        debug!("stmt kind: {:?}", stmt.kind);
         match stmt.kind {
             StatementKind::Assign(box (ref place, ref rv)) => {
                 // Assignments to temporaries are not "interesting";
@@ -1250,9 +1256,13 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 );
 
                 let place_ty = place.ty(body, tcx).ty;
+                debug!(?place_ty);
                 let place_ty = self.normalize(place_ty, location);
+                debug!("place_ty normalized: {:?}", place_ty);
                 let rv_ty = rv.ty(body, tcx);
+                debug!(?rv_ty);
                 let rv_ty = self.normalize(rv_ty, location);
+                debug!("normalized rv_ty: {:?}", rv_ty);
                 if let Err(terr) =
                     self.sub_types(rv_ty, place_ty, location.to_locations(), category)
                 {
@@ -1346,6 +1356,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         term_location: Location,
     ) {
         let tcx = self.tcx();
+        debug!("terminator kind: {:?}", term.kind);
         match term.kind {
             TerminatorKind::Goto { .. }
             | TerminatorKind::Resume
@@ -1402,14 +1413,22 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 }
                 // FIXME: check the values
             }
-            TerminatorKind::Call { ref func, ref args, ref destination, from_hir_call, .. } => {
+            TerminatorKind::Call {
+                ref func,
+                ref args,
+                ref destination,
+                from_hir_call,
+                target,
+                ..
+            } => {
                 self.check_operand(func, term_location);
                 for arg in args {
                     self.check_operand(arg, term_location);
                 }
 
                 let func_ty = func.ty(body, tcx);
-                debug!("check_terminator: call, func_ty={:?}", func_ty);
+                debug!("func_ty.kind: {:?}", func_ty.kind());
+
                 let sig = match func_ty.kind() {
                     ty::FnDef(..) | ty::FnPtr(_) => func_ty.fn_sig(tcx),
                     _ => {
@@ -1422,8 +1441,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     LateBoundRegionConversionTime::FnCall,
                     sig,
                 );
+                debug!(?sig);
                 let sig = self.normalize(sig, term_location);
-                self.check_call_dest(body, term, &sig, destination, term_location);
+                self.check_call_dest(body, term, &sig, *destination, target, term_location);
 
                 self.prove_predicates(
                     sig.inputs_and_output
@@ -1501,15 +1521,16 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         body: &Body<'tcx>,
         term: &Terminator<'tcx>,
         sig: &ty::FnSig<'tcx>,
-        destination: &Option<(Place<'tcx>, BasicBlock)>,
+        destination: Place<'tcx>,
+        target: Option<BasicBlock>,
         term_location: Location,
     ) {
         let tcx = self.tcx();
-        match *destination {
-            Some((ref dest, _target_block)) => {
-                let dest_ty = dest.ty(body, tcx).ty;
+        match target {
+            Some(_) => {
+                let dest_ty = destination.ty(body, tcx).ty;
                 let dest_ty = self.normalize(dest_ty, term_location);
-                let category = match dest.as_local() {
+                let category = match destination.as_local() {
                     Some(RETURN_PLACE) => {
                         if let BorrowCheckContext {
                             universal_regions:
@@ -1581,11 +1602,20 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         if args.len() < sig.inputs().len() || (args.len() > sig.inputs().len() && !sig.c_variadic) {
             span_mirbug!(self, term, "call to {:?} with wrong # of args", sig);
         }
+
+        let func_ty = if let TerminatorKind::Call { func, .. } = &term.kind {
+            Some(func.ty(body, self.infcx.tcx))
+        } else {
+            None
+        };
+        debug!(?func_ty);
+
         for (n, (fn_arg, op_arg)) in iter::zip(sig.inputs(), args).enumerate() {
             let op_arg_ty = op_arg.ty(body, self.tcx());
+
             let op_arg_ty = self.normalize(op_arg_ty, term_location);
             let category = if from_hir_call {
-                ConstraintCategory::CallArgument
+                ConstraintCategory::CallArgument(func_ty)
             } else {
                 ConstraintCategory::Boring
             };
@@ -1658,8 +1688,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     self.assert_iscleanup(body, block_data, unwind, true);
                 }
             }
-            TerminatorKind::Call { ref destination, cleanup, .. } => {
-                if let &Some((_, target)) = destination {
+            TerminatorKind::Call { ref target, cleanup, .. } => {
+                if let &Some(target) = target {
                     self.assert_iscleanup(body, block_data, target, is_cleanup);
                 }
                 if let Some(cleanup) = cleanup {
@@ -1837,6 +1867,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         }
     }
 
+    #[instrument(skip(self, body), level = "debug")]
     fn check_rvalue(&mut self, body: &Body<'tcx>, rvalue: &Rvalue<'tcx>, location: Location) {
         let tcx = self.tcx();
 
@@ -2116,24 +2147,62 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         }
                     }
 
-                    CastKind::Misc => {
+                    CastKind::PointerExposeAddress => {
                         let ty_from = op.ty(body, tcx);
                         let cast_ty_from = CastTy::from_ty(ty_from);
                         let cast_ty_to = CastTy::from_ty(*ty);
                         match (cast_ty_from, cast_ty_to) {
-                            (None, _)
-                            | (_, None | Some(CastTy::FnPtr))
-                            | (Some(CastTy::Float), Some(CastTy::Ptr(_)))
-                            | (Some(CastTy::Ptr(_) | CastTy::FnPtr), Some(CastTy::Float)) => {
-                                span_mirbug!(self, rvalue, "Invalid cast {:?} -> {:?}", ty_from, ty,)
+                            (Some(CastTy::Ptr(_) | CastTy::FnPtr), Some(CastTy::Int(_))) => (),
+                            _ => {
+                                span_mirbug!(
+                                    self,
+                                    rvalue,
+                                    "Invalid PointerExposeAddress cast {:?} -> {:?}",
+                                    ty_from,
+                                    ty
+                                )
                             }
+                        }
+                    }
+
+                    CastKind::PointerFromExposedAddress => {
+                        let ty_from = op.ty(body, tcx);
+                        let cast_ty_from = CastTy::from_ty(ty_from);
+                        let cast_ty_to = CastTy::from_ty(*ty);
+                        match (cast_ty_from, cast_ty_to) {
+                            (Some(CastTy::Int(_)), Some(CastTy::Ptr(_))) => (),
+                            _ => {
+                                span_mirbug!(
+                                    self,
+                                    rvalue,
+                                    "Invalid PointerFromExposedAddress cast {:?} -> {:?}",
+                                    ty_from,
+                                    ty
+                                )
+                            }
+                        }
+                    }
+
+                    CastKind::Misc => {
+                        let ty_from = op.ty(body, tcx);
+                        let cast_ty_from = CastTy::from_ty(ty_from);
+                        let cast_ty_to = CastTy::from_ty(*ty);
+                        // Misc casts are either between floats and ints, or one ptr type to another.
+                        match (cast_ty_from, cast_ty_to) {
                             (
-                                Some(CastTy::Int(_)),
-                                Some(CastTy::Int(_) | CastTy::Float | CastTy::Ptr(_)),
+                                Some(CastTy::Int(_) | CastTy::Float),
+                                Some(CastTy::Int(_) | CastTy::Float),
                             )
-                            | (Some(CastTy::Float), Some(CastTy::Int(_) | CastTy::Float))
-                            | (Some(CastTy::Ptr(_)), Some(CastTy::Int(_) | CastTy::Ptr(_)))
-                            | (Some(CastTy::FnPtr), Some(CastTy::Int(_) | CastTy::Ptr(_))) => (),
+                            | (Some(CastTy::Ptr(_) | CastTy::FnPtr), Some(CastTy::Ptr(_))) => (),
+                            _ => {
+                                span_mirbug!(
+                                    self,
+                                    rvalue,
+                                    "Invalid Misc cast {:?} -> {:?}",
+                                    ty_from,
+                                    ty,
+                                )
+                            }
                         }
                     }
                 }

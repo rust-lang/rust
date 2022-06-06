@@ -77,38 +77,8 @@ impl<'tcx> ExprUseDelegate<'tcx> {
         }
         self.places.consumed.get_mut(&consumer).map(|places| places.insert(target));
     }
-}
 
-impl<'tcx> expr_use_visitor::Delegate<'tcx> for ExprUseDelegate<'tcx> {
-    fn consume(
-        &mut self,
-        place_with_id: &expr_use_visitor::PlaceWithHirId<'tcx>,
-        diag_expr_id: HirId,
-    ) {
-        let parent = match self.tcx.hir().find_parent_node(place_with_id.hir_id) {
-            Some(parent) => parent,
-            None => place_with_id.hir_id,
-        };
-        debug!(
-            "consume {:?}; diag_expr_id={:?}, using parent {:?}",
-            place_with_id, diag_expr_id, parent
-        );
-        place_with_id
-            .try_into()
-            .map_or((), |tracked_value| self.mark_consumed(parent, tracked_value));
-    }
-
-    fn borrow(
-        &mut self,
-        place_with_id: &expr_use_visitor::PlaceWithHirId<'tcx>,
-        diag_expr_id: HirId,
-        bk: rustc_middle::ty::BorrowKind,
-    ) {
-        debug!(
-            "borrow: place_with_id = {place_with_id:?}, diag_expr_id={diag_expr_id:?}, \
-            borrow_kind={bk:?}"
-        );
-
+    fn borrow_place(&mut self, place_with_id: &expr_use_visitor::PlaceWithHirId<'tcx>) {
         self.places
             .borrowed
             .insert(TrackedValue::from_place_with_projections_allowed(place_with_id));
@@ -157,6 +127,40 @@ impl<'tcx> expr_use_visitor::Delegate<'tcx> for ExprUseDelegate<'tcx> {
         if let (false, PlaceBase::Rvalue) = (is_deref, place_with_id.place.base) {
             self.places.borrowed_temporaries.insert(place_with_id.hir_id);
         }
+    }
+}
+
+impl<'tcx> expr_use_visitor::Delegate<'tcx> for ExprUseDelegate<'tcx> {
+    fn consume(
+        &mut self,
+        place_with_id: &expr_use_visitor::PlaceWithHirId<'tcx>,
+        diag_expr_id: HirId,
+    ) {
+        let parent = match self.tcx.hir().find_parent_node(place_with_id.hir_id) {
+            Some(parent) => parent,
+            None => place_with_id.hir_id,
+        };
+        debug!(
+            "consume {:?}; diag_expr_id={:?}, using parent {:?}",
+            place_with_id, diag_expr_id, parent
+        );
+        place_with_id
+            .try_into()
+            .map_or((), |tracked_value| self.mark_consumed(parent, tracked_value));
+    }
+
+    fn borrow(
+        &mut self,
+        place_with_id: &expr_use_visitor::PlaceWithHirId<'tcx>,
+        diag_expr_id: HirId,
+        bk: rustc_middle::ty::BorrowKind,
+    ) {
+        debug!(
+            "borrow: place_with_id = {place_with_id:?}, diag_expr_id={diag_expr_id:?}, \
+            borrow_kind={bk:?}"
+        );
+
+        self.borrow_place(place_with_id);
     }
 
     fn copy(
@@ -208,9 +212,18 @@ impl<'tcx> expr_use_visitor::Delegate<'tcx> for ExprUseDelegate<'tcx> {
 
     fn fake_read(
         &mut self,
-        _place: expr_use_visitor::Place<'tcx>,
-        _cause: rustc_middle::mir::FakeReadCause,
-        _diag_expr_id: HirId,
+        place_with_id: &expr_use_visitor::PlaceWithHirId<'tcx>,
+        cause: rustc_middle::mir::FakeReadCause,
+        diag_expr_id: HirId,
     ) {
+        debug!(
+            "fake_read place_with_id={place_with_id:?}; cause={cause:?}; diag_expr_id={diag_expr_id:?}"
+        );
+
+        // fake reads happen in places like the scrutinee of a match expression.
+        // we treat those as a borrow, much like a copy: the idea is that we are
+        // transiently creating a `&T` ref that we can read from to observe the current
+        // value (this `&T` is immediately dropped afterwards).
+        self.borrow_place(place_with_id);
     }
 }

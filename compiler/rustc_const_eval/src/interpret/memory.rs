@@ -197,7 +197,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         size: Size,
         align: Align,
         kind: MemoryKind<M::MemoryKind>,
-    ) -> InterpResult<'static, Pointer<M::PointerTag>> {
+    ) -> InterpResult<'tcx, Pointer<M::PointerTag>> {
         let alloc = Allocation::uninit(size, align, M::PANIC_ON_ALLOC_FAIL)?;
         Ok(self.allocate_raw_ptr(alloc, kind))
     }
@@ -402,7 +402,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         msg: CheckInAllocMsg,
         alloc_size: impl FnOnce(AllocId, Size, M::TagExtra) -> InterpResult<'tcx, (Size, Align, T)>,
     ) -> InterpResult<'tcx, Option<T>> {
-        fn check_offset_align(offset: u64, align: Align) -> InterpResult<'static> {
+        fn check_offset_align<'tcx>(offset: u64, align: Align) -> InterpResult<'tcx> {
             if offset % align.bytes() == 0 {
                 Ok(())
             } else {
@@ -440,6 +440,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         ptr_size: size,
                         msg,
                     })
+                }
+                // Ensure we never consider the null pointer dereferencable.
+                if M::PointerTag::OFFSET_IS_ADDR {
+                    assert_ne!(ptr.addr(), Size::ZERO);
                 }
                 // Test align. Check this last; if both bounds and alignment are violated
                 // we want the error to be about the bounds.
@@ -654,7 +658,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &self,
         id: AllocId,
         liveness: AllocCheck,
-    ) -> InterpResult<'static, (Size, Align)> {
+    ) -> InterpResult<'tcx, (Size, Align)> {
         // # Regular allocations
         // Don't use `self.get_raw` here as that will
         // a) cause cycles in case `id` refers to a static
@@ -904,11 +908,15 @@ impl<'tcx, 'a, Tag: Provenance, Extra> AllocRefMut<'a, 'tcx, Tag, Extra> {
 }
 
 impl<'tcx, 'a, Tag: Provenance, Extra> AllocRef<'a, 'tcx, Tag, Extra> {
-    pub fn read_scalar(&self, range: AllocRange) -> InterpResult<'tcx, ScalarMaybeUninit<Tag>> {
+    pub fn read_scalar(
+        &self,
+        range: AllocRange,
+        read_provenance: bool,
+    ) -> InterpResult<'tcx, ScalarMaybeUninit<Tag>> {
         let range = self.range.subrange(range);
         let res = self
             .alloc
-            .read_scalar(&self.tcx, range)
+            .read_scalar(&self.tcx, range, read_provenance)
             .map_err(|e| e.to_interp_error(self.alloc_id))?;
         debug!(
             "read_scalar in {} at {:#x}, size {}: {:?}",
@@ -920,8 +928,19 @@ impl<'tcx, 'a, Tag: Provenance, Extra> AllocRef<'a, 'tcx, Tag, Extra> {
         Ok(res)
     }
 
-    pub fn read_ptr_sized(&self, offset: Size) -> InterpResult<'tcx, ScalarMaybeUninit<Tag>> {
-        self.read_scalar(alloc_range(offset, self.tcx.data_layout().pointer_size))
+    pub fn read_integer(
+        &self,
+        offset: Size,
+        size: Size,
+    ) -> InterpResult<'tcx, ScalarMaybeUninit<Tag>> {
+        self.read_scalar(alloc_range(offset, size), /*read_provenance*/ false)
+    }
+
+    pub fn read_pointer(&self, offset: Size) -> InterpResult<'tcx, ScalarMaybeUninit<Tag>> {
+        self.read_scalar(
+            alloc_range(offset, self.tcx.data_layout().pointer_size),
+            /*read_provenance*/ true,
+        )
     }
 
     pub fn check_bytes(

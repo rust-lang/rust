@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet_opt;
-use clippy_utils::{is_lint_allowed, meets_msrv, msrvs};
+use clippy_utils::{is_doc_hidden, is_lint_allowed, meets_msrv, msrvs};
 use rustc_ast::ast::{self, VisibilityKind};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
@@ -61,7 +61,7 @@ declare_clippy_lint! {
     "manual implementations of the non-exhaustive pattern can be simplified using #[non_exhaustive]"
 }
 
-#[allow(clippy::module_name_repetitions)]
+#[expect(clippy::module_name_repetitions)]
 pub struct ManualNonExhaustiveStruct {
     msrv: Option<RustcVersion>,
 }
@@ -75,7 +75,7 @@ impl ManualNonExhaustiveStruct {
 
 impl_lint_pass!(ManualNonExhaustiveStruct => [MANUAL_NON_EXHAUSTIVE]);
 
-#[allow(clippy::module_name_repetitions)]
+#[expect(clippy::module_name_repetitions)]
 pub struct ManualNonExhaustiveEnum {
     msrv: Option<RustcVersion>,
     constructed_enum_variants: FxHashSet<(DefId, DefId)>,
@@ -97,7 +97,7 @@ impl_lint_pass!(ManualNonExhaustiveEnum => [MANUAL_NON_EXHAUSTIVE]);
 
 impl EarlyLintPass for ManualNonExhaustiveStruct {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &ast::Item) {
-        if !meets_msrv(self.msrv.as_ref(), &msrvs::NON_EXHAUSTIVE) {
+        if !meets_msrv(self.msrv, msrvs::NON_EXHAUSTIVE) {
             return;
         }
 
@@ -149,7 +149,7 @@ impl EarlyLintPass for ManualNonExhaustiveStruct {
 
 impl<'tcx> LateLintPass<'tcx> for ManualNonExhaustiveEnum {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
-        if !meets_msrv(self.msrv.as_ref(), &msrvs::NON_EXHAUSTIVE) {
+        if !meets_msrv(self.msrv, msrvs::NON_EXHAUSTIVE) {
             return;
         }
 
@@ -160,7 +160,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualNonExhaustiveEnum {
                 let id = cx.tcx.hir().local_def_id(v.id);
                 (matches!(v.data, hir::VariantData::Unit(_))
                     && v.ident.as_str().starts_with('_')
-                    && cx.tcx.is_doc_hidden(id.to_def_id()))
+                    && is_doc_hidden(cx.tcx.hir().attrs(v.id)))
                 .then(|| (id, v.span))
             });
             if let Some((id, span)) = iter.next()

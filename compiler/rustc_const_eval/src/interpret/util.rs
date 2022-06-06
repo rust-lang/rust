@@ -8,7 +8,7 @@ use std::ops::ControlFlow;
 /// In case it does, returns a `TooGeneric` const eval error. Note that due to polymorphization
 /// types may be "concrete enough" even though they still contain generic parameters in
 /// case these parameters are unused.
-crate fn ensure_monomorphic_enough<'tcx, T>(tcx: TyCtxt<'tcx>, ty: T) -> InterpResult<'tcx>
+pub(crate) fn ensure_monomorphic_enough<'tcx, T>(tcx: TyCtxt<'tcx>, ty: T) -> InterpResult<'tcx>
 where
     T: TypeFoldable<'tcx>,
 {

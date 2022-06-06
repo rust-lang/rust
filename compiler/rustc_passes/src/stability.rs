@@ -147,7 +147,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
             // Propagate unstability.  This can happen even for non-staged-api crates in case
             // -Zforce-unstable-if-unmarked is set.
             if let Some(stab) = self.parent_stab {
-                if inherit_deprecation.yes() && stab.level.is_unstable() {
+                if inherit_deprecation.yes() && stab.is_unstable() {
                     self.index.stab_map.insert(def_id, stab);
                 }
             }
@@ -190,7 +190,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
         if const_stab.is_none() {
             debug!("annotate: const_stab not found, parent = {:?}", self.parent_const_stab);
             if let Some(parent) = self.parent_const_stab {
-                if parent.level.is_unstable() {
+                if parent.is_const_unstable() {
                     self.index.const_stab_map.insert(def_id, parent);
                 }
             }
@@ -272,9 +272,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
         if stab.is_none() {
             debug!("annotate: stab not found, parent = {:?}", self.parent_stab);
             if let Some(stab) = self.parent_stab {
-                if inherit_deprecation.yes() && stab.level.is_unstable()
-                    || inherit_from_parent.yes()
-                {
+                if inherit_deprecation.yes() && stab.is_unstable() || inherit_from_parent.yes() {
                     self.index.stab_map.insert(def_id, stab);
                 }
             }
@@ -532,7 +530,8 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
             return;
         }
 
-        let is_const = self.tcx.is_const_fn(def_id.to_def_id());
+        let is_const = self.tcx.is_const_fn(def_id.to_def_id())
+            || self.tcx.is_const_trait_impl_raw(def_id.to_def_id());
         let is_stable = self
             .tcx
             .lookup_stability(def_id)
@@ -710,16 +709,23 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
             // For implementations of traits, check the stability of each item
             // individually as it's possible to have a stable trait with unstable
             // items.
-            hir::ItemKind::Impl(hir::Impl { of_trait: Some(ref t), self_ty, items, .. }) => {
-                if self.tcx.features().staged_api {
+            hir::ItemKind::Impl(hir::Impl {
+                of_trait: Some(ref t),
+                self_ty,
+                items,
+                constness,
+                ..
+            }) => {
+                let features = self.tcx.features();
+                if features.staged_api {
+                    let attrs = self.tcx.hir().attrs(item.hir_id());
+                    let (stab, const_stab) = attr::find_stability(&self.tcx.sess, attrs, item.span);
+
                     // If this impl block has an #[unstable] attribute, give an
                     // error if all involved types and traits are stable, because
                     // it will have no effect.
                     // See: https://github.com/rust-lang/rust/issues/55436
-                    let attrs = self.tcx.hir().attrs(item.hir_id());
-                    if let (Some((Stability { level: attr::Unstable { .. }, .. }, span)), _) =
-                        attr::find_stability(&self.tcx.sess, attrs, item.span)
-                    {
+                    if let Some((Stability { level: attr::Unstable { .. }, .. }, span)) = stab {
                         let mut c = CheckTraitImplStable { tcx: self.tcx, fully_stable: true };
                         c.visit_ty(self_ty);
                         c.visit_trait_ref(t);
@@ -734,6 +740,19 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                                     .emit();}
                             );
                         }
+                    }
+
+                    // `#![feature(const_trait_impl)]` is unstable, so any impl declared stable
+                    // needs to have an error emitted.
+                    if features.const_trait_impl
+                        && *constness == hir::Constness::Const
+                        && const_stab.map_or(false, |(stab, _)| stab.is_const_stable())
+                    {
+                        self.tcx
+                            .sess
+                            .struct_span_err(item.span, "trait implementations cannot be const stable yet")
+                            .note("see issue #67792 <https://github.com/rust-lang/rust/issues/67792> for more information")
+                            .emit();
                     }
                 }
 

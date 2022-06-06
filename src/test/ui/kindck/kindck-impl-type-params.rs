@@ -1,7 +1,9 @@
+// ignore-compare-mode-nll
+// revisions: base nll
+// [nll]compile-flags: -Zborrowck=mir
+
 // Issue #14061: tests the interaction between generic implementation
 // parameter bounds and trait objects.
-
-
 
 use std::marker;
 
@@ -30,7 +32,7 @@ fn g<T>(val: T) {
 fn foo<'a>() {
     let t: S<&'a isize> = S(marker::PhantomData);
     let a = &t as &dyn Gettable<&'a isize>;
-    //~^ ERROR does not fulfill
+    //[base]~^ ERROR does not fulfill
 }
 
 fn foo2<'a>() {

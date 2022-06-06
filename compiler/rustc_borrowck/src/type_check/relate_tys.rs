@@ -28,7 +28,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         v: ty::Variance,
         b: Ty<'tcx>,
         locations: Locations,
-        category: ConstraintCategory,
+        category: ConstraintCategory<'tcx>,
     ) -> Fallible<()> {
         TypeRelating::new(
             self.infcx,
@@ -47,7 +47,7 @@ struct NllTypeRelatingDelegate<'me, 'bccx, 'tcx> {
     locations: Locations,
 
     /// What category do we assign the resulting `'a: 'b` relationships?
-    category: ConstraintCategory,
+    category: ConstraintCategory<'tcx>,
 
     /// Information so that error reporting knows what types we are relating
     /// when reporting a bound region error.
@@ -58,7 +58,7 @@ impl<'me, 'bccx, 'tcx> NllTypeRelatingDelegate<'me, 'bccx, 'tcx> {
     fn new(
         type_checker: &'me mut TypeChecker<'bccx, 'tcx>,
         locations: Locations,
-        category: ConstraintCategory,
+        category: ConstraintCategory<'tcx>,
         universe_info: UniverseInfo<'tcx>,
     ) -> Self {
         Self { type_checker, locations, category, universe_info }

@@ -1,3 +1,7 @@
+// revisions: base nll
+// ignore-compare-mode-nll
+//[nll] compile-flags: -Z borrowck=mir
+
 // aux-build:lifetime_bound_will_change_warning_lib.rs
 
 // Test that various corner cases cause an error. These are tests
@@ -31,12 +35,16 @@ fn test1cc<'a>(x: &'a Box<dyn Fn() + 'a>) {
 
 fn test2<'a>(x: &'a Box<dyn Fn() + 'a>) {
     // but ref_obj will not, so warn.
-    ref_obj(x) //~ ERROR mismatched types
+    ref_obj(x)
+    //[base]~^ ERROR mismatched types
+    //[nll]~^^ ERROR borrowed data escapes
 }
 
 fn test2cc<'a>(x: &'a Box<dyn Fn() + 'a>) {
     // same as test2, but cross crate
-    lib::ref_obj(x) //~ ERROR mismatched types
+    lib::ref_obj(x)
+    //[base]~^ ERROR mismatched types
+    //[nll]~^^ ERROR borrowed data escapes
 }
 
 fn test3<'a>(x: &'a Box<dyn Fn() + 'static>) {

@@ -4,14 +4,14 @@ use rustc_middle::ty::{Ty, TypeFoldable};
 use rustc_session::Session;
 use rustc_span::Span;
 
-pub struct MissingCastForVariadicArg<'tcx> {
+pub struct MissingCastForVariadicArg<'tcx, 's> {
     pub sess: &'tcx Session,
     pub span: Span,
     pub ty: Ty<'tcx>,
-    pub cast_ty: &'tcx str,
+    pub cast_ty: &'s str,
 }
 
-impl<'tcx> StructuredDiagnostic<'tcx> for MissingCastForVariadicArg<'tcx> {
+impl<'tcx> StructuredDiagnostic<'tcx> for MissingCastForVariadicArg<'tcx, '_> {
     fn session(&self) -> &Session {
         self.sess
     }

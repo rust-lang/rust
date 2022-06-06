@@ -1,6 +1,7 @@
 pub use Integer::*;
 pub use Primitive::*;
 
+use crate::json::{Json, ToJson};
 use crate::spec::Target;
 
 use std::convert::{TryFrom, TryInto};
@@ -13,7 +14,6 @@ use std::str::FromStr;
 use rustc_data_structures::intern::Interned;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_macros::HashStable_Generic;
-use rustc_serialize::json::{Json, ToJson};
 
 pub mod call;
 
@@ -166,7 +166,8 @@ impl TargetDataLayout {
             ));
         }
 
-        if dl.pointer_size.bits() != target.pointer_width.into() {
+        let target_pointer_width: u64 = target.pointer_width.into();
+        if dl.pointer_size.bits() != target_pointer_width {
             return Err(format!(
                 "inconsistent target specification: \"data-layout\" claims \
                  pointers are {}-bit, while \"target-pointer-width\" is `{}`",
@@ -574,7 +575,7 @@ impl Align {
 }
 
 /// A pair of alignments, ABI-mandated and preferred.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Encodable, Decodable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 #[derive(HashStable_Generic)]
 pub struct AbiAndPrefAlign {
     pub abi: Align,
@@ -746,6 +747,11 @@ impl Primitive {
     pub fn is_int(self) -> bool {
         matches!(self, Int(..))
     }
+
+    #[inline]
+    pub fn is_ptr(self) -> bool {
+        matches!(self, Pointer)
+    }
 }
 
 /// Inclusive wrap-around range of valid values, that is, if
@@ -891,6 +897,15 @@ impl Scalar {
     pub fn is_always_valid<C: HasDataLayout>(&self, cx: &C) -> bool {
         match *self {
             Scalar::Initialized { valid_range, .. } => valid_range.is_full_for(self.size(cx)),
+            Scalar::Union { .. } => true,
+        }
+    }
+
+    /// Returns `true` if this type can be left uninit.
+    #[inline]
+    pub fn is_uninit_valid(&self) -> bool {
+        match *self {
+            Scalar::Initialized { .. } => false,
             Scalar::Union { .. } => true,
         }
     }
@@ -1355,6 +1370,14 @@ pub struct PointeeInfo {
     pub address_space: AddressSpace,
 }
 
+/// Used in `might_permit_raw_init` to indicate the kind of initialisation
+/// that is checked to be valid
+#[derive(Copy, Clone, Debug)]
+pub enum InitKind {
+    Zero,
+    Uninit,
+}
+
 /// Trait that needs to be implemented by the higher-level type representation
 /// (e.g. `rustc_middle::ty::Ty`), to provide `rustc_target::abi` functionality.
 pub trait TyAbiInterface<'a, C>: Sized {
@@ -1461,26 +1484,37 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
 
     /// Determines if this type permits "raw" initialization by just transmuting some
     /// memory into an instance of `T`.
-    /// `zero` indicates if the memory is zero-initialized, or alternatively
-    /// left entirely uninitialized.
+    ///
+    /// `init_kind` indicates if the memory is zero-initialized or left uninitialized.
+    ///
+    /// `strict` is an opt-in debugging flag added in #97323 that enables more checks.
+    ///
     /// This is conservative: in doubt, it will answer `true`.
     ///
     /// FIXME: Once we removed all the conservatism, we could alternatively
     /// create an all-0/all-undef constant and run the const value validator to see if
     /// this is a valid value for the given type.
-    pub fn might_permit_raw_init<C>(self, cx: &C, zero: bool) -> bool
+    pub fn might_permit_raw_init<C>(self, cx: &C, init_kind: InitKind, strict: bool) -> bool
     where
         Self: Copy,
         Ty: TyAbiInterface<'a, C>,
         C: HasDataLayout,
     {
         let scalar_allows_raw_init = move |s: Scalar| -> bool {
-            if zero {
-                // The range must contain 0.
-                s.valid_range(cx).contains(0)
-            } else {
-                // The range must include all values.
-                s.is_always_valid(cx)
+            match init_kind {
+                InitKind::Zero => {
+                    // The range must contain 0.
+                    s.valid_range(cx).contains(0)
+                }
+                InitKind::Uninit => {
+                    if strict {
+                        // The type must be allowed to be uninit (which means "is a union").
+                        s.is_uninit_valid()
+                    } else {
+                        // The range must include all values.
+                        s.is_always_valid(cx)
+                    }
+                }
             }
         };
 
@@ -1500,12 +1534,19 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
         // If we have not found an error yet, we need to recursively descend into fields.
         match &self.fields {
             FieldsShape::Primitive | FieldsShape::Union { .. } => {}
-            FieldsShape::Array { .. } => {
-                // FIXME(#66151): For now, we are conservative and do not check arrays.
+            FieldsShape::Array { count, .. } => {
+                // FIXME(#66151): For now, we are conservative and do not check arrays by default.
+                if strict
+                    && *count > 0
+                    && !self.field(cx, 0).might_permit_raw_init(cx, init_kind, strict)
+                {
+                    // Found non empty array with a type that is unhappy about this kind of initialization
+                    return false;
+                }
             }
             FieldsShape::Arbitrary { offsets, .. } => {
                 for idx in 0..offsets.len() {
-                    if !self.field(cx, idx).might_permit_raw_init(cx, zero) {
+                    if !self.field(cx, idx).might_permit_raw_init(cx, init_kind, strict) {
                         // We found a field that is unhappy with this kind of initialization.
                         return false;
                     }

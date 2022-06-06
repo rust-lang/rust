@@ -44,20 +44,15 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
                 resume_arg: resume_arg.try_fold_with(folder)?,
                 drop,
             },
-            Call { func, args, destination, cleanup, from_hir_call, fn_span } => {
-                let dest = destination
-                    .map(|(loc, dest)| (loc.try_fold_with(folder).map(|loc| (loc, dest))))
-                    .transpose()?;
-
-                Call {
-                    func: func.try_fold_with(folder)?,
-                    args: args.try_fold_with(folder)?,
-                    destination: dest,
-                    cleanup,
-                    from_hir_call,
-                    fn_span,
-                }
-            }
+            Call { func, args, destination, target, cleanup, from_hir_call, fn_span } => Call {
+                func: func.try_fold_with(folder)?,
+                args: args.try_fold_with(folder)?,
+                destination: destination.try_fold_with(folder)?,
+                target,
+                cleanup,
+                from_hir_call,
+                fn_span,
+            },
             Assert { cond, expected, msg, target, cleanup } => {
                 use AssertKind::*;
                 let msg = match msg {
@@ -113,9 +108,7 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
             }
             Yield { ref value, .. } => value.visit_with(visitor),
             Call { ref func, ref args, ref destination, .. } => {
-                if let Some((ref loc, _)) = *destination {
-                    loc.visit_with(visitor)?;
-                };
+                destination.visit_with(visitor)?;
                 func.visit_with(visitor)?;
                 args.visit_with(visitor)
             }

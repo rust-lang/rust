@@ -6,7 +6,6 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::ItemLocalId;
 use rustc_macros::HashStable;
-use rustc_span::symbol::Symbol;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, TyEncodable, TyDecodable, Debug, HashStable)]
 pub enum Region {
@@ -15,20 +14,6 @@ pub enum Region {
     LateBound(ty::DebruijnIndex, /* late-bound index */ u32, /* lifetime decl */ DefId),
     LateBoundAnon(ty::DebruijnIndex, /* late-bound index */ u32, /* anon index */ u32),
     Free(DefId, /* lifetime decl */ DefId),
-}
-
-/// This is used in diagnostics to improve suggestions for missing generic arguments.
-/// It gives information on the type of lifetimes that are in scope for a particular `PathSegment`,
-/// so that we can e.g. suggest elided-lifetimes-in-paths of the form <'_, '_> e.g.
-#[derive(Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable, Debug, HashStable)]
-pub enum LifetimeScopeForPath {
-    // Contains all lifetime names that are in scope and could possibly be used in generics
-    // arguments of path.
-    NonElided(Vec<Symbol>),
-
-    // Information that allows us to suggest args of the form `<'_>` in case
-    // no generic arguments were provided for a path.
-    Elided,
 }
 
 /// A set containing, at most, one known element.
