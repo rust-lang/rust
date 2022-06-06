@@ -1,7 +1,8 @@
 # Continuous Integration
 
-It is recommended to run Clippy on CI, preferably with `-Dwarnings`, so that
-Clippy lints prevent CI from passing.
+It is recommended to run Clippy on CI with `-Dwarnings`, so that Clippy lints
+prevent CI from passing. To enforce errors on warnings on all `cargo` commands
+not just `cargo clippy`, you can set the env var `RUSTFLAGS="-Dwarnings"`.
 
 We recommend to use Clippy from the same toolchain, that you use for compiling
 your crate for maximum compatibility. E.g. if your crate is compiled with the
