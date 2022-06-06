@@ -145,3 +145,23 @@ where
         }
     }
 }
+
+/// The set of locals that are borrowed at some point in the MIR body.
+pub fn borrowed_locals(body: &Body<'_>) -> BitSet<Local> {
+    struct Borrowed(BitSet<Local>);
+
+    impl GenKill<Local> for Borrowed {
+        #[inline]
+        fn gen(&mut self, elem: Local) {
+            self.0.gen(elem)
+        }
+        #[inline]
+        fn kill(&mut self, _: Local) {
+            // Ignore borrow invalidation.
+        }
+    }
+
+    let mut borrowed = Borrowed(BitSet::new_empty(body.local_decls.len()));
+    TransferFunction { trans: &mut borrowed }.visit_body(body);
+    borrowed.0
+}
