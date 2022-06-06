@@ -10,6 +10,9 @@
 .DS_Store
 desktop.ini
 
+## GitHub CLI
+.github/
+
 ## Editor
 *.swp
 *.swo

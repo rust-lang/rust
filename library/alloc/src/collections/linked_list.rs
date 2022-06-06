@@ -407,21 +407,71 @@ impl<T> Default for LinkedList<T> {
 }
 
 impl<T> LinkedList<T> {
-    /// Creates an empty `LinkedList`.
+    /// A doubly-linked list with owned nodes.
     ///
-    /// # Examples
+    /// The `LinkedList` allows pushing and popping elements at either end
+    /// in constant time.
     ///
+    /// A `LinkedList` with a known list of items can be initialized from an array:
     /// ```
     /// use std::collections::LinkedList;
     ///
-    /// let list: LinkedList<u32> = LinkedList::new();
+    /// let list = LinkedList::from([1, 2, 3]);
     /// ```
+    ///
+    /// NOTE: It is almost always better to use [`Vec`] or [`VecDeque`] because
+    /// array-based containers are generally faster,
+    /// more memory efficient, and make better use of CPU cache.
+    ///
+    /// [`Vec`]: crate::vec::Vec
+    /// [`VecDeque`]: super::vec_deque::VecDeque
     #[inline]
     #[rustc_const_stable(feature = "const_linked_list_new", since = "1.39.0")]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
     pub const fn new() -> Self {
         LinkedList { head: None, tail: None, len: 0, marker: PhantomData }
+    }
+
+    /// Insert an element before the specific index
+    ///
+    /// This operations should complete in *O*(1) time.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::LinkedList;
+    ///
+    /// let mut list = LinkedList::from([1, 2, 3]);
+    ///
+    /// list.insert(1, 4);
+    ///
+    /// assert_eq!(list, &[1, 4, 2, 3]);
+    /// ```
+
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn insert(&mut self, index: usize, elt: T) {
+        let mut p = self.head;
+        unsafe {
+            for _ in 0..index - 1 {
+                p = p.unwrap().as_ref().next;
+            }
+
+            let prev = p;
+            let next = p.unwrap().as_ref().next;
+
+            let mut t = Box::new(Node::new(elt));
+            t.prev = prev;
+            t.next = next;
+            let node: Option<NonNull<Node<T>>> = Some(Box::leak(t).into());
+            match prev {
+                None => self.head = node,
+                Some(mut prev) => prev.as_mut().next = node,
+            }
+
+            next.unwrap().as_mut().prev = node;
+        }
+        self.len += 1;
     }
 
     /// Moves all elements from `other` to the end of the list.
@@ -709,7 +759,7 @@ impl<T> LinkedList<T> {
     /// assert_eq!(dl.front(), Some(&1));
     ///
     /// match dl.front_mut() {
-    ///     None => {},
+    ///     None => {}
     ///     Some(x) => *x = 5,
     /// }
     /// assert_eq!(dl.front(), Some(&5));
@@ -761,7 +811,7 @@ impl<T> LinkedList<T> {
     /// assert_eq!(dl.back(), Some(&1));
     ///
     /// match dl.back_mut() {
-    ///     None => {},
+    ///     None => {}
     ///     Some(x) => *x = 5,
     /// }
     /// assert_eq!(dl.back(), Some(&5));
