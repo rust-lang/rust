@@ -185,14 +185,14 @@ fn assignment_suggestions<'tcx>(
 
     let suggestions = assignments
         .iter()
-        .map(|assignment| Some((assignment.span.until(assignment.rhs_span), String::new())))
-        .chain(assignments.iter().map(|assignment| {
-            Some((
+        .flat_map(|assignment| {
+            [
+                assignment.span.until(assignment.rhs_span),
                 assignment.rhs_span.shrink_to_hi().with_hi(assignment.span.hi()),
-                String::new(),
-            ))
-        }))
-        .collect::<Option<Vec<(Span, String)>>>()?;
+            ]
+        })
+        .map(|span| (span, String::new()))
+        .collect::<Vec<(Span, String)>>();
 
     match suggestions.len() {
         // All of `exprs` are never types
