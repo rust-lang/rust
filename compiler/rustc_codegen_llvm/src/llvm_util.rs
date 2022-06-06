@@ -218,15 +218,17 @@ pub fn check_tied_features(
     sess: &Session,
     features: &FxHashMap<&str, bool>,
 ) -> Option<&'static [&'static str]> {
-    for tied in tied_target_features(sess) {
-        // Tied features must be set to the same value, or not set at all
-        let mut tied_iter = tied.iter();
-        let enabled = features.get(tied_iter.next().unwrap());
-        if tied_iter.any(|f| enabled != features.get(f)) {
-            return Some(tied);
+    if !features.is_empty() {
+        for tied in tied_target_features(sess) {
+            // Tied features must be set to the same value, or not set at all
+            let mut tied_iter = tied.iter();
+            let enabled = features.get(tied_iter.next().unwrap());
+            if tied_iter.any(|f| enabled != features.get(f)) {
+                return Some(tied);
+            }
         }
     }
-    None
+    return None;
 }
 
 // Used to generate cfg variables and apply features
@@ -440,6 +442,7 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
 
     // -Ctarget-features
     let supported_features = supported_target_features(sess);
+    let mut featsmap = FxHashMap::default();
     let feats = sess
         .opts
         .cg
@@ -485,35 +488,36 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
                 }
                 diag.emit();
             }
-            Some((enable_disable, feature))
-        })
-        .collect::<SmallVec<[(char, &str); 8]>>();
 
-    if diagnostics {
-        // FIXME(nagisa): figure out how to not allocate a full hashset here.
-        let featmap = feats.iter().map(|&(flag, feat)| (feat, flag == '+')).collect();
-        if let Some(f) = check_tied_features(sess, &featmap) {
-            sess.err(&format!(
-                "target features {} must all be enabled or disabled together",
-                f.join(", ")
-            ));
-        }
+            if diagnostics {
+                // FIXME(nagisa): figure out how to not allocate a full hashset here.
+                featsmap.insert(feature, enable_disable == '+');
+            }
+
+            // rustc-specific features do not get passed down to LLVM…
+            if RUSTC_SPECIFIC_FEATURES.contains(&feature) {
+                return None;
+            }
+            // ... otherwise though we run through `to_llvm_features` when
+            // passing requests down to LLVM. This means that all in-language
+            // features also work on the command line instead of having two
+            // different names when the LLVM name and the Rust name differ.
+            Some(
+                to_llvm_features(sess, feature)
+                    .into_iter()
+                    .map(move |f| format!("{}{}", enable_disable, f)),
+            )
+        })
+        .flatten();
+    features.extend(feats);
+
+    if diagnostics && let Some(f) = check_tied_features(sess, &featsmap) {
+        sess.err(&format!(
+            "target features {} must all be enabled or disabled together",
+            f.join(", ")
+        ));
     }
 
-    features.extend(feats.into_iter().flat_map(|(enable_disable, feature)| {
-        // rustc-specific features do not get passed down to LLVM…
-        if RUSTC_SPECIFIC_FEATURES.contains(&feature) {
-            return SmallVec::<[_; 2]>::new();
-        }
-        // ... otherwise though we run through `to_llvm_features` when
-        // passing requests down to LLVM. This means that all in-language
-        // features also work on the command line instead of having two
-        // different names when the LLVM name and the Rust name differ.
-        to_llvm_features(sess, feature)
-            .into_iter()
-            .map(|f| format!("{}{}", enable_disable, f))
-            .collect()
-    }));
     features
 }
 
