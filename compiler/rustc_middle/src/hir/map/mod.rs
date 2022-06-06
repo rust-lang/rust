@@ -298,6 +298,7 @@ impl<'hir> Map<'hir> {
             Node::Stmt(_)
             | Node::PathSegment(_)
             | Node::Ty(_)
+            | Node::TypeBinding(_)
             | Node::Infer(_)
             | Node::TraitRef(_)
             | Node::Pat(_)
@@ -323,7 +324,8 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn get_parent_node(self, hir_id: HirId) -> HirId {
-        self.find_parent_node(hir_id).unwrap()
+        self.find_parent_node(hir_id)
+            .unwrap_or_else(|| bug!("No parent for node {:?}", self.node_to_string(hir_id)))
     }
 
     /// Retrieves the `Node` corresponding to `id`, returning `None` if cannot be found.
@@ -973,6 +975,7 @@ impl<'hir> Map<'hir> {
                     .with_hi(seg.args.map_or_else(|| ident_span.hi(), |args| args.span_ext.hi()))
             }
             Node::Ty(ty) => ty.span,
+            Node::TypeBinding(tb) => tb.span,
             Node::TraitRef(tr) => tr.path.span,
             Node::Binding(pat) => pat.span,
             Node::Pat(pat) => pat.span,
@@ -1205,6 +1208,7 @@ fn hir_id_to_string(map: Map<'_>, id: HirId) -> String {
         Some(Node::Stmt(_)) => node_str("stmt"),
         Some(Node::PathSegment(_)) => node_str("path segment"),
         Some(Node::Ty(_)) => node_str("type"),
+        Some(Node::TypeBinding(_)) => node_str("type binding"),
         Some(Node::TraitRef(_)) => node_str("trait ref"),
         Some(Node::Binding(_)) => node_str("local"),
         Some(Node::Pat(_)) => node_str("pat"),
