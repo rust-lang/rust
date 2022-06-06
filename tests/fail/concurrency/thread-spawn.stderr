@@ -1,0 +1,30 @@
+error: unsupported operation: can't create threads on Windows
+  --> RUSTLIB/std/src/sys/PLATFORM/thread.rs:LL:CC
+   |
+LL |           let ret = c::CreateThread(
+   |  ___________________^
+LL | |             ptr::null_mut(),
+LL | |             stack,
+LL | |             thread_start,
+...  |
+LL | |             ptr::null_mut(),
+LL | |         );
+   | |_________^ can't create threads on Windows
+   |
+   = help: this is likely not a bug in the program; it indicates that the program performed an operation that the interpreter does not support
+           
+   = note: inside `std::sys::PLATFORM::thread::Thread::new` at RUSTLIB/std/src/sys/PLATFORM/thread.rs:LL:CC
+   = note: inside `std::thread::Builder::spawn_unchecked_::<[closure@$DIR/thread-spawn.rs:LL:CC], ()>` at RUSTLIB/std/src/thread/mod.rs:LL:CC
+   = note: inside `std::thread::Builder::spawn_unchecked::<[closure@$DIR/thread-spawn.rs:LL:CC], ()>` at RUSTLIB/std/src/thread/mod.rs:LL:CC
+   = note: inside `std::thread::Builder::spawn::<[closure@$DIR/thread-spawn.rs:LL:CC], ()>` at RUSTLIB/std/src/thread/mod.rs:LL:CC
+   = note: inside `std::thread::spawn::<[closure@$DIR/thread-spawn.rs:LL:CC], ()>` at RUSTLIB/std/src/thread/mod.rs:LL:CC
+note: inside `main` at $DIR/thread-spawn.rs:LL:CC
+  --> $DIR/thread-spawn.rs:LL:CC
+   |
+LL |     thread::spawn(|| {});
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+
