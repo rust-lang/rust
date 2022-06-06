@@ -79,5 +79,6 @@ module.exports = {
         "guard-for-in": "error",
         "no-alert": "error",
         "no-confusing-arrow": "error",
+        "no-div-regex": "error",
     }
 };
