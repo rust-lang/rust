@@ -285,10 +285,9 @@ impl<'a, 'b> visit::Visitor<'a> for DefCollector<'a, 'b> {
             TyKind::MacCall(..) => self.visit_macro_invoc(ty.id),
             TyKind::ImplTrait(node_id, _) => {
                 let parent_def = match self.impl_trait_context {
-                    ImplTraitContext::Universal(item_def) 
+                    ImplTraitContext::Universal(item_def)
                     | ImplTraitContext::UniversalInDyn(item_def) => {
-                        // if universal in dyn?
-                        let def_id = self.resolver.create_def( 
+                        let def_id = self.resolver.create_def(
                             item_def,
                             node_id,
                             DefPathData::ImplTrait,
@@ -310,7 +309,7 @@ impl<'a, 'b> visit::Visitor<'a> for DefCollector<'a, 'b> {
                 };
                 self.with_parent(parent_def, |this| visit::walk_ty(this, ty))
             }
-            TyKind::TraitObject (..) => {
+            TyKind::TraitObject(..) => {
                 self.with_impl_trait(ImplTraitContext::UniversalInDyn(self.parent_def), |this| {
                     visit::walk_ty(this, ty)
                 });
@@ -385,7 +384,7 @@ impl<'a, 'b> visit::Visitor<'a> for DefCollector<'a, 'b> {
                     .impl_trait_context
                     .insert(def_id, ImplTraitContext::UniversalInDyn(item_def));
             }
-        } 
+        }
         visit::walk_assoc_constraint(self, constraint);
     }
 }
