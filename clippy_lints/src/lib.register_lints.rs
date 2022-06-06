@@ -408,6 +408,7 @@ store.register_lints(&[
     needless_continue::NEEDLESS_CONTINUE,
     needless_for_each::NEEDLESS_FOR_EACH,
     needless_late_init::NEEDLESS_LATE_INIT,
+    needless_parens_on_range_literals::NEEDLESS_PARENS_ON_RANGE_LITERALS,
     needless_pass_by_value::NEEDLESS_PASS_BY_VALUE,
     needless_question_mark::NEEDLESS_QUESTION_MARK,
     needless_update::NEEDLESS_UPDATE,

@@ -315,6 +315,7 @@ mod needless_borrowed_ref;
 mod needless_continue;
 mod needless_for_each;
 mod needless_late_init;
+mod needless_parens_on_range_literals;
 mod needless_pass_by_value;
 mod needless_question_mark;
 mod needless_update;
@@ -746,6 +747,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_early_pass(|| Box::new(collapsible_if::CollapsibleIf));
     store.register_early_pass(|| Box::new(items_after_statements::ItemsAfterStatements));
     store.register_early_pass(|| Box::new(precedence::Precedence));
+    store.register_late_pass(|| Box::new(needless_parens_on_range_literals::NeedlessParensOnRangeLiterals));
     store.register_early_pass(|| Box::new(needless_continue::NeedlessContinue));
     store.register_early_pass(|| Box::new(redundant_else::RedundantElse));
     store.register_late_pass(|| Box::new(create_dir::CreateDir));
