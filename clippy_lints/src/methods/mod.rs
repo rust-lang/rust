@@ -84,6 +84,7 @@ mod unnecessary_fold;
 mod unnecessary_iter_cloned;
 mod unnecessary_join;
 mod unnecessary_lazy_eval;
+mod unnecessary_sort_by;
 mod unnecessary_to_owned;
 mod unwrap_or_else_default;
 mod unwrap_used;
@@ -2872,6 +2873,40 @@ declare_clippy_lint! {
     "hashing a unit value, which does nothing"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Detects uses of `Vec::sort_by` passing in a closure
+    /// which compares the two arguments, either directly or indirectly.
+    ///
+    /// ### Why is this bad?
+    /// It is more clear to use `Vec::sort_by_key` (or `Vec::sort` if
+    /// possible) than to use `Vec::sort_by` and a more complicated
+    /// closure.
+    ///
+    /// ### Known problems
+    /// If the suggested `Vec::sort_by_key` uses Reverse and it isn't already
+    /// imported by a use statement, then it will need to be added manually.
+    ///
+    /// ### Example
+    /// ```rust
+    /// # struct A;
+    /// # impl A { fn foo(&self) {} }
+    /// # let mut vec: Vec<A> = Vec::new();
+    /// vec.sort_by(|a, b| a.foo().cmp(&b.foo()));
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// # struct A;
+    /// # impl A { fn foo(&self) {} }
+    /// # let mut vec: Vec<A> = Vec::new();
+    /// vec.sort_by_key(|a| a.foo());
+    /// ```
+    #[clippy::version = "1.46.0"]
+    pub UNNECESSARY_SORT_BY,
+    complexity,
+    "Use of `Vec::sort_by` when `Vec::sort_by_key` or `Vec::sort` would be clearer"
+}
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Option<RustcVersion>,
@@ -2990,6 +3025,7 @@ impl_lint_pass!(Methods => [
     REPEAT_ONCE,
     STABLE_SORT_PRIMITIVE,
     UNIT_HASH,
+    UNNECESSARY_SORT_BY,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -3386,6 +3422,12 @@ impl Methods {
                 },
                 ("sort", []) => {
                     stable_sort_primitive::check(cx, expr, recv);
+                },
+                ("sort_by", [arg]) => {
+                    unnecessary_sort_by::check(cx, expr, recv, arg, false);
+                },
+                ("sort_unstable_by", [arg]) => {
+                    unnecessary_sort_by::check(cx, expr, recv, arg, true);
                 },
                 ("splitn" | "rsplitn", [count_arg, pat_arg]) => {
                     if let Some((Constant::Int(count), _)) = constant(cx, cx.typeck_results(), count_arg) {

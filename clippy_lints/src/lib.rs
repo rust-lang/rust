@@ -376,7 +376,6 @@ mod unit_types;
 mod unnamed_address;
 mod unnecessary_owned_empty_strings;
 mod unnecessary_self_imports;
-mod unnecessary_sort_by;
 mod unnecessary_wraps;
 mod unnested_or_patterns;
 mod unsafe_removed_from_name;
@@ -716,7 +715,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(ptr_offset_with_cast::PtrOffsetWithCast));
     store.register_late_pass(|| Box::new(redundant_clone::RedundantClone));
     store.register_late_pass(|| Box::new(slow_vector_initialization::SlowVectorInit));
-    store.register_late_pass(|| Box::new(unnecessary_sort_by::UnnecessarySortBy));
     store.register_late_pass(move || Box::new(unnecessary_wraps::UnnecessaryWraps::new(avoid_breaking_exported_api)));
     store.register_late_pass(|| Box::new(assertions_on_constants::AssertionsOnConstants));
     store.register_late_pass(|| Box::new(assertions_on_result_states::AssertionsOnResultStates));
