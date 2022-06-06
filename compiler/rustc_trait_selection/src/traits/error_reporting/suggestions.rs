@@ -372,21 +372,34 @@ fn suggest_restriction<'tcx>(
         // but instead we choose to suggest replacing all instances of `impl Trait` with `T`
         // where `T: Trait`.
         let mut ty_spans = vec![];
-        let impl_trait_str = format!("impl {}", bound_str);
         for input in fn_sig.decl.inputs {
-            if let hir::TyKind::Path(hir::QPath::Resolved(
-                None,
-                hir::Path { segments: [segment], .. },
-            )) = input.kind
-            {
-                if segment.ident.as_str() == impl_trait_str.as_str() {
-                    // `fn foo(t: impl Trait)`
-                    //            ^^^^^^^^^^ get this to suggest `T` instead
+            struct ReplaceImplTraitVisitor<'a> {
+                ty_spans: &'a mut Vec<Span>,
+                bound_str: &'a str,
+            }
+            impl<'a, 'hir> hir::intravisit::Visitor<'hir> for ReplaceImplTraitVisitor<'a> {
+                fn visit_ty(&mut self, t: &'hir hir::Ty<'hir>) {
+                    if let hir::TyKind::Path(hir::QPath::Resolved(
+                        None,
+                        hir::Path { segments: [segment], .. },
+                    )) = t.kind
+                    {
+                        if segment.ident.as_str().strip_prefix("impl ").map(|s| s.trim_start())
+                            == Some(self.bound_str)
+                        {
+                            // `fn foo(t: impl Trait)`
+                            //            ^^^^^^^^^^ get this to suggest `T` instead
 
-                    // There might be more than one `impl Trait`.
-                    ty_spans.push(input.span);
+                            // There might be more than one `impl Trait`.
+                            self.ty_spans.push(t.span);
+                            return;
+                        }
+                    }
+                    hir::intravisit::walk_ty(self, t);
                 }
             }
+            ReplaceImplTraitVisitor { ty_spans: &mut ty_spans, bound_str: &bound_str }
+                .visit_ty(input);
         }
 
         let type_param_name = generics.params.next_type_param_name(Some(&bound_str));
@@ -396,7 +409,7 @@ fn suggest_restriction<'tcx>(
         // FIXME: modify the `trait_pred` instead of string shenanigans.
         // Turn `<impl Trait as Foo>::Bar: Qux` into `<T as Foo>::Bar: Qux`.
         let pred = trait_pred.to_predicate(tcx).to_string();
-        let pred = pred.replace(&impl_trait_str, &type_param_name);
+        let pred = pred.replace(&format!("impl {}", bound_str), &type_param_name);
         let mut sugg = vec![
             if let Some(span) = generics.span_for_param_suggestion() {
                 (span, format!(", {}", type_param))
@@ -460,6 +473,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         trait_pred: ty::PolyTraitPredicate<'tcx>,
         body_id: hir::HirId,
     ) {
+        let trait_pred = self.resolve_numeric_literals_with_default(trait_pred);
+
         let self_ty = trait_pred.skip_binder().self_ty();
         let (param_ty, projection) = match self_ty.kind() {
             ty::Param(_) => (true, None),
