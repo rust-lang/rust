@@ -28,7 +28,11 @@ use rustc_span::Symbol;
 use rustc_target::abi::Size;
 use rustc_target::spec::abi::Abi;
 
-use crate::{shims::unix::FileHandler, *};
+use crate::{
+    concurrency::{data_race, weak_memory},
+    shims::unix::FileHandler,
+    *,
+};
 
 // Some global facts about the emulated machine.
 pub const PAGE_SIZE: u64 = 4 * 1024; // FIXME: adjust to target architecture
@@ -190,6 +194,9 @@ pub struct AllocExtra {
     /// Data race detection via the use of a vector-clock,
     ///  this is only added if it is enabled.
     pub data_race: Option<data_race::AllocExtra>,
+    /// Weak memory emulation via the use of store buffers,
+    ///  this is only added if it is enabled.
+    pub weak_memory: Option<weak_memory::AllocExtra>,
 }
 
 /// Precomputed layouts of primitive types
@@ -323,6 +330,9 @@ pub struct Evaluator<'mir, 'tcx> {
 
     /// Corresponds to -Zmiri-mute-stdout-stderr and doesn't write the output but acts as if it succeeded.
     pub(crate) mute_stdout_stderr: bool,
+
+    /// Whether weak memory emulation is enabled
+    pub(crate) weak_memory: bool,
 }
 
 impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
@@ -378,6 +388,7 @@ impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
             check_alignment: config.check_alignment,
             cmpxchg_weak_failure_rate: config.cmpxchg_weak_failure_rate,
             mute_stdout_stderr: config.mute_stdout_stderr,
+            weak_memory: config.weak_memory_emulation,
         }
     }
 
@@ -626,9 +637,18 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         } else {
             None
         };
+        let buffer_alloc = if ecx.machine.weak_memory {
+            Some(weak_memory::AllocExtra::new_allocation())
+        } else {
+            None
+        };
         let alloc: Allocation<Tag, Self::AllocExtra> = alloc.convert_tag_add_extra(
             &ecx.tcx,
-            AllocExtra { stacked_borrows: stacks, data_race: race_alloc },
+            AllocExtra {
+                stacked_borrows: stacks,
+                data_race: race_alloc,
+                weak_memory: buffer_alloc,
+            },
             |ptr| Evaluator::tag_alloc_base_pointer(ecx, ptr),
         );
         Cow::Owned(alloc)
@@ -716,10 +736,12 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
                 range,
                 machine.stacked_borrows.as_ref().unwrap(),
                 machine.current_span(),
-            )
-        } else {
-            Ok(())
+            )?;
         }
+        if let Some(weak_memory) = &alloc_extra.weak_memory {
+            weak_memory.memory_accessed(range, machine.data_race.as_ref().unwrap());
+        }
+        Ok(())
     }
 
     #[inline(always)]
@@ -740,10 +762,12 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
                 range,
                 machine.stacked_borrows.as_ref().unwrap(),
                 machine.current_span(),
-            )
-        } else {
-            Ok(())
+            )?;
         }
+        if let Some(weak_memory) = &alloc_extra.weak_memory {
+            weak_memory.memory_accessed(range, machine.data_race.as_ref().unwrap());
+        }
+        Ok(())
     }
 
     #[inline(always)]

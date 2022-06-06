@@ -1,4 +1,5 @@
 // ignore-windows: Concurrency on Windows is not supported yet.
+// compile-flags: -Zmiri-disable-weak-memory-emulation
 
 
 use std::sync::atomic::{AtomicUsize, fence, Ordering};

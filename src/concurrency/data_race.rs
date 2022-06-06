@@ -12,7 +12,7 @@
 //! The implementation also models races with memory allocation and deallocation via treating allocation and
 //! deallocation as a type of write internally for detecting data-races.
 //!
-//! This does not explore weak memory orders and so can still miss data-races
+//! Weak memory orders are explored but not all weak behaviours are exhibited, so it can still miss data-races
 //! but should not report false-positives
 //!
 //! Data-race definition from(<https://en.cppreference.com/w/cpp/language/memory_model#Threads_and_data_races>):
@@ -28,22 +28,6 @@
 //! can never hold and hence a data-race can never be reported in that vector index again.
 //! This means that the thread-index can be safely re-used, starting on the next timestamp for the newly created
 //! thread.
-//!
-//! The sequentially consistent ordering corresponds to the ordering that the threads
-//! are currently scheduled, this means that the data-race detector has no additional
-//! logic for sequentially consistent accesses at the moment since they are indistinguishable
-//! from acquire/release operations. If weak memory orderings are explored then this
-//! may need to change or be updated accordingly.
-//!
-//! Per the C++ spec for the memory model a sequentially consistent operation:
-//!   "A load operation with this memory order performs an acquire operation,
-//!    a store performs a release operation, and read-modify-write performs
-//!    both an acquire operation and a release operation, plus a single total
-//!    order exists in which all threads observe all modifications in the same
-//!    order (see Sequentially-consistent ordering below) "
-//! So in the absence of weak memory effects a seq-cst load & a seq-cst store is identical
-//! to an acquire load and a release store given the global sequentially consistent order
-//! of the schedule.
 //!
 //! The timestamps used in the data-race detector assign each sequence of non-atomic operations
 //! followed by a single atomic or concurrent operation a single timestamp.
@@ -73,6 +57,8 @@ use rustc_middle::{mir, ty::layout::TyAndLayout};
 use rustc_target::abi::Size;
 
 use crate::*;
+
+use super::weak_memory::EvalContextExt as _;
 
 pub type AllocExtra = VClockAlloc;
 
@@ -115,10 +101,10 @@ pub enum AtomicFenceOp {
 /// of a thread, contains the happens-before clock and
 /// additional metadata to model atomic fence operations.
 #[derive(Clone, Default, Debug)]
-struct ThreadClockSet {
+pub(super) struct ThreadClockSet {
     /// The increasing clock representing timestamps
     /// that happen-before this thread.
-    clock: VClock,
+    pub(super) clock: VClock,
 
     /// The set of timestamps that will happen-before this
     /// thread once it performs an acquire fence.
@@ -127,6 +113,18 @@ struct ThreadClockSet {
     /// The last timestamp of happens-before relations that
     /// have been released by this thread by a fence.
     fence_release: VClock,
+
+    /// Timestamps of the last SC fence performed by each
+    /// thread, updated when this thread performs an SC fence
+    pub(super) fence_seqcst: VClock,
+
+    /// Timestamps of the last SC write performed by each
+    /// thread, updated when this thread performs an SC fence
+    pub(super) write_seqcst: VClock,
+
+    /// Timestamps of the last SC fence performed by each
+    /// thread, updated when this thread performs an SC read
+    pub(super) read_seqcst: VClock,
 }
 
 impl ThreadClockSet {
@@ -289,6 +287,15 @@ impl MemoryCellClocks {
         Ok(())
     }
 
+    /// Checks if the memory cell access is ordered with all prior atomic reads and writes
+    fn race_free_with_atomic(&self, clocks: &ThreadClockSet) -> bool {
+        if let Some(atomic) = self.atomic() {
+            atomic.read_vector <= clocks.clock && atomic.write_vector <= clocks.clock
+        } else {
+            true
+        }
+    }
+
     /// Update memory cell data-race tracking for atomic
     /// load relaxed semantics, is a no-op if this memory was
     /// not used previously as atomic memory.
@@ -447,14 +454,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
     #[inline]
     fn allow_data_races_ref<R>(&self, op: impl FnOnce(&MiriEvalContext<'mir, 'tcx>) -> R) -> R {
         let this = self.eval_context_ref();
-        let old = if let Some(data_race) = &this.machine.data_race {
-            data_race.multi_threaded.replace(false)
-        } else {
-            false
-        };
+        if let Some(data_race) = &this.machine.data_race {
+            data_race.ongoing_action_data_race_free.set(true);
+        }
         let result = op(this);
         if let Some(data_race) = &this.machine.data_race {
-            data_race.multi_threaded.set(old);
+            data_race.ongoing_action_data_race_free.set(false);
         }
         result
     }
@@ -468,14 +473,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         op: impl FnOnce(&mut MiriEvalContext<'mir, 'tcx>) -> R,
     ) -> R {
         let this = self.eval_context_mut();
-        let old = if let Some(data_race) = &this.machine.data_race {
-            data_race.multi_threaded.replace(false)
-        } else {
-            false
-        };
+        if let Some(data_race) = &this.machine.data_race {
+            data_race.ongoing_action_data_race_free.set(true);
+        }
         let result = op(this);
         if let Some(data_race) = &this.machine.data_race {
-            data_race.multi_threaded.set(old);
+            data_race.ongoing_action_data_race_free.set(false);
         }
         result
     }
@@ -514,9 +517,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         atomic: AtomicReadOp,
     ) -> InterpResult<'tcx, ScalarMaybeUninit<Tag>> {
         let this = self.eval_context_ref();
+        // This will read from the last store in the modification order of this location. In case
+        // weak memory emulation is enabled, this may not be the store we will pick to actually read from and return.
+        // This is fine with StackedBorrow and race checks because they don't concern metadata on
+        // the *value* (including the associated provenance if this is an AtomicPtr) at this location.
+        // Only metadata on the location itself is used.
         let scalar = this.allow_data_races_ref(move |this| this.read_scalar(&place.into()))?;
-        this.validate_atomic_load(place, atomic)?;
-        Ok(scalar)
+        this.validate_overlapping_atomic(place)?;
+        this.buffered_atomic_read(place, atomic, scalar, || {
+            this.validate_atomic_load(place, atomic)
+        })
     }
 
     /// Perform an atomic write operation at the memory location.
@@ -527,8 +537,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         atomic: AtomicWriteOp,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
+        this.validate_overlapping_atomic(dest)?;
         this.allow_data_races_mut(move |this| this.write_scalar(val, &(*dest).into()))?;
-        this.validate_atomic_store(dest, atomic)
+        this.validate_atomic_store(dest, atomic)?;
+        // FIXME: it's not possible to get the value before write_scalar. A read_scalar will cause
+        // side effects from a read the program did not perform. So we have to initialise
+        // the store buffer with the value currently being written
+        // ONCE this is fixed please remove the hack in buffered_atomic_write() in weak_memory.rs
+        // https://github.com/rust-lang/miri/issues/2164
+        this.buffered_atomic_write(val, dest, atomic, val)
     }
 
     /// Perform an atomic operation on a memory location.
@@ -542,6 +559,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx, ImmTy<'tcx, Tag>> {
         let this = self.eval_context_mut();
 
+        this.validate_overlapping_atomic(place)?;
         let old = this.allow_data_races_mut(|this| this.read_immediate(&place.into()))?;
 
         // Atomics wrap around on overflow.
@@ -550,6 +568,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         this.allow_data_races_mut(|this| this.write_immediate(*val, &(*place).into()))?;
 
         this.validate_atomic_rmw(place, atomic)?;
+
+        this.buffered_atomic_rmw(
+            val.to_scalar_or_uninit(),
+            place,
+            atomic,
+            old.to_scalar_or_uninit(),
+        )?;
         Ok(old)
     }
 
@@ -563,9 +588,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx, ScalarMaybeUninit<Tag>> {
         let this = self.eval_context_mut();
 
+        this.validate_overlapping_atomic(place)?;
         let old = this.allow_data_races_mut(|this| this.read_scalar(&place.into()))?;
         this.allow_data_races_mut(|this| this.write_scalar(new, &(*place).into()))?;
+
         this.validate_atomic_rmw(place, atomic)?;
+
+        this.buffered_atomic_rmw(new, place, atomic, old)?;
         Ok(old)
     }
 
@@ -580,6 +609,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx, ImmTy<'tcx, Tag>> {
         let this = self.eval_context_mut();
 
+        this.validate_overlapping_atomic(place)?;
         let old = this.allow_data_races_mut(|this| this.read_immediate(&place.into()))?;
         let lt = this.binary_op(mir::BinOp::Lt, &old, &rhs)?.to_scalar()?.to_bool()?;
 
@@ -592,6 +622,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         this.allow_data_races_mut(|this| this.write_immediate(**new_val, &(*place).into()))?;
 
         this.validate_atomic_rmw(place, atomic)?;
+
+        this.buffered_atomic_rmw(
+            new_val.to_scalar_or_uninit(),
+            place,
+            atomic,
+            old.to_scalar_or_uninit(),
+        )?;
 
         // Return the old value.
         Ok(old)
@@ -615,6 +652,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         use rand::Rng as _;
         let this = self.eval_context_mut();
 
+        this.validate_overlapping_atomic(place)?;
         // Failure ordering cannot be stronger than success ordering, therefore first attempt
         // to read with the failure ordering and if successful then try again with the success
         // read ordering and write in the success case.
@@ -642,8 +680,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         if cmpxchg_success {
             this.allow_data_races_mut(|this| this.write_scalar(new, &(*place).into()))?;
             this.validate_atomic_rmw(place, success)?;
+            this.buffered_atomic_rmw(new, place, success, old.to_scalar_or_uninit())?;
         } else {
             this.validate_atomic_load(place, fail)?;
+            // A failed compare exchange is equivalent to a load, reading from the latest store
+            // in the modification order.
+            // Since `old` is only a value and not the store element, we need to separately
+            // find it in our store buffer and perform load_impl on it.
+            this.perform_read_on_buffered_latest(place, fail, old.to_scalar_or_uninit())?;
         }
 
         // Return the old value.
@@ -658,6 +702,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         atomic: AtomicReadOp,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_ref();
+        this.validate_overlapping_atomic(place)?;
         this.validate_atomic_op(
             place,
             atomic,
@@ -680,6 +725,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         atomic: AtomicWriteOp,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
+        this.validate_overlapping_atomic(place)?;
         this.validate_atomic_op(
             place,
             atomic,
@@ -705,6 +751,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         let acquire = matches!(atomic, Acquire | AcqRel | SeqCst);
         let release = matches!(atomic, Release | AcqRel | SeqCst);
         let this = self.eval_context_mut();
+        this.validate_overlapping_atomic(place)?;
         this.validate_atomic_op(place, atomic, "Atomic RMW", move |memory, clocks, index, _| {
             if acquire {
                 memory.load_acquire(clocks, index)?;
@@ -723,7 +770,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
     fn validate_atomic_fence(&mut self, atomic: AtomicFenceOp) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         if let Some(data_race) = &mut this.machine.data_race {
-            data_race.maybe_perform_sync_operation(move |index, mut clocks| {
+            data_race.maybe_perform_sync_operation(|index, mut clocks| {
                 log::trace!("Atomic fence on {:?} with ordering {:?}", index, atomic);
 
                 // Apply data-race detection for the current fences
@@ -736,6 +783,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
                 if atomic != AtomicFenceOp::Acquire {
                     // Either Release | AcqRel | SeqCst
                     clocks.apply_release_fence();
+                }
+                if atomic == AtomicFenceOp::SeqCst {
+                    data_race.last_sc_fence.borrow_mut().set_at_index(&clocks.clock, index);
+                    clocks.fence_seqcst.join(&data_race.last_sc_fence.borrow());
+                    clocks.write_seqcst.join(&data_race.last_sc_write.borrow());
                 }
 
                 // Increment timestamp in case of release semantics.
@@ -885,8 +937,23 @@ impl VClockAlloc {
         )
     }
 
+    /// Detect racing atomic read and writes (not data races)
+    /// on every byte of the current access range
+    pub(super) fn race_free_with_atomic(&self, range: AllocRange, global: &GlobalState) -> bool {
+        if global.race_detecting() {
+            let (_, clocks) = global.current_thread_state();
+            let alloc_ranges = self.alloc_ranges.borrow();
+            for (_, range) in alloc_ranges.iter(range.start, range.size) {
+                if !range.race_free_with_atomic(&clocks) {
+                    return false;
+                }
+            }
+        }
+        true
+    }
+
     /// Detect data-races for an unsynchronized read operation, will not perform
-    /// data-race detection if `multi-threaded` is false, either due to no threads
+    /// data-race detection if `race_detecting()` is false, either due to no threads
     /// being created or if it is temporarily disabled during a racy read or write
     /// operation for which data-race detection is handled separately, for example
     /// atomic read operations.
@@ -896,7 +963,7 @@ impl VClockAlloc {
         range: AllocRange,
         global: &GlobalState,
     ) -> InterpResult<'tcx> {
-        if global.multi_threaded.get() {
+        if global.race_detecting() {
             let (index, clocks) = global.current_thread_state();
             let mut alloc_ranges = self.alloc_ranges.borrow_mut();
             for (offset, range) in alloc_ranges.iter_mut(range.start, range.size) {
@@ -925,7 +992,7 @@ impl VClockAlloc {
         write_type: WriteType,
         global: &mut GlobalState,
     ) -> InterpResult<'tcx> {
-        if global.multi_threaded.get() {
+        if global.race_detecting() {
             let (index, clocks) = global.current_thread_state();
             for (offset, range) in self.alloc_ranges.get_mut().iter_mut(range.start, range.size) {
                 if let Err(DataRace) = range.write_race_detect(&*clocks, index, write_type) {
@@ -946,7 +1013,7 @@ impl VClockAlloc {
     }
 
     /// Detect data-races for an unsynchronized write operation, will not perform
-    /// data-race threads if `multi-threaded` is false, either due to no threads
+    /// data-race threads if `race_detecting()` is false, either due to no threads
     /// being created or if it is temporarily disabled during a racy read or write
     /// operation
     pub fn write<'tcx>(
@@ -959,7 +1026,7 @@ impl VClockAlloc {
     }
 
     /// Detect data-races for an unsynchronized deallocate operation, will not perform
-    /// data-race threads if `multi-threaded` is false, either due to no threads
+    /// data-race threads if `race_detecting()` is false, either due to no threads
     /// being created or if it is temporarily disabled during a racy read or write
     /// operation
     pub fn deallocate<'tcx>(
@@ -989,12 +1056,12 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_ref();
         if let Some(data_race) = &this.machine.data_race {
-            if data_race.multi_threaded.get() {
+            if data_race.race_detecting() {
                 let size = place.layout.size;
                 let (alloc_id, base_offset, _tag) = this.ptr_get_alloc_id(place.ptr)?;
                 // Load and log the atomic operation.
                 // Note that atomic loads are possible even from read-only allocations, so `get_alloc_extra_mut` is not an option.
-                let alloc_meta = &this.get_alloc_extra(alloc_id)?.data_race.as_ref().unwrap();
+                let alloc_meta = this.get_alloc_extra(alloc_id)?.data_race.as_ref().unwrap();
                 log::trace!(
                     "Atomic op({}) with ordering {:?} on {:?} (size={})",
                     description,
@@ -1079,6 +1146,11 @@ pub struct GlobalState {
     /// any data-races.
     multi_threaded: Cell<bool>,
 
+    /// A flag to mark we are currently performing
+    /// a data race free action (such as atomic access)
+    /// to supress the race detector
+    ongoing_action_data_race_free: Cell<bool>,
+
     /// Mapping of a vector index to a known set of thread
     /// clocks, this is not directly mapping from a thread id
     /// since it may refer to multiple threads.
@@ -1116,6 +1188,12 @@ pub struct GlobalState {
     /// The associated vector index will be moved into re-use candidates
     /// after the join operation occurs.
     terminated_threads: RefCell<FxHashMap<ThreadId, VectorIdx>>,
+
+    /// The timestamp of last SC fence performed by each thread
+    last_sc_fence: RefCell<VClock>,
+
+    /// The timestamp of last SC write performed by each thread
+    last_sc_write: RefCell<VClock>,
 }
 
 impl GlobalState {
@@ -1124,6 +1202,7 @@ impl GlobalState {
     pub fn new() -> Self {
         let mut global_state = GlobalState {
             multi_threaded: Cell::new(false),
+            ongoing_action_data_race_free: Cell::new(false),
             vector_clocks: RefCell::new(IndexVec::new()),
             vector_info: RefCell::new(IndexVec::new()),
             thread_info: RefCell::new(IndexVec::new()),
@@ -1131,6 +1210,8 @@ impl GlobalState {
             active_thread_count: Cell::new(1),
             reuse_candidates: RefCell::new(FxHashSet::default()),
             terminated_threads: RefCell::new(FxHashMap::default()),
+            last_sc_fence: RefCell::new(VClock::default()),
+            last_sc_write: RefCell::new(VClock::default()),
         };
 
         // Setup the main-thread since it is not explicitly created:
@@ -1145,6 +1226,17 @@ impl GlobalState {
         });
 
         global_state
+    }
+
+    // We perform data race detection when there are more than 1 active thread
+    // and we have not temporarily disabled race detection to perform something
+    // data race free
+    fn race_detecting(&self) -> bool {
+        self.multi_threaded.get() && !self.ongoing_action_data_race_free.get()
+    }
+
+    pub fn ongoing_action_data_race_free(&self) -> bool {
+        self.ongoing_action_data_race_free.get()
     }
 
     // Try to find vector index values that can potentially be re-used
@@ -1445,7 +1537,7 @@ impl GlobalState {
     /// Load the current vector clock in use and the current set of thread clocks
     /// in use for the vector.
     #[inline]
-    fn current_thread_state(&self) -> (VectorIdx, Ref<'_, ThreadClockSet>) {
+    pub(super) fn current_thread_state(&self) -> (VectorIdx, Ref<'_, ThreadClockSet>) {
         let index = self.current_index();
         let ref_vector = self.vector_clocks.borrow();
         let clocks = Ref::map(ref_vector, |vec| &vec[index]);
@@ -1455,7 +1547,7 @@ impl GlobalState {
     /// Load the current vector clock in use and the current set of thread clocks
     /// in use for the vector mutably for modification.
     #[inline]
-    fn current_thread_state_mut(&self) -> (VectorIdx, RefMut<'_, ThreadClockSet>) {
+    pub(super) fn current_thread_state_mut(&self) -> (VectorIdx, RefMut<'_, ThreadClockSet>) {
         let index = self.current_index();
         let ref_vector = self.vector_clocks.borrow_mut();
         let clocks = RefMut::map(ref_vector, |vec| &mut vec[index]);
@@ -1467,5 +1559,17 @@ impl GlobalState {
     #[inline]
     fn current_index(&self) -> VectorIdx {
         self.current_index.get()
+    }
+
+    // SC ATOMIC STORE rule in the paper.
+    pub(super) fn sc_write(&self) {
+        let (index, clocks) = self.current_thread_state();
+        self.last_sc_write.borrow_mut().set_at_index(&clocks.clock, index);
+    }
+
+    // SC ATOMIC READ rule in the paper.
+    pub(super) fn sc_read(&self) {
+        let (.., mut clocks) = self.current_thread_state_mut();
+        clocks.read_seqcst.join(&self.last_sc_fence.borrow());
     }
 }

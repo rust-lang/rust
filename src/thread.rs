@@ -12,6 +12,7 @@ use rustc_hir::def_id::DefId;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::mir::Mutability;
 
+use crate::concurrency::data_race;
 use crate::sync::SynchronizationState;
 use crate::*;
 

@@ -1,5 +1,5 @@
 // ignore-windows: Concurrency on Windows is not supported yet.
-// compile-flags: -Zmiri-disable-isolation
+// compile-flags: -Zmiri-disable-isolation -Zmiri-disable-weak-memory-emulation
 
 use std::thread::{spawn, sleep};
 use std::ptr::null_mut;
