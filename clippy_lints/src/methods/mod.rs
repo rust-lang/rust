@@ -91,6 +91,7 @@ mod unwrap_used;
 mod useless_asref;
 mod utils;
 mod vec_resize_to_zero;
+mod verbose_file_reads;
 mod wrong_self_convention;
 mod zst_offset;
 
@@ -2930,6 +2931,33 @@ declare_clippy_lint! {
     "emptying a vector with `resize(0, an_int)` instead of `clear()` is probably an argument inversion mistake"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for use of File::read_to_end and File::read_to_string.
+    ///
+    /// ### Why is this bad?
+    /// `fs::{read, read_to_string}` provide the same functionality when `buf` is empty with fewer imports and no intermediate values.
+    /// See also: [fs::read docs](https://doc.rust-lang.org/std/fs/fn.read.html), [fs::read_to_string docs](https://doc.rust-lang.org/std/fs/fn.read_to_string.html)
+    ///
+    /// ### Example
+    /// ```rust,no_run
+    /// # use std::io::Read;
+    /// # use std::fs::File;
+    /// let mut f = File::open("foo.txt").unwrap();
+    /// let mut bytes = Vec::new();
+    /// f.read_to_end(&mut bytes).unwrap();
+    /// ```
+    /// Can be written more concisely as
+    /// ```rust,no_run
+    /// # use std::fs;
+    /// let mut bytes = fs::read("foo.txt").unwrap();
+    /// ```
+    #[clippy::version = "1.44.0"]
+    pub VERBOSE_FILE_READS,
+    restriction,
+    "use of `File::read_to_end` or `File::read_to_string`"
+}
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Option<RustcVersion>,
@@ -3050,6 +3078,7 @@ impl_lint_pass!(Methods => [
     UNIT_HASH,
     UNNECESSARY_SORT_BY,
     VEC_RESIZE_TO_ZERO,
+    VERBOSE_FILE_READS,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -3440,6 +3469,12 @@ impl Methods {
                 },
                 ("push", [arg]) => {
                     path_buf_push_overwrite::check(cx, expr, arg);
+                },
+                ("read_to_end", [_]) => {
+                    verbose_file_reads::check(cx, expr, recv, verbose_file_reads::READ_TO_END_MSG);
+                },
+                ("read_to_string", [_]) => {
+                    verbose_file_reads::check(cx, expr, recv, verbose_file_reads::READ_TO_STRING_MSG);
                 },
                 ("repeat", [arg]) => {
                     repeat_once::check(cx, expr, recv, arg);

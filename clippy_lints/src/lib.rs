@@ -391,7 +391,6 @@ mod use_self;
 mod useless_conversion;
 mod vec;
 mod vec_init_then_push;
-mod verbose_file_reads;
 mod wildcard_imports;
 mod write;
 mod zero_div_zero;
@@ -792,7 +791,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_early_pass(|| Box::new(option_env_unwrap::OptionEnvUnwrap));
     let warn_on_all_wildcard_imports = conf.warn_on_all_wildcard_imports;
     store.register_late_pass(move || Box::new(wildcard_imports::WildcardImports::new(warn_on_all_wildcard_imports)));
-    store.register_late_pass(|| Box::new(verbose_file_reads::VerboseFileReads));
     store.register_late_pass(|| Box::new(redundant_pub_crate::RedundantPubCrate::default()));
     store.register_late_pass(|| Box::new(unnamed_address::UnnamedAddress));
     store.register_late_pass(move || Box::new(dereference::Dereferencing::new(msrv)));
