@@ -367,17 +367,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     .collect();
 
                 if !clauses.is_empty() {
-                    let where_clause_span = self
-                        .tcx
-                        .hir()
-                        .get_generics(impl_item_def_id)
-                        .unwrap()
-                        .where_clause_span
-                        .shrink_to_hi();
+                    let generics = self.tcx.hir().get_generics(impl_item_def_id).unwrap();
+                    let where_clause_span = generics.tail_span_for_predicate_suggestion();
 
                     let suggestion = format!(
                         "{} {}",
-                        if !impl_predicates.is_empty() { "," } else { " where" },
+                        generics.add_where_or_trailing_comma(),
                         clauses.join(", "),
                     );
                     err.span_suggestion(

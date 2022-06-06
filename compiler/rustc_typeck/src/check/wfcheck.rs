@@ -421,7 +421,7 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, associated_items: &[hir::TraitItemRe
 
             let suggestion = format!(
                 "{} {}",
-                if !gat_item_hir.generics.predicates.is_empty() { "," } else { " where" },
+                gat_item_hir.generics.add_where_or_trailing_comma(),
                 unsatisfied_bounds.join(", "),
             );
             err.span_suggestion(
