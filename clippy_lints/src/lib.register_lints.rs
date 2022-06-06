@@ -459,6 +459,7 @@ store.register_lints(&[
     ranges::RANGE_ZIP_WITH_LEN,
     ranges::REVERSED_EMPTY_RANGES,
     rc_clone_in_vec_init::RC_CLONE_IN_VEC_INIT,
+    read_zero_byte_vec::READ_ZERO_BYTE_VEC,
     redundant_clone::REDUNDANT_CLONE,
     redundant_closure_call::REDUNDANT_CLOSURE_CALL,
     redundant_else::REDUNDANT_ELSE,

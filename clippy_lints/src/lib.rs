@@ -349,6 +349,7 @@ mod pub_use;
 mod question_mark;
 mod ranges;
 mod rc_clone_in_vec_init;
+mod read_zero_byte_vec;
 mod redundant_clone;
 mod redundant_closure_call;
 mod redundant_else;
@@ -909,6 +910,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(swap_ptr_to_ref::SwapPtrToRef));
     store.register_late_pass(|| Box::new(mismatching_type_param_order::TypeParamMismatch));
     store.register_late_pass(|| Box::new(as_underscore::AsUnderscore));
+    store.register_late_pass(|| Box::new(read_zero_byte_vec::ReadZeroByteVec));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 
