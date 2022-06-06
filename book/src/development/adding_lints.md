@@ -45,9 +45,9 @@ take a look at our [lint naming guidelines][lint_naming]. To get started on this
 lint you can run `cargo dev new_lint --name=foo_functions --pass=early
 --category=pedantic` (category will default to nursery if not provided). This
 command will create two files: `tests/ui/foo_functions.rs` and
-`clippy_lints/src/foo_functions.rs`, as well as
-[registering the lint](#lint-registration). For cargo lints, two project
-hierarchies (fail/pass) will be created by default under `tests/ui-cargo`.
+`clippy_lints/src/foo_functions.rs`, as well as [registering the
+lint](#lint-registration). For cargo lints, two project hierarchies (fail/pass)
+will be created by default under `tests/ui-cargo`.
 
 Next, we'll open up these files and add our lint!
 
@@ -58,8 +58,8 @@ Let's write some tests first that we can execute while we iterate on our lint.
 Clippy uses UI tests for testing. UI tests check that the output of Clippy is
 exactly as expected. Each test is just a plain Rust file that contains the code
 we want to check. The output of Clippy is compared against a `.stderr` file.
-Note that you don't have to create this file yourself, we'll get to
-generating the `.stderr` files further down.
+Note that you don't have to create this file yourself, we'll get to generating
+the `.stderr` files further down.
 
 We start by opening the test file created at `tests/ui/foo_functions.rs`.
 
@@ -96,60 +96,56 @@ fn main() {
 }
 ```
 
-Now we can run the test with `TESTNAME=foo_functions cargo uitest`,
-currently this test is meaningless though.
+Now we can run the test with `TESTNAME=foo_functions cargo uitest`, currently
+this test is meaningless though.
 
-While we are working on implementing our lint, we can keep running the UI
-test. That allows us to check if the output is turning into what we want.
+While we are working on implementing our lint, we can keep running the UI test.
+That allows us to check if the output is turning into what we want.
 
-Once we are satisfied with the output, we need to run
-`cargo dev bless` to update the `.stderr` file for our lint.
-Please note that, we should run `TESTNAME=foo_functions cargo uitest`
-every time before running `cargo dev bless`.
-Running `TESTNAME=foo_functions cargo uitest` should pass then. When we commit
-our lint, we need to commit the generated `.stderr` files, too. In general, you
-should only commit files changed by `cargo dev bless` for the
+Once we are satisfied with the output, we need to run `cargo dev bless` to
+update the `.stderr` file for our lint. Please note that, we should run
+`TESTNAME=foo_functions cargo uitest` every time before running `cargo dev
+bless`. Running `TESTNAME=foo_functions cargo uitest` should pass then. When we
+commit our lint, we need to commit the generated `.stderr` files, too. In
+general, you should only commit files changed by `cargo dev bless` for the
 specific lint you are creating/editing. Note that if the generated files are
 empty, they should be removed.
 
-Note that you can run multiple test files by specifying a comma separated list:
-`TESTNAME=foo_functions,test2,test3`.
+> _Note:_ you can run multiple test files by specifying a comma separated list:
+> `TESTNAME=foo_functions,test2,test3`.
 
 ### Cargo lints
 
-For cargo lints, the process of testing differs in that we are interested in
-the `Cargo.toml` manifest file. We also need a minimal crate associated
-with that manifest.
+For cargo lints, the process of testing differs in that we are interested in the
+`Cargo.toml` manifest file. We also need a minimal crate associated with that
+manifest.
 
-If our new lint is named e.g. `foo_categories`, after running `cargo dev new_lint`
-we will find by default two new crates, each with its manifest file:
+If our new lint is named e.g. `foo_categories`, after running `cargo dev
+new_lint` we will find by default two new crates, each with its manifest file:
 
-* `tests/ui-cargo/foo_categories/fail/Cargo.toml`: this file should cause the new lint to raise an error.
-* `tests/ui-cargo/foo_categories/pass/Cargo.toml`: this file should not trigger the lint.
+* `tests/ui-cargo/foo_categories/fail/Cargo.toml`: this file should cause the
+  new lint to raise an error.
+* `tests/ui-cargo/foo_categories/pass/Cargo.toml`: this file should not trigger
+  the lint.
 
-If you need more cases, you can copy one of those crates (under `foo_categories`) and rename it.
+If you need more cases, you can copy one of those crates (under
+`foo_categories`) and rename it.
 
-The process of generating the `.stderr` file is the same, and prepending the `TESTNAME`
-variable to `cargo uitest` works too.
+The process of generating the `.stderr` file is the same, and prepending the
+`TESTNAME` variable to `cargo uitest` works too.
 
 ## Rustfix tests
 
-If the lint you are working on is making use of structured suggestions, the
-test file should include a `// run-rustfix` comment at the top. This will
+If the lint you are working on is making use of structured suggestions, the test
+file should include a `// run-rustfix` comment at the top. This will
 additionally run [rustfix] for that test. Rustfix will apply the suggestions
-from the lint to the code of the test file and compare that to the contents of
-a `.fixed` file.
+from the lint to the code of the test file and compare that to the contents of a
+`.fixed` file.
 
-Use `cargo dev bless` to automatically generate the
-`.fixed` file after running the tests.
+Use `cargo dev bless` to automatically generate the `.fixed` file after running
+the tests.
 
 [rustfix]: https://github.com/rust-lang/rustfix
-
-## Edition 2018 tests
-
-Some features require the 2018 edition to work (e.g. `async_await`), but
-compile-test tests run on the 2015 edition by default. To change this behavior
-add `// edition:2018` at the top of the test file (note that it's space-sensitive).
 
 ## Testing manually
 
@@ -166,9 +162,9 @@ implementing our lint now.
 
 ## Lint declaration
 
-Let's start by opening the new file created in the `clippy_lints` crate
-at `clippy_lints/src/foo_functions.rs`. That's the crate where all the
-lint code is. This file has already imported some initial things we will need:
+Let's start by opening the new file created in the `clippy_lints` crate at
+`clippy_lints/src/foo_functions.rs`. That's the crate where all the lint code
+is. This file has already imported some initial things we will need:
 
 ```rust
 use rustc_lint::{EarlyLintPass, EarlyContext};
@@ -178,7 +174,8 @@ use rustc_ast::ast::*;
 
 The next step is to update the lint declaration. Lints are declared using the
 [`declare_clippy_lint!`][declare_clippy_lint] macro, and we just need to update
-the auto-generated lint declaration to have a real description, something like this:
+the auto-generated lint declaration to have a real description, something like
+this:
 
 ```rust
 declare_clippy_lint! {
@@ -198,24 +195,25 @@ declare_clippy_lint! {
 ```
 
 * The section of lines prefixed with `///` constitutes the lint documentation
-  section. This is the default documentation style and will be displayed
-  [like this][example_lint_page]. To render and open this documentation locally
-  in a browser, run `cargo dev serve`.
-* The `#[clippy::version]` attribute will be rendered as part of the lint documentation.
-  The value should be set to the current Rust version that the lint is developed in,
-  it can be retrieved by running `rustc -vV` in the rust-clippy directory. The version
-  is listed under *release*. (Use the version without the `-nightly`) suffix.
-* `FOO_FUNCTIONS` is the name of our lint. Be sure to follow the
-  [lint naming guidelines][lint_naming] here when naming your lint.
-  In short, the name should state the thing that is being checked for and
-  read well when used with `allow`/`warn`/`deny`.
-* `pedantic` sets the lint level to `Allow`.
-  The exact mapping can be found [here][category_level_mapping]
+  section. This is the default documentation style and will be displayed [like
+  this][example_lint_page]. To render and open this documentation locally in a
+  browser, run `cargo dev serve`.
+* The `#[clippy::version]` attribute will be rendered as part of the lint
+  documentation. The value should be set to the current Rust version that the
+  lint is developed in, it can be retrieved by running `rustc -vV` in the
+  rust-clippy directory. The version is listed under *release*. (Use the version
+  without the `-nightly`) suffix.
+* `FOO_FUNCTIONS` is the name of our lint. Be sure to follow the [lint naming
+  guidelines][lint_naming] here when naming your lint. In short, the name should
+  state the thing that is being checked for and read well when used with
+  `allow`/`warn`/`deny`.
+* `pedantic` sets the lint level to `Allow`. The exact mapping can be found
+  [here][category_level_mapping]
 * The last part should be a text that explains what exactly is wrong with the
   code
 
-The rest of this file contains an empty implementation for our lint pass,
-which in this case is `EarlyLintPass` and should look like this:
+The rest of this file contains an empty implementation for our lint pass, which
+in this case is `EarlyLintPass` and should look like this:
 
 ```rust
 // clippy_lints/src/foo_functions.rs
@@ -324,9 +322,9 @@ impl EarlyLintPass for FooFunctions {
 Running our UI test should now produce output that contains the lint message.
 
 According to [the rustc-dev-guide], the text should be matter of fact and avoid
-capitalization and periods, unless multiple sentences are needed.
-When code or an identifier must appear in a message or label, it should be
-surrounded with single grave accents \`.
+capitalization and periods, unless multiple sentences are needed. When code or
+an identifier must appear in a message or label, it should be surrounded with
+single grave accents \`.
 
 [check_fn]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/trait.EarlyLintPass.html#method.check_fn
 [diagnostics]: https://github.com/rust-lang/rust-clippy/blob/master/clippy_utils/src/diagnostics.rs
@@ -382,8 +380,8 @@ fn is_foo_fn(fn_kind: FnKind<'_>) -> bool {
 ```
 
 Now we should also run the full test suite with `cargo test`. At this point
-running `cargo test` should produce the expected output. Remember to run
-`cargo dev bless` to update the `.stderr` file.
+running `cargo test` should produce the expected output. Remember to run `cargo
+dev bless` to update the `.stderr` file.
 
 `cargo test` (as opposed to `cargo uitest`) will also ensure that our lint
 implementation is not violating any Clippy lints itself.
@@ -397,13 +395,16 @@ pass.
 
 ## Specifying the lint's minimum supported Rust version (MSRV)
 
-Sometimes a lint makes suggestions that require a certain version of Rust. For example, the `manual_strip` lint suggests
-using `str::strip_prefix` and `str::strip_suffix` which is only available after Rust 1.45. In such cases, you need to
-ensure that the MSRV configured for the project is >= the MSRV of the required Rust feature. If multiple features are
-required, just use the one with a lower MSRV.
+Sometimes a lint makes suggestions that require a certain version of Rust. For
+example, the `manual_strip` lint suggests using `str::strip_prefix` and
+`str::strip_suffix` which is only available after Rust 1.45. In such cases, you
+need to ensure that the MSRV configured for the project is >= the MSRV of the
+required Rust feature. If multiple features are required, just use the one with
+a lower MSRV.
 
-First, add an MSRV alias for the required feature in [`clippy_utils::msrvs`](/clippy_utils/src/msrvs.rs). This can be
-accessed later as `msrvs::STR_STRIP_PREFIX`, for example.
+First, add an MSRV alias for the required feature in
+[`clippy_utils::msrvs`](/clippy_utils/src/msrvs.rs). This can be accessed later
+as `msrvs::STR_STRIP_PREFIX`, for example.
 
 ```rust
 msrv_aliases! {
@@ -412,8 +413,9 @@ msrv_aliases! {
 }
 ```
 
-In order to access the project-configured MSRV, you need to have an `msrv` field in the LintPass struct, and a
-constructor to initialize the field. The `msrv` value is passed to the constructor in `clippy_lints/lib.rs`.
+In order to access the project-configured MSRV, you need to have an `msrv` field
+in the LintPass struct, and a constructor to initialize the field. The `msrv`
+value is passed to the constructor in `clippy_lints/lib.rs`.
 
 ```rust
 pub struct ManualStrip {
@@ -472,11 +474,10 @@ If you have trouble implementing your lint, there is also the internal `author`
 lint to generate Clippy code that detects the offending pattern. It does not
 work for all of the Rust syntax, but can give a good starting point.
 
-The quickest way to use it, is the
-[Rust playground: play.rust-lang.org][author_example].
-Put the code you want to lint into the editor and add the `#[clippy::author]`
-attribute above the item. Then run Clippy via `Tools -> Clippy` and you should
-see the generated code in the output below.
+The quickest way to use it, is the [Rust playground:
+play.rust-lang.org][author_example]. Put the code you want to lint into the
+editor and add the `#[clippy::author]` attribute above the item. Then run Clippy
+via `Tools -> Clippy` and you should see the generated code in the output below.
 
 [Here][author_example] is an example on the playground.
 
@@ -487,13 +488,15 @@ you are implementing your lint.
 
 ## Print HIR lint
 
-To implement a lint, it's helpful to first understand the internal representation
-that rustc uses. Clippy has the `#[clippy::dump]` attribute that prints the
-[_High-Level Intermediate Representation (HIR)_] of the item, statement, or 
-expression that the attribute is attached to. To attach the attribute to expressions
-you often need to enable `#![feature(stmt_expr_attributes)]`.
+To implement a lint, it's helpful to first understand the internal
+representation that rustc uses. Clippy has the `#[clippy::dump]` attribute that
+prints the [_High-Level Intermediate Representation (HIR)_] of the item,
+statement, or expression that the attribute is attached to. To attach the
+attribute to expressions you often need to enable
+`#![feature(stmt_expr_attributes)]`.
 
-[Here][print_hir_example] you can find an example, just select _Tools_ and run _Clippy_.
+[Here][print_hir_example] you can find an example, just select _Tools_ and run
+_Clippy_.
 
 [_High-Level Intermediate Representation (HIR)_]: https://rustc-dev-guide.rust-lang.org/hir.html
 [print_hir_example]: https://play.rust-lang.org/?version=nightly&mode=debug&edition=2021&gist=daf14db3a7f39ca467cd1b86c34b9afb
@@ -518,7 +521,7 @@ declare_clippy_lint! {
     /// ```rust,ignore
     /// // A short example of code that triggers the lint
     /// ```
-    /// 
+    ///
     /// Use instead:
     /// ```rust,ignore
     /// // A short example of improved code that doesn't trigger the lint
@@ -537,9 +540,9 @@ list][lint_list].
 
 ## Running rustfmt
 
-[Rustfmt] is a tool for formatting Rust code according to style guidelines.
-Your code has to be formatted by `rustfmt` before a PR can be merged.
-Clippy uses nightly `rustfmt` in the CI.
+[Rustfmt] is a tool for formatting Rust code according to style guidelines. Your
+code has to be formatted by `rustfmt` before a PR can be merged. Clippy uses
+nightly `rustfmt` in the CI.
 
 It can be installed via `rustup`:
 
@@ -575,94 +578,105 @@ Before submitting your PR make sure you followed all of the basic requirements:
 
 ## Adding configuration to a lint
 
-Clippy supports the configuration of lints values using a `clippy.toml` file in the workspace
-directory. Adding a configuration to a lint can be useful for thresholds or to constrain some
-behavior that can be seen as a false positive for some users. Adding a configuration is done
-in the following steps:
+Clippy supports the configuration of lints values using a `clippy.toml` file in
+the workspace directory. Adding a configuration to a lint can be useful for
+thresholds or to constrain some behavior that can be seen as a false positive
+for some users. Adding a configuration is done in the following steps:
 
-1. Adding a new configuration entry to [clippy_lints::utils::conf](/clippy_lints/src/utils/conf.rs)
-    like this:
-    ```rust
-    /// Lint: LINT_NAME.
-    ///
-    /// <The configuration field doc comment>
-    (configuration_ident: Type = DefaultValue),
-    ```
-    The doc comment is automatically added to the documentation of the listed lints. The default
-    value will be formatted using the `Debug` implementation of the type.
+1. Adding a new configuration entry to
+   [clippy_lints::utils::conf](/clippy_lints/src/utils/conf.rs) like this:
+
+   ```rust
+   /// Lint: LINT_NAME.
+   ///
+   /// <The configuration field doc comment>
+   (configuration_ident: Type = DefaultValue),
+   ```
+
+   The doc comment is automatically added to the documentation of the listed
+   lints. The default value will be formatted using the `Debug` implementation
+   of the type.
 2. Adding the configuration value to the lint impl struct:
-    1. This first requires the definition of a lint impl struct. Lint impl structs are usually
-        generated with the `declare_lint_pass!` macro. This struct needs to be defined manually
-        to add some kind of metadata to it:
-        ```rust
-        // Generated struct definition
-        declare_lint_pass!(StructName => [
-            LINT_NAME
-        ]);
+    1. This first requires the definition of a lint impl struct. Lint impl
+       structs are usually generated with the `declare_lint_pass!` macro. This
+       struct needs to be defined manually to add some kind of metadata to it:
+       ```rust
+       // Generated struct definition
+       declare_lint_pass!(StructName => [
+           LINT_NAME
+       ]);
 
-        // New manual definition struct
-        #[derive(Copy, Clone)]
-        pub struct StructName {}
+       // New manual definition struct
+       #[derive(Copy, Clone)]
+       pub struct StructName {}
 
-        impl_lint_pass!(StructName => [
-            LINT_NAME
-        ]);
-        ```
+       impl_lint_pass!(StructName => [
+           LINT_NAME
+       ]);
+       ```
 
-    2. Next add the configuration value and a corresponding creation method like this:
-        ```rust
-        #[derive(Copy, Clone)]
-        pub struct StructName {
-            configuration_ident: Type,
-        }
+    2. Next add the configuration value and a corresponding creation method like
+       this:
+       ```rust
+       #[derive(Copy, Clone)]
+       pub struct StructName {
+           configuration_ident: Type,
+       }
 
-        // ...
+       // ...
 
-        impl StructName {
-            pub fn new(configuration_ident: Type) -> Self {
-                Self {
-                    configuration_ident,
-                }
-            }
-        }
-        ```
+       impl StructName {
+           pub fn new(configuration_ident: Type) -> Self {
+               Self {
+                   configuration_ident,
+               }
+           }
+       }
+       ```
 3. Passing the configuration value to the lint impl struct:
 
-    First find the struct construction in the [clippy_lints lib file](/clippy_lints/src/lib.rs).
-    The configuration value is now cloned or copied into a local value that is then passed to the
-    impl struct like this:
-    ```rust
-    // Default generated registration:
-    store.register_*_pass(|| box module::StructName);
+   First find the struct construction in the [clippy_lints lib
+   file](/clippy_lints/src/lib.rs). The configuration value is now cloned or
+   copied into a local value that is then passed to the impl struct like this:
 
-    // New registration with configuration value
-    let configuration_ident = conf.configuration_ident.clone();
-    store.register_*_pass(move || box module::StructName::new(configuration_ident));
-    ```
+   ```rust
+   // Default generated registration:
+   store.register_*_pass(|| box module::StructName);
 
-    Congratulations the work is almost done. The configuration value can now be accessed
-    in the linting code via `self.configuration_ident`.
+   // New registration with configuration value
+   let configuration_ident = conf.configuration_ident.clone();
+   store.register_*_pass(move || box module::StructName::new(configuration_ident));
+   ```
+
+   Congratulations the work is almost done. The configuration value can now be
+   accessed in the linting code via `self.configuration_ident`.
 
 4. Adding tests:
-    1. The default configured value can be tested like any normal lint in [`tests/ui`](/tests/ui).
-    2. The configuration itself will be tested separately in [`tests/ui-toml`](/tests/ui-toml).
-        Simply add a new subfolder with a fitting name. This folder contains a `clippy.toml` file
-        with the configuration value and a rust file that should be linted by Clippy. The test can
-        otherwise be written as usual.
+    1. The default configured value can be tested like any normal lint in
+       [`tests/ui`](/tests/ui).
+    2. The configuration itself will be tested separately in
+       [`tests/ui-toml`](/tests/ui-toml). Simply add a new subfolder with a
+       fitting name. This folder contains a `clippy.toml` file with the
+       configuration value and a rust file that should be linted by Clippy. The
+       test can otherwise be written as usual.
 
 ## Cheat Sheet
 
 Here are some pointers to things you are likely going to need for every lint:
 
 * [Clippy utils][utils] - Various helper functions. Maybe the function you need
-  is already in here ([`is_type_diagnostic_item`], [`implements_trait`], [`snippet`], etc)
+  is already in here ([`is_type_diagnostic_item`], [`implements_trait`],
+  [`snippet`], etc)
 * [Clippy diagnostics][diagnostics]
 * [Let chains][let-chains]
-* [`from_expansion`][from_expansion] and [`in_external_macro`][in_external_macro]
+* [`from_expansion`][from_expansion] and
+  [`in_external_macro`][in_external_macro]
 * [`Span`][span]
 * [`Applicability`][applicability]
-* [Common tools for writing lints](common_tools_writing_lints.md) helps with common operations
-* [The rustc-dev-guide][rustc-dev-guide] explains a lot of internal compiler concepts
+* [Common tools for writing lints](common_tools_writing_lints.md) helps with
+  common operations
+* [The rustc-dev-guide][rustc-dev-guide] explains a lot of internal compiler
+  concepts
 * [The nightly rustc docs][nightly_docs] which has been linked to throughout
   this guide
 
