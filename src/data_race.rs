@@ -1,11 +1,11 @@
 //! Implementation of a data-race detector using Lamport Timestamps / Vector-clocks
 //! based on the Dynamic Race Detection for C++:
-//! https://www.doc.ic.ac.uk/~afd/homepages/papers/pdfs/2017/POPL.pdf
+//! <https://www.doc.ic.ac.uk/~afd/homepages/papers/pdfs/2017/POPL.pdf>
 //! which does not report false-positives when fences are used, and gives better
 //! accuracy in presence of read-modify-write operations.
 //!
 //! The implementation contains modifications to correctly model the changes to the memory model in C++20
-//! regarding the weakening of release sequences: http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p0982r1.html.
+//! regarding the weakening of release sequences: <http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p0982r1.html>.
 //! Relaxed stores now unconditionally block all currently active release sequences and so per-thread tracking of release
 //! sequences is not needed.
 //!
@@ -15,7 +15,7 @@
 //! This does not explore weak memory orders and so can still miss data-races
 //! but should not report false-positives
 //!
-//! Data-race definition from(https://en.cppreference.com/w/cpp/language/memory_model#Threads_and_data_races):
+//! Data-race definition from(<https://en.cppreference.com/w/cpp/language/memory_model#Threads_and_data_races>):
 //! a data race occurs between two memory accesses if they are on different threads, at least one operation
 //! is non-atomic, at least one operation is a write and neither access happens-before the other. Read the link
 //! for full definition.
@@ -24,7 +24,7 @@
 //! because it only re-uses vector indexes once all currently-active (not-terminated) threads have an internal
 //! vector clock that happens-after the join operation of the candidate thread. Threads that have not been joined
 //! on are not considered. Since the thread's vector clock will only increase and a data-race implies that
-//! there is some index x where clock[x] > thread_clock, when this is true clock[candidate-idx] > thread_clock
+//! there is some index x where clock\[x\] > thread_clock, when this is true clock\[candidate-idx\] > thread_clock
 //! can never hold and hence a data-race can never be reported in that vector index again.
 //! This means that the thread-index can be safely re-used, starting on the next timestamp for the newly created
 //! thread.
