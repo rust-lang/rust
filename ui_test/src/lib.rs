@@ -516,9 +516,10 @@ fn ignore_file(comments: &Comments, target: &str) -> bool {
         if !target.contains(s) {
             return true;
         }
+        /* FIXME(https://github.com/rust-lang/miri/issues/2206)
         if get_pointer_width(target) != s {
             return true;
-        }
+        } */
     }
     false
 }
