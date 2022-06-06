@@ -18,9 +18,9 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 // ->
 // ```
 // fn main() {
-//     'loop: loop {
-//         break 'loop;
-//         continue 'loop;
+//     'l: loop {
+//         break 'l;
+//         continue 'l;
 //     }
 // }
 // ```
@@ -47,17 +47,17 @@ pub(crate) fn add_label_to_loop(acc: &mut Assists, ctx: &AssistContext) -> Optio
                 match expr {
                     ast::Expr::BreakExpr(break_expr) => {
                         if let Some(break_token) = break_expr.break_token() {
-                            builder.insert(break_token.text_range().end(), " 'loop")
+                            builder.insert(break_token.text_range().end(), " 'l")
                         }
                     }
                     ast::Expr::ContinueExpr(continue_expr) => {
                         if let Some(continue_token) = continue_expr.continue_token() {
-                            builder.insert(continue_token.text_range().end(), " 'loop")
+                            builder.insert(continue_token.text_range().end(), " 'l")
                         }
                     }
                     ast::Expr::LoopExpr(loop_expr) => {
                         if let Some(loop_token) = loop_expr.loop_token() {
-                            builder.insert(loop_token.text_range().start(), "'loop: ")
+                            builder.insert(loop_token.text_range().start(), "'l: ")
                         }
                     }
                     _ => {}
@@ -86,9 +86,9 @@ fn main() {
 }"#,
             r#"
 fn main() {
-    'loop: loop {
-        break 'loop;
-        continue 'loop;
+    'l: loop {
+        break 'l;
+        continue 'l;
     }
 }"#,
         );
@@ -111,9 +111,9 @@ fn main() {
 }"#,
             r#"
 fn main() {
-    'loop: loop {
-        break 'loop;
-        continue 'loop;
+    'l: loop {
+        break 'l;
+        continue 'l;
         loop {
             break;
             continue;
@@ -143,9 +143,9 @@ fn main() {
     loop {
         break;
         continue;
-        'loop: loop {
-            break 'loop;
-            continue 'loop;
+        'l: loop {
+            break 'l;
+            continue 'l;
         }
     }
 }"#,
@@ -158,9 +158,9 @@ fn main() {
             add_label_to_loop,
             r#"
 fn main() {
-    'loop: loop$0 {
-        break 'loop;
-        continue 'loop;
+    'l: loop$0 {
+        break 'l;
+        continue 'l;
     }
 }"#,
         );

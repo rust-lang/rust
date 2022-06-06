@@ -116,9 +116,9 @@ fn main() {
 "#####,
         r#####"
 fn main() {
-    'loop: loop {
-        break 'loop;
-        continue 'loop;
+    'l: loop {
+        break 'l;
+        continue 'l;
     }
 }
 "#####,
