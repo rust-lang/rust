@@ -2254,10 +2254,10 @@ fn encode_metadata_impl(tcx: TyCtxt<'_>, path: &Path) {
     let root = ecx.encode_crate_root();
 
     ecx.opaque.flush();
-    let mut file = std::fs::OpenOptions::new()
-        .write(true)
-        .open(path)
-        .unwrap_or_else(|err| tcx.sess.fatal(&format!("failed to open the file: {}", err)));
+
+    let mut file = ecx.opaque.file();
+    // We will return to this position after writing the root position.
+    let pos_before_seek = file.stream_position().unwrap();
 
     // Encode the root position.
     let header = METADATA_HEADER.len();
@@ -2266,6 +2266,9 @@ fn encode_metadata_impl(tcx: TyCtxt<'_>, path: &Path) {
     let pos = root.position.get();
     file.write_all(&[(pos >> 24) as u8, (pos >> 16) as u8, (pos >> 8) as u8, (pos >> 0) as u8])
         .unwrap_or_else(|err| tcx.sess.fatal(&format!("failed to write to the file: {}", err)));
+
+    // Return to the position where we are before writing the root position.
+    file.seek(std::io::SeekFrom::Start(pos_before_seek)).unwrap();
 
     // Record metadata size for self-profiling
     tcx.prof.artifact_size(
