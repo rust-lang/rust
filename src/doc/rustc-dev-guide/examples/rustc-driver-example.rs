@@ -13,13 +13,12 @@ extern crate rustc_interface;
 extern crate rustc_session;
 extern crate rustc_span;
 
+use std::{path, process, str};
+
 use rustc_errors::registry;
 use rustc_hash::{FxHashMap, FxHashSet};
 use rustc_session::config::{self, CheckCfg};
 use rustc_span::source_map;
-use std::path;
-use std::process;
-use std::str;
 
 fn main() {
     let out = process::Command::new("rustc")
@@ -38,9 +37,14 @@ fn main() {
         crate_cfg: FxHashSet::default(), // FxHashSet<(String, Option<String>)>
         crate_check_cfg: CheckCfg::default(), // CheckCfg
         input: config::Input::Str {
-            name: source_map::FileName::Custom("main.rs".to_string()),
-            input: "static HELLO: &str = \"Hello, world!\"; fn main() { println!(\"{}\", HELLO); }"
-                .to_string(),
+            name: source_map::FileName::Custom("main.rs".into()),
+            input: r#"
+static HELLO: &str = "Hello, world!";
+fn main() {
+    println!("{HELLO}");
+}
+"#
+            .into(),
         },
         input_path: None,  // Option<PathBuf>
         output_dir: None,  // Option<PathBuf>
@@ -69,16 +73,17 @@ fn main() {
         compiler.enter(|queries| {
             // Parse the program and print the syntax tree.
             let parse = queries.parse().unwrap().take();
-            println!("{:#?}", parse);
+            println!("{parse:?}");
             // Analyze the program and inspect the types of definitions.
             queries.global_ctxt().unwrap().take().enter(|tcx| {
                 for id in tcx.hir().items() {
-                    let item = tcx.hir().item(id);
+                    let hir = tcx.hir();
+                    let item = hir.item(id);
                     match item.kind {
                         rustc_hir::ItemKind::Static(_, _, _) | rustc_hir::ItemKind::Fn(_, _, _) => {
                             let name = item.ident;
-                            let ty = tcx.type_of(tcx.hir().local_def_id(item.hir_id()));
-                            println!("{:?}:\t{:?}", name, ty)
+                            let ty = tcx.type_of(hir.local_def_id(item.hir_id()));
+                            println!("{name:?}:\t{ty:?}")
                         }
                         _ => (),
                     }
