@@ -888,7 +888,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             }
             AssocConstraintKind::Bound { ref bounds } => {
                 // Piggy-back on the `impl Trait` context to figure out the correct behavior.
-                let (_desugar_to_impl_trait /*_*/, itctx) = match itctx {
+                let (_desugar_to_impl_trait, itctx) = match itctx {
                     // We are in the return position:
                     //
                     //     fn foo() -> impl Iterator<Item: Debug>
@@ -933,6 +933,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     // Desugar `AssocTy: Bounds` into `AssocTy = impl Bounds`. We do this by
                     // constructing the HIR for `impl bounds...` and then lowering that.
 
+                    let parent_def_id = self.current_hir_id_owner;
                     let impl_trait_node_id = constraint.impl_trait_id;
 
                     self.resolver.create_def(
