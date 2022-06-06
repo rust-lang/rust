@@ -78,6 +78,7 @@ mod string_extend_chars;
 mod suspicious_map;
 mod suspicious_splitn;
 mod uninit_assumed_init;
+mod unit_hash;
 mod unnecessary_filter_map;
 mod unnecessary_fold;
 mod unnecessary_iter_cloned;
@@ -2832,6 +2833,45 @@ declare_clippy_lint! {
     "use of sort() when sort_unstable() is equivalent"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Detects `().hash(_)`.
+    ///
+    /// ### Why is this bad?
+    /// Hashing a unit value doesn't do anything as the implementation of `Hash` for `()` is a no-op.
+    ///
+    /// ### Example
+    /// ```rust
+    /// # use std::hash::Hash;
+    /// # use std::collections::hash_map::DefaultHasher;
+    /// # enum Foo { Empty, WithValue(u8) }
+    /// # use Foo::*;
+    /// # let mut state = DefaultHasher::new();
+    /// # let my_enum = Foo::Empty;
+    /// match my_enum {
+    /// 	Empty => ().hash(&mut state),
+    /// 	WithValue(x) => x.hash(&mut state),
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// # use std::hash::Hash;
+    /// # use std::collections::hash_map::DefaultHasher;
+    /// # enum Foo { Empty, WithValue(u8) }
+    /// # use Foo::*;
+    /// # let mut state = DefaultHasher::new();
+    /// # let my_enum = Foo::Empty;
+    /// match my_enum {
+    /// 	Empty => 0_u8.hash(&mut state),
+    /// 	WithValue(x) => x.hash(&mut state),
+    /// }
+    /// ```
+    #[clippy::version = "1.58.0"]
+    pub UNIT_HASH,
+    correctness,
+    "hashing a unit value, which does nothing"
+}
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Option<RustcVersion>,
@@ -2949,6 +2989,7 @@ impl_lint_pass!(Methods => [
     RANGE_ZIP_WITH_LEN,
     REPEAT_ONCE,
     STABLE_SORT_PRIMITIVE,
+    UNIT_HASH,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -3258,6 +3299,9 @@ impl Methods {
                     get_last_with_len::check(cx, expr, recv, arg);
                 },
                 ("get_or_insert_with", [arg]) => unnecessary_lazy_eval::check(cx, expr, recv, arg, "get_or_insert"),
+                ("hash", [arg]) => {
+                    unit_hash::check(cx, expr, recv, arg);
+                },
                 ("is_file", []) => filetype_is_file::check(cx, expr, recv),
                 ("is_digit", [radix]) => is_digit_ascii_radix::check(cx, expr, recv, radix, self.msrv),
                 ("is_none", []) => check_is_some_is_none(cx, expr, recv, false),
