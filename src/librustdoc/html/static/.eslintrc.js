@@ -78,5 +78,6 @@ module.exports = {
         "block-scoped-var": "error",
         "guard-for-in": "error",
         "no-alert": "error",
+        "no-confusing-arrow": "error",
     }
 };
