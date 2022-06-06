@@ -5,7 +5,7 @@ use super::{
 
 use crate::autoderef::Autoderef;
 use crate::infer::InferCtxt;
-use crate::traits::normalize_projection_type;
+use crate::traits::normalize_to;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
@@ -2706,55 +2706,43 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 let future_trait = self.tcx.require_lang_item(LangItem::Future, None);
 
                 let self_ty = self.resolve_vars_if_possible(trait_pred.self_ty());
-
-                // Do not check on infer_types to avoid panic in evaluate_obligation.
-                if self_ty.has_infer_types() {
-                    return;
-                }
-                let self_ty = self.tcx.erase_regions(self_ty);
-
                 let impls_future = self.type_implements_trait(
                     future_trait,
-                    self_ty.skip_binder(),
+                    self.tcx.erase_late_bound_regions(self_ty),
                     ty::List::empty(),
                     obligation.param_env,
                 );
+                if !impls_future.must_apply_modulo_regions() {
+                    return;
+                }
 
                 let item_def_id = self.tcx.associated_item_def_ids(future_trait)[0];
                 // `<T as Future>::Output`
-                let projection_ty = ty::ProjectionTy {
-                    // `T`
-                    substs: self.tcx.mk_substs_trait(
-                        trait_pred.self_ty().skip_binder(),
-                        &self.fresh_substs_for_item(span, item_def_id)[1..],
-                    ),
-                    // `Future::Output`
-                    item_def_id,
-                };
-
-                let mut selcx = SelectionContext::new(self);
-
-                let mut obligations = vec![];
-                let normalized_ty = normalize_projection_type(
-                    &mut selcx,
+                let projection_ty = trait_pred.map_bound(|trait_pred| {
+                    self.tcx.mk_projection(
+                        item_def_id,
+                        // Future::Output has no substs
+                        self.tcx.mk_substs_trait(trait_pred.self_ty(), &[]),
+                    )
+                });
+                let projection_ty = normalize_to(
+                    &mut SelectionContext::new(self),
                     obligation.param_env,
-                    projection_ty,
                     obligation.cause.clone(),
-                    0,
-                    &mut obligations,
+                    projection_ty,
+                    &mut vec![],
                 );
 
                 debug!(
                     "suggest_await_before_try: normalized_projection_type {:?}",
-                    self.resolve_vars_if_possible(normalized_ty)
+                    self.resolve_vars_if_possible(projection_ty)
                 );
                 let try_obligation = self.mk_trait_obligation_with_new_self_ty(
                     obligation.param_env,
-                    trait_pred.map_bound(|trait_pred| (trait_pred, normalized_ty.ty().unwrap())),
+                    trait_pred.map_bound(|trait_pred| (trait_pred, projection_ty.skip_binder())),
                 );
                 debug!("suggest_await_before_try: try_trait_obligation {:?}", try_obligation);
                 if self.predicate_may_hold(&try_obligation)
-                    && impls_future.must_apply_modulo_regions()
                     && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span)
                     && snippet.ends_with('?')
                 {
