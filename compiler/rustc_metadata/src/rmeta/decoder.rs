@@ -41,7 +41,7 @@ use std::io;
 use std::iter::TrustedLen;
 use std::mem;
 use std::num::NonZeroUsize;
-use std::path::Path;
+use std::path::PathBuf;
 use tracing::debug;
 
 pub(super) use cstore_impl::provide;
@@ -1472,20 +1472,26 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         //
         // NOTE: if you update this, you might need to also update bootstrap's code for generating
         // the `rust-src` component in `Src::run` in `src/bootstrap/dist.rs`.
-        let virtual_rust_source_base_dir = option_env!("CFG_VIRTUAL_RUST_SOURCE_BASE_DIR")
-            .map(Path::new)
-            .filter(|_| {
-                // Only spend time on further checks if we have what to translate *to*.
-                sess.opts.real_rust_source_base_dir.is_some()
-                    // Some tests need the translation to be always skipped.
-                    && sess.opts.debugging_opts.translate_remapped_path_to_local_path
-            })
-            .filter(|virtual_dir| {
-                // Don't translate away `/rustc/$hash` if we're still remapping to it,
-                // since that means we're still building `std`/`rustc` that need it,
-                // and we don't want the real path to leak into codegen/debuginfo.
-                !sess.opts.remap_path_prefix.iter().any(|(_from, to)| to == virtual_dir)
-            });
+        let virtual_rust_source_base_dir = [
+            option_env!("CFG_VIRTUAL_RUST_SOURCE_BASE_DIR").map(PathBuf::from),
+            sess.opts.debugging_opts.simulate_remapped_rust_src_base.clone(),
+        ]
+        .into_iter()
+        .filter(|_| {
+            // Only spend time on further checks if we have what to translate *to*.
+            sess.opts.real_rust_source_base_dir.is_some()
+                // Some tests need the translation to be always skipped.
+                && sess.opts.debugging_opts.translate_remapped_path_to_local_path
+        })
+        .flatten()
+        .filter(|virtual_dir| {
+            // Don't translate away `/rustc/$hash` if we're still remapping to it,
+            // since that means we're still building `std`/`rustc` that need it,
+            // and we don't want the real path to leak into codegen/debuginfo.
+            !sess.opts.remap_path_prefix.iter().any(|(_from, to)| to == virtual_dir)
+        })
+        .collect::<Vec<_>>();
+
         let try_to_translate_virtual_to_real = |name: &mut rustc_span::FileName| {
             debug!(
                 "try_to_translate_virtual_to_real(name={:?}): \
@@ -1493,7 +1499,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 name, virtual_rust_source_base_dir, sess.opts.real_rust_source_base_dir,
             );
 
-            if let Some(virtual_dir) = virtual_rust_source_base_dir {
+            for virtual_dir in &virtual_rust_source_base_dir {
                 if let Some(real_dir) = &sess.opts.real_rust_source_base_dir {
                     if let rustc_span::FileName::Real(old_name) = name {
                         if let rustc_span::RealFileName::Remapped { local_path: _, virtual_name } =
