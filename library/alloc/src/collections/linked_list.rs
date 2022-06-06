@@ -446,7 +446,9 @@ impl<T> LinkedList<T> {
     ///
     /// list.insert(1, 4);
     ///
-    /// assert_eq!(list, [1, 4, 2, 3]);
+    /// for i in list {
+    ///     print!("{} ", i)
+    /// }
     /// ```
 
     #[stable(feature = "rust1", since = "1.0.0")]
