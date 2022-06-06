@@ -817,11 +817,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                  trait bound{s}",
                                 s = pluralize!(obligations.len())
                             ),
-                            format!(
-                                "{} {}",
-                                add_where_or_comma,
-                                obligations.join(", ")
-                            ),
+                            format!("{} {}", add_where_or_comma, obligations.join(", ")),
                             Applicability::MaybeIncorrect,
                         );
                     }

@@ -27,7 +27,9 @@ use rustc_hir::{GenericArg, GenericArgs, OpaqueTyOrigin};
 use rustc_middle::middle::stability::AllowUnstable;
 use rustc_middle::ty::subst::{self, GenericArgKind, InternalSubsts, Subst, SubstsRef};
 use rustc_middle::ty::GenericParamDefKind;
-use rustc_middle::ty::{self, Const, DefIdTree, EarlyBinder, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{
+    self, Const, DefIdTree, EarlyBinder, IsSuggestable, Ty, TyCtxt, TypeFoldable,
+};
 use rustc_session::lint::builtin::{AMBIGUOUS_ASSOCIATED_ITEMS, BARE_TRAIT_OBJECTS};
 use rustc_span::edition::Edition;
 use rustc_span::lev_distance::find_best_match_for_name;

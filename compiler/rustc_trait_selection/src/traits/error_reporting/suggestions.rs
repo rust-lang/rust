@@ -21,11 +21,9 @@ use rustc_hir::lang_items::LangItem;
 use rustc_hir::{AsyncGeneratorKind, GeneratorKind, Node};
 use rustc_middle::hir::map;
 use rustc_middle::ty::{
-    self,
-    subst::{GenericArgKind, SubstsRef},
-    suggest_arbitrary_trait_bound, suggest_constraining_type_param, AdtKind, DefIdTree,
-    GeneratorDiagnosticData, GeneratorInteriorTypeCause, Infer, InferTy, ToPredicate, Ty, TyCtxt,
-    TypeFoldable,
+    self, suggest_arbitrary_trait_bound, suggest_constraining_type_param, AdtKind, DefIdTree,
+    GeneratorDiagnosticData, GeneratorInteriorTypeCause, Infer, InferTy, IsSuggestable,
+    ToPredicate, Ty, TyCtxt, TypeFoldable,
 };
 use rustc_middle::ty::{TypeAndMut, TypeckResults};
 use rustc_session::Limit;
@@ -358,11 +356,14 @@ fn suggest_restriction<'tcx>(
             ty::Param(param) => {
                 // `fn foo(t: impl Trait)`
                 //                 ^^^^^ get this string
-                param.name.as_str().strip_prefix("impl").map(|s| (s.trim_start().to_string(), sig))
+                param.name.as_str().strip_prefix("impl ").map(|s| (s.trim_start().to_string(), sig))
             }
             _ => None,
         })
     {
+        if !trait_pred.is_suggestable_modulo_impl_trait(tcx, &bound_str) {
+            return;
+        }
         // We know we have an `impl Trait` that doesn't satisfy a required projection.
 
         // Find all of the occurrences of `impl Trait` for `Trait` in the function arguments'
@@ -417,6 +418,9 @@ fn suggest_restriction<'tcx>(
             Applicability::MaybeIncorrect,
         );
     } else {
+        if !trait_pred.is_suggestable(tcx) {
+            return;
+        }
         // Trivial case: `T` needs an extra bound: `T: Bound`.
         let (sp, suggestion) = match (
             generics
@@ -461,16 +465,6 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             ty::Param(_) => (true, None),
             ty::Projection(projection) => (false, Some(projection)),
             _ => (false, None),
-        };
-
-        let generic_args_have_impl_trait = |args: SubstsRef<'tcx>| -> bool {
-            args.iter().any(|arg| match arg.unpack() {
-                GenericArgKind::Type(ty) => match ty.kind() {
-                    ty::Param(param) => param.name.as_str().starts_with("impl"),
-                    _ => false,
-                },
-                _ => false,
-            })
         };
 
         // FIXME: Add check for trait bound that is already present, particularly `?Sized` so we
@@ -574,6 +568,12 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 | hir::Node::ImplItem(hir::ImplItem { generics, .. })
                     if param_ty =>
                 {
+                    if !trait_pred.skip_binder().trait_ref.substs[1..]
+                        .iter()
+                        .all(|g| g.is_suggestable(self.tcx))
+                    {
+                        return;
+                    }
                     // Missing generic type parameter bound.
                     let param_name = self_ty.to_string();
                     let constraint = with_no_trimmed_paths!(
@@ -603,13 +603,9 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         | hir::ItemKind::TraitAlias(generics, _)
                         | hir::ItemKind::OpaqueTy(hir::OpaqueTy { generics, .. }),
                     ..
-                }) if !param_ty
-                    && !generic_args_have_impl_trait(trait_pred.skip_binder().trait_ref.substs) =>
-                {
+                }) if !param_ty => {
                     // Missing generic type parameter bound.
-                    let param_name = self_ty.to_string();
-                    let constraint = trait_pred.print_modifiers_and_trait_path().to_string();
-                    if suggest_arbitrary_trait_bound(generics, &mut err, &param_name, &constraint) {
+                    if suggest_arbitrary_trait_bound(self.tcx, generics, &mut err, trait_pred) {
                         return;
                     }
                 }

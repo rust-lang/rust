@@ -39,7 +39,7 @@ use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::util::Discr;
 use rustc_middle::ty::util::IntTypeExt;
-use rustc_middle::ty::{self, AdtKind, Const, DefIdTree, Ty, TyCtxt};
+use rustc_middle::ty::{self, AdtKind, Const, DefIdTree, IsSuggestable, Ty, TyCtxt};
 use rustc_middle::ty::{ReprOptions, ToPredicate};
 use rustc_session::lint;
 use rustc_session::parse::feature_err;

@@ -3,8 +3,8 @@
 use std::ops::ControlFlow;
 
 use crate::ty::{
-    fold::TypeFoldable, Const, ConstKind, DefIdTree, ExistentialPredicate, InferTy, Ty, TyCtxt,
-    TypeVisitor,
+    fold::TypeFoldable, Const, ConstKind, DefIdTree, ExistentialPredicate, InferTy,
+    PolyTraitPredicate, Ty, TyCtxt, TypeSuperFoldable, TypeVisitor,
 };
 
 use rustc_data_structures::fx::FxHashMap;
@@ -73,31 +73,53 @@ impl<'tcx> Ty<'tcx> {
             _ => self.is_simple_ty(),
         }
     }
+}
 
-    /// Whether the type can be safely suggested during error recovery.
-    pub fn is_suggestable(self, tcx: TyCtxt<'tcx>) -> bool {
-        self.visit_with(&mut IsSuggestableVisitor { tcx }).is_continue()
+pub trait IsSuggestable<'tcx> {
+    fn is_suggestable(self, tcx: TyCtxt<'tcx>) -> bool;
+
+    fn is_suggestable_modulo_impl_trait(self, tcx: TyCtxt<'tcx>, bound_str: &str) -> bool;
+}
+
+impl<'tcx, T> IsSuggestable<'tcx> for T
+where
+    T: TypeFoldable<'tcx>,
+{
+    fn is_suggestable(self, tcx: TyCtxt<'tcx>) -> bool {
+        self.visit_with(&mut IsSuggestableVisitor { tcx, bound_str: None }).is_continue()
+    }
+
+    fn is_suggestable_modulo_impl_trait(self, tcx: TyCtxt<'tcx>, bound_str: &str) -> bool {
+        self.visit_with(&mut IsSuggestableVisitor { tcx, bound_str: Some(bound_str) }).is_continue()
     }
 }
 
-pub fn suggest_arbitrary_trait_bound(
+pub fn suggest_arbitrary_trait_bound<'tcx>(
+    tcx: TyCtxt<'tcx>,
     generics: &hir::Generics<'_>,
     err: &mut Diagnostic,
-    param_name: &str,
-    constraint: &str,
+    trait_pred: PolyTraitPredicate<'tcx>,
 ) -> bool {
-    let param = generics.params.iter().find(|p| p.name.ident().as_str() == param_name);
-    match (param, param_name) {
-        (Some(_), "Self") => return false,
-        _ => {}
+    if !trait_pred.is_suggestable(tcx) {
+        return false;
     }
+
+    let param_name = trait_pred.skip_binder().self_ty().to_string();
+    let constraint = trait_pred.print_modifiers_and_trait_path().to_string();
+    let param = generics.params.iter().find(|p| p.name.ident().as_str() == param_name);
+
+    // Skip, there is a param named Self
+    if param.is_some() && param_name == "Self" {
+        return false;
+    }
+
     // Suggest a where clause bound for a non-type parameter.
     err.span_suggestion_verbose(
         generics.tail_span_for_predicate_suggestion(),
         &format!(
             "consider {} `where` clause, but there might be an alternative better way to express \
              this requirement",
-             if generics.has_where_clause_token { "extending the" } else { "introducing a" },
+            if generics.has_where_clause_token { "extending the" } else { "introducing a" },
         ),
         format!("{} {}: {}", generics.add_where_or_trailing_comma(), param_name, constraint),
         Applicability::MaybeIncorrect,
@@ -395,11 +417,12 @@ impl<'v> hir::intravisit::Visitor<'v> for StaticLifetimeVisitor<'v> {
     }
 }
 
-pub struct IsSuggestableVisitor<'tcx> {
+pub struct IsSuggestableVisitor<'tcx, 's> {
     tcx: TyCtxt<'tcx>,
+    bound_str: Option<&'s str>,
 }
 
-impl<'tcx> TypeVisitor<'tcx> for IsSuggestableVisitor<'tcx> {
+impl<'tcx> TypeVisitor<'tcx> for IsSuggestableVisitor<'tcx, '_> {
     type BreakTy = ();
 
     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
@@ -434,6 +457,16 @@ impl<'tcx> TypeVisitor<'tcx> for IsSuggestableVisitor<'tcx> {
                             // Okay
                         }
                         _ => return ControlFlow::Break(()),
+                    }
+                }
+            }
+
+            Param(param) => {
+                if let Some(found_bound_str) =
+                    param.name.as_str().strip_prefix("impl ").map(|s| s.trim_start())
+                {
+                    if self.bound_str.map_or(true, |bound_str| bound_str != found_bound_str) {
+                        return ControlFlow::Break(());
                     }
                 }
             }
