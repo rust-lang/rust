@@ -444,11 +444,9 @@ impl<T> LinkedList<T> {
     ///
     /// let mut list = LinkedList::from([1, 2, 3]);
     ///
-    /// list.insert(1, 4);
+    /// list.insert(1, 4); // list -> [1, 4, 2, 3]
     ///
-    /// for i in list {
-    ///     print!("{} ", i)
-    /// }
+    /// 
     /// ```
 
     #[stable(feature = "rust1", since = "1.0.0")]
