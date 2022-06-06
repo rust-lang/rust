@@ -77,6 +77,7 @@ impl CheckAttrVisitor<'_> {
         for attr in attrs {
             let attr_is_valid = match attr.name_or_empty() {
                 sym::inline => self.check_inline(hir_id, attr, span, target),
+                sym::no_coverage => self.check_no_coverage(hir_id, attr, span, target),
                 sym::non_exhaustive => self.check_non_exhaustive(hir_id, attr, span, target),
                 sym::marker => self.check_marker(hir_id, attr, span, target),
                 sym::rustc_must_implement_one_of => {
@@ -285,6 +286,57 @@ impl CheckAttrVisitor<'_> {
                     "attribute should be applied to function or closure",
                 )
                 .span_label(span, "not a function or closure")
+                .emit();
+                false
+            }
+        }
+    }
+
+    /// Checks if a `#[no_coverage]` is applied directly to a function
+    fn check_no_coverage(
+        &self,
+        hir_id: HirId,
+        attr: &Attribute,
+        span: Span,
+        target: Target,
+    ) -> bool {
+        match target {
+            // no_coverage on function is fine
+            Target::Fn
+            | Target::Closure
+            | Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent) => true,
+
+            // function prototypes can't be covered
+            Target::Method(MethodKind::Trait { body: false }) | Target::ForeignFn => {
+                self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
+                    lint.build("`#[no_coverage]` is ignored on function prototypes").emit();
+                });
+                true
+            }
+
+            Target::Mod | Target::ForeignMod | Target::Impl | Target::Trait => {
+                self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
+                    lint.build("`#[no_coverage]` does not propagate into items and must be applied to the contained functions directly").emit();
+                });
+                true
+            }
+
+            Target::Expression | Target::Statement | Target::Arm => {
+                self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
+                    lint.build("`#[no_coverage]` may only be applied to function definitions")
+                        .emit();
+                });
+                true
+            }
+
+            _ => {
+                struct_span_err!(
+                    self.tcx.sess,
+                    attr.span,
+                    E0788,
+                    "`#[no_coverage]` must be applied to coverable code",
+                )
+                .span_label(span, "not coverable code")
                 .emit();
                 false
             }
