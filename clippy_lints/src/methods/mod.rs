@@ -57,6 +57,7 @@ mod needless_option_take;
 mod no_effect_replace;
 mod obfuscated_if_else;
 mod ok_expect;
+mod open_options;
 mod option_as_ref_deref;
 mod option_map_or_none;
 mod option_map_unwrap_or;
@@ -2679,6 +2680,27 @@ declare_clippy_lint! {
     "`&mut Mutex::lock` does unnecessary locking"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for duplicate open options as well as combinations
+    /// that make no sense.
+    ///
+    /// ### Why is this bad?
+    /// In the best case, the code will be harder to read than
+    /// necessary. I don't know the worst case.
+    ///
+    /// ### Example
+    /// ```rust
+    /// use std::fs::OpenOptions;
+    ///
+    /// OpenOptions::new().read(true).truncate(true);
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub NONSENSICAL_OPEN_OPTIONS,
+    correctness,
+    "nonsensical combination of options for opening a file"
+}
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Option<RustcVersion>,
@@ -2791,6 +2813,7 @@ impl_lint_pass!(Methods => [
     MAP_CLONE,
     MAP_ERR_IGNORE,
     MUT_MUTEX_LOCK,
+    NONSENSICAL_OPEN_OPTIONS,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -3168,6 +3191,9 @@ impl Methods {
                     _ => iter_nth_zero::check(cx, expr, recv, n_arg),
                 },
                 ("ok_or_else", [arg]) => unnecessary_lazy_eval::check(cx, expr, recv, arg, "ok_or"),
+                ("open", [_]) => {
+                    open_options::check(cx, expr, recv);
+                },
                 ("or_else", [arg]) => {
                     if !bind_instead_of_map::ResultOrElseErrInfo::check(cx, expr, recv, arg) {
                         unnecessary_lazy_eval::check(cx, expr, recv, arg, "or");

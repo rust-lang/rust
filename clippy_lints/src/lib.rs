@@ -315,7 +315,6 @@ mod non_send_fields_in_send_ty;
 mod nonstandard_macro_braces;
 mod octal_escapes;
 mod only_used_in_recursion;
-mod open_options;
 mod operators;
 mod option_env_unwrap;
 mod option_if_let_else;
@@ -641,7 +640,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(lifetimes::Lifetimes));
     store.register_late_pass(|| Box::new(entry::HashMapPass));
     store.register_late_pass(|| Box::new(minmax::MinMaxPass));
-    store.register_late_pass(|| Box::new(open_options::OpenOptions));
     store.register_late_pass(|| Box::new(zero_div_zero::ZeroDiv));
     store.register_late_pass(|| Box::new(mutex_atomic::Mutex));
     store.register_late_pass(|| Box::new(needless_update::NeedlessUpdate));
