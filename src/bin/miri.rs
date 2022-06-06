@@ -310,208 +310,154 @@ fn main() {
         } else if after_dashdash {
             // Everything that comes after `--` is forwarded to the interpreted crate.
             miri_config.args.push(arg);
-        } else {
-            match arg.as_str() {
-                "-Zmiri-disable-validation" => {
-                    miri_config.validate = false;
-                }
-                "-Zmiri-disable-stacked-borrows" => {
-                    miri_config.stacked_borrows = false;
-                }
-                "-Zmiri-disable-data-race-detector" => {
-                    miri_config.data_race_detector = false;
-                }
-                "-Zmiri-disable-alignment-check" => {
-                    miri_config.check_alignment = miri::AlignmentCheck::None;
-                }
-                "-Zmiri-symbolic-alignment-check" => {
-                    miri_config.check_alignment = miri::AlignmentCheck::Symbolic;
-                }
-                "-Zmiri-check-number-validity" => {
-                    eprintln!(
-                        "WARNING: the flag `-Zmiri-check-number-validity` no longer has any effect \
+        } else if arg == "--" {
+            after_dashdash = true;
+        } else if arg == "-Zmiri-disable-validation" {
+            miri_config.validate = false;
+        } else if arg == "-Zmiri-disable-stacked-borrows" {
+            miri_config.stacked_borrows = false;
+        } else if arg == "-Zmiri-disable-data-race-detector" {
+            miri_config.data_race_detector = false;
+        } else if arg == "-Zmiri-disable-alignment-check" {
+            miri_config.check_alignment = miri::AlignmentCheck::None;
+        } else if arg == "-Zmiri-symbolic-alignment-check" {
+            miri_config.check_alignment = miri::AlignmentCheck::Symbolic;
+        } else if arg == "-Zmiri-check-number-validity" {
+            eprintln!(
+                "WARNING: the flag `-Zmiri-check-number-validity` no longer has any effect \
                         since it is now enabled by default"
-                    );
-                }
-                "-Zmiri-allow-uninit-numbers" => {
-                    miri_config.allow_uninit_numbers = true;
-                }
-                "-Zmiri-allow-ptr-int-transmute" => {
-                    miri_config.allow_ptr_int_transmute = true;
-                }
-                "-Zmiri-disable-abi-check" => {
-                    miri_config.check_abi = false;
-                }
-                "-Zmiri-disable-isolation" => {
-                    if matches!(isolation_enabled, Some(true)) {
-                        panic!(
-                            "-Zmiri-disable-isolation cannot be used along with -Zmiri-isolation-error"
-                        );
-                    } else {
-                        isolation_enabled = Some(false);
-                    }
-                    miri_config.isolated_op = miri::IsolatedOp::Allow;
-                }
-                arg if arg.starts_with("-Zmiri-isolation-error=") => {
-                    if matches!(isolation_enabled, Some(false)) {
-                        panic!(
-                            "-Zmiri-isolation-error cannot be used along with -Zmiri-disable-isolation"
-                        );
-                    } else {
-                        isolation_enabled = Some(true);
-                    }
+            );
+        } else if arg == "-Zmiri-allow-uninit-numbers" {
+            miri_config.allow_uninit_numbers = true;
+        } else if arg == "-Zmiri-allow-ptr-int-transmute" {
+            miri_config.allow_ptr_int_transmute = true;
+        } else if arg == "-Zmiri-disable-abi-check" {
+            miri_config.check_abi = false;
+        } else if arg == "-Zmiri-disable-isolation" {
+            if matches!(isolation_enabled, Some(true)) {
+                panic!("-Zmiri-disable-isolation cannot be used along with -Zmiri-isolation-error");
+            } else {
+                isolation_enabled = Some(false);
+            }
+            miri_config.isolated_op = miri::IsolatedOp::Allow;
+        } else if let Some(param) = arg.strip_prefix("-Zmiri-isolation-error=") {
+            if matches!(isolation_enabled, Some(false)) {
+                panic!("-Zmiri-isolation-error cannot be used along with -Zmiri-disable-isolation");
+            } else {
+                isolation_enabled = Some(true);
+            }
 
-                    miri_config.isolated_op = match arg
-                        .strip_prefix("-Zmiri-isolation-error=")
-                        .unwrap()
-                    {
-                        "abort" => miri::IsolatedOp::Reject(miri::RejectOpWith::Abort),
-                        "hide" => miri::IsolatedOp::Reject(miri::RejectOpWith::NoWarning),
-                        "warn" => miri::IsolatedOp::Reject(miri::RejectOpWith::Warning),
-                        "warn-nobacktrace" =>
-                            miri::IsolatedOp::Reject(miri::RejectOpWith::WarningWithoutBacktrace),
-                        _ =>
-                            panic!(
-                                "-Zmiri-isolation-error must be `abort`, `hide`, `warn`, or `warn-nobacktrace`"
-                            ),
-                    };
-                }
-                "-Zmiri-ignore-leaks" => {
-                    miri_config.ignore_leaks = true;
-                }
-                "-Zmiri-panic-on-unsupported" => {
-                    miri_config.panic_on_unsupported = true;
-                }
-                "-Zmiri-tag-raw-pointers" => {
-                    miri_config.tag_raw = true;
-                }
-                "-Zmiri-strict-provenance" => {
-                    miri_config.provenance_mode = ProvenanceMode::Strict;
-                    miri_config.tag_raw = true;
-                }
-                "-Zmiri-permissive-provenance" => {
-                    miri_config.provenance_mode = ProvenanceMode::Permissive;
-                    miri_config.tag_raw = true;
-                }
-                "-Zmiri-mute-stdout-stderr" => {
-                    miri_config.mute_stdout_stderr = true;
-                }
-                "-Zmiri-track-raw-pointers" => {
-                    eprintln!(
-                        "WARNING: -Zmiri-track-raw-pointers has been renamed to -Zmiri-tag-raw-pointers, the old name is deprecated."
-                    );
-                    miri_config.tag_raw = true;
-                }
-                "--" => {
-                    after_dashdash = true;
-                }
-                arg if arg.starts_with("-Zmiri-seed=") => {
-                    if miri_config.seed.is_some() {
-                        panic!("Cannot specify -Zmiri-seed multiple times!");
-                    }
-                    let seed = u64::from_str_radix(arg.strip_prefix("-Zmiri-seed=").unwrap(), 16)
+            miri_config.isolated_op = match param {
+                "abort" => miri::IsolatedOp::Reject(miri::RejectOpWith::Abort),
+                "hide" => miri::IsolatedOp::Reject(miri::RejectOpWith::NoWarning),
+                "warn" => miri::IsolatedOp::Reject(miri::RejectOpWith::Warning),
+                "warn-nobacktrace" =>
+                    miri::IsolatedOp::Reject(miri::RejectOpWith::WarningWithoutBacktrace),
+                _ =>
+                    panic!(
+                        "-Zmiri-isolation-error must be `abort`, `hide`, `warn`, or `warn-nobacktrace`"
+                    ),
+            };
+        } else if arg == "-Zmiri-ignore-leaks" {
+            miri_config.ignore_leaks = true;
+        } else if arg == "-Zmiri-panic-on-unsupported" {
+            miri_config.panic_on_unsupported = true;
+        } else if arg == "-Zmiri-tag-raw-pointers" {
+            miri_config.tag_raw = true;
+        } else if arg == "-Zmiri-strict-provenance" {
+            miri_config.provenance_mode = ProvenanceMode::Strict;
+            miri_config.tag_raw = true;
+        } else if arg == "-Zmiri-permissive-provenance" {
+            miri_config.provenance_mode = ProvenanceMode::Permissive;
+            miri_config.tag_raw = true;
+        } else if arg == "-Zmiri-mute-stdout-stderr" {
+            miri_config.mute_stdout_stderr = true;
+        } else if arg == "-Zmiri-track-raw-pointers" {
+            eprintln!(
+                "WARNING: -Zmiri-track-raw-pointers has been renamed to -Zmiri-tag-raw-pointers, the old name is deprecated."
+            );
+            miri_config.tag_raw = true;
+        } else if let Some(param) = arg.strip_prefix("-Zmiri-seed=") {
+            if miri_config.seed.is_some() {
+                panic!("Cannot specify -Zmiri-seed multiple times!");
+            }
+            let seed = u64::from_str_radix(param, 16)
                         .unwrap_or_else(|_| panic!(
                             "-Zmiri-seed should only contain valid hex digits [0-9a-fA-F] and fit into a u64 (max 16 characters)"
                         ));
-                    miri_config.seed = Some(seed);
-                }
-                arg if arg.starts_with("-Zmiri-env-exclude=") => {
-                    miri_config
-                        .excluded_env_vars
-                        .push(arg.strip_prefix("-Zmiri-env-exclude=").unwrap().to_owned());
-                }
-                arg if arg.starts_with("-Zmiri-env-forward=") => {
-                    miri_config
-                        .forwarded_env_vars
-                        .push(arg.strip_prefix("-Zmiri-env-forward=").unwrap().to_owned());
-                }
-                arg if arg.starts_with("-Zmiri-track-pointer-tag=") => {
-                    let ids: Vec<u64> = match parse_comma_list(
-                        arg.strip_prefix("-Zmiri-track-pointer-tag=").unwrap(),
-                    ) {
-                        Ok(ids) => ids,
-                        Err(err) =>
-                            panic!(
-                                "-Zmiri-track-pointer-tag requires a comma separated list of valid `u64` arguments: {}",
-                                err
-                            ),
-                    };
-                    for id in ids.into_iter().map(miri::PtrId::new) {
-                        if let Some(id) = id {
-                            miri_config.tracked_pointer_tags.insert(id);
-                        } else {
-                            panic!("-Zmiri-track-pointer-tag requires nonzero arguments");
-                        }
-                    }
-                }
-                arg if arg.starts_with("-Zmiri-track-call-id=") => {
-                    let ids: Vec<u64> = match parse_comma_list(
-                        arg.strip_prefix("-Zmiri-track-call-id=").unwrap(),
-                    ) {
-                        Ok(ids) => ids,
-                        Err(err) =>
-                            panic!(
-                                "-Zmiri-track-call-id requires a comma separated list of valid `u64` arguments: {}",
-                                err
-                            ),
-                    };
-                    for id in ids.into_iter().map(miri::CallId::new) {
-                        if let Some(id) = id {
-                            miri_config.tracked_call_ids.insert(id);
-                        } else {
-                            panic!("-Zmiri-track-call-id requires a nonzero argument");
-                        }
-                    }
-                }
-                arg if arg.starts_with("-Zmiri-track-alloc-id=") => {
-                    let ids: Vec<miri::AllocId> = match parse_comma_list::<NonZeroU64>(
-                        arg.strip_prefix("-Zmiri-track-alloc-id=").unwrap(),
-                    ) {
-                        Ok(ids) => ids.into_iter().map(miri::AllocId).collect(),
-                        Err(err) =>
-                            panic!(
-                                "-Zmiri-track-alloc-id requires a comma separated list of valid non-zero `u64` arguments: {}",
-                                err
-                            ),
-                    };
-                    miri_config.tracked_alloc_ids.extend(ids);
-                }
-                arg if arg.starts_with("-Zmiri-compare-exchange-weak-failure-rate=") => {
-                    let rate = match arg
-                        .strip_prefix("-Zmiri-compare-exchange-weak-failure-rate=")
-                        .unwrap()
-                        .parse::<f64>()
-                    {
-                        Ok(rate) if rate >= 0.0 && rate <= 1.0 => rate,
-                        Ok(_) =>
-                            panic!(
-                                "-Zmiri-compare-exchange-weak-failure-rate must be between `0.0` and `1.0`"
-                            ),
-                        Err(err) =>
-                            panic!(
-                                "-Zmiri-compare-exchange-weak-failure-rate requires a `f64` between `0.0` and `1.0`: {}",
-                                err
-                            ),
-                    };
-                    miri_config.cmpxchg_weak_failure_rate = rate;
-                }
-                arg if arg.starts_with("-Zmiri-measureme=") => {
-                    let measureme_out = arg.strip_prefix("-Zmiri-measureme=").unwrap();
-                    miri_config.measureme_out = Some(measureme_out.to_string());
-                }
-                arg if arg.starts_with("-Zmiri-backtrace=") => {
-                    miri_config.backtrace_style = match arg.strip_prefix("-Zmiri-backtrace=") {
-                        Some("0") => BacktraceStyle::Off,
-                        Some("1") => BacktraceStyle::Short,
-                        Some("full") => BacktraceStyle::Full,
-                        _ => panic!("-Zmiri-backtrace may only be 0, 1, or full"),
-                    };
-                }
-                _ => {
-                    // Forward to rustc.
-                    rustc_args.push(arg);
+            miri_config.seed = Some(seed);
+        } else if let Some(param) = arg.strip_prefix("-Zmiri-env-exclude=") {
+            miri_config.excluded_env_vars.push(param.to_owned());
+        } else if let Some(param) = arg.strip_prefix("-Zmiri-env-forward=") {
+            miri_config.forwarded_env_vars.push(param.to_owned());
+        } else if let Some(param) = arg.strip_prefix("-Zmiri-track-pointer-tag=") {
+            let ids: Vec<u64> = match parse_comma_list(param) {
+                Ok(ids) => ids,
+                Err(err) =>
+                    panic!(
+                        "-Zmiri-track-pointer-tag requires a comma separated list of valid `u64` arguments: {}",
+                        err
+                    ),
+            };
+            for id in ids.into_iter().map(miri::PtrId::new) {
+                if let Some(id) = id {
+                    miri_config.tracked_pointer_tags.insert(id);
+                } else {
+                    panic!("-Zmiri-track-pointer-tag requires nonzero arguments");
                 }
             }
+        } else if let Some(param) = arg.strip_prefix("-Zmiri-track-call-id=") {
+            let ids: Vec<u64> = match parse_comma_list(param) {
+                Ok(ids) => ids,
+                Err(err) =>
+                    panic!(
+                        "-Zmiri-track-call-id requires a comma separated list of valid `u64` arguments: {}",
+                        err
+                    ),
+            };
+            for id in ids.into_iter().map(miri::CallId::new) {
+                if let Some(id) = id {
+                    miri_config.tracked_call_ids.insert(id);
+                } else {
+                    panic!("-Zmiri-track-call-id requires a nonzero argument");
+                }
+            }
+        } else if let Some(param) = arg.strip_prefix("-Zmiri-track-alloc-id=") {
+            let ids: Vec<miri::AllocId> = match parse_comma_list::<NonZeroU64>(param) {
+                Ok(ids) => ids.into_iter().map(miri::AllocId).collect(),
+                Err(err) =>
+                    panic!(
+                        "-Zmiri-track-alloc-id requires a comma separated list of valid non-zero `u64` arguments: {}",
+                        err
+                    ),
+            };
+            miri_config.tracked_alloc_ids.extend(ids);
+        } else if let Some(param) = arg.strip_prefix("-Zmiri-compare-exchange-weak-failure-rate=") {
+            let rate = match param.parse::<f64>() {
+                Ok(rate) if rate >= 0.0 && rate <= 1.0 => rate,
+                Ok(_) =>
+                    panic!(
+                        "-Zmiri-compare-exchange-weak-failure-rate must be between `0.0` and `1.0`"
+                    ),
+                Err(err) =>
+                    panic!(
+                        "-Zmiri-compare-exchange-weak-failure-rate requires a `f64` between `0.0` and `1.0`: {}",
+                        err
+                    ),
+            };
+            miri_config.cmpxchg_weak_failure_rate = rate;
+        } else if let Some(param) = arg.strip_prefix("-Zmiri-measureme=") {
+            miri_config.measureme_out = Some(param.to_string());
+        } else if let Some(param) = arg.strip_prefix("-Zmiri-backtrace=") {
+            miri_config.backtrace_style = match param {
+                "0" => BacktraceStyle::Off,
+                "1" => BacktraceStyle::Short,
+                "full" => BacktraceStyle::Full,
+                _ => panic!("-Zmiri-backtrace may only be 0, 1, or full"),
+            };
+        } else {
+            // Forward to rustc.
+            rustc_args.push(arg);
         }
     }
 
