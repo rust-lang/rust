@@ -123,7 +123,8 @@ impl Condvar {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
-    pub fn new() -> Condvar {
+    #[inline]
+    pub const fn new() -> Condvar {
         Condvar { inner: sys::Condvar::new() }
     }
 

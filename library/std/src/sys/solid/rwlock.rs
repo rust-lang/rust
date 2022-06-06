@@ -23,6 +23,7 @@ fn new_rwl() -> Result<abi::ID, ItronError> {
 }
 
 impl RwLock {
+    #[inline]
     pub const fn new() -> RwLock {
         RwLock { rwl: SpinIdOnceCell::new() }
     }

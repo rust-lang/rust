@@ -214,7 +214,8 @@ impl<T> Mutex<T> {
     /// let mutex = Mutex::new(0);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn new(t: T) -> Mutex<T> {
+    #[inline]
+    pub const fn new(t: T) -> Mutex<T> {
         Mutex {
             inner: sys::MovableMutex::new(),
             poison: poison::Flag::new(),

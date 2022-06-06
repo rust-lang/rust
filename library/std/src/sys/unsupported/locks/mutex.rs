@@ -11,6 +11,7 @@ unsafe impl Send for Mutex {}
 unsafe impl Sync for Mutex {} // no threads on this platform
 
 impl Mutex {
+    #[inline]
     pub const fn new() -> Mutex {
         Mutex { locked: Cell::new(false) }
     }

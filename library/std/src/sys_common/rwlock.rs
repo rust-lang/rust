@@ -10,6 +10,7 @@ pub struct StaticRwLock(imp::RwLock);
 
 impl StaticRwLock {
     /// Creates a new rwlock for use.
+    #[inline]
     pub const fn new() -> Self {
         Self(imp::RwLock::new())
     }
@@ -73,6 +74,7 @@ pub struct MovableRwLock(imp::MovableRwLock);
 
 impl MovableRwLock {
     /// Creates a new reader-writer lock for use.
+    #[inline]
     pub fn new() -> Self {
         Self(imp::MovableRwLock::new())
     }

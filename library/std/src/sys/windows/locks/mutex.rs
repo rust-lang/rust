@@ -33,6 +33,7 @@ pub unsafe fn raw(m: &Mutex) -> c::PSRWLOCK {
 }
 
 impl Mutex {
+    #[inline]
     pub const fn new() -> Mutex {
         Mutex { srwlock: UnsafeCell::new(c::SRWLOCK_INIT) }
     }

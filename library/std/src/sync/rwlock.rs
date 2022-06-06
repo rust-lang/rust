@@ -146,7 +146,8 @@ impl<T> RwLock<T> {
     /// let lock = RwLock::new(5);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn new(t: T) -> RwLock<T> {
+    #[inline]
+    pub const fn new(t: T) -> RwLock<T> {
         RwLock {
             inner: sys::MovableRwLock::new(),
             poison: poison::Flag::new(),
