@@ -42,41 +42,62 @@ LL | const NULL_BOX: Box<u16> = unsafe { mem::transmute(0usize) };
                00 00 00 00                                     │ ....
            }
 
-error[E0080]: it is undefined behavior to use this value
+error: any use of this value will cause an error
   --> $DIR/ub-ref-ptr.rs:31:1
    |
 LL | const REF_AS_USIZE: usize = unsafe { mem::transmute(&0) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered pointer to alloc15, but expected plain (non-pointer) bytes
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
    |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 4, align: 4) {
-               ╾─alloc15─╼                                     │ ╾──╼
-           }
+   = note: `#[deny(const_err)]` on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-ref-ptr.rs:34:1
+error: any use of this value will cause an error
+  --> $DIR/ub-ref-ptr.rs:35:39
    |
 LL | const REF_AS_USIZE_SLICE: &[usize] = &[unsafe { mem::transmute(&0) }];
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed at .<deref>: encountered a pointer, but expected plain (non-pointer) bytes
+   | --------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
+   |                                       |
+   |                                       unable to turn pointer into raw bytes
    |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 4, align: 4) {
-               ╾─alloc21─╼                                     │ ╾──╼
-           }
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-ref-ptr.rs:37:1
+error: any use of this value will cause an error
+  --> $DIR/ub-ref-ptr.rs:35:38
+   |
+LL | const REF_AS_USIZE_SLICE: &[usize] = &[unsafe { mem::transmute(&0) }];
+   | -------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
+   |                                      |
+   |                                      referenced constant has errors
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+
+error: any use of this value will cause an error
+  --> $DIR/ub-ref-ptr.rs:41:86
    |
 LL | const REF_AS_USIZE_BOX_SLICE: Box<[usize]> = unsafe { mem::transmute::<&[usize], _>(&[mem::transmute(&0)]) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed at .<deref>: encountered a pointer, but expected plain (non-pointer) bytes
+   | -------------------------------------------------------------------------------------^^^^^^^^^^^^^^^^^^^^----
+   |                                                                                      |
+   |                                                                                      unable to turn pointer into raw bytes
    |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 4, align: 4) {
-               ╾─alloc26─╼                                     │ ╾──╼
-           }
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+
+error: any use of this value will cause an error
+  --> $DIR/ub-ref-ptr.rs:41:85
+   |
+LL | const REF_AS_USIZE_BOX_SLICE: Box<[usize]> = unsafe { mem::transmute::<&[usize], _>(&[mem::transmute(&0)]) };
+   | ------------------------------------------------------------------------------------^^^^^^^^^^^^^^^^^^^^^----
+   |                                                                                     |
+   |                                                                                     referenced constant has errors
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-ref-ptr.rs:40:1
+  --> $DIR/ub-ref-ptr.rs:47:1
    |
 LL | const USIZE_AS_REF: &'static u8 = unsafe { mem::transmute(1337usize) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a dangling reference (address 0x539 is unallocated)
@@ -87,7 +108,7 @@ LL | const USIZE_AS_REF: &'static u8 = unsafe { mem::transmute(1337usize) };
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-ref-ptr.rs:43:1
+  --> $DIR/ub-ref-ptr.rs:50:1
    |
 LL | const USIZE_AS_BOX: Box<u8> = unsafe { mem::transmute(1337usize) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a dangling box (address 0x539 is unallocated)
@@ -98,7 +119,7 @@ LL | const USIZE_AS_BOX: Box<u8> = unsafe { mem::transmute(1337usize) };
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-ref-ptr.rs:46:1
+  --> $DIR/ub-ref-ptr.rs:53:1
    |
 LL | const UNINIT_PTR: *const i32 = unsafe { MaybeUninit { uninit: () }.init };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered uninitialized raw pointer
@@ -109,7 +130,7 @@ LL | const UNINIT_PTR: *const i32 = unsafe { MaybeUninit { uninit: () }.init };
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-ref-ptr.rs:49:1
+  --> $DIR/ub-ref-ptr.rs:56:1
    |
 LL | const NULL_FN_PTR: fn() = unsafe { mem::transmute(0usize) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a null function pointer
@@ -120,7 +141,7 @@ LL | const NULL_FN_PTR: fn() = unsafe { mem::transmute(0usize) };
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-ref-ptr.rs:51:1
+  --> $DIR/ub-ref-ptr.rs:58:1
    |
 LL | const UNINIT_FN_PTR: fn() = unsafe { MaybeUninit { uninit: () }.init };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered uninitialized bytes, but expected a proper pointer or integer value
@@ -131,7 +152,7 @@ LL | const UNINIT_FN_PTR: fn() = unsafe { MaybeUninit { uninit: () }.init };
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-ref-ptr.rs:53:1
+  --> $DIR/ub-ref-ptr.rs:60:1
    |
 LL | const DANGLING_FN_PTR: fn() = unsafe { mem::transmute(13usize) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered 0x0000000d, but expected a function pointer
@@ -142,7 +163,7 @@ LL | const DANGLING_FN_PTR: fn() = unsafe { mem::transmute(13usize) };
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-ref-ptr.rs:55:1
+  --> $DIR/ub-ref-ptr.rs:62:1
    |
 LL | const DATA_FN_PTR: fn() = unsafe { mem::transmute(&13) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered pointer to alloc43, but expected a function pointer
@@ -152,6 +173,6 @@ LL | const DATA_FN_PTR: fn() = unsafe { mem::transmute(&13) };
                ╾─alloc43─╼                                     │ ╾──╼
            }
 
-error: aborting due to 14 previous errors
+error: aborting due to 16 previous errors
 
 For more information about this error, try `rustc --explain E0080`.

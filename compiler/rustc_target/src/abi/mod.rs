@@ -747,6 +747,11 @@ impl Primitive {
     pub fn is_int(self) -> bool {
         matches!(self, Int(..))
     }
+
+    #[inline]
+    pub fn is_ptr(self) -> bool {
+        matches!(self, Pointer)
+    }
 }
 
 /// Inclusive wrap-around range of valid values, that is, if

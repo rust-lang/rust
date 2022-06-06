@@ -50,7 +50,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let vtable_slot = self
             .get_ptr_alloc(vtable_slot, ptr_size, self.tcx.data_layout.pointer_align.abi)?
             .expect("cannot be a ZST");
-        let fn_ptr = self.scalar_to_ptr(vtable_slot.read_ptr_sized(Size::ZERO)?.check_init()?)?;
+        let fn_ptr = self.scalar_to_ptr(vtable_slot.read_pointer(Size::ZERO)?.check_init()?)?;
         self.get_ptr_fn(fn_ptr)
     }
 
@@ -69,9 +69,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             )?
             .expect("cannot be a ZST");
         let drop_fn = vtable
-            .read_ptr_sized(
-                pointer_size * u64::try_from(COMMON_VTABLE_ENTRIES_DROPINPLACE).unwrap(),
-            )?
+            .read_pointer(pointer_size * u64::try_from(COMMON_VTABLE_ENTRIES_DROPINPLACE).unwrap())?
             .check_init()?;
         // We *need* an instance here, no other kind of function value, to be able
         // to determine the type.
@@ -104,12 +102,18 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             )?
             .expect("cannot be a ZST");
         let size = vtable
-            .read_ptr_sized(pointer_size * u64::try_from(COMMON_VTABLE_ENTRIES_SIZE).unwrap())?
+            .read_integer(
+                pointer_size * u64::try_from(COMMON_VTABLE_ENTRIES_SIZE).unwrap(),
+                pointer_size,
+            )?
             .check_init()?;
         let size = size.to_machine_usize(self)?;
         let size = Size::from_bytes(size);
         let align = vtable
-            .read_ptr_sized(pointer_size * u64::try_from(COMMON_VTABLE_ENTRIES_ALIGN).unwrap())?
+            .read_integer(
+                pointer_size * u64::try_from(COMMON_VTABLE_ENTRIES_ALIGN).unwrap(),
+                pointer_size,
+            )?
             .check_init()?;
         let align = align.to_machine_usize(self)?;
         let align = Align::from_bytes(align).map_err(|e| err_ub!(InvalidVtableAlignment(e)))?;
@@ -132,8 +136,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             .get_ptr_alloc(vtable_slot, pointer_size, self.tcx.data_layout.pointer_align.abi)?
             .expect("cannot be a ZST");
 
-        let new_vtable =
-            self.scalar_to_ptr(new_vtable.read_ptr_sized(Size::ZERO)?.check_init()?)?;
+        let new_vtable = self.scalar_to_ptr(new_vtable.read_pointer(Size::ZERO)?.check_init()?)?;
 
         Ok(new_vtable)
     }

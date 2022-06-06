@@ -1,28 +1,28 @@
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/const-pointer-values-in-various-types.rs:26:5
+error: any use of this value will cause an error
+  --> $DIR/const-pointer-values-in-various-types.rs:26:49
    |
 LL |     const I32_REF_USIZE_UNION: usize = unsafe { Nonsense { int_32_ref: &3 }.u };
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered pointer to alloc3, but expected plain (non-pointer) bytes
-   |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 8, align: 8) {
-               ╾───────alloc3────────╼                         │ ╾──────╼
-           }
-
-error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:29:43
-   |
-LL |     const I32_REF_U8_UNION: u8 = unsafe { Nonsense { int_32_ref: &3 }.uint_8 };
-   |     --------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
-   |                                           |
-   |                                           unable to turn pointer into raw bytes
+   |     --------------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
+   |                                                 |
+   |                                                 unable to turn pointer into raw bytes
    |
    = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:33:45
+  --> $DIR/const-pointer-values-in-various-types.rs:30:43
+   |
+LL |     const I32_REF_U8_UNION: u8 = unsafe { Nonsense { int_32_ref: &3 }.uint_8 };
+   |     --------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
+   |                                           |
+   |                                           unable to turn pointer into raw bytes
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+
+error: any use of this value will cause an error
+  --> $DIR/const-pointer-values-in-various-types.rs:34:45
    |
 LL |     const I32_REF_U16_UNION: u16 = unsafe { Nonsense { int_32_ref: &3 }.uint_16 };
    |     ----------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
@@ -33,7 +33,7 @@ LL |     const I32_REF_U16_UNION: u16 = unsafe { Nonsense { int_32_ref: &3 }.uin
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:37:45
+  --> $DIR/const-pointer-values-in-various-types.rs:38:45
    |
 LL |     const I32_REF_U32_UNION: u32 = unsafe { Nonsense { int_32_ref: &3 }.uint_32 };
    |     ----------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
@@ -43,19 +43,19 @@ LL |     const I32_REF_U32_UNION: u32 = unsafe { Nonsense { int_32_ref: &3 }.uin
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/const-pointer-values-in-various-types.rs:41:5
+error: any use of this value will cause an error
+  --> $DIR/const-pointer-values-in-various-types.rs:42:45
    |
 LL |     const I32_REF_U64_UNION: u64 = unsafe { Nonsense { int_32_ref: &3 }.uint_64 };
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered pointer to alloc19, but expected plain (non-pointer) bytes
+   |     ----------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
+   |                                             |
+   |                                             unable to turn pointer into raw bytes
    |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 8, align: 8) {
-               ╾───────alloc19───────╼                         │ ╾──────╼
-           }
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/const-pointer-values-in-various-types.rs:44:5
+  --> $DIR/const-pointer-values-in-various-types.rs:46:5
    |
 LL |     const I32_REF_U128_UNION: u128 = unsafe { Nonsense { int_32_ref: &3 }.uint_128 };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered uninitialized bytes, but expected initialized bytes
@@ -66,7 +66,7 @@ LL |     const I32_REF_U128_UNION: u128 = unsafe { Nonsense { int_32_ref: &3 }.u
            }
 
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:47:43
+  --> $DIR/const-pointer-values-in-various-types.rs:49:43
    |
 LL |     const I32_REF_I8_UNION: i8 = unsafe { Nonsense { int_32_ref: &3 }.int_8 };
    |     --------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
@@ -77,7 +77,7 @@ LL |     const I32_REF_I8_UNION: i8 = unsafe { Nonsense { int_32_ref: &3 }.int_8
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:51:45
+  --> $DIR/const-pointer-values-in-various-types.rs:53:45
    |
 LL |     const I32_REF_I16_UNION: i16 = unsafe { Nonsense { int_32_ref: &3 }.int_16 };
    |     ----------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
@@ -88,7 +88,7 @@ LL |     const I32_REF_I16_UNION: i16 = unsafe { Nonsense { int_32_ref: &3 }.int
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:55:45
+  --> $DIR/const-pointer-values-in-various-types.rs:57:45
    |
 LL |     const I32_REF_I32_UNION: i32 = unsafe { Nonsense { int_32_ref: &3 }.int_32 };
    |     ----------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
@@ -98,19 +98,19 @@ LL |     const I32_REF_I32_UNION: i32 = unsafe { Nonsense { int_32_ref: &3 }.int
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/const-pointer-values-in-various-types.rs:59:5
+error: any use of this value will cause an error
+  --> $DIR/const-pointer-values-in-various-types.rs:61:45
    |
 LL |     const I32_REF_I64_UNION: i64 = unsafe { Nonsense { int_32_ref: &3 }.int_64 };
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered pointer to alloc39, but expected plain (non-pointer) bytes
+   |     ----------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
+   |                                             |
+   |                                             unable to turn pointer into raw bytes
    |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 8, align: 8) {
-               ╾───────alloc39───────╼                         │ ╾──────╼
-           }
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/const-pointer-values-in-various-types.rs:62:5
+  --> $DIR/const-pointer-values-in-various-types.rs:65:5
    |
 LL |     const I32_REF_I128_UNION: i128 = unsafe { Nonsense { int_32_ref: &3 }.int_128 };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered uninitialized bytes, but expected initialized bytes
@@ -121,7 +121,7 @@ LL |     const I32_REF_I128_UNION: i128 = unsafe { Nonsense { int_32_ref: &3 }.i
            }
 
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:65:45
+  --> $DIR/const-pointer-values-in-various-types.rs:68:45
    |
 LL |     const I32_REF_F32_UNION: f32 = unsafe { Nonsense { int_32_ref: &3 }.float_32 };
    |     ----------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
@@ -131,19 +131,19 @@ LL |     const I32_REF_F32_UNION: f32 = unsafe { Nonsense { int_32_ref: &3 }.flo
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/const-pointer-values-in-various-types.rs:69:5
+error: any use of this value will cause an error
+  --> $DIR/const-pointer-values-in-various-types.rs:72:45
    |
 LL |     const I32_REF_F64_UNION: f64 = unsafe { Nonsense { int_32_ref: &3 }.float_64 };
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered pointer to alloc51, but expected plain (non-pointer) bytes
+   |     ----------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
+   |                                             |
+   |                                             unable to turn pointer into raw bytes
    |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 8, align: 8) {
-               ╾───────alloc51───────╼                         │ ╾──────╼
-           }
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:72:47
+  --> $DIR/const-pointer-values-in-various-types.rs:76:47
    |
 LL |     const I32_REF_BOOL_UNION: bool = unsafe { Nonsense { int_32_ref: &3 }.truthy_falsey };
    |     ------------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
@@ -154,7 +154,7 @@ LL |     const I32_REF_BOOL_UNION: bool = unsafe { Nonsense { int_32_ref: &3 }.t
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:76:47
+  --> $DIR/const-pointer-values-in-various-types.rs:80:47
    |
 LL |     const I32_REF_CHAR_UNION: char = unsafe { Nonsense { int_32_ref: &3 }.character };
    |     ------------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
@@ -165,7 +165,7 @@ LL |     const I32_REF_CHAR_UNION: char = unsafe { Nonsense { int_32_ref: &3 }.c
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:80:39
+  --> $DIR/const-pointer-values-in-various-types.rs:84:39
    |
 LL |     const STR_U8_UNION: u8 = unsafe { Nonsense { stringy: "3" }.uint_8 };
    |     ----------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
@@ -176,7 +176,7 @@ LL |     const STR_U8_UNION: u8 = unsafe { Nonsense { stringy: "3" }.uint_8 };
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:84:41
+  --> $DIR/const-pointer-values-in-various-types.rs:88:41
    |
 LL |     const STR_U16_UNION: u16 = unsafe { Nonsense { stringy: "3" }.uint_16 };
    |     ------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
@@ -187,7 +187,7 @@ LL |     const STR_U16_UNION: u16 = unsafe { Nonsense { stringy: "3" }.uint_16 }
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:88:41
+  --> $DIR/const-pointer-values-in-various-types.rs:92:41
    |
 LL |     const STR_U32_UNION: u32 = unsafe { Nonsense { stringy: "3" }.uint_32 };
    |     ------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
@@ -197,19 +197,19 @@ LL |     const STR_U32_UNION: u32 = unsafe { Nonsense { stringy: "3" }.uint_32 }
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/const-pointer-values-in-various-types.rs:92:5
+error: any use of this value will cause an error
+  --> $DIR/const-pointer-values-in-various-types.rs:96:41
    |
 LL |     const STR_U64_UNION: u64 = unsafe { Nonsense { stringy: "3" }.uint_64 };
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered pointer to alloc72, but expected plain (non-pointer) bytes
+   |     ------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
+   |                                         |
+   |                                         unable to turn pointer into raw bytes
    |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 8, align: 8) {
-               ╾───────alloc72───────╼                         │ ╾──────╼
-           }
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:95:43
+  --> $DIR/const-pointer-values-in-various-types.rs:100:43
    |
 LL |     const STR_U128_UNION: u128 = unsafe { Nonsense { stringy: "3" }.uint_128 };
    |     --------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
@@ -220,7 +220,7 @@ LL |     const STR_U128_UNION: u128 = unsafe { Nonsense { stringy: "3" }.uint_12
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:99:39
+  --> $DIR/const-pointer-values-in-various-types.rs:104:39
    |
 LL |     const STR_I8_UNION: i8 = unsafe { Nonsense { stringy: "3" }.int_8 };
    |     ----------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
@@ -231,7 +231,7 @@ LL |     const STR_I8_UNION: i8 = unsafe { Nonsense { stringy: "3" }.int_8 };
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:103:41
+  --> $DIR/const-pointer-values-in-various-types.rs:108:41
    |
 LL |     const STR_I16_UNION: i16 = unsafe { Nonsense { stringy: "3" }.int_16 };
    |     ------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
@@ -242,7 +242,7 @@ LL |     const STR_I16_UNION: i16 = unsafe { Nonsense { stringy: "3" }.int_16 };
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:107:41
+  --> $DIR/const-pointer-values-in-various-types.rs:112:41
    |
 LL |     const STR_I32_UNION: i32 = unsafe { Nonsense { stringy: "3" }.int_32 };
    |     ------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
@@ -252,19 +252,19 @@ LL |     const STR_I32_UNION: i32 = unsafe { Nonsense { stringy: "3" }.int_32 };
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/const-pointer-values-in-various-types.rs:111:5
+error: any use of this value will cause an error
+  --> $DIR/const-pointer-values-in-various-types.rs:116:41
    |
 LL |     const STR_I64_UNION: i64 = unsafe { Nonsense { stringy: "3" }.int_64 };
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered pointer to alloc87, but expected plain (non-pointer) bytes
+   |     ------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
+   |                                         |
+   |                                         unable to turn pointer into raw bytes
    |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 8, align: 8) {
-               ╾───────alloc87───────╼                         │ ╾──────╼
-           }
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:114:43
+  --> $DIR/const-pointer-values-in-various-types.rs:120:43
    |
 LL |     const STR_I128_UNION: i128 = unsafe { Nonsense { stringy: "3" }.int_128 };
    |     --------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
@@ -275,7 +275,7 @@ LL |     const STR_I128_UNION: i128 = unsafe { Nonsense { stringy: "3" }.int_128
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:118:41
+  --> $DIR/const-pointer-values-in-various-types.rs:124:41
    |
 LL |     const STR_F32_UNION: f32 = unsafe { Nonsense { stringy: "3" }.float_32 };
    |     ------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
@@ -285,19 +285,19 @@ LL |     const STR_F32_UNION: f32 = unsafe { Nonsense { stringy: "3" }.float_32 
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/const-pointer-values-in-various-types.rs:122:5
+error: any use of this value will cause an error
+  --> $DIR/const-pointer-values-in-various-types.rs:128:41
    |
 LL |     const STR_F64_UNION: f64 = unsafe { Nonsense { stringy: "3" }.float_64 };
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered pointer to alloc96, but expected plain (non-pointer) bytes
+   |     ------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
+   |                                         |
+   |                                         unable to turn pointer into raw bytes
    |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 8, align: 8) {
-               ╾───────alloc96───────╼                         │ ╾──────╼
-           }
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:125:43
+  --> $DIR/const-pointer-values-in-various-types.rs:132:43
    |
 LL |     const STR_BOOL_UNION: bool = unsafe { Nonsense { stringy: "3" }.truthy_falsey };
    |     --------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
@@ -308,7 +308,7 @@ LL |     const STR_BOOL_UNION: bool = unsafe { Nonsense { stringy: "3" }.truthy_
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:129:43
+  --> $DIR/const-pointer-values-in-various-types.rs:136:43
    |
 LL |     const STR_CHAR_UNION: char = unsafe { Nonsense { stringy: "3" }.character };
    |     --------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
