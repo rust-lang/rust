@@ -1,6 +1,6 @@
 // ignore-windows: Concurrency on Windows is not supported yet.
 // compile-flags: -Zmiri-ignore-leaks
-// error-pattern:
+// error-pattern: unreachable
 
 // https://plv.mpi-sws.org/scfix/paper.pdf
 // 2.2 Second Problem: SC Fences are Too Weak
@@ -76,7 +76,7 @@ fn test_cpp20_rwc_syncs() {
     // Our ui_test does not yet support overriding failure status codes.
     if (b, c) == (0, 0) {
         // This *should* be unreachable, but Miri will reach it.
-        std::process::exit(1);
+        unsafe { std::hint::unreachable_unchecked(); }
     }
 }
 

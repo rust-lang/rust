@@ -1,6 +1,3 @@
-warning: thread support is experimental: the scheduler is not preemptive, and can get stuck in spin loops.
-         (see https://github.com/rust-lang/miri/issues/1388)
-
 error: Undefined Behavior: callee has more arguments than expected
   --> $DIR/too_many_args.rs:LL:CC
    |
@@ -13,5 +10,5 @@ LL |     panic!()
    = note: inside `thread_start` at RUSTLIB/std/src/panic.rs:LL:CC
    = note: this error originates in the macro `$crate::panic::panic_2015` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to previous error; 1 warning emitted
+error: aborting due to previous error
 
