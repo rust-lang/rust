@@ -1760,8 +1760,6 @@ public:
 
   void visitBinaryOperator(llvm::BinaryOperator &BO) {
     eraseIfUnused(BO);
-    if (gutils->isConstantInstruction(&BO))
-      return;
 
     size_t size = 1;
     if (BO.getType()->isSized())
@@ -1778,6 +1776,8 @@ public:
     switch (Mode) {
     case DerivativeMode::ReverseModeGradient:
     case DerivativeMode::ReverseModeCombined:
+      if (gutils->isConstantInstruction(&BO))
+        return;
       createBinaryOperatorAdjoint(BO);
       break;
     case DerivativeMode::ForwardMode:
@@ -2255,6 +2255,11 @@ public:
   }
 
   void createBinaryOperatorDual(llvm::BinaryOperator &BO) {
+    if (gutils->isConstantInstruction(&BO)) {
+      forwardModeInvertedPointerFallback(BO);
+      return;
+    }
+
     IRBuilder<> Builder2(&BO);
     getForwardBuilder(Builder2);
 
