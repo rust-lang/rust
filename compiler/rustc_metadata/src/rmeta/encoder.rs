@@ -2158,7 +2158,7 @@ impl EncodedMetadata {
         let file = std::fs::File::open(&path)?;
         let file_metadata = file.metadata()?;
         if file_metadata.len() == 0 {
-            return Ok(Self { mmap: None, _temp_dir: temp_dir });
+            return Ok(Self { mmap: None, _temp_dir: None });
         }
         let mmap = unsafe { Some(Mmap::map(file)?) };
         Ok(Self { mmap, _temp_dir: temp_dir })
