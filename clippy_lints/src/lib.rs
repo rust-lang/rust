@@ -343,7 +343,6 @@ mod redundant_static_lifetimes;
 mod ref_option_ref;
 mod reference;
 mod regex;
-mod repeat_once;
 mod return_self_not_must_use;
 mod returns;
 mod same_name_method;
@@ -824,7 +823,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(macro_use::MacroUseImports::default()));
     store.register_late_pass(|| Box::new(pattern_type_mismatch::PatternTypeMismatch));
     store.register_late_pass(|| Box::new(stable_sort_primitive::StableSortPrimitive));
-    store.register_late_pass(|| Box::new(repeat_once::RepeatOnce));
     store.register_late_pass(|| Box::new(unwrap_in_result::UnwrapInResult));
     store.register_late_pass(|| Box::new(semicolon_if_nothing_returned::SemicolonIfNothingReturned));
     store.register_late_pass(|| Box::new(async_yields_async::AsyncYieldsAsync));
