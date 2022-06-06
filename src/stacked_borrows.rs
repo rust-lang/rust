@@ -945,7 +945,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// it does not alias with anything.
     ///
     /// This is a HACK because there is nothing in MIR that would make the retag
-    /// explicit. Also see https://github.com/rust-lang/rust/issues/71117.
+    /// explicit. Also see <https://github.com/rust-lang/rust/issues/71117>.
     fn retag_return_place(&mut self) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let return_place = this.frame_mut().return_place;

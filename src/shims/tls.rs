@@ -135,7 +135,7 @@ impl<'tcx> TlsData<'tcx> {
     /// [`_tlv_atexit`
     /// implementation](https://github.com/opensource-apple/dyld/blob/195030646877261f0c8c7ad8b001f52d6a26f514/src/threadLocalVariables.c#L389):
     ///
-    ///     // NOTE: this does not need locks because it only operates on current thread data
+    /// NOTE: this does not need locks because it only operates on current thread data
     pub fn set_macos_thread_dtor(
         &mut self,
         thread: ThreadId,
@@ -347,7 +347,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// Note: we consistently run TLS destructors for all threads, including the
     /// main thread. However, it is not clear that we should run the TLS
     /// destructors for the main thread. See issue:
-    /// https://github.com/rust-lang/rust/issues/28129.
+    /// <https://github.com/rust-lang/rust/issues/28129>.
     fn schedule_next_tls_dtor_for_active_thread(&mut self) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let active_thread = this.get_active_thread();
