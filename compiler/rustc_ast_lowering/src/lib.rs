@@ -1025,9 +1025,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     // Desugar `AssocTy: Bounds` into `AssocTy = impl Bounds`. We do this by
                     // constructing the HIR for `impl bounds...` and then lowering that.
 
-                    let parent_def_id = parent_def_id;
                     let impl_trait_node_id = constraint.impl_trait_id;
-                    
+
                     self.resolver.create_def(
                         parent_def_id,
                         impl_trait_node_id,
