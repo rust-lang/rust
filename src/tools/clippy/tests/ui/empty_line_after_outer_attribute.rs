@@ -110,4 +110,11 @@ pub trait Bazz {
     }
 }
 
+#[derive(Clone, Copy)]
+#[dummy(string = "first line
+
+second line
+")]
+pub struct Args;
+
 fn main() {}

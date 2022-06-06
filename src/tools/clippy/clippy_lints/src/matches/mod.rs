@@ -1,26 +1,34 @@
 use clippy_utils::source::{snippet_opt, span_starts_with, walk_span_to_context};
-use clippy_utils::{meets_msrv, msrvs};
+use clippy_utils::{higher, in_constant, meets_msrv, msrvs};
 use rustc_hir::{Arm, Expr, ExprKind, Local, MatchSource, Pat};
 use rustc_lexer::{tokenize, TokenKind};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_middle::lint::in_external_macro;
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::{Span, SpanData, SyntaxContext};
 
+mod collapsible_match;
 mod infallible_destructuring_match;
+mod manual_map;
+mod manual_unwrap_or;
 mod match_as_ref;
 mod match_bool;
 mod match_like_matches;
+mod match_on_vec_items;
 mod match_ref_pats;
 mod match_same_arms;
 mod match_single_binding;
+mod match_str_case_mismatch;
 mod match_wild_enum;
 mod match_wild_err_arm;
 mod needless_match;
 mod overlapping_arms;
 mod redundant_pattern_match;
 mod rest_pat_in_fully_bound_struct;
+mod significant_drop_in_scrutinee;
 mod single_match;
+mod try_err;
 mod wild_in_or_pats;
 
 declare_clippy_lint! {
@@ -610,6 +618,274 @@ declare_clippy_lint! {
     "`match` or match-like `if let` that are unnecessary"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Finds nested `match` or `if let` expressions where the patterns may be "collapsed" together
+    /// without adding any branches.
+    ///
+    /// Note that this lint is not intended to find _all_ cases where nested match patterns can be merged, but only
+    /// cases where merging would most likely make the code more readable.
+    ///
+    /// ### Why is this bad?
+    /// It is unnecessarily verbose and complex.
+    ///
+    /// ### Example
+    /// ```rust
+    /// fn func(opt: Option<Result<u64, String>>) {
+    ///     let n = match opt {
+    ///         Some(n) => match n {
+    ///             Ok(n) => n,
+    ///             _ => return,
+    ///         }
+    ///         None => return,
+    ///     };
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// fn func(opt: Option<Result<u64, String>>) {
+    ///     let n = match opt {
+    ///         Some(Ok(n)) => n,
+    ///         _ => return,
+    ///     };
+    /// }
+    /// ```
+    #[clippy::version = "1.50.0"]
+    pub COLLAPSIBLE_MATCH,
+    style,
+    "Nested `match` or `if let` expressions where the patterns may be \"collapsed\" together."
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Finds patterns that reimplement `Option::unwrap_or` or `Result::unwrap_or`.
+    ///
+    /// ### Why is this bad?
+    /// Concise code helps focusing on behavior instead of boilerplate.
+    ///
+    /// ### Example
+    /// ```rust
+    /// let foo: Option<i32> = None;
+    /// match foo {
+    ///     Some(v) => v,
+    ///     None => 1,
+    /// };
+    /// ```
+    ///
+    /// Use instead:
+    /// ```rust
+    /// let foo: Option<i32> = None;
+    /// foo.unwrap_or(1);
+    /// ```
+    #[clippy::version = "1.49.0"]
+    pub MANUAL_UNWRAP_OR,
+    complexity,
+    "finds patterns that can be encoded more concisely with `Option::unwrap_or` or `Result::unwrap_or`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for `match vec[idx]` or `match vec[n..m]`.
+    ///
+    /// ### Why is this bad?
+    /// This can panic at runtime.
+    ///
+    /// ### Example
+    /// ```rust, no_run
+    /// let arr = vec![0, 1, 2, 3];
+    /// let idx = 1;
+    ///
+    /// // Bad
+    /// match arr[idx] {
+    ///     0 => println!("{}", 0),
+    ///     1 => println!("{}", 3),
+    ///     _ => {},
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```rust, no_run
+    /// let arr = vec![0, 1, 2, 3];
+    /// let idx = 1;
+    ///
+    /// // Good
+    /// match arr.get(idx) {
+    ///     Some(0) => println!("{}", 0),
+    ///     Some(1) => println!("{}", 3),
+    ///     _ => {},
+    /// }
+    /// ```
+    #[clippy::version = "1.45.0"]
+    pub MATCH_ON_VEC_ITEMS,
+    pedantic,
+    "matching on vector elements can panic"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for `match` expressions modifying the case of a string with non-compliant arms
+    ///
+    /// ### Why is this bad?
+    /// The arm is unreachable, which is likely a mistake
+    ///
+    /// ### Example
+    /// ```rust
+    /// # let text = "Foo";
+    /// match &*text.to_ascii_lowercase() {
+    ///     "foo" => {},
+    ///     "Bar" => {},
+    ///     _ => {},
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// # let text = "Foo";
+    /// match &*text.to_ascii_lowercase() {
+    ///     "foo" => {},
+    ///     "bar" => {},
+    ///     _ => {},
+    /// }
+    /// ```
+    #[clippy::version = "1.58.0"]
+    pub MATCH_STR_CASE_MISMATCH,
+    correctness,
+    "creation of a case altering match expression with non-compliant arms"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Check for temporaries returned from function calls in a match scrutinee that have the
+    /// `clippy::has_significant_drop` attribute.
+    ///
+    /// ### Why is this bad?
+    /// The `clippy::has_significant_drop` attribute can be added to types whose Drop impls have
+    /// an important side-effect, such as unlocking a mutex, making it important for users to be
+    /// able to accurately understand their lifetimes. When a temporary is returned in a function
+    /// call in a match scrutinee, its lifetime lasts until the end of the match block, which may
+    /// be surprising.
+    ///
+    /// For `Mutex`es this can lead to a deadlock. This happens when the match scrutinee uses a
+    /// function call that returns a `MutexGuard` and then tries to lock again in one of the match
+    /// arms. In that case the `MutexGuard` in the scrutinee will not be dropped until the end of
+    /// the match block and thus will not unlock.
+    ///
+    /// ### Example
+    /// ```rust.ignore
+    /// # use std::sync::Mutex;
+    ///
+    /// # struct State {}
+    ///
+    /// # impl State {
+    /// #     fn foo(&self) -> bool {
+    /// #         true
+    /// #     }
+    ///
+    /// #     fn bar(&self) {}
+    /// # }
+    ///
+    ///
+    /// let mutex = Mutex::new(State {});
+    ///
+    /// match mutex.lock().unwrap().foo() {
+    ///     true => {
+    ///         mutex.lock().unwrap().bar(); // Deadlock!
+    ///     }
+    ///     false => {}
+    /// };
+    ///
+    /// println!("All done!");
+    ///
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// # use std::sync::Mutex;
+    ///
+    /// # struct State {}
+    ///
+    /// # impl State {
+    /// #     fn foo(&self) -> bool {
+    /// #         true
+    /// #     }
+    ///
+    /// #     fn bar(&self) {}
+    /// # }
+    ///
+    /// let mutex = Mutex::new(State {});
+    ///
+    /// let is_foo = mutex.lock().unwrap().foo();
+    /// match is_foo {
+    ///     true => {
+    ///         mutex.lock().unwrap().bar();
+    ///     }
+    ///     false => {}
+    /// };
+    ///
+    /// println!("All done!");
+    /// ```
+    #[clippy::version = "1.60.0"]
+    pub SIGNIFICANT_DROP_IN_SCRUTINEE,
+    suspicious,
+    "warns when a temporary of a type with a drop with a significant side-effect might have a surprising lifetime"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usages of `Err(x)?`.
+    ///
+    /// ### Why is this bad?
+    /// The `?` operator is designed to allow calls that
+    /// can fail to be easily chained. For example, `foo()?.bar()` or
+    /// `foo(bar()?)`. Because `Err(x)?` can't be used that way (it will
+    /// always return), it is more clear to write `return Err(x)`.
+    ///
+    /// ### Example
+    /// ```rust
+    /// fn foo(fail: bool) -> Result<i32, String> {
+    ///     if fail {
+    ///       Err("failed")?;
+    ///     }
+    ///     Ok(0)
+    /// }
+    /// ```
+    /// Could be written:
+    ///
+    /// ```rust
+    /// fn foo(fail: bool) -> Result<i32, String> {
+    ///     if fail {
+    ///       return Err("failed".into());
+    ///     }
+    ///     Ok(0)
+    /// }
+    /// ```
+    #[clippy::version = "1.38.0"]
+    pub TRY_ERR,
+    restriction,
+    "return errors explicitly rather than hiding them behind a `?`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usages of `match` which could be implemented using `map`
+    ///
+    /// ### Why is this bad?
+    /// Using the `map` method is clearer and more concise.
+    ///
+    /// ### Example
+    /// ```rust
+    /// match Some(0) {
+    ///     Some(x) => Some(x + 1),
+    ///     None => None,
+    /// };
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// Some(0).map(|x| x + 1);
+    /// ```
+    #[clippy::version = "1.52.0"]
+    pub MANUAL_MAP,
+    style,
+    "reimplementation of `map`"
+}
+
 #[derive(Default)]
 pub struct Matches {
     msrv: Option<RustcVersion>,
@@ -644,19 +920,42 @@ impl_lint_pass!(Matches => [
     MATCH_LIKE_MATCHES_MACRO,
     MATCH_SAME_ARMS,
     NEEDLESS_MATCH,
+    COLLAPSIBLE_MATCH,
+    MANUAL_UNWRAP_OR,
+    MATCH_ON_VEC_ITEMS,
+    MATCH_STR_CASE_MISMATCH,
+    SIGNIFICANT_DROP_IN_SCRUTINEE,
+    TRY_ERR,
+    MANUAL_MAP,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Matches {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if expr.span.from_expansion() {
+        if in_external_macro(cx.sess(), expr.span) {
             return;
         }
+        let from_expansion = expr.span.from_expansion();
 
         if let ExprKind::Match(ex, arms, source) = expr.kind {
-            if !span_starts_with(cx, expr.span, "match") {
+            if source == MatchSource::Normal && !span_starts_with(cx, expr.span, "match") {
                 return;
             }
-            if !contains_cfg_arm(cx, expr, ex, arms) {
+            if matches!(source, MatchSource::Normal | MatchSource::ForLoopDesugar) {
+                significant_drop_in_scrutinee::check(cx, expr, ex, source);
+            }
+
+            collapsible_match::check_match(cx, arms);
+            if !from_expansion {
+                // These don't depend on a relationship between multiple arms
+                match_wild_err_arm::check(cx, ex, arms);
+                wild_in_or_pats::check(cx, arms);
+            }
+
+            if source == MatchSource::TryDesugar {
+                try_err::check(cx, expr, ex);
+            }
+
+            if !from_expansion && !contains_cfg_arm(cx, expr, ex, arms) {
                 if source == MatchSource::Normal {
                     if !(meets_msrv(self.msrv, msrvs::MATCHES_MACRO)
                         && match_like_matches::check_match(cx, expr, ex, arms))
@@ -671,6 +970,13 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
                     match_wild_enum::check(cx, ex, arms);
                     match_as_ref::check(cx, ex, arms, expr);
                     needless_match::check_match(cx, ex, arms, expr);
+                    match_on_vec_items::check(cx, ex);
+                    match_str_case_mismatch::check(cx, ex, arms);
+
+                    if !in_constant(cx, expr.hir_id) {
+                        manual_unwrap_or::check(cx, expr, ex, arms);
+                        manual_map::check_match(cx, expr, ex, arms);
+                    }
 
                     if self.infallible_destructuring_match_linted {
                         self.infallible_destructuring_match_linted = false;
@@ -680,16 +986,35 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
                 }
                 match_ref_pats::check(cx, ex, arms.iter().map(|el| el.pat), expr);
             }
-
-            // These don't depend on a relationship between multiple arms
-            match_wild_err_arm::check(cx, ex, arms);
-            wild_in_or_pats::check(cx, arms);
-        } else {
-            if meets_msrv(self.msrv, msrvs::MATCHES_MACRO) {
-                match_like_matches::check(cx, expr);
+        } else if let Some(if_let) = higher::IfLet::hir(cx, expr) {
+            collapsible_match::check_if_let(cx, if_let.let_pat, if_let.if_then, if_let.if_else);
+            if !from_expansion {
+                if let Some(else_expr) = if_let.if_else {
+                    if meets_msrv(self.msrv, msrvs::MATCHES_MACRO) {
+                        match_like_matches::check_if_let(
+                            cx,
+                            expr,
+                            if_let.let_pat,
+                            if_let.let_expr,
+                            if_let.if_then,
+                            else_expr,
+                        );
+                    }
+                    if !in_constant(cx, expr.hir_id) {
+                        manual_map::check_if_let(cx, expr, if_let.let_pat, if_let.let_expr, if_let.if_then, else_expr);
+                    }
+                }
+                redundant_pattern_match::check_if_let(
+                    cx,
+                    expr,
+                    if_let.let_pat,
+                    if_let.let_expr,
+                    if_let.if_else.is_some(),
+                );
+                needless_match::check_if_let(cx, expr, &if_let);
             }
+        } else if !from_expansion {
             redundant_pattern_match::check(cx, expr);
-            needless_match::check(cx, expr);
         }
     }
 

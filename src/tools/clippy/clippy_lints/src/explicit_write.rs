@@ -22,8 +22,16 @@ declare_clippy_lint! {
     /// ```rust
     /// # use std::io::Write;
     /// # let bar = "furchtbar";
-    /// // this would be clearer as `eprintln!("foo: {:?}", bar);`
     /// writeln!(&mut std::io::stderr(), "foo: {:?}", bar).unwrap();
+    /// writeln!(&mut std::io::stdout(), "foo: {:?}", bar).unwrap();
+    /// ```
+    ///
+    /// Use instead:
+    /// ```rust
+    /// # use std::io::Write;
+    /// # let bar = "furchtbar";
+    /// eprintln!("foo: {:?}", bar);
+    /// println!("foo: {:?}", bar);
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub EXPLICIT_WRITE,

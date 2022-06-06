@@ -422,7 +422,7 @@ impl<'tcx> LateLintPass<'tcx> for LintWithoutLintPass {
             }
         } else if let Some(macro_call) = root_macro_call_first_node(cx, item) {
             if !matches!(
-                &*cx.tcx.item_name(macro_call.def_id).as_str(),
+                cx.tcx.item_name(macro_call.def_id).as_str(),
                 "impl_lint_pass" | "declare_lint_pass"
             ) {
                 return;
@@ -504,7 +504,7 @@ fn check_invalid_clippy_version_attribute(cx: &LateContext<'_>, item: &'_ Item<'
             return;
         }
 
-        if RustcVersion::parse(&*value.as_str()).is_err() {
+        if RustcVersion::parse(value.as_str()).is_err() {
             span_lint_and_help(
                 cx,
                 INVALID_CLIPPY_VERSION_ATTRIBUTE,
@@ -595,7 +595,7 @@ impl<'tcx> LateLintPass<'tcx> for CompilerLintFunctions {
         if_chain! {
             if let ExprKind::MethodCall(path, [self_arg, ..], _) = &expr.kind;
             let fn_name = path.ident;
-            if let Some(sugg) = self.map.get(&*fn_name.as_str());
+            if let Some(sugg) = self.map.get(fn_name.as_str());
             let ty = cx.typeck_results().expr_ty(self_arg).peel_refs();
             if match_type(cx, ty, &paths::EARLY_CONTEXT)
                 || match_type(cx, ty, &paths::LATE_CONTEXT);
@@ -679,7 +679,7 @@ impl<'tcx> LateLintPass<'tcx> for CollapsibleCalls {
             then {
                 let and_then_snippets = get_and_then_snippets(cx, and_then_args);
                 let mut sle = SpanlessEq::new(cx).deny_side_effects();
-                match &*ps.ident.as_str() {
+                match ps.ident.as_str() {
                     "span_suggestion" if sle.eq_expr(&and_then_args[2], &span_call_args[1]) => {
                         suggest_suggestion(cx, expr, &and_then_snippets, &span_suggestion_snippets(cx, span_call_args));
                     },

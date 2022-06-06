@@ -73,6 +73,7 @@ pub const LATE_CONTEXT: [&str; 2] = ["rustc_lint", "LateContext"];
 pub const LATE_LINT_PASS: [&str; 3] = ["rustc_lint", "passes", "LateLintPass"];
 #[cfg(feature = "internal")]
 pub const LINT: [&str; 2] = ["rustc_lint_defs", "Lint"];
+pub const MEM_SWAP: [&str; 3] = ["core", "mem", "swap"];
 pub const MUTEX_GUARD: [&str; 4] = ["std", "sync", "mutex", "MutexGuard"];
 pub const OPEN_OPTIONS: [&str; 3] = ["std", "fs", "OpenOptions"];
 /// Preferably use the diagnostic item `sym::Option` where possible
@@ -141,6 +142,7 @@ pub const SERDE_DESERIALIZE: [&str; 3] = ["serde", "de", "Deserialize"];
 pub const SERDE_DE_VISITOR: [&str; 3] = ["serde", "de", "Visitor"];
 pub const SLICE_FROM_RAW_PARTS: [&str; 4] = ["core", "slice", "raw", "from_raw_parts"];
 pub const SLICE_FROM_RAW_PARTS_MUT: [&str; 4] = ["core", "slice", "raw", "from_raw_parts_mut"];
+pub const SLICE_GET: [&str; 4] = ["core", "slice", "<impl [T]>", "get"];
 pub const SLICE_INTO_VEC: [&str; 4] = ["alloc", "slice", "<impl [T]>", "into_vec"];
 pub const SLICE_ITER: [&str; 4] = ["core", "slice", "iter", "Iter"];
 pub const STDERR: [&str; 4] = ["std", "io", "stdio", "stderr"];

@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 aho-corasick = "0.7"
-clap = "2.33"
+clap = "3.1"
 indoc = "1.0"
 itertools = "0.10.1"
 opener = "0.5"

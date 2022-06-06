@@ -76,5 +76,31 @@ help: try replacing `map` with `and_then`, and remove the `.flatten()`
 LL |     let _: Result<_, &str> = (Ok(Ok(1))).and_then(|x| x);
    |                                          ~~~~~~~~~~~~~~~
 
-error: aborting due to 7 previous errors
+error: called `map(..).flatten()` on `Option`
+  --> $DIR/map_flatten_fixable.rs:59:10
+   |
+LL |           .map(|_| {
+   |  __________^
+LL | | // we need some newlines
+LL | | // so that the span is big enough
+LL | | // for a splitted output of the diagnostic
+...  |
+LL | |         })
+LL | |         .flatten();
+   | |__________________^
+   |
+help: try replacing `map` with `and_then`
+   |
+LL ~         .and_then(|_| {
+LL + // we need some newlines
+LL + // so that the span is big enough
+   |
+help: and remove the `.flatten()`
+   |
+LL +             Some("")
+LL +  // whitespace beforehand is important as well
+LL ~         });
+   |
+
+error: aborting due to 8 previous errors
 

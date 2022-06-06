@@ -194,14 +194,15 @@ fn assignment_suggestions<'tcx>(
         }))
         .collect::<Option<Vec<(Span, String)>>>()?;
 
-    let applicability = if suggestions.len() > 1 {
+    match suggestions.len() {
+        // All of `exprs` are never types
+        // https://github.com/rust-lang/rust-clippy/issues/8911
+        0 => None,
+        1 => Some((Applicability::MachineApplicable, suggestions)),
         // multiple suggestions don't work with rustfix in multipart_suggest
         // https://github.com/rust-lang/rustfix/issues/141
-        Applicability::Unspecified
-    } else {
-        Applicability::MachineApplicable
-    };
-    Some((applicability, suggestions))
+        _ => Some((Applicability::Unspecified, suggestions)),
+    }
 }
 
 struct Usage<'tcx> {

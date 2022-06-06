@@ -542,3 +542,69 @@ mod use_self_in_pat {
         }
     }
 }
+
+mod issue8845 {
+    pub enum Something {
+        Num(u8),
+        TupleNums(u8, u8),
+        StructNums { one: u8, two: u8 },
+    }
+
+    struct Foo(u8);
+
+    struct Bar {
+        x: u8,
+        y: usize,
+    }
+
+    impl Something {
+        fn get_value(&self) -> u8 {
+            match self {
+                Self::Num(n) => *n,
+                Self::TupleNums(n, _m) => *n,
+                Self::StructNums { one, two: _ } => *one,
+            }
+        }
+
+        fn use_crate(&self) -> u8 {
+            match self {
+                Self::Num(n) => *n,
+                Self::TupleNums(n, _m) => *n,
+                Self::StructNums { one, two: _ } => *one,
+            }
+        }
+
+        fn imported_values(&self) -> u8 {
+            use Something::*;
+            match self {
+                Num(n) => *n,
+                TupleNums(n, _m) => *n,
+                StructNums { one, two: _ } => *one,
+            }
+        }
+    }
+
+    impl Foo {
+        fn get_value(&self) -> u8 {
+            let Self(x) = self;
+            *x
+        }
+
+        fn use_crate(&self) -> u8 {
+            let Self(x) = self;
+            *x
+        }
+    }
+
+    impl Bar {
+        fn get_value(&self) -> u8 {
+            let Self { x, .. } = self;
+            *x
+        }
+
+        fn use_crate(&self) -> u8 {
+            let Self { x, .. } = self;
+            *x
+        }
+    }
+}

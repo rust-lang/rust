@@ -22,21 +22,17 @@ declare_clippy_lint! {
     ///
     /// ### Examples
     /// ```rust
-    /// // Bad
+    /// # fn somefunc() -> bool { true };
     /// if { true } { /* ... */ }
     ///
-    /// // Good
-    /// if true { /* ... */ }
+    /// if { let x = somefunc(); x } { /* ... */ }
     /// ```
     ///
-    /// // or
-    ///
+    /// Use instead:
     /// ```rust
     /// # fn somefunc() -> bool { true };
-    /// // Bad
-    /// if { let x = somefunc(); x } { /* ... */ }
+    /// if true { /* ... */ }
     ///
-    /// // Good
     /// let res = { let x = somefunc(); x };
     /// if res { /* ... */ }
     /// ```

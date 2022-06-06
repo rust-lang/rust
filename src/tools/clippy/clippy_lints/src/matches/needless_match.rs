@@ -47,20 +47,18 @@ pub(crate) fn check_match(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>],
 ///     some_enum
 /// }
 /// ```
-pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>) {
-    if let Some(ref if_let) = higher::IfLet::hir(cx, ex) {
-        if !is_else_clause(cx.tcx, ex) && expr_ty_matches_p_ty(cx, if_let.let_expr, ex) && check_if_let(cx, if_let) {
-            let mut applicability = Applicability::MachineApplicable;
-            span_lint_and_sugg(
-                cx,
-                NEEDLESS_MATCH,
-                ex.span,
-                "this if-let expression is unnecessary",
-                "replace it with",
-                snippet_with_applicability(cx, if_let.let_expr.span, "..", &mut applicability).to_string(),
-                applicability,
-            );
-        }
+pub(crate) fn check_if_let<'tcx>(cx: &LateContext<'tcx>, ex: &Expr<'_>, if_let: &higher::IfLet<'tcx>) {
+    if !is_else_clause(cx.tcx, ex) && expr_ty_matches_p_ty(cx, if_let.let_expr, ex) && check_if_let_inner(cx, if_let) {
+        let mut applicability = Applicability::MachineApplicable;
+        span_lint_and_sugg(
+            cx,
+            NEEDLESS_MATCH,
+            ex.span,
+            "this if-let expression is unnecessary",
+            "replace it with",
+            snippet_with_applicability(cx, if_let.let_expr.span, "..", &mut applicability).to_string(),
+            applicability,
+        );
     }
 }
 
@@ -77,7 +75,7 @@ fn check_all_arms(cx: &LateContext<'_>, match_expr: &Expr<'_>, arms: &[Arm<'_>])
     true
 }
 
-fn check_if_let(cx: &LateContext<'_>, if_let: &higher::IfLet<'_>) -> bool {
+fn check_if_let_inner(cx: &LateContext<'_>, if_let: &higher::IfLet<'_>) -> bool {
     if let Some(if_else) = if_let.if_else {
         if !pat_same_as_expr(if_let.let_pat, peel_blocks_with_stmt(if_let.if_then)) {
             return false;
@@ -85,7 +83,7 @@ fn check_if_let(cx: &LateContext<'_>, if_let: &higher::IfLet<'_>) -> bool {
 
         // Recursively check for each `else if let` phrase,
         if let Some(ref nested_if_let) = higher::IfLet::hir(cx, if_else) {
-            return check_if_let(cx, nested_if_let);
+            return check_if_let_inner(cx, nested_if_let);
         }
 
         if matches!(if_else.kind, ExprKind::Block(..)) {

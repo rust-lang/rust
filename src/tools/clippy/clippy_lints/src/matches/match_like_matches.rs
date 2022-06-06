@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::is_wild;
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::{higher, is_wild};
 use rustc_ast::{Attribute, LitKind};
 use rustc_errors::Applicability;
 use rustc_hir::{Arm, BorrowKind, Expr, ExprKind, Guard, Pat};
@@ -11,22 +11,24 @@ use rustc_span::source_map::Spanned;
 use super::MATCH_LIKE_MATCHES_MACRO;
 
 /// Lint a `match` or `if let .. { .. } else { .. }` expr that could be replaced by `matches!`
-pub(crate) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-    if let Some(higher::IfLet {
-        let_pat,
+pub(crate) fn check_if_let<'tcx>(
+    cx: &LateContext<'tcx>,
+    expr: &'tcx Expr<'_>,
+    let_pat: &'tcx Pat<'_>,
+    let_expr: &'tcx Expr<'_>,
+    then_expr: &'tcx Expr<'_>,
+    else_expr: &'tcx Expr<'_>,
+) {
+    find_matches_sugg(
+        cx,
         let_expr,
-        if_then,
-        if_else: Some(if_else),
-    }) = higher::IfLet::hir(cx, expr)
-    {
-        find_matches_sugg(
-            cx,
-            let_expr,
-            IntoIterator::into_iter([(&[][..], Some(let_pat), if_then, None), (&[][..], None, if_else, None)]),
-            expr,
-            true,
-        );
-    }
+        IntoIterator::into_iter([
+            (&[][..], Some(let_pat), then_expr, None),
+            (&[][..], None, else_expr, None),
+        ]),
+        expr,
+        true,
+    );
 }
 
 pub(super) fn check_match<'tcx>(
