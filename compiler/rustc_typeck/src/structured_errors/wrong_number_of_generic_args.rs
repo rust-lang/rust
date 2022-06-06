@@ -5,7 +5,6 @@ use rustc_errors::{
 };
 use rustc_hir as hir;
 use rustc_middle::hir::map::fn_sig;
-use rustc_middle::middle::resolve_lifetime::LifetimeScopeForPath;
 use rustc_middle::ty::{self as ty, AssocItems, AssocKind, TyCtxt};
 use rustc_session::Session;
 use rustc_span::def_id::DefId;
@@ -15,28 +14,28 @@ use GenericArgsInfo::*;
 
 /// Handles the `wrong number of type / lifetime / ... arguments` family of error messages.
 pub struct WrongNumberOfGenericArgs<'a, 'tcx> {
-    crate tcx: TyCtxt<'tcx>,
+    pub(crate) tcx: TyCtxt<'tcx>,
 
-    crate angle_brackets: AngleBrackets,
+    pub(crate) angle_brackets: AngleBrackets,
 
-    crate gen_args_info: GenericArgsInfo,
+    pub(crate) gen_args_info: GenericArgsInfo,
 
     /// Offending path segment
-    crate path_segment: &'a hir::PathSegment<'a>,
+    pub(crate) path_segment: &'a hir::PathSegment<'a>,
 
     /// Generic parameters as expected by type or trait
-    crate gen_params: &'a ty::Generics,
+    pub(crate) gen_params: &'a ty::Generics,
 
     /// Index offset into parameters. Depends on whether `Self` is included and on
     /// number of lifetime parameters in case we're processing missing or redundant
     /// type or constant arguments.
-    crate params_offset: usize,
+    pub(crate) params_offset: usize,
 
     /// Generic arguments as provided by user
-    crate gen_args: &'a hir::GenericArgs<'a>,
+    pub(crate) gen_args: &'a hir::GenericArgs<'a>,
 
     /// DefId of the generic type
-    crate def_id: DefId,
+    pub(crate) def_id: DefId,
 }
 
 // Provides information about the kind of arguments that were provided for
@@ -291,7 +290,69 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
     }
 
     // Creates lifetime name suggestions from the lifetime parameter names
-    fn get_lifetime_args_suggestions_from_param_names(&self, num_params_to_take: usize) -> String {
+    fn get_lifetime_args_suggestions_from_param_names(
+        &self,
+        path_hir_id: Option<hir::HirId>,
+        num_params_to_take: usize,
+    ) -> String {
+        debug!(?path_hir_id);
+
+        if let Some(path_hir_id) = path_hir_id {
+            let mut ret = Vec::new();
+            for (id, node) in self.tcx.hir().parent_iter(path_hir_id) {
+                debug!(?id);
+                let params = if let Some(generics) = node.generics() {
+                    generics.params
+                } else if let hir::Node::Ty(ty) = node
+                    && let hir::TyKind::BareFn(bare_fn) = ty.kind
+                {
+                    bare_fn.generic_params
+                } else {
+                    &[]
+                };
+                ret.extend(params.iter().filter_map(|p| {
+                    let hir::GenericParamKind::Lifetime { kind: hir::LifetimeParamKind::Explicit }
+                        = p.kind
+                    else { return None };
+                    let hir::ParamName::Plain(name) = p.name else { return None };
+                    Some(name.to_string())
+                }));
+                // Suggest `'static` when in const/static item-like.
+                if let hir::Node::Item(hir::Item {
+                    kind: hir::ItemKind::Static { .. } | hir::ItemKind::Const { .. },
+                    ..
+                })
+                | hir::Node::TraitItem(hir::TraitItem {
+                    kind: hir::TraitItemKind::Const { .. },
+                    ..
+                })
+                | hir::Node::ImplItem(hir::ImplItem {
+                    kind: hir::ImplItemKind::Const { .. },
+                    ..
+                })
+                | hir::Node::ForeignItem(hir::ForeignItem {
+                    kind: hir::ForeignItemKind::Static { .. },
+                    ..
+                })
+                | hir::Node::AnonConst(..) = node
+                {
+                    ret.extend(
+                        std::iter::repeat("'static".to_owned())
+                            .take(num_params_to_take.saturating_sub(ret.len())),
+                    );
+                }
+                if ret.len() >= num_params_to_take {
+                    return ret[..num_params_to_take].join(", ");
+                }
+                // We cannot refer to lifetimes defined in an outer function.
+                if let hir::Node::Item(_) = node {
+                    break;
+                }
+            }
+        }
+
+        // We could not gather enough lifetime parameters in the scope.
+        // We use the parameter names from the target type's definition instead.
         self.gen_params
             .params
             .iter()
@@ -501,42 +562,10 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         let num_params_to_take = num_missing_args;
         let msg = format!("add missing {} argument{}", self.kind(), pluralize!(num_missing_args));
 
-        // we first try to get lifetime name suggestions from scope or elision information. If none is
-        // available we use the parameter definitions
-        let suggested_args = if let Some(hir_id) = self.path_segment.hir_id {
-            if let Some(lifetimes_in_scope) = self.tcx.lifetime_scope(hir_id) {
-                match lifetimes_in_scope {
-                    LifetimeScopeForPath::NonElided(param_names) => {
-                        debug!("NonElided(param_names: {:?})", param_names);
-
-                        if param_names.len() >= num_params_to_take {
-                            // use lifetime parameters in scope for suggestions
-                            param_names
-                                .iter()
-                                .take(num_params_to_take)
-                                .map(|p| p.as_str())
-                                .collect::<Vec<_>>()
-                                .join(", ")
-                        } else {
-                            // Not enough lifetime arguments in scope -> create suggestions from
-                            // lifetime parameter names in definition. An error for the incorrect
-                            // lifetime scope will be output later.
-                            self.get_lifetime_args_suggestions_from_param_names(num_params_to_take)
-                        }
-                    }
-                    LifetimeScopeForPath::Elided => {
-                        debug!("Elided");
-                        // use suggestions of the form `<'_, '_>` in case lifetime can be elided
-                        ["'_"].repeat(num_params_to_take).join(",")
-                    }
-                }
-            } else {
-                self.get_lifetime_args_suggestions_from_param_names(num_params_to_take)
-            }
-        } else {
-            self.get_lifetime_args_suggestions_from_param_names(num_params_to_take)
-        };
-
+        let suggested_args = self.get_lifetime_args_suggestions_from_param_names(
+            self.path_segment.hir_id,
+            num_params_to_take,
+        );
         debug!("suggested_args: {:?}", &suggested_args);
 
         match self.angle_brackets {

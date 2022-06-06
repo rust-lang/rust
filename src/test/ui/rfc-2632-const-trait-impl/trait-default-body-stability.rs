@@ -37,8 +37,8 @@ impl const FromResidual for T {
 }
 
 #[stable(feature = "foo", since = "1.0")]
+#[const_trait]
 pub trait Tr {
-    #[default_method_body_is_const]
     #[stable(feature = "foo", since = "1.0")]
     fn bar() -> T {
         T?

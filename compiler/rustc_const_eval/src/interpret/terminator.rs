@@ -57,7 +57,15 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.go_to_block(target_block);
             }
 
-            Call { ref func, ref args, destination, ref cleanup, from_hir_call: _, fn_span: _ } => {
+            Call {
+                ref func,
+                ref args,
+                destination,
+                target,
+                ref cleanup,
+                from_hir_call: _,
+                fn_span: _,
+            } => {
                 let old_stack = self.frame_idx();
                 let old_loc = self.frame().loc;
                 let func = self.eval_operand(func, None)?;
@@ -91,20 +99,14 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     ),
                 };
 
-                let dest_place;
-                let ret = match destination {
-                    Some((dest, ret)) => {
-                        dest_place = self.eval_place(dest)?;
-                        Some((&dest_place, ret))
-                    }
-                    None => None,
-                };
+                let destination = self.eval_place(destination)?;
                 self.eval_fn_call(
                     fn_val,
                     (fn_sig.abi, fn_abi),
                     &args,
                     with_caller_location,
-                    ret,
+                    &destination,
+                    target,
                     match (cleanup, fn_abi.can_unwind) {
                         (Some(cleanup), true) => StackPopUnwind::Cleanup(*cleanup),
                         (None, true) => StackPopUnwind::Skip,
@@ -183,7 +185,14 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // No question
                 return true;
             }
-            // Compare layout
+            if caller_abi.layout.size != callee_abi.layout.size
+                || caller_abi.layout.align.abi != callee_abi.layout.align.abi
+            {
+                // This cannot go well...
+                // FIXME: What about unsized types?
+                return false;
+            }
+            // The rest *should* be okay, but we are extra conservative.
             match (caller_abi.layout.abi, callee_abi.layout.abi) {
                 // Different valid ranges are okay (once we enforce validity,
                 // that will take care to make it UB to leave the range, just
@@ -299,7 +308,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         (caller_abi, caller_fn_abi): (Abi, &FnAbi<'tcx, Ty<'tcx>>),
         args: &[OpTy<'tcx, M::PointerTag>],
         with_caller_location: bool,
-        ret: Option<(&PlaceTy<'tcx, M::PointerTag>, mir::BasicBlock)>,
+        destination: &PlaceTy<'tcx, M::PointerTag>,
+        target: Option<mir::BasicBlock>,
         mut unwind: StackPopUnwind,
     ) -> InterpResult<'tcx> {
         trace!("eval_fn_call: {:#?}", fn_val);
@@ -307,7 +317,15 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let instance = match fn_val {
             FnVal::Instance(instance) => instance,
             FnVal::Other(extra) => {
-                return M::call_extra_fn(self, extra, caller_abi, args, ret, unwind);
+                return M::call_extra_fn(
+                    self,
+                    extra,
+                    caller_abi,
+                    args,
+                    destination,
+                    target,
+                    unwind,
+                );
             }
         };
 
@@ -315,7 +333,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             ty::InstanceDef::Intrinsic(def_id) => {
                 assert!(self.tcx.is_intrinsic(def_id));
                 // caller_fn_abi is not relevant here, we interpret the arguments directly for each intrinsic.
-                M::call_intrinsic(self, instance, args, ret, unwind)
+                M::call_intrinsic(self, instance, args, destination, target, unwind)
             }
             ty::InstanceDef::VtableShim(..)
             | ty::InstanceDef::ReifyShim(..)
@@ -326,7 +344,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             | ty::InstanceDef::Item(_) => {
                 // We need MIR for this fn
                 let Some((body, instance)) =
-                    M::find_mir_or_eval_fn(self, instance, caller_abi, args, ret, unwind)? else {
+                    M::find_mir_or_eval_fn(self, instance, caller_abi, args, destination, target, unwind)? else {
                         return Ok(());
                     };
 
@@ -335,12 +353,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // FIXME: for variadic support, do we have to somehow determine callee's extra_args?
                 let callee_fn_abi = self.fn_abi_of_instance(instance, ty::List::empty())?;
 
-                if callee_fn_abi.c_variadic != caller_fn_abi.c_variadic {
-                    throw_ub_format!(
-                        "calling a c-variadic function via a non-variadic call site, or vice versa"
-                    );
-                }
-                if callee_fn_abi.c_variadic {
+                if callee_fn_abi.c_variadic || caller_fn_abi.c_variadic {
                     throw_unsup_format!("calling a c-variadic function is not supported");
                 }
 
@@ -362,8 +375,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.push_stack_frame(
                     instance,
                     body,
-                    ret.map(|p| p.0),
-                    StackPopCleanup::Goto { ret: ret.map(|p| p.1), unwind },
+                    destination,
+                    StackPopCleanup::Goto { ret: target, unwind },
                 )?;
 
                 // If an error is raised here, pop the frame again to get an accurate backtrace.
@@ -540,7 +553,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     (caller_abi, caller_fn_abi),
                     &args,
                     with_caller_location,
-                    ret,
+                    destination,
+                    target,
                     unwind,
                 )
             }
@@ -582,7 +596,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             (Abi::Rust, fn_abi),
             &[arg.into()],
             false,
-            Some((&dest.into(), target)),
+            &dest.into(),
+            Some(target),
             match unwind {
                 Some(cleanup) => StackPopUnwind::Cleanup(cleanup),
                 None => StackPopUnwind::Skip,

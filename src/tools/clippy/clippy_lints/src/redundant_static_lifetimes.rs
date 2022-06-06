@@ -99,7 +99,7 @@ impl RedundantStaticLifetimes {
 
 impl EarlyLintPass for RedundantStaticLifetimes {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {
-        if !meets_msrv(self.msrv.as_ref(), &msrvs::STATIC_IN_CONST) {
+        if !meets_msrv(self.msrv, msrvs::STATIC_IN_CONST) {
             return;
         }
 

@@ -1,17 +1,75 @@
 error: expected `while`, `for`, `loop` or `{` after a label
-  --> $DIR/recover-labeled-non-block-expr.rs:2:13
+  --> $DIR/recover-labeled-non-block-expr.rs:4:21
    |
-LL |     'label: 1 + 1;
-   |             ^ expected `while`, `for`, `loop` or `{` after a label
-
-error[E0308]: mismatched types
-  --> $DIR/recover-labeled-non-block-expr.rs:4:33
+LL |     let _ = 'label: 1 + 1;
+   |                     ^ expected `while`, `for`, `loop` or `{` after a label
    |
-LL |     let _recovery_witness: () = 0;
-   |                            --   ^ expected `()`, found integer
-   |                            |
-   |                            expected due to this
+help: consider removing the label
+   |
+LL -     let _ = 'label: 1 + 1;
+LL +     let _ = 1 + 1;
+   | 
 
-error: aborting due to 2 previous errors
+error: expected `while`, `for`, `loop` or `{` after a label
+  --> $DIR/recover-labeled-non-block-expr.rs:6:13
+   |
+LL |     'label: match () { () => {}, };
+   |             ^^^^^ expected `while`, `for`, `loop` or `{` after a label
+   |
+help: consider removing the label
+   |
+LL -     'label: match () { () => {}, };
+LL +     match () { () => {}, };
+   | 
 
-For more information about this error, try `rustc --explain E0308`.
+error: expected `while`, `for`, `loop` or `{` after a label
+  --> $DIR/recover-labeled-non-block-expr.rs:7:13
+   |
+LL |     'label: match () { () => break 'label, };
+   |             ^^^^^ expected `while`, `for`, `loop` or `{` after a label
+   |
+help: consider enclosing expression in a block
+   |
+LL |     'label: { match () { () => break 'label, } };
+   |             +                                  +
+
+error: expected `while`, `for`, `loop` or `{` after a label
+  --> $DIR/recover-labeled-non-block-expr.rs:9:13
+   |
+LL |     'label: match () { () => 'lp: loop { break 'lp 0 }, };
+   |             ^^^^^ expected `while`, `for`, `loop` or `{` after a label
+   |
+help: consider enclosing expression in a block
+   |
+LL |     'label: { match () { () => 'lp: loop { break 'lp 0 }, } };
+   |             +                                               +
+
+error: expected `while`, `for`, `loop` or `{` after a label
+  --> $DIR/recover-labeled-non-block-expr.rs:12:22
+   |
+LL |     let _i = 'label: match x {
+   |                      ^^^^^ expected `while`, `for`, `loop` or `{` after a label
+   |
+help: consider enclosing expression in a block
+   |
+LL ~     let _i = 'label: { match x {
+LL |         0 => 42,
+LL |         1 if false => break 'label 17,
+LL |         1 => {
+LL |             if true {
+LL |                 break 'label 13
+ ...
+
+error: expected `while`, `for`, `loop` or `{` after a label
+  --> $DIR/recover-labeled-non-block-expr.rs:26:24
+   |
+LL |     let _val = 'label: (1, if other == 3 { break 'label (2, 3) } else { other });
+   |                        ^ expected `while`, `for`, `loop` or `{` after a label
+   |
+help: consider enclosing expression in a block
+   |
+LL |     let _val = 'label: { (1, if other == 3 { break 'label (2, 3) } else { other }) };
+   |                        +                                                           +
+
+error: aborting due to 6 previous errors
+

@@ -298,6 +298,7 @@ impl<'hir> Map<'hir> {
             Node::Stmt(_)
             | Node::PathSegment(_)
             | Node::Ty(_)
+            | Node::TypeBinding(_)
             | Node::Infer(_)
             | Node::TraitRef(_)
             | Node::Pat(_)
@@ -323,7 +324,8 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn get_parent_node(self, hir_id: HirId) -> HirId {
-        self.find_parent_node(hir_id).unwrap()
+        self.find_parent_node(hir_id)
+            .unwrap_or_else(|| bug!("No parent for node {:?}", self.node_to_string(hir_id)))
     }
 
     /// Retrieves the `Node` corresponding to `id`, returning `None` if cannot be found.
@@ -361,23 +363,7 @@ impl<'hir> Map<'hir> {
 
     pub fn get_generics(self, id: LocalDefId) -> Option<&'hir Generics<'hir>> {
         let node = self.tcx.hir_owner(id)?;
-        match node.node {
-            OwnerNode::ImplItem(impl_item) => Some(&impl_item.generics),
-            OwnerNode::TraitItem(trait_item) => Some(&trait_item.generics),
-            OwnerNode::Item(Item {
-                kind:
-                    ItemKind::Fn(_, generics, _)
-                    | ItemKind::TyAlias(_, generics)
-                    | ItemKind::Enum(_, generics)
-                    | ItemKind::Struct(_, generics)
-                    | ItemKind::Union(_, generics)
-                    | ItemKind::Trait(_, _, generics, ..)
-                    | ItemKind::TraitAlias(generics, _)
-                    | ItemKind::Impl(Impl { generics, .. }),
-                ..
-            }) => Some(generics),
-            _ => None,
-        }
+        node.node.generics()
     }
 
     pub fn item(self, id: ItemId) -> &'hir Item<'hir> {
@@ -494,9 +480,7 @@ impl<'hir> Map<'hir> {
             BodyOwnerKind::Fn if self.tcx.is_const_fn_raw(def_id.to_def_id()) => {
                 ConstContext::ConstFn
             }
-            BodyOwnerKind::Fn
-                if self.tcx.has_attr(def_id.to_def_id(), sym::default_method_body_is_const) =>
-            {
+            BodyOwnerKind::Fn if self.tcx.is_const_default_method(def_id.to_def_id()) => {
                 ConstContext::ConstFn
             }
             BodyOwnerKind::Fn | BodyOwnerKind::Closure => return None,
@@ -985,8 +969,13 @@ impl<'hir> Map<'hir> {
             Node::AnonConst(constant) => self.body(constant.body).value.span,
             Node::Expr(expr) => expr.span,
             Node::Stmt(stmt) => stmt.span,
-            Node::PathSegment(seg) => seg.ident.span,
+            Node::PathSegment(seg) => {
+                let ident_span = seg.ident.span;
+                ident_span
+                    .with_hi(seg.args.map_or_else(|| ident_span.hi(), |args| args.span_ext.hi()))
+            }
             Node::Ty(ty) => ty.span,
+            Node::TypeBinding(tb) => tb.span,
             Node::TraitRef(tr) => tr.path.span,
             Node::Binding(pat) => pat.span,
             Node::Pat(pat) => pat.span,
@@ -1219,6 +1208,7 @@ fn hir_id_to_string(map: Map<'_>, id: HirId) -> String {
         Some(Node::Stmt(_)) => node_str("stmt"),
         Some(Node::PathSegment(_)) => node_str("path segment"),
         Some(Node::Ty(_)) => node_str("type"),
+        Some(Node::TypeBinding(_)) => node_str("type binding"),
         Some(Node::TraitRef(_)) => node_str("trait ref"),
         Some(Node::Binding(_)) => node_str("local"),
         Some(Node::Pat(_)) => node_str("pat"),

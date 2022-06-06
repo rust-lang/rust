@@ -530,8 +530,12 @@ unsafe impl const SliceIndex<str> for ops::RangeToInclusive<usize> {
 ///     }
 /// }
 ///
-/// let p = Point::from_str("(1,2)");
-/// assert_eq!(p.unwrap(), Point{ x: 1, y: 2} )
+/// let expected = Ok(Point { x: 1, y: 2 });
+/// // Explicit call
+/// assert_eq!(Point::from_str("(1,2)"), expected);
+/// // Implicit calls, through parse
+/// assert_eq!("(1,2)".parse(), expected);
+/// assert_eq!("(1,2)".parse::<Point>(), expected);
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait FromStr: Sized {

@@ -87,19 +87,19 @@ LL |         asm!("", in("p0") foo);
    |                  ^^^^^^^^^^^^
 
 error: register class `preg` can only be used as a clobber, not as an input or output
-  --> $DIR/bad-reg.rs:40:20
+  --> $DIR/bad-reg.rs:41:20
    |
 LL |         asm!("{}", in(preg) foo);
    |                    ^^^^^^^^^^^^
 
 error: register class `preg` can only be used as a clobber, not as an input or output
-  --> $DIR/bad-reg.rs:42:20
+  --> $DIR/bad-reg.rs:44:20
    |
 LL |         asm!("{}", out(preg) _);
    |                    ^^^^^^^^^^^
 
 error: register `x0` conflicts with register `x0`
-  --> $DIR/bad-reg.rs:48:32
+  --> $DIR/bad-reg.rs:50:32
    |
 LL |         asm!("", in("x0") foo, in("w0") bar);
    |                  ------------  ^^^^^^^^^^^^ register `x0`
@@ -107,7 +107,7 @@ LL |         asm!("", in("x0") foo, in("w0") bar);
    |                  register `x0`
 
 error: register `x0` conflicts with register `x0`
-  --> $DIR/bad-reg.rs:50:32
+  --> $DIR/bad-reg.rs:52:32
    |
 LL |         asm!("", in("x0") foo, out("x0") bar);
    |                  ------------  ^^^^^^^^^^^^^ register `x0`
@@ -115,13 +115,13 @@ LL |         asm!("", in("x0") foo, out("x0") bar);
    |                  register `x0`
    |
 help: use `lateout` instead of `out` to avoid conflict
-  --> $DIR/bad-reg.rs:50:18
+  --> $DIR/bad-reg.rs:52:18
    |
 LL |         asm!("", in("x0") foo, out("x0") bar);
    |                  ^^^^^^^^^^^^
 
 error: register `v0` conflicts with register `v0`
-  --> $DIR/bad-reg.rs:53:32
+  --> $DIR/bad-reg.rs:55:32
    |
 LL |         asm!("", in("v0") foo, in("q0") bar);
    |                  ------------  ^^^^^^^^^^^^ register `v0`
@@ -129,7 +129,7 @@ LL |         asm!("", in("v0") foo, in("q0") bar);
    |                  register `v0`
 
 error: register `v0` conflicts with register `v0`
-  --> $DIR/bad-reg.rs:55:32
+  --> $DIR/bad-reg.rs:57:32
    |
 LL |         asm!("", in("v0") foo, out("q0") bar);
    |                  ------------  ^^^^^^^^^^^^^ register `v0`
@@ -137,10 +137,26 @@ LL |         asm!("", in("v0") foo, out("q0") bar);
    |                  register `v0`
    |
 help: use `lateout` instead of `out` to avoid conflict
-  --> $DIR/bad-reg.rs:55:18
+  --> $DIR/bad-reg.rs:57:18
    |
 LL |         asm!("", in("v0") foo, out("q0") bar);
    |                  ^^^^^^^^^^^^
 
-error: aborting due to 18 previous errors
+error: type `i32` cannot be used with this register class
+  --> $DIR/bad-reg.rs:37:27
+   |
+LL |         asm!("", in("p0") foo);
+   |                           ^^^
+   |
+   = note: register class `preg` supports these types: 
+
+error: type `i32` cannot be used with this register class
+  --> $DIR/bad-reg.rs:41:29
+   |
+LL |         asm!("{}", in(preg) foo);
+   |                             ^^^
+   |
+   = note: register class `preg` supports these types: 
+
+error: aborting due to 20 previous errors
 

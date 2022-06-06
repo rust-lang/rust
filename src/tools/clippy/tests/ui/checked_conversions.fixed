@@ -7,8 +7,6 @@
 )]
 #![warn(clippy::checked_conversions)]
 
-use std::convert::TryFrom;
-
 // Positive tests
 
 // Signed to unsigned

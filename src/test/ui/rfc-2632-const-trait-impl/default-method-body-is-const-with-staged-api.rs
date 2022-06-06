@@ -9,8 +9,8 @@
 #![feature(const_trait_impl)]
 #![stable(since = "1", feature = "foo")]
 
+#[const_trait]
 trait Tr {
-    #[default_method_body_is_const]
     fn a() {}
 }
 

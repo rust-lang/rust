@@ -8,9 +8,9 @@ use rustc_semver::RustcVersion;
 
 use super::CAST_SLICE_DIFFERENT_SIZES;
 
-pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>, msrv: &Option<RustcVersion>) {
+pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>, msrv: Option<RustcVersion>) {
     // suggestion is invalid if `ptr::slice_from_raw_parts` does not exist
-    if !meets_msrv(msrv.as_ref(), &msrvs::PTR_SLICE_RAW_PARTS) {
+    if !meets_msrv(msrv, msrvs::PTR_SLICE_RAW_PARTS) {
         return;
     }
 
@@ -121,7 +121,7 @@ fn expr_cast_chain_tys<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) -> Optio
         let to_slice_ty = get_raw_slice_ty_mut(cast_to)?;
 
         // If the expression that makes up the source of this cast is itself a cast, recursively
-        // call `expr_cast_chain_tys` and update the end type with the final tartet type.
+        // call `expr_cast_chain_tys` and update the end type with the final target type.
         // Otherwise, this cast is not immediately nested, just construct the info for this cast
         if let Some(prev_info) = expr_cast_chain_tys(cx, cast_expr) {
             Some(CastChainInfo {

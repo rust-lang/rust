@@ -1,3 +1,5 @@
+// FIXME(nll): this is experimental anyways, don't really care about the output
+// ignore-compare-mode-nll
 // revisions: base extended
 //[base] check-fail
 //[extended] check-pass

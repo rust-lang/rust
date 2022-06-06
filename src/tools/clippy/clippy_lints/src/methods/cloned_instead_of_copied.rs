@@ -10,16 +10,16 @@ use rustc_span::{sym, Span};
 
 use super::CLONED_INSTEAD_OF_COPIED;
 
-pub fn check(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, span: Span, msrv: Option<&RustcVersion>) {
+pub fn check(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, span: Span, msrv: Option<RustcVersion>) {
     let recv_ty = cx.typeck_results().expr_ty_adjusted(recv);
     let inner_ty = match recv_ty.kind() {
         // `Option<T>` -> `T`
         ty::Adt(adt, subst)
-            if cx.tcx.is_diagnostic_item(sym::Option, adt.did()) && meets_msrv(msrv, &msrvs::OPTION_COPIED) =>
+            if cx.tcx.is_diagnostic_item(sym::Option, adt.did()) && meets_msrv(msrv, msrvs::OPTION_COPIED) =>
         {
             subst.type_at(0)
         },
-        _ if is_trait_method(cx, expr, sym::Iterator) && meets_msrv(msrv, &msrvs::ITERATOR_COPIED) => {
+        _ if is_trait_method(cx, expr, sym::Iterator) && meets_msrv(msrv, msrvs::ITERATOR_COPIED) => {
             match get_iterator_item_ty(cx, recv_ty) {
                 // <T as Iterator>::Item
                 Some(ty) => ty,

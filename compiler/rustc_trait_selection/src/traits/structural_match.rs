@@ -11,7 +11,13 @@ use rustc_span::Span;
 use std::ops::ControlFlow;
 
 #[derive(Debug)]
-pub enum NonStructuralMatchTy<'tcx> {
+pub struct NonStructuralMatchTy<'tcx> {
+    pub ty: Ty<'tcx>,
+    pub kind: NonStructuralMatchTyKind<'tcx>,
+}
+
+#[derive(Debug)]
+pub enum NonStructuralMatchTyKind<'tcx> {
     Adt(AdtDef<'tcx>),
     Param,
     Dynamic,
@@ -137,25 +143,32 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for Search<'a, 'tcx> {
         let (adt_def, substs) = match *ty.kind() {
             ty::Adt(adt_def, substs) => (adt_def, substs),
             ty::Param(_) => {
-                return ControlFlow::Break(NonStructuralMatchTy::Param);
+                let kind = NonStructuralMatchTyKind::Param;
+                return ControlFlow::Break(NonStructuralMatchTy { ty, kind });
             }
             ty::Dynamic(..) => {
-                return ControlFlow::Break(NonStructuralMatchTy::Dynamic);
+                let kind = NonStructuralMatchTyKind::Dynamic;
+                return ControlFlow::Break(NonStructuralMatchTy { ty, kind });
             }
             ty::Foreign(_) => {
-                return ControlFlow::Break(NonStructuralMatchTy::Foreign);
+                let kind = NonStructuralMatchTyKind::Foreign;
+                return ControlFlow::Break(NonStructuralMatchTy { ty, kind });
             }
             ty::Opaque(..) => {
-                return ControlFlow::Break(NonStructuralMatchTy::Opaque);
+                let kind = NonStructuralMatchTyKind::Opaque;
+                return ControlFlow::Break(NonStructuralMatchTy { ty, kind });
             }
             ty::Projection(..) => {
-                return ControlFlow::Break(NonStructuralMatchTy::Projection);
+                let kind = NonStructuralMatchTyKind::Projection;
+                return ControlFlow::Break(NonStructuralMatchTy { ty, kind });
             }
             ty::Closure(..) => {
-                return ControlFlow::Break(NonStructuralMatchTy::Closure);
+                let kind = NonStructuralMatchTyKind::Closure;
+                return ControlFlow::Break(NonStructuralMatchTy { ty, kind });
             }
             ty::Generator(..) | ty::GeneratorWitness(..) => {
-                return ControlFlow::Break(NonStructuralMatchTy::Generator);
+                let kind = NonStructuralMatchTyKind::Generator;
+                return ControlFlow::Break(NonStructuralMatchTy { ty, kind });
             }
             ty::RawPtr(..) => {
                 // structural-match ignores substructure of
@@ -215,7 +228,8 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for Search<'a, 'tcx> {
 
         if !self.type_marked_structural(ty) {
             debug!("Search found ty: {:?}", ty);
-            return ControlFlow::Break(NonStructuralMatchTy::Adt(adt_def));
+            let kind = NonStructuralMatchTyKind::Adt(adt_def);
+            return ControlFlow::Break(NonStructuralMatchTy { ty, kind });
         }
 
         // structural-match does not care about the

@@ -12,7 +12,7 @@ pub use rustc_query_system::dep_graph::{
 };
 
 pub use dep_node::{label_strs, DepKind, DepKindStruct, DepNode, DepNodeExt};
-crate use dep_node::{make_compile_codegen_unit, make_compile_mono_item};
+pub(crate) use dep_node::{make_compile_codegen_unit, make_compile_mono_item};
 
 pub type DepGraph = rustc_query_system::dep_graph::DepGraph<DepKind>;
 pub type TaskDeps = rustc_query_system::dep_graph::TaskDeps<DepKind>;

@@ -1,4 +1,4 @@
-# Lint levels
+# Lint Levels
 
 In `rustc`, lints are divided into five *levels*:
 

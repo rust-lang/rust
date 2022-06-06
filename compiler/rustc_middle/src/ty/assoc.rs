@@ -9,7 +9,7 @@ use rustc_span::symbol::{Ident, Symbol};
 
 use super::{TyCtxt, Visibility};
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug, HashStable, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, HashStable, Hash, Encodable, Decodable)]
 pub enum AssocItemContainer {
     TraitContainer(DefId),
     ImplContainer(DefId),
@@ -41,7 +41,7 @@ impl AssocItemContainer {
 }
 
 /// Information about an associated item
-#[derive(Copy, Clone, Debug, PartialEq, HashStable, Eq, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, HashStable, Eq, Hash, Encodable, Decodable)]
 pub struct AssocItem {
     pub def_id: DefId,
     pub name: Symbol,
@@ -81,7 +81,7 @@ impl AssocItem {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Debug, HashStable, Eq, Hash)]
+#[derive(Copy, Clone, PartialEq, Debug, HashStable, Eq, Hash, Encodable, Decodable)]
 pub enum AssocKind {
     Const,
     Fn,

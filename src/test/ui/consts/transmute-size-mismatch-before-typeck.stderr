@@ -1,23 +1,5 @@
-error: any use of this value will cause an error
-  --> $DIR/transmute-size-mismatch-before-typeck.rs:13:29
-   |
-LL | const ZST: &[u8] = unsafe { std::mem::transmute(1usize) };
-   | ----------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^---
-   |                             |
-   |                             transmuting `usize` to `&[u8]` is not possible, because these types do not have the same size
-   |
-   = note: `#[deny(const_err)]` on by default
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
-
-error: could not evaluate constant pattern
-  --> $DIR/transmute-size-mismatch-before-typeck.rs:8:9
-   |
-LL |         ZST => {}
-   |         ^^^
-
 error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
-  --> $DIR/transmute-size-mismatch-before-typeck.rs:13:29
+  --> $DIR/transmute-size-mismatch-before-typeck.rs:12:29
    |
 LL | const ZST: &[u8] = unsafe { std::mem::transmute(1usize) };
    |                             ^^^^^^^^^^^^^^^^^^^
@@ -25,12 +7,6 @@ LL | const ZST: &[u8] = unsafe { std::mem::transmute(1usize) };
    = note: source type: `usize` (word size)
    = note: target type: `&[u8]` (2 * word size)
 
-error: could not evaluate constant pattern
-  --> $DIR/transmute-size-mismatch-before-typeck.rs:8:9
-   |
-LL |         ZST => {}
-   |         ^^^
-
-error: aborting due to 4 previous errors
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0512`.

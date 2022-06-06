@@ -9,7 +9,7 @@ use rustc_session::Limit;
 // FIXME: check whether it is cheaper to precompute the entire call graph instead of invoking
 // this query ridiculously often.
 #[instrument(level = "debug", skip(tcx, root, target))]
-crate fn mir_callgraph_reachable<'tcx>(
+pub(crate) fn mir_callgraph_reachable<'tcx>(
     tcx: TyCtxt<'tcx>,
     (root, target): (ty::Instance<'tcx>, LocalDefId),
 ) -> bool {
@@ -136,7 +136,7 @@ crate fn mir_callgraph_reachable<'tcx>(
     )
 }
 
-crate fn mir_inliner_callees<'tcx>(
+pub(crate) fn mir_inliner_callees<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: ty::InstanceDef<'tcx>,
 ) -> &'tcx [(DefId, SubstsRef<'tcx>)] {

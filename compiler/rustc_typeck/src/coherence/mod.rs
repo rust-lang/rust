@@ -57,7 +57,7 @@ fn enforce_trait_manually_implementable(
             E0322,
             "explicit impls for the `Pointee` trait are not permitted"
         )
-        .span_label(span, "impl of 'Pointee' not allowed")
+        .span_label(span, "impl of `Pointee` not allowed")
         .emit();
         return;
     }
@@ -70,7 +70,7 @@ fn enforce_trait_manually_implementable(
             E0322,
             "explicit impls for the `DiscriminantKind` trait are not permitted"
         )
-        .span_label(span, "impl of 'DiscriminantKind' not allowed")
+        .span_label(span, "impl of `DiscriminantKind` not allowed")
         .emit();
         return;
     }
@@ -83,7 +83,7 @@ fn enforce_trait_manually_implementable(
             E0322,
             "explicit impls for the `Sized` trait are not permitted"
         )
-        .span_label(span, "impl of 'Sized' not allowed")
+        .span_label(span, "impl of `Sized` not allowed")
         .emit();
         return;
     }

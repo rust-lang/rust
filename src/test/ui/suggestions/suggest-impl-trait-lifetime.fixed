@@ -1,3 +1,8 @@
+// FIXME(nll): On NLL stabilization, this should be replaced by
+// `suggest-impl-trait-lifetime-nll.rs`. Compiletest has
+// problems with rustfix and revisions.
+// ignore-compare-mode-nll
+
 // run-rustfix
 
 use std::fmt::Debug;

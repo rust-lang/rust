@@ -16,7 +16,7 @@ use std::collections::hash_map::Entry;
 
 use super::MATCH_SAME_ARMS;
 
-#[allow(clippy::too_many_lines)]
+#[expect(clippy::too_many_lines)]
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>]) {
     let hash = |&(_, arm): &(usize, &Arm<'_>)| -> u64 {
         let mut h = SpanlessHash::new(cx);
@@ -225,9 +225,9 @@ fn iter_matching_struct_fields<'a>(
     Iter(left.iter(), right.iter())
 }
 
-#[allow(clippy::similar_names)]
+#[expect(clippy::similar_names)]
 impl<'a> NormalizedPat<'a> {
-    #[allow(clippy::too_many_lines)]
+    #[expect(clippy::too_many_lines)]
     fn from_pat(cx: &LateContext<'_>, arena: &'a DroplessArena, pat: &'a Pat<'_>) -> Self {
         match pat.kind {
             PatKind::Wild | PatKind::Binding(.., None) => Self::Wild,

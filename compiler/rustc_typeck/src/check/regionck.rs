@@ -75,7 +75,6 @@
 use crate::check::dropck;
 use crate::check::FnCtxt;
 use crate::mem_categorization as mc;
-use crate::middle::region;
 use crate::outlives::outlives_bounds::InferCtxtExt as _;
 use rustc_data_structures::stable_set::FxHashSet;
 use rustc_hir as hir;
@@ -219,8 +218,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 pub struct RegionCtxt<'a, 'tcx> {
     pub fcx: &'a FnCtxt<'a, 'tcx>,
 
-    pub region_scope_tree: &'tcx region::ScopeTree,
-
     outlives_environment: OutlivesEnvironment<'tcx>,
 
     // id of innermost fn body id
@@ -247,11 +244,9 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         Subject(subject): Subject,
         param_env: ty::ParamEnv<'tcx>,
     ) -> RegionCtxt<'a, 'tcx> {
-        let region_scope_tree = fcx.tcx.region_scope_tree(subject);
         let outlives_environment = OutlivesEnvironment::new(param_env);
         RegionCtxt {
             fcx,
-            region_scope_tree,
             body_id: initial_body_id,
             body_owner: subject,
             subject_def_id: subject,

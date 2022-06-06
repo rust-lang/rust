@@ -678,7 +678,7 @@ pub fn check_unsafety<'tcx>(tcx: TyCtxt<'tcx>, def: ty::WithOptConstParam<LocalD
     visitor.visit_expr(&thir[expr]);
 }
 
-crate fn thir_check_unsafety<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) {
+pub(crate) fn thir_check_unsafety<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) {
     if let Some(def) = ty::WithOptConstParam::try_lookup(def_id, tcx) {
         tcx.thir_check_unsafety_for_const_arg(def)
     } else {
@@ -686,7 +686,7 @@ crate fn thir_check_unsafety<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) {
     }
 }
 
-crate fn thir_check_unsafety_for_const_arg<'tcx>(
+pub(crate) fn thir_check_unsafety_for_const_arg<'tcx>(
     tcx: TyCtxt<'tcx>,
     (did, param_did): (LocalDefId, DefId),
 ) {

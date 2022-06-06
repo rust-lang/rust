@@ -14,10 +14,10 @@ use rustc_span::{Span, DUMMY_SP};
 const EXEC_STRATEGY: pm::bridge::server::SameThread = pm::bridge::server::SameThread;
 
 pub struct BangProcMacro {
-    pub client: pm::bridge::client::Client<fn(pm::TokenStream) -> pm::TokenStream>,
+    pub client: pm::bridge::client::Client<pm::TokenStream, pm::TokenStream>,
 }
 
-impl base::ProcMacro for BangProcMacro {
+impl base::BangProcMacro for BangProcMacro {
     fn expand<'cx>(
         &self,
         ecx: &'cx mut ExtCtxt<'_>,
@@ -42,7 +42,7 @@ impl base::ProcMacro for BangProcMacro {
 }
 
 pub struct AttrProcMacro {
-    pub client: pm::bridge::client::Client<fn(pm::TokenStream, pm::TokenStream) -> pm::TokenStream>,
+    pub client: pm::bridge::client::Client<(pm::TokenStream, pm::TokenStream), pm::TokenStream>,
 }
 
 impl base::AttrProcMacro for AttrProcMacro {
@@ -72,11 +72,11 @@ impl base::AttrProcMacro for AttrProcMacro {
     }
 }
 
-pub struct ProcMacroDerive {
-    pub client: pm::bridge::client::Client<fn(pm::TokenStream) -> pm::TokenStream>,
+pub struct DeriveProcMacro {
+    pub client: pm::bridge::client::Client<pm::TokenStream, pm::TokenStream>,
 }
 
-impl MultiItemModifier for ProcMacroDerive {
+impl MultiItemModifier for DeriveProcMacro {
     fn expand(
         &self,
         ecx: &mut ExtCtxt<'_>,
@@ -96,7 +96,7 @@ impl MultiItemModifier for ProcMacroDerive {
             };
             TokenTree::token(token::Interpolated(Lrc::new(nt)), DUMMY_SP).into()
         } else {
-            item.to_tokens(&ecx.sess.parse_sess)
+            item.to_tokens()
         };
 
         let stream = {

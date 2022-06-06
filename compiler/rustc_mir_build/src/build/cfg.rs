@@ -5,33 +5,33 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 
 impl<'tcx> CFG<'tcx> {
-    crate fn block_data(&self, blk: BasicBlock) -> &BasicBlockData<'tcx> {
+    pub(crate) fn block_data(&self, blk: BasicBlock) -> &BasicBlockData<'tcx> {
         &self.basic_blocks[blk]
     }
 
-    crate fn block_data_mut(&mut self, blk: BasicBlock) -> &mut BasicBlockData<'tcx> {
+    pub(crate) fn block_data_mut(&mut self, blk: BasicBlock) -> &mut BasicBlockData<'tcx> {
         &mut self.basic_blocks[blk]
     }
 
     // llvm.org/PR32488 makes this function use an excess of stack space. Mark
     // it as #[inline(never)] to keep rustc's stack use in check.
     #[inline(never)]
-    crate fn start_new_block(&mut self) -> BasicBlock {
+    pub(crate) fn start_new_block(&mut self) -> BasicBlock {
         self.basic_blocks.push(BasicBlockData::new(None))
     }
 
-    crate fn start_new_cleanup_block(&mut self) -> BasicBlock {
+    pub(crate) fn start_new_cleanup_block(&mut self) -> BasicBlock {
         let bb = self.start_new_block();
         self.block_data_mut(bb).is_cleanup = true;
         bb
     }
 
-    crate fn push(&mut self, block: BasicBlock, statement: Statement<'tcx>) {
+    pub(crate) fn push(&mut self, block: BasicBlock, statement: Statement<'tcx>) {
         debug!("push({:?}, {:?})", block, statement);
         self.block_data_mut(block).statements.push(statement);
     }
 
-    crate fn push_assign(
+    pub(crate) fn push_assign(
         &mut self,
         block: BasicBlock,
         source_info: SourceInfo,
@@ -44,7 +44,7 @@ impl<'tcx> CFG<'tcx> {
         );
     }
 
-    crate fn push_assign_constant(
+    pub(crate) fn push_assign_constant(
         &mut self,
         block: BasicBlock,
         source_info: SourceInfo,
@@ -59,7 +59,7 @@ impl<'tcx> CFG<'tcx> {
         );
     }
 
-    crate fn push_assign_unit(
+    pub(crate) fn push_assign_unit(
         &mut self,
         block: BasicBlock,
         source_info: SourceInfo,
@@ -78,7 +78,7 @@ impl<'tcx> CFG<'tcx> {
         );
     }
 
-    crate fn push_fake_read(
+    pub(crate) fn push_fake_read(
         &mut self,
         block: BasicBlock,
         source_info: SourceInfo,
@@ -90,7 +90,7 @@ impl<'tcx> CFG<'tcx> {
         self.push(block, stmt);
     }
 
-    crate fn terminate(
+    pub(crate) fn terminate(
         &mut self,
         block: BasicBlock,
         source_info: SourceInfo,
@@ -107,7 +107,7 @@ impl<'tcx> CFG<'tcx> {
     }
 
     /// In the `origin` block, push a `goto -> target` terminator.
-    crate fn goto(&mut self, origin: BasicBlock, source_info: SourceInfo, target: BasicBlock) {
+    pub(crate) fn goto(&mut self, origin: BasicBlock, source_info: SourceInfo, target: BasicBlock) {
         self.terminate(origin, source_info, TerminatorKind::Goto { target })
     }
 }

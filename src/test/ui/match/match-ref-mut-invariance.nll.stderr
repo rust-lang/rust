@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/match-ref-mut-invariance.rs:10:9
+  --> $DIR/match-ref-mut-invariance.rs:14:9
    |
 LL | impl<'b> S<'b> {
    |      -- lifetime `'b` defined here

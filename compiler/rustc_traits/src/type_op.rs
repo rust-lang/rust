@@ -23,7 +23,7 @@ use rustc_trait_selection::traits::query::{Fallible, NoSolution};
 use rustc_trait_selection::traits::{Normalized, Obligation, ObligationCause, TraitEngine};
 use std::fmt;
 
-crate fn provide(p: &mut Providers) {
+pub(crate) fn provide(p: &mut Providers) {
     *p = Providers {
         type_op_ascribe_user_type,
         type_op_eq,

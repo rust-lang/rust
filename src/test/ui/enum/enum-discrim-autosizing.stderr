@@ -1,10 +1,16 @@
-error[E0081]: discriminant value `0` already exists
-  --> $DIR/enum-discrim-autosizing.rs:8:12
+error[E0081]: discriminant value `0` assigned more than once
+  --> $DIR/enum-discrim-autosizing.rs:6:1
    |
-LL |     Au64 = 0,
-   |            - first use of `0`
-LL |     Bu64 = 0x8000_0000_0000_0000
-   |            ^^^^^^^^^^^^^^^^^^^^^ enum already has `0` (overflowed from `9223372036854775808`)
+LL | / enum Eu64 {
+LL | |
+LL | |     Au64 = 0,
+   | |            - first assignment of `0`
+LL | |
+LL | |     Bu64 = 0x8000_0000_0000_0000
+   | |            --------------------- second assignment of `0` (overflowed from `9223372036854775808`)
+LL | |
+LL | | }
+   | |_^
 
 error: aborting due to previous error
 

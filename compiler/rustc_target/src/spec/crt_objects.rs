@@ -40,8 +40,8 @@
 //! but not gcc's. As a result rustc cannot link with C++ static libraries (#36710)
 //! when linking in self-contained mode.
 
+use crate::json::{Json, ToJson};
 use crate::spec::LinkOutputKind;
-use rustc_serialize::json::{Json, ToJson};
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::str::FromStr;

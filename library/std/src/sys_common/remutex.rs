@@ -168,13 +168,6 @@ impl<T> ReentrantMutex<T> {
     }
 }
 
-impl<T> Drop for ReentrantMutex<T> {
-    fn drop(&mut self) {
-        // Safety: We're the unique owner of this mutex and not going to use it afterwards.
-        unsafe { self.mutex.destroy() }
-    }
-}
-
 impl<T> Deref for ReentrantMutexGuard<'_, T> {
     type Target = T;
 

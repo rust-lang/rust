@@ -16,7 +16,7 @@ use serde::Serialize;
 use std::collections::BTreeMap;
 use std::ops;
 
-crate const CALCULATE_DOC_COVERAGE: Pass = Pass {
+pub(crate) const CALCULATE_DOC_COVERAGE: Pass = Pass {
     name: "calculate-doc-coverage",
     run: calculate_doc_coverage,
     description: "counts the number of items with and without documentation",
@@ -265,7 +265,7 @@ impl<'a, 'b> DocVisitor for CoverageCalculator<'a, 'b> {
                 self.items.entry(filename).or_default().count_item(
                     has_docs,
                     has_doc_example,
-                    should_have_doc_example(self.ctx, &i),
+                    should_have_doc_example(self.ctx, i),
                     should_have_docs,
                 );
             }

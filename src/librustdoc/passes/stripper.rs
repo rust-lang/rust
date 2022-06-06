@@ -7,10 +7,10 @@ use crate::clean::{self, Item, ItemIdSet};
 use crate::fold::{strip_item, DocFolder};
 use crate::formats::cache::Cache;
 
-crate struct Stripper<'a> {
-    crate retained: &'a mut ItemIdSet,
-    crate access_levels: &'a AccessLevels<DefId>,
-    crate update_retained: bool,
+pub(crate) struct Stripper<'a> {
+    pub(crate) retained: &'a mut ItemIdSet,
+    pub(crate) access_levels: &'a AccessLevels<DefId>,
+    pub(crate) update_retained: bool,
 }
 
 impl<'a> DocFolder for Stripper<'a> {
@@ -116,16 +116,17 @@ impl<'a> DocFolder for Stripper<'a> {
 }
 
 /// This stripper discards all impls which reference stripped items
-crate struct ImplStripper<'a> {
-    crate retained: &'a ItemIdSet,
-    crate cache: &'a Cache,
+pub(crate) struct ImplStripper<'a> {
+    pub(crate) retained: &'a ItemIdSet,
+    pub(crate) cache: &'a Cache,
 }
 
 impl<'a> DocFolder for ImplStripper<'a> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         if let clean::ImplItem(ref imp) = *i.kind {
-            // emptied none trait impls can be stripped
-            if imp.trait_.is_none() && imp.items.is_empty() {
+            // Impl blocks can be skipped if they are: empty; not a trait impl; and have no
+            // documentation.
+            if imp.trait_.is_none() && imp.items.is_empty() && i.doc_value().is_none() {
                 return None;
             }
             if let Some(did) = imp.for_.def_id(self.cache) {
@@ -159,7 +160,7 @@ impl<'a> DocFolder for ImplStripper<'a> {
 }
 
 /// This stripper discards all private import statements (`use`, `extern crate`)
-crate struct ImportStripper;
+pub(crate) struct ImportStripper;
 
 impl DocFolder for ImportStripper {
     fn fold_item(&mut self, i: Item) -> Option<Item> {

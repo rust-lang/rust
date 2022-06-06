@@ -9,14 +9,14 @@ cfg_if::cfg_if! {
     ))] {
         mod futex;
         mod futex_rwlock;
-        pub use futex::{Mutex, MovableMutex, Condvar, MovableCondvar};
-        pub use futex_rwlock::{RwLock, MovableRwLock};
+        pub(crate) use futex::{Mutex, MovableMutex, MovableCondvar};
+        pub(crate) use futex_rwlock::{RwLock, MovableRwLock};
     } else {
         mod pthread_mutex;
         mod pthread_rwlock;
         mod pthread_condvar;
-        pub use pthread_mutex::{Mutex, MovableMutex};
-        pub use pthread_rwlock::{RwLock, MovableRwLock};
-        pub use pthread_condvar::{Condvar, MovableCondvar};
+        pub(crate) use pthread_mutex::{Mutex, MovableMutex};
+        pub(crate) use pthread_rwlock::{RwLock, MovableRwLock};
+        pub(crate) use pthread_condvar::MovableCondvar;
     }
 }

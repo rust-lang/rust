@@ -17,7 +17,11 @@ use std::collections::hash_map::Entry;
 use std::fmt::Write;
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
-    crate fn lower_inline_asm(&mut self, sp: Span, asm: &InlineAsm) -> &'hir hir::InlineAsm<'hir> {
+    pub(crate) fn lower_inline_asm(
+        &mut self,
+        sp: Span,
+        asm: &InlineAsm,
+    ) -> &'hir hir::InlineAsm<'hir> {
         // Rustdoc needs to support asm! from foreign architectures: don't try
         // lowering the register constraints in this case.
         let asm_arch = if self.sess.opts.actually_rustdoc { None } else { self.sess.asm_arch };

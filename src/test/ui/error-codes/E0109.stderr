@@ -1,8 +1,16 @@
-error[E0109]: type arguments are not allowed for this type
+error[E0109]: type arguments are not allowed on this type
   --> $DIR/E0109.rs:1:14
    |
 LL | type X = u32<i32>;
-   |              ^^^ type argument not allowed
+   |          --- ^^^ type argument not allowed
+   |          |
+   |          not allowed on this
+   |
+help: primitive type `u32` doesn't have generic parameters
+   |
+LL - type X = u32<i32>;
+LL + type X = u32;
+   | 
 
 error: aborting due to previous error
 

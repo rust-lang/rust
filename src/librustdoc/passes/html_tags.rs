@@ -11,7 +11,7 @@ use std::iter::Peekable;
 use std::ops::Range;
 use std::str::CharIndices;
 
-crate const CHECK_INVALID_HTML_TAGS: Pass = Pass {
+pub(crate) const CHECK_INVALID_HTML_TAGS: Pass = Pass {
     name: "check-invalid-html-tags",
     run: check_invalid_html_tags,
     description: "detects invalid HTML tags in doc comments",
@@ -21,7 +21,7 @@ struct InvalidHtmlTagsLinter<'a, 'tcx> {
     cx: &'a mut DocContext<'tcx>,
 }
 
-crate fn check_invalid_html_tags(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
+pub(crate) fn check_invalid_html_tags(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
     if cx.tcx.sess.is_nightly_build() {
         let mut coll = InvalidHtmlTagsLinter { cx };
         coll.visit_crate(&krate);
@@ -91,11 +91,7 @@ fn extract_path_backwards(text: &str, end_pos: usize) -> Option<usize> {
         }
         break;
     }
-    if current_pos == end_pos {
-        return None;
-    } else {
-        return Some(current_pos);
-    }
+    if current_pos == end_pos { None } else { Some(current_pos) }
 }
 
 fn extract_html_tag(

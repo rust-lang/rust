@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/object-lifetime-default-mybox.rs:27:5
+  --> $DIR/object-lifetime-default-mybox.rs:31:5
    |
 LL | fn load1<'a,'b>(a: &'a MyBox<dyn SomeTrait>,
    |          -- -- lifetime `'b` defined here
@@ -12,7 +12,7 @@ LL |     a
    = help: consider adding the following bound: `'a: 'b`
 
 error[E0521]: borrowed data escapes outside of function
-  --> $DIR/object-lifetime-default-mybox.rs:31:5
+  --> $DIR/object-lifetime-default-mybox.rs:37:5
    |
 LL | fn load2<'a>(ss: &MyBox<dyn SomeTrait + 'a>) -> MyBox<dyn SomeTrait + 'a> {
    |          --  -- `ss` is a reference that is only valid in the function body

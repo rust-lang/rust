@@ -71,6 +71,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         wbcx.visit_user_provided_sigs();
         wbcx.visit_generator_interior_types();
 
+        wbcx.typeck_results.rvalue_scopes =
+            mem::take(&mut self.typeck_results.borrow_mut().rvalue_scopes);
+
         let used_trait_imports =
             mem::take(&mut self.typeck_results.borrow_mut().used_trait_imports);
         debug!("used_trait_imports({:?}) = {:?}", item_def_id, used_trait_imports);
@@ -258,8 +261,6 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
         self.fix_scalar_builtin_expr(e);
         self.fix_index_builtin_expr(e);
 
-        self.visit_node_id(e.span, e.hir_id);
-
         match e.kind {
             hir::ExprKind::Closure(_, _, body, _, _) => {
                 let body = self.fcx.tcx.hir().body(body);
@@ -286,6 +287,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
             _ => {}
         }
 
+        self.visit_node_id(e.span, e.hir_id);
         intravisit::walk_expr(self, e);
     }
 
@@ -646,7 +648,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     }
 }
 
-crate trait Locatable {
+pub(crate) trait Locatable {
     fn to_span(&self, tcx: TyCtxt<'_>) -> Span;
 }
 

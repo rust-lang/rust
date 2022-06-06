@@ -4,7 +4,7 @@ const darkThemes = ["dark", "ayu"];
 window.currentTheme = document.getElementById("themeStyle");
 window.mainTheme = document.getElementById("mainThemeStyle");
 
-const settingsDataset = (function () {
+const settingsDataset = (function() {
     const settingsElement = document.getElementById("default-settings");
     if (settingsElement === null) {
         return null;
@@ -163,7 +163,7 @@ function useSystemTheme(value) {
     }
 }
 
-const updateSystemTheme = (function () {
+const updateSystemTheme = (function() {
     if (!window.matchMedia) {
         // fallback to the CSS computed value
         return () => {

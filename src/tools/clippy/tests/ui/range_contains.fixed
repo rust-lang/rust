@@ -6,7 +6,7 @@
 #[allow(clippy::short_circuit_statement)]
 #[allow(clippy::unnecessary_operation)]
 fn main() {
-    let x = 9_u32;
+    let x = 9_i32;
 
     // order shouldn't matter
     (8..12).contains(&x);
@@ -43,6 +43,12 @@ fn main() {
     let y = 3.;
     (0. ..1.).contains(&y);
     !(0. ..=1.).contains(&y);
+
+    // handle negatives #8721
+    (-10..=10).contains(&x);
+    x >= 10 && x <= -10;
+    (-3. ..=3.).contains(&y);
+    y >= 3. && y <= -3.;
 }
 
 // Fix #6373

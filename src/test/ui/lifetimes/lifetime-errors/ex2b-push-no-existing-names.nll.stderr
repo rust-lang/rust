@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/ex2b-push-no-existing-names.rs:6:5
+  --> $DIR/ex2b-push-no-existing-names.rs:10:5
    |
 LL | fn foo(x: &mut Vec<Ref<i32>>, y: Ref<i32>) {
    |        -                      - has type `Ref<'1, i32>`

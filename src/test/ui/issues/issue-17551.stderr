@@ -1,10 +1,13 @@
 error[E0282]: type annotations needed for `B<T>`
-  --> $DIR/issue-17551.rs:6:15
+  --> $DIR/issue-17551.rs:6:9
    |
 LL |     let foo = B(marker::PhantomData);
-   |         ---   ^ cannot infer type for type parameter `T` declared on the struct `B`
-   |         |
-   |         consider giving `foo` the explicit type `B<T>`, where the type parameter `T` is specified
+   |         ^^^
+   |
+help: consider giving `foo` an explicit type, where the type for type parameter `T` is specified
+   |
+LL |     let foo: B<T> = B(marker::PhantomData);
+   |            ++++++
 
 error: aborting due to previous error
 

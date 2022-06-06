@@ -30,7 +30,6 @@
 #![feature(array_windows)]
 #![feature(box_patterns)]
 #![feature(control_flow_enum)]
-#![feature(crate_visibility_modifier)]
 #![feature(if_let_guard)]
 #![feature(iter_intersperse)]
 #![feature(iter_order_by)]

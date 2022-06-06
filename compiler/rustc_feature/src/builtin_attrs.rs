@@ -399,7 +399,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
 
     // RFC #3191: #[debugger_visualizer] support
     gated!(
-        debugger_visualizer, Normal, template!(List: r#"natvis_file = "...""#),
+        debugger_visualizer, Normal, template!(List: r#"natvis_file = "...", gdb_script_file = "...""#),
         DuplicatesOk, experimental!(debugger_visualizer)
     ),
 
@@ -473,9 +473,10 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
     // RFC 2632
     gated!(
-        default_method_body_is_const, Normal, template!(Word), WarnFollowing, const_trait_impl,
-        "`default_method_body_is_const` is a temporary placeholder for declaring default bodies \
-        as `const`, which may be removed or renamed in the future."
+        const_trait, Normal, template!(Word), WarnFollowing, const_trait_impl,
+        "`const` is a temporary placeholder for marking a trait that is suitable for `const` \
+        `impls` and all default bodies as `const`, which may be removed or renamed in the \
+        future."
     ),
     // lang-team MCP 147
     gated!(
@@ -674,6 +675,12 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         "#[rustc_has_incoherent_inherent_impls] allows the addition of incoherent inherent impls for \
          the given type by annotating all impl items with #[rustc_allow_incoherent_impl]."
     ),
+    rustc_attr!(
+        rustc_box, AttributeType::Normal, template!(Word), ErrorFollowing,
+        "#[rustc_box] allows creating boxes \
+        and it is only intended to be used in `alloc`."
+    ),
+
     BuiltinAttribute {
         name: sym::rustc_diagnostic_item,
         // FIXME: This can be `true` once we always use `tcx.is_diagnostic_item`.

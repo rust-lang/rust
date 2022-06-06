@@ -85,6 +85,7 @@ impl<'a> State<'a> {
             Node::Stmt(a) => self.print_stmt(&a),
             Node::PathSegment(a) => self.print_path_segment(&a),
             Node::Ty(a) => self.print_type(&a),
+            Node::TypeBinding(a) => self.print_type_binding(&a),
             Node::TraitRef(a) => self.print_trait_ref(&a),
             Node::Binding(a) | Node::Pat(a) => self.print_pat(&a),
             Node::Arm(a) => self.print_arm(&a),
@@ -1703,25 +1704,29 @@ impl<'a> State<'a> {
 
             for binding in generic_args.bindings.iter() {
                 start_or_comma(self);
-                self.print_ident(binding.ident);
-                self.print_generic_args(binding.gen_args, false, false);
-                self.space();
-                match generic_args.bindings[0].kind {
-                    hir::TypeBindingKind::Equality { ref term } => {
-                        self.word_space("=");
-                        match term {
-                            Term::Ty(ref ty) => self.print_type(ty),
-                            Term::Const(ref c) => self.print_anon_const(c),
-                        }
-                    }
-                    hir::TypeBindingKind::Constraint { bounds } => {
-                        self.print_bounds(":", bounds);
-                    }
-                }
+                self.print_type_binding(binding);
             }
 
             if !empty.get() {
                 self.word(">")
+            }
+        }
+    }
+
+    pub fn print_type_binding(&mut self, binding: &hir::TypeBinding<'_>) {
+        self.print_ident(binding.ident);
+        self.print_generic_args(binding.gen_args, false, false);
+        self.space();
+        match binding.kind {
+            hir::TypeBindingKind::Equality { ref term } => {
+                self.word_space("=");
+                match term {
+                    Term::Ty(ref ty) => self.print_type(ty),
+                    Term::Const(ref c) => self.print_anon_const(c),
+                }
+            }
+            hir::TypeBindingKind::Constraint { bounds } => {
+                self.print_bounds(":", bounds);
             }
         }
     }

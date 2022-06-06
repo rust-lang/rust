@@ -1,5 +1,5 @@
 PRINT-BANG INPUT (DISPLAY): struct S;
-PRINT-BANG RE-COLLECTED (DISPLAY): /*«*/ struct S ; /*»*/
+PRINT-BANG RE-COLLECTED (DISPLAY): struct S ;
 PRINT-BANG INPUT (DEBUG): TokenStream [
     Group {
         delimiter: None,

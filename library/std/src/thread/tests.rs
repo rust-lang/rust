@@ -127,7 +127,7 @@ where
 {
     let (tx, rx) = channel();
 
-    let x: Box<_> = box 1;
+    let x: Box<_> = Box::new(1);
     let x_in_parent = (&*x) as *const i32 as usize;
 
     spawnfn(Box::new(move || {
@@ -219,7 +219,7 @@ fn test_try_panic_any_message_owned_str() {
 #[test]
 fn test_try_panic_any_message_any() {
     match thread::spawn(move || {
-        panic_any(box 413u16 as Box<dyn Any + Send>);
+        panic_any(Box::new(413u16) as Box<dyn Any + Send>);
     })
     .join()
     {

@@ -33,7 +33,7 @@ use rustc_middle::mir::{self, GeneratorLayout};
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::subst::GenericArgKind;
-use rustc_middle::ty::{self, AdtKind, Instance, ParamEnv, Ty, TyCtxt, COMMON_VTABLE_ENTRIES};
+use rustc_middle::ty::{self, AdtKind, Instance, ParamEnv, Ty, TyCtxt};
 use rustc_session::config::{self, DebugInfo};
 use rustc_span::symbol::Symbol;
 use rustc_span::FileName;
@@ -1392,7 +1392,7 @@ fn build_vtable_type_di_node<'ll, 'tcx>(
 
         tcx.vtable_entries(trait_ref)
     } else {
-        COMMON_VTABLE_ENTRIES
+        TyCtxt::COMMON_VTABLE_ENTRIES
     };
 
     // All function pointers are described as opaque pointers. This could be improved in the future

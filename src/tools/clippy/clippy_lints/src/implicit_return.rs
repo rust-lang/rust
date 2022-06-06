@@ -164,7 +164,7 @@ fn lint_implicit_returns(
             })
             .visit_block(block);
             if add_return {
-                #[allow(clippy::option_if_let_else)]
+                #[expect(clippy::option_if_let_else)]
                 if let Some(span) = call_site_span {
                     lint_return(cx, span);
                     LintLocation::Parent
@@ -196,7 +196,7 @@ fn lint_implicit_returns(
 
         _ =>
         {
-            #[allow(clippy::option_if_let_else)]
+            #[expect(clippy::option_if_let_else)]
             if let Some(span) = call_site_span {
                 lint_return(cx, span);
                 LintLocation::Parent

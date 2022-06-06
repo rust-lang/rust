@@ -338,6 +338,17 @@ impl UnsafeCode {
                 .emit();
         })
     }
+
+    fn report_overridden_symbol_section(&self, cx: &EarlyContext<'_>, span: Span, msg: &str) {
+        self.report_unsafe(cx, span, |lint| {
+            lint.build(msg)
+                .note(
+                    "the program's behavior with overridden link sections on items is unpredictable \
+                    and Rust cannot provide guarantees when you manually override them",
+                )
+                .emit();
+        })
+    }
 }
 
 impl EarlyLintPass for UnsafeCode {
@@ -385,11 +396,20 @@ impl EarlyLintPass for UnsafeCode {
                         "declaration of a `no_mangle` function",
                     );
                 }
+
                 if let Some(attr) = cx.sess().find_by_name(&it.attrs, sym::export_name) {
                     self.report_overridden_symbol_name(
                         cx,
                         attr.span,
                         "declaration of a function with `export_name`",
+                    );
+                }
+
+                if let Some(attr) = cx.sess().find_by_name(&it.attrs, sym::link_section) {
+                    self.report_overridden_symbol_section(
+                        cx,
+                        attr.span,
+                        "declaration of a function with `link_section`",
                     );
                 }
             }
@@ -402,11 +422,20 @@ impl EarlyLintPass for UnsafeCode {
                         "declaration of a `no_mangle` static",
                     );
                 }
+
                 if let Some(attr) = cx.sess().find_by_name(&it.attrs, sym::export_name) {
                     self.report_overridden_symbol_name(
                         cx,
                         attr.span,
                         "declaration of a static with `export_name`",
+                    );
+                }
+
+                if let Some(attr) = cx.sess().find_by_name(&it.attrs, sym::link_section) {
+                    self.report_overridden_symbol_section(
+                        cx,
+                        attr.span,
+                        "declaration of a static with `link_section`",
                     );
                 }
             }
@@ -1372,17 +1401,11 @@ impl UnreachablePub {
             let def_span = cx.tcx.sess.source_map().guess_head_span(span);
             cx.struct_span_lint(UNREACHABLE_PUB, def_span, |lint| {
                 let mut err = lint.build(&format!("unreachable `pub` {}", what));
-                let replacement = if cx.tcx.features().crate_visibility_modifier {
-                    "crate"
-                } else {
-                    "pub(crate)"
-                }
-                .to_owned();
 
                 err.span_suggestion(
                     vis_span,
                     "consider restricting its visibility",
-                    replacement,
+                    "pub(crate)".to_owned(),
                     applicability,
                 );
                 if exportable {
@@ -2495,7 +2518,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
             ty: Ty<'tcx>,
             init: InitKind,
         ) -> Option<InitError> {
-            use rustc_middle::ty::TyKind::*;
+            use rustc_type_ir::sty::TyKind::*;
             match ty.kind() {
                 // Primitive types that don't like 0 as a value.
                 Ref(..) => Some(("references must be non-null".to_string(), None)),
@@ -2705,7 +2728,7 @@ impl SymbolName {
 }
 
 impl ClashingExternDeclarations {
-    crate fn new() -> Self {
+    pub(crate) fn new() -> Self {
         ClashingExternDeclarations { seen_decls: FxHashMap::default() }
     }
     /// Insert a new foreign item into the seen set. If a symbol with the same name already exists
@@ -2807,7 +2830,7 @@ impl ClashingExternDeclarations {
                 true
             } else {
                 // Do a full, depth-first comparison between the two.
-                use rustc_middle::ty::TyKind::*;
+                use rustc_type_ir::sty::TyKind::*;
                 let a_kind = a.kind();
                 let b_kind = b.kind();
 

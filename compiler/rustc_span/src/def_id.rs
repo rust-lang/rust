@@ -307,11 +307,8 @@ impl DefId {
 
 impl<E: Encoder> Encodable<E> for DefId {
     default fn encode(&self, s: &mut E) -> Result<(), E::Error> {
-        s.emit_struct(false, |s| {
-            s.emit_struct_field("krate", true, |s| self.krate.encode(s))?;
-
-            s.emit_struct_field("index", false, |s| self.index.encode(s))
-        })
+        self.krate.encode(s)?;
+        self.index.encode(s)
     }
 }
 

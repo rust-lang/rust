@@ -1,3 +1,7 @@
+// revisions: base nll
+// ignore-compare-mode-nll
+//[nll] compile-flags: -Z borrowck=mir
+
 // Test a case where you have an impl of `Foo<X>` for all `X` that
 // is being applied to `for<'a> Foo<&'a mut X>`. Issue #19730.
 
@@ -27,7 +31,10 @@ fn give_static() {
 // AnyInt implements Foo<&'a isize> for any 'a, so it is a match.
 impl<'a> Foo<&'a isize> for &'a u32 { }
 fn give_some<'a>() {
-    want_hrtb::<&'a u32>() //~ ERROR
+    want_hrtb::<&'a u32>()
+    //[base]~^ ERROR
+    //[nll]~^^ ERROR lifetime may not live long enough
+    //[nll]~| ERROR implementation of `Foo` is not general enough
 }
 
 fn main() { }

@@ -1,7 +1,6 @@
 //! Support for serializing the dep-graph and reloading it.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
-#![feature(crate_visibility_modifier)]
 #![feature(nll)]
 #![feature(min_specialization)]
 #![feature(once_cell)]
@@ -21,7 +20,7 @@ use rustc_middle::dep_graph::{self, DepKindStruct, SerializedDepNodeIndex};
 use rustc_middle::ty::query::{query_keys, query_storage, query_stored, query_values};
 use rustc_middle::ty::query::{ExternProviders, Providers, QueryEngine};
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_span::def_id::LocalDefId;
+use rustc_span::def_id::{LocalDefId, LOCAL_CRATE};
 use rustc_span::Span;
 
 #[macro_use]

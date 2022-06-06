@@ -2,14 +2,13 @@ use crate::base::ExtCtxt;
 
 use rustc_ast as ast;
 use rustc_ast::token;
-use rustc_ast::tokenstream::{self, CanSynthesizeMissingTokens};
-use rustc_ast::tokenstream::{DelimSpan, Spacing::*, TokenStream, TreeAndSpacing};
+use rustc_ast::tokenstream::{self, DelimSpan, Spacing::*, TokenStream, TreeAndSpacing};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Diagnostic, MultiSpan, PResult};
 use rustc_parse::lexer::nfc_normalize;
-use rustc_parse::{nt_to_tokenstream, parse_stream_from_source_str};
+use rustc_parse::parse_stream_from_source_str;
 use rustc_session::parse::ParseSess;
 use rustc_span::def_id::CrateNum;
 use rustc_span::symbol::{self, kw, sym, Symbol};
@@ -179,10 +178,9 @@ impl FromInternal<(TreeAndSpacing, &'_ mut Vec<Self>, &mut Rustc<'_, '_>)>
                 TokenTree::Ident(Ident::new(rustc.sess(), ident.name, is_raw, ident.span))
             }
             Interpolated(nt) => {
-                let stream = nt_to_tokenstream(&nt, rustc.sess(), CanSynthesizeMissingTokens::No);
                 TokenTree::Group(Group {
                     delimiter: pm::Delimiter::None,
-                    stream,
+                    stream: TokenStream::from_nonterminal_ast(&nt),
                     span: DelimSpan::from_single(span),
                     flatten: crate::base::nt_pretty_printing_compatibility_hack(&nt, rustc.sess()),
                 })
@@ -454,7 +452,7 @@ impl server::TokenStream for Rustc<'_, '_> {
 
         // NOTE: For now, limit `expand_expr` to exclusively expand to literals.
         // This may be relaxed in the future.
-        // We don't use `nt_to_tokenstream` as the tokenstream currently cannot
+        // We don't use `TokenStream::from_ast` as the tokenstream currently cannot
         // be recovered in the general case.
         match &expr.kind {
             ast::ExprKind::Lit(l) => {

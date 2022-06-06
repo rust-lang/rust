@@ -48,7 +48,7 @@ impl CognitiveComplexity {
 impl_lint_pass!(CognitiveComplexity => [COGNITIVE_COMPLEXITY]);
 
 impl CognitiveComplexity {
-    #[allow(clippy::cast_possible_truncation)]
+    #[expect(clippy::cast_possible_truncation)]
     fn check<'tcx>(
         &mut self,
         cx: &LateContext<'tcx>,
@@ -70,7 +70,7 @@ impl CognitiveComplexity {
         let ret_adjust = if is_type_diagnostic_item(cx, ret_ty, sym::Result) {
             returns
         } else {
-            #[allow(clippy::integer_division)]
+            #[expect(clippy::integer_division)]
             (returns / 2)
         };
 

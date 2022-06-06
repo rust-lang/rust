@@ -212,11 +212,11 @@ pub fn ptrcast<'ll>(val: &'ll Value, ty: &'ll Type) -> &'ll Value {
 }
 
 impl<'ll> CodegenCx<'ll, '_> {
-    crate fn const_bitcast(&self, val: &'ll Value, ty: &'ll Type) -> &'ll Value {
+    pub(crate) fn const_bitcast(&self, val: &'ll Value, ty: &'ll Type) -> &'ll Value {
         unsafe { llvm::LLVMConstBitCast(val, ty) }
     }
 
-    crate fn static_addr_of_mut(
+    pub(crate) fn static_addr_of_mut(
         &self,
         cv: &'ll Value,
         align: Align,
@@ -241,7 +241,7 @@ impl<'ll> CodegenCx<'ll, '_> {
         }
     }
 
-    crate fn get_static(&self, def_id: DefId) -> &'ll Value {
+    pub(crate) fn get_static(&self, def_id: DefId) -> &'ll Value {
         let instance = Instance::mono(self.tcx, def_id);
         if let Some(&g) = self.instances.borrow().get(&instance) {
             return g;

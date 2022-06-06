@@ -62,16 +62,14 @@ Starting with an `expr`, you can check whether it is calling a specific method `
 ```rust
 impl<'tcx> LateLintPass<'tcx> for MyStructLint {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
-        if_chain! {
-            // Check our expr is calling a method
-            if let hir::ExprKind::MethodCall(path, _, [_self_arg, ..]) = &expr.kind;
+        // Check our expr is calling a method
+        if let hir::ExprKind::MethodCall(path, _, [_self_arg, ..]) = &expr.kind
             // Check the name of this method is `some_method`
-            if path.ident.name == sym!(some_method);
+            && path.ident.name == sym!(some_method)
             // Optionally, check the type of the self argument.
             // - See "Checking for a specific type"
-            then {
+        {
                 // ...
-            }
         }
     }
 }
@@ -165,18 +163,16 @@ use clippy_utils::{is_type_diagnostic_item, return_ty};
 
 impl<'tcx> LateLintPass<'tcx> for MyTypeImpl {
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, impl_item: &'tcx ImplItem<'_>) {
-        if_chain! {
-            // Check if item is a method/function
-            if let ImplItemKind::Fn(ref signature, _) = impl_item.kind;
+        // Check if item is a method/function
+        if let ImplItemKind::Fn(ref signature, _) = impl_item.kind
             // Check the method is named `some_method`
-            if impl_item.ident.name == sym!(some_method);
+            && impl_item.ident.name == sym!(some_method)
             // We can also check it has a parameter `self`
-            if signature.decl.implicit_self.has_implicit_self();
+            && signature.decl.implicit_self.has_implicit_self()
             // We can go further and even check if its return type is `String`
-            if is_type_diagnostic_item(cx, return_ty(cx, impl_item.hir_id), sym!(string_type));
-            then {
-                // ...
-            }
+            && is_type_diagnostic_item(cx, return_ty(cx, impl_item.hir_id), sym!(string_type))
+        {
+            // ...
         }
     }
 }

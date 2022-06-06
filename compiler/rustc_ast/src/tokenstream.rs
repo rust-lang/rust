@@ -13,7 +13,9 @@
 //! and a borrowed `TokenStream` is sufficient to build an owned `TokenStream` without taking
 //! ownership of the original.
 
-use crate::token::{self, Delimiter, Token, TokenKind};
+use crate::ast::StmtKind;
+use crate::ast_traits::{HasAttrs, HasSpan, HasTokens};
+use crate::token::{self, Delimiter, Nonterminal, Token, TokenKind};
 use crate::AttrVec;
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -43,12 +45,6 @@ pub enum TokenTree {
     Token(Token),
     /// A delimited sequence of token trees.
     Delimited(DelimSpan, Delimiter, TokenStream),
-}
-
-#[derive(Copy, Clone)]
-pub enum CanSynthesizeMissingTokens {
-    Yes,
-    No,
 }
 
 // Ensure all fields of `TokenTree` is `Send` and `Sync`.
@@ -470,6 +466,89 @@ impl TokenStream {
                 .map(|(i, (tree, is_joint))| (f(i, tree), *is_joint))
                 .collect(),
         ))
+    }
+
+    fn opt_from_ast(node: &(impl HasAttrs + HasTokens)) -> Option<TokenStream> {
+        let tokens = node.tokens()?;
+        let attrs = node.attrs();
+        let attr_annotated = if attrs.is_empty() {
+            tokens.create_token_stream()
+        } else {
+            let attr_data = AttributesData { attrs: attrs.to_vec().into(), tokens: tokens.clone() };
+            AttrAnnotatedTokenStream::new(vec![(
+                AttrAnnotatedTokenTree::Attributes(attr_data),
+                Spacing::Alone,
+            )])
+        };
+        Some(attr_annotated.to_tokenstream())
+    }
+
+    pub fn from_ast(node: &(impl HasAttrs + HasSpan + HasTokens + fmt::Debug)) -> TokenStream {
+        TokenStream::opt_from_ast(node)
+            .unwrap_or_else(|| panic!("missing tokens for node at {:?}: {:?}", node.span(), node))
+    }
+
+    pub fn from_nonterminal_ast(nt: &Nonterminal) -> TokenStream {
+        match nt {
+            Nonterminal::NtIdent(ident, is_raw) => {
+                TokenTree::token(token::Ident(ident.name, *is_raw), ident.span).into()
+            }
+            Nonterminal::NtLifetime(ident) => {
+                TokenTree::token(token::Lifetime(ident.name), ident.span).into()
+            }
+            Nonterminal::NtItem(item) => TokenStream::from_ast(item),
+            Nonterminal::NtBlock(block) => TokenStream::from_ast(block),
+            Nonterminal::NtStmt(stmt) if let StmtKind::Empty = stmt.kind => {
+                // FIXME: Properly collect tokens for empty statements.
+                TokenTree::token(token::Semi, stmt.span).into()
+            }
+            Nonterminal::NtStmt(stmt) => TokenStream::from_ast(stmt),
+            Nonterminal::NtPat(pat) => TokenStream::from_ast(pat),
+            Nonterminal::NtTy(ty) => TokenStream::from_ast(ty),
+            Nonterminal::NtMeta(attr) => TokenStream::from_ast(attr),
+            Nonterminal::NtPath(path) => TokenStream::from_ast(path),
+            Nonterminal::NtVis(vis) => TokenStream::from_ast(vis),
+            Nonterminal::NtExpr(expr) | Nonterminal::NtLiteral(expr) => TokenStream::from_ast(expr),
+        }
+    }
+
+    fn flatten_token(token: &Token) -> TokenTree {
+        match &token.kind {
+            token::Interpolated(nt) if let token::NtIdent(ident, is_raw) = **nt => {
+                TokenTree::token(token::Ident(ident.name, is_raw), ident.span)
+            }
+            token::Interpolated(nt) => TokenTree::Delimited(
+                DelimSpan::from_single(token.span),
+                Delimiter::Invisible,
+                TokenStream::from_nonterminal_ast(&nt).flattened(),
+            ),
+            _ => TokenTree::Token(token.clone()),
+        }
+    }
+
+    fn flatten_token_tree(tree: &TokenTree) -> TokenTree {
+        match tree {
+            TokenTree::Token(token) => TokenStream::flatten_token(token),
+            TokenTree::Delimited(span, delim, tts) => {
+                TokenTree::Delimited(*span, *delim, tts.flattened())
+            }
+        }
+    }
+
+    #[must_use]
+    pub fn flattened(&self) -> TokenStream {
+        fn can_skip(stream: &TokenStream) -> bool {
+            stream.trees().all(|tree| match tree {
+                TokenTree::Token(token) => !matches!(token.kind, token::Interpolated(_)),
+                TokenTree::Delimited(_, _, inner) => can_skip(inner),
+            })
+        }
+
+        if can_skip(self) {
+            return self.clone();
+        }
+
+        self.trees().map(|tree| TokenStream::flatten_token_tree(tree)).collect()
     }
 }
 

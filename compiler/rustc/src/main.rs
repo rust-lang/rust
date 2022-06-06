@@ -22,12 +22,10 @@
 // The two crates we link to here, `std` and `rustc_driver`, are both dynamic
 // libraries. So we must reference jemalloc symbols one way or another, because
 // this file is the only object code in the rustc executable.
-#[cfg(feature = "tikv-jemalloc-sys")]
-use tikv_jemalloc_sys as jemalloc_sys;
 
 fn main() {
     // See the comment at the top of this file for an explanation of this.
-    #[cfg(feature = "tikv-jemalloc-sys")]
+    #[cfg(feature = "jemalloc-sys")]
     {
         use std::os::raw::{c_int, c_void};
 

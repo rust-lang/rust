@@ -1912,7 +1912,7 @@ fn select_debuginfo(
     }
 }
 
-crate fn parse_assert_incr_state(
+pub(crate) fn parse_assert_incr_state(
     opt_assertion: &Option<String>,
     error_format: ErrorOutputType,
 ) -> Option<IncrementalStateAssertion> {
@@ -2755,7 +2755,7 @@ impl PpMode {
 /// `Hash` implementation for `DepTrackingHash`. It's important though that
 /// we have an opt-in scheme here, so one is hopefully forced to think about
 /// how the hash should be calculated when adding a new command-line argument.
-crate mod dep_tracking {
+pub(crate) mod dep_tracking {
     use super::{
         BranchProtection, CFGuard, CFProtection, CrateType, DebugInfo, ErrorOutputType,
         InstrumentCoverage, LdImpl, LinkerPluginLto, LocationDetail, LtoCli, OomStrategy, OptLevel,
@@ -2933,7 +2933,7 @@ crate mod dep_tracking {
     }
 
     // This is a stable hash because BTreeMap is a sorted container
-    crate fn stable_hash(
+    pub(crate) fn stable_hash(
         sub_hashes: BTreeMap<&'static str, &dyn DepTrackingHash>,
         hasher: &mut DefaultHasher,
         error_format: ErrorOutputType,

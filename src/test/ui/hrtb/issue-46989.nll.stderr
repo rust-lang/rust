@@ -1,5 +1,5 @@
 error: implementation of `Foo` is not general enough
-  --> $DIR/issue-46989.rs:38:5
+  --> $DIR/issue-46989.rs:42:5
    |
 LL |     assert_foo::<fn(&i32)>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^ implementation of `Foo` is not general enough

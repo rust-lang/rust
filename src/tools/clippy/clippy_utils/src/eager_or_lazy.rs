@@ -96,7 +96,7 @@ fn fn_eagerness<'tcx>(
     }
 }
 
-#[allow(clippy::too_many_lines)]
+#[expect(clippy::too_many_lines)]
 fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessSuggestion {
     struct V<'cx, 'tcx> {
         cx: &'cx LateContext<'tcx>,

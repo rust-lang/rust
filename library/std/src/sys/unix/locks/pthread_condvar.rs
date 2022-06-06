@@ -1,12 +1,13 @@
 use crate::cell::UnsafeCell;
 use crate::sys::locks::{pthread_mutex, Mutex};
+use crate::sys_common::lazy_box::{LazyBox, LazyInit};
 use crate::time::Duration;
 
 pub struct Condvar {
     inner: UnsafeCell<libc::pthread_cond_t>,
 }
 
-pub type MovableCondvar = Box<Condvar>;
+pub(crate) type MovableCondvar = LazyBox<Condvar>;
 
 unsafe impl Send for Condvar {}
 unsafe impl Sync for Condvar {}
@@ -16,6 +17,14 @@ const TIMESPEC_MAX: libc::timespec =
 
 fn saturating_cast_to_time_t(value: u64) -> libc::time_t {
     if value > <libc::time_t>::MAX as u64 { <libc::time_t>::MAX } else { value as libc::time_t }
+}
+
+impl LazyInit for Condvar {
+    fn init() -> Box<Self> {
+        let mut condvar = Box::new(Self::new());
+        unsafe { condvar.init() };
+        condvar
+    }
 }
 
 impl Condvar {
@@ -32,14 +41,14 @@ impl Condvar {
         target_os = "android",
         target_os = "redox"
     ))]
-    pub unsafe fn init(&mut self) {}
+    unsafe fn init(&mut self) {}
 
     // NOTE: ESP-IDF's PTHREAD_COND_INITIALIZER support is not released yet
     // So on that platform, init() should always be called
     // Moreover, that platform does not have pthread_condattr_setclock support,
     // hence that initialization should be skipped as well
     #[cfg(target_os = "espidf")]
-    pub unsafe fn init(&mut self) {
+    unsafe fn init(&mut self) {
         let r = libc::pthread_cond_init(self.inner.get(), crate::ptr::null());
         assert_eq!(r, 0);
     }
@@ -52,7 +61,7 @@ impl Condvar {
         target_os = "redox",
         target_os = "espidf"
     )))]
-    pub unsafe fn init(&mut self) {
+    unsafe fn init(&mut self) {
         use crate::mem::MaybeUninit;
         let mut attr = MaybeUninit::<libc::pthread_condattr_t>::uninit();
         let r = libc::pthread_condattr_init(attr.as_mut_ptr());
@@ -179,19 +188,26 @@ impl Condvar {
 
     #[inline]
     #[cfg(not(target_os = "dragonfly"))]
-    pub unsafe fn destroy(&self) {
+    unsafe fn destroy(&mut self) {
         let r = libc::pthread_cond_destroy(self.inner.get());
         debug_assert_eq!(r, 0);
     }
 
     #[inline]
     #[cfg(target_os = "dragonfly")]
-    pub unsafe fn destroy(&self) {
+    unsafe fn destroy(&mut self) {
         let r = libc::pthread_cond_destroy(self.inner.get());
         // On DragonFly pthread_cond_destroy() returns EINVAL if called on
         // a condvar that was just initialized with
         // libc::PTHREAD_COND_INITIALIZER. Once it is used or
         // pthread_cond_init() is called, this behaviour no longer occurs.
         debug_assert!(r == 0 || r == libc::EINVAL);
+    }
+}
+
+impl Drop for Condvar {
+    #[inline]
+    fn drop(&mut self) {
+        unsafe { self.destroy() };
     }
 }

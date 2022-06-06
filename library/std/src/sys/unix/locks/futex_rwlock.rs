@@ -64,9 +64,6 @@ impl RwLock {
     }
 
     #[inline]
-    pub unsafe fn destroy(&self) {}
-
-    #[inline]
     pub unsafe fn try_read(&self) -> bool {
         self.state
             .fetch_update(Acquire, Relaxed, |s| is_read_lockable(s).then(|| s + READ_LOCKED))
@@ -208,9 +205,8 @@ impl RwLock {
 
             // Don't go to sleep if the lock has become available,
             // or if the writers waiting bit is no longer set.
-            let s = self.state.load(Relaxed);
-            if is_unlocked(state) || !has_writers_waiting(s) {
-                state = s;
+            state = self.state.load(Relaxed);
+            if is_unlocked(state) || !has_writers_waiting(state) {
                 continue;
             }
 

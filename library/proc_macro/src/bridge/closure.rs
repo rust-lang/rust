@@ -6,7 +6,11 @@ use std::marker::PhantomData;
 pub struct Closure<'a, A, R> {
     call: unsafe extern "C" fn(*mut Env, A) -> R,
     env: *mut Env,
-    // Ensure Closure is !Send and !Sync
+    // Prevent Send and Sync impls. `!Send`/`!Sync` is the usual way of doing
+    // this, but that requires unstable features. rust-analyzer uses this code
+    // and avoids unstable features.
+    //
+    // The `'a` lifetime parameter represents the lifetime of `Env`.
     _marker: PhantomData<*mut &'a mut ()>,
 }
 

@@ -49,6 +49,7 @@
 //! For generators with state 1 (returned) and state 2 (poisoned) it does nothing.
 //! Otherwise it drops all the values in scope at the last suspension point.
 
+use crate::deref_separator::deref_finder;
 use crate::simplify;
 use crate::util::expand_aggregate;
 use crate::MirPass;
@@ -1368,6 +1369,9 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
 
         // Create the Generator::resume function
         create_generator_resume_function(tcx, transform, body, can_return);
+
+        // Run derefer to fix Derefs that are not in the first place
+        deref_finder(tcx, body);
     }
 }
 
@@ -1459,12 +1463,13 @@ impl<'tcx> Visitor<'tcx> for EnsureGeneratorFieldAssignmentsNeverAlias<'_> {
             TerminatorKind::Call {
                 func,
                 args,
-                destination: Some((dest, _)),
+                destination,
+                target: Some(_),
                 cleanup: _,
                 from_hir_call: _,
                 fn_span: _,
             } => {
-                self.check_assigned_place(*dest, |this| {
+                self.check_assigned_place(*destination, |this| {
                     this.visit_operand(func, location);
                     for arg in args {
                         this.visit_operand(arg, location);

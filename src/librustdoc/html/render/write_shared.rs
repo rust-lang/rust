@@ -5,6 +5,7 @@ use std::io::prelude::*;
 use std::io::{self, BufReader};
 use std::lazy::SyncLazy as Lazy;
 use std::path::{Component, Path, PathBuf};
+use std::rc::Rc;
 
 use itertools::Itertools;
 use rustc_data_structures::flock;
@@ -135,7 +136,7 @@ impl Context<'_> {
 }
 
 pub(super) fn write_shared(
-    cx: &Context<'_>,
+    cx: &mut Context<'_>,
     krate: &Crate,
     search_index: String,
     options: &RenderOptions,
@@ -462,15 +463,16 @@ if (typeof exports !== 'undefined') {exports.searchIndex = searchIndex};
             crate::markdown::render(&index_page, md_opts, cx.shared.edition())
                 .map_err(|e| Error::new(e, &index_page))?;
         } else {
+            let shared = Rc::clone(&cx.shared);
             let dst = cx.dst.join("index.html");
             let page = layout::Page {
                 title: "Index of crates",
                 css_class: "mod",
                 root_path: "./",
-                static_root_path: cx.shared.static_root_path.as_deref(),
+                static_root_path: shared.static_root_path.as_deref(),
                 description: "List of crates",
                 keywords: BASIC_KEYWORDS,
-                resource_suffix: &cx.shared.resource_suffix,
+                resource_suffix: &shared.resource_suffix,
                 extra_scripts: &[],
                 static_extra_scripts: &[],
             };
@@ -490,8 +492,8 @@ if (typeof exports !== 'undefined') {exports.searchIndex = searchIndex};
                     })
                     .collect::<String>()
             );
-            let v = layout::render(&cx.shared.layout, &page, "", content, &cx.shared.style_files);
-            cx.shared.fs.write(dst, v)?;
+            let v = layout::render(&shared.layout, &page, "", content, &shared.style_files);
+            shared.fs.write(dst, v)?;
         }
     }
 

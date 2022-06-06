@@ -10,10 +10,7 @@ error[E0283]: type annotations needed
   --> $DIR/E0283.rs:35:24
    |
 LL |     let bar = foo_impl.into() * 1u32;
-   |               ---------^^^^--
-   |               |        |
-   |               |        cannot infer type for type parameter `T` declared on the trait `Into`
-   |               this method call resolves to `T`
+   |                        ^^^^
    |
 note: multiple `impl`s satisfying `Impl: Into<_>` found
   --> $DIR/E0283.rs:17:1
@@ -23,10 +20,10 @@ LL | impl Into<u32> for Impl {
    = note: and another `impl` found in the `core` crate:
            - impl<T, U> Into<U> for T
              where U: From<T>;
-help: use the fully qualified path for the potential candidate
+help: try using a fully qualified path to specify the expected types
    |
-LL |     let bar = <Impl as Into<u32>>::into(foo_impl) * 1u32;
-   |               ++++++++++++++++++++++++++        ~
+LL |     let bar = <Impl as Into<T>>::into(foo_impl) * 1u32;
+   |               ++++++++++++++++++++++++        ~
 
 error: aborting due to 2 previous errors
 

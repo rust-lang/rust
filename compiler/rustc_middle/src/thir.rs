@@ -18,15 +18,11 @@ use rustc_index::vec::IndexVec;
 use rustc_middle::infer::canonical::Canonical;
 use rustc_middle::middle::region;
 use rustc_middle::mir::interpret::AllocId;
-use rustc_middle::mir::{
-    self, BinOp, BorrowKind, FakeReadCause, Field, Mutability, UnOp, UserTypeProjection,
-};
+use rustc_middle::mir::{self, BinOp, BorrowKind, FakeReadCause, Field, Mutability, UnOp};
 use rustc_middle::ty::adjustment::PointerCast;
 use rustc_middle::ty::subst::SubstsRef;
+use rustc_middle::ty::CanonicalUserTypeAnnotation;
 use rustc_middle::ty::{self, AdtDef, Ty, UpvarSubsts, UserType};
-use rustc_middle::ty::{
-    CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations,
-};
 use rustc_span::{Span, Symbol, DUMMY_SP};
 use rustc_target::abi::VariantIdx;
 use rustc_target::asm::InlineAsmRegOrRegClass;
@@ -540,13 +536,13 @@ pub enum BindingMode {
     ByRef(BorrowKind),
 }
 
-#[derive(Clone, Debug, PartialEq, HashStable)]
+#[derive(Clone, Debug, HashStable)]
 pub struct FieldPat<'tcx> {
     pub field: Field,
     pub pattern: Pat<'tcx>,
 }
 
-#[derive(Clone, Debug, PartialEq, HashStable)]
+#[derive(Clone, Debug, HashStable)]
 pub struct Pat<'tcx> {
     pub ty: Ty<'tcx>,
     pub span: Span,
@@ -559,37 +555,10 @@ impl<'tcx> Pat<'tcx> {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, HashStable)]
-pub struct PatTyProj<'tcx> {
-    pub user_ty: CanonicalUserType<'tcx>,
-}
-
-impl<'tcx> PatTyProj<'tcx> {
-    pub fn from_user_type(user_annotation: CanonicalUserType<'tcx>) -> Self {
-        Self { user_ty: user_annotation }
-    }
-
-    pub fn user_ty(
-        self,
-        annotations: &mut CanonicalUserTypeAnnotations<'tcx>,
-        inferred_ty: Ty<'tcx>,
-        span: Span,
-    ) -> UserTypeProjection {
-        UserTypeProjection {
-            base: annotations.push(CanonicalUserTypeAnnotation {
-                span,
-                user_ty: self.user_ty,
-                inferred_ty,
-            }),
-            projs: Vec::new(),
-        }
-    }
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, HashStable)]
+#[derive(Clone, Debug, HashStable)]
 pub struct Ascription<'tcx> {
-    pub user_ty: PatTyProj<'tcx>,
-    /// Variance to use when relating the type `user_ty` to the **type of the value being
+    pub annotation: CanonicalUserTypeAnnotation<'tcx>,
+    /// Variance to use when relating the `user_ty` to the **type of the value being
     /// matched**. Typically, this is `Variance::Covariant`, since the value being matched must
     /// have a type that is some subtype of the ascribed type.
     ///
@@ -608,12 +577,11 @@ pub struct Ascription<'tcx> {
     /// probably be checking for a `PartialEq` impl instead, but this preserves the behavior
     /// of the old type-check for now. See #57280 for details.
     pub variance: ty::Variance,
-    pub user_ty_span: Span,
 }
 
-#[derive(Clone, Debug, PartialEq, HashStable)]
+#[derive(Clone, Debug, HashStable)]
 pub enum PatKind<'tcx> {
-    /// A wildward pattern: `_`.
+    /// A wildcard pattern: `_`.
     Wild,
 
     AscribeUserType {

@@ -4,7 +4,7 @@ use proc_macro2::TokenStream;
 use quote::{format_ident, quote, ToTokens};
 use std::collections::BTreeSet;
 use std::str::FromStr;
-use syn::{spanned::Spanned, Attribute, Meta, Type, TypeTuple, Visibility};
+use syn::{spanned::Spanned, Attribute, Meta, Type, TypeTuple};
 use synstructure::BindingInfo;
 
 /// Checks whether the type name of `ty` matches `name`.
@@ -158,7 +158,6 @@ impl<'ty> FieldInnerTy<'ty> {
 /// Field information passed to the builder. Deliberately omits attrs to discourage the
 /// `generate_*` methods from walking the attributes themselves.
 pub(crate) struct FieldInfo<'a> {
-    pub(crate) vis: &'a Visibility,
     pub(crate) binding: &'a BindingInfo<'a>,
     pub(crate) ty: &'a Type,
     pub(crate) span: &'a proc_macro2::Span,

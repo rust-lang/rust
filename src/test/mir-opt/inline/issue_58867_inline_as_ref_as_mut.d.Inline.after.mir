@@ -23,4 +23,8 @@ fn d(_1: &Box<T>) -> &T {
         StorageDead(_2);                 // scope 0 at $DIR/issue-58867-inline-as-ref-as-mut.rs:19:1: 19:2
         return;                          // scope 0 at $DIR/issue-58867-inline-as-ref-as-mut.rs:19:2: 19:2
     }
+
+    bb1 (cleanup): {
+        resume;                          // scope 0 at $DIR/issue-58867-inline-as-ref-as-mut.rs:17:1: 19:2
+    }
 }

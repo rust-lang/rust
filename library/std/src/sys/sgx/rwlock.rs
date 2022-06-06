@@ -2,6 +2,7 @@
 mod tests;
 
 use crate::num::NonZeroUsize;
+use crate::sys_common::lazy_box::{LazyBox, LazyInit};
 
 use super::waitqueue::{
     try_lock_or_false, NotifiedTcs, SpinMutex, SpinMutexGuard, WaitQueue, WaitVariable,
@@ -13,7 +14,13 @@ pub struct RwLock {
     writer: SpinMutex<WaitVariable<bool>>,
 }
 
-pub type MovableRwLock = Box<RwLock>;
+pub(crate) type MovableRwLock = LazyBox<RwLock>;
+
+impl LazyInit for RwLock {
+    fn init() -> Box<Self> {
+        Box::new(Self::new())
+    }
+}
 
 // Check at compile time that RwLock size matches C definition (see test_c_rwlock_initializer below)
 //
@@ -168,9 +175,6 @@ impl RwLock {
             unsafe { self.__read_unlock(rguard, wguard) };
         }
     }
-
-    #[inline]
-    pub unsafe fn destroy(&self) {}
 }
 
 // The following functions are needed by libunwind. These symbols are named

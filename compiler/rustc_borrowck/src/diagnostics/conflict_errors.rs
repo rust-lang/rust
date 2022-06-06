@@ -1,5 +1,6 @@
 use either::Either;
 use rustc_const_eval::util::CallKind;
+use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
@@ -787,7 +788,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         err: &mut Diagnostic,
         location: Location,
         issued_borrow: &BorrowData<'tcx>,
-        explanation: BorrowExplanation,
+        explanation: BorrowExplanation<'tcx>,
     ) {
         let used_in_call = matches!(
             explanation,
@@ -1087,7 +1088,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 BorrowExplanation::MustBeValidFor {
                     category:
                         category @ (ConstraintCategory::Return(_)
-                        | ConstraintCategory::CallArgument
+                        | ConstraintCategory::CallArgument(_)
                         | ConstraintCategory::OpaqueType),
                     from_closure: false,
                     ref region_name,
@@ -1146,7 +1147,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         borrow: &BorrowData<'tcx>,
         drop_span: Span,
         borrow_spans: UseSpans<'tcx>,
-        explanation: BorrowExplanation,
+        explanation: BorrowExplanation<'tcx>,
     ) -> DiagnosticBuilder<'cx, ErrorGuaranteed> {
         debug!(
             "report_local_value_does_not_live_long_enough(\
@@ -1351,7 +1352,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         drop_span: Span,
         borrow_spans: UseSpans<'tcx>,
         proper_span: Span,
-        explanation: BorrowExplanation,
+        explanation: BorrowExplanation<'tcx>,
     ) -> DiagnosticBuilder<'cx, ErrorGuaranteed> {
         debug!(
             "report_temporary_value_does_not_live_long_enough(\
@@ -1409,7 +1410,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         borrow: &BorrowData<'tcx>,
         borrow_span: Span,
         return_span: Span,
-        category: ConstraintCategory,
+        category: ConstraintCategory<'tcx>,
         opt_place_desc: Option<&String>,
     ) -> Option<DiagnosticBuilder<'cx, ErrorGuaranteed>> {
         let return_kind = match category {
@@ -1507,7 +1508,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         use_span: UseSpans<'tcx>,
         var_span: Span,
         fr_name: &RegionName,
-        category: ConstraintCategory,
+        category: ConstraintCategory<'tcx>,
         constraint_span: Span,
         captured_var: &str,
     ) -> DiagnosticBuilder<'cx, ErrorGuaranteed> {
@@ -1558,7 +1559,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 let msg = format!("{} is returned here", kind);
                 err.span_note(constraint_span, &msg);
             }
-            ConstraintCategory::CallArgument => {
+            ConstraintCategory::CallArgument(_) => {
                 fr_name.highlight_region_name(&mut err);
                 if matches!(use_span.generator_kind(), Some(GeneratorKind::Async(_))) {
                     err.note(
@@ -1622,10 +1623,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         location: Location,
         mpi: MovePathIndex,
     ) -> (Vec<MoveSite>, Vec<Location>) {
-        fn predecessor_locations<'a>(
-            body: &'a mir::Body<'_>,
+        fn predecessor_locations<'tcx, 'a>(
+            body: &'a mir::Body<'tcx>,
             location: Location,
-        ) -> impl Iterator<Item = Location> + 'a {
+        ) -> impl Iterator<Item = Location> + Captures<'tcx> + 'a {
             if location.statement_index == 0 {
                 let predecessors = body.predecessors()[location.block].to_vec();
                 Either::Left(predecessors.into_iter().map(move |bb| body.terminator_loc(bb)))
@@ -2197,10 +2198,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 "annotate_argument_and_return_for_borrow: target={:?} terminator={:?}",
                 target, terminator
             );
-            if let TerminatorKind::Call { destination: Some((place, _)), args, .. } =
+            if let TerminatorKind::Call { destination, target: Some(_), args, .. } =
                 &terminator.kind
             {
-                if let Some(assigned_to) = place.as_local() {
+                if let Some(assigned_to) = destination.as_local() {
                     debug!(
                         "annotate_argument_and_return_for_borrow: assigned_to={:?} args={:?}",
                         assigned_to, args

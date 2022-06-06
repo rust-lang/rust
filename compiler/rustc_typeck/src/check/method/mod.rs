@@ -116,7 +116,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Adds a suggestion to call the given method to the provided diagnostic.
     #[instrument(level = "debug", skip(self, err, call_expr))]
-    crate fn suggest_method_call(
+    pub(crate) fn suggest_method_call(
         &self,
         err: &mut Diagnostic,
         msg: &str,

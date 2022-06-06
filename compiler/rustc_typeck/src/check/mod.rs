@@ -81,11 +81,14 @@ mod gather_locals;
 mod generator_interior;
 mod inherited;
 pub mod intrinsic;
+mod intrinsicck;
 pub mod method;
 mod op;
 mod pat;
 mod place_op;
+mod region;
 mod regionck;
+pub mod rvalue_scopes;
 mod upvar;
 mod wfcheck;
 pub mod writeback;
@@ -136,6 +139,7 @@ use crate::require_c_abi_if_c_variadic;
 use crate::util::common::indenter;
 
 use self::coercion::DynamicCoerceMany;
+use self::region::region_scope_tree;
 pub use self::Expectation::*;
 
 #[macro_export]
@@ -253,6 +257,7 @@ pub fn provide(providers: &mut Providers) {
         check_trait_item_well_formed,
         check_impl_item_well_formed,
         check_mod_item_types,
+        region_scope_tree,
         ..*providers
     };
 }
@@ -473,6 +478,9 @@ fn typeck_with_fallback<'tcx>(
         // because they don't constrain other type variables.
         fcx.closure_analyze(body);
         assert!(fcx.deferred_call_resolutions.borrow().is_empty());
+        // Before the generator analysis, temporary scopes shall be marked to provide more
+        // precise information on types to be captured.
+        fcx.resolve_rvalue_scopes(def_id.to_def_id());
         fcx.resolve_generator_interiors(def_id.to_def_id());
 
         for (ty, span, code) in fcx.deferred_sized_obligations.borrow_mut().drain(..) {
@@ -481,6 +489,12 @@ fn typeck_with_fallback<'tcx>(
         }
 
         fcx.select_all_obligations_or_error();
+
+        if !fcx.infcx.is_tainted_by_errors() {
+            fcx.check_transmutes();
+        }
+
+        fcx.check_asms();
 
         if fn_sig.is_some() {
             fcx.regionck_fn(id, body, span, wf_tys);

@@ -1,6 +1,5 @@
 // Targeted tests for the higher-ranked subtyping code.
 
-#![feature(rustc_attrs)]
 #![allow(dead_code)]
 
 // revisions: bound_a_vs_bound_a
@@ -17,6 +16,21 @@
 // revisions: bound_co_a_co_b_ret_contra_a
 // revisions: bound_inv_a_b_vs_bound_inv_a
 // revisions: bound_a_b_ret_a_vs_bound_a_ret_a
+
+//[bound_a_vs_bound_a] check-pass
+//[bound_a_vs_bound_b] check-pass
+//[bound_inv_a_vs_bound_inv_b] check-pass
+//[bound_co_a_vs_bound_co_b] check-pass
+//[free_x_vs_free_x] check-pass
+//[bound_co_a_b_vs_bound_co_a] check-pass
+//[bound_co_a_co_b_ret_contra_a] check-pass
+//[bound_a_b_vs_bound_a] check-pass
+//[bound_contra_a_contra_b_ret_co_a] check-pass
+
+// ignore-compare-mode-nll
+// FIXME(nll): When stabilizing, this test should be replaced with `hr-subtype-nll.rs`
+// The two would normally be just revisions, but this test uses revisions heavily, so splitting into
+// a separate test is just easier.
 
 fn gimme<T>(_: Option<T>) {}
 
@@ -98,15 +112,4 @@ for<'a>    fn(Inv<'a>, Inv<'a>)) }
 check! { bound_a_b_ret_a_vs_bound_a_ret_a: (for<'a,'b> fn(&'a u32, &'b u32) -> &'a u32,
 for<'a>    fn(&'a u32, &'a u32) -> &'a u32) }
 
-#[rustc_error]
-fn main() {
-    //[bound_a_vs_bound_a]~^ ERROR fatal error triggered by #[rustc_error]
-    //[bound_a_vs_bound_b]~^^ ERROR fatal error triggered by #[rustc_error]
-    //[bound_inv_a_vs_bound_inv_b]~^^^ ERROR fatal error triggered by #[rustc_error]
-    //[bound_co_a_vs_bound_co_b]~^^^^ ERROR fatal error triggered by #[rustc_error]
-    //[free_x_vs_free_x]~^^^^^ ERROR fatal error triggered by #[rustc_error]
-    //[bound_co_a_b_vs_bound_co_a]~^^^^^^ ERROR
-    //[bound_co_a_co_b_ret_contra_a]~^^^^^^^ ERROR
-    //[bound_a_b_vs_bound_a]~^^^^^^^^ ERROR
-    //[bound_contra_a_contra_b_ret_co_a]~^^^^^^^^^ ERROR
-}
+fn main() {}

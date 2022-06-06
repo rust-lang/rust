@@ -240,7 +240,7 @@ impl LateLintPass<'_> for EnumVariantNames {
         assert!(last.is_some());
     }
 
-    #[allow(clippy::similar_names)]
+    #[expect(clippy::similar_names)]
     fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
         let item_name = item.ident.name.as_str();
         let item_camel = to_camel_case(item_name);

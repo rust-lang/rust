@@ -70,7 +70,12 @@ pub trait Delegate<'tcx> {
     }
 
     /// The `place` should be a fake read because of specified `cause`.
-    fn fake_read(&mut self, place: Place<'tcx>, cause: FakeReadCause, diag_expr_id: hir::HirId);
+    fn fake_read(
+        &mut self,
+        place_with_id: &PlaceWithHirId<'tcx>,
+        cause: FakeReadCause,
+        diag_expr_id: hir::HirId,
+    );
 }
 
 #[derive(Copy, Clone, PartialEq, Debug)]
@@ -328,7 +333,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                     };
 
                     self.delegate.fake_read(
-                        discr_place.place.clone(),
+                        &discr_place,
                         FakeReadCause::ForMatchedPlace(closure_def_id),
                         discr_place.hir_id,
                     );
@@ -618,7 +623,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         };
 
         self.delegate.fake_read(
-            discr_place.place.clone(),
+            discr_place,
             FakeReadCause::ForMatchedPlace(closure_def_id),
             discr_place.hir_id,
         );
@@ -642,7 +647,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         };
 
         self.delegate.fake_read(
-            discr_place.place.clone(),
+            discr_place,
             FakeReadCause::ForLet(closure_def_id),
             discr_place.hir_id,
         );
@@ -777,7 +782,11 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                         );
                     }
                 };
-                self.delegate.fake_read(fake_read.clone(), *cause, *hir_id);
+                self.delegate.fake_read(
+                    &PlaceWithHirId { place: fake_read.clone(), hir_id: *hir_id },
+                    *cause,
+                    *hir_id,
+                );
             }
         }
 

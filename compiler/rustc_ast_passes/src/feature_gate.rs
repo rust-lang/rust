@@ -697,18 +697,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         }
         visit::walk_assoc_item(self, i, ctxt)
     }
-
-    fn visit_vis(&mut self, vis: &'a ast::Visibility) {
-        if let ast::VisibilityKind::Crate(ast::CrateSugar::JustCrate) = vis.kind {
-            gate_feature_post!(
-                &self,
-                crate_visibility_modifier,
-                vis.span,
-                "`crate` visibility modifier is experimental"
-            );
-        }
-        visit::walk_vis(self, vis)
-    }
 }
 
 pub fn check_crate(krate: &ast::Crate, sess: &Session) {
@@ -770,7 +758,6 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session) {
 
     gate_all!(trait_alias, "trait aliases are experimental");
     gate_all!(associated_type_bounds, "associated type bounds are unstable");
-    gate_all!(crate_visibility_modifier, "`crate` visibility modifier is experimental");
     gate_all!(decl_macro, "`macro` is experimental");
     gate_all!(box_patterns, "box pattern syntax is experimental");
     gate_all!(exclusive_range_pattern, "exclusive range pattern syntax is experimental");

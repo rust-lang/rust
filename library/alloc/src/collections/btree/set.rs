@@ -23,9 +23,9 @@ use super::Recover;
 /// It is a logic error for an item to be modified in such a way that the item's ordering relative
 /// to any other item, as determined by the [`Ord`] trait, changes while it is in the set. This is
 /// normally only possible through [`Cell`], [`RefCell`], global state, I/O, or unsafe code.
-/// The behavior resulting from such a logic error is not specified (it could include panics,
-/// incorrect results, aborts, memory leaks, or non-termination) but will not be undefined
-/// behavior.
+/// The behavior resulting from such a logic error is not specified, but will be encapsulated to the
+/// `BTreeSet` that observed the logic error and not result in undefined behavior. This could
+/// include panics, incorrect results, aborts, memory leaks, and non-termination.
 ///
 /// Iterators returned by [`BTreeSet::iter`] produce their items in order, and take worst-case
 /// logarithmic and amortized constant time per item returned.
@@ -770,10 +770,14 @@ impl<T> BTreeSet<T> {
 
     /// Adds a value to the set.
     ///
-    /// If the set did not have an equal element present, `true` is returned.
+    /// Returns whether the value was newly inserted. That is:
     ///
-    /// If the set did have an equal element present, `false` is returned, and
-    /// the entry is not updated. See the [module-level documentation] for more.
+    /// - If the set did not previously contain an equal value, `true` is
+    ///   returned.
+    /// - If the set already contained an equal value, `false` is returned, and
+    ///   the entry is not updated.
+    ///
+    /// See the [module-level documentation] for more.
     ///
     /// [module-level documentation]: index.html#insert-and-complex-keys
     ///

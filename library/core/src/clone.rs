@@ -107,6 +107,7 @@ use crate::marker::Destruct;
 #[lang = "clone"]
 #[rustc_diagnostic_item = "Clone"]
 #[rustc_trivial_field_reads]
+#[cfg_attr(not(bootstrap), const_trait)]
 pub trait Clone: Sized {
     /// Returns a copy of the value.
     ///
@@ -129,7 +130,7 @@ pub trait Clone: Sized {
     /// allocations.
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[default_method_body_is_const]
+    #[cfg_attr(bootstrap, default_method_body_is_const)]
     fn clone_from(&mut self, source: &Self)
     where
         Self: ~const Destruct,

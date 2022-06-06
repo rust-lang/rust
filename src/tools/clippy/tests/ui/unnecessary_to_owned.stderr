@@ -47,6 +47,18 @@ note: this value is dropped without further use
 LL |     require_str(&String::from("x").to_string());
    |                  ^^^^^^^^^^^^^^^^^
 
+error: redundant clone
+  --> $DIR/unnecessary_to_owned.rs:155:39
+   |
+LL |     require_slice(&[String::from("x")].to_owned());
+   |                                       ^^^^^^^^^^^ help: remove this
+   |
+note: this value is dropped without further use
+  --> $DIR/unnecessary_to_owned.rs:155:20
+   |
+LL |     require_slice(&[String::from("x")].to_owned());
+   |                    ^^^^^^^^^^^^^^^^^^^
+
 error: unnecessary use of `into_owned`
   --> $DIR/unnecessary_to_owned.rs:60:36
    |
@@ -151,23 +163,11 @@ error: unnecessary use of `to_owned`
 LL |     require_slice(&slice.to_owned());
    |                   ^^^^^^^^^^^^^^^^^ help: use: `slice`
 
-error: unnecessary use of `to_owned`
-  --> $DIR/unnecessary_to_owned.rs:81:19
-   |
-LL |     require_slice(&x_ref.to_owned());
-   |                   ^^^^^^^^^^^^^^^^^ help: use: `x_ref`
-
 error: unnecessary use of `into_owned`
   --> $DIR/unnecessary_to_owned.rs:83:42
    |
 LL |     require_x(&Cow::<X>::Owned(x.clone()).into_owned());
    |                                          ^^^^^^^^^^^^^ help: remove this
-
-error: unnecessary use of `to_owned`
-  --> $DIR/unnecessary_to_owned.rs:84:15
-   |
-LL |     require_x(&x_ref.to_owned());
-   |               ^^^^^^^^^^^^^^^^^ help: use: `x_ref`
 
 error: unnecessary use of `to_owned`
   --> $DIR/unnecessary_to_owned.rs:86:25
@@ -476,7 +476,7 @@ LL |     let _ = IntoIterator::into_iter([std::path::PathBuf::new()][..].to_owne
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `[std::path::PathBuf::new()][..].iter().cloned()`
 
 error: unnecessary use of `to_vec`
-  --> $DIR/unnecessary_to_owned.rs:197:14
+  --> $DIR/unnecessary_to_owned.rs:198:14
    |
 LL |     for t in file_types.to_vec() {
    |              ^^^^^^^^^^^^^^^^^^^
@@ -492,22 +492,22 @@ LL +         let path = match get_file_path(t) {
    | 
 
 error: unnecessary use of `to_vec`
-  --> $DIR/unnecessary_to_owned.rs:220:14
+  --> $DIR/unnecessary_to_owned.rs:221:14
    |
 LL |     let _ = &["x"][..].to_vec().into_iter();
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `["x"][..].iter().cloned()`
 
 error: unnecessary use of `to_vec`
-  --> $DIR/unnecessary_to_owned.rs:225:14
+  --> $DIR/unnecessary_to_owned.rs:226:14
    |
 LL |     let _ = &["x"][..].to_vec().into_iter();
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `["x"][..].iter().copied()`
 
 error: unnecessary use of `to_string`
-  --> $DIR/unnecessary_to_owned.rs:272:24
+  --> $DIR/unnecessary_to_owned.rs:273:24
    |
 LL |         Box::new(build(y.to_string()))
    |                        ^^^^^^^^^^^^^ help: use: `y`
 
-error: aborting due to 79 previous errors
+error: aborting due to 78 previous errors
 

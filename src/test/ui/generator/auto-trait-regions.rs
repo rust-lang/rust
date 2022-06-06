@@ -1,3 +1,7 @@
+// ignore-compare-mode-nll
+// revisions: base nll
+// [nll]compile-flags: -Zborrowck=mir
+
 #![feature(generators)]
 #![feature(auto_traits)]
 #![feature(negative_impls)]
@@ -30,7 +34,7 @@ fn main() {
     };
     assert_foo(gen);
     //~^ ERROR implementation of `Foo` is not general enough
-    //~| ERROR implementation of `Foo` is not general enough
+    //[base]~^^ ERROR implementation of `Foo` is not general enough
 
     // Allow impls which matches any lifetime
     let x = &OnlyFooIfRef(No);
@@ -44,10 +48,12 @@ fn main() {
     // Disallow impls which relates lifetimes in the generator interior
     let gen = || {
         let a = A(&mut true, &mut true, No);
+        //[nll]~^ temporary value dropped while borrowed
+        //[nll]~| temporary value dropped while borrowed
         yield;
         assert_foo(a);
     };
     assert_foo(gen);
     //~^ ERROR not general enough
-    //~| ERROR not general enough
+    //[base]~^^ ERROR not general enough
 }

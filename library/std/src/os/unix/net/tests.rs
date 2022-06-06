@@ -1,24 +1,7 @@
 use super::*;
 use crate::io::prelude::*;
 use crate::io::{self, ErrorKind, IoSlice, IoSliceMut};
-#[cfg(any(
-    target_os = "android",
-    target_os = "dragonfly",
-    target_os = "emscripten",
-    target_os = "freebsd",
-    target_os = "linux",
-    target_os = "netbsd",
-    target_os = "openbsd",
-))]
-#[cfg(any(
-    target_os = "android",
-    target_os = "dragonfly",
-    target_os = "emscripten",
-    target_os = "freebsd",
-    target_os = "linux",
-    target_os = "netbsd",
-    target_os = "openbsd",
-))]
+#[cfg(any(target_os = "android", target_os = "linux"))]
 use crate::os::unix::io::AsRawFd;
 use crate::sys_common::io::test::tmpdir;
 use crate::thread;
@@ -618,15 +601,7 @@ fn test_unix_datagram_peek_from() {
     assert_eq!(msg, &buf[..]);
 }
 
-#[cfg(any(
-    target_os = "android",
-    target_os = "dragonfly",
-    target_os = "emscripten",
-    target_os = "freebsd",
-    target_os = "linux",
-    target_os = "netbsd",
-    target_os = "openbsd",
-))]
+#[cfg(any(target_os = "android", target_os = "linux"))]
 #[test]
 fn test_send_vectored_fds_unix_stream() {
     let (s1, s2) = or_panic!(UnixStream::pair());
@@ -664,7 +639,7 @@ fn test_send_vectored_fds_unix_stream() {
     }
 }
 
-#[cfg(any(target_os = "android", target_os = "emscripten", target_os = "linux",))]
+#[cfg(any(target_os = "android", target_os = "linux",))]
 #[test]
 fn test_send_vectored_with_ancillary_to_unix_datagram() {
     fn getpid() -> libc::pid_t {
@@ -731,15 +706,7 @@ fn test_send_vectored_with_ancillary_to_unix_datagram() {
     }
 }
 
-#[cfg(any(
-    target_os = "android",
-    target_os = "dragonfly",
-    target_os = "emscripten",
-    target_os = "freebsd",
-    target_os = "linux",
-    target_os = "netbsd",
-    target_os = "openbsd",
-))]
+#[cfg(any(target_os = "android", target_os = "linux"))]
 #[test]
 fn test_send_vectored_with_ancillary_unix_datagram() {
     let dir = tmpdir();

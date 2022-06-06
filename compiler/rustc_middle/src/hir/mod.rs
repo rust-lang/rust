@@ -36,7 +36,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for Owner<'tcx> {
 
 /// Gather the LocalDefId for each item-like within a module, including items contained within
 /// bodies.  The Ids are in visitor order.  This is used to partition a pass between modules.
-#[derive(Debug, HashStable)]
+#[derive(Debug, HashStable, Encodable, Decodable)]
 pub struct ModuleItems {
     submodules: Box<[LocalDefId]>,
     items: Box<[ItemId]>,

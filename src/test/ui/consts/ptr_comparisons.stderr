@@ -34,7 +34,7 @@ error: any use of this value will cause an error
   --> $DIR/ptr_comparisons.rs:70:27
    |
 LL | const _: usize = unsafe { *std::mem::transmute::<&&usize, &usize>(&FOO) + 4 };
-   | --------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
+   | --------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-------
    |                           |
    |                           unable to turn pointer into raw bytes
    |

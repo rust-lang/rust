@@ -9,6 +9,7 @@ crate-type = ["dylib"]
 [dependencies]
 libc = "0.2"
 tracing = { version = "0.1.28" }
+serde_json = "1.0.59"
 rustc_log = { path = "../rustc_log" }
 rustc_middle = { path = "../rustc_middle" }
 rustc_ast_pretty = { path = "../rustc_ast_pretty" }

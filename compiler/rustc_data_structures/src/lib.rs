@@ -13,8 +13,6 @@
 #![feature(control_flow_enum)]
 #![feature(core_intrinsics)]
 #![feature(extend_one)]
-#![feature(generator_trait)]
-#![feature(generators)]
 #![feature(let_else)]
 #![feature(hash_raw_entry)]
 #![feature(hasher_prefixfree_extras)]
@@ -114,9 +112,6 @@ pub mod unhash;
 pub use ena::undo_log;
 pub use ena::unify;
 
-use std::ops::{Generator, GeneratorState};
-use std::pin::Pin;
-
 pub struct OnDrop<F: Fn()>(pub F);
 
 impl<F: Fn()> OnDrop<F> {
@@ -133,26 +128,6 @@ impl<F: Fn()> Drop for OnDrop<F> {
     fn drop(&mut self) {
         (self.0)();
     }
-}
-
-struct IterFromGenerator<G>(G);
-
-impl<G: Generator<Return = ()> + Unpin> Iterator for IterFromGenerator<G> {
-    type Item = G::Yield;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match Pin::new(&mut self.0).resume(()) {
-            GeneratorState::Yielded(n) => Some(n),
-            GeneratorState::Complete(_) => None,
-        }
-    }
-}
-
-/// An adapter for turning a generator closure into an iterator, similar to `iter::from_fn`.
-pub fn iter_from_generator<G: Generator<Return = ()> + Unpin>(
-    generator: G,
-) -> impl Iterator<Item = G::Yield> {
-    IterFromGenerator(generator)
 }
 
 // See comments in src/librustc_middle/lib.rs

@@ -309,16 +309,16 @@ use smallvec::{smallvec, SmallVec};
 use std::fmt;
 use std::iter::once;
 
-crate struct MatchCheckCtxt<'p, 'tcx> {
-    crate tcx: TyCtxt<'tcx>,
+pub(crate) struct MatchCheckCtxt<'p, 'tcx> {
+    pub(crate) tcx: TyCtxt<'tcx>,
     /// The module in which the match occurs. This is necessary for
     /// checking inhabited-ness of types because whether a type is (visibly)
     /// inhabited can depend on whether it was defined in the current module or
     /// not. E.g., `struct Foo { _private: ! }` cannot be seen to be empty
     /// outside its module and should not be matchable with an empty match statement.
-    crate module: DefId,
-    crate param_env: ty::ParamEnv<'tcx>,
-    crate pattern_arena: &'p TypedArena<DeconstructedPat<'p, 'tcx>>,
+    pub(crate) module: DefId,
+    pub(crate) param_env: ty::ParamEnv<'tcx>,
+    pub(crate) pattern_arena: &'p TypedArena<DeconstructedPat<'p, 'tcx>>,
 }
 
 impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
@@ -691,7 +691,7 @@ enum ArmType {
 ///
 /// The final `Pair(Some(_), true)` is then the resulting witness.
 #[derive(Debug)]
-crate struct Witness<'p, 'tcx>(Vec<DeconstructedPat<'p, 'tcx>>);
+pub(crate) struct Witness<'p, 'tcx>(Vec<DeconstructedPat<'p, 'tcx>>);
 
 impl<'p, 'tcx> Witness<'p, 'tcx> {
     /// Asserts that the witness contains a single pattern, and returns it.
@@ -908,16 +908,16 @@ fn is_useful<'p, 'tcx>(
 
 /// The arm of a match expression.
 #[derive(Clone, Copy, Debug)]
-crate struct MatchArm<'p, 'tcx> {
+pub(crate) struct MatchArm<'p, 'tcx> {
     /// The pattern must have been lowered through `check_match::MatchVisitor::lower_pattern`.
-    crate pat: &'p DeconstructedPat<'p, 'tcx>,
-    crate hir_id: HirId,
-    crate has_guard: bool,
+    pub(crate) pat: &'p DeconstructedPat<'p, 'tcx>,
+    pub(crate) hir_id: HirId,
+    pub(crate) has_guard: bool,
 }
 
 /// Indicates whether or not a given arm is reachable.
 #[derive(Clone, Debug)]
-crate enum Reachability {
+pub(crate) enum Reachability {
     /// The arm is reachable. This additionally carries a set of or-pattern branches that have been
     /// found to be unreachable despite the overall arm being reachable. Used only in the presence
     /// of or-patterns, otherwise it stays empty.
@@ -927,12 +927,12 @@ crate enum Reachability {
 }
 
 /// The output of checking a match for exhaustiveness and arm reachability.
-crate struct UsefulnessReport<'p, 'tcx> {
+pub(crate) struct UsefulnessReport<'p, 'tcx> {
     /// For each arm of the input, whether that arm is reachable after the arms above it.
-    crate arm_usefulness: Vec<(MatchArm<'p, 'tcx>, Reachability)>,
+    pub(crate) arm_usefulness: Vec<(MatchArm<'p, 'tcx>, Reachability)>,
     /// If the match is exhaustive, this is empty. If not, this contains witnesses for the lack of
     /// exhaustiveness.
-    crate non_exhaustiveness_witnesses: Vec<DeconstructedPat<'p, 'tcx>>,
+    pub(crate) non_exhaustiveness_witnesses: Vec<DeconstructedPat<'p, 'tcx>>,
 }
 
 /// The entrypoint for the usefulness algorithm. Computes whether a match is exhaustive and which
@@ -941,7 +941,7 @@ crate struct UsefulnessReport<'p, 'tcx> {
 /// Note: the input patterns must have been lowered through
 /// `check_match::MatchVisitor::lower_pattern`.
 #[instrument(skip(cx, arms), level = "debug")]
-crate fn compute_match_usefulness<'p, 'tcx>(
+pub(crate) fn compute_match_usefulness<'p, 'tcx>(
     cx: &MatchCheckCtxt<'p, 'tcx>,
     arms: &[MatchArm<'p, 'tcx>],
     scrut_hir_id: HirId,

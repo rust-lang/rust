@@ -12,7 +12,7 @@ use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::{self, AssocItem, Ty, TypeAndMut};
+use rustc_middle::ty::{self, Article, AssocItem, Ty, TypeAndMut};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{BytePos, Span};
 
@@ -129,6 +129,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ///
     /// N.B., this code relies on `self.diverges` to be accurate. In particular, assignments to `!`
     /// will be permitted if the diverges flag is currently "always".
+    #[tracing::instrument(level = "debug", skip(self, expr, expected_ty_expr, allow_two_phase))]
     pub fn demand_coerce_diag(
         &self,
         expr: &hir::Expr<'tcx>,
@@ -150,7 +151,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let expr_ty = self.resolve_vars_with_obligations(checked_ty);
         let mut err = self.report_mismatched_types(&cause, expected, expr_ty, e.clone());
 
-        self.emit_coerce_suggestions(&mut err, expr, expr_ty, expected, expected_ty_expr, Some(e));
+        let is_insufficiently_polymorphic =
+            matches!(e, TypeError::RegionsInsufficientlyPolymorphic(..));
+
+        // FIXME(#73154): For now, we do leak check when coercing function
+        // pointers in typeck, instead of only during borrowck. This can lead
+        // to these `RegionsInsufficientlyPolymorphic` errors that aren't helpful.
+        if !is_insufficiently_polymorphic {
+            self.emit_coerce_suggestions(
+                &mut err,
+                expr,
+                expr_ty,
+                expected,
+                expected_ty_expr,
+                Some(e),
+            );
+        }
 
         (expected, Some(err))
     }
@@ -503,7 +519,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    crate fn maybe_get_struct_pattern_shorthand_field(
+    pub(crate) fn maybe_get_struct_pattern_shorthand_field(
         &self,
         expr: &hir::Expr<'_>,
     ) -> Option<Symbol> {
@@ -539,7 +555,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// If the given `HirId` corresponds to a block with a trailing expression, return that expression
-    crate fn maybe_get_block_expr(&self, expr: &hir::Expr<'tcx>) -> Option<&'tcx hir::Expr<'tcx>> {
+    pub(crate) fn maybe_get_block_expr(
+        &self,
+        expr: &hir::Expr<'tcx>,
+    ) -> Option<&'tcx hir::Expr<'tcx>> {
         match expr {
             hir::Expr { kind: hir::ExprKind::Block(block, ..), .. } => block.expr,
             _ => None,
@@ -547,7 +566,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Returns whether the given expression is an `else if`.
-    crate fn is_else_if_block(&self, expr: &hir::Expr<'_>) -> bool {
+    pub(crate) fn is_else_if_block(&self, expr: &hir::Expr<'_>) -> bool {
         if let hir::ExprKind::If(..) = expr.kind {
             let parent_id = self.tcx.hir().get_parent_node(expr.hir_id);
             if let Some(Node::Expr(hir::Expr {

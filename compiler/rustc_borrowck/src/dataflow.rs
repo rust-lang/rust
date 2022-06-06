@@ -233,7 +233,7 @@ impl<'tcx> OutOfScopePrecomputer<'_, 'tcx> {
 }
 
 impl<'a, 'tcx> Borrows<'a, 'tcx> {
-    crate fn new(
+    pub(crate) fn new(
         tcx: TyCtxt<'tcx>,
         body: &'a Body<'tcx>,
         nonlexical_regioncx: &'a RegionInferenceContext<'tcx>,
