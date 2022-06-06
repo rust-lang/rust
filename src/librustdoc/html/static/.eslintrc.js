@@ -80,5 +80,6 @@ module.exports = {
         "no-alert": "error",
         "no-confusing-arrow": "error",
         "no-div-regex": "error",
+        "no-floating-decimal": "error",
     }
 };
