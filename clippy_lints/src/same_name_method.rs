@@ -47,6 +47,7 @@ struct ExistingName {
 }
 
 impl<'tcx> LateLintPass<'tcx> for SameNameMethod {
+    #[expect(clippy::too_many_lines)]
     fn check_crate_post(&mut self, cx: &LateContext<'tcx>) {
         let mut map = FxHashMap::<Res, ExistingName>::default();
 
