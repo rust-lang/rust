@@ -1274,12 +1274,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         parent_def_id,
                     ) => {
                         // Add a definition for the in-band `Param`.
-
-                        // get the def_id that we created in the desugaring
-                        // self.create_def(..)
                         let def_id = self.resolver.local_def_id(def_node_id);
 
-                        // lower param bounds `impl Bound1 + Bound2`
                         let hir_bounds = self.lower_param_bounds(
                             bounds,
                             ImplTraitContext::Universal(
@@ -1290,8 +1286,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         );
                         // Set the name to `impl Bound1 + Bound2`.
                         let ident = Ident::from_str_and_span(&pprust::ty_to_string(t), span);
-                        // add the new generic param GenericParam desugaring of the
-                        // impl Bound1 (GenericParameters in place of impl Traits)
                         in_band_ty_params.push(hir::GenericParam {
                             hir_id: self.lower_node_id(def_node_id),
                             name: ParamName::Plain(self.lower_ident(ident)),
