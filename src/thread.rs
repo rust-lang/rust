@@ -718,6 +718,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     }
 
     #[inline]
+    fn maybe_preempt_active_thread(&mut self) {
+        use rand::Rng as _;
+
+        let this = self.eval_context_mut();
+        if this.machine.rng.get_mut().gen_bool(this.machine.preemption_rate) {
+            this.yield_active_thread();
+        }
+    }
+
+    #[inline]
     fn register_timeout_callback(
         &mut self,
         thread: ThreadId,

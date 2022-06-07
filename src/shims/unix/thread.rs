@@ -13,10 +13,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        this.tcx.sess.warn(
-            "thread support is experimental: the scheduler is not preemptive, and can get stuck in spin loops.\n(see https://github.com/rust-lang/miri/issues/1388)",
-        );
-
         // Create the new thread
         let new_thread_id = this.create_thread();
 

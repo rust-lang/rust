@@ -1,9 +1,6 @@
-warning: thread support is experimental: the scheduler is not preemptive, and can get stuck in spin loops.
-         (see https://github.com/rust-lang/miri/issues/1388)
-
 error: the main thread terminated without waiting for all remaining threads
 
 note: pass `-Zmiri-ignore-leaks` to disable this check
 
-error: aborting due to previous error; 1 warning emitted
+error: aborting due to previous error
 

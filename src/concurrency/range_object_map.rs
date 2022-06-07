@@ -1,7 +1,6 @@
-//! Implements a map from allocation ranges to data.
-//! This is somewhat similar to RangeMap, but the ranges
-//! and data are discrete and non-splittable. An allocation in the
-//! map will always have the same range until explicitly removed
+//! Implements a map from allocation ranges to data. This is somewhat similar to RangeMap, but the
+//! ranges and data are discrete and non-splittable -- they represent distinct "objects". An
+//! allocation in the map will always have the same range until explicitly removed
 
 use rustc_target::abi::Size;
 use std::ops::{Index, IndexMut, Range};
@@ -20,7 +19,7 @@ struct Elem<T> {
 type Position = usize;
 
 #[derive(Clone, Debug)]
-pub struct AllocationMap<T> {
+pub struct RangeObjectMap<T> {
     v: Vec<Elem<T>>,
 }
 
@@ -34,7 +33,7 @@ pub enum AccessType {
     ImperfectlyOverlapping(Range<Position>),
 }
 
-impl<T> AllocationMap<T> {
+impl<T> RangeObjectMap<T> {
     pub fn new() -> Self {
         Self { v: Vec::new() }
     }
@@ -135,7 +134,7 @@ impl<T> AllocationMap<T> {
     }
 }
 
-impl<T> Index<Position> for AllocationMap<T> {
+impl<T> Index<Position> for RangeObjectMap<T> {
     type Output = T;
 
     fn index(&self, pos: Position) -> &Self::Output {
@@ -143,7 +142,7 @@ impl<T> Index<Position> for AllocationMap<T> {
     }
 }
 
-impl<T> IndexMut<Position> for AllocationMap<T> {
+impl<T> IndexMut<Position> for RangeObjectMap<T> {
     fn index_mut(&mut self, pos: Position) -> &mut Self::Output {
         &mut self.v[pos].data
     }
@@ -159,7 +158,7 @@ mod tests {
     fn empty_map() {
         // FIXME: make Size::from_bytes const
         let four = Size::from_bytes(4);
-        let map = AllocationMap::<()>::new();
+        let map = RangeObjectMap::<()>::new();
 
         // Correctly tells where we should insert the first element (at position 0)
         assert_eq!(map.find_offset(Size::from_bytes(3)), Err(0));
@@ -173,7 +172,7 @@ mod tests {
     fn no_overlapping_inserts() {
         let four = Size::from_bytes(4);
 
-        let mut map = AllocationMap::<&str>::new();
+        let mut map = RangeObjectMap::<&str>::new();
 
         // |_|_|_|_|#|#|#|#|_|_|_|_|...
         //  0 1 2 3 4 5 6 7 8 9 a b c d
@@ -187,7 +186,7 @@ mod tests {
     fn boundaries() {
         let four = Size::from_bytes(4);
 
-        let mut map = AllocationMap::<&str>::new();
+        let mut map = RangeObjectMap::<&str>::new();
 
         // |#|#|#|#|_|_|...
         //  0 1 2 3 4 5
@@ -215,7 +214,7 @@ mod tests {
     fn perfectly_overlapping() {
         let four = Size::from_bytes(4);
 
-        let mut map = AllocationMap::<&str>::new();
+        let mut map = RangeObjectMap::<&str>::new();
 
         // |#|#|#|#|_|_|...
         //  0 1 2 3 4 5
@@ -241,7 +240,7 @@ mod tests {
     fn straddling() {
         let four = Size::from_bytes(4);
 
-        let mut map = AllocationMap::<&str>::new();
+        let mut map = RangeObjectMap::<&str>::new();
 
         // |_|_|_|_|#|#|#|#|_|_|_|_|...
         //  0 1 2 3 4 5 6 7 8 9 a b c d

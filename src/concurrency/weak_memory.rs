@@ -85,8 +85,8 @@ use rustc_data_structures::fx::FxHashMap;
 use crate::{AtomicReadOp, AtomicRwOp, AtomicWriteOp, Tag, VClock, VTimestamp, VectorIdx};
 
 use super::{
-    allocation_map::{AccessType, AllocationMap},
     data_race::{GlobalState, ThreadClockSet},
+    range_object_map::{AccessType, RangeObjectMap},
 };
 
 pub type AllocExtra = StoreBufferAlloc;
@@ -101,7 +101,7 @@ const STORE_BUFFER_LIMIT: usize = 128;
 pub struct StoreBufferAlloc {
     /// Store buffer of each atomic object in this allocation
     // Behind a RefCell because we need to allocate/remove on read access
-    store_buffers: RefCell<AllocationMap<StoreBuffer>>,
+    store_buffers: RefCell<RangeObjectMap<StoreBuffer>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -134,7 +134,7 @@ struct StoreElement {
 
 impl StoreBufferAlloc {
     pub fn new_allocation() -> Self {
-        Self { store_buffers: RefCell::new(AllocationMap::new()) }
+        Self { store_buffers: RefCell::new(RangeObjectMap::new()) }
     }
 
     /// Checks if the range imperfectly overlaps with existing buffers

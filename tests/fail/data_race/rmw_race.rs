@@ -1,5 +1,5 @@
 // ignore-windows: Concurrency on Windows is not supported yet.
-// compile-flags: -Zmiri-disable-weak-memory-emulation
+// compile-flags: -Zmiri-disable-weak-memory-emulation -Zmiri-preemption-rate=0
 
 use std::thread::spawn;
 use std::sync::atomic::{AtomicUsize, Ordering};

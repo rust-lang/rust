@@ -1,4 +1,6 @@
 // ignore-windows: No libc on Windows
+// We are making scheduler assumptions here.
+// compile-flags: -Zmiri-preemption-rate=0
 
 // Joining itself is undefined behavior.
 

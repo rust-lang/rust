@@ -449,6 +449,17 @@ fn main() {
                     ),
             };
             miri_config.cmpxchg_weak_failure_rate = rate;
+        } else if let Some(param) = arg.strip_prefix("-Zmiri-preemption-rate=") {
+            let rate = match param.parse::<f64>() {
+                Ok(rate) if rate >= 0.0 && rate <= 1.0 => rate,
+                Ok(_) => panic!("-Zmiri-preemption-rate must be between `0.0` and `1.0`"),
+                Err(err) =>
+                    panic!(
+                        "-Zmiri-preemption-rate requires a `f64` between `0.0` and `1.0`: {}",
+                        err
+                    ),
+            };
+            miri_config.preemption_rate = rate;
         } else if let Some(param) = arg.strip_prefix("-Zmiri-measureme=") {
             miri_config.measureme_out = Some(param.to_string());
         } else if let Some(param) = arg.strip_prefix("-Zmiri-backtrace=") {

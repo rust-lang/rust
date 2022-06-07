@@ -333,6 +333,9 @@ pub struct Evaluator<'mir, 'tcx> {
 
     /// Whether weak memory emulation is enabled
     pub(crate) weak_memory: bool,
+
+    /// The probability of the active thread being preempted at the end of each basic block.
+    pub(crate) preemption_rate: f64,
 }
 
 impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
@@ -389,6 +392,7 @@ impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
             cmpxchg_weak_failure_rate: config.cmpxchg_weak_failure_rate,
             mute_stdout_stderr: config.mute_stdout_stderr,
             weak_memory: config.weak_memory_emulation,
+            preemption_rate: config.preemption_rate,
         }
     }
 
@@ -844,6 +848,11 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         ecx: &'a mut InterpCx<'mir, 'tcx, Self>,
     ) -> &'a mut Vec<Frame<'mir, 'tcx, Self::PointerTag, Self::FrameExtra>> {
         ecx.active_thread_stack_mut()
+    }
+
+    fn before_terminator(ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
+        ecx.maybe_preempt_active_thread();
+        Ok(())
     }
 
     #[inline(always)]
