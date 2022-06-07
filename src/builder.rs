@@ -492,8 +492,11 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn exactudiv(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        // TODO(antoyo): convert the arguments to unsigned?
         // TODO(antoyo): poison if not exact.
+        let a_type = a.get_type().to_unsigned(self);
+        let a = self.gcc_int_cast(a, a_type);
+        let b_type = b.get_type().to_unsigned(self);
+        let b = self.gcc_int_cast(b, b_type);
         a / b
     }
 

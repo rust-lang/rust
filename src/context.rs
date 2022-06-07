@@ -54,10 +54,15 @@ pub struct CodegenCx<'gcc, 'tcx> {
     pub u128_type: Type<'gcc>,
     pub usize_type: Type<'gcc>,
 
+    pub char_type: Type<'gcc>,
+    pub uchar_type: Type<'gcc>,
+    pub short_type: Type<'gcc>,
+    pub ushort_type: Type<'gcc>,
     pub int_type: Type<'gcc>,
     pub uint_type: Type<'gcc>,
     pub long_type: Type<'gcc>,
     pub ulong_type: Type<'gcc>,
+    pub longlong_type: Type<'gcc>,
     pub ulonglong_type: Type<'gcc>,
     pub sizet_type: Type<'gcc>,
 
@@ -146,10 +151,15 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         let float_type = context.new_type::<f32>();
         let double_type = context.new_type::<f64>();
 
+        let char_type = context.new_c_type(CType::Char);
+        let uchar_type = context.new_c_type(CType::UChar);
+        let short_type = context.new_c_type(CType::Short);
+        let ushort_type = context.new_c_type(CType::UShort);
         let int_type = context.new_c_type(CType::Int);
         let uint_type = context.new_c_type(CType::UInt);
         let long_type = context.new_c_type(CType::Long);
         let ulong_type = context.new_c_type(CType::ULong);
+        let longlong_type = context.new_c_type(CType::LongLong);
         let ulonglong_type = context.new_c_type(CType::ULongLong);
         let sizet_type = context.new_c_type(CType::SizeT);
 
@@ -202,10 +212,15 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             u32_type,
             u64_type,
             u128_type,
+            char_type,
+            uchar_type,
+            short_type,
+            ushort_type,
             int_type,
             uint_type,
             long_type,
             ulong_type,
+            longlong_type,
             ulonglong_type,
             sizet_type,
 
