@@ -30,9 +30,9 @@ declare_clippy_lint! {
     /// ```rust
     /// # let x = 1;
     /// if x + 1 == x + 1 {}
-    /// ```
-    /// or
-    /// ```rust
+    ///
+    /// // or
+    ///
     /// # let a = 3;
     /// # let b = 4;
     /// assert_eq!(a, a);

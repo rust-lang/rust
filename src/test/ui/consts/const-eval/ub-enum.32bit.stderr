@@ -1,5 +1,5 @@
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-enum.rs:24:1
+  --> $DIR/ub-enum.rs:23:1
    |
 LL | const BAD_ENUM: Enum = unsafe { mem::transmute(1usize) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed at .<enum-tag>: encountered 0x00000001, but expected a valid enum tag
@@ -9,30 +9,27 @@ LL | const BAD_ENUM: Enum = unsafe { mem::transmute(1usize) };
                01 00 00 00                                     │ ....
            }
 
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-enum.rs:27:1
+error: any use of this value will cause an error
+  --> $DIR/ub-enum.rs:26:1
    |
 LL | const BAD_ENUM_PTR: Enum = unsafe { mem::transmute(&1) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed at .<enum-tag>: encountered pointer to alloc9, but expected plain (non-pointer) bytes
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
    |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 4, align: 4) {
-               ╾─alloc9──╼                                     │ ╾──╼
-           }
+   = note: `#[deny(const_err)]` on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
-error[E0080]: it is undefined behavior to use this value
+error: any use of this value will cause an error
   --> $DIR/ub-enum.rs:30:1
    |
 LL | const BAD_ENUM_WRAPPED: Wrap<Enum> = unsafe { mem::transmute(&1) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed at .0.<enum-tag>: encountered pointer to alloc13, but expected plain (non-pointer) bytes
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
    |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 4, align: 4) {
-               ╾─alloc13─╼                                     │ ╾──╼
-           }
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-enum.rs:42:1
+  --> $DIR/ub-enum.rs:43:1
    |
 LL | const BAD_ENUM2: Enum2 = unsafe { mem::transmute(0usize) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed at .<enum-tag>: encountered 0x00000000, but expected a valid enum tag
@@ -42,30 +39,26 @@ LL | const BAD_ENUM2: Enum2 = unsafe { mem::transmute(0usize) };
                00 00 00 00                                     │ ....
            }
 
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-enum.rs:44:1
+error: any use of this value will cause an error
+  --> $DIR/ub-enum.rs:45:1
    |
 LL | const BAD_ENUM2_PTR: Enum2 = unsafe { mem::transmute(&0) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed at .<enum-tag>: encountered pointer to alloc19, but expected plain (non-pointer) bytes
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
    |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 4, align: 4) {
-               ╾─alloc19─╼                                     │ ╾──╼
-           }
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-enum.rs:47:1
+error: any use of this value will cause an error
+  --> $DIR/ub-enum.rs:49:1
    |
 LL | const BAD_ENUM2_WRAPPED: Wrap<Enum2> = unsafe { mem::transmute(&0) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed at .0.<enum-tag>: encountered pointer to alloc23, but expected plain (non-pointer) bytes
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
    |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 4, align: 4) {
-               ╾─alloc23─╼                                     │ ╾──╼
-           }
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-enum.rs:56:1
+  --> $DIR/ub-enum.rs:59:1
    |
 LL | const BAD_ENUM2_UNDEF : Enum2 = unsafe { MaybeUninit { uninit: () }.init };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed at .<enum-tag>: encountered uninitialized bytes, but expected initialized bytes
@@ -75,19 +68,17 @@ LL | const BAD_ENUM2_UNDEF : Enum2 = unsafe { MaybeUninit { uninit: () }.init };
                __ __ __ __                                     │ ░░░░
            }
 
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-enum.rs:60:1
+error: any use of this value will cause an error
+  --> $DIR/ub-enum.rs:63:1
    |
 LL | const BAD_ENUM2_OPTION_PTR: Option<Enum2> = unsafe { mem::transmute(&0) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed at .<enum-tag>: encountered pointer to alloc30, but expected plain (non-pointer) bytes
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
    |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 4, align: 4) {
-               ╾─alloc30─╼                                     │ ╾──╼
-           }
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-enum.rs:77:1
+  --> $DIR/ub-enum.rs:81:1
    |
 LL | const BAD_UNINHABITED_VARIANT1: UninhDiscriminant = unsafe { mem::transmute(1u8) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed at .<enum-variant(B)>.0: encountered a value of the never type `!`
@@ -98,7 +89,7 @@ LL | const BAD_UNINHABITED_VARIANT1: UninhDiscriminant = unsafe { mem::transmute
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-enum.rs:79:1
+  --> $DIR/ub-enum.rs:83:1
    |
 LL | const BAD_UNINHABITED_VARIANT2: UninhDiscriminant = unsafe { mem::transmute(3u8) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed at .<enum-variant(D)>.0: encountered a value of uninhabited type Never
@@ -109,7 +100,7 @@ LL | const BAD_UNINHABITED_VARIANT2: UninhDiscriminant = unsafe { mem::transmute
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-enum.rs:87:1
+  --> $DIR/ub-enum.rs:91:1
    |
 LL | const BAD_OPTION_CHAR: Option<(char, char)> = Some(('x', unsafe { mem::transmute(!0u32) }));
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed at .<enum-variant(Some)>.0.1: encountered 0xffffffff, but expected a valid unicode scalar value (in `0..=0x10FFFF` but not in `0xD800..=0xDFFF`)
@@ -120,13 +111,13 @@ LL | const BAD_OPTION_CHAR: Option<(char, char)> = Some(('x', unsafe { mem::tran
            }
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/ub-enum.rs:92:77
+  --> $DIR/ub-enum.rs:96:77
    |
 LL | const BAD_UNINHABITED_WITH_DATA1: Result<(i32, Never), (i32, !)> = unsafe { mem::transmute(0u64) };
    |                                                                             ^^^^^^^^^^^^^^^^^^^^ transmuting to uninhabited type
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/ub-enum.rs:94:77
+  --> $DIR/ub-enum.rs:98:77
    |
 LL | const BAD_UNINHABITED_WITH_DATA2: Result<(i32, !), (i32, Never)> = unsafe { mem::transmute(0u64) };
    |                                                                             ^^^^^^^^^^^^^^^^^^^^ transmuting to uninhabited type

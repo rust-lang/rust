@@ -27,10 +27,16 @@ declare_clippy_lint! {
     /// let mut a = 5;
     /// let b = 0;
     /// // ...
-    /// // Bad
-    /// a = a + b;
     ///
-    /// // Good
+    /// a = a + b;
+    /// ```
+    ///
+    /// Use instead:
+    /// ```rust
+    /// let mut a = 5;
+    /// let b = 0;
+    /// // ...
+    ///
     /// a += b;
     /// ```
     #[clippy::version = "pre 1.29.0"]

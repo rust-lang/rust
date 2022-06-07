@@ -338,6 +338,17 @@ impl UnsafeCode {
                 .emit();
         })
     }
+
+    fn report_overridden_symbol_section(&self, cx: &EarlyContext<'_>, span: Span, msg: &str) {
+        self.report_unsafe(cx, span, |lint| {
+            lint.build(msg)
+                .note(
+                    "the program's behavior with overridden link sections on items is unpredictable \
+                    and Rust cannot provide guarantees when you manually override them",
+                )
+                .emit();
+        })
+    }
 }
 
 impl EarlyLintPass for UnsafeCode {
@@ -385,11 +396,20 @@ impl EarlyLintPass for UnsafeCode {
                         "declaration of a `no_mangle` function",
                     );
                 }
+
                 if let Some(attr) = cx.sess().find_by_name(&it.attrs, sym::export_name) {
                     self.report_overridden_symbol_name(
                         cx,
                         attr.span,
                         "declaration of a function with `export_name`",
+                    );
+                }
+
+                if let Some(attr) = cx.sess().find_by_name(&it.attrs, sym::link_section) {
+                    self.report_overridden_symbol_section(
+                        cx,
+                        attr.span,
+                        "declaration of a function with `link_section`",
                     );
                 }
             }
@@ -402,11 +422,20 @@ impl EarlyLintPass for UnsafeCode {
                         "declaration of a `no_mangle` static",
                     );
                 }
+
                 if let Some(attr) = cx.sess().find_by_name(&it.attrs, sym::export_name) {
                     self.report_overridden_symbol_name(
                         cx,
                         attr.span,
                         "declaration of a static with `export_name`",
+                    );
+                }
+
+                if let Some(attr) = cx.sess().find_by_name(&it.attrs, sym::link_section) {
+                    self.report_overridden_symbol_section(
+                        cx,
+                        attr.span,
+                        "declaration of a static with `link_section`",
                     );
                 }
             }

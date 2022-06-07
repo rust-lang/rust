@@ -27,8 +27,14 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```ignore
-    /// if a && true  // should be: if a
-    /// if !(a == b)  // should be: if a != b
+    /// if a && true {}
+    /// if !(a == b) {}
+    /// ```
+    ///
+    /// Use instead:
+    /// ```rust,ignore
+    /// if a {}
+    /// if a != b {}
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub NONMINIMAL_BOOL,
@@ -48,10 +54,15 @@ declare_clippy_lint! {
     /// Ignores short circuiting behavior.
     ///
     /// ### Example
-    /// ```ignore
+    /// ```rust,ignore
+    /// // The `b` is unnecessary, the expression is equivalent to `if a`.
     /// if a && b || a { ... }
     /// ```
-    /// The `b` is unnecessary, the expression is equivalent to `if a`.
+    ///
+    /// Use instead:
+    /// ```rust,ignore
+    /// if a {}
+    /// ```
     #[clippy::version = "pre 1.29.0"]
     pub LOGIC_BUG,
     correctness,

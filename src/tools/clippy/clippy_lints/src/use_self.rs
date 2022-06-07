@@ -258,13 +258,21 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
             if !pat.span.from_expansion();
             if meets_msrv(self.msrv, msrvs::TYPE_ALIAS_ENUM_VARIANTS);
             if let Some(&StackItem::Check { impl_id, .. }) = self.stack.last();
-            if let PatKind::Path(QPath::Resolved(_, path)) = pat.kind;
-            if !matches!(path.res, Res::SelfTy { .. } | Res::Def(DefKind::TyParam, _));
+            // get the path from the pattern
+            if let PatKind::Path(QPath::Resolved(_, path))
+                 | PatKind::TupleStruct(QPath::Resolved(_, path), _, _)
+                 | PatKind::Struct(QPath::Resolved(_, path), _, _) = pat.kind;
             if cx.typeck_results().pat_ty(pat) == cx.tcx.type_of(impl_id);
-            if let [first, ..] = path.segments;
-            if let Some(hir_id) = first.hir_id;
             then {
-                span_lint(cx, cx.tcx.hir().span(hir_id));
+                match path.res {
+                    Res::Def(DefKind::Ctor(ctor_of, _), ..) => match ctor_of {
+                            CtorOf::Variant => lint_path_to_variant(cx, path),
+                            CtorOf::Struct => span_lint(cx, path.span),
+                    },
+                    Res::Def(DefKind::Variant, ..) => lint_path_to_variant(cx, path),
+                    Res::Def(DefKind::Struct, ..) => span_lint(cx, path.span),
+                    _ => ()
+                }
             }
         }
     }

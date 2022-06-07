@@ -90,7 +90,7 @@ fn contains_unhygienic_crate_reference(tts: &TokenStream) -> Option<Span> {
     while let Some(curr) = cursor.next() {
         if_chain! {
             if !prev_is_dollar;
-            if let Some(span) = is_crate_keyword(&curr);
+            if let Some(span) = is_crate_keyword(curr);
             if let Some(next) = cursor.look_ahead(0);
             if is_token(next, &TokenKind::ModSep);
             then {
@@ -103,7 +103,7 @@ fn contains_unhygienic_crate_reference(tts: &TokenStream) -> Option<Span> {
                 return span;
             }
         }
-        prev_is_dollar = is_token(&curr, &TokenKind::Dollar);
+        prev_is_dollar = is_token(curr, &TokenKind::Dollar);
     }
     None
 }

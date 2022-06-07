@@ -49,6 +49,12 @@ LL |     let _ = || return true;
    |                ^^^^^^^^^^^ help: remove `return`: `true`
 
 error: unneeded `return` statement
+  --> $DIR/needless_return.rs:56:5
+   |
+LL |     return the_answer!();
+   |     ^^^^^^^^^^^^^^^^^^^^^ help: remove `return`: `the_answer!()`
+
+error: unneeded `return` statement
   --> $DIR/needless_return.rs:60:5
    |
 LL |     return;
@@ -169,6 +175,12 @@ LL |     let _ = || return true;
    |                ^^^^^^^^^^^ help: remove `return`: `true`
 
 error: unneeded `return` statement
+  --> $DIR/needless_return.rs:178:5
+   |
+LL |     return the_answer!();
+   |     ^^^^^^^^^^^^^^^^^^^^^ help: remove `return`: `the_answer!()`
+
+error: unneeded `return` statement
   --> $DIR/needless_return.rs:182:5
    |
 LL |     return;
@@ -204,5 +216,11 @@ error: unneeded `return` statement
 LL |         return String::new();
    |         ^^^^^^^^^^^^^^^^^^^^^ help: remove `return`: `String::new()`
 
-error: aborting due to 34 previous errors
+error: unneeded `return` statement
+  --> $DIR/needless_return.rs:229:5
+   |
+LL |     return format!("Hello {}", "world!");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove `return`: `format!("Hello {}", "world!")`
+
+error: aborting due to 37 previous errors
 

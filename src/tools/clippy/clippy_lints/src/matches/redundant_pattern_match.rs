@@ -18,17 +18,19 @@ use rustc_middle::ty::{self, subst::GenericArgKind, DefIdTree, Ty};
 use rustc_span::sym;
 
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-    if let Some(higher::IfLet {
-        if_else,
-        let_pat,
-        let_expr,
-        ..
-    }) = higher::IfLet::hir(cx, expr)
-    {
-        find_sugg_for_if_let(cx, expr, let_pat, let_expr, "if", if_else.is_some());
-    } else if let Some(higher::WhileLet { let_pat, let_expr, .. }) = higher::WhileLet::hir(expr) {
+    if let Some(higher::WhileLet { let_pat, let_expr, .. }) = higher::WhileLet::hir(expr) {
         find_sugg_for_if_let(cx, expr, let_pat, let_expr, "while", false);
     }
+}
+
+pub(super) fn check_if_let<'tcx>(
+    cx: &LateContext<'tcx>,
+    expr: &'tcx Expr<'_>,
+    pat: &'tcx Pat<'_>,
+    scrutinee: &'tcx Expr<'_>,
+    has_else: bool,
+) {
+    find_sugg_for_if_let(cx, expr, pat, scrutinee, "if", has_else);
 }
 
 // Extract the generic arguments out of a type
@@ -68,7 +70,7 @@ fn temporaries_need_ordered_drop<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<
                         }
                     }
                 },
-                // the base type is alway taken by reference.
+                // the base type is always taken by reference.
                 // e.g. In `(vec![0])[0]` the vector is a temporary value.
                 ExprKind::Index(base, index) => {
                     if !matches!(base.kind, ExprKind::Path(_)) {

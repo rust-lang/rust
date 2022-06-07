@@ -532,7 +532,7 @@ pub const fn null<T>() -> *const T {
 #[rustc_diagnostic_item = "ptr_null"]
 #[cfg(not(bootstrap))]
 pub const fn null<T: ?Sized + Thin>() -> *const T {
-    from_raw_parts(0 as *const (), ())
+    from_raw_parts(invalid(0), ())
 }
 
 /// Creates a null mutable raw pointer.
@@ -709,7 +709,7 @@ where
 #[rustc_diagnostic_item = "ptr_null_mut"]
 #[cfg(not(bootstrap))]
 pub const fn null_mut<T: ?Sized + Thin>() -> *mut T {
-    from_raw_parts_mut(0 as *mut (), ())
+    from_raw_parts_mut(invalid_mut(0), ())
 }
 
 /// Forms a raw slice from a pointer and a length.

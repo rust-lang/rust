@@ -22,15 +22,17 @@ declare_clippy_lint! {
     /// ### Example
     /// ```rust
     /// # use std::time::Duration;
-    /// let dur = Duration::new(5, 0);
+    /// # let duration = Duration::new(5, 0);
+    /// let micros = duration.subsec_nanos() / 1_000;
+    /// let millis = duration.subsec_nanos() / 1_000_000;
+    /// ```
     ///
-    /// // Bad
-    /// let _micros = dur.subsec_nanos() / 1_000;
-    /// let _millis = dur.subsec_nanos() / 1_000_000;
-    ///
-    /// // Good
-    /// let _micros = dur.subsec_micros();
-    /// let _millis = dur.subsec_millis();
+    /// Use instead:
+    /// ```rust
+    /// # use std::time::Duration;
+    /// # let duration = Duration::new(5, 0);
+    /// let micros = duration.subsec_micros();
+    /// let millis = duration.subsec_millis();
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub DURATION_SUBSEC,

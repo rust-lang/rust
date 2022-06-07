@@ -4,7 +4,7 @@ use clippy_utils::sugg;
 use rustc_errors::Applicability;
 use rustc_hir::Expr;
 use rustc_lint::LateContext;
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::{self, Ty, TypeFoldable};
 
 /// Checks for `useless_transmute` lint.
 /// Returns `true` if it's triggered, otherwise returns `false`.
@@ -16,7 +16,7 @@ pub(super) fn check<'tcx>(
     arg: &'tcx Expr<'_>,
 ) -> bool {
     match (&from_ty.kind(), &to_ty.kind()) {
-        _ if from_ty == to_ty => {
+        _ if from_ty == to_ty && !from_ty.has_erased_regions() => {
             span_lint(
                 cx,
                 USELESS_TRANSMUTE,
@@ -26,28 +26,31 @@ pub(super) fn check<'tcx>(
             true
         },
         (ty::Ref(_, rty, rty_mutbl), ty::RawPtr(ptr_ty)) => {
-            span_lint_and_then(
-                cx,
-                USELESS_TRANSMUTE,
-                e.span,
-                "transmute from a reference to a pointer",
-                |diag| {
-                    if let Some(arg) = sugg::Sugg::hir_opt(cx, arg) {
-                        let rty_and_mut = ty::TypeAndMut {
-                            ty: *rty,
-                            mutbl: *rty_mutbl,
-                        };
+            // No way to give the correct suggestion here. Avoid linting for now.
+            if !rty.has_erased_regions() {
+                span_lint_and_then(
+                    cx,
+                    USELESS_TRANSMUTE,
+                    e.span,
+                    "transmute from a reference to a pointer",
+                    |diag| {
+                        if let Some(arg) = sugg::Sugg::hir_opt(cx, arg) {
+                            let rty_and_mut = ty::TypeAndMut {
+                                ty: *rty,
+                                mutbl: *rty_mutbl,
+                            };
 
-                        let sugg = if *ptr_ty == rty_and_mut {
-                            arg.as_ty(to_ty)
-                        } else {
-                            arg.as_ty(cx.tcx.mk_ptr(rty_and_mut)).as_ty(to_ty)
-                        };
+                            let sugg = if *ptr_ty == rty_and_mut {
+                                arg.as_ty(to_ty)
+                            } else {
+                                arg.as_ty(cx.tcx.mk_ptr(rty_and_mut)).as_ty(to_ty)
+                            };
 
-                        diag.span_suggestion(e.span, "try", sugg.to_string(), Applicability::Unspecified);
-                    }
-                },
-            );
+                            diag.span_suggestion(e.span, "try", sugg.to_string(), Applicability::Unspecified);
+                        }
+                    },
+                );
+            }
             true
         },
         (ty::Int(_) | ty::Uint(_), ty::RawPtr(_)) => {

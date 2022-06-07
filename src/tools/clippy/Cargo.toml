@@ -28,7 +28,7 @@ tempfile = { version = "3.2", optional = true }
 termize = "0.1"
 
 [dev-dependencies]
-compiletest_rs = { version = "0.7.1", features = ["tmp"] }
+compiletest_rs = { version = "0.8", features = ["tmp"] }
 tester = "0.9"
 regex = "1.5"
 # This is used by the `collect-metadata` alias.
@@ -48,7 +48,7 @@ quote = "1.0"
 serde = { version = "1.0.125", features = ["derive"] }
 syn = { version = "1.0", features = ["full"] }
 futures = "0.3"
-parking_lot = "0.11.2"
+parking_lot = "0.12"
 tokio = { version = "1", features = ["io-util"] }
 rustc-semver = "1.1"
 

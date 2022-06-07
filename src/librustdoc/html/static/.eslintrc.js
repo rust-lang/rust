@@ -78,5 +78,11 @@ module.exports = {
         "block-scoped-var": "error",
         "guard-for-in": "error",
         "no-alert": "error",
+        "no-confusing-arrow": "error",
+        "no-div-regex": "error",
+        "no-floating-decimal": "error",
+        "no-implicit-globals": "error",
+        "no-implied-eval": "error",
+        "no-label-var": "error",
     }
 };

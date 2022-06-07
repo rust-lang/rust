@@ -24,7 +24,8 @@ union Nonsense {
 
 fn main() {
     const I32_REF_USIZE_UNION: usize = unsafe { Nonsense { int_32_ref: &3 }.u };
-    //~^ ERROR it is undefined behavior to use this value
+    //~^ ERROR any use of this value will cause an error
+    //~| WARN this was previously accepted by the compiler but is being phased out
 
     const I32_REF_U8_UNION: u8 = unsafe { Nonsense { int_32_ref: &3 }.uint_8 };
     //~^ ERROR any use of this value will cause an error
@@ -39,7 +40,8 @@ fn main() {
     //~| WARN this was previously accepted by the compiler but is being phased out
 
     const I32_REF_U64_UNION: u64 = unsafe { Nonsense { int_32_ref: &3 }.uint_64 };
-    //~^ ERROR it is undefined behavior to use this value
+    //~^ ERROR any use of this value will cause an error
+    //~| WARN this was previously accepted by the compiler but is being phased out
 
     const I32_REF_U128_UNION: u128 = unsafe { Nonsense { int_32_ref: &3 }.uint_128 };
     //~^ ERROR it is undefined behavior to use this value
@@ -57,7 +59,8 @@ fn main() {
     //~| WARN this was previously accepted by the compiler but is being phased out
 
     const I32_REF_I64_UNION: i64 = unsafe { Nonsense { int_32_ref: &3 }.int_64 };
-    //~^ ERROR it is undefined behavior to use this value
+    //~^ ERROR any use of this value will cause an error
+    //~| WARN this was previously accepted by the compiler but is being phased out
 
     const I32_REF_I128_UNION: i128 = unsafe { Nonsense { int_32_ref: &3 }.int_128 };
     //~^ ERROR it is undefined behavior to use this value
@@ -67,7 +70,8 @@ fn main() {
     //~| WARN this was previously accepted by the compiler but is being phased out
 
     const I32_REF_F64_UNION: f64 = unsafe { Nonsense { int_32_ref: &3 }.float_64 };
-    //~^ ERROR it is undefined behavior to use this value
+    //~^ ERROR any use of this value will cause an error
+    //~| WARN this was previously accepted by the compiler but is being phased out
 
     const I32_REF_BOOL_UNION: bool = unsafe { Nonsense { int_32_ref: &3 }.truthy_falsey };
     //~^ ERROR any use of this value will cause an error
@@ -90,7 +94,8 @@ fn main() {
     //~| WARN this was previously accepted by the compiler but is being phased out
 
     const STR_U64_UNION: u64 = unsafe { Nonsense { stringy: "3" }.uint_64 };
-    //~^ ERROR it is undefined behavior to use this value
+    //~^ ERROR any use of this value will cause an error
+    //~| WARN this was previously accepted by the compiler but is being phased out
 
     const STR_U128_UNION: u128 = unsafe { Nonsense { stringy: "3" }.uint_128 };
     //~^ ERROR any use of this value will cause an error
@@ -109,7 +114,8 @@ fn main() {
     //~| WARN this was previously accepted by the compiler but is being phased out
 
     const STR_I64_UNION: i64 = unsafe { Nonsense { stringy: "3" }.int_64 };
-    //~^ ERROR it is undefined behavior to use this value
+    //~^ ERROR any use of this value will cause an error
+    //~| WARN this was previously accepted by the compiler but is being phased out
 
     const STR_I128_UNION: i128 = unsafe { Nonsense { stringy: "3" }.int_128 };
     //~^ ERROR any use of this value will cause an error
@@ -120,7 +126,8 @@ fn main() {
     //~| WARN this was previously accepted by the compiler but is being phased out
 
     const STR_F64_UNION: f64 = unsafe { Nonsense { stringy: "3" }.float_64 };
-    //~^ ERROR it is undefined behavior to use this value
+    //~^ ERROR any use of this value will cause an error
+    //~| WARN this was previously accepted by the compiler but is being phased out
 
     const STR_BOOL_UNION: bool = unsafe { Nonsense { stringy: "3" }.truthy_falsey };
     //~^ ERROR any use of this value will cause an error

@@ -8,7 +8,7 @@ use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LintContext};
 use rustc_span::hygiene;
 use rustc_span::source_map::SourceMap;
-use rustc_span::{BytePos, Pos, Span, SyntaxContext};
+use rustc_span::{BytePos, Pos, Span, SpanData, SyntaxContext};
 use std::borrow::Cow;
 
 /// Checks if the span starts with the given text. This will return false if the span crosses
@@ -387,6 +387,27 @@ pub fn without_block_comments(lines: Vec<&str>) -> Vec<&str> {
     }
 
     without
+}
+
+/// Trims the whitespace from the start and the end of the span.
+pub fn trim_span(sm: &SourceMap, span: Span) -> Span {
+    let data = span.data();
+    let sf: &_ = &sm.lookup_source_file(data.lo);
+    let Some(src) = sf.src.as_deref() else {
+        return span;
+    };
+    let Some(snip) = &src.get((data.lo - sf.start_pos).to_usize()..(data.hi - sf.start_pos).to_usize()) else {
+        return span;
+    };
+    let trim_start = snip.len() - snip.trim_start().len();
+    let trim_end = snip.len() - snip.trim_end().len();
+    SpanData {
+        lo: data.lo + BytePos::from_usize(trim_start),
+        hi: data.hi - BytePos::from_usize(trim_end),
+        ctxt: data.ctxt,
+        parent: data.parent,
+    }
+    .span()
 }
 
 #[cfg(test)]
