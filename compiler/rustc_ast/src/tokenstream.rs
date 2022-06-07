@@ -142,9 +142,9 @@ impl fmt::Debug for LazyTokenStream {
 }
 
 impl<S: Encoder> Encodable<S> for LazyTokenStream {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
+    fn encode(&self, s: &mut S) {
         // Used by AST json printing.
-        Encodable::encode(&self.create_token_stream(), s)
+        Encodable::encode(&self.create_token_stream(), s);
     }
 }
 

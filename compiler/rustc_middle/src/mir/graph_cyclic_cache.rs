@@ -38,8 +38,8 @@ impl GraphIsCyclicCache {
 
 impl<S: serialize::Encoder> serialize::Encodable<S> for GraphIsCyclicCache {
     #[inline]
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        serialize::Encodable::encode(&(), s)
+    fn encode(&self, s: &mut S) {
+        serialize::Encodable::encode(&(), s);
     }
 }
 

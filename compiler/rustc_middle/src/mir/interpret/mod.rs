@@ -207,27 +207,26 @@ pub fn specialized_encode_alloc_id<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>>(
     encoder: &mut E,
     tcx: TyCtxt<'tcx>,
     alloc_id: AllocId,
-) -> Result<(), E::Error> {
+) {
     match tcx.global_alloc(alloc_id) {
         GlobalAlloc::Memory(alloc) => {
             trace!("encoding {:?} with {:#?}", alloc_id, alloc);
-            AllocDiscriminant::Alloc.encode(encoder)?;
-            alloc.encode(encoder)?;
+            AllocDiscriminant::Alloc.encode(encoder);
+            alloc.encode(encoder);
         }
         GlobalAlloc::Function(fn_instance) => {
             trace!("encoding {:?} with {:#?}", alloc_id, fn_instance);
-            AllocDiscriminant::Fn.encode(encoder)?;
-            fn_instance.encode(encoder)?;
+            AllocDiscriminant::Fn.encode(encoder);
+            fn_instance.encode(encoder);
         }
         GlobalAlloc::Static(did) => {
             assert!(!tcx.is_thread_local_static(did));
             // References to statics doesn't need to know about their allocations,
             // just about its `DefId`.
-            AllocDiscriminant::Static.encode(encoder)?;
-            did.encode(encoder)?;
+            AllocDiscriminant::Static.encode(encoder);
+            did.encode(encoder);
         }
     }
-    Ok(())
 }
 
 // Used to avoid infinite recursion when decoding cyclic allocations.

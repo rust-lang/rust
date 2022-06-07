@@ -715,115 +715,92 @@ where
     I::PredicateKind: Encodable<E>,
     I::AllocId: Encodable<E>,
 {
-    fn encode(&self, e: &mut E) -> Result<(), <E as rustc_serialize::Encoder>::Error> {
+    fn encode(&self, e: &mut E) {
         let disc = discriminant(self);
         match self {
-            Bool => e.emit_enum_variant(disc, |_| Ok(())),
-            Char => e.emit_enum_variant(disc, |_| Ok(())),
+            Bool => e.emit_enum_variant(disc, |_| {}),
+            Char => e.emit_enum_variant(disc, |_| {}),
             Int(i) => e.emit_enum_variant(disc, |e| {
-                i.encode(e)?;
-                Ok(())
+                i.encode(e);
             }),
             Uint(u) => e.emit_enum_variant(disc, |e| {
-                u.encode(e)?;
-                Ok(())
+                u.encode(e);
             }),
             Float(f) => e.emit_enum_variant(disc, |e| {
-                f.encode(e)?;
-                Ok(())
+                f.encode(e);
             }),
             Adt(adt, substs) => e.emit_enum_variant(disc, |e| {
-                adt.encode(e)?;
-                substs.encode(e)?;
-                Ok(())
+                adt.encode(e);
+                substs.encode(e);
             }),
             Foreign(def_id) => e.emit_enum_variant(disc, |e| {
-                def_id.encode(e)?;
-                Ok(())
+                def_id.encode(e);
             }),
-            Str => e.emit_enum_variant(disc, |_| Ok(())),
+            Str => e.emit_enum_variant(disc, |_| {}),
             Array(t, c) => e.emit_enum_variant(disc, |e| {
-                t.encode(e)?;
-                c.encode(e)?;
-                Ok(())
+                t.encode(e);
+                c.encode(e);
             }),
             Slice(t) => e.emit_enum_variant(disc, |e| {
-                t.encode(e)?;
-                Ok(())
+                t.encode(e);
             }),
             RawPtr(tam) => e.emit_enum_variant(disc, |e| {
-                tam.encode(e)?;
-                Ok(())
+                tam.encode(e);
             }),
             Ref(r, t, m) => e.emit_enum_variant(disc, |e| {
-                r.encode(e)?;
-                t.encode(e)?;
-                m.encode(e)?;
-                Ok(())
+                r.encode(e);
+                t.encode(e);
+                m.encode(e);
             }),
             FnDef(def_id, substs) => e.emit_enum_variant(disc, |e| {
-                def_id.encode(e)?;
-                substs.encode(e)?;
-                Ok(())
+                def_id.encode(e);
+                substs.encode(e);
             }),
             FnPtr(polyfnsig) => e.emit_enum_variant(disc, |e| {
-                polyfnsig.encode(e)?;
-                Ok(())
+                polyfnsig.encode(e);
             }),
             Dynamic(l, r) => e.emit_enum_variant(disc, |e| {
-                l.encode(e)?;
-                r.encode(e)?;
-                Ok(())
+                l.encode(e);
+                r.encode(e);
             }),
             Closure(def_id, substs) => e.emit_enum_variant(disc, |e| {
-                def_id.encode(e)?;
-                substs.encode(e)?;
-                Ok(())
+                def_id.encode(e);
+                substs.encode(e);
             }),
             Generator(def_id, substs, m) => e.emit_enum_variant(disc, |e| {
-                def_id.encode(e)?;
-                substs.encode(e)?;
-                m.encode(e)?;
-                Ok(())
+                def_id.encode(e);
+                substs.encode(e);
+                m.encode(e);
             }),
             GeneratorWitness(b) => e.emit_enum_variant(disc, |e| {
-                b.encode(e)?;
-                Ok(())
+                b.encode(e);
             }),
-            Never => e.emit_enum_variant(disc, |_| Ok(())),
+            Never => e.emit_enum_variant(disc, |_| {}),
             Tuple(substs) => e.emit_enum_variant(disc, |e| {
-                substs.encode(e)?;
-                Ok(())
+                substs.encode(e);
             }),
             Projection(p) => e.emit_enum_variant(disc, |e| {
-                p.encode(e)?;
-                Ok(())
+                p.encode(e);
             }),
             Opaque(def_id, substs) => e.emit_enum_variant(disc, |e| {
-                def_id.encode(e)?;
-                substs.encode(e)?;
-                Ok(())
+                def_id.encode(e);
+                substs.encode(e);
             }),
             Param(p) => e.emit_enum_variant(disc, |e| {
-                p.encode(e)?;
-                Ok(())
+                p.encode(e);
             }),
             Bound(d, b) => e.emit_enum_variant(disc, |e| {
-                d.encode(e)?;
-                b.encode(e)?;
-                Ok(())
+                d.encode(e);
+                b.encode(e);
             }),
             Placeholder(p) => e.emit_enum_variant(disc, |e| {
-                p.encode(e)?;
-                Ok(())
+                p.encode(e);
             }),
             Infer(i) => e.emit_enum_variant(disc, |e| {
-                i.encode(e)?;
-                Ok(())
+                i.encode(e);
             }),
             Error(d) => e.emit_enum_variant(disc, |e| {
-                d.encode(e)?;
-                Ok(())
+                d.encode(e);
             }),
         }
     }

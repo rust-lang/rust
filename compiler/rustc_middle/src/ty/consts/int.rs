@@ -140,9 +140,9 @@ impl<CTX> crate::ty::HashStable<CTX> for ScalarInt {
 }
 
 impl<S: Encoder> Encodable<S> for ScalarInt {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_u128(self.data)?;
-        s.emit_u8(self.size)
+    fn encode(&self, s: &mut S) {
+        s.emit_u128(self.data);
+        s.emit_u8(self.size);
     }
 }
 

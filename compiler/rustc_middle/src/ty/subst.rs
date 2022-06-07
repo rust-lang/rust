@@ -217,7 +217,7 @@ impl<'tcx> TypeFoldable<'tcx> for GenericArg<'tcx> {
 }
 
 impl<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>> Encodable<E> for GenericArg<'tcx> {
-    fn encode(&self, e: &mut E) -> Result<(), E::Error> {
+    fn encode(&self, e: &mut E) {
         self.unpack().encode(e)
     }
 }

@@ -2,6 +2,7 @@
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(min_specialization)]
+#![feature(never_type)]
 #![feature(once_cell)]
 #![feature(rustc_attrs)]
 #![recursion_limit = "256"]

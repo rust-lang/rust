@@ -144,9 +144,8 @@ impl_stable_hash_via_hash!(Fingerprint);
 
 impl<E: rustc_serialize::Encoder> Encodable<E> for Fingerprint {
     #[inline]
-    fn encode(&self, s: &mut E) -> Result<(), E::Error> {
-        s.emit_raw_bytes(&self.to_le_bytes())?;
-        Ok(())
+    fn encode(&self, s: &mut E) {
+        s.emit_raw_bytes(&self.to_le_bytes());
     }
 }
 
@@ -187,10 +186,10 @@ impl std::fmt::Display for PackedFingerprint {
 
 impl<E: rustc_serialize::Encoder> Encodable<E> for PackedFingerprint {
     #[inline]
-    fn encode(&self, s: &mut E) -> Result<(), E::Error> {
+    fn encode(&self, s: &mut E) {
         // Copy to avoid taking reference to packed field.
         let copy = self.0;
-        copy.encode(s)
+        copy.encode(s);
     }
 }
 

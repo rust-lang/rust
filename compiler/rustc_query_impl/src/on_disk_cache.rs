@@ -221,7 +221,7 @@ impl<'sess> rustc_middle::ty::OnDiskCache<'sess> for OnDiskCache<'sess> {
         *self.serialized_data.write() = None;
     }
 
-    fn serialize<'tcx>(&self, tcx: TyCtxt<'tcx>, encoder: &mut FileEncoder) -> FileEncodeResult {
+    fn serialize<'tcx>(&self, tcx: TyCtxt<'tcx>, encoder: FileEncoder) -> FileEncodeResult {
         // Serializing the `DepGraph` should not modify it.
         tcx.dep_graph.with_ignore(|| {
             // Allocate `SourceFileIndex`es.
@@ -259,27 +259,25 @@ impl<'sess> rustc_middle::ty::OnDiskCache<'sess> for OnDiskCache<'sess> {
             // Encode query results.
             let mut query_result_index = EncodedDepNodeIndex::new();
 
-            tcx.sess.time("encode_query_results", || -> FileEncodeResult {
+            tcx.sess.time("encode_query_results", || {
                 let enc = &mut encoder;
                 let qri = &mut query_result_index;
-                QueryCtxt::from_tcx(tcx).encode_query_results(enc, qri)
-            })?;
+                QueryCtxt::from_tcx(tcx).encode_query_results(enc, qri);
+            });
 
             // Encode side effects.
             let side_effects_index: EncodedDepNodeIndex = self
                 .current_side_effects
                 .borrow()
                 .iter()
-                .map(
-                    |(dep_node_index, side_effects)| -> Result<_, <FileEncoder as Encoder>::Error> {
-                        let pos = AbsoluteBytePos::new(encoder.position());
-                        let dep_node_index = SerializedDepNodeIndex::new(dep_node_index.index());
-                        encoder.encode_tagged(dep_node_index, side_effects)?;
+                .map(|(dep_node_index, side_effects)| {
+                    let pos = AbsoluteBytePos::new(encoder.position());
+                    let dep_node_index = SerializedDepNodeIndex::new(dep_node_index.index());
+                    encoder.encode_tagged(dep_node_index, side_effects);
 
-                        Ok((dep_node_index, pos))
-                    },
-                )
-                .collect::<Result<_, _>>()?;
+                    (dep_node_index, pos)
+                })
+                .collect();
 
             let interpret_alloc_index = {
                 let mut interpret_alloc_index = Vec::new();
@@ -296,7 +294,7 @@ impl<'sess> rustc_middle::ty::OnDiskCache<'sess> for OnDiskCache<'sess> {
                         let id = encoder.interpret_allocs[idx];
                         let pos = encoder.position() as u32;
                         interpret_alloc_index.push(pos);
-                        interpret::specialized_encode_alloc_id(&mut encoder, tcx, id)?;
+                        interpret::specialized_encode_alloc_id(&mut encoder, tcx, id);
                     }
                     n = new_n;
                 }
@@ -312,23 +310,21 @@ impl<'sess> rustc_middle::ty::OnDiskCache<'sess> for OnDiskCache<'sess> {
 
             hygiene_encode_context.encode(
                 &mut encoder,
-                |encoder, index, ctxt_data| -> FileEncodeResult {
+                |encoder, index, ctxt_data| {
                     let pos = AbsoluteBytePos::new(encoder.position());
-                    encoder.encode_tagged(TAG_SYNTAX_CONTEXT, ctxt_data)?;
+                    encoder.encode_tagged(TAG_SYNTAX_CONTEXT, ctxt_data);
                     syntax_contexts.insert(index, pos);
-                    Ok(())
                 },
-                |encoder, expn_id, data, hash| -> FileEncodeResult {
+                |encoder, expn_id, data, hash| {
                     if expn_id.krate == LOCAL_CRATE {
                         let pos = AbsoluteBytePos::new(encoder.position());
-                        encoder.encode_tagged(TAG_EXPN_DATA, data)?;
+                        encoder.encode_tagged(TAG_EXPN_DATA, data);
                         expn_data.insert(hash, pos);
                     } else {
                         foreign_expn_data.insert(hash, expn_id.local_id.as_u32());
                     }
-                    Ok(())
                 },
-            )?;
+            );
 
             // `Encode the file footer.
             let footer_pos = encoder.position() as u64;
@@ -343,16 +339,16 @@ impl<'sess> rustc_middle::ty::OnDiskCache<'sess> for OnDiskCache<'sess> {
                     expn_data,
                     foreign_expn_data,
                 },
-            )?;
+            );
 
             // Encode the position of the footer as the last 8 bytes of the
             // file so we know where to look for it.
-            IntEncodedWithFixedSize(footer_pos).encode(encoder.encoder)?;
+            IntEncodedWithFixedSize(footer_pos).encode(&mut encoder.encoder);
 
             // DO NOT WRITE ANYTHING TO THE ENCODER AFTER THIS POINT! The address
             // of the footer must be the last thing in the data stream.
 
-            Ok(())
+            encoder.finish()
         })
     }
 }
@@ -825,7 +821,7 @@ impl OpaqueEncoder for FileEncoder {
 /// An encoder that can write to the incremental compilation cache.
 pub struct CacheEncoder<'a, 'tcx, E: OpaqueEncoder> {
     tcx: TyCtxt<'tcx>,
-    encoder: &'a mut E,
+    encoder: E,
     type_shorthands: FxHashMap<Ty<'tcx>, usize>,
     predicate_shorthands: FxHashMap<ty::PredicateKind<'tcx>, usize>,
     interpret_allocs: FxIndexSet<interpret::AllocId>,
@@ -836,7 +832,7 @@ pub struct CacheEncoder<'a, 'tcx, E: OpaqueEncoder> {
 
 impl<'a, 'tcx, E> CacheEncoder<'a, 'tcx, E>
 where
-    E: 'a + OpaqueEncoder,
+    E: OpaqueEncoder,
 {
     fn source_file_index(&mut self, source_file: Lrc<SourceFile>) -> SourceFileIndex {
         self.file_to_file_index[&(&*source_file as *const SourceFile)]
@@ -847,48 +843,44 @@ where
     /// encode the specified tag, then the given value, then the number of
     /// bytes taken up by tag and value. On decoding, we can then verify that
     /// we get the expected tag and read the expected number of bytes.
-    fn encode_tagged<T: Encodable<Self>, V: Encodable<Self>>(
-        &mut self,
-        tag: T,
-        value: &V,
-    ) -> Result<(), E::Error> {
+    fn encode_tagged<T: Encodable<Self>, V: Encodable<Self>>(&mut self, tag: T, value: &V) {
         let start_pos = self.position();
 
-        tag.encode(self)?;
-        value.encode(self)?;
+        tag.encode(self);
+        value.encode(self);
 
         let end_pos = self.position();
-        ((end_pos - start_pos) as u64).encode(self)
+        ((end_pos - start_pos) as u64).encode(self);
     }
 }
 
 impl<'a, 'tcx, E> Encodable<CacheEncoder<'a, 'tcx, E>> for SyntaxContext
 where
-    E: 'a + OpaqueEncoder,
+    E: OpaqueEncoder,
 {
-    fn encode(&self, s: &mut CacheEncoder<'a, 'tcx, E>) -> Result<(), E::Error> {
-        rustc_span::hygiene::raw_encode_syntax_context(*self, s.hygiene_context, s)
+    fn encode(&self, s: &mut CacheEncoder<'a, 'tcx, E>) {
+        rustc_span::hygiene::raw_encode_syntax_context(*self, s.hygiene_context, s);
     }
 }
 
 impl<'a, 'tcx, E> Encodable<CacheEncoder<'a, 'tcx, E>> for ExpnId
 where
-    E: 'a + OpaqueEncoder,
+    E: OpaqueEncoder,
 {
-    fn encode(&self, s: &mut CacheEncoder<'a, 'tcx, E>) -> Result<(), E::Error> {
+    fn encode(&self, s: &mut CacheEncoder<'a, 'tcx, E>) {
         s.hygiene_context.schedule_expn_data_for_encoding(*self);
-        self.expn_hash().encode(s)
+        self.expn_hash().encode(s);
     }
 }
 
 impl<'a, 'tcx, E> Encodable<CacheEncoder<'a, 'tcx, E>> for Span
 where
-    E: 'a + OpaqueEncoder,
+    E: OpaqueEncoder,
 {
-    fn encode(&self, s: &mut CacheEncoder<'a, 'tcx, E>) -> Result<(), E::Error> {
+    fn encode(&self, s: &mut CacheEncoder<'a, 'tcx, E>) {
         let span_data = self.data_untracked();
-        span_data.ctxt.encode(s)?;
-        span_data.parent.encode(s)?;
+        span_data.ctxt.encode(s);
+        span_data.parent.encode(s);
 
         if span_data.is_dummy() {
             return TAG_PARTIAL_SPAN.encode(s);
@@ -897,10 +889,10 @@ where
         if let Some(parent) = span_data.parent {
             let enclosing = s.tcx.definitions_untracked().def_span(parent).data_untracked();
             if enclosing.contains(span_data) {
-                TAG_RELATIVE_SPAN.encode(s)?;
-                (span_data.lo - enclosing.lo).to_u32().encode(s)?;
-                (span_data.hi - enclosing.lo).to_u32().encode(s)?;
-                return Ok(());
+                TAG_RELATIVE_SPAN.encode(s);
+                (span_data.lo - enclosing.lo).to_u32().encode(s);
+                (span_data.hi - enclosing.lo).to_u32().encode(s);
+                return;
             }
         }
 
@@ -920,17 +912,17 @@ where
 
         let source_file_index = s.source_file_index(file_lo);
 
-        TAG_FULL_SPAN.encode(s)?;
-        source_file_index.encode(s)?;
-        line_lo.encode(s)?;
-        col_lo.encode(s)?;
-        len.encode(s)
+        TAG_FULL_SPAN.encode(s);
+        source_file_index.encode(s);
+        line_lo.encode(s);
+        col_lo.encode(s);
+        len.encode(s);
     }
 }
 
 impl<'a, 'tcx, E> TyEncoder for CacheEncoder<'a, 'tcx, E>
 where
-    E: 'a + OpaqueEncoder,
+    E: OpaqueEncoder,
 {
     type I = TyCtxt<'tcx>;
     const CLEAR_CROSS_CRATE: bool = false;
@@ -944,36 +936,36 @@ where
     fn predicate_shorthands(&mut self) -> &mut FxHashMap<ty::PredicateKind<'tcx>, usize> {
         &mut self.predicate_shorthands
     }
-    fn encode_alloc_id(&mut self, alloc_id: &interpret::AllocId) -> Result<(), Self::Error> {
+    fn encode_alloc_id(&mut self, alloc_id: &interpret::AllocId) {
         let (index, _) = self.interpret_allocs.insert_full(*alloc_id);
 
-        index.encode(self)
+        index.encode(self);
     }
 }
 
 impl<'a, 'tcx, E> Encodable<CacheEncoder<'a, 'tcx, E>> for CrateNum
 where
-    E: 'a + OpaqueEncoder,
+    E: OpaqueEncoder,
 {
-    fn encode(&self, s: &mut CacheEncoder<'a, 'tcx, E>) -> Result<(), E::Error> {
-        s.tcx.stable_crate_id(*self).encode(s)
+    fn encode(&self, s: &mut CacheEncoder<'a, 'tcx, E>) {
+        s.tcx.stable_crate_id(*self).encode(s);
     }
 }
 
 impl<'a, 'tcx, E> Encodable<CacheEncoder<'a, 'tcx, E>> for DefId
 where
-    E: 'a + OpaqueEncoder,
+    E: OpaqueEncoder,
 {
-    fn encode(&self, s: &mut CacheEncoder<'a, 'tcx, E>) -> Result<(), E::Error> {
-        s.tcx.def_path_hash(*self).encode(s)
+    fn encode(&self, s: &mut CacheEncoder<'a, 'tcx, E>) {
+        s.tcx.def_path_hash(*self).encode(s);
     }
 }
 
 impl<'a, 'tcx, E> Encodable<CacheEncoder<'a, 'tcx, E>> for DefIndex
 where
-    E: 'a + OpaqueEncoder,
+    E: OpaqueEncoder,
 {
-    fn encode(&self, _: &mut CacheEncoder<'a, 'tcx, E>) -> Result<(), E::Error> {
+    fn encode(&self, _: &mut CacheEncoder<'a, 'tcx, E>) {
         bug!("encoding `DefIndex` without context");
     }
 }
@@ -981,7 +973,7 @@ where
 macro_rules! encoder_methods {
     ($($name:ident($ty:ty);)*) => {
         #[inline]
-        $(fn $name(&mut self, value: $ty) -> Result<(), Self::Error> {
+        $(fn $name(&mut self, value: $ty) {
             self.encoder.$name(value)
         })*
     }
@@ -989,9 +981,10 @@ macro_rules! encoder_methods {
 
 impl<'a, 'tcx, E> Encoder for CacheEncoder<'a, 'tcx, E>
 where
-    E: 'a + OpaqueEncoder,
+    E: OpaqueEncoder,
 {
-    type Error = E::Error;
+    type Ok = E::Ok;
+    type Err = E::Err;
 
     encoder_methods! {
         emit_usize(usize);
@@ -1015,6 +1008,10 @@ where
         emit_str(&str);
         emit_raw_bytes(&[u8]);
     }
+
+    fn finish(self) -> Result<E::Ok, E::Err> {
+        self.encoder.finish()
+    }
 }
 
 // This ensures that the `Encodable<opaque::FileEncoder>::encode` specialization for byte slices
@@ -1022,8 +1019,8 @@ where
 // Unfortunately, we have to manually opt into specializations this way, given how `CacheEncoder`
 // and the encoding traits currently work.
 impl<'a, 'tcx> Encodable<CacheEncoder<'a, 'tcx, FileEncoder>> for [u8] {
-    fn encode(&self, e: &mut CacheEncoder<'a, 'tcx, FileEncoder>) -> FileEncodeResult {
-        self.encode(e.encoder)
+    fn encode(&self, e: &mut CacheEncoder<'a, 'tcx, FileEncoder>) {
+        self.encode(&mut e.encoder);
     }
 }
 
@@ -1031,8 +1028,7 @@ pub fn encode_query_results<'a, 'tcx, CTX, Q>(
     tcx: CTX,
     encoder: &mut CacheEncoder<'a, 'tcx, FileEncoder>,
     query_result_index: &mut EncodedDepNodeIndex,
-) -> FileEncodeResult
-where
+) where
     CTX: QueryContext + 'tcx,
     Q: super::QueryDescription<CTX>,
     Q::Value: Encodable<CacheEncoder<'a, 'tcx, FileEncoder>>,
@@ -1044,11 +1040,7 @@ where
 
     assert!(Q::query_state(tcx).all_inactive());
     let cache = Q::query_cache(tcx);
-    let mut res = Ok(());
     cache.iter(&mut |key, value, dep_node| {
-        if res.is_err() {
-            return;
-        }
         if Q::cache_on_disk(*tcx.dep_context(), &key) {
             let dep_node = SerializedDepNodeIndex::new(dep_node.index());
 
@@ -1057,14 +1049,7 @@ where
 
             // Encode the type check tables with the `SerializedDepNodeIndex`
             // as tag.
-            match encoder.encode_tagged(dep_node, value) {
-                Ok(()) => {}
-                Err(e) => {
-                    res = Err(e);
-                }
-            }
+            encoder.encode_tagged(dep_node, value);
         }
     });
-
-    res
 }

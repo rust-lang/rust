@@ -287,7 +287,7 @@ where
     {
         let pos = buf.position();
         for block in &self.blocks {
-            buf.emit_raw_bytes(block).unwrap();
+            buf.emit_raw_bytes(block);
         }
         let num_bytes = self.blocks.len() * N;
         LazyTable::from_position_and_encoded_size(

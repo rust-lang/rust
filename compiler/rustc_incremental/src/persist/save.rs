@@ -3,7 +3,7 @@ use rustc_data_structures::sync::join;
 use rustc_middle::dep_graph::{DepGraph, SerializedDepGraph, WorkProduct, WorkProductId};
 use rustc_middle::ty::TyCtxt;
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
-use rustc_serialize::Encodable as RustcEncodable;
+use rustc_serialize::{Encodable as RustcEncodable, Encoder};
 use rustc_session::Session;
 use std::fs;
 
@@ -96,8 +96,9 @@ pub fn save_work_product_index(
     debug!("save_work_product_index()");
     dep_graph.assert_ignored();
     let path = work_products_path(sess);
-    file_format::save_in(sess, path, "work product index", |e| {
-        encode_work_product_index(&new_work_products, e)
+    file_format::save_in(sess, path, "work product index", |mut e| {
+        encode_work_product_index(&new_work_products, &mut e);
+        e.finish()
     });
 
     // We also need to clean out old work-products, as not all of them are
@@ -123,7 +124,7 @@ pub fn save_work_product_index(
 fn encode_work_product_index(
     work_products: &FxHashMap<WorkProductId, WorkProduct>,
     encoder: &mut FileEncoder,
-) -> FileEncodeResult {
+) {
     let serialized_products: Vec<_> = work_products
         .iter()
         .map(|(id, work_product)| SerializedWorkProduct {
@@ -135,7 +136,7 @@ fn encode_work_product_index(
     serialized_products.encode(encoder)
 }
 
-fn encode_query_cache(tcx: TyCtxt<'_>, encoder: &mut FileEncoder) -> FileEncodeResult {
+fn encode_query_cache(tcx: TyCtxt<'_>, encoder: FileEncoder) -> FileEncodeResult {
     tcx.sess.time("incr_comp_serialize_result_cache", || tcx.serialize_query_result_cache(encoder))
 }
 
@@ -170,24 +171,10 @@ pub fn build_dep_graph(
         }
     };
 
-    if let Err(err) = file_format::write_file_header(&mut encoder, sess.is_nightly_build()) {
-        sess.err(&format!(
-            "failed to write dependency graph header to `{}`: {}",
-            path_buf.display(),
-            err
-        ));
-        return None;
-    }
+    file_format::write_file_header(&mut encoder, sess.is_nightly_build());
 
     // First encode the commandline arguments hash
-    if let Err(err) = sess.opts.dep_tracking_hash(false).encode(&mut encoder) {
-        sess.err(&format!(
-            "failed to write dependency graph hash `{}`: {}",
-            path_buf.display(),
-            err
-        ));
-        return None;
-    }
+    sess.opts.dep_tracking_hash(false).encode(&mut encoder);
 
     Some(DepGraph::new(
         &sess.prof,

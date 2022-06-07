@@ -29,7 +29,7 @@ use rustc_middle::dep_graph::WorkProduct;
 use rustc_middle::middle::dependency_format::Dependencies;
 use rustc_middle::middle::exported_symbols::SymbolExportKind;
 use rustc_middle::ty::query::{ExternProviders, Providers};
-use rustc_serialize::{opaque, Decodable, Decoder, Encoder};
+use rustc_serialize::{opaque, Decodable, Decoder, Encodable, Encoder};
 use rustc_session::config::{CrateType, OutputFilenames, OutputType, RUST_CGU_EXT};
 use rustc_session::cstore::{self, CrateSource};
 use rustc_session::utils::NativeLibKind;
@@ -204,13 +204,13 @@ const RUSTC_VERSION: Option<&str> = option_env!("CFG_VERSION");
 impl CodegenResults {
     pub fn serialize_rlink(codegen_results: &CodegenResults) -> Vec<u8> {
         let mut encoder = opaque::Encoder::new();
-        encoder.emit_raw_bytes(RLINK_MAGIC).unwrap();
+        encoder.emit_raw_bytes(RLINK_MAGIC);
         // `emit_raw_bytes` is used to make sure that the version representation does not depend on
         // Encoder's inner representation of `u32`.
-        encoder.emit_raw_bytes(&RLINK_VERSION.to_be_bytes()).unwrap();
-        encoder.emit_str(RUSTC_VERSION.unwrap()).unwrap();
-        rustc_serialize::Encodable::encode(codegen_results, &mut encoder).unwrap();
-        encoder.into_inner()
+        encoder.emit_raw_bytes(&RLINK_VERSION.to_be_bytes());
+        encoder.emit_str(RUSTC_VERSION.unwrap());
+        Encodable::encode(codegen_results, &mut encoder);
+        encoder.finish().unwrap()
     }
 
     pub fn deserialize_rlink(data: Vec<u8>) -> Result<Self, String> {

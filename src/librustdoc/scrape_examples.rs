@@ -18,7 +18,7 @@ use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_serialize::{
     opaque::{Decoder, FileEncoder},
-    Decodable, Encodable,
+    Decodable, Encodable, Encoder,
 };
 use rustc_session::getopts;
 use rustc_span::{
@@ -314,8 +314,8 @@ pub(crate) fn run(
 
         // Save output to provided path
         let mut encoder = FileEncoder::new(options.output_path).map_err(|e| e.to_string())?;
-        calls.encode(&mut encoder).map_err(|e| e.to_string())?;
-        encoder.flush().map_err(|e| e.to_string())?;
+        calls.encode(&mut encoder);
+        encoder.finish().map_err(|e| e.to_string())?;
 
         Ok(())
     };

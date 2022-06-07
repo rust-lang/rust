@@ -20,7 +20,7 @@ use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sync::Lock;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_serialize::opaque::{self, FileEncodeResult, FileEncoder, IntEncodedWithFixedSize};
-use rustc_serialize::{Decodable, Decoder, Encodable};
+use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use smallvec::SmallVec;
 use std::convert::TryInto;
 
@@ -166,7 +166,6 @@ struct EncoderState<K: DepKind> {
     encoder: FileEncoder,
     total_node_count: usize,
     total_edge_count: usize,
-    result: FileEncodeResult,
     stats: Option<FxHashMap<K, Stat<K>>>,
 }
 
@@ -176,7 +175,6 @@ impl<K: DepKind> EncoderState<K> {
             encoder,
             total_edge_count: 0,
             total_node_count: 0,
-            result: Ok(()),
             stats: record_stats.then(FxHashMap::default),
         }
     }
@@ -208,29 +206,28 @@ impl<K: DepKind> EncoderState<K> {
         }
 
         let encoder = &mut self.encoder;
-        if self.result.is_ok() {
-            self.result = node.encode(encoder);
-        }
+        node.encode(encoder);
         index
     }
 
     fn finish(self, profiler: &SelfProfilerRef) -> FileEncodeResult {
-        let Self { mut encoder, total_node_count, total_edge_count, result, stats: _ } = self;
-        let () = result?;
+        let Self { mut encoder, total_node_count, total_edge_count, stats: _ } = self;
 
         let node_count = total_node_count.try_into().unwrap();
         let edge_count = total_edge_count.try_into().unwrap();
 
         debug!(?node_count, ?edge_count);
         debug!("position: {:?}", encoder.position());
-        IntEncodedWithFixedSize(node_count).encode(&mut encoder)?;
-        IntEncodedWithFixedSize(edge_count).encode(&mut encoder)?;
+        IntEncodedWithFixedSize(node_count).encode(&mut encoder);
+        IntEncodedWithFixedSize(edge_count).encode(&mut encoder);
         debug!("position: {:?}", encoder.position());
         // Drop the encoder so that nothing is written after the counts.
-        let result = encoder.flush();
-        // FIXME(rylev): we hardcode the dep graph file name so we don't need a dependency on
-        // rustc_incremental just for that.
-        profiler.artifact_size("dep_graph", "dep-graph.bin", encoder.position() as u64);
+        let result = encoder.finish();
+        if let Ok(position) = result {
+            // FIXME(rylev): we hardcode the dep graph file name so we
+            // don't need a dependency on rustc_incremental just for that.
+            profiler.artifact_size("dep_graph", "dep-graph.bin", position as u64);
+        }
         result
     }
 }

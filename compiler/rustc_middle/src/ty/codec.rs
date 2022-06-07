@@ -69,11 +69,7 @@ pub trait RefDecodable<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> {
 }
 
 /// Encode the given value or a previously cached shorthand.
-pub fn encode_with_shorthand<'tcx, E, T, M>(
-    encoder: &mut E,
-    value: &T,
-    cache: M,
-) -> Result<(), E::Error>
+pub fn encode_with_shorthand<'tcx, E, T, M>(encoder: &mut E, value: &T, cache: M)
 where
     E: TyEncoder<I = TyCtxt<'tcx>>,
     M: for<'b> Fn(&'b mut E) -> &'b mut FxHashMap<T, usize>,
@@ -83,13 +79,14 @@ where
 {
     let existing_shorthand = cache(encoder).get(value).copied();
     if let Some(shorthand) = existing_shorthand {
-        return encoder.emit_usize(shorthand);
+        encoder.emit_usize(shorthand);
+        return;
     }
 
     let variant = value.variant();
 
     let start = encoder.position();
-    variant.encode(encoder)?;
+    variant.encode(encoder);
     let len = encoder.position() - start;
 
     // The shorthand encoding uses the same usize as the
@@ -108,57 +105,55 @@ where
     if leb128_bits >= 64 || (shorthand as u64) < (1 << leb128_bits) {
         cache(encoder).insert(*value, shorthand);
     }
-
-    Ok(())
 }
 
 impl<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>> Encodable<E> for Ty<'tcx> {
-    fn encode(&self, e: &mut E) -> Result<(), E::Error> {
-        encode_with_shorthand(e, self, TyEncoder::type_shorthands)
+    fn encode(&self, e: &mut E) {
+        encode_with_shorthand(e, self, TyEncoder::type_shorthands);
     }
 }
 
 impl<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>> Encodable<E>
     for ty::Binder<'tcx, ty::PredicateKind<'tcx>>
 {
-    fn encode(&self, e: &mut E) -> Result<(), E::Error> {
-        self.bound_vars().encode(e)?;
-        encode_with_shorthand(e, &self.skip_binder(), TyEncoder::predicate_shorthands)
+    fn encode(&self, e: &mut E) {
+        self.bound_vars().encode(e);
+        encode_with_shorthand(e, &self.skip_binder(), TyEncoder::predicate_shorthands);
     }
 }
 
 impl<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>> Encodable<E> for ty::Predicate<'tcx> {
-    fn encode(&self, e: &mut E) -> Result<(), E::Error> {
-        self.kind().encode(e)
+    fn encode(&self, e: &mut E) {
+        self.kind().encode(e);
     }
 }
 
 impl<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>> Encodable<E> for ty::Region<'tcx> {
-    fn encode(&self, e: &mut E) -> Result<(), E::Error> {
-        self.kind().encode(e)
+    fn encode(&self, e: &mut E) {
+        self.kind().encode(e);
     }
 }
 
 impl<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>> Encodable<E> for ty::Const<'tcx> {
-    fn encode(&self, e: &mut E) -> Result<(), E::Error> {
-        self.0.0.encode(e)
+    fn encode(&self, e: &mut E) {
+        self.0.0.encode(e);
     }
 }
 
 impl<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>> Encodable<E> for ConstAllocation<'tcx> {
-    fn encode(&self, e: &mut E) -> Result<(), E::Error> {
+    fn encode(&self, e: &mut E) {
         self.inner().encode(e)
     }
 }
 
 impl<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>> Encodable<E> for AdtDef<'tcx> {
-    fn encode(&self, e: &mut E) -> Result<(), E::Error> {
+    fn encode(&self, e: &mut E) {
         self.0.0.encode(e)
     }
 }
 
 impl<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>> Encodable<E> for AllocId {
-    fn encode(&self, e: &mut E) -> Result<(), E::Error> {
+    fn encode(&self, e: &mut E) {
         e.encode_alloc_id(self)
     }
 }
@@ -508,9 +503,9 @@ macro_rules! impl_binder_encode_decode {
     ($($t:ty),+ $(,)?) => {
         $(
             impl<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>> Encodable<E> for ty::Binder<'tcx, $t> {
-                fn encode(&self, e: &mut E) -> Result<(), E::Error> {
-                    self.bound_vars().encode(e)?;
-                    self.as_ref().skip_binder().encode(e)
+                fn encode(&self, e: &mut E) {
+                    self.bound_vars().encode(e);
+                    self.as_ref().skip_binder().encode(e);
                 }
             }
             impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for ty::Binder<'tcx, $t> {

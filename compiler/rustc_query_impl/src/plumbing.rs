@@ -142,7 +142,7 @@ impl<'tcx> QueryCtxt<'tcx> {
         self,
         encoder: &mut on_disk_cache::CacheEncoder<'_, 'tcx, opaque::FileEncoder>,
         query_result_index: &mut on_disk_cache::EncodedDepNodeIndex,
-    ) -> opaque::FileEncodeResult {
+    ) {
         macro_rules! encode_queries {
             ($($query:ident,)*) => {
                 $(
@@ -150,14 +150,12 @@ impl<'tcx> QueryCtxt<'tcx> {
                         self,
                         encoder,
                         query_result_index
-                    )?;
+                    );
                 )*
             }
         }
 
         rustc_cached_queries!(encode_queries!);
-
-        Ok(())
     }
 
     pub fn try_print_query_stack(

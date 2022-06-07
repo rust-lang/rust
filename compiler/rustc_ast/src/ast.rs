@@ -2473,9 +2473,7 @@ rustc_index::newtype_index! {
 }
 
 impl<S: Encoder> rustc_serialize::Encodable<S> for AttrId {
-    fn encode(&self, _s: &mut S) -> Result<(), S::Error> {
-        Ok(())
-    }
+    fn encode(&self, _s: &mut S) {}
 }
 
 impl<D: Decoder> rustc_serialize::Decodable<D> for AttrId {

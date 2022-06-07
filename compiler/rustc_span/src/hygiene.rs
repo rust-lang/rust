@@ -1189,12 +1189,12 @@ impl HygieneEncodeContext {
         }
     }
 
-    pub fn encode<T, R>(
+    pub fn encode<T>(
         &self,
         encoder: &mut T,
-        mut encode_ctxt: impl FnMut(&mut T, u32, &SyntaxContextData) -> Result<(), R>,
-        mut encode_expn: impl FnMut(&mut T, ExpnId, &ExpnData, ExpnHash) -> Result<(), R>,
-    ) -> Result<(), R> {
+        mut encode_ctxt: impl FnMut(&mut T, u32, &SyntaxContextData),
+        mut encode_expn: impl FnMut(&mut T, ExpnId, &ExpnData, ExpnHash),
+    ) {
         // When we serialize a `SyntaxContextData`, we may end up serializing
         // a `SyntaxContext` that we haven't seen before
         while !self.latest_ctxts.lock().is_empty() || !self.latest_expns.lock().is_empty() {
@@ -1213,22 +1213,19 @@ impl HygieneEncodeContext {
             // order
             for_all_ctxts_in(latest_ctxts.into_iter(), |index, ctxt, data| {
                 if self.serialized_ctxts.lock().insert(ctxt) {
-                    encode_ctxt(encoder, index, data)?;
+                    encode_ctxt(encoder, index, data);
                 }
-                Ok(())
-            })?;
+            });
 
             let latest_expns = { std::mem::take(&mut *self.latest_expns.lock()) };
 
             for_all_expns_in(latest_expns.into_iter(), |expn, data, hash| {
                 if self.serialized_expns.lock().insert(expn) {
-                    encode_expn(encoder, expn, data, hash)?;
+                    encode_expn(encoder, expn, data, hash);
                 }
-                Ok(())
-            })?;
+            });
         }
         debug!("encode_hygiene: Done serializing SyntaxContextData");
-        Ok(())
     }
 }
 
@@ -1378,40 +1375,38 @@ pub fn decode_syntax_context<D: Decoder, F: FnOnce(&mut D, u32) -> SyntaxContext
     new_ctxt
 }
 
-fn for_all_ctxts_in<E, F: FnMut(u32, SyntaxContext, &SyntaxContextData) -> Result<(), E>>(
+fn for_all_ctxts_in<F: FnMut(u32, SyntaxContext, &SyntaxContextData)>(
     ctxts: impl Iterator<Item = SyntaxContext>,
     mut f: F,
-) -> Result<(), E> {
+) {
     let all_data: Vec<_> = HygieneData::with(|data| {
         ctxts.map(|ctxt| (ctxt, data.syntax_context_data[ctxt.0 as usize].clone())).collect()
     });
     for (ctxt, data) in all_data.into_iter() {
-        f(ctxt.0, ctxt, &data)?;
+        f(ctxt.0, ctxt, &data);
     }
-    Ok(())
 }
 
-fn for_all_expns_in<E>(
+fn for_all_expns_in(
     expns: impl Iterator<Item = ExpnId>,
-    mut f: impl FnMut(ExpnId, &ExpnData, ExpnHash) -> Result<(), E>,
-) -> Result<(), E> {
+    mut f: impl FnMut(ExpnId, &ExpnData, ExpnHash),
+) {
     let all_data: Vec<_> = HygieneData::with(|data| {
         expns.map(|expn| (expn, data.expn_data(expn).clone(), data.expn_hash(expn))).collect()
     });
     for (expn, data, hash) in all_data.into_iter() {
-        f(expn, &data, hash)?;
+        f(expn, &data, hash);
     }
-    Ok(())
 }
 
 impl<E: Encoder> Encodable<E> for LocalExpnId {
-    fn encode(&self, e: &mut E) -> Result<(), E::Error> {
-        self.to_expn_id().encode(e)
+    fn encode(&self, e: &mut E) {
+        self.to_expn_id().encode(e);
     }
 }
 
 impl<E: Encoder> Encodable<E> for ExpnId {
-    default fn encode(&self, _: &mut E) -> Result<(), E::Error> {
+    default fn encode(&self, _: &mut E) {
         panic!("cannot encode `ExpnId` with `{}`", std::any::type_name::<E>());
     }
 }
@@ -1432,15 +1427,15 @@ pub fn raw_encode_syntax_context<E: Encoder>(
     ctxt: SyntaxContext,
     context: &HygieneEncodeContext,
     e: &mut E,
-) -> Result<(), E::Error> {
+) {
     if !context.serialized_ctxts.lock().contains(&ctxt) {
         context.latest_ctxts.lock().insert(ctxt);
     }
-    ctxt.0.encode(e)
+    ctxt.0.encode(e);
 }
 
 impl<E: Encoder> Encodable<E> for SyntaxContext {
-    default fn encode(&self, _: &mut E) -> Result<(), E::Error> {
+    default fn encode(&self, _: &mut E) {
         panic!("cannot encode `SyntaxContext` with `{}`", std::any::type_name::<E>());
     }
 }

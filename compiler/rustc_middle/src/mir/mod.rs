@@ -672,16 +672,16 @@ const TAG_CLEAR_CROSS_CRATE_SET: u8 = 1;
 
 impl<E: TyEncoder, T: Encodable<E>> Encodable<E> for ClearCrossCrate<T> {
     #[inline]
-    fn encode(&self, e: &mut E) -> Result<(), E::Error> {
+    fn encode(&self, e: &mut E) {
         if E::CLEAR_CROSS_CRATE {
-            return Ok(());
+            return;
         }
 
         match *self {
             ClearCrossCrate::Clear => TAG_CLEAR_CROSS_CRATE_CLEAR.encode(e),
             ClearCrossCrate::Set(ref val) => {
-                TAG_CLEAR_CROSS_CRATE_SET.encode(e)?;
-                val.encode(e)
+                TAG_CLEAR_CROSS_CRATE_SET.encode(e);
+                val.encode(e);
             }
         }
     }

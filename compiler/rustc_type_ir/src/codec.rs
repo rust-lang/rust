@@ -31,10 +31,7 @@ pub trait TyEncoder: Encoder {
     fn predicate_shorthands(
         &mut self,
     ) -> &mut FxHashMap<<Self::I as Interner>::PredicateKind, usize>;
-    fn encode_alloc_id(
-        &mut self,
-        alloc_id: &<Self::I as Interner>::AllocId,
-    ) -> Result<(), Self::Error>;
+    fn encode_alloc_id(&mut self, alloc_id: &<Self::I as Interner>::AllocId);
 }
 
 pub trait TyDecoder: Decoder {
