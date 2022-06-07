@@ -381,7 +381,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let target_os = &this.tcx.sess.target.os;
         assert!(
             target_os == "linux" || target_os == "macos",
-            "`getcwd` is only available for the UNIX target family"
+            "`chdir` is only available for the UNIX target family"
         );
 
         let path = this.read_path_from_c_str(this.read_pointer(path_op)?)?;
