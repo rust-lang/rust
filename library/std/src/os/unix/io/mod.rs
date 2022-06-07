@@ -57,7 +57,7 @@
 //! only cover what the program itself can do, and not what entities outside
 //! the program can do to it. `/proc/self/mem` is considered to be such an
 //! external entity, along with debuggers and people with physical access to
-//! the hardware. This is true even in cases where the program is controling
+//! the hardware. This is true even in cases where the program is controlling
 //! the external entity.
 //!
 //! If you desire to comprehensively prevent programs from reaching out and
