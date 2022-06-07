@@ -91,6 +91,10 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         self.const_uint(self.type_i1(), val as u64)
     }
 
+    fn const_i16(&self, i: i16) -> RValue<'gcc> {
+        self.const_int(self.type_i16(), i as i64)
+    }
+
     fn const_i32(&self, i: i32) -> RValue<'gcc> {
         self.const_int(self.type_i32(), i as i64)
     }
@@ -154,14 +158,14 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     }
 
     fn scalar_to_backend(&self, cv: Scalar, layout: abi::Scalar, ty: Type<'gcc>) -> RValue<'gcc> {
-        let bitsize = if layout.is_bool() { 1 } else { layout.value.size(self).bits() };
+        let bitsize = if layout.is_bool() { 1 } else { layout.size(self).bits() };
         match cv {
             Scalar::Int(ScalarInt::ZST) => {
-                assert_eq!(0, layout.value.size(self).bytes());
+                assert_eq!(0, layout.size(self).bytes());
                 self.const_undef(self.type_ix(0))
             }
             Scalar::Int(int) => {
-                let data = int.assert_bits(layout.value.size(self));
+                let data = int.assert_bits(layout.size(self));
 
                 // FIXME(antoyo): there's some issues with using the u128 code that follows, so hard-code
                 // the paths for floating-point values.
@@ -205,7 +209,7 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                 let base_addr = self.const_bitcast(base_addr, self.usize_type);
                 let offset = self.context.new_rvalue_from_long(self.usize_type, offset.bytes() as i64);
                 let ptr = self.const_bitcast(base_addr + offset, ptr_type);
-                if layout.value != Pointer {
+                if layout.primitive() != Pointer {
                     self.const_bitcast(ptr.dereference(None).to_rvalue(), ty)
                 }
                 else {
@@ -275,6 +279,21 @@ impl<'gcc, 'tcx> SignType<'gcc, 'tcx> for Type<'gcc> {
         else if self.is_u128(cx) {
             cx.i128_type
         }
+        else if self.is_uchar(cx) {
+            cx.char_type
+        }
+        else if self.is_ushort(cx) {
+            cx.short_type
+        }
+        else if self.is_uint(cx) {
+            cx.int_type
+        }
+        else if self.is_ulong(cx) {
+            cx.long_type
+        }
+        else if self.is_ulonglong(cx) {
+            cx.longlong_type
+        }
         else {
             self.clone()
         }
@@ -296,6 +315,21 @@ impl<'gcc, 'tcx> SignType<'gcc, 'tcx> for Type<'gcc> {
         else if self.is_i128(cx) {
             cx.u128_type
         }
+        else if self.is_char(cx) {
+            cx.uchar_type
+        }
+        else if self.is_short(cx) {
+            cx.ushort_type
+        }
+        else if self.is_int(cx) {
+            cx.uint_type
+        }
+        else if self.is_long(cx) {
+            cx.ulong_type
+        }
+        else if self.is_longlong(cx) {
+            cx.ulonglong_type
+        }
         else {
             self.clone()
         }
@@ -308,6 +342,11 @@ pub trait TypeReflection<'gcc, 'tcx>  {
     fn is_uint(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool;
     fn is_ulong(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool;
     fn is_ulonglong(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool;
+    fn is_char(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool;
+    fn is_short(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool;
+    fn is_int(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool;
+    fn is_long(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool;
+    fn is_longlong(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool;
 
     fn is_i8(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool;
     fn is_u8(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool;
@@ -328,11 +367,11 @@ pub trait TypeReflection<'gcc, 'tcx>  {
 
 impl<'gcc, 'tcx> TypeReflection<'gcc, 'tcx> for Type<'gcc> {
     fn is_uchar(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool {
-        self.unqualified() == cx.u8_type
+        self.unqualified() == cx.uchar_type
     }
 
     fn is_ushort(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool {
-        self.unqualified() == cx.u16_type
+        self.unqualified() == cx.ushort_type
     }
 
     fn is_uint(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool {
@@ -345,6 +384,26 @@ impl<'gcc, 'tcx> TypeReflection<'gcc, 'tcx> for Type<'gcc> {
 
     fn is_ulonglong(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool {
         self.unqualified() == cx.ulonglong_type
+    }
+
+    fn is_char(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool {
+        self.unqualified() == cx.char_type
+    }
+
+    fn is_short(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool {
+        self.unqualified() == cx.short_type
+    }
+
+    fn is_int(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool {
+        self.unqualified() == cx.int_type
+    }
+
+    fn is_long(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool {
+        self.unqualified() == cx.long_type
+    }
+
+    fn is_longlong(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool {
+        self.unqualified() == cx.longlong_type
     }
 
     fn is_i8(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool {

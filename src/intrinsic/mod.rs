@@ -340,7 +340,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn assume(&mut self, value: Self::Value) {
-        // TODO(antoyo): switch to asumme when it exists.
+        // TODO(antoyo): switch to assume when it exists.
         // Or use something like this:
         // #define __assume(cond) do { if (!(cond)) __builtin_unreachable(); } while (0)
         self.expect(value, true);

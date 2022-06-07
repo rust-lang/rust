@@ -62,24 +62,6 @@ enum ExtremumOperation {
     Min,
 }
 
-trait EnumClone {
-    fn clone(&self) -> Self;
-}
-
-impl EnumClone for AtomicOrdering {
-    fn clone(&self) -> Self {
-        match *self {
-            AtomicOrdering::NotAtomic => AtomicOrdering::NotAtomic,
-            AtomicOrdering::Unordered => AtomicOrdering::Unordered,
-            AtomicOrdering::Monotonic => AtomicOrdering::Monotonic,
-            AtomicOrdering::Acquire => AtomicOrdering::Acquire,
-            AtomicOrdering::Release => AtomicOrdering::Release,
-            AtomicOrdering::AcquireRelease => AtomicOrdering::AcquireRelease,
-            AtomicOrdering::SequentiallyConsistent => AtomicOrdering::SequentiallyConsistent,
-        }
-    }
-}
-
 pub struct Builder<'a: 'gcc, 'gcc, 'tcx> {
     pub cx: &'a CodegenCx<'gcc, 'tcx>,
     pub block: Block<'gcc>,
@@ -104,9 +86,9 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             match order {
                 // TODO(antoyo): does this make sense?
                 AtomicOrdering::AcquireRelease | AtomicOrdering::Release => AtomicOrdering::Acquire,
-                _ => order.clone(),
+                _ => order,
             };
-        let previous_value = self.atomic_load(dst.get_type(), dst, load_ordering.clone(), Size::from_bytes(size));
+        let previous_value = self.atomic_load(dst.get_type(), dst, load_ordering, Size::from_bytes(size));
         let previous_var = func.new_local(None, previous_value.get_type(), "previous_value");
         let return_value = func.new_local(None, previous_value.get_type(), "return_value");
         self.llbb().add_assignment(None, previous_var, previous_value);
@@ -510,8 +492,11 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn exactudiv(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        // TODO(antoyo): convert the arguments to unsigned?
         // TODO(antoyo): poison if not exact.
+        let a_type = a.get_type().to_unsigned(self);
+        let a = self.gcc_int_cast(a, a_type);
+        let b_type = b.get_type().to_unsigned(self);
+        let b = self.gcc_int_cast(b, b_type);
         a / b
     }
 
@@ -520,7 +505,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn exactsdiv(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        // TODO(antoyo): posion if not exact.
+        // TODO(antoyo): poison if not exact.
         // FIXME(antoyo): rustc_codegen_ssa::mir::intrinsic uses different types for a and b but they
         // should be the same.
         let typ = a.get_type().to_signed(self);
@@ -705,11 +690,11 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         }
 
         fn scalar_load_metadata<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, load: RValue<'gcc>, scalar: &abi::Scalar) {
-            let vr = scalar.valid_range.clone();
-            match scalar.value {
+            let vr = scalar.valid_range(bx);
+            match scalar.primitive() {
                 abi::Int(..) => {
                     if !scalar.is_always_valid(bx) {
-                        bx.range_metadata(load, scalar.valid_range);
+                        bx.range_metadata(load, vr);
                     }
                 }
                 abi::Pointer if vr.start < vr.end && !vr.contains(0) => {
@@ -735,7 +720,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
                 OperandValue::Immediate(self.to_immediate(load, place.layout))
             }
             else if let abi::Abi::ScalarPair(ref a, ref b) = place.layout.abi {
-                let b_offset = a.value.size(self).align_to(b.value.align(self).abi);
+                let b_offset = a.size(self).align_to(b.align(self).abi);
                 let pair_type = place.layout.gcc_type(self, false);
 
                 let mut load = |i, scalar: &abi::Scalar, align| {
@@ -1275,7 +1260,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn do_not_inline(&mut self, _llret: RValue<'gcc>) {
-        // FIMXE(bjorn3): implement
+        // FIXME(bjorn3): implement
     }
 
     fn set_span(&mut self, _span: Span) {}
@@ -1574,9 +1559,8 @@ impl ToGccOrdering for AtomicOrdering {
 
         let ordering =
             match self {
-                AtomicOrdering::NotAtomic => __ATOMIC_RELAXED, // TODO(antoyo): check if that's the same.
                 AtomicOrdering::Unordered => __ATOMIC_RELAXED,
-                AtomicOrdering::Monotonic => __ATOMIC_RELAXED, // TODO(antoyo): check if that's the same.
+                AtomicOrdering::Relaxed => __ATOMIC_RELAXED, // TODO(antoyo): check if that's the same.
                 AtomicOrdering::Acquire => __ATOMIC_ACQUIRE,
                 AtomicOrdering::Release => __ATOMIC_RELEASE,
                 AtomicOrdering::AcquireRelease => __ATOMIC_ACQ_REL,
