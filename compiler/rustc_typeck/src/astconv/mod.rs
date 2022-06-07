@@ -24,6 +24,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{walk_generics, Visitor as _};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{GenericArg, GenericArgs};
+use rustc_middle::middle::stability::AllowUnstable;
 use rustc_middle::ty::subst::{self, GenericArgKind, InternalSubsts, Subst, SubstsRef};
 use rustc_middle::ty::GenericParamDefKind;
 use rustc_middle::ty::{self, Const, DefIdTree, EarlyBinder, Ty, TyCtxt, TypeFoldable};
@@ -426,6 +427,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             Some(arg.id()),
                             arg.span(),
                             None,
+                            AllowUnstable::No,
                             |_, _| {
                                 // Default generic parameters may not be marked
                                 // with stability attributes, i.e. when the
