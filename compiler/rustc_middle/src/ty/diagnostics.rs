@@ -76,9 +76,13 @@ impl<'tcx> Ty<'tcx> {
 }
 
 pub trait IsSuggestable<'tcx> {
+    /// Whether this makes sense to suggest in a diagnostic.
+    ///
+    /// We filter out certain types and constants since they don't provide
+    /// meaningful rendered suggestions when pretty-printed. We leave some
+    /// nonsense, such as region vars, since those render as `'_` and are
+    /// usually okay to reinterpret as elided lifetimes.
     fn is_suggestable(self, tcx: TyCtxt<'tcx>) -> bool;
-
-    fn is_suggestable_modulo_impl_trait(self, tcx: TyCtxt<'tcx>, bound_str: &str) -> bool;
 }
 
 impl<'tcx, T> IsSuggestable<'tcx> for T
@@ -86,11 +90,7 @@ where
     T: TypeFoldable<'tcx>,
 {
     fn is_suggestable(self, tcx: TyCtxt<'tcx>) -> bool {
-        self.visit_with(&mut IsSuggestableVisitor { tcx, bound_str: None }).is_continue()
-    }
-
-    fn is_suggestable_modulo_impl_trait(self, tcx: TyCtxt<'tcx>, bound_str: &str) -> bool {
-        self.visit_with(&mut IsSuggestableVisitor { tcx, bound_str: Some(bound_str) }).is_continue()
+        self.visit_with(&mut IsSuggestableVisitor { tcx }).is_continue()
     }
 }
 
@@ -119,7 +119,7 @@ pub fn suggest_arbitrary_trait_bound<'tcx>(
         &format!(
             "consider {} `where` clause, but there might be an alternative better way to express \
              this requirement",
-            if generics.has_where_clause_token { "extending the" } else { "introducing a" },
+            if generics.where_clause_span.is_empty() { "introducing a" } else { "extending the" },
         ),
         format!("{} {}: {}", generics.add_where_or_trailing_comma(), param_name, constraint),
         Applicability::MaybeIncorrect,
@@ -417,12 +417,11 @@ impl<'v> hir::intravisit::Visitor<'v> for StaticLifetimeVisitor<'v> {
     }
 }
 
-pub struct IsSuggestableVisitor<'tcx, 's> {
+pub struct IsSuggestableVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
-    bound_str: Option<&'s str>,
 }
 
-impl<'tcx> TypeVisitor<'tcx> for IsSuggestableVisitor<'tcx, '_> {
+impl<'tcx> TypeVisitor<'tcx> for IsSuggestableVisitor<'tcx> {
     type BreakTy = ();
 
     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
@@ -462,12 +461,13 @@ impl<'tcx> TypeVisitor<'tcx> for IsSuggestableVisitor<'tcx, '_> {
             }
 
             Param(param) => {
-                if let Some(found_bound_str) =
-                    param.name.as_str().strip_prefix("impl ").map(|s| s.trim_start())
-                {
-                    if self.bound_str.map_or(true, |bound_str| bound_str != found_bound_str) {
-                        return ControlFlow::Break(());
-                    }
+                // FIXME: It would be nice to make this not use string manipulation,
+                // but it's pretty hard to do this, since `ty::ParamTy` is missing
+                // sufficient info to determine if it is synthetic, and we don't
+                // always have a convenient way of getting `ty::Generics` at the call
+                // sites we invoke `IsSuggestable::is_suggestable`.
+                if param.name.as_str().starts_with("impl ") {
+                    return ControlFlow::Break(());
                 }
             }
 

@@ -536,7 +536,6 @@ pub struct Generics<'hir> {
     pub params: &'hir [GenericParam<'hir>],
     pub predicates: &'hir [WherePredicate<'hir>],
     pub has_where_clause_predicates: bool,
-    pub has_where_clause_token: bool,
     pub where_clause_span: Span,
     pub span: Span,
 }
@@ -547,7 +546,6 @@ impl<'hir> Generics<'hir> {
             params: &[],
             predicates: &[],
             has_where_clause_predicates: false,
-            has_where_clause_token: false,
             where_clause_span: DUMMY_SP,
             span: DUMMY_SP,
         };
@@ -583,10 +581,6 @@ impl<'hir> Generics<'hir> {
         }
     }
 
-    pub fn where_clause_span(&self) -> Option<Span> {
-        if self.predicates.is_empty() { None } else { Some(self.where_clause_span) }
-    }
-
     /// `Span` where further predicates would be suggested, accounting for trailing commas, like
     ///  in `fn foo<T>(t: T) where T: Foo,` so we don't suggest two trailing commas.
     pub fn tail_span_for_predicate_suggestion(&self) -> Span {
@@ -607,10 +601,11 @@ impl<'hir> Generics<'hir> {
     pub fn add_where_or_trailing_comma(&self) -> &'static str {
         if self.has_where_clause_predicates {
             ","
-        } else if self.has_where_clause_token {
-            ""
-        } else {
+        } else if self.where_clause_span.is_empty() {
             " where"
+        } else {
+            // No where clause predicates, but we have `where` token
+            ""
         }
     }
 
