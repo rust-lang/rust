@@ -18,7 +18,7 @@ use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_serialize::{
     opaque::{Decoder, FileEncoder},
-    Decodable, Encodable, Encoder,
+    Decodable, Encodable,
 };
 use rustc_session::getopts;
 use rustc_span::{

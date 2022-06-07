@@ -29,7 +29,7 @@ fn main() {
 
     let mut encoder = opaque::Encoder::new();
     obj.encode(&mut encoder);
-    let data = encoder.finish().unwrap();
+    let data = encoder.finish();
 
     let mut decoder = opaque::Decoder::new(&data, 0);
     let obj2 = B::decode(&mut decoder);
