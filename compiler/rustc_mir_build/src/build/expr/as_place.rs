@@ -5,6 +5,7 @@ use crate::build::ForGuard::{OutsideGuard, RefWithinGuard};
 use crate::build::{BlockAnd, BlockAndExtension, Builder};
 use rustc_hir::def_id::DefId;
 use rustc_hir::HirId;
+use rustc_middle::hir::place::Projection as HirProjection;
 use rustc_middle::hir::place::ProjectionKind as HirProjectionKind;
 use rustc_middle::middle::region;
 use rustc_middle::mir::AssertKind::BoundsCheck;
@@ -268,18 +269,50 @@ fn to_upvars_resolved_place_builder<'a, 'tcx>(
                 ty::UpvarCapture::ByValue => upvar_resolved_place_builder,
             };
 
-            let next_projection = capture.place.projections.len();
-            let mut curr_projections = from_builder.projection;
-
             // We used some of the projections to build the capture itself,
             // now we apply the remaining to the upvar resolved place.
-            upvar_resolved_place_builder
-                .projection
-                .extend(curr_projections.drain(next_projection..));
+            let remaining_projections = strip_prefix(
+                capture.place.base_ty,
+                from_builder.projection,
+                &capture.place.projections,
+            );
+            upvar_resolved_place_builder.projection.extend(remaining_projections);
 
             Ok(upvar_resolved_place_builder)
         }
     }
+}
+
+/// Returns projections remaining after stripping an initial prefix of HIR
+/// projections.
+///
+/// Supports only HIR projection kinds that represent a path that might be
+/// captured by a closure or a generator, i.e., an `Index` or a `Subslice`
+/// projection kinds are unsupported.
+fn strip_prefix<'tcx>(
+    mut base_ty: Ty<'tcx>,
+    projections: Vec<PlaceElem<'tcx>>,
+    prefix_projections: &[HirProjection<'tcx>],
+) -> impl Iterator<Item = PlaceElem<'tcx>> {
+    let mut iter = projections.into_iter();
+    for projection in prefix_projections {
+        match projection.kind {
+            HirProjectionKind::Deref => {
+                assert!(matches!(iter.next(), Some(ProjectionElem::Deref)));
+            }
+            HirProjectionKind::Field(..) => {
+                if base_ty.is_enum() {
+                    assert!(matches!(iter.next(), Some(ProjectionElem::Downcast(..))));
+                }
+                assert!(matches!(iter.next(), Some(ProjectionElem::Field(..))));
+            }
+            HirProjectionKind::Index | HirProjectionKind::Subslice => {
+                bug!("unexpected projection kind: {:?}", projection);
+            }
+        }
+        base_ty = projection.ty;
+    }
+    iter
 }
 
 impl<'tcx> PlaceBuilder<'tcx> {
@@ -438,11 +471,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     this.expr_as_place(block, &this.thir[value], mutability, fake_borrow_temps)
                 })
             }
-            ExprKind::Field { lhs, name } => {
-                let place_builder = unpack!(
-                    block =
-                        this.expr_as_place(block, &this.thir[lhs], mutability, fake_borrow_temps,)
-                );
+            ExprKind::Field { lhs, variant_index, name } => {
+                let lhs = &this.thir[lhs];
+                let mut place_builder =
+                    unpack!(block = this.expr_as_place(block, lhs, mutability, fake_borrow_temps,));
+                if let ty::Adt(adt_def, _) = lhs.ty.kind() {
+                    if adt_def.is_enum() {
+                        place_builder = place_builder.downcast(*adt_def, variant_index);
+                    }
+                }
                 block.and(place_builder.field(name, expr.ty))
             }
             ExprKind::Deref { arg } => {

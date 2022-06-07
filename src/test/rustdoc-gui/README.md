@@ -11,14 +11,24 @@ You can find more information and its documentation in its [repository][browser-
 If you need to have more information on the tests run, you can use `--test-args`:
 
 ```bash
-$ ./x.py test src/test/rustdoc-gui --stage 1 --jobs 8 --test-args --debug
+$ ./x.py test src/test/rustdoc-gui --stage 1 --test-args --debug
 ```
 
-There are three options supported:
+If you don't want to run in headless mode (helpful to debug sometimes), you can use
+`--no-headless`:
 
- * `--debug`: allows to see puppeteer commands.
- * `--no-headless`: disable headless mode so you can see what's going on.
- * `--show-text`: by default, text isn't rendered because of issues with fonts, it enables it back.
+```bash
+$ ./x.py test src/test/rustdoc-gui --stage 1 --test-args --no-headless
+```
+
+To see the supported options, use `--help`.
+
+Important to be noted: if the chromium instance crashes when you run it, you might need to
+use `--no-sandbox` to make it work:
+
+```bash
+$ ./x.py test src/test/rustdoc-gui --stage 1 --test-args --no-sandbox
+```
 
 [browser-ui-test]: https://github.com/GuillaumeGomez/browser-UI-test/
 [puppeteer]: https://pptr.dev/
