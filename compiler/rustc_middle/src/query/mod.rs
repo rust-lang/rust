@@ -1591,13 +1591,16 @@ rustc_queries! {
     /// for each parameter if a trait object were to be passed for that parameter.
     /// For example, for `struct Foo<'a, T, U>`, this would be `['static, 'static]`.
     /// For `struct Foo<'a, T: 'a, U>`, this would instead be `['a, 'static]`.
-    query object_lifetime_defaults(_: LocalDefId) -> Option<&'tcx [ObjectLifetimeDefault]> {
-        desc { "looking up lifetime defaults for a region on an item" }
+    query object_lifetime_defaults(def_id: LocalDefId) -> Option<&'tcx [ObjectLifetimeDefault]> {
+        desc { "computing object lifetime defaults for `{:?}`'s generic parameters", def_id }
     }
-    /// Fetch the lifetimes for all the trait objects in an item-like.
-    query object_lifetime_map(_: LocalDefId) -> FxHashMap<ItemLocalId, Region> {
+    /// Fetch the lifetimes for all the trait objects in an item-like.  This query uses
+    /// `object_lifetime_defaults` which returns a map `GenericParam -> ObjectLifetimeDefault`,
+    /// and build a map from each `dyn Trait` type to the implicit lifetime `'a`, so that
+    /// `dyn Trait` should be understood as `dyn Trait + 'a`
+    query object_lifetime_map(def_id: LocalDefId) -> FxHashMap<ItemLocalId, Region> {
         storage(ArenaCacheSelector<'tcx>)
-        desc { "looking up lifetime defaults for a region on an item" }
+        desc { "looking up lifetime for trait-object types inside `{:?}`", def_id }
     }
     query late_bound_vars_map(_: LocalDefId)
         -> Option<&'tcx FxHashMap<ItemLocalId, Vec<ty::BoundVariableKind>>> {
