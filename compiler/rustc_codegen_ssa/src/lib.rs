@@ -209,8 +209,6 @@ impl CodegenResults {
         // Encoder's inner representation of `u32`.
         encoder.emit_raw_bytes(&RLINK_VERSION.to_be_bytes()).unwrap();
         encoder.emit_str(RUSTC_VERSION.unwrap()).unwrap();
-
-        let mut encoder = rustc_serialize::opaque::Encoder::new(encoder.into_inner());
         rustc_serialize::Encodable::encode(codegen_results, &mut encoder).unwrap();
         encoder.into_inner()
     }
