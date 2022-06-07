@@ -203,7 +203,7 @@ impl WriteBackendMethods for GccCodegenBackend {
     fn run_fat_lto(_cgcx: &CodegenContext<Self>, mut modules: Vec<FatLTOInput<Self>>, _cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>) -> Result<LtoModuleCodegen<Self>, FatalError> {
         // TODO(antoyo): implement LTO by sending -flto to libgccjit and adding the appropriate gcc linker plugins.
         // NOTE: implemented elsewhere.
-        // TODO: what is implemented elsewhere ^ ?
+        // TODO(antoyo): what is implemented elsewhere ^ ?
         let module =
             match modules.remove(0) {
                 FatLTOInput::InMemory(module) => module,
@@ -301,7 +301,22 @@ pub fn target_features(sess: &Session) -> Vec<Symbol> {
         )
         .filter(|_feature| {
             // TODO(antoyo): implement a way to get enabled feature in libgccjit.
-            false
+            // Probably using the equivalent of __builtin_cpu_supports.
+            #[cfg(feature="master")]
+            {
+                _feature.contains("sse") || _feature.contains("avx")
+            }
+            #[cfg(not(feature="master"))]
+            {
+                false
+            }
+            /*
+               adx, aes, avx, avx2, avx512bf16, avx512bitalg, avx512bw, avx512cd, avx512dq, avx512er, avx512f, avx512gfni,
+               avx512ifma, avx512pf, avx512vaes, avx512vbmi, avx512vbmi2, avx512vl, avx512vnni, avx512vp2intersect, avx512vpclmulqdq,
+               avx512vpopcntdq, bmi1, bmi2, cmpxchg16b, ermsb, f16c, fma, fxsr, lzcnt, movbe, pclmulqdq, popcnt, rdrand, rdseed, rtm,
+               sha, sse, sse2, sse3, sse4.1, sse4.2, sse4a, ssse3, tbm, xsave, xsavec, xsaveopt, xsaves
+             */
+            //false
         })
         .map(|feature| Symbol::intern(feature))
         .collect()

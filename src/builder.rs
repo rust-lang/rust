@@ -3,11 +3,11 @@ use std::cell::Cell;
 use std::convert::TryFrom;
 use std::ops::Deref;
 
-use gccjit::FunctionType;
 use gccjit::{
     BinaryOp,
     Block,
     ComparisonOp,
+    Context,
     Function,
     LValue,
     RValue,
@@ -48,6 +48,7 @@ use rustc_target::spec::{HasTargetSpec, Target};
 
 use crate::common::{SignType, TypeReflection, type_is_pointer};
 use crate::context::CodegenCx;
+use crate::intrinsic::llvm;
 use crate::type_of::LayoutGccExt;
 
 // TODO(antoyo)
@@ -199,17 +200,28 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             return Cow::Borrowed(args);
         }
 
+        let func_name = format!("{:?}", func_ptr);
+
         let casted_args: Vec<_> = param_types
             .into_iter()
             .zip(args.iter())
             .enumerate()
             .map(|(index, (expected_ty, &actual_val))| {
+                if llvm::ignore_arg_cast(&func_name, index, args.len()) {
+                    return actual_val;
+                }
+
                 let actual_ty = actual_val.get_type();
                 if expected_ty != actual_ty {
-                    if on_stack_param_indices.contains(&index) {
+                    if !actual_ty.is_vector() && !expected_ty.is_vector() && actual_ty.is_integral() && expected_ty.is_integral() && actual_ty.get_size() != expected_ty.get_size() {
+                        self.context.new_cast(None, actual_val, expected_ty)
+                    }
+                    else if on_stack_param_indices.contains(&index) {
                         actual_val.dereference(None).to_rvalue()
                     }
                     else {
+                        assert!(!((actual_ty.is_vector() && !expected_ty.is_vector()) || (!actual_ty.is_vector() && expected_ty.is_vector())), "{:?} ({}) -> {:?} ({}), index: {:?}[{}]", actual_ty, actual_ty.is_vector(), expected_ty, expected_ty.is_vector(), func_ptr, index);
+                        // TODO(antoyo): perhaps use __builtin_convertvector for vector casting.
                         self.bitcast(actual_val, expected_ty)
                     }
                 }
@@ -268,22 +280,20 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         // gccjit requires to use the result of functions, even when it's not used.
         // That's why we assign the result to a local or call add_eval().
         let gcc_func = func_ptr.get_type().dyncast_function_ptr_type().expect("function ptr");
-        let mut return_type = gcc_func.get_return_type();
+        let return_type = gcc_func.get_return_type();
         let void_type = self.context.new_type::<()>();
         let current_func = self.block.get_function();
-
-        // FIXME(antoyo): As a temporary workaround for unsupported LLVM intrinsics.
-        if gcc_func.get_param_count() == 0 && format!("{:?}", func_ptr) == "__builtin_ia32_pmovmskb128" {
-            return_type = self.int_type;
-        }
 
         if return_type != void_type {
             unsafe { RETURN_VALUE_COUNT += 1 };
             let result = current_func.new_local(None, return_type, &format!("ptrReturnValue{}", unsafe { RETURN_VALUE_COUNT }));
+            let func_name = format!("{:?}", func_ptr);
+            let args = llvm::adjust_intrinsic_arguments(&self, gcc_func, args, &func_name);
             self.block.add_assignment(None, result, self.cx.context.new_call_through_ptr(None, func_ptr, &args));
             result.to_rvalue()
         }
         else {
+            #[cfg(not(feature="master"))]
             if gcc_func.get_param_count() == 0 {
                 // FIXME(antoyo): As a temporary workaround for unsupported LLVM intrinsics.
                 self.block.add_eval(None, self.cx.context.new_call_through_ptr(None, func_ptr, &[]));
@@ -291,6 +301,8 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             else {
                 self.block.add_eval(None, self.cx.context.new_call_through_ptr(None, func_ptr, &args));
             }
+            #[cfg(feature="master")]
+            self.block.add_eval(None, self.cx.context.new_call_through_ptr(None, func_ptr, &args));
             // Return dummy value when not having return value.
             let result = current_func.new_local(None, self.isize_type, "dummyValueThatShouldNeverBeUsed");
             self.block.add_assignment(None, result, self.context.new_rvalue_from_long(self.isize_type, 0));
@@ -511,12 +523,12 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn frem(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        if a.get_type() == self.cx.float_type {
+        if a.get_type().is_compatible_with(self.cx.float_type) {
             let fmodf = self.context.get_builtin_function("fmodf");
             // FIXME(antoyo): this seems to produce the wrong result.
             return self.context.new_call(None, fmodf, &[a, b]);
         }
-        assert_eq!(a.get_type(), self.cx.double_type);
+        assert_eq!(a.get_type().unqualified(), self.cx.double_type);
 
         let fmod = self.context.get_builtin_function("fmod");
         return self.context.new_call(None, fmod, &[a, b]);
@@ -632,18 +644,17 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         unimplemented!();
     }
 
-    fn load(&mut self, _ty: Type<'gcc>, ptr: RValue<'gcc>, _align: Align) -> RValue<'gcc> {
-        // TODO(antoyo): use ty.
+    fn load(&mut self, pointee_ty: Type<'gcc>, ptr: RValue<'gcc>, _align: Align) -> RValue<'gcc> {
         let block = self.llbb();
         let function = block.get_function();
         // NOTE: instead of returning the dereference here, we have to assign it to a variable in
         // the current basic block. Otherwise, it could be used in another basic block, causing a
         // dereference after a drop, for instance.
-        // TODO(antoyo): handle align.
+        // TODO(antoyo): handle align of the load instruction.
+        let ptr = self.context.new_cast(None, ptr, pointee_ty.make_pointer());
         let deref = ptr.dereference(None).to_rvalue();
-        let value_type = deref.get_type();
         unsafe { RETURN_VALUE_COUNT += 1 };
-        let loaded_value = function.new_local(None, value_type, &format!("loadedValue{}", unsafe { RETURN_VALUE_COUNT }));
+        let loaded_value = function.new_local(None, pointee_ty, &format!("loadedValue{}", unsafe { RETURN_VALUE_COUNT }));
         block.add_assignment(None, loaded_value, deref);
         loaded_value.to_rvalue()
     }
@@ -695,7 +706,11 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
                 OperandValue::Ref(place.llval, Some(llextra), place.align)
             }
             else if place.layout.is_gcc_immediate() {
-                let load = self.load(place.llval.get_type(), place.llval, place.align);
+                let load = self.load(
+                    place.layout.gcc_type(self, false),
+                    place.llval,
+                    place.align,
+                );
                 if let abi::Abi::Scalar(ref scalar) = place.layout.abi {
                     scalar_load_metadata(self, load, scalar);
                 }
@@ -707,7 +722,8 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
 
                 let mut load = |i, scalar: &abi::Scalar, align| {
                     let llptr = self.struct_gep(pair_type, place.llval, i as u64);
-                    let load = self.load(llptr.get_type(), llptr, align);
+                    let llty = place.layout.scalar_pair_element_gcc_type(self, i, false);
+                    let load = self.load(llty, llptr, align);
                     scalar_load_metadata(self, load, scalar);
                     if scalar.is_bool() { self.trunc(load, self.type_i1()) } else { load }
                 };
@@ -779,9 +795,16 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         self.store_with_flags(val, ptr, align, MemFlags::empty())
     }
 
-    fn store_with_flags(&mut self, val: RValue<'gcc>, ptr: RValue<'gcc>, _align: Align, _flags: MemFlags) -> RValue<'gcc> {
+    fn store_with_flags(&mut self, val: RValue<'gcc>, ptr: RValue<'gcc>, align: Align, _flags: MemFlags) -> RValue<'gcc> {
         let ptr = self.check_store(val, ptr);
-        self.llbb().add_assignment(None, ptr.dereference(None), val);
+        let destination = ptr.dereference(None);
+        // NOTE: libgccjit does not support specifying the alignment on the assignment, so we cast
+        // to type so it gets the proper alignment.
+        let destination_type = destination.to_rvalue().get_type().unqualified();
+        let aligned_type = destination_type.get_aligned(align.bytes()).make_pointer();
+        let aligned_destination = self.cx.context.new_bitcast(None, ptr, aligned_type);
+        let aligned_destination = aligned_destination.dereference(None);
+        self.llbb().add_assignment(None, aligned_destination, val);
         // TODO(antoyo): handle align and flags.
         // NOTE: dummy value here since it's never used. FIXME(antoyo): API should not return a value here?
         self.cx.context.new_rvalue_zero(self.type_i32())
@@ -953,7 +976,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     fn memmove(&mut self, dst: RValue<'gcc>, dst_align: Align, src: RValue<'gcc>, src_align: Align, size: RValue<'gcc>, flags: MemFlags) {
         if flags.contains(MemFlags::NONTEMPORAL) {
             // HACK(nox): This is inefficient but there is no nontemporal memmove.
-            let val = self.load(src.get_type(), src, src_align);
+            let val = self.load(src.get_type().get_pointee().expect("get_pointee"), src, src_align);
             let ptr = self.pointercast(dst, self.type_ptr_to(self.val_ty(val)));
             self.store_with_flags(val, ptr, dst_align, flags);
             return;
@@ -1269,16 +1292,183 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
 }
 
 impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
+    #[cfg(feature="master")]
     pub fn shuffle_vector(&mut self, v1: RValue<'gcc>, v2: RValue<'gcc>, mask: RValue<'gcc>) -> RValue<'gcc> {
-        let return_type = v1.get_type();
-        let params = [
-            self.context.new_parameter(None, return_type, "v1"),
-            self.context.new_parameter(None, return_type, "v2"),
-            self.context.new_parameter(None, mask.get_type(), "mask"),
-        ];
-        let shuffle = self.context.new_function(None, FunctionType::Extern, return_type, &params, "_mm_shuffle_epi8", false);
-        self.context.new_call(None, shuffle, &[v1, v2, mask])
+        let struct_type = mask.get_type().is_struct().expect("mask of struct type");
+
+        // TODO(antoyo): use a recursive unqualified() here.
+        let vector_type = v1.get_type().unqualified().dyncast_vector().expect("vector type");
+        let element_type = vector_type.get_element_type();
+        let vec_num_units = vector_type.get_num_units();
+
+        let mask_num_units = struct_type.get_field_count();
+        let mut vector_elements = vec![];
+        let mask_element_type =
+            if element_type.is_integral() {
+                element_type
+            }
+            else {
+                #[cfg(feature="master")]
+                {
+                    self.cx.type_ix(element_type.get_size() as u64 * 8)
+                }
+                #[cfg(not(feature="master"))]
+                self.int_type
+            };
+        for i in 0..mask_num_units {
+            let field = struct_type.get_field(i as i32);
+            vector_elements.push(self.context.new_cast(None, mask.access_field(None, field).to_rvalue(), mask_element_type));
+        }
+
+        // NOTE: the mask needs to be the same length as the input vectors, so add the missing
+        // elements in the mask if needed.
+        for _ in mask_num_units..vec_num_units {
+            vector_elements.push(self.context.new_rvalue_zero(mask_element_type));
+        }
+
+        let array_type = self.context.new_array_type(None, element_type, vec_num_units as i32);
+        let result_type = self.context.new_vector_type(element_type, mask_num_units as u64);
+        let (v1, v2) =
+            if vec_num_units < mask_num_units {
+                // NOTE: the mask needs to be the same length as the input vectors, so join the 2
+                // vectors and create a dummy second vector.
+                // TODO(antoyo): switch to using new_vector_access.
+                let array = self.context.new_bitcast(None, v1, array_type);
+                let mut elements = vec![];
+                for i in 0..vec_num_units {
+                    elements.push(self.context.new_array_access(None, array, self.context.new_rvalue_from_int(self.int_type, i as i32)).to_rvalue());
+                }
+                // TODO(antoyo): switch to using new_vector_access.
+                let array = self.context.new_bitcast(None, v2, array_type);
+                for i in 0..(mask_num_units - vec_num_units) {
+                    elements.push(self.context.new_array_access(None, array, self.context.new_rvalue_from_int(self.int_type, i as i32)).to_rvalue());
+                }
+                let v1 = self.context.new_rvalue_from_vector(None, result_type, &elements);
+                let zero = self.context.new_rvalue_zero(element_type);
+                let v2 = self.context.new_rvalue_from_vector(None, result_type, &vec![zero; mask_num_units]);
+                (v1, v2)
+            }
+            else {
+                (v1, v2)
+            };
+
+        let new_mask_num_units = std::cmp::max(mask_num_units, vec_num_units);
+        let mask_type = self.context.new_vector_type(mask_element_type, new_mask_num_units as u64);
+        let mask = self.context.new_rvalue_from_vector(None, mask_type, &vector_elements);
+        let result = self.context.new_rvalue_vector_perm(None, v1, v2, mask);
+
+        if vec_num_units != mask_num_units {
+            // NOTE: if padding was added, only select the number of elements of the masks to
+            // remove that padding in the result.
+            let mut elements = vec![];
+            // TODO(antoyo): switch to using new_vector_access.
+            let array = self.context.new_bitcast(None, result, array_type);
+            for i in 0..mask_num_units {
+                elements.push(self.context.new_array_access(None, array, self.context.new_rvalue_from_int(self.int_type, i as i32)).to_rvalue());
+            }
+            self.context.new_rvalue_from_vector(None, result_type, &elements)
+        }
+        else {
+            result
+        }
     }
+
+    #[cfg(not(feature="master"))]
+    pub fn shuffle_vector(&mut self, _v1: RValue<'gcc>, _v2: RValue<'gcc>, _mask: RValue<'gcc>) -> RValue<'gcc> {
+        unimplemented!();
+    }
+
+    #[cfg(feature="master")]
+    pub fn vector_reduce<F>(&mut self, src: RValue<'gcc>, op: F) -> RValue<'gcc>
+    where F: Fn(RValue<'gcc>, RValue<'gcc>, &'gcc Context<'gcc>) -> RValue<'gcc>
+    {
+        let vector_type = src.get_type().unqualified().dyncast_vector().expect("vector type");
+        let element_count = vector_type.get_num_units();
+        let mut vector_elements = vec![];
+        for i in 0..element_count {
+            vector_elements.push(i);
+        }
+        let mask_type = self.context.new_vector_type(self.int_type, element_count as u64);
+        let mut shift = 1;
+        let mut res = src;
+        while shift < element_count {
+            let vector_elements: Vec<_> =
+                vector_elements.iter()
+                    .map(|i| self.context.new_rvalue_from_int(self.int_type, ((i + shift) % element_count) as i32))
+                    .collect();
+            let mask = self.context.new_rvalue_from_vector(None, mask_type, &vector_elements);
+            let shifted = self.context.new_rvalue_vector_perm(None, res, res, mask);
+            shift *= 2;
+            res = op(res, shifted, &self.context);
+        }
+        self.context.new_vector_access(None, res, self.context.new_rvalue_zero(self.int_type))
+            .to_rvalue()
+    }
+
+    #[cfg(not(feature="master"))]
+    pub fn vector_reduce<F>(&mut self, src: RValue<'gcc>, op: F) -> RValue<'gcc>
+    where F: Fn(RValue<'gcc>, RValue<'gcc>, &'gcc Context<'gcc>) -> RValue<'gcc>
+    {
+        unimplemented!();
+    }
+
+    pub fn vector_reduce_op(&mut self, src: RValue<'gcc>, op: BinaryOp) -> RValue<'gcc> {
+        self.vector_reduce(src, |a, b, context| context.new_binary_op(None, op, a.get_type(), a, b))
+    }
+
+    pub fn vector_reduce_fadd_fast(&mut self, _acc: RValue<'gcc>, _src: RValue<'gcc>) -> RValue<'gcc> {
+        unimplemented!();
+    }
+
+    pub fn vector_reduce_fmul_fast(&mut self, _acc: RValue<'gcc>, _src: RValue<'gcc>) -> RValue<'gcc> {
+        unimplemented!();
+    }
+
+    // Inspired by Hacker's Delight min implementation.
+    pub fn vector_reduce_min(&mut self, src: RValue<'gcc>) -> RValue<'gcc> {
+        self.vector_reduce(src, |a, b, context| {
+            let differences_or_zeros = difference_or_zero(a, b, context);
+            context.new_binary_op(None, BinaryOp::Minus, a.get_type(), a, differences_or_zeros)
+        })
+    }
+
+    // Inspired by Hacker's Delight max implementation.
+    pub fn vector_reduce_max(&mut self, src: RValue<'gcc>) -> RValue<'gcc> {
+        self.vector_reduce(src, |a, b, context| {
+            let differences_or_zeros = difference_or_zero(a, b, context);
+            context.new_binary_op(None, BinaryOp::Plus, b.get_type(), b, differences_or_zeros)
+        })
+    }
+
+    pub fn vector_select(&mut self, cond: RValue<'gcc>, then_val: RValue<'gcc>, else_val: RValue<'gcc>) -> RValue<'gcc> {
+        // cond is a vector of integers, not of bools.
+        let cond_type = cond.get_type();
+        let vector_type = cond_type.unqualified().dyncast_vector().expect("vector type");
+        let num_units = vector_type.get_num_units();
+        let element_type = vector_type.get_element_type();
+        let zeros = vec![self.context.new_rvalue_zero(element_type); num_units];
+        let zeros = self.context.new_rvalue_from_vector(None, cond_type, &zeros);
+
+        let masks = self.context.new_comparison(None, ComparisonOp::NotEquals, cond, zeros);
+        let then_vals = masks & then_val;
+
+        let ones = vec![self.context.new_rvalue_one(element_type); num_units];
+        let ones = self.context.new_rvalue_from_vector(None, cond_type, &ones);
+        let inverted_masks = masks + ones;
+        // NOTE: sometimes, the type of else_val can be different than the type of then_val in
+        // libgccjit (vector of int vs vector of int32_t), but they should be the same for the AND
+        // operation to work.
+        let else_val = self.context.new_bitcast(None, else_val, then_val.get_type());
+        let else_vals = inverted_masks & else_val;
+
+        then_vals | else_vals
+    }
+}
+
+fn difference_or_zero<'gcc>(a: RValue<'gcc>, b: RValue<'gcc>, context: &'gcc Context<'gcc>) -> RValue<'gcc> {
+    let difference = a - b;
+    let masks = context.new_comparison(None, ComparisonOp::GreaterThanEquals, b, a);
+    difference & masks
 }
 
 impl<'a, 'gcc, 'tcx> StaticBuilderMethods for Builder<'a, 'gcc, 'tcx> {

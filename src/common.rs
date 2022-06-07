@@ -121,8 +121,8 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         unimplemented!();
     }
 
-    fn const_real(&self, _t: Type<'gcc>, _val: f64) -> RValue<'gcc> {
-        unimplemented!();
+    fn const_real(&self, typ: Type<'gcc>, val: f64) -> RValue<'gcc> {
+        self.context.new_rvalue_from_double(typ, val)
     }
 
     fn const_str(&self, s: Symbol) -> (RValue<'gcc>, RValue<'gcc>) {
@@ -326,6 +326,8 @@ pub trait TypeReflection<'gcc, 'tcx>  {
 
     fn is_f32(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool;
     fn is_f64(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool;
+
+    fn is_vector(&self) -> bool;
 }
 
 impl<'gcc, 'tcx> TypeReflection<'gcc, 'tcx> for Type<'gcc> {
@@ -395,5 +397,22 @@ impl<'gcc, 'tcx> TypeReflection<'gcc, 'tcx> for Type<'gcc> {
 
     fn is_f64(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool {
         self.unqualified() == cx.context.new_type::<f64>()
+    }
+
+    fn is_vector(&self) -> bool {
+        let mut typ = self.clone();
+        loop {
+            if typ.dyncast_vector().is_some() {
+                return true;
+            }
+
+            let old_type = typ;
+            typ = typ.unqualified();
+            if old_type == typ {
+                break;
+            }
+        }
+
+        false
     }
 }

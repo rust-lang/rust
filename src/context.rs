@@ -35,6 +35,7 @@ pub struct CodegenCx<'gcc, 'tcx> {
     pub normal_function_addresses: RefCell<FxHashSet<RValue<'gcc>>>,
 
     pub functions: RefCell<FxHashMap<String, Function<'gcc>>>,
+    pub intrinsics: RefCell<FxHashMap<String, Function<'gcc>>>,
 
     pub tls_model: gccjit::TlsModel,
 
@@ -184,6 +185,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             current_func: RefCell::new(None),
             normal_function_addresses: Default::default(),
             functions: RefCell::new(functions),
+            intrinsics: RefCell::new(FxHashMap::default()),
 
             tls_model,
 
@@ -269,15 +271,24 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     }
 
     pub fn is_native_int_type_or_bool(&self, typ: Type<'gcc>) -> bool {
-        self.is_native_int_type(typ) || typ == self.bool_type
+        self.is_native_int_type(typ) || typ.is_compatible_with(self.bool_type)
     }
 
     pub fn is_int_type_or_bool(&self, typ: Type<'gcc>) -> bool {
-        self.is_native_int_type(typ) || self.is_non_native_int_type(typ) || typ == self.bool_type
+        self.is_native_int_type(typ) || self.is_non_native_int_type(typ) || typ.is_compatible_with(self.bool_type)
     }
 
     pub fn sess(&self) -> &Session {
         &self.tcx.sess
+    }
+
+    pub fn bitcast_if_needed(&self, value: RValue<'gcc>, expected_type: Type<'gcc>) -> RValue<'gcc> {
+        if value.get_type() != expected_type {
+            self.context.new_bitcast(None, value, expected_type)
+        }
+        else {
+            value
+        }
     }
 }
 
@@ -306,8 +317,16 @@ impl<'gcc, 'tcx> MiscMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     }
 
     fn get_fn_addr(&self, instance: Instance<'tcx>) -> RValue<'gcc> {
-        let func = get_fn(self, instance);
-        let func = self.rvalue_as_function(func);
+        let func_name = self.tcx.symbol_name(instance).name;
+
+        let func =
+            if self.intrinsics.borrow().contains_key(func_name) {
+                self.intrinsics.borrow()[func_name].clone()
+            }
+            else {
+                let func = get_fn(self, instance);
+                self.rvalue_as_function(func)
+            };
         let ptr = func.get_address(None);
 
         // TODO(antoyo): don't do this twice: i.e. in declare_fn and here.
