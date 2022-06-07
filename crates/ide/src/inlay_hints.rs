@@ -1095,6 +1095,9 @@ fn get_string_representation(expr: &ast::Expr) -> Option<String> {
                 name_ref => Some(name_ref.to_owned()),
             }
         }
+        ast::Expr::MacroExpr(macro_expr) => {
+            Some(macro_expr.macro_call()?.path()?.segment()?.to_string())
+        }
         ast::Expr::FieldExpr(field_expr) => Some(field_expr.name_ref()?.to_string()),
         ast::Expr::PathExpr(path_expr) => Some(path_expr.path()?.segment()?.to_string()),
         ast::Expr::PrefixExpr(prefix_expr) => get_string_representation(&prefix_expr.expr()?),
@@ -1496,6 +1499,11 @@ fn main() {
     let param2 = 0;
     foo(param2);
       //^^^^^^ param
+
+    macro_rules! param {
+        () => {};
+    };
+    foo(param!());
 
     let param_eter = 0;
     bar(param_eter);
