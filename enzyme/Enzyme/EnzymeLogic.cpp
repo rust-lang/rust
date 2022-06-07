@@ -238,13 +238,23 @@ struct CacheAnalysis {
         if (PT->getAddressSpace() == 13)
           return false;
 
+    // Only use invariant load data if either, we are not using Julia
+    // or we are in combined mode. The reason for this is that Julia
+    // incorrectly has invariant load info for a function, which specifies
+    // the load value won't change over the course of a function, but
+    // may change from a caller.
+    bool checkFunction = true;
 #if LLVM_VERSION_MAJOR >= 10
     if (li.hasMetadata(LLVMContext::MD_invariant_load))
-      return false;
 #else
     if (li.getMetadata(LLVMContext::MD_invariant_load))
-      return false;
 #endif
+    {
+      if (!EnzymeJuliaAddrLoad || mode == DerivativeMode::ReverseModeCombined)
+        return false;
+      else
+        checkFunction = false;
+    }
 
     // Find the underlying object for the pointer operand of the load
     // instruction.
@@ -278,7 +288,7 @@ struct CacheAnalysis {
     if (mode != DerivativeMode::ReverseModeCombined)
       can_modref = is_value_mustcache_from_origin(obj);
 
-    if (!can_modref) {
+    if (!can_modref && checkFunction) {
       allFollowersOf(&li, [&](Instruction *inst2) {
         if (!inst2->mayWriteToMemory())
           return false;
