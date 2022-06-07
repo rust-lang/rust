@@ -6,10 +6,8 @@ const LINKER_SCRIPT: &str = include_str!("./mipsel_sony_psp_linker_script.ld");
 
 pub fn target() -> Target {
     let mut pre_link_args = LinkArgs::new();
-    pre_link_args.insert(
-        LinkerFlavor::Lld(LldFlavor::Ld),
-        vec!["--emit-relocs".into(), "--nmagic".into()],
-    );
+    pre_link_args
+        .insert(LinkerFlavor::Lld(LldFlavor::Ld), vec!["--emit-relocs".into(), "--nmagic".into()]);
 
     Target {
         llvm_target: "mipsel-sony-psp".into(),
