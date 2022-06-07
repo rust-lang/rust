@@ -444,6 +444,22 @@ mod prim_unit {}
 #[doc(hidden)]
 impl () {}
 
+// Fake impl that's only really used for docs.
+#[cfg(doc)]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Clone for () {
+    fn clone(&self) -> Self {
+        loop {}
+    }
+}
+
+// Fake impl that's only really used for docs.
+#[cfg(doc)]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Copy for () {
+    // empty
+}
+
 #[doc(primitive = "pointer")]
 #[doc(alias = "ptr")]
 #[doc(alias = "*")]
@@ -958,6 +974,24 @@ mod prim_tuple {}
 // See /src/librustdoc/passes/collect_trait_impls.rs:collect_trait_impls
 #[doc(hidden)]
 impl<T, U> (T, U) {}
+
+// Fake impl that's only really used for docs.
+#[cfg(doc)]
+#[stable(feature = "rust1", since = "1.0.0")]
+/// This trait is implemented on arbitrary-length tuples.
+impl<T: Clone> Clone for (T,) {
+    fn clone(&self) -> Self {
+        loop {}
+    }
+}
+
+// Fake impl that's only really used for docs.
+#[cfg(doc)]
+#[stable(feature = "rust1", since = "1.0.0")]
+/// This trait is implemented on arbitrary-length tuples.
+impl<T: Copy> Copy for (T,) {
+    // empty
+}
 
 #[doc(primitive = "f32")]
 /// A 32-bit floating point type (specifically, the "binary32" type defined in IEEE 754-2008).
