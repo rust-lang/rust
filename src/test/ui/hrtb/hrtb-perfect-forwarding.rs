@@ -1,7 +1,3 @@
-// revisions: base nll
-// ignore-compare-mode-nll
-//[nll] compile-flags: -Z borrowck=mir
-
 // Test a case where you have an impl of `Foo<X>` for all `X` that
 // is being applied to `for<'a> Foo<&'a mut X>`. Issue #19730.
 
@@ -17,7 +13,7 @@ impl<'a, X, F> Foo<X> for &'a mut F where F: Foo<X> + Bar<X> {}
 
 impl<'a, X, F> Bar<X> for &'a mut F where F: Bar<X> {}
 
-fn no_hrtb<'b, T>(mut t: T) //[nll]~ WARN function cannot return
+fn no_hrtb<'b, T>(mut t: T) //~ WARN function cannot return
 where
     T: Bar<&'b isize>,
 {
@@ -26,7 +22,7 @@ where
     no_hrtb(&mut t);
 }
 
-fn bar_hrtb<T>(mut t: T) //[nll]~ WARN function cannot return
+fn bar_hrtb<T>(mut t: T) //~ WARN function cannot return
 where
     T: for<'b> Bar<&'b isize>,
 {
@@ -36,7 +32,7 @@ where
     bar_hrtb(&mut t);
 }
 
-fn foo_hrtb_bar_not<'b, T>(mut t: T) //[nll]~ WARN function cannot return
+fn foo_hrtb_bar_not<'b, T>(mut t: T) //~ WARN function cannot return
 where
     T: for<'a> Foo<&'a isize> + Bar<&'b isize>,
 {
@@ -46,11 +42,10 @@ where
     // clause only specifies `T : Bar<&'b isize>`.
     foo_hrtb_bar_not(&mut t);
     //~^ ERROR implementation of `Bar` is not general enough
-    //[base]~^^ ERROR implementation of `Bar` is not general enough
-    //[nll]~^^^ ERROR lifetime may not live long enough
+    //~^^ ERROR lifetime may not live long enough
 }
 
-fn foo_hrtb_bar_hrtb<T>(mut t: T) //[nll]~ WARN function cannot return
+fn foo_hrtb_bar_hrtb<T>(mut t: T) //~ WARN function cannot return
 where
     T: for<'a> Foo<&'a isize> + for<'b> Bar<&'b isize>,
 {

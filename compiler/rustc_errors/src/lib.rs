@@ -8,7 +8,6 @@
 #![feature(if_let_guard)]
 #![feature(let_else)]
 #![feature(never_type)]
-#![feature(nll)]
 #![feature(adt_const_params)]
 #![allow(incomplete_features)]
 #![allow(rustc::potential_query_instability)]

@@ -1,7 +1,3 @@
-// revisions: base nll
-// ignore-compare-mode-nll
-//[nll] compile-flags: -Z borrowck=mir
-
 struct Foo {
     field: i32,
 }
@@ -9,8 +5,7 @@ struct Foo {
 impl Foo {
     fn foo<'a>(&self, x: &Foo) -> &Foo {
         if true { x } else { self }
-        //[base]~^ ERROR lifetime mismatch
-        //[nll]~^^ ERROR lifetime may not live long enough
+        //~^ ERROR lifetime may not live long enough
     }
 }
 

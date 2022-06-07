@@ -1,7 +1,3 @@
-// ignore-compare-mode-nll
-// revisions: base nll
-// [nll]compile-flags: -Zborrowck=mir
-
 // Test various cases where the old rules under lifetime elision
 // yield slightly different results than the new rules.
 
@@ -73,9 +69,7 @@ fn load3<'a,'b>(ss: &'a dyn SomeTrait) -> &'b dyn SomeTrait {
     // which fails to type check.
 
     ss
-        //[base]~^ ERROR cannot infer
-        //[base]~| ERROR cannot infer
-        //[nll]~^^^ ERROR lifetime may not live long enough
+        //~^ ERROR lifetime may not live long enough
 }
 
 fn main() {

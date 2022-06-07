@@ -2,8 +2,6 @@
 // switch below) produces superior diagnostics to the NLL-migrate
 // mode.
 
-#![feature(nll)]
-
 fn doit(data: &'static mut ()) {
     || doit(data);
     //~^ ERROR lifetime may not live long enough

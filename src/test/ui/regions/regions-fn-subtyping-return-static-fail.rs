@@ -6,10 +6,6 @@
 // This can safely be considered to be an instance of `F` because all
 // lifetimes are sublifetimes of 'static.
 
-// revisions: base nll
-// ignore-compare-mode-nll
-//[nll] compile-flags: -Z borrowck=mir
-
 #![allow(dead_code)]
 #![allow(unused_variables)]
 

@@ -39,7 +39,6 @@
 #![feature(never_type)]
 #![feature(extern_types)]
 #![feature(new_uninit)]
-#![feature(nll)]
 #![feature(once_cell)]
 #![feature(let_chains)]
 #![feature(let_else)]

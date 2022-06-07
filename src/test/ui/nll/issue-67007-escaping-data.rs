@@ -1,8 +1,6 @@
 // Regression test for issue #67007
 // Ensures that we show information about the specific regions involved
 
-#![feature(nll)]
-
 // Covariant over 'a, invariant over 'tcx
 struct FnCtxt<'a, 'tcx: 'a>(&'a (), *mut &'tcx ());
 

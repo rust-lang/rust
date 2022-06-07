@@ -452,7 +452,7 @@ Arguments:
         ./x.py test library/std --test-args hash_map
         ./x.py test library/std --stage 0 --no-doc
         ./x.py test src/test/ui --bless
-        ./x.py test src/test/ui --compare-mode nll
+        ./x.py test src/test/ui --compare-mode chalk
 
     Note that `test src/test/* --stage N` does NOT depend on `build compiler/rustc --stage N`;
     just like `build library/std --stage N` it tests the compiler produced by the previous

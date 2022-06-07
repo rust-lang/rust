@@ -4,7 +4,7 @@
 // relations to other regions. Note that `'static` shows up in the
 // stderr output as `'0`.
 
-// compile-flags:-Zborrowck=mir -Zverbose
+// compile-flags:-Zverbose
 
 #![feature(rustc_attrs)]
 

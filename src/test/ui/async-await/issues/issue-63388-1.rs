@@ -1,7 +1,3 @@
-// ignore-compare-mode-nll
-// revisions: base nll
-// [nll]compile-flags: -Zborrowck=mir
-
 // edition:2018
 
 struct Xyz {
@@ -15,9 +11,8 @@ impl Xyz {
         &'a self, foo: &dyn Foo
     ) -> &dyn Foo
     {
-        //[nll]~^ ERROR explicit lifetime required in the type of `foo` [E0621]
+        //~^ ERROR explicit lifetime required in the type of `foo` [E0621]
         foo
-        //[base]~^ ERROR explicit lifetime required in the type of `foo` [E0621]
     }
 }
 

@@ -1,7 +1,3 @@
-// revisions: base nll
-// ignore-compare-mode-nll
-//[nll] compile-flags: -Z borrowck=mir
-
 // Test that we are able to establish that `<T as
 // MyTrait<'a>>::Output` outlives `'b` here. We need to prove however
 // that `<T as MyTrait<'a>>::Output` outlives `'a`, so we also have to

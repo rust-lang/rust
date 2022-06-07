@@ -11,7 +11,7 @@
 #![feature(drain_filter)]
 #![feature(let_chains)]
 #![feature(let_else)]
-#![feature(nll)]
+#![cfg_attr(bootstrap, feature(nll))]
 #![feature(test)]
 #![feature(never_type)]
 #![feature(once_cell)]

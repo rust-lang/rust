@@ -3,8 +3,7 @@
 // revision/compile-flags. We ensure here that it passes in Polonius mode.
 
 // check-pass
-// compile-flags: -Z borrowck=mir -Z polonius
-// ignore-compare-mode-nll
+// compile-flags: -Z polonius
 
 struct Foo;
 

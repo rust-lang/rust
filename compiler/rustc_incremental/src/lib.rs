@@ -3,7 +3,6 @@
 #![deny(missing_docs)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(let_else)]
-#![feature(nll)]
 #![recursion_limit = "256"]
 #![allow(rustc::potential_query_instability)]
 

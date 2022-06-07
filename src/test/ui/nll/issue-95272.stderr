@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/issue-95272.rs:12:13
+  --> $DIR/issue-95272.rs:10:13
    |
 LL | fn test<'a, 'b>(x: Cell<&'a ()>, y: Cell<&'b ()>) {
    |         --  -- lifetime `'b` defined here

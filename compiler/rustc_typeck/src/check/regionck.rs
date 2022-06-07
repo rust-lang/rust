@@ -165,7 +165,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             rcx.visit_body(body);
             rcx.visit_region_obligations(id);
         }
-        rcx.resolve_regions_and_report_errors(RegionckMode::for_item_body(self.tcx));
+        rcx.resolve_regions_and_report_errors(RegionckMode::Erase);
     }
 
     /// Region checking during the WF phase for items. `wf_tys` are the
@@ -208,7 +208,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             rcx.visit_fn_body(fn_id, body, self.tcx.hir().span(fn_id));
         }
 
-        rcx.resolve_regions_and_report_errors(RegionckMode::for_item_body(self.tcx));
+        rcx.resolve_regions_and_report_errors(RegionckMode::Erase);
     }
 }
 

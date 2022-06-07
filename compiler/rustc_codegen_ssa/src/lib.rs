@@ -3,7 +3,6 @@
 #![feature(try_blocks)]
 #![feature(let_else)]
 #![feature(once_cell)]
-#![feature(nll)]
 #![feature(associated_type_bounds)]
 #![feature(strict_provenance)]
 #![feature(int_roundings)]

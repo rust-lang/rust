@@ -1,5 +1,3 @@
-#![feature(nll)]
-
 trait MyTrait<T> {}
 
 struct Foo;

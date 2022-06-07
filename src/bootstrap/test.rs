@@ -1167,12 +1167,7 @@ macro_rules! test_definitions {
     };
 }
 
-default_test_with_compare_mode!(Ui {
-    path: "src/test/ui",
-    mode: "ui",
-    suite: "ui",
-    compare_mode: "nll"
-});
+default_test!(Ui { path: "src/test/ui", mode: "ui", suite: "ui" });
 
 default_test!(RunPassValgrind {
     path: "src/test/run-pass-valgrind",

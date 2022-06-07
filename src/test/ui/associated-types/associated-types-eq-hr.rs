@@ -1,7 +1,3 @@
-// revisions: base nll
-// ignore-compare-mode-nll
-//[nll] compile-flags: -Z borrowck=mir
-
 // Check testing of equality constraints in a higher-ranked context.
 
 pub trait TheTrait<T> {
@@ -98,14 +94,10 @@ pub fn call_bar() {
 
 pub fn call_tuple_one() {
     tuple_one::<Tuple>();
-    //[base]~^ ERROR implementation of `TheTrait` is not general enough
-    //[base]~| ERROR implementation of `TheTrait` is not general enough
 }
 
 pub fn call_tuple_two() {
     tuple_two::<Tuple>();
-    //[base]~^ ERROR implementation of `TheTrait` is not general enough
-    //[base]~| ERROR implementation of `TheTrait` is not general enough
 }
 
 pub fn call_tuple_three() {
@@ -114,7 +106,6 @@ pub fn call_tuple_three() {
 
 pub fn call_tuple_four() {
     tuple_four::<Tuple>();
-    //[base]~^ ERROR implementation of `TheTrait` is not general enough
 }
 
 fn main() {}

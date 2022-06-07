@@ -16,7 +16,6 @@
 #![doc(issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/")]
 #![feature(core_intrinsics)]
 #![feature(lang_items)]
-#![feature(nll)]
 #![feature(panic_unwind)]
 #![feature(staged_api)]
 #![feature(std_internals)]

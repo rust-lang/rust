@@ -1,40 +1,40 @@
-error[E0623]: lifetime mismatch
-  --> $DIR/issue-90170-elision-mismatch.rs:8:47
+error: lifetime may not live long enough
+  --> $DIR/issue-90170-elision-mismatch.rs:3:40
    |
 LL | pub fn foo(x: &mut Vec<&u8>, y: &u8) { x.push(y); }
-   |                        ---      ---           ^ ...but data from `y` flows into `x` here
-   |                                 |
-   |                                 these two types are declared with different lifetimes...
+   |                        -        -      ^^^^^^^^^ argument requires that `'1` must outlive `'2`
+   |                        |        |
+   |                        |        let's call the lifetime of this reference `'1`
+   |                        let's call the lifetime of this reference `'2`
    |
-   = note: each elided lifetime in input position becomes a distinct lifetime
 help: consider introducing a named lifetime parameter
    |
 LL | pub fn foo<'a>(x: &mut Vec<&'a u8>, y: &'a u8) { x.push(y); }
    |           ++++              ++          ++
 
-error[E0623]: lifetime mismatch
-  --> $DIR/issue-90170-elision-mismatch.rs:10:51
+error: lifetime may not live long enough
+  --> $DIR/issue-90170-elision-mismatch.rs:5:44
    |
 LL | pub fn foo2(x: &mut Vec<&'_ u8>, y: &u8) { x.push(y); }
-   |                         ------      ---           ^ ...but data from `y` flows into `x` here
-   |                                     |
-   |                                     these two types are declared with different lifetimes...
+   |                         -           -      ^^^^^^^^^ argument requires that `'1` must outlive `'2`
+   |                         |           |
+   |                         |           let's call the lifetime of this reference `'1`
+   |                         let's call the lifetime of this reference `'2`
    |
-   = note: each elided lifetime in input position becomes a distinct lifetime
 help: consider introducing a named lifetime parameter
    |
 LL | pub fn foo2<'a>(x: &mut Vec<&'a u8>, y: &'a u8) { x.push(y); }
    |            ++++              ~~          ++
 
-error[E0623]: lifetime mismatch
-  --> $DIR/issue-90170-elision-mismatch.rs:12:70
+error: lifetime may not live long enough
+  --> $DIR/issue-90170-elision-mismatch.rs:7:63
    |
 LL | pub fn foo3<'a>(_other: &'a [u8], x: &mut Vec<&u8>, y: &u8) { x.push(y); }
-   |                                               ---      ---           ^ ...but data from `y` flows into `x` here
-   |                                                        |
-   |                                                        these two types are declared with different lifetimes...
+   |                                               -        -      ^^^^^^^^^ argument requires that `'1` must outlive `'2`
+   |                                               |        |
+   |                                               |        let's call the lifetime of this reference `'1`
+   |                                               let's call the lifetime of this reference `'2`
    |
-   = note: each elided lifetime in input position becomes a distinct lifetime
 help: consider introducing a named lifetime parameter
    |
 LL | pub fn foo3<'a>(_other: &'a [u8], x: &mut Vec<&'a u8>, y: &'a u8) { x.push(y); }
@@ -42,4 +42,3 @@ LL | pub fn foo3<'a>(_other: &'a [u8], x: &mut Vec<&'a u8>, y: &'a u8) { x.push(
 
 error: aborting due to 3 previous errors
 
-For more information about this error, try `rustc --explain E0623`.

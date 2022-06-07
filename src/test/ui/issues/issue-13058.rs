@@ -1,7 +1,3 @@
-// revisions: base nll
-// ignore-compare-mode-nll
-//[nll] compile-flags: -Z borrowck=mir
-
 use std::ops::Range;
 
 trait Itble<'r, T, I: Iterator<Item=T>> { fn iter(&'r self) -> I; }

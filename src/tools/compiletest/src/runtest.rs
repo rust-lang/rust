@@ -1938,9 +1938,6 @@ impl<'test> TestCx<'test> {
         }
 
         match self.config.compare_mode {
-            Some(CompareMode::Nll) => {
-                rustc.args(&["-Zborrowck=mir"]);
-            }
             Some(CompareMode::Polonius) => {
                 rustc.args(&["-Zpolonius", "-Zborrowck=mir"]);
             }
@@ -3142,8 +3139,7 @@ impl<'test> TestCx<'test> {
 
         let expected_fixed = self.load_expected_output(UI_FIXED);
 
-        let modes_to_prune = vec![CompareMode::Nll];
-        self.check_and_prune_duplicate_outputs(&proc_res, &[], &modes_to_prune);
+        self.check_and_prune_duplicate_outputs(&proc_res, &[], &[]);
 
         let mut errors = self.load_compare_outputs(&proc_res, TestOutput::Compile, explicit);
         let rustfix_input = json::rustfix_diagnostics_only(&proc_res.stderr);
@@ -3659,12 +3655,7 @@ impl<'test> TestCx<'test> {
 
         if !path.exists() {
             if let Some(CompareMode::Polonius) = self.config.compare_mode {
-                path = expected_output_path(
-                    &self.testpaths,
-                    self.revision,
-                    &Some(CompareMode::Nll),
-                    kind,
-                );
+                path = expected_output_path(&self.testpaths, self.revision, &None, kind);
             }
         }
 

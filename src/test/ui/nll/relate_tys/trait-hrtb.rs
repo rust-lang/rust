@@ -2,8 +2,6 @@
 //
 // compile-flags:-Zno-leak-check
 
-#![feature(nll)]
-
 trait Foo<'a> {}
 
 fn make_foo<'a>() -> Box<dyn Foo<'a>> {

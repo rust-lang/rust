@@ -118,7 +118,6 @@ pub enum FailMode {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum CompareMode {
-    Nll,
     Polonius,
     Chalk,
     SplitDwarf,
@@ -128,7 +127,6 @@ pub enum CompareMode {
 impl CompareMode {
     pub(crate) fn to_str(&self) -> &'static str {
         match *self {
-            CompareMode::Nll => "nll",
             CompareMode::Polonius => "polonius",
             CompareMode::Chalk => "chalk",
             CompareMode::SplitDwarf => "split-dwarf",
@@ -138,7 +136,6 @@ impl CompareMode {
 
     pub fn parse(s: String) -> CompareMode {
         match s.as_str() {
-            "nll" => CompareMode::Nll,
             "polonius" => CompareMode::Polonius,
             "chalk" => CompareMode::Chalk,
             "split-dwarf" => CompareMode::SplitDwarf,

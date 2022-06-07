@@ -6,7 +6,6 @@
 #![feature(iter_from_generator)]
 #![feature(let_chains)]
 #![feature(let_else)]
-#![feature(nll)]
 #![feature(once_cell)]
 #![feature(proc_macro_internals)]
 #![feature(macro_metavar_expr)]

@@ -1,4 +1,4 @@
-// compile-flags:-Zborrowck=mir -Zverbose
+// compile-flags:-Zverbose
 // check-pass
 
 // Test that we assume that universal types like `T` outlive the

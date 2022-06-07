@@ -1,0 +1,50 @@
+error: lifetime may not live long enough
+  --> $DIR/regions-bounded-by-trait-requiring-static.rs:22:5
+   |
+LL | fn param_not_ok<'a>(x: &'a isize) {
+   |                 -- lifetime `'a` defined here
+LL |     assert_send::<&'a isize>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'a` must outlive `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/regions-bounded-by-trait-requiring-static.rs:27:5
+   |
+LL | fn param_not_ok1<'a>(_: &'a isize) {
+   |                  -- lifetime `'a` defined here
+LL |     assert_send::<&'a str>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^ requires that `'a` must outlive `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/regions-bounded-by-trait-requiring-static.rs:32:5
+   |
+LL | fn param_not_ok2<'a>(_: &'a isize) {
+   |                  -- lifetime `'a` defined here
+LL |     assert_send::<&'a [isize]>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'a` must outlive `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/regions-bounded-by-trait-requiring-static.rs:47:5
+   |
+LL | fn box_with_region_not_ok<'a>() {
+   |                           -- lifetime `'a` defined here
+LL |     assert_send::<Box<&'a isize>>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'a` must outlive `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/regions-bounded-by-trait-requiring-static.rs:59:5
+   |
+LL | fn unsafe_ok2<'a>(_: &'a isize) {
+   |               -- lifetime `'a` defined here
+LL |     assert_send::<*const &'a isize>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'a` must outlive `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/regions-bounded-by-trait-requiring-static.rs:64:5
+   |
+LL | fn unsafe_ok3<'a>(_: &'a isize) {
+   |               -- lifetime `'a` defined here
+LL |     assert_send::<*mut &'a isize>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'a` must outlive `'static`
+
+error: aborting due to 6 previous errors
+

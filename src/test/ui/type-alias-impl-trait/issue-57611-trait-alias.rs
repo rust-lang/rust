@@ -3,10 +3,6 @@
 // FIXME: This should compile, but it currently doesn't
 // known-bug
 
-// revisions: base nll
-// ignore-compare-mode-nll
-//[nll] compile-flags: -Z borrowck=mir
-
 #![feature(trait_alias)]
 #![feature(type_alias_impl_trait)]
 
