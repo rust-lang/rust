@@ -1349,6 +1349,9 @@ fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<S
                 return;
             }
             if let hir::LifetimeName::ImplicitObjectLifetimeDefault = lt.name {
+                // The lifetime this resolves must already have been encountered
+                // by the visitor, or be `'static`.  In both cases, we have nothing
+                // to do.
                 return;
             }
 

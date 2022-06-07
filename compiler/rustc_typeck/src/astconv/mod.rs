@@ -205,6 +205,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         def: Option<&ty::GenericParamDef>,
     ) -> ty::Region<'tcx> {
         let tcx = self.tcx();
+        if let hir::LifetimeName::ImplicitObjectLifetimeDefault = lifetime.name {
+            panic!(
+                "ImplicitObjectLifetimeDefault should be handled separately from ast_region_to_region."
+            );
+        }
 
         let r = if let Some(rl) = tcx.named_region(lifetime.hir_id) {
             self.ast_region_to_region_inner(rl)
