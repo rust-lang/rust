@@ -445,13 +445,6 @@ impl<T> LinkedList<T> {
     /// ```
     /// use std::collections::LinkedList;
     ///
-<<<<<<< HEAD
-    /// let mut list = LinkedList::from([1, 2, 3]);
-    ///
-    /// list.insert(1, 4); // list -> [1, 4, 2, 3]
-    ///
-    /// 
-=======
     /// let list = LinkedList::from([1, 2, 3]);
     /// list.insert(1, 4);
     /// let i = list.iter();
@@ -460,26 +453,12 @@ impl<T> LinkedList<T> {
     /// assert_eq!(i.next(), Some(2));
     /// assert_eq!(i.next(), Some(3));
     /// assert_eq!(i.next(), NOne);
->>>>>>> 2f4f2ebd5a9 (Implements Insert method for LinkedList)
     /// ```
     #[stable(feature = "insert_linkedlist", since = "1.63.0")]
     pub fn insert(&mut self, index: usize, elt: T) {
-        if index == 0 {
-            self.push_front(elt);
-            return;
-        }
-        let node = Box::new(Node::new(elt));
         let mut after = self.split_off(index);
-        let node: Option<NonNull<Node<T>>> = Some(Box::leak(node).into());
-
-        unsafe {
-            node.unwrap().as_mut().prev = self.tail;
-            self.tail.unwrap().as_mut().next = node;
-        }
-nked
+        self.push_back(elt);
         self.append(&mut after);
-
-        self.len += 1;
     }
 
     /// Moves all elements from `other` to the end of the list.
