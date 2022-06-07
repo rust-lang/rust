@@ -217,6 +217,31 @@ where
         unsafe { intrinsics::simd_as(self) }
     }
 
+    /// Rounds toward zero and converts to the same-width integer type, assuming that
+    /// the value is finite and fits in that type.
+    ///
+    /// # Safety
+    /// The value must:
+    ///
+    /// * Not be NaN
+    /// * Not be infinite
+    /// * Be representable in the return type, after truncating off its fractional part
+    ///
+    /// If these requirements are infeasible or costly, consider using the safe function [cast],
+    /// which saturates on conversion.
+    ///
+    /// [cast]: Simd::cast
+    #[inline]
+    pub unsafe fn to_int_unchecked<I>(self) -> Simd<I, LANES>
+    where
+        T: core::convert::FloatToInt<I>,
+        I: SimdElement,
+    {
+        // Safety: `self` is a vector, and `FloatToInt` ensures the type can be casted to
+        // an integer.
+        unsafe { intrinsics::simd_cast(self) }
+    }
+
     /// Reads from potentially discontiguous indices in `slice` to construct a SIMD vector.
     /// If an index is out-of-bounds, the lane is instead selected from the `or` vector.
     ///
