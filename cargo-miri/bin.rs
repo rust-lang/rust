@@ -1063,6 +1063,19 @@ fn main() {
     // Skip binary name.
     args.next().unwrap();
 
+    // Dispatch to `cargo-miri` phase. There are four phases:
+    // - When we are called via `cargo miri`, we run as the frontend and invoke the underlying
+    //   cargo. We set RUSTDOC, RUSTC_WRAPPER and CARGO_TARGET_RUNNER to ourselves.
+    // - When we are executed due to RUSTDOC, we run rustdoc and set both `--test-builder` and
+    //   `--runtool` to ourselves.
+    // - When we are executed due to RUSTC_WRAPPER (or as the rustdoc test builder), we build crates
+    //   or store the flags of binary crates for later interpretation.
+    // - When we are executed due to CARGO_TARGET_RUNNER (or as the rustdoc runtool), we start
+    //   interpretation based on the flags that were stored earlier.
+    //
+    // Additionally, we also set ourselves as RUSTC when calling xargo to build the sysroot, which
+    // has to be treated slightly differently than when we build regular crates.
+
     // Dispatch running as part of sysroot compilation.
     if env::var_os("MIRI_CALLED_FROM_XARGO").is_some() {
         phase_rustc(args, RustcPhase::Setup);
@@ -1094,14 +1107,6 @@ fn main() {
         return;
     }
 
-    // Dispatch to `cargo-miri` phase. There are three phases:
-    // - When we are called via `cargo miri`, we run as the frontend and invoke the underlying
-    //   cargo. We set RUSTC_WRAPPER and CARGO_TARGET_RUNNER to ourselves.
-    // - When we are executed due to RUSTC_WRAPPER, we build crates or store the flags of
-    //   binary crates for later interpretation.
-    // - When we are executed due to CARGO_TARGET_RUNNER, we start interpretation based on the
-    //   flags that were stored earlier.
-    // On top of that, we are also called as RUSTDOC, but that is just a stub currently.
     match args.next().as_deref() {
         Some("miri") => phase_cargo_miri(args),
         Some("rustc") => phase_rustc(args, RustcPhase::Build),
