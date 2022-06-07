@@ -56,7 +56,7 @@
 //! and read from or written to must be `unsafe`? No. Rust's safety guarantees
 //! only cover what the program itself can do, and not what entities outside
 //! the program can do to it. `/proc/self/mem` is considered to be such an
-//! external entity, along with debugggers and people with physical access to
+//! external entity, along with debuggers and people with physical access to
 //! the hardware. This is true even in cases where the program is controling
 //! the external entity.
 //!
