@@ -86,22 +86,8 @@ jobs:
       - name: Test
         run: bash ./ci.sh
 
-  fmt:
-    name: formatting (ignored by bors)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Install latest nightly
-        run: |
-          rustup toolchain install nightly --component rustfmt
-          rustup override set nightly
-      - name: Formatting (miri, ui_test)
-        run: cargo fmt --all --check
-      - name: Formatting (cargo-miri)
-        run: cargo fmt --manifest-path cargo-miri/Cargo.toml --all --check
-
   clippy:
-    name: clippy (ignored by bors)
+    name: clippy
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -117,6 +103,20 @@ jobs:
       - name: Clippy (cargo-miri)
         run: cargo clippy --manifest-path cargo-miri/Cargo.toml --all-targets -- -D warnings
 
+  fmt:
+    name: formatting (ignored by bors)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install latest nightly
+        run: |
+          rustup toolchain install nightly --component rustfmt
+          rustup override set nightly
+      - name: Formatting (miri, ui_test)
+        run: cargo fmt --all --check
+      - name: Formatting (cargo-miri)
+        run: cargo fmt --manifest-path cargo-miri/Cargo.toml --all --check
+
   # These jobs doesn't actually test anything, but they're only used to tell
   # bors the build completed, as there is no practical way to detect when a
   # workflow is successful listening to webhooks only.
@@ -126,7 +126,7 @@ jobs:
   end-success:
     name: bors build finished
     runs-on: ubuntu-latest
-    needs: [build]
+    needs: [build, clippy]
     if: github.event.pusher.name == 'bors' && success()
     steps:
       - name: mark the job as a success
@@ -134,7 +134,7 @@ jobs:
   end-failure:
     name: bors build finished
     runs-on: ubuntu-latest
-    needs: [build]
+    needs: [build, clippy]
     if: github.event.pusher.name == 'bors' && (failure() || cancelled())
     steps:
       - name: mark the job as a failure
@@ -144,7 +144,7 @@ jobs:
   cron-fail-notify:
     name: cronjob failure notification
     runs-on: ubuntu-latest
-    needs: [build]
+    needs: [build, clippy]
     if: github.event_name == 'schedule' && (failure() || cancelled())
     steps:
       - name: Install zulip-send
