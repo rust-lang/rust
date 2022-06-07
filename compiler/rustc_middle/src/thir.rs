@@ -317,9 +317,11 @@ pub enum ExprKind<'tcx> {
         lhs: ExprId,
         rhs: ExprId,
     },
-    /// Access to a struct or tuple field.
+    /// Access to a field of a struct, a tuple, an union, or an enum.
     Field {
         lhs: ExprId,
+        /// Variant containing the field.
+        variant_index: VariantIdx,
         /// This can be a named (`.foo`) or unnamed (`.0`) field.
         name: Field,
     },
