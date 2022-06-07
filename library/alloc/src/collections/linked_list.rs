@@ -452,7 +452,7 @@ impl<T> LinkedList<T> {
     /// assert_eq!(i.next(), Some(4));
     /// assert_eq!(i.next(), Some(2));
     /// assert_eq!(i.next(), Some(3));
-    /// assert_eq!(i.next(), NOne);
+    /// assert_eq!(i.next(), None);
     /// ```
     #[stable(feature = "insert_linkedlist", since = "1.63.0")]
     pub fn insert(&mut self, index: usize, elt: T) {
