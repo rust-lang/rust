@@ -1,4 +1,4 @@
-use super::{BorrowBuf, BufWriter, ErrorKind, Read, Result, Write, DEFAULT_BUF_SIZE};
+use super::{BorrowedBuf, BufWriter, ErrorKind, Read, Result, Write, DEFAULT_BUF_SIZE};
 use crate::mem::MaybeUninit;
 
 /// Copies the entire contents of a reader into a writer.
@@ -97,7 +97,7 @@ impl<I: Write> BufferedCopySpec for BufWriter<I> {
 
         loop {
             let buf = writer.buffer_mut();
-            let mut read_buf: BorrowBuf<'_> = buf.spare_capacity_mut().into();
+            let mut read_buf: BorrowedBuf<'_> = buf.spare_capacity_mut().into();
 
             unsafe {
                 // SAFETY: init is either 0 or the init_len from the previous iteration.
@@ -117,7 +117,7 @@ impl<I: Write> BufferedCopySpec for BufWriter<I> {
                         init = read_buf.init_len() - bytes_read;
                         len += bytes_read as u64;
 
-                        // SAFETY: BorrowBuf guarantees all of its filled bytes are init
+                        // SAFETY: BorrowedBuf guarantees all of its filled bytes are init
                         unsafe { buf.set_len(buf.len() + bytes_read) };
 
                         // Read again if the buffer still has enough capacity, as BufWriter itself would do
@@ -139,7 +139,7 @@ fn stack_buffer_copy<R: Read + ?Sized, W: Write + ?Sized>(
     writer: &mut W,
 ) -> Result<u64> {
     let buf: &mut [_] = &mut [MaybeUninit::uninit(); DEFAULT_BUF_SIZE];
-    let mut buf: BorrowBuf<'_> = buf.into();
+    let mut buf: BorrowedBuf<'_> = buf.into();
 
     let mut len = 0;
 

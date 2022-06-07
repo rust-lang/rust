@@ -5,7 +5,7 @@ use crate::io::prelude::*;
 
 use crate::alloc::Allocator;
 use crate::cmp;
-use crate::io::{self, BorrowCursor, ErrorKind, IoSlice, IoSliceMut, SeekFrom};
+use crate::io::{self, BorrowedCursor, ErrorKind, IoSlice, IoSliceMut, SeekFrom};
 
 /// A `Cursor` wraps an in-memory buffer and provides it with a
 /// [`Seek`] implementation.
@@ -323,7 +323,7 @@ where
         Ok(n)
     }
 
-    fn read_buf(&mut self, mut cursor: BorrowCursor<'_, '_>) -> io::Result<()> {
+    fn read_buf(&mut self, mut cursor: BorrowedCursor<'_, '_>) -> io::Result<()> {
         let prev_written = cursor.written();
 
         Read::read_buf(&mut self.fill_buf()?, cursor.clone())?;

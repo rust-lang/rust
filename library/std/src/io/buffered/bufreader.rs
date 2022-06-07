@@ -2,8 +2,7 @@ mod buffer;
 
 use crate::fmt;
 use crate::io::{
-    self, BorrowBuf, BorrowCursor, BufRead, IoSliceMut, Read, Seek, SeekFrom, SizeHint,
-    DEFAULT_BUF_SIZE,
+    self, BorrowedCursor, BufRead, IoSliceMut, Read, Seek, SeekFrom, SizeHint, DEFAULT_BUF_SIZE,
 };
 use buffer::Buffer;
 
@@ -267,7 +266,7 @@ impl<R: Read> Read for BufReader<R> {
         Ok(nread)
     }
 
-    fn read_buf(&mut self, mut cursor: BorrowCursor<'_, '_>) -> io::Result<()> {
+    fn read_buf(&mut self, mut cursor: BorrowedCursor<'_, '_>) -> io::Result<()> {
         // If we don't have any buffered data and we're doing a massive read
         // (larger than our internal buffer), bypass our internal buffer
         // entirely.

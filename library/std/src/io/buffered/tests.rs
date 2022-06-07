@@ -1,5 +1,7 @@
 use crate::io::prelude::*;
-use crate::io::{self, BorrowBuf, BufReader, BufWriter, ErrorKind, IoSlice, LineWriter, SeekFrom};
+use crate::io::{
+    self, BorrowedBuf, BufReader, BufWriter, ErrorKind, IoSlice, LineWriter, SeekFrom,
+};
 use crate::mem::MaybeUninit;
 use crate::panic;
 use crate::sync::atomic::{AtomicUsize, Ordering};
@@ -62,7 +64,7 @@ fn test_buffered_reader_read_buf() {
     let mut reader = BufReader::with_capacity(2, inner);
 
     let buf: &mut [_] = &mut [MaybeUninit::uninit(); 3];
-    let mut buf: BorrowBuf<'_> = buf.into();
+    let mut buf: BorrowedBuf<'_> = buf.into();
 
     reader.read_buf(buf.unfilled()).unwrap();
 
@@ -70,7 +72,7 @@ fn test_buffered_reader_read_buf() {
     assert_eq!(reader.buffer(), []);
 
     let buf: &mut [_] = &mut [MaybeUninit::uninit(); 2];
-    let mut buf: BorrowBuf<'_> = buf.into();
+    let mut buf: BorrowedBuf<'_> = buf.into();
 
     reader.read_buf(buf.unfilled()).unwrap();
 
@@ -78,7 +80,7 @@ fn test_buffered_reader_read_buf() {
     assert_eq!(reader.buffer(), []);
 
     let buf: &mut [_] = &mut [MaybeUninit::uninit(); 1];
-    let mut buf: BorrowBuf<'_> = buf.into();
+    let mut buf: BorrowedBuf<'_> = buf.into();
 
     reader.read_buf(buf.unfilled()).unwrap();
 
@@ -86,7 +88,7 @@ fn test_buffered_reader_read_buf() {
     assert_eq!(reader.buffer(), [3]);
 
     let buf: &mut [_] = &mut [MaybeUninit::uninit(); 3];
-    let mut buf: BorrowBuf<'_> = buf.into();
+    let mut buf: BorrowedBuf<'_> = buf.into();
 
     reader.read_buf(buf.unfilled()).unwrap();
 

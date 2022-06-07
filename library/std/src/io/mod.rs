@@ -278,7 +278,7 @@ pub use self::{
 };
 
 #[unstable(feature = "read_buf", issue = "78485")]
-pub use self::readbuf::{BorrowBuf, BorrowCursor};
+pub use self::readbuf::{BorrowedBuf, BorrowedCursor};
 pub(crate) use error::const_io_error;
 
 mod buffered;
@@ -362,7 +362,7 @@ pub(crate) fn default_read_to_end<R: Read + ?Sized>(r: &mut R, buf: &mut Vec<u8>
             buf.reserve(32); // buf is full, need more space
         }
 
-        let mut read_buf: BorrowBuf<'_> = buf.spare_capacity_mut().into();
+        let mut read_buf: BorrowedBuf<'_> = buf.spare_capacity_mut().into();
 
         // SAFETY: These bytes were initialized but not filled in the previous loop
         unsafe {
@@ -383,7 +383,7 @@ pub(crate) fn default_read_to_end<R: Read + ?Sized>(r: &mut R, buf: &mut Vec<u8>
         // store how much was initialized but not filled
         initialized = cursor.init_ref().len();
 
-        // SAFETY: BorrowBuf's invariants mean this much memory is initialized.
+        // SAFETY: BorrowedBuf's invariants mean this much memory is initialized.
         unsafe {
             let new_len = read_buf.filled().len() + buf.len();
             buf.set_len(new_len);
@@ -462,7 +462,7 @@ pub(crate) fn default_read_exact<R: Read + ?Sized>(this: &mut R, mut buf: &mut [
     }
 }
 
-pub(crate) fn default_read_buf<F>(read: F, mut cursor: BorrowCursor<'_, '_>) -> Result<()>
+pub(crate) fn default_read_buf<F>(read: F, mut cursor: BorrowedCursor<'_, '_>) -> Result<()>
 where
     F: FnOnce(&mut [u8]) -> Result<usize>,
 {
@@ -805,24 +805,23 @@ pub trait Read {
         default_read_exact(self, buf)
     }
 
-    // TODO naming, if should the method be read_cursor? Or should we change the names of the data structures?
     /// Pull some bytes from this source into the specified buffer.
     ///
-    /// This is equivalent to the [`read`](Read::read) method, except that it is passed a [`BorrowCursor`] rather than `[u8]` to allow use
+    /// This is equivalent to the [`read`](Read::read) method, except that it is passed a [`BorrowedCursor`] rather than `[u8]` to allow use
     /// with uninitialized buffers. The new data will be appended to any existing contents of `buf`.
     ///
     /// The default implementation delegates to `read`.
     #[unstable(feature = "read_buf", issue = "78485")]
-    fn read_buf(&mut self, buf: BorrowCursor<'_, '_>) -> Result<()> {
+    fn read_buf(&mut self, buf: BorrowedCursor<'_, '_>) -> Result<()> {
         default_read_buf(|b| self.read(b), buf)
     }
 
     /// Read the exact number of bytes required to fill `cursor`.
     ///
-    /// This is equivalent to the [`read_exact`](Read::read_exact) method, except that it is passed a [`BorrowCursor`] rather than `[u8]` to
+    /// This is equivalent to the [`read_exact`](Read::read_exact) method, except that it is passed a [`BorrowedCursor`] rather than `[u8]` to
     /// allow use with uninitialized buffers.
     #[unstable(feature = "read_buf", issue = "78485")]
-    fn read_buf_exact(&mut self, mut cursor: BorrowCursor<'_, '_>) -> Result<()> {
+    fn read_buf_exact(&mut self, mut cursor: BorrowedCursor<'_, '_>) -> Result<()> {
         while cursor.capacity() > 0 {
             let prev_written = cursor.written();
             match self.read_buf(cursor.clone()) {
@@ -2587,7 +2586,7 @@ impl<T: Read> Read for Take<T> {
         Ok(n)
     }
 
-    fn read_buf(&mut self, mut buf: BorrowCursor<'_, '_>) -> Result<()> {
+    fn read_buf(&mut self, mut buf: BorrowedCursor<'_, '_>) -> Result<()> {
         // Don't call into inner reader at all at EOF because it may still block
         if self.limit == 0 {
             return Ok(());
@@ -2602,7 +2601,7 @@ impl<T: Read> Read for Take<T> {
             // SAFETY: no uninit data is written to ibuf
             let ibuf = unsafe { &mut buf.as_mut()[..limit] };
 
-            let mut sliced_buf: BorrowBuf<'_> = ibuf.into();
+            let mut sliced_buf: BorrowedBuf<'_> = ibuf.into();
 
             // SAFETY: extra_init bytes of ibuf are known to be initialized
             unsafe {

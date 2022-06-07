@@ -13,7 +13,7 @@ mod tests;
 
 use crate::ffi::OsString;
 use crate::fmt;
-use crate::io::{self, BorrowCursor, IoSlice, IoSliceMut, Read, Seek, SeekFrom, Write};
+use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, Read, Seek, SeekFrom, Write};
 use crate::path::{Path, PathBuf};
 use crate::sys::fs as fs_imp;
 use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
@@ -703,7 +703,7 @@ impl Read for File {
         self.inner.read_vectored(bufs)
     }
 
-    fn read_buf(&mut self, cursor: BorrowCursor<'_, '_>) -> io::Result<()> {
+    fn read_buf(&mut self, cursor: BorrowedCursor<'_, '_>) -> io::Result<()> {
         self.inner.read_buf(cursor)
     }
 
@@ -755,7 +755,7 @@ impl Read for &File {
         self.inner.read(buf)
     }
 
-    fn read_buf(&mut self, cursor: BorrowCursor<'_, '_>) -> io::Result<()> {
+    fn read_buf(&mut self, cursor: BorrowedCursor<'_, '_>) -> io::Result<()> {
         self.inner.read_buf(cursor)
     }
 
