@@ -187,7 +187,7 @@ struct Stage0 {
     //
     // To lessen the pain, a big block of comments is placed between the configuration and the
     // auto-generated parts of the file, preventing git diffs of the config to include parts of the
-    // auto-egenrated content and vice versa. This should prevent merge conflicts.
+    // auto-generated content and vice versa. This should prevent merge conflicts.
     #[serde(rename = "__comments")]
     comments: Vec<String>,
     compiler: Stage0Toolchain,
