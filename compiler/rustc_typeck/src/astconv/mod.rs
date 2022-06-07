@@ -1577,18 +1577,17 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         name: Symbol,
     ) -> ErrorGuaranteed {
         let mut err = struct_span_err!(self.tcx().sess, span, E0223, "ambiguous associated type");
-        if let (true, Ok(snippet)) = (
-            self.tcx()
-                .resolutions(())
-                .confused_type_with_std_module
-                .keys()
-                .any(|full_span| full_span.contains(span)),
-            self.tcx().sess.source_map().span_to_snippet(span),
-        ) {
+        if self
+            .tcx()
+            .resolutions(())
+            .confused_type_with_std_module
+            .keys()
+            .any(|full_span| full_span.contains(span))
+        {
             err.span_suggestion(
-                span,
+                span.shrink_to_lo(),
                 "you are looking for the module in `std`, not the primitive type",
-                format!("std::{}", snippet),
+                "std::".to_string(),
                 Applicability::MachineApplicable,
             );
         } else {
