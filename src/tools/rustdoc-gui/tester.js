@@ -16,6 +16,7 @@ function showHelp() {
     console.log("  --debug                    : show extra information about script run");
     console.log("  --show-text                : render font in pages");
     console.log("  --no-headless              : disable headless mode");
+    console.log("  --no-sandbox               : disable sandbox mode");
     console.log("  --help                     : show this message then quit");
     console.log("  --tests-folder [PATH]      : location of the .GOML tests folder");
     console.log("  --jobs [NUMBER]            : number of threads to run tests on");
