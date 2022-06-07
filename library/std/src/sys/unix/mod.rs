@@ -88,14 +88,15 @@ pub unsafe fn init(argc: isize, argv: *const *const u8) {
             ];
 
             while libc::poll(pfds.as_mut_ptr(), 3, 0) == -1 {
-                if errno() == libc::EINTR {
-                    continue;
+                match errno() {
+                    libc::EINTR => continue,
+                    libc::EINVAL | libc::EAGAIN | libc::ENOMEM => {
+                        // RLIMIT_NOFILE or temporary allocation failures
+                        // may be preventing use of poll(), fall back to fcntl
+                        break 'poll;
+                    }
+                    _ => libc::abort(),
                 }
-                if errno() == libc::EINVAL {
-                    // RLIMIT_NOFILE may be preventing use of poll()
-                    break 'poll;
-                }
-                libc::abort();
             }
             for pfd in pfds {
                 if pfd.revents & libc::POLLNVAL == 0 {
