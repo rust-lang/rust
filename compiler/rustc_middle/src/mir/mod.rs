@@ -37,7 +37,6 @@ use rustc_target::asm::InlineAsmRegOrRegClass;
 use either::Either;
 
 use std::borrow::Cow;
-use std::cmp::Ordering;
 use std::convert::TryInto;
 use std::fmt::{self, Debug, Display, Formatter, Write};
 use std::ops::{ControlFlow, Index, IndexMut};
@@ -3590,8 +3589,6 @@ impl Location {
     pub fn dominates(&self, other: Location, dominators: &Dominators<BasicBlock>) -> bool {
         if self.block == other.block {
             self.statement_index <= other.statement_index
-        } else if Ordering::is_lt(dominators.rank_partial_cmp(self.block, other.block).unwrap()) {
-            false
         } else {
             dominators.is_dominated_by(other.block, self.block)
         }

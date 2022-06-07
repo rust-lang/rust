@@ -287,7 +287,17 @@ impl<Node: Idx> Dominators<Node> {
     }
 
     pub fn is_dominated_by(&self, node: Node, dom: Node) -> bool {
-        self.dominators(node).any(|n| n == dom)
+        self.dominators(node)
+            .find_map(|n| {
+                if n == dom {
+                    Some(true)
+                } else if Ordering::is_gt(self.rank_partial_cmp(n, dom).unwrap()) {
+                    Some(false)
+                } else {
+                    None
+                }
+            })
+            .unwrap_or(false)
     }
 
     /// Provide deterministic ordering of nodes such that, if any two nodes have a dominator
