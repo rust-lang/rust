@@ -2194,7 +2194,7 @@ pub fn encode_metadata(tcx: TyCtxt<'_>) -> EncodedMetadata {
 }
 
 fn encode_metadata_impl(tcx: TyCtxt<'_>) -> EncodedMetadata {
-    let mut encoder = opaque::Encoder::new(vec![]);
+    let mut encoder = opaque::Encoder::new();
     encoder.emit_raw_bytes(METADATA_HEADER).unwrap();
 
     // Will be filled with the root position after encoding everything.

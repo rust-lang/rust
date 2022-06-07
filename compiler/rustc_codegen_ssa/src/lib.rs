@@ -203,7 +203,7 @@ const RUSTC_VERSION: Option<&str> = option_env!("CFG_VERSION");
 
 impl CodegenResults {
     pub fn serialize_rlink(codegen_results: &CodegenResults) -> Vec<u8> {
-        let mut encoder = opaque::Encoder::new(vec![]);
+        let mut encoder = opaque::Encoder::new();
         encoder.emit_raw_bytes(RLINK_MAGIC).unwrap();
         // `emit_raw_bytes` is used to make sure that the version representation does not depend on
         // Encoder's inner representation of `u32`.

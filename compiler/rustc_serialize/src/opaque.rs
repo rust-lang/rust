@@ -18,8 +18,8 @@ pub struct Encoder {
 }
 
 impl Encoder {
-    pub fn new(data: Vec<u8>) -> Encoder {
-        Encoder { data }
+    pub fn new() -> Encoder {
+        Encoder { data: vec![] }
     }
 
     pub fn into_inner(self) -> Vec<u8> {

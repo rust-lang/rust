@@ -31,7 +31,7 @@ struct Struct {
 fn check_round_trip<T: Encodable<Encoder> + for<'a> Decodable<Decoder<'a>> + PartialEq + Debug>(
     values: Vec<T>,
 ) {
-    let mut encoder = Encoder::new(Vec::new());
+    let mut encoder = Encoder::new();
 
     for value in &values {
         Encodable::encode(value, &mut encoder).unwrap();
