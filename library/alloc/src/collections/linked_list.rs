@@ -435,46 +435,55 @@ impl<T> LinkedList<T> {
 
     /// Insert an element before the specific index
     ///
-    /// This operations should complete in *O*(1) time.
+    /// This opertaion completes at *O*(min(n, size - n)) time
+    ///
+    /// You should not use this method while inserting large amount
+    /// of values that has similar index. Create an iterator and use it
+    /// to insert instead.
     ///
     /// # Examples
-    ///
     /// ```
     /// use std::collections::LinkedList;
     ///
+<<<<<<< HEAD
     /// let mut list = LinkedList::from([1, 2, 3]);
     ///
     /// list.insert(1, 4); // list -> [1, 4, 2, 3]
     ///
     /// 
+=======
+    /// let list = LinkedList::from([1, 2, 3]);
+    /// list.insert(1, 4);
+    /// let i = list.iter();
+    /// assert_eq!(i.next(), Some(1));
+    /// assert_eq!(i.next(), Some(4));
+    /// assert_eq!(i.next(), Some(2));
+    /// assert_eq!(i.next(), Some(3));
+    /// assert_eq!(i.next(), NOne);
+>>>>>>> 2f4f2ebd5a9 (Implements Insert method for LinkedList)
     /// ```
-
-    #[stable(feature = "rust1", since = "1.0.0")]
+    #[stable(feature = "insert_linkedlist", since = "1.63.0")]
     pub fn insert(&mut self, index: usize, elt: T) {
-        let mut p = self.head;
-        unsafe {
-            for _ in 0..index - 1 {
-                p = p.unwrap().as_ref().next;
-            }
-
-            let prev = p;
-            let next = p.unwrap().as_ref().next;
-
-            let mut t = Box::new(Node::new(elt));
-            t.prev = prev;
-            t.next = next;
-            let node: Option<NonNull<Node<T>>> = Some(Box::leak(t).into());
-            match prev {
-                None => self.head = node,
-                Some(mut prev) => prev.as_mut().next = node,
-            }
-
-            next.unwrap().as_mut().prev = node;
+        if index == 0 {
+            self.push_front(elt);
+            return;
         }
+        let node = Box::new(Node::new(elt));
+        let mut after = self.split_off(index);
+        let node: Option<NonNull<Node<T>>> = Some(Box::leak(node).into());
+
+        unsafe {
+            node.unwrap().as_mut().prev = self.tail;
+            self.tail.unwrap().as_mut().next = node;
+        }
+nked
+        self.append(&mut after);
+
         self.len += 1;
     }
 
     /// Moves all elements from `other` to the end of the list.
+    ///
     ///
     /// This reuses all the nodes from `other` and moves them into `self`. After
     /// this operation, `other` becomes empty.
