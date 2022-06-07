@@ -86,6 +86,7 @@ const char *KnownInactiveFunctionsStartingWith[] = {
     "_ZNSt7__cxx1112basic_string",
     "_ZNSt7__cxx1118basic_string",
     "_ZNKSt7__cxx1112basic_string",
+    "_ZN9__gnu_cxx12__to_xstringINSt7__cxx1112basic_string",
     // filebuf
     "_ZNSt12__basic_file",
     "_ZNSt15basic_streambufIcSt11char_traits",
@@ -98,6 +99,7 @@ const char *KnownInactiveFunctionsStartingWith[] = {
     // ostream generic <<
     "_ZNSo5writeEPKcl",
     "_ZNSt19basic_ostringstreamIcSt11char_traits",
+    "_ZStrsIcSt11char_traitsIcESaIcEERSt13basic_istream",
     "_ZStlsIcSt11char_traitsIcESaIcEERSt13basic_ostream",
     "_ZNSt7__cxx1119basic_ostringstreamIcSt11char_traits",
     "_ZNKSt7__cxx1119basic_ostringstreamIcSt11char_traits",
