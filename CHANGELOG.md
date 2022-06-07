@@ -3840,6 +3840,7 @@ Released 2018-09-13
 [`unwrap_used`]: https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
 [`upper_case_acronyms`]: https://rust-lang.github.io/rust-clippy/master/index.html#upper_case_acronyms
 [`use_debug`]: https://rust-lang.github.io/rust-clippy/master/index.html#use_debug
+[`use_retain`]: https://rust-lang.github.io/rust-clippy/master/index.html#use_retain
 [`use_self`]: https://rust-lang.github.io/rust-clippy/master/index.html#use_self
 [`used_underscore_binding`]: https://rust-lang.github.io/rust-clippy/master/index.html#used_underscore_binding
 [`useless_asref`]: https://rust-lang.github.io/rust-clippy/master/index.html#useless_asref

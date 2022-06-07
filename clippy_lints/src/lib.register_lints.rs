@@ -563,6 +563,7 @@ store.register_lints(&[
     unwrap::UNNECESSARY_UNWRAP,
     unwrap_in_result::UNWRAP_IN_RESULT,
     upper_case_acronyms::UPPER_CASE_ACRONYMS,
+    use_retain::USE_RETAIN,
     use_self::USE_SELF,
     useless_conversion::USELESS_CONVERSION,
     vec::USELESS_VEC,

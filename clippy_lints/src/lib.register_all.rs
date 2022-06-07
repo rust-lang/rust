@@ -336,6 +336,7 @@ store.register_group(true, "clippy::all", Some("clippy_all"), vec![
     LintId::of(unwrap::PANICKING_UNWRAP),
     LintId::of(unwrap::UNNECESSARY_UNWRAP),
     LintId::of(upper_case_acronyms::UPPER_CASE_ACRONYMS),
+    LintId::of(use_retain::USE_RETAIN),
     LintId::of(useless_conversion::USELESS_CONVERSION),
     LintId::of(vec::USELESS_VEC),
     LintId::of(vec_init_then_push::VEC_INIT_THEN_PUSH),
