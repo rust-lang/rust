@@ -183,6 +183,9 @@ struct Stage0 {
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 struct Config {
     dist_server: String,
+    artifacts_server: String,
+    artifacts_with_llvm_assertions_server: String,
+    git_merge_commit_email: String,
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]

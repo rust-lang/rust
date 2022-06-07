@@ -870,16 +870,10 @@ impl<'a> Builder<'a> {
         self.try_run(patchelf.arg(fname));
     }
 
-    pub(crate) fn download_component(
-        &self,
-        base: &str,
-        url: &str,
-        dest_path: &Path,
-        help_on_error: &str,
-    ) {
+    pub(crate) fn download_component(&self, url: &str, dest_path: &Path, help_on_error: &str) {
         // Use a temporary file in case we crash while downloading, to avoid a corrupt download in cache/.
         let tempfile = self.tempdir().join(dest_path.file_name().unwrap());
-        self.download_with_retries(&tempfile, &format!("{}/{}", base, url), help_on_error);
+        self.download_with_retries(&tempfile, url, help_on_error);
         t!(std::fs::rename(&tempfile, dest_path));
     }
 

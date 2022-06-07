@@ -20,7 +20,6 @@ use crate::channel::GitInfo;
 pub use crate::flags::Subcommand;
 use crate::flags::{Color, Flags};
 use crate::util::{exe, output, program_out_of_date, t};
-use crate::RustfmtMetadata;
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Deserializer};
 
@@ -73,6 +72,7 @@ pub struct Config {
     pub test_compare_mode: bool,
     pub color: Color,
     pub patch_binaries_for_nix: bool,
+    pub stage0_metadata: Stage0Metadata,
 
     pub on_fail: Option<String>,
     pub stage: u32,
@@ -720,6 +720,25 @@ define_config! {
     }
 }
 
+#[derive(Default, Deserialize)]
+pub struct Stage0Metadata {
+    pub config: Stage0Config,
+    pub checksums_sha256: HashMap<String, String>,
+    pub rustfmt: Option<RustfmtMetadata>,
+}
+#[derive(Default, Deserialize)]
+pub struct Stage0Config {
+    pub dist_server: String,
+    pub artifacts_server: String,
+    pub artifacts_with_llvm_assertions_server: String,
+    pub git_merge_commit_email: String,
+}
+#[derive(Default, Deserialize)]
+pub struct RustfmtMetadata {
+    pub date: String,
+    pub version: String,
+}
+
 impl Config {
     pub fn default_opts() -> Config {
         let mut config = Config::default();
@@ -775,6 +794,9 @@ impl Config {
         }
         config.llvm_profile_use = flags.llvm_profile_use;
         config.llvm_profile_generate = flags.llvm_profile_generate;
+
+        let stage0_json = t!(std::fs::read(&config.src.join("src").join("stage0.json")));
+        config.stage0_metadata = t!(serde_json::from_slice::<Stage0Metadata>(&stage0_json));
 
         #[cfg(test)]
         let get_toml = |_| TomlConfig::default();
@@ -1103,8 +1125,11 @@ impl Config {
             config.rust_codegen_units_std = rust.codegen_units_std.map(threads_from_config);
             config.rust_profile_use = flags.rust_profile_use.or(rust.profile_use);
             config.rust_profile_generate = flags.rust_profile_generate.or(rust.profile_generate);
-            config.download_rustc_commit =
-                download_ci_rustc_commit(rust.download_rustc, config.verbose > 0);
+            config.download_rustc_commit = download_ci_rustc_commit(
+                &config.stage0_metadata,
+                rust.download_rustc,
+                config.verbose > 0,
+            );
         } else {
             config.rust_profile_use = flags.rust_profile_use;
             config.rust_profile_generate = flags.rust_profile_generate;
@@ -1424,7 +1449,11 @@ fn threads_from_config(v: u32) -> u32 {
 }
 
 /// Returns the commit to download, or `None` if we shouldn't download CI artifacts.
-fn download_ci_rustc_commit(download_rustc: Option<StringOrBool>, verbose: bool) -> Option<String> {
+fn download_ci_rustc_commit(
+    stage0_metadata: &Stage0Metadata,
+    download_rustc: Option<StringOrBool>,
+    verbose: bool,
+) -> Option<String> {
     // If `download-rustc` is not set, default to rebuilding.
     let if_unchanged = match download_rustc {
         None | Some(StringOrBool::Bool(false)) => return None,
@@ -1443,13 +1472,12 @@ fn download_ci_rustc_commit(download_rustc: Option<StringOrBool>, verbose: bool)
 
     // Look for a version to compare to based on the current commit.
     // Only commits merged by bors will have CI artifacts.
-    let merge_base = output(Command::new("git").args(&[
-        "rev-list",
-        "--author=bors@rust-lang.org",
-        "-n1",
-        "--first-parent",
-        "HEAD",
-    ]));
+    let merge_base = output(
+        Command::new("git")
+            .arg("rev-list")
+            .arg(format!("--author={}", stage0_metadata.config.git_merge_commit_email))
+            .args(&["-n1", "--first-parent", "HEAD"]),
+    );
     let commit = merge_base.trim_end();
     if commit.is_empty() {
         println!("error: could not find commit hash for downloading rustc");
@@ -1484,7 +1512,7 @@ fn download_ci_rustc_commit(download_rustc: Option<StringOrBool>, verbose: bool)
 }
 
 fn maybe_download_rustfmt(builder: &Builder<'_>) -> Option<PathBuf> {
-    let RustfmtMetadata { date, version } = builder.stage0_metadata.rustfmt.as_ref()?;
+    let RustfmtMetadata { date, version } = builder.config.stage0_metadata.rustfmt.as_ref()?;
     let channel = format!("{version}-{date}");
 
     let host = builder.config.build;
@@ -1568,13 +1596,13 @@ fn download_component(
     let tarball = cache_dir.join(&filename);
     let (base_url, url, should_verify) = match mode {
         DownloadSource::CI => (
-            "https://ci-artifacts.rust-lang.org/rustc-builds".to_string(),
+            builder.config.stage0_metadata.config.artifacts_server.clone(),
             format!("{key}/{filename}"),
             false,
         ),
         DownloadSource::Dist => {
             let dist_server = env::var("RUSTUP_DIST_SERVER")
-                .unwrap_or(builder.stage0_metadata.dist_server.to_string());
+                .unwrap_or(builder.config.stage0_metadata.config.dist_server.to_string());
             // NOTE: make `dist` part of the URL because that's how it's stored in src/stage0.json
             (dist_server, format!("dist/{key}/{filename}"), true)
         }
@@ -1590,7 +1618,7 @@ fn download_component(
             target at this time, see https://doc.rust-lang.org/nightly\
             /rustc/platform-support.html for more information."
         );
-        let sha256 = builder.stage0_metadata.checksums_sha256.get(&url).expect(&error);
+        let sha256 = builder.config.stage0_metadata.checksums_sha256.get(&url).expect(&error);
         if tarball.exists() {
             if builder.verify(&tarball, sha256) {
                 builder.unpack(&tarball, &bin_root, prefix);
@@ -1610,7 +1638,7 @@ fn download_component(
         None
     };
 
-    builder.download_component(&base_url, &url, &tarball, "");
+    builder.download_component(&format!("{base_url}/{url}"), &tarball, "");
     if let Some(sha256) = checksum {
         if !builder.verify(&tarball, sha256) {
             panic!("failed to verify {}", tarball.display());
