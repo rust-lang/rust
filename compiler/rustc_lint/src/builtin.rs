@@ -2295,9 +2295,7 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
             // (including the `where`)
             if hir_generics.has_where_clause_predicates && dropped_predicate_count == num_predicates
             {
-                let where_span = hir_generics
-                    .where_clause_span()
-                    .expect("span of (nonempty) where clause should exist");
+                let where_span = hir_generics.where_clause_span;
                 // Extend the where clause back to the closing `>` of the
                 // generics, except for tuple struct, which have the `where`
                 // after the fields of the struct.

@@ -7,6 +7,7 @@ use crate::autoderef::Autoderef;
 use crate::infer::InferCtxt;
 use crate::traits::normalize_to;
 
+use hir::HirId;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{
@@ -23,7 +24,7 @@ use rustc_middle::hir::map;
 use rustc_middle::ty::{
     self, suggest_arbitrary_trait_bound, suggest_constraining_type_param, AdtKind, DefIdTree,
     GeneratorDiagnosticData, GeneratorInteriorTypeCause, Infer, InferTy, IsSuggestable,
-    ToPredicate, Ty, TyCtxt, TypeFoldable,
+    ToPredicate, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
 };
 use rustc_middle::ty::{TypeAndMut, TypeckResults};
 use rustc_session::Limit;
@@ -331,7 +332,8 @@ fn predicate_constraint(generics: &hir::Generics<'_>, pred: String) -> (Span, St
 /// param for cleaner code.
 fn suggest_restriction<'tcx>(
     tcx: TyCtxt<'tcx>,
-    generics: &hir::Generics<'tcx>,
+    hir_id: HirId,
+    hir_generics: &hir::Generics<'tcx>,
     msg: &str,
     err: &mut Diagnostic,
     fn_sig: Option<&hir::FnSig<'_>>,
@@ -344,24 +346,37 @@ fn suggest_restriction<'tcx>(
     //              &Ident
     super_traits: Option<(&Ident, &hir::GenericBounds<'_>)>,
 ) {
-    if generics.where_clause_span.from_expansion()
-        || generics.where_clause_span.desugaring_kind().is_some()
+    if hir_generics.where_clause_span.from_expansion()
+        || hir_generics.where_clause_span.desugaring_kind().is_some()
     {
         return;
     }
+    let Some(item_id) = hir_id.as_owner() else { return; };
+    let generics = tcx.generics_of(item_id);
     // Given `fn foo(t: impl Trait)` where `Trait` requires assoc type `A`...
-    if let Some((bound_str, fn_sig)) =
+    if let Some((param, bound_str, fn_sig)) =
         fn_sig.zip(projection).and_then(|(sig, p)| match p.self_ty().kind() {
             // Shenanigans to get the `Trait` from the `impl Trait`.
             ty::Param(param) => {
-                // `fn foo(t: impl Trait)`
-                //                 ^^^^^ get this string
-                param.name.as_str().strip_prefix("impl ").map(|s| (s.trim_start().to_string(), sig))
+                let param_def = generics.type_param(param, tcx);
+                if param_def.kind.is_synthetic() {
+                    let bound_str =
+                        param_def.name.as_str().strip_prefix("impl ")?.trim_start().to_string();
+                    return Some((param_def, bound_str, sig));
+                }
+                None
             }
             _ => None,
         })
     {
-        if !trait_pred.is_suggestable_modulo_impl_trait(tcx, &bound_str) {
+        let type_param_name = hir_generics.params.next_type_param_name(Some(&bound_str));
+        let trait_pred = trait_pred.fold_with(&mut ReplaceImplTraitFolder {
+            tcx,
+            param,
+            replace_ty: ty::ParamTy::new(generics.count() as u32, Symbol::intern(&type_param_name))
+                .to_ty(tcx),
+        });
+        if !trait_pred.is_suggestable(tcx) {
             return;
         }
         // We know we have an `impl Trait` that doesn't satisfy a required projection.
@@ -373,52 +388,21 @@ fn suggest_restriction<'tcx>(
         // where `T: Trait`.
         let mut ty_spans = vec![];
         for input in fn_sig.decl.inputs {
-            struct ReplaceImplTraitVisitor<'a> {
-                ty_spans: &'a mut Vec<Span>,
-                bound_str: &'a str,
-            }
-            impl<'a, 'hir> hir::intravisit::Visitor<'hir> for ReplaceImplTraitVisitor<'a> {
-                fn visit_ty(&mut self, t: &'hir hir::Ty<'hir>) {
-                    if let hir::TyKind::Path(hir::QPath::Resolved(
-                        None,
-                        hir::Path { segments: [segment], .. },
-                    )) = t.kind
-                    {
-                        if segment.ident.as_str().strip_prefix("impl ").map(|s| s.trim_start())
-                            == Some(self.bound_str)
-                        {
-                            // `fn foo(t: impl Trait)`
-                            //            ^^^^^^^^^^ get this to suggest `T` instead
-
-                            // There might be more than one `impl Trait`.
-                            self.ty_spans.push(t.span);
-                            return;
-                        }
-                    }
-                    hir::intravisit::walk_ty(self, t);
-                }
-            }
-            ReplaceImplTraitVisitor { ty_spans: &mut ty_spans, bound_str: &bound_str }
+            ReplaceImplTraitVisitor { ty_spans: &mut ty_spans, param_did: param.def_id }
                 .visit_ty(input);
         }
-
-        let type_param_name = generics.params.next_type_param_name(Some(&bound_str));
         // The type param `T: Trait` we will suggest to introduce.
         let type_param = format!("{}: {}", type_param_name, bound_str);
 
-        // FIXME: modify the `trait_pred` instead of string shenanigans.
-        // Turn `<impl Trait as Foo>::Bar: Qux` into `<T as Foo>::Bar: Qux`.
-        let pred = trait_pred.to_predicate(tcx).to_string();
-        let pred = pred.replace(&format!("impl {}", bound_str), &type_param_name);
         let mut sugg = vec![
-            if let Some(span) = generics.span_for_param_suggestion() {
+            if let Some(span) = hir_generics.span_for_param_suggestion() {
                 (span, format!(", {}", type_param))
             } else {
-                (generics.span, format!("<{}>", type_param))
+                (hir_generics.span, format!("<{}>", type_param))
             },
             // `fn foo(t: impl Trait)`
             //                       ^ suggest `where <T as Trait>::A: Bound`
-            predicate_constraint(generics, pred),
+            predicate_constraint(hir_generics, trait_pred.to_predicate(tcx).to_string()),
         ];
         sugg.extend(ty_spans.into_iter().map(|s| (s, type_param_name.to_string())));
 
@@ -436,13 +420,15 @@ fn suggest_restriction<'tcx>(
         }
         // Trivial case: `T` needs an extra bound: `T: Bound`.
         let (sp, suggestion) = match (
-            generics
+            hir_generics
                 .params
                 .iter()
                 .find(|p| !matches!(p.kind, hir::GenericParamKind::Type { synthetic: true, .. })),
             super_traits,
         ) {
-            (_, None) => predicate_constraint(generics, trait_pred.to_predicate(tcx).to_string()),
+            (_, None) => {
+                predicate_constraint(hir_generics, trait_pred.to_predicate(tcx).to_string())
+            }
             (None, Some((ident, []))) => (
                 ident.span.shrink_to_hi(),
                 format!(": {}", trait_pred.print_modifiers_and_trait_path()),
@@ -452,7 +438,7 @@ fn suggest_restriction<'tcx>(
                 format!(" + {}", trait_pred.print_modifiers_and_trait_path()),
             ),
             (Some(_), Some((_, []))) => (
-                generics.span.shrink_to_hi(),
+                hir_generics.span.shrink_to_hi(),
                 format!(": {}", trait_pred.print_modifiers_and_trait_path()),
             ),
         };
@@ -496,6 +482,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     // Restricting `Self` for a single method.
                     suggest_restriction(
                         self.tcx,
+                        hir_id,
                         &generics,
                         "`Self`",
                         err,
@@ -515,7 +502,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     assert!(param_ty);
                     // Restricting `Self` for a single method.
                     suggest_restriction(
-                        self.tcx, &generics, "`Self`", err, None, projection, trait_pred, None,
+                        self.tcx, hir_id, &generics, "`Self`", err, None, projection, trait_pred,
+                        None,
                     );
                     return;
                 }
@@ -536,6 +524,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     // Missing restriction on associated type of type parameter (unmet projection).
                     suggest_restriction(
                         self.tcx,
+                        hir_id,
                         &generics,
                         "the associated type",
                         err,
@@ -555,6 +544,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     // Missing restriction on associated type of type parameter (unmet projection).
                     suggest_restriction(
                         self.tcx,
+                        hir_id,
                         &generics,
                         "the associated type",
                         err,
@@ -583,6 +573,14 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 | hir::Node::ImplItem(hir::ImplItem { generics, .. })
                     if param_ty =>
                 {
+                    // We skip the 0'th subst (self) because we do not want
+                    // to consider the predicate as not suggestible if the
+                    // self type is an arg position `impl Trait` -- instead,
+                    // we handle that by adding ` + Bound` below.
+                    // FIXME(compiler-errors): It would be nice to do the same
+                    // this that we do in `suggest_restriction` and pull the
+                    // `impl Trait` into a new generic if it shows up somewhere
+                    // else in the predicate.
                     if !trait_pred.skip_binder().trait_ref.substs[1..]
                         .iter()
                         .all(|g| g.is_suggestable(self.tcx))
@@ -2992,5 +2990,54 @@ fn suggest_trait_object_return_type_alternatives(
             ],
             Applicability::MaybeIncorrect,
         );
+    }
+}
+
+/// Collect the spans that we see the generic param `param_did`
+struct ReplaceImplTraitVisitor<'a> {
+    ty_spans: &'a mut Vec<Span>,
+    param_did: DefId,
+}
+
+impl<'a, 'hir> hir::intravisit::Visitor<'hir> for ReplaceImplTraitVisitor<'a> {
+    fn visit_ty(&mut self, t: &'hir hir::Ty<'hir>) {
+        if let hir::TyKind::Path(hir::QPath::Resolved(
+            None,
+            hir::Path { res: hir::def::Res::Def(_, segment_did), .. },
+        )) = t.kind
+        {
+            if self.param_did == *segment_did {
+                // `fn foo(t: impl Trait)`
+                //            ^^^^^^^^^^ get this to suggest `T` instead
+
+                // There might be more than one `impl Trait`.
+                self.ty_spans.push(t.span);
+                return;
+            }
+        }
+
+        hir::intravisit::walk_ty(self, t);
+    }
+}
+
+// Replace `param` with `replace_ty`
+struct ReplaceImplTraitFolder<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    param: &'tcx ty::GenericParamDef,
+    replace_ty: Ty<'tcx>,
+}
+
+impl<'tcx> TypeFolder<'tcx> for ReplaceImplTraitFolder<'tcx> {
+    fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
+        if let ty::Param(ty::ParamTy { index, .. }) = t.kind() {
+            if self.param.index == *index {
+                return self.replace_ty;
+            }
+        }
+        t.super_fold_with(self)
+    }
+
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.tcx
     }
 }
