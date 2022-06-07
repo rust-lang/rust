@@ -11,10 +11,10 @@ LL |     const B: u8 = Self::A;
    |     ^^^^^^^^^^^^^^^^^^^^^^
    = note: ...which again requires const-evaluating + checking `Tr::A`, completing the cycle
 note: cycle used when const-evaluating + checking `main::promoted[1]`
-  --> $DIR/defaults-cyclic-fail.rs:14:1
+  --> $DIR/defaults-cyclic-fail.rs:16:16
    |
-LL | fn main() {
-   | ^^^^^^^^^
+LL |     assert_eq!(<() as Tr>::A, 0);
+   |                ^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

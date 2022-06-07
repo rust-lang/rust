@@ -1,8 +1,8 @@
 error[E0391]: cycle detected when elaborating drops for `FooDefault::BAR`
-  --> $DIR/issue-24949-assoc-const-static-recursion-trait-default.rs:8:5
+  --> $DIR/issue-24949-assoc-const-static-recursion-trait-default.rs:8:22
    |
 LL |     const BAR: u32 = DEFAULT_REF_BAR;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                      ^^^^^^^^^^^^^^^
    |
 note: ...which requires const-evaluating + checking `DEFAULT_REF_BAR`...
   --> $DIR/issue-24949-assoc-const-static-recursion-trait-default.rs:11:1

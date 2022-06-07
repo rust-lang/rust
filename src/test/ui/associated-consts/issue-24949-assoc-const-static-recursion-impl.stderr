@@ -1,8 +1,8 @@
 error[E0391]: cycle detected when elaborating drops for `<impl at $DIR/issue-24949-assoc-const-static-recursion-impl.rs:11:1: 13:2>::BAR`
-  --> $DIR/issue-24949-assoc-const-static-recursion-impl.rs:12:5
+  --> $DIR/issue-24949-assoc-const-static-recursion-impl.rs:12:22
    |
 LL |     const BAR: u32 = IMPL_REF_BAR;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                      ^^^^^^^^^^^^
    |
 note: ...which requires const-evaluating + checking `IMPL_REF_BAR`...
   --> $DIR/issue-24949-assoc-const-static-recursion-impl.rs:7:1

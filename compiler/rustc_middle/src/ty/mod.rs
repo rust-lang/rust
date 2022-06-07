@@ -42,8 +42,8 @@ use rustc_query_system::ich::StableHashingContext;
 use rustc_session::cstore::CrateStoreDyn;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
-pub use subst::*;
 use rustc_target::abi::{Align, VariantIdx};
+pub use subst::*;
 pub use vtable::*;
 
 use std::fmt::Debug;
