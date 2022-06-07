@@ -439,6 +439,11 @@ mod prim_char {}
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_unit {}
 
+// Required to make auto trait impls render.
+// See /src/librustdoc/passes/collect_trait_impls.rs:collect_trait_impls
+#[doc(hidden)]
+impl () {}
+
 #[doc(primitive = "pointer")]
 #[doc(alias = "ptr")]
 #[doc(alias = "*")]
@@ -948,6 +953,11 @@ mod prim_str {}
 ///
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_tuple {}
+
+// Required to make auto trait impls render.
+// See /src/librustdoc/passes/collect_trait_impls.rs:collect_trait_impls
+#[doc(hidden)]
+impl<T, U> (T, U) {}
 
 #[doc(primitive = "f32")]
 /// A 32-bit floating point type (specifically, the "binary32" type defined in IEEE 754-2008).
