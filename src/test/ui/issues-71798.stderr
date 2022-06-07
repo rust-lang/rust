@@ -9,6 +9,9 @@ error[E0277]: `u32` is not a future
    |
 LL | fn test_ref(x: &u32) -> impl std::future::Future<Output = u32> + '_ {
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `u32` is not a future
+LL |
+LL |     *x
+   |     -- return type was inferred to be `u32` here
    |
    = help: the trait `Future` is not implemented for `u32`
    = note: u32 must be a future or must implement `IntoFuture` to be awaited

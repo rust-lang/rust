@@ -2661,6 +2661,15 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     err.help("add `#![feature(trivial_bounds)]` to the crate attributes to enable");
                 }
             }
+            ObligationCauseCode::OpaqueReturnType(expr_info) => {
+                if let Some((expr_ty, expr_span)) = expr_info {
+                    let expr_ty = self.resolve_vars_if_possible(expr_ty);
+                    err.span_label(
+                        expr_span,
+                        format!("return type was inferred to be `{expr_ty}` here"),
+                    );
+                }
+            }
         }
     }
 
