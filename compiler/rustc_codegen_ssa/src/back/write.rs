@@ -494,12 +494,12 @@ fn copy_all_cgu_workproducts_to_incr_comp_cache_dir(
     let _timer = sess.timer("copy_all_cgu_workproducts_to_incr_comp_cache_dir");
 
     for module in compiled_modules.modules.iter().filter(|m| m.kind == ModuleKind::Regular) {
-        let path = module.object.as_ref().cloned();
-
-        if let Some((id, product)) =
-            copy_cgu_workproduct_to_incr_comp_cache_dir(sess, &module.name, &path)
-        {
-            work_products.insert(id, product);
+        if let Some(path) = &module.object {
+            if let Some((id, product)) =
+                copy_cgu_workproduct_to_incr_comp_cache_dir(sess, &module.name, path)
+            {
+                work_products.insert(id, product);
+            }
         }
     }
 
@@ -853,35 +853,31 @@ fn execute_copy_from_cache_work_item<B: ExtraBackendMethods>(
     module: CachedModuleCodegen,
     module_config: &ModuleConfig,
 ) -> WorkItemResult<B> {
-    let incr_comp_session_dir = cgcx.incr_comp_session_dir.as_ref().unwrap();
-    let mut object = None;
-    if let Some(saved_file) = module.source.saved_file {
-        let obj_out = cgcx.output_filenames.temp_path(OutputType::Object, Some(&module.name));
-        object = Some(obj_out.clone());
-        let source_file = in_incr_comp_dir(&incr_comp_session_dir, &saved_file);
-        debug!(
-            "copying pre-existing module `{}` from {:?} to {}",
-            module.name,
-            source_file,
-            obj_out.display()
-        );
-        if let Err(err) = link_or_copy(&source_file, &obj_out) {
-            let diag_handler = cgcx.create_diag_handler();
-            diag_handler.err(&format!(
-                "unable to copy {} to {}: {}",
-                source_file.display(),
-                obj_out.display(),
-                err
-            ));
-        }
-    }
+    assert!(module_config.emit_obj != EmitObj::None);
 
-    assert_eq!(object.is_some(), module_config.emit_obj != EmitObj::None);
+    let incr_comp_session_dir = cgcx.incr_comp_session_dir.as_ref().unwrap();
+    let obj_out = cgcx.output_filenames.temp_path(OutputType::Object, Some(&module.name));
+    let source_file = in_incr_comp_dir(&incr_comp_session_dir, &module.source.saved_file);
+    debug!(
+        "copying pre-existing module `{}` from {:?} to {}",
+        module.name,
+        source_file,
+        obj_out.display()
+    );
+    if let Err(err) = link_or_copy(&source_file, &obj_out) {
+        let diag_handler = cgcx.create_diag_handler();
+        diag_handler.err(&format!(
+            "unable to copy {} to {}: {}",
+            source_file.display(),
+            obj_out.display(),
+            err
+        ));
+    }
 
     WorkItemResult::Compiled(CompiledModule {
         name: module.name,
         kind: ModuleKind::Regular,
-        object,
+        object: Some(obj_out),
         dwarf_object: None,
         bytecode: None,
     })

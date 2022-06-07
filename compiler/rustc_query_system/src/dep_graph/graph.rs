@@ -887,7 +887,7 @@ impl<K: DepKind> DepGraph<K> {
 pub struct WorkProduct {
     pub cgu_name: String,
     /// Saved file associated with this CGU.
-    pub saved_file: Option<String>,
+    pub saved_file: String,
 }
 
 // Index type for `DepNodeData`'s edges.
