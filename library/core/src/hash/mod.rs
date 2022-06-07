@@ -883,16 +883,32 @@ mod impls {
         );
 
         ( $($name:ident)+) => (
-            #[stable(feature = "rust1", since = "1.0.0")]
-            impl<$($name: Hash),+> Hash for ($($name,)+) where last_type!($($name,)+): ?Sized {
-                #[allow(non_snake_case)]
-                #[inline]
-                fn hash<S: Hasher>(&self, state: &mut S) {
-                    let ($(ref $name,)+) = *self;
-                    $($name.hash(state);)+
+            maybe_tuple_doc! {
+                $($name)+ @
+                #[stable(feature = "rust1", since = "1.0.0")]
+                impl<$($name: Hash),+> Hash for ($($name,)+) where last_type!($($name,)+): ?Sized {
+                    #[allow(non_snake_case)]
+                    #[inline]
+                    fn hash<S: Hasher>(&self, state: &mut S) {
+                        let ($(ref $name,)+) = *self;
+                        $($name.hash(state);)+
+                    }
                 }
             }
         );
+    }
+
+    macro_rules! maybe_tuple_doc {
+        ($a:ident @ #[$meta:meta] $item:item) => {
+            #[doc = "This trait is implemented for tuples up to twelve items long."]
+            #[$meta]
+            $item
+        };
+        ($a:ident $($rest_a:ident)+ @ #[$meta:meta] $item:item) => {
+            #[doc(hidden)]
+            #[$meta]
+            $item
+        };
     }
 
     macro_rules! last_type {
