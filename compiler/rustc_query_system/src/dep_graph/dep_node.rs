@@ -164,7 +164,6 @@ pub struct WorkProductId {
 impl WorkProductId {
     pub fn from_cgu_name(cgu_name: &str) -> WorkProductId {
         let mut hasher = StableHasher::new();
-        cgu_name.len().hash(&mut hasher);
         cgu_name.hash(&mut hasher);
         WorkProductId { hash: hasher.finish() }
     }
