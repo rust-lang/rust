@@ -10,5 +10,4 @@ const fn foo<T: ~const Foo>() {
     T::foo();
 }
 
-
 fn main() {}

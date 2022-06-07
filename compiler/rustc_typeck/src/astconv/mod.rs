@@ -574,7 +574,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             .unwrap_or_else(|| match self.astconv.item_def_id() {
                                 // no information available
                                 // TODO: fall back to `Not`?
-                                None => if infer_args { ty::ConstnessArg::Infer } else { ty::ConstnessArg::Not },
+                                None => {
+                                    trace!("uh oh");
+                                    if infer_args {
+                                        ty::ConstnessArg::Infer
+                                    } else {
+                                        ty::ConstnessArg::Not
+                                    }
+                                }
                                 Some(context) => {
                                     if tcx.generics_of(context).has_constness_param() {
                                         ty::ConstnessArg::Const

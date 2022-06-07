@@ -7,12 +7,14 @@ impl T for S {}
 
 fn rpit() -> impl ~const T { S }
 //~^ ERROR `~const` is not allowed
+//~| ERROR the trait bound
 
 fn apit(_: impl ~const T) {}
 //~^ ERROR `~const` is not allowed
 
 fn rpit_assoc_bound() -> impl IntoIterator<Item: ~const T> { Some(S) }
 //~^ ERROR `~const` is not allowed
+//~| ERROR the trait bound
 
 fn apit_assoc_bound(_: impl IntoIterator<Item: ~const T>) {}
 //~^ ERROR `~const` is not allowed

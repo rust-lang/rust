@@ -206,6 +206,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         // methods in `subst.rs`, so that we can iterate over the arguments and
         // parameters in lock-step linearly, instead of trying to match each pair.
         let mut substs: SmallVec<[subst::GenericArg<'tcx>; 8]> = SmallVec::with_capacity(count);
+        let mut has_constness = false;
         // Iterate over each segment of the path.
         while let Some((def_id, defs)) = stack.pop() {
             let mut params = defs.params.iter().peekable();
@@ -218,6 +219,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         substs.push(ctx.inferred_kind(None, param, false, None))
                     } else {
                         substs.push(kind);
+                    }
+                    if let subst::GenericArgKind::Constness(_) = kind.unpack() {
+                        has_constness = true;
                     }
                     params.next();
                 } else {
@@ -386,7 +390,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 }
             }
         }
-
+        if !has_constness && has_self && let Some(constness) = constness {
+            if let ty::ConstnessArg::Const = constness {
+                substs.push(constness.into());
+            }
+        }
         tcx.intern_substs(&substs)
     }
 

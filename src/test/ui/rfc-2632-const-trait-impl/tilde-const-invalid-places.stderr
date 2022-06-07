@@ -7,7 +7,7 @@ LL | fn rpit() -> impl ~const T { S }
    = note: only allowed on bounds on traits' associated types and functions, const fns, const impls and its associated functions
 
 error: `~const` is not allowed here
-  --> $DIR/tilde-const-invalid-places.rs:11:17
+  --> $DIR/tilde-const-invalid-places.rs:12:17
    |
 LL | fn apit(_: impl ~const T) {}
    |                 ^^^^^^^^
@@ -15,7 +15,7 @@ LL | fn apit(_: impl ~const T) {}
    = note: only allowed on bounds on traits' associated types and functions, const fns, const impls and its associated functions
 
 error: `~const` is not allowed here
-  --> $DIR/tilde-const-invalid-places.rs:14:50
+  --> $DIR/tilde-const-invalid-places.rs:15:50
    |
 LL | fn rpit_assoc_bound() -> impl IntoIterator<Item: ~const T> { Some(S) }
    |                                                  ^^^^^^^^
@@ -23,7 +23,7 @@ LL | fn rpit_assoc_bound() -> impl IntoIterator<Item: ~const T> { Some(S) }
    = note: only allowed on bounds on traits' associated types and functions, const fns, const impls and its associated functions
 
 error: `~const` is not allowed here
-  --> $DIR/tilde-const-invalid-places.rs:17:48
+  --> $DIR/tilde-const-invalid-places.rs:19:48
    |
 LL | fn apit_assoc_bound(_: impl IntoIterator<Item: ~const T>) {}
    |                                                ^^^^^^^^
@@ -31,7 +31,7 @@ LL | fn apit_assoc_bound(_: impl IntoIterator<Item: ~const T>) {}
    = note: only allowed on bounds on traits' associated types and functions, const fns, const impls and its associated functions
 
 error: `~const` is not allowed here
-  --> $DIR/tilde-const-invalid-places.rs:20:15
+  --> $DIR/tilde-const-invalid-places.rs:22:15
    |
 LL | fn generic<P: ~const T>() {}
    |               ^^^^^^^^
@@ -39,7 +39,7 @@ LL | fn generic<P: ~const T>() {}
    = note: only allowed on bounds on traits' associated types and functions, const fns, const impls and its associated functions
 
 error: `~const` is not allowed here
-  --> $DIR/tilde-const-invalid-places.rs:23:31
+  --> $DIR/tilde-const-invalid-places.rs:25:31
    |
 LL | fn where_clause<P>() where P: ~const T {}
    |                               ^^^^^^^^
@@ -47,10 +47,37 @@ LL | fn where_clause<P>() where P: ~const T {}
    = note: only allowed on bounds on traits' associated types and functions, const fns, const impls and its associated functions
 
 error: `~const` and `?` are mutually exclusive
-  --> $DIR/tilde-const-invalid-places.rs:26:25
+  --> $DIR/tilde-const-invalid-places.rs:28:25
    |
 LL | struct TildeQuestion<T: ~const ?Sized>(std::marker::PhantomData<T>);
    |                         ^^^^^^^^^^^^^
 
-error: aborting due to 7 previous errors
+error[E0277]: the trait bound `S: T` is not satisfied
+  --> $DIR/tilde-const-invalid-places.rs:8:14
+   |
+LL | fn rpit() -> impl ~const T { S }
+   |              ^^^^^^^^^^^^^ the trait `T` is not implemented for `S`
+   |
+note: the trait `T` is implemented for `S`, but that implementation is not `const`
+  --> $DIR/tilde-const-invalid-places.rs:8:14
+   |
+LL | fn rpit() -> impl ~const T { S }
+   |              ^^^^^^^^^^^^^
+   = help: the trait `T` is implemented for `S`
 
+error[E0277]: the trait bound `S: T` is not satisfied
+  --> $DIR/tilde-const-invalid-places.rs:15:26
+   |
+LL | fn rpit_assoc_bound() -> impl IntoIterator<Item: ~const T> { Some(S) }
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `T` is not implemented for `S`
+   |
+note: the trait `T` is implemented for `S`, but that implementation is not `const`
+  --> $DIR/tilde-const-invalid-places.rs:15:26
+   |
+LL | fn rpit_assoc_bound() -> impl IntoIterator<Item: ~const T> { Some(S) }
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: the trait `T` is implemented for `S`
+
+error: aborting due to 9 previous errors
+
+For more information about this error, try `rustc --explain E0277`.
