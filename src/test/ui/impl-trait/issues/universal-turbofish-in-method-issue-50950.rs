@@ -12,6 +12,6 @@ struct TestEvent(i32);
 fn main() {
     let mut evt = EventHandler {};
     evt.handle_event::<TestEvent, fn(TestEvent)>(|_evt| {
-        //~^ ERROR cannot provide explicit generic arguments
+        //~^ ERROR takes 1 generic argument but 2 generic arguments were supplied
     });
 }

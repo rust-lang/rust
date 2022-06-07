@@ -383,8 +383,6 @@ declare_features! (
     (active, exclusive_range_pattern, "1.11.0", Some(37854), None),
     /// Allows exhaustive pattern matching on types that contain uninhabited types.
     (active, exhaustive_patterns, "1.13.0", Some(51085), None),
-    /// Allows explicit generic arguments specification with `impl Trait` present.
-    (active, explicit_generic_args_with_impl_trait, "1.56.0", Some(83701), None),
     /// Allows defining `extern type`s.
     (active, extern_types, "1.23.0", Some(43467), None),
     /// Allows the use of `#[ffi_const]` on foreign functions.

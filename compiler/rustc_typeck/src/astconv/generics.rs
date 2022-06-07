@@ -3,7 +3,7 @@ use crate::astconv::{
     AstConv, CreateSubstsForGenericArgsCtxt, ExplicitLateBound, GenericArgCountMismatch,
     GenericArgCountResult, GenericArgPosition,
 };
-use crate::errors::{AssocTypeBindingNotAllowed, ExplicitGenericArgsWithImplTrait};
+use crate::errors::AssocTypeBindingNotAllowed;
 use crate::structured_errors::{GenericArgsInfo, StructuredDiagnostic, WrongNumberOfGenericArgs};
 use rustc_ast::ast::ParamKindOrd;
 use rustc_errors::{struct_span_err, Applicability, Diagnostic, MultiSpan};
@@ -397,7 +397,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         is_method_call: IsMethodCall,
     ) -> GenericArgCountResult {
         let empty_args = hir::GenericArgs::none();
-        let suppress_mismatch = Self::check_impl_trait(tcx, seg, generics);
 
         let gen_args = seg.args.unwrap_or(&empty_args);
         let gen_pos = if is_method_call == IsMethodCall::Yes {
@@ -406,7 +405,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             GenericArgPosition::Value
         };
         let has_self = generics.parent.is_none() && generics.has_self;
-        let infer_args = seg.infer_args || suppress_mismatch;
+        let infer_args = seg.infer_args;
 
         Self::check_generic_arg_count(
             tcx, span, def_id, seg, generics, gen_args, gen_pos, has_self, infer_args,
@@ -431,19 +430,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let param_counts = gen_params.own_counts();
 
         // Subtracting from param count to ensure type params synthesized from `impl Trait`
-        // cannot be explicitly specified even with `explicit_generic_args_with_impl_trait`
-        // feature enabled.
-        let synth_type_param_count = if tcx.features().explicit_generic_args_with_impl_trait {
-            gen_params
-                .params
-                .iter()
-                .filter(|param| {
-                    matches!(param.kind, ty::GenericParamDefKind::Type { synthetic: true, .. })
-                })
-                .count()
-        } else {
-            0
-        };
+        // cannot be explicitly specified.
+        let synth_type_param_count = gen_params
+            .params
+            .iter()
+            .filter(|param| {
+                matches!(param.kind, ty::GenericParamDefKind::Type { synthetic: true, .. })
+            })
+            .count();
         let named_type_param_count =
             param_counts.types - has_self as usize - synth_type_param_count;
         let infer_lifetimes =
@@ -609,40 +603,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 GenericArgCountMismatch { reported: Some(reported), invalid_args }
             }),
         }
-    }
-
-    /// Report error if there is an explicit type parameter when using `impl Trait`.
-    pub(crate) fn check_impl_trait(
-        tcx: TyCtxt<'_>,
-        seg: &hir::PathSegment<'_>,
-        generics: &ty::Generics,
-    ) -> bool {
-        if seg.infer_args || tcx.features().explicit_generic_args_with_impl_trait {
-            return false;
-        }
-
-        let impl_trait = generics.has_impl_trait();
-
-        if impl_trait {
-            let spans = seg
-                .args()
-                .args
-                .iter()
-                .filter_map(|arg| match arg {
-                    GenericArg::Infer(_) | GenericArg::Type(_) | GenericArg::Const(_) => {
-                        Some(arg.span())
-                    }
-                    _ => None,
-                })
-                .collect::<Vec<_>>();
-
-            tcx.sess.emit_err(ExplicitGenericArgsWithImplTrait {
-                spans,
-                is_nightly_build: tcx.sess.is_nightly_build().then_some(()),
-            });
-        }
-
-        impl_trait
     }
 
     /// Emits an error regarding forbidden type binding associations
