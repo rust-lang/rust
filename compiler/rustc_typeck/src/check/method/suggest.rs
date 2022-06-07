@@ -327,26 +327,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     );
                 }
                 if let Some(span) = tcx.resolutions(()).confused_type_with_std_module.get(&span) {
-                    if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(*span) {
-                        err.span_suggestion(
-                            *span,
-                            "you are looking for the module in `std`, \
-                                     not the primitive type",
-                            format!("std::{}", snippet),
-                            Applicability::MachineApplicable,
-                        );
-                    }
+                    err.span_suggestion(
+                        span.shrink_to_lo(),
+                        "you are looking for the module in `std`, not the primitive type",
+                        "std::".to_string(),
+                        Applicability::MachineApplicable,
+                    );
                 }
                 if let ty::RawPtr(_) = &actual.kind() {
                     err.note(
                         "try using `<*const T>::as_ref()` to get a reference to the \
-                                      type behind the pointer: https://doc.rust-lang.org/std/\
-                                      primitive.pointer.html#method.as_ref",
+                         type behind the pointer: https://doc.rust-lang.org/std/\
+                         primitive.pointer.html#method.as_ref",
                     );
                     err.note(
-                        "using `<*const T>::as_ref()` on a pointer \
-                                      which is unaligned or points to invalid \
-                                      or uninitialized memory is undefined behavior",
+                        "using `<*const T>::as_ref()` on a pointer which is unaligned or points \
+                         to invalid or uninitialized memory is undefined behavior",
                     );
                 }
 
