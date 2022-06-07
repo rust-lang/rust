@@ -131,18 +131,14 @@ declare_clippy_lint! {
     /// ### Examples
     /// ```rust
     /// # let vec = vec!["string".to_string()];
-    /// # let _ =
     /// vec.iter().cloned().take(10);
-    /// # let _ =
     /// vec.iter().cloned().last();
     /// ```
     ///
     /// Use instead:
     /// ```rust
     /// # let vec = vec!["string".to_string()];
-    /// # let _ =
     /// vec.iter().take(10).cloned();
-    /// # let _ =
     /// vec.iter().last().cloned();
     /// ```
     #[clippy::version = "1.59.0"]
@@ -590,7 +586,6 @@ declare_clippy_lint! {
     /// let vec = vec![vec![1]];
     /// let opt = Some(5);
     ///
-    /// # let _ =
     /// vec.iter().map(|x| x.iter()).flatten();
     /// opt.map(|x| Some(x * 2)).flatten();
     /// ```
@@ -599,7 +594,6 @@ declare_clippy_lint! {
     /// ```rust
     /// # let vec = vec![vec![1]];
     /// # let opt = Some(5);
-    /// # let _ =
     /// vec.iter().flat_map(|x| x.iter());
     /// opt.and_then(|x| Some(x * 2));
     /// ```
@@ -620,7 +614,7 @@ declare_clippy_lint! {
     ///
      /// ### Example
     /// ```rust
-    /// # let  _ =
+    /// # #![allow(unused)]
     /// (0_i32..10)
     ///     .filter(|n| n.checked_add(1).is_some())
     ///     .map(|n| n.checked_add(1).unwrap());
@@ -628,7 +622,7 @@ declare_clippy_lint! {
     ///
     /// Use instead:
     /// ```rust
-    /// # let _ =
+    /// # #[allow(unused)]
     /// (0_i32..10).filter_map(|n| n.checked_add(1));
     /// ```
     #[clippy::version = "1.51.0"]
@@ -721,11 +715,10 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
+    /// # #![allow(unused)]
     /// let vec = vec![1];
-    /// # let _ =
     /// vec.iter().find(|x| **x == 0).is_some();
     ///
-    /// # let _ =
     /// "hello world".find("world").is_none();
     /// ```
     ///
@@ -734,7 +727,7 @@ declare_clippy_lint! {
     /// let vec = vec![1];
     /// vec.iter().any(|x| *x == 0);
     ///
-    /// # let _ =
+    /// # #[allow(unused)]
     /// !"hello world".contains("world");
     /// ```
     #[clippy::version = "pre 1.29.0"]
@@ -1428,13 +1421,12 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// # let _ =
+    /// # #[allow(unused)]
     /// (0..3).fold(false, |acc, x| acc || x > 2);
     /// ```
     ///
     /// Use instead:
     /// ```rust
-    /// # let _ =
     /// (0..3).any(|x| x > 2);
     /// ```
     #[clippy::version = "pre 1.29.0"]
@@ -1515,14 +1507,14 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// # let _ =
-    /// (&vec![3, 4, 5]).into_iter();
+    /// # let vec = vec![3, 4, 5];
+    /// (&vec).into_iter();
     /// ```
     ///
     /// Use instead:
     /// ```rust
-    /// # let _ =
-    /// (&vec![3, 4, 5]).iter();
+    /// # let vec = vec![3, 4, 5];
+    /// (&vec).iter();
     /// ```
     #[clippy::version = "1.32.0"]
     pub INTO_ITER_ON_REF,
@@ -1931,13 +1923,13 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// # let _ =
+    /// # #[allow(unused)]
     /// "Hello".bytes().nth(3);
     /// ```
     ///
     /// Use instead:
     /// ```rust
-    /// # let _ =
+    /// # #[allow(unused)]
     /// "Hello".as_bytes().get(3);
     /// ```
     #[clippy::version = "1.52.0"]
@@ -1982,19 +1974,18 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
+    /// # #![allow(unused)]
     /// let some_vec = vec![0, 1, 2, 3];
-    /// # let _ =
+    ///
     /// some_vec.iter().count();
-    /// # let _ =
     /// &some_vec[..].iter().count();
     /// ```
     ///
     /// Use instead:
     /// ```rust
     /// let some_vec = vec![0, 1, 2, 3];
-    /// # let _ =
+    ///
     /// some_vec.len();
-    /// # let _ =
     /// &some_vec[..].len();
     /// ```
     #[clippy::version = "1.52.0"]

@@ -67,16 +67,14 @@ declare_clippy_lint! {
     ///
     /// Use instead:
     /// ```rust
+    /// # #![allow(unused)]
+    ///
     /// # let x = vec![0; 5];
     /// # let y = [0, 1, 2, 3];
-    /// # let _ =
     /// x.get(2);
-    /// # let _ =
     /// x.get(2..100);
     ///
-    /// # let _ =
     /// y.get(10);
-    /// # let _ =
     /// y.get(10..100);
     /// ```
     #[clippy::version = "pre 1.29.0"]

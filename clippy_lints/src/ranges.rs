@@ -27,15 +27,13 @@ declare_clippy_lint! {
     /// ### Example
     /// ```rust
     /// # let x = vec![1];
-    /// # let _ =
-    /// x.iter().zip(0..x.len());
+    /// let _ = x.iter().zip(0..x.len());
     /// ```
     ///
     /// Use instead:
     /// ```rust
     /// # let x = vec![1];
-    /// # let _ =
-    /// x.iter().enumerate();
+    /// let _ = x.iter().enumerate();
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub RANGE_ZIP_WITH_LEN,

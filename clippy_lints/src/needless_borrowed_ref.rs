@@ -29,14 +29,14 @@ declare_clippy_lint! {
     /// ### Example
     /// ```rust
     /// let mut v = Vec::<String>::new();
-    /// # let _ =
+    /// # #[allow(unused)]
     /// v.iter_mut().filter(|&ref a| a.is_empty());
     /// ```
     ///
     /// Use instead:
     /// ```rust
     /// let mut v = Vec::<String>::new();
-    /// # let _ =
+    /// # #[allow(unused)]
     /// v.iter_mut().filter(|a| a.is_empty());
     /// ```
     #[clippy::version = "pre 1.29.0"]

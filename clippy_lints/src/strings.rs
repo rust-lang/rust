@@ -224,13 +224,11 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// # let _ =
     /// std::str::from_utf8(&"Hello World!".as_bytes()[6..11]).unwrap();
     /// ```
     ///
     /// Use instead:
     /// ```rust
-    /// # let _ =
     /// &"Hello World!"[6..11];
     /// ```
     #[clippy::version = "1.50.0"]

@@ -220,15 +220,13 @@ declare_clippy_lint! {
     /// ### Example
     /// ```rust
     /// fn fun() -> i32 { 1 }
-    /// # let _ =
-    /// fun as i64;
+    /// let _ = fun as i64;
     /// ```
     ///
     /// Use instead:
     /// ```rust
     /// # fn fun() -> i32 { 1 }
-    /// # let _ =
-    /// fun as usize;
+    /// let _ = fun as usize;
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub FN_TO_NUMERIC_CAST,
@@ -251,8 +249,7 @@ declare_clippy_lint! {
     /// fn fn1() -> i16 {
     ///     1
     /// };
-    /// # let _ =
-    /// fn1 as i32;
+    /// let _ = fn1 as i32;
     /// ```
     ///
     /// Use instead:
@@ -287,8 +284,7 @@ declare_clippy_lint! {
     /// fn fn1() -> u16 {
     ///     1
     /// };
-    /// # let _ =
-    /// fn1 as usize;
+    /// let _ = fn1 as usize;
     /// ```
     ///
     /// Use instead:
@@ -297,8 +293,7 @@ declare_clippy_lint! {
     /// fn fn2() -> u16 {
     ///     1
     /// };
-    /// # let _ =
-    /// fn2() as usize;
+    /// let _ = fn2() as usize;
     ///
     /// // or
     ///
@@ -306,8 +301,7 @@ declare_clippy_lint! {
     /// fn fn3() -> u16 {
     ///     1
     /// }
-    /// # let _ =
-    /// fn3 as fn() -> u16;
+    /// let _ = fn3 as fn() -> u16;
     /// ```
     #[clippy::version = "1.58.0"]
     pub FN_TO_NUMERIC_CAST_ANY,

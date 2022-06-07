@@ -22,18 +22,14 @@ declare_clippy_lint! {
     /// ### Example
     /// ```rust
     /// # let foo: u32 = 5;
-    /// # let _ =
-    /// foo <= i32::MAX as u32
-    /// # ;
+    /// foo <= i32::MAX as u32;
     /// ```
     ///
-    /// Could be written:
-    ///
+    /// Use instead:
     /// ```rust
     /// # let foo = 1;
-    /// # let _ =
-    /// i32::try_from(foo).is_ok()
-    /// # ;
+    /// # #[allow(unused)]
+    /// i32::try_from(foo).is_ok();
     /// ```
     #[clippy::version = "1.37.0"]
     pub CHECKED_CONVERSIONS,
