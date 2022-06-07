@@ -16,7 +16,8 @@
     clippy::new_without_default,
     clippy::single_match,
     clippy::useless_format,
-    clippy::derive_partial_eq_without_eq
+    clippy::derive_partial_eq_without_eq,
+    clippy::too_many_arguments
 )]
 
 extern crate rustc_apfloat;
