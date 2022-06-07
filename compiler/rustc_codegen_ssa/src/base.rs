@@ -216,11 +216,12 @@ pub fn unsize_ptr<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             let mut result = None;
             for i in 0..src_layout.fields.count() {
                 let src_f = src_layout.field(bx.cx(), i);
-                assert_eq!(src_layout.fields.offset(i).bytes(), 0);
-                assert_eq!(dst_layout.fields.offset(i).bytes(), 0);
                 if src_f.is_zst() {
                     continue;
                 }
+
+                assert_eq!(src_layout.fields.offset(i).bytes(), 0);
+                assert_eq!(dst_layout.fields.offset(i).bytes(), 0);
                 assert_eq!(src_layout.size, src_f.size);
 
                 let dst_f = dst_layout.field(bx.cx(), i);
@@ -716,7 +717,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
                     &ongoing_codegen.coordinator_send,
                     CachedModuleCodegen {
                         name: cgu.name().to_string(),
-                        source: cgu.work_product(tcx),
+                        source: cgu.previous_work_product(tcx),
                     },
                 );
                 true
@@ -727,7 +728,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
                     &ongoing_codegen.coordinator_send,
                     CachedModuleCodegen {
                         name: cgu.name().to_string(),
-                        source: cgu.work_product(tcx),
+                        source: cgu.previous_work_product(tcx),
                     },
                 );
                 true

@@ -9,10 +9,9 @@ use rustc_attr::{self as attr, ConstStability, Deprecation, Stability};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Applicability, Diagnostic};
 use rustc_feature::GateIssue;
-use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::{self, HirId};
+use rustc_hir::{self as hir, HirId};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_session::lint::builtin::{DEPRECATED, DEPRECATED_IN_FUTURE, SOFT_UNSTABLE};
 use rustc_session::lint::{BuiltinLintDiagnostics, Level, Lint, LintBuffer};
@@ -306,6 +305,14 @@ fn suggestion_for_allocator_api(
     None
 }
 
+/// An override option for eval_stability.
+pub enum AllowUnstable {
+    /// Don't emit an unstable error for the item
+    Yes,
+    /// Handle the item normally
+    No,
+}
+
 impl<'tcx> TyCtxt<'tcx> {
     /// Evaluates the stability of an item.
     ///
@@ -322,6 +329,28 @@ impl<'tcx> TyCtxt<'tcx> {
         id: Option<HirId>,
         span: Span,
         method_span: Option<Span>,
+    ) -> EvalResult {
+        self.eval_stability_allow_unstable(def_id, id, span, method_span, AllowUnstable::No)
+    }
+
+    /// Evaluates the stability of an item.
+    ///
+    /// Returns `EvalResult::Allow` if the item is stable, or unstable but the corresponding
+    /// `#![feature]` has been provided. Returns `EvalResult::Deny` which describes the offending
+    /// unstable feature otherwise.
+    ///
+    /// If `id` is `Some(_)`, this function will also check if the item at `def_id` has been
+    /// deprecated. If the item is indeed deprecated, we will emit a deprecation lint attached to
+    /// `id`.
+    ///
+    /// Pass `AllowUnstable::Yes` to `allow_unstable` to force an unstable item to be allowed. Deprecation warnings will be emitted normally.
+    pub fn eval_stability_allow_unstable(
+        self,
+        def_id: DefId,
+        id: Option<HirId>,
+        span: Span,
+        method_span: Option<Span>,
+        allow_unstable: AllowUnstable,
     ) -> EvalResult {
         // Deprecated attributes apply in-crate and cross-crate.
         if let Some(id) = id {
@@ -419,6 +448,10 @@ impl<'tcx> TyCtxt<'tcx> {
                     }
                 }
 
+                if matches!(allow_unstable, AllowUnstable::Yes) {
+                    return EvalResult::Allow;
+                }
+
                 let suggestion = suggestion_for_allocator_api(self, def_id, span, feature);
                 EvalResult::Deny { feature, reason, issue, suggestion, is_soft }
             }
@@ -445,11 +478,38 @@ impl<'tcx> TyCtxt<'tcx> {
         span: Span,
         method_span: Option<Span>,
     ) {
-        self.check_optional_stability(def_id, id, span, method_span, |span, def_id| {
-            // The API could be uncallable for other reasons, for example when a private module
-            // was referenced.
-            self.sess.delay_span_bug(span, &format!("encountered unmarked API: {:?}", def_id));
-        })
+        self.check_stability_allow_unstable(def_id, id, span, method_span, AllowUnstable::No)
+    }
+
+    /// Checks if an item is stable or error out.
+    ///
+    /// If the item defined by `def_id` is unstable and the corresponding `#![feature]` does not
+    /// exist, emits an error.
+    ///
+    /// This function will also check if the item is deprecated.
+    /// If so, and `id` is not `None`, a deprecated lint attached to `id` will be emitted.
+    ///
+    /// Pass `AllowUnstable::Yes` to `allow_unstable` to force an unstable item to be allowed. Deprecation warnings will be emitted normally.
+    pub fn check_stability_allow_unstable(
+        self,
+        def_id: DefId,
+        id: Option<HirId>,
+        span: Span,
+        method_span: Option<Span>,
+        allow_unstable: AllowUnstable,
+    ) {
+        self.check_optional_stability(
+            def_id,
+            id,
+            span,
+            method_span,
+            allow_unstable,
+            |span, def_id| {
+                // The API could be uncallable for other reasons, for example when a private module
+                // was referenced.
+                self.sess.delay_span_bug(span, &format!("encountered unmarked API: {:?}", def_id));
+            },
+        )
     }
 
     /// Like `check_stability`, except that we permit items to have custom behaviour for
@@ -462,6 +522,7 @@ impl<'tcx> TyCtxt<'tcx> {
         id: Option<HirId>,
         span: Span,
         method_span: Option<Span>,
+        allow_unstable: AllowUnstable,
         unmarked: impl FnOnce(Span, DefId),
     ) {
         let soft_handler = |lint, span, msg: &_| {
@@ -469,7 +530,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 lint.build(msg).emit();
             })
         };
-        match self.eval_stability(def_id, id, span, method_span) {
+        match self.eval_stability_allow_unstable(def_id, id, span, method_span, allow_unstable) {
             EvalResult::Allow => {}
             EvalResult::Deny { feature, reason, issue, suggestion, is_soft } => report_unstable(
                 self.sess,

@@ -336,7 +336,7 @@ impl<'tcx> CodegenUnit<'tcx> {
         WorkProductId::from_cgu_name(self.name().as_str())
     }
 
-    pub fn work_product(&self, tcx: TyCtxt<'_>) -> WorkProduct {
+    pub fn previous_work_product(&self, tcx: TyCtxt<'_>) -> WorkProduct {
         let work_product_id = self.work_product_id();
         tcx.dep_graph
             .previous_work_product(&work_product_id)
