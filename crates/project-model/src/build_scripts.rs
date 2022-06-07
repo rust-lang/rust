@@ -147,8 +147,8 @@ impl WorkspaceBuildScripts {
                         let out_dir = message.out_dir.into_os_string();
                         if !out_dir.is_empty() {
                             let data = outputs[package].get_or_insert_with(Default::default);
-                            let out_dir = Some(AbsPathBuf::assert(PathBuf::from(out_dir)));
-                            (data.out_dir, data.cfgs) = (out_dir, cfgs);
+                            data.out_dir = Some(AbsPathBuf::assert(PathBuf::from(out_dir)));
+                            data.cfgs = cfgs;
                         }
                         if !message.env.is_empty() {
                             outputs[package].get_or_insert_with(Default::default).envs =
