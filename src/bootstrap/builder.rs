@@ -873,11 +873,20 @@ impl<'a> Builder<'a> {
     pub(crate) fn download_component(&self, url: &str, dest_path: &Path, help_on_error: &str) {
         // Use a temporary file in case we crash while downloading, to avoid a corrupt download in cache/.
         let tempfile = self.tempdir().join(dest_path.file_name().unwrap());
-        self.download_with_retries(&tempfile, url, help_on_error);
+        // While bootstrap itself only supports http and https downloads, downstream forks might
+        // need to download components from other protocols. The match allows them adding more
+        // protocols without worrying about merge conficts if we change the HTTP implementation.
+        match url.split_once("://").map(|(proto, _)| proto) {
+            Some("http") | Some("https") => {
+                self.download_http_with_retries(&tempfile, url, help_on_error)
+            }
+            Some(other) => panic!("unsupported protocol {other} in {url}"),
+            None => panic!("no protocol in {url}"),
+        }
         t!(std::fs::rename(&tempfile, dest_path));
     }
 
-    fn download_with_retries(&self, tempfile: &Path, url: &str, help_on_error: &str) {
+    fn download_http_with_retries(&self, tempfile: &Path, url: &str, help_on_error: &str) {
         println!("downloading {}", url);
         // Try curl. If that fails and we are on windows, fallback to PowerShell.
         let mut curl = Command::new("curl");
