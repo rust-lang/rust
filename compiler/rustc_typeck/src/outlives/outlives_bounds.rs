@@ -1,9 +1,8 @@
 use rustc_hir as hir;
-use rustc_infer::traits::TraitEngineExt as _;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::source_map::Span;
-use rustc_trait_selection::infer::canonical::OriginalQueryValues;
 use rustc_trait_selection::infer::InferCtxt;
+use rustc_trait_selection::traits::query::type_op::{self, TypeOp, TypeOpOutput};
 use rustc_trait_selection::traits::query::NoSolution;
 use rustc_trait_selection::traits::{FulfillmentContext, ObligationCause, TraitEngine};
 
@@ -41,6 +40,7 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'tcx> {
     /// - `ty`, the type that we are supposed to assume is WF.
     /// - `span`, a span to use when normalizing, hopefully not important,
     ///   might be useful if a `bug!` occurs.
+    #[instrument(level = "debug", skip(self, param_env, body_id, span))]
     fn implied_outlives_bounds(
         &self,
         param_env: ty::ParamEnv<'tcx>,
@@ -48,11 +48,10 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'tcx> {
         ty: Ty<'tcx>,
         span: Span,
     ) -> Vec<OutlivesBound<'tcx>> {
-        debug!("implied_outlives_bounds(ty = {:?})", ty);
-
-        let mut orig_values = OriginalQueryValues::default();
-        let key = self.canonicalize_query(param_env.and(ty), &mut orig_values);
-        let result = match self.tcx.implied_outlives_bounds(key) {
+        let result = param_env
+            .and(type_op::implied_outlives_bounds::ImpliedOutlivesBounds { ty })
+            .fully_perform(self);
+        let result = match result {
             Ok(r) => r,
             Err(NoSolution) => {
                 self.tcx.sess.delay_span_bug(
@@ -62,32 +61,34 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'tcx> {
                 return vec![];
             }
         };
-        assert!(result.value.is_proven());
 
-        let result = self.instantiate_query_response_and_region_obligations(
-            &ObligationCause::misc(span, body_id),
-            param_env,
-            &orig_values,
-            result,
-        );
-        debug!("implied_outlives_bounds for {:?}: {:#?}", ty, result);
-        let Ok(result) = result else {
-            self.tcx.sess.delay_span_bug(span, "implied_outlives_bounds failed to instantiate");
-            return vec![];
+        let TypeOpOutput { output, constraints, .. } = result;
+
+        if let Some(constraints) = constraints {
+            // Instantiation may have produced new inference variables and constraints on those
+            // variables. Process these constraints.
+            let mut fulfill_cx = FulfillmentContext::new();
+            let cause = ObligationCause::misc(span, body_id);
+            for &constraint in &constraints.outlives {
+                let obligation = self.query_outlives_constraint_to_obligation(
+                    constraint,
+                    cause.clone(),
+                    param_env,
+                );
+                fulfill_cx.register_predicate_obligation(self, obligation);
+            }
+            if !constraints.member_constraints.is_empty() {
+                span_bug!(span, "{:#?}", constraints.member_constraints);
+            }
+            let errors = fulfill_cx.select_all_or_error(self);
+            if !errors.is_empty() {
+                self.tcx.sess.delay_span_bug(
+                    span,
+                    "implied_outlives_bounds failed to solve obligations from instantiation",
+                );
+            }
         };
 
-        // Instantiation may have produced new inference variables and constraints on those
-        // variables. Process these constraints.
-        let mut fulfill_cx = FulfillmentContext::new();
-        fulfill_cx.register_predicate_obligations(self, result.obligations);
-        let errors = fulfill_cx.select_all_or_error(self);
-        if !errors.is_empty() {
-            self.tcx.sess.delay_span_bug(
-                span,
-                "implied_outlives_bounds failed to solve obligations from instantiation",
-            );
-        }
-
-        result.value
+        output
     }
 }

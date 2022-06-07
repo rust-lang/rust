@@ -334,8 +334,8 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
     /// either the return type of the MIR or one of its arguments. At
     /// the same time, compute and add any implied bounds that come
     /// from this local.
+    #[instrument(level = "debug", skip(self))]
     fn add_implied_bounds(&mut self, ty: Ty<'tcx>) -> Option<Rc<QueryRegionConstraints<'tcx>>> {
-        debug!("add_implied_bounds(ty={:?})", ty);
         let TypeOpOutput { output: bounds, constraints, .. } = self
             .param_env
             .and(type_op::implied_outlives_bounds::ImpliedOutlivesBounds { ty })

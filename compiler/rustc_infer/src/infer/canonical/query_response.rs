@@ -547,25 +547,34 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     ) -> impl Iterator<Item = PredicateObligation<'tcx>> + 'a + Captures<'tcx> {
         unsubstituted_region_constraints.iter().map(move |&constraint| {
             let predicate = substitute_value(self.tcx, result_subst, constraint);
-            let ty::OutlivesPredicate(k1, r2) = predicate.skip_binder();
-
-            let atom = match k1.unpack() {
-                GenericArgKind::Lifetime(r1) => {
-                    ty::PredicateKind::RegionOutlives(ty::OutlivesPredicate(r1, r2))
-                }
-                GenericArgKind::Type(t1) => {
-                    ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(t1, r2))
-                }
-                GenericArgKind::Const(..) => {
-                    // Consts cannot outlive one another, so we don't expect to
-                    // encounter this branch.
-                    span_bug!(cause.span, "unexpected const outlives {:?}", constraint);
-                }
-            };
-            let predicate = predicate.rebind(atom).to_predicate(self.tcx);
-
-            Obligation::new(cause.clone(), param_env, predicate)
+            self.query_outlives_constraint_to_obligation(predicate, cause.clone(), param_env)
         })
+    }
+
+    pub fn query_outlives_constraint_to_obligation(
+        &self,
+        predicate: QueryOutlivesConstraint<'tcx>,
+        cause: ObligationCause<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+    ) -> Obligation<'tcx, ty::Predicate<'tcx>> {
+        let ty::OutlivesPredicate(k1, r2) = predicate.skip_binder();
+
+        let atom = match k1.unpack() {
+            GenericArgKind::Lifetime(r1) => {
+                ty::PredicateKind::RegionOutlives(ty::OutlivesPredicate(r1, r2))
+            }
+            GenericArgKind::Type(t1) => {
+                ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(t1, r2))
+            }
+            GenericArgKind::Const(..) => {
+                // Consts cannot outlive one another, so we don't expect to
+                // encounter this branch.
+                span_bug!(cause.span, "unexpected const outlives {:?}", predicate);
+            }
+        };
+        let predicate = predicate.rebind(atom).to_predicate(self.tcx);
+
+        Obligation::new(cause, param_env, predicate)
     }
 
     /// Given two sets of values for the same set of canonical variables, unify them.

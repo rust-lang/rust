@@ -129,6 +129,7 @@ impl<'tcx> OutlivesEnvironmentExt<'tcx> for OutlivesEnvironment<'tcx> {
     /// add those assumptions into the outlives-environment.
     ///
     /// Tests: `src/test/ui/regions/regions-free-region-ordering-*.rs`
+    #[instrument(level = "debug", skip(self, infcx))]
     fn add_implied_bounds<'a>(
         &mut self,
         infcx: &InferCtxt<'a, 'tcx>,
@@ -136,11 +137,8 @@ impl<'tcx> OutlivesEnvironmentExt<'tcx> for OutlivesEnvironment<'tcx> {
         body_id: hir::HirId,
         span: Span,
     ) {
-        debug!("add_implied_bounds()");
-
         for ty in fn_sig_tys {
             let ty = infcx.resolve_vars_if_possible(ty);
-            debug!("add_implied_bounds: ty = {}", ty);
             let implied_bounds = infcx.implied_outlives_bounds(self.param_env, body_id, ty, span);
             self.add_outlives_bounds(Some(infcx), implied_bounds)
         }
