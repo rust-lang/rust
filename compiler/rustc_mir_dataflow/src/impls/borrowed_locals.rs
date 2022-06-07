@@ -85,13 +85,7 @@ where
         self.super_rvalue(rvalue, location);
 
         match rvalue {
-            mir::Rvalue::AddressOf(_mt, borrowed_place) => {
-                if !borrowed_place.is_indirect() {
-                    self.trans.gen(borrowed_place.local);
-                }
-            }
-
-            mir::Rvalue::Ref(_, _kind, borrowed_place) => {
+            mir::Rvalue::AddressOf(_, borrowed_place) | mir::Rvalue::Ref(_, _, borrowed_place) => {
                 if !borrowed_place.is_indirect() {
                     self.trans.gen(borrowed_place.local);
                 }
