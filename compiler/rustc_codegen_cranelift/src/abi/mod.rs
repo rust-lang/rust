@@ -23,6 +23,7 @@ fn clif_sig_from_fn_abi<'tcx>(
 ) -> Signature {
     let call_conv = match fn_abi.conv {
         Conv::Rust | Conv::C => default_call_conv,
+        Conv::RustCold => CallConv::Cold,
         Conv::X86_64SysV => CallConv::SystemV,
         Conv::X86_64Win64 => CallConv::WindowsFastcall,
         Conv::ArmAapcs

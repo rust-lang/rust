@@ -1163,6 +1163,7 @@ symbols! {
         rust_2024,
         rust_2024_preview,
         rust_begin_unwind,
+        rust_cold_cc,
         rust_eh_catch_typeinfo,
         rust_eh_personality,
         rust_eh_register_frames,

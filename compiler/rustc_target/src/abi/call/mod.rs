@@ -580,6 +580,11 @@ pub enum Conv {
     C,
     Rust,
 
+    /// For things unlikely to be called, where smaller caller codegen is
+    /// preferred over raw speed.
+    /// Stronger than just `#[cold]` because `fn` pointers might be incompatible.
+    RustCold,
+
     // Target-specific calling conventions.
     ArmAapcs,
     CCmseNonSecureCall,
