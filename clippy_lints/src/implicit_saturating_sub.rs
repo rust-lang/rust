@@ -16,7 +16,10 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// # let mut i: u32 = 0;
+    /// # let end: u32 = 10;
+    /// # let start: u32 = 5;
+    /// let mut i: u32 = end - start;
+    ///
     /// if i != 0 {
     ///     i -= 1;
     /// }
@@ -24,7 +27,10 @@ declare_clippy_lint! {
     ///
     /// Use instead:
     /// ```rust
-    /// # let mut i: u32 = 0;
+    /// # let end: u32 = 10;
+    /// # let start: u32 = 5;
+    /// let mut i: u32 = end - start;
+    ///
     /// i = i.saturating_sub(1);
     /// ```
     #[clippy::version = "1.44.0"]
