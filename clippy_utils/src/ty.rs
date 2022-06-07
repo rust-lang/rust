@@ -78,9 +78,9 @@ pub fn get_associated_type<'tcx>(
     cx.tcx
         .associated_items(trait_id)
         .find_by_name_and_kind(cx.tcx, Ident::from_str(name), ty::AssocKind::Type, trait_id)
-        .map(|assoc| {
+        .and_then(|assoc| {
             let proj = cx.tcx.mk_projection(assoc.def_id, cx.tcx.mk_substs_trait(ty, &[]));
-            cx.tcx.normalize_erasing_regions(cx.param_env, proj)
+            cx.tcx.try_normalize_erasing_regions(cx.param_env, proj).ok()
         })
 }
 

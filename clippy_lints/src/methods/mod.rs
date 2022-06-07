@@ -2583,8 +2583,8 @@ impl Methods {
                     },
                     _ => {},
                 },
-                (name @ "count", args @ []) => match method_call(recv) {
-                    Some(("cloned", [recv2], _)) => iter_overeager_cloned::check(cx, expr, recv2, name, args),
+                ("count", []) => match method_call(recv) {
+                    Some(("cloned", [recv2], _)) => iter_overeager_cloned::check(cx, expr, recv, recv2, true, false),
                     Some((name2 @ ("into_iter" | "iter" | "iter_mut"), [recv2], _)) => {
                         iter_count::check(cx, expr, recv2, name2);
                     },
@@ -2614,9 +2614,9 @@ impl Methods {
                     flat_map_identity::check(cx, expr, arg, span);
                     flat_map_option::check(cx, expr, arg, span);
                 },
-                (name @ "flatten", args @ []) => match method_call(recv) {
+                ("flatten", []) => match method_call(recv) {
                     Some(("map", [recv, map_arg], map_span)) => map_flatten::check(cx, expr, recv, map_arg, map_span),
-                    Some(("cloned", [recv2], _)) => iter_overeager_cloned::check(cx, expr, recv2, name, args),
+                    Some(("cloned", [recv2], _)) => iter_overeager_cloned::check(cx, expr, recv, recv2, false, true),
                     _ => {},
                 },
                 ("fold", [init, acc]) => unnecessary_fold::check(cx, expr, init, acc, span),
@@ -2636,10 +2636,10 @@ impl Methods {
                         unnecessary_join::check(cx, expr, recv, join_arg, span);
                     }
                 },
-                ("last", args @ []) | ("skip", args @ [_]) => {
+                ("last", []) | ("skip", [_]) => {
                     if let Some((name2, [recv2, args2 @ ..], _span2)) = method_call(recv) {
                         if let ("cloned", []) = (name2, args2) {
-                            iter_overeager_cloned::check(cx, expr, recv2, name, args);
+                            iter_overeager_cloned::check(cx, expr, recv, recv2, false, false);
                         }
                     }
                 },
@@ -2660,10 +2660,10 @@ impl Methods {
                     map_identity::check(cx, expr, recv, m_arg, name, span);
                 },
                 ("map_or", [def, map]) => option_map_or_none::check(cx, expr, recv, def, map),
-                (name @ "next", args @ []) => {
+                ("next", []) => {
                     if let Some((name2, [recv2, args2 @ ..], _)) = method_call(recv) {
                         match (name2, args2) {
-                            ("cloned", []) => iter_overeager_cloned::check(cx, expr, recv2, name, args),
+                            ("cloned", []) => iter_overeager_cloned::check(cx, expr, recv, recv2, false, false),
                             ("filter", [arg]) => filter_next::check(cx, expr, recv2, arg),
                             ("filter_map", [arg]) => filter_map_next::check(cx, expr, recv2, arg, self.msrv),
                             ("iter", []) => iter_next_slice::check(cx, expr, recv2),
@@ -2673,9 +2673,9 @@ impl Methods {
                         }
                     }
                 },
-                ("nth", args @ [n_arg]) => match method_call(recv) {
+                ("nth", [n_arg]) => match method_call(recv) {
                     Some(("bytes", [recv2], _)) => bytes_nth::check(cx, expr, recv2, n_arg),
-                    Some(("cloned", [recv2], _)) => iter_overeager_cloned::check(cx, expr, recv2, name, args),
+                    Some(("cloned", [recv2], _)) => iter_overeager_cloned::check(cx, expr, recv, recv2, false, false),
                     Some(("iter", [recv2], _)) => iter_nth::check(cx, expr, recv2, recv, n_arg, false),
                     Some(("iter_mut", [recv2], _)) => iter_nth::check(cx, expr, recv2, recv, n_arg, true),
                     _ => iter_nth_zero::check(cx, expr, recv, n_arg),
@@ -2698,10 +2698,10 @@ impl Methods {
                     }
                 },
                 ("step_by", [arg]) => iterator_step_by_zero::check(cx, expr, arg),
-                ("take", args @ [_arg]) => {
+                ("take", [_arg]) => {
                     if let Some((name2, [recv2, args2 @ ..], _span2)) = method_call(recv) {
                         if let ("cloned", []) = (name2, args2) {
-                            iter_overeager_cloned::check(cx, expr, recv2, name, args);
+                            iter_overeager_cloned::check(cx, expr, recv, recv2, false, false);
                         }
                     }
                 },
