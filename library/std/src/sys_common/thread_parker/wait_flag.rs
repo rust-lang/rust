@@ -25,7 +25,7 @@
 
 use crate::pin::Pin;
 use crate::sync::atomic::AtomicI8;
-use crate::sync::atomic::Ordering::{Relaxed, SeqCst};
+use crate::sync::atomic::Ordering::{Acquire, Relaxed, Release};
 use crate::sys::wait_flag::WaitFlag;
 use crate::time::Duration;
 
@@ -47,7 +47,7 @@ impl Parker {
 
     // This implementation doesn't require `unsafe` and `Pin`, but other implementations do.
     pub unsafe fn park(self: Pin<&Self>) {
-        match self.state.fetch_sub(1, SeqCst) {
+        match self.state.fetch_sub(1, Acquire) {
             // NOTIFIED => EMPTY
             NOTIFIED => return,
             // EMPTY => PARKED
@@ -59,7 +59,7 @@ impl Parker {
         loop {
             self.wait_flag.wait();
 
-            match self.state.compare_exchange(NOTIFIED, EMPTY, SeqCst, Relaxed) {
+            match self.state.compare_exchange(NOTIFIED, EMPTY, Acquire, Relaxed) {
                 Ok(_) => return,
                 Err(PARKED) => (),
                 Err(_) => panic!("inconsistent park state"),
@@ -69,7 +69,7 @@ impl Parker {
 
     // This implementation doesn't require `unsafe` and `Pin`, but other implementations do.
     pub unsafe fn park_timeout(self: Pin<&Self>, dur: Duration) {
-        match self.state.fetch_sub(1, SeqCst) {
+        match self.state.fetch_sub(1, Acquire) {
             NOTIFIED => return,
             EMPTY => (),
             _ => panic!("inconsistent park state"),
@@ -83,9 +83,8 @@ impl Parker {
         // is protected against this by looping until the token is actually given, but
         // here we cannot easily tell.
 
-        // Use `swap` to provide acquire ordering (not strictly necessary, but all other
-        // implementations do).
-        match self.state.swap(EMPTY, SeqCst) {
+        // Use `swap` to provide acquire ordering.
+        match self.state.swap(EMPTY, Acquire) {
             NOTIFIED => (),
             PARKED => (),
             _ => panic!("inconsistent park state"),
@@ -94,7 +93,7 @@ impl Parker {
 
     // This implementation doesn't require `Pin`, but other implementations do.
     pub fn unpark(self: Pin<&Self>) {
-        let state = self.state.swap(NOTIFIED, SeqCst);
+        let state = self.state.swap(NOTIFIED, Release);
 
         if state == PARKED {
             self.wait_flag.raise();
