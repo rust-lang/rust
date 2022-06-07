@@ -10,7 +10,7 @@ use crate::sys_common::mutex as sys;
 /// A mutual exclusion primitive useful for protecting shared data
 ///
 /// This mutex will block threads waiting for the lock to become available. The
-/// mutex can created via a [`new`] constructor. Each mutex has a type parameter
+/// mutex can be created via a [`new`] constructor. Each mutex has a type parameter
 /// which represents the data that it is protecting. The data can only be accessed
 /// through the RAII guards returned from [`lock`] and [`try_lock`], which
 /// guarantees that the data is only ever accessed when the mutex is locked.
