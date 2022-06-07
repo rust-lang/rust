@@ -208,55 +208,152 @@ impl<T> Cursor<T>
 where
     T: AsRef<[u8]>,
 {
-    /// Returns the remaining slice.
+    /// Splits the underlying slice at the cursor position and returns them.
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(cursor_remaining)]
+    /// #![feature(cursor_split)]
     /// use std::io::Cursor;
     ///
     /// let mut buff = Cursor::new(vec![1, 2, 3, 4, 5]);
     ///
-    /// assert_eq!(buff.remaining_slice(), &[1, 2, 3, 4, 5]);
+    /// assert_eq!(buff.split(), ([].as_slice(), [1, 2, 3, 4, 5].as_slice()));
     ///
     /// buff.set_position(2);
-    /// assert_eq!(buff.remaining_slice(), &[3, 4, 5]);
-    ///
-    /// buff.set_position(4);
-    /// assert_eq!(buff.remaining_slice(), &[5]);
+    /// assert_eq!(buff.split(), ([1, 2].as_slice(), [3, 4, 5].as_slice()));
     ///
     /// buff.set_position(6);
-    /// assert_eq!(buff.remaining_slice(), &[]);
+    /// assert_eq!(buff.split(), ([1, 2, 3, 4, 5].as_slice(), [].as_slice()));
     /// ```
-    #[unstable(feature = "cursor_remaining", issue = "86369")]
-    pub fn remaining_slice(&self) -> &[u8] {
-        let len = self.pos.min(self.inner.as_ref().len() as u64);
-        &self.inner.as_ref()[(len as usize)..]
+    #[unstable(feature = "cursor_split", issue = "86369")]
+    pub fn split(&self) -> (&[u8], &[u8]) {
+        let slice = self.inner.as_ref();
+        let pos = self.pos.min(slice.len() as u64);
+        slice.split_at(pos as usize)
     }
 
-    /// Returns `true` if the remaining slice is empty.
+    /// Returns the slice before the cursor position.
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(cursor_remaining)]
+    /// #![feature(cursor_split)]
     /// use std::io::Cursor;
     ///
     /// let mut buff = Cursor::new(vec![1, 2, 3, 4, 5]);
     ///
+    /// assert_eq!(buff.before(), &[]);
+    ///
     /// buff.set_position(2);
-    /// assert!(!buff.is_empty());
+    /// assert_eq!(buff.before(), &[1, 2]);
     ///
-    /// buff.set_position(5);
-    /// assert!(buff.is_empty());
-    ///
-    /// buff.set_position(10);
-    /// assert!(buff.is_empty());
+    /// buff.set_position(6);
+    /// assert_eq!(buff.before(), &[1, 2, 3, 4, 5]);
     /// ```
-    #[unstable(feature = "cursor_remaining", issue = "86369")]
-    pub fn is_empty(&self) -> bool {
-        self.pos >= self.inner.as_ref().len() as u64
+    #[unstable(feature = "cursor_split", issue = "86369")]
+    pub fn before(&self) -> &[u8] {
+        self.split().0
+    }
+
+    /// Returns the slice after the cursor position.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(cursor_split)]
+    /// use std::io::Cursor;
+    ///
+    /// let mut buff = Cursor::new(vec![1, 2, 3, 4, 5]);
+    ///
+    /// assert_eq!(buff.after(), &[1, 2, 3, 4, 5]);
+    ///
+    /// buff.set_position(2);
+    /// assert_eq!(buff.after(), &[3, 4, 5]);
+    ///
+    /// buff.set_position(6);
+    /// assert_eq!(buff.after(), &[]);
+    /// ```
+    #[unstable(feature = "cursor_split", issue = "86369")]
+    pub fn after(&self) -> &[u8] {
+        self.split().1
+    }
+}
+
+impl<T> Cursor<T>
+where
+    T: AsMut<[u8]>,
+{
+    /// Splits the underlying slice at the cursor position and returns them
+    /// mutably.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(cursor_split)]
+    /// use std::io::Cursor;
+    ///
+    /// let mut buff = Cursor::new(vec![1, 2, 3, 4, 5]);
+    ///
+    /// assert_eq!(buff.split_mut(), ([].as_mut_slice(), [1, 2, 3, 4, 5].as_mut_slice()));
+    ///
+    /// buff.set_position(2);
+    /// assert_eq!(buff.split_mut(), ([1, 2].as_mut_slice(), [3, 4, 5].as_mut_slice()));
+    ///
+    /// buff.set_position(6);
+    /// assert_eq!(buff.split_mut(), ([1, 2, 3, 4, 5].as_mut_slice(), [].as_mut_slice()));
+    /// ```
+    #[unstable(feature = "cursor_split", issue = "86369")]
+    pub fn split_mut(&mut self) -> (&mut [u8], &mut [u8]) {
+        let slice = self.inner.as_mut();
+        let pos = self.pos.min(slice.len() as u64);
+        slice.split_at_mut(pos as usize)
+    }
+
+    /// Returns the mutable slice before the cursor position.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(cursor_split)]
+    /// use std::io::Cursor;
+    ///
+    /// let mut buff = Cursor::new(vec![1, 2, 3, 4, 5]);
+    ///
+    /// assert_eq!(buff.before_mut(), &[]);
+    ///
+    /// buff.set_position(2);
+    /// assert_eq!(buff.before_mut(), &[1, 2]);
+    ///
+    /// buff.set_position(6);
+    /// assert_eq!(buff.before_mut(), &[1, 2, 3, 4, 5]);
+    /// ```
+    #[unstable(feature = "cursor_split", issue = "86369")]
+    pub fn before_mut(&mut self) -> &mut [u8] {
+        self.split_mut().0
+    }
+
+    /// Returns the mutable slice after the cursor position.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(cursor_split)]
+    /// use std::io::Cursor;
+    ///
+    /// let mut buff = Cursor::new(vec![1, 2, 3, 4, 5]);
+    ///
+    /// assert_eq!(buff.after_mut(), &[1, 2, 3, 4, 5]);
+    ///
+    /// buff.set_position(2);
+    /// assert_eq!(buff.after_mut(), &[3, 4, 5]);
+    ///
+    /// buff.set_position(6);
+    /// assert_eq!(buff.after_mut(), &[]);
+    /// ```
+    #[unstable(feature = "cursor_split", issue = "86369")]
+    pub fn after_mut(&mut self) -> &mut [u8] {
+        self.split_mut().1
     }
 }
 
@@ -318,7 +415,7 @@ where
     T: AsRef<[u8]>,
 {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        let n = Read::read(&mut self.remaining_slice(), buf)?;
+        let n = Read::read(&mut self.after(), buf)?;
         self.pos += n as u64;
         Ok(n)
     }
@@ -351,7 +448,7 @@ where
 
     fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
         let n = buf.len();
-        Read::read_exact(&mut self.remaining_slice(), buf)?;
+        Read::read_exact(&mut self.after(), buf)?;
         self.pos += n as u64;
         Ok(())
     }
@@ -363,7 +460,7 @@ where
     T: AsRef<[u8]>,
 {
     fn fill_buf(&mut self) -> io::Result<&[u8]> {
-        Ok(self.remaining_slice())
+        Ok(self.after())
     }
     fn consume(&mut self, amt: usize) {
         self.pos += amt as u64;
