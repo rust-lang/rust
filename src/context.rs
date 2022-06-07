@@ -35,6 +35,7 @@ pub struct CodegenCx<'gcc, 'tcx> {
     pub normal_function_addresses: RefCell<FxHashSet<RValue<'gcc>>>,
 
     pub functions: RefCell<FxHashMap<String, Function<'gcc>>>,
+    pub intrinsics: RefCell<FxHashMap<String, Function<'gcc>>>,
 
     pub tls_model: gccjit::TlsModel,
 
@@ -53,10 +54,15 @@ pub struct CodegenCx<'gcc, 'tcx> {
     pub u128_type: Type<'gcc>,
     pub usize_type: Type<'gcc>,
 
+    pub char_type: Type<'gcc>,
+    pub uchar_type: Type<'gcc>,
+    pub short_type: Type<'gcc>,
+    pub ushort_type: Type<'gcc>,
     pub int_type: Type<'gcc>,
     pub uint_type: Type<'gcc>,
     pub long_type: Type<'gcc>,
     pub ulong_type: Type<'gcc>,
+    pub longlong_type: Type<'gcc>,
     pub ulonglong_type: Type<'gcc>,
     pub sizet_type: Type<'gcc>,
 
@@ -145,10 +151,15 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         let float_type = context.new_type::<f32>();
         let double_type = context.new_type::<f64>();
 
+        let char_type = context.new_c_type(CType::Char);
+        let uchar_type = context.new_c_type(CType::UChar);
+        let short_type = context.new_c_type(CType::Short);
+        let ushort_type = context.new_c_type(CType::UShort);
         let int_type = context.new_c_type(CType::Int);
         let uint_type = context.new_c_type(CType::UInt);
         let long_type = context.new_c_type(CType::Long);
         let ulong_type = context.new_c_type(CType::ULong);
+        let longlong_type = context.new_c_type(CType::LongLong);
         let ulonglong_type = context.new_c_type(CType::ULongLong);
         let sizet_type = context.new_c_type(CType::SizeT);
 
@@ -184,6 +195,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             current_func: RefCell::new(None),
             normal_function_addresses: Default::default(),
             functions: RefCell::new(functions),
+            intrinsics: RefCell::new(FxHashMap::default()),
 
             tls_model,
 
@@ -200,10 +212,15 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             u32_type,
             u64_type,
             u128_type,
+            char_type,
+            uchar_type,
+            short_type,
+            ushort_type,
             int_type,
             uint_type,
             long_type,
             ulong_type,
+            longlong_type,
             ulonglong_type,
             sizet_type,
 
@@ -269,15 +286,24 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     }
 
     pub fn is_native_int_type_or_bool(&self, typ: Type<'gcc>) -> bool {
-        self.is_native_int_type(typ) || typ == self.bool_type
+        self.is_native_int_type(typ) || typ.is_compatible_with(self.bool_type)
     }
 
     pub fn is_int_type_or_bool(&self, typ: Type<'gcc>) -> bool {
-        self.is_native_int_type(typ) || self.is_non_native_int_type(typ) || typ == self.bool_type
+        self.is_native_int_type(typ) || self.is_non_native_int_type(typ) || typ.is_compatible_with(self.bool_type)
     }
 
     pub fn sess(&self) -> &Session {
         &self.tcx.sess
+    }
+
+    pub fn bitcast_if_needed(&self, value: RValue<'gcc>, expected_type: Type<'gcc>) -> RValue<'gcc> {
+        if value.get_type() != expected_type {
+            self.context.new_bitcast(None, value, expected_type)
+        }
+        else {
+            value
+        }
     }
 }
 
@@ -306,8 +332,16 @@ impl<'gcc, 'tcx> MiscMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     }
 
     fn get_fn_addr(&self, instance: Instance<'tcx>) -> RValue<'gcc> {
-        let func = get_fn(self, instance);
-        let func = self.rvalue_as_function(func);
+        let func_name = self.tcx.symbol_name(instance).name;
+
+        let func =
+            if self.intrinsics.borrow().contains_key(func_name) {
+                self.intrinsics.borrow()[func_name].clone()
+            }
+            else {
+                let func = get_fn(self, instance);
+                self.rvalue_as_function(func)
+            };
         let ptr = func.get_address(None);
 
         // TODO(antoyo): don't do this twice: i.e. in declare_fn and here.
