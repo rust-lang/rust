@@ -27,7 +27,8 @@ use rustc_middle::ty::codec::TyEncoder;
 use rustc_middle::ty::fast_reject::{self, SimplifiedType, TreatParams};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, SymbolName, Ty, TyCtxt};
-use rustc_serialize::{opaque, Encodable, Encoder};
+use rustc_serialize::opaque::MemEncoder;
+use rustc_serialize::{Encodable, Encoder};
 use rustc_session::config::CrateType;
 use rustc_session::cstore::{ForeignModule, LinkagePreference, NativeLib};
 use rustc_span::hygiene::{ExpnIndex, HygieneEncodeContext, MacroKind};
@@ -43,7 +44,7 @@ use std::num::NonZeroUsize;
 use tracing::{debug, trace};
 
 pub(super) struct EncodeContext<'a, 'tcx> {
-    opaque: opaque::Encoder,
+    opaque: MemEncoder,
     tcx: TyCtxt<'tcx>,
     feat: &'tcx rustc_feature::Features,
 
@@ -2181,7 +2182,7 @@ pub fn encode_metadata(tcx: TyCtxt<'_>) -> EncodedMetadata {
 }
 
 fn encode_metadata_impl(tcx: TyCtxt<'_>) -> EncodedMetadata {
-    let mut encoder = opaque::Encoder::new();
+    let mut encoder = MemEncoder::new();
     encoder.emit_raw_bytes(METADATA_HEADER);
 
     // Will be filled with the root position after encoding everything.

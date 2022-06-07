@@ -17,7 +17,7 @@ use rustc_middle::hir::map::Map;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_serialize::{
-    opaque::{Decoder, FileEncoder},
+    opaque::{FileEncoder, MemDecoder},
     Decodable, Encodable,
 };
 use rustc_session::getopts;
@@ -336,7 +336,7 @@ pub(crate) fn load_call_locations(
         let mut all_calls: AllCallLocations = FxHashMap::default();
         for path in with_examples {
             let bytes = fs::read(&path).map_err(|e| format!("{} (for path {})", e, path))?;
-            let mut decoder = Decoder::new(&bytes, 0);
+            let mut decoder = MemDecoder::new(&bytes, 0);
             let calls = AllCallLocations::decode(&mut decoder);
 
             for (function, fn_calls) in calls.into_iter() {
