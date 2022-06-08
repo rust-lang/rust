@@ -1,3 +1,8 @@
+//! lib-proc-macro diagnostic
+//!
+//! Copy from <https://github.com/rust-lang/rust/blob/e45d9973b2665897a768312e971b82cc62633103/src/libproc_macro/diagnostic.rs>
+//! augmented with removing unstable features
+
 use super::Span;
 
 /// An enum representing a diagnostic level.
