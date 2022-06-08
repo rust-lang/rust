@@ -19,6 +19,7 @@ fn test_const_from_raw_parts() {
 #[test]
 fn test() {
     unsafe {
+        #[repr(C)]
         struct Pair {
             fst: isize,
             snd: isize,

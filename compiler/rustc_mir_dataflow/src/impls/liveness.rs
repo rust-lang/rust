@@ -244,13 +244,10 @@ impl<'a, 'tcx> Analysis<'tcx> for MaybeTransitiveLiveLocals<'a> {
         // Compute the place that we are storing to, if any
         let destination = match &statement.kind {
             StatementKind::Assign(assign) => {
-                if assign.1.is_pointer_int_cast() {
-                    // Pointer to int casts may be side-effects due to exposing the provenance.
-                    // While the model is undecided, we should be conservative. See
-                    // <https://www.ralfj.de/blog/2022/04/11/provenance-exposed.html>
-                    None
-                } else {
+                if assign.1.is_safe_to_remove() {
                     Some(assign.0)
+                } else {
+                    None
                 }
             }
             StatementKind::SetDiscriminant { place, .. } | StatementKind::Deinit(place) => {

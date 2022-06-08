@@ -349,11 +349,15 @@ fn resolve_associated_item<'tcx>(
             _ => None,
         },
         traits::ImplSource::Object(ref data) => {
-            let index = traits::get_vtable_index_of_object_method(tcx, data, trait_item_id);
-            Some(Instance {
-                def: ty::InstanceDef::Virtual(trait_item_id, index),
-                substs: rcvr_substs,
-            })
+            if let Some(index) = traits::get_vtable_index_of_object_method(tcx, data, trait_item_id)
+            {
+                Some(Instance {
+                    def: ty::InstanceDef::Virtual(trait_item_id, index),
+                    substs: rcvr_substs,
+                })
+            } else {
+                None
+            }
         }
         traits::ImplSource::Builtin(..) => {
             if Some(trait_ref.def_id) == tcx.lang_items().clone_trait() {

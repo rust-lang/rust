@@ -62,6 +62,12 @@ fn t4() -> u32 {
     unsafe { X + 1 }
 }
 
+// EMIT_MIR simplify_locals.expose_addr.SimplifyLocals.diff
+fn expose_addr(p: *const usize) {
+    // Used pointer to address cast. Has a side effect of exposing the provenance.
+    p as usize;
+}
+
 fn main() {
     c();
     d1();
@@ -71,4 +77,5 @@ fn main() {
     t2();
     t3();
     t4();
+    expose_addr(&0);
 }
