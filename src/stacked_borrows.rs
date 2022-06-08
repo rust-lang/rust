@@ -44,6 +44,9 @@ impl SbTag {
 
 impl PartialEq for SbTag {
     fn eq(&self, other: &Self) -> bool {
+        // The codegen for the derived Partialeq is bad here and includes a branch.
+        // Since this code is extremely hot, this is optimized here.
+        // https://github.com/rust-lang/rust/issues/49892
         self.as_u64() == other.as_u64()
     }
 }
