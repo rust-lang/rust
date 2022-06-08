@@ -978,12 +978,6 @@ fn rustfmt() -> PathBuf {
     // Chop off `deps`.
     me.pop();
 
-    // If we run `cargo test --release`, we might only have a release build.
-    if cfg!(release) {
-        // `../release/`
-        me.pop();
-        me.push("release");
-    }
     me.push("rustfmt");
     assert!(
         me.is_file() || me.with_extension("exe").is_file(),
