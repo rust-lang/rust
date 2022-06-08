@@ -850,7 +850,38 @@ impl<'me, 'tcx> TypeVisitor<'tcx> for ScopeInstantiator<'me, 'tcx> {
 /// so that the resulting generalized type is independent from the
 /// scopes.
 ///
+/// ### No `needs_wf` for the MIR
+///
+/// Without bivariance, relating well-formed types should not
+/// cause them to not be well-formed. With bivariance, this isn't
+/// necessarily true as arguments in bivariant position aren't
+/// constrained in any way. See #41677#issuecomment-298765479 for
+/// more details.
+///
+/// We could deal with this by checking all types we end up relating
+/// for well-formedness. Or at least all types that matter...
+///
+/// Alternatively, lazily can check whether we encounter a bivariant
+/// parameter while generalizing, and only emitting a WF obligation
+/// if that is the case.
+///
+/// The first alternative is what we're doing in the MIR, meaning
+/// that this generalization routine does not need to special-case
+/// bivariant parameters.
+///
+/// During HIR typeck, this would be a bit more difficult.
+/// There are a lot of places where types are created and used.
+/// Consider things like auto-deref and coercions, which create
+/// types completely hidden in the HIR itself. This means there would
+/// need to be a lot of different places which have to all
+/// correctly emit WF obligations.
+///
+/// We therefore trust its type relations to preserve well-formedness
+/// and emit WF obligations when encountering bivariant parameters during
+/// generalization.
+///
 /// [blog post]: https://is.gd/0hKvIr
+/// [hir gen]: crate::infer::combine::Generalizer
 struct TypeGeneralizer<'me, 'tcx, D>
 where
     D: TypeRelatingDelegate<'tcx>,
@@ -954,10 +985,6 @@ where
                             self.relate(u, u)
                         }
                         TypeVariableValue::Unknown { universe: _universe } => {
-                            if self.ambient_variance == ty::Bivariant {
-                                // FIXME: we may need a WF predicate (related to #54105).
-                            }
-
                             let origin = *variables.var_origin(vid);
 
                             // Replacing with a new variable in the universe `self.universe`,
@@ -1019,11 +1046,6 @@ where
         // As an aside, since these new variables are created in
         // `self.universe` universe, this also serves to enforce the
         // universe scoping rules.
-        //
-        // FIXME(#54105) -- if the ambient variance is bivariant,
-        // though, we may however need to check well-formedness or
-        // risk a problem like #41677 again.
-
         let replacement_region_vid = self.delegate.generalize_existential(self.universe);
 
         Ok(replacement_region_vid)
