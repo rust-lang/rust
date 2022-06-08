@@ -5,18 +5,6 @@ macro_rules! count {
     };
 }
 
-macro_rules! dollar_dollar {
-    () => {
-        macro_rules! bar {
-            ( $$( $$any:tt )* ) => { $$( $$any )* };
-            //~^ ERROR meta-variable expressions are unstable
-            //~| ERROR meta-variable expressions are unstable
-            //~| ERROR meta-variable expressions are unstable
-            //~| ERROR meta-variable expressions are unstable
-        }
-    };
-}
-
 macro_rules! index {
     ( $( $e:stmt ),* ) => {
         $( ${ignore(e)} ${index()} )*
