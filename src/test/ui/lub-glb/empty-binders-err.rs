@@ -11,12 +11,10 @@ fn lt_in_contra<'a: 'a>() -> Contra<'a> {
     Contra(|_| ())
 }
 
-fn covariance<'a, 'b, 'upper, 'lower>(v: bool)
+fn covariance<'a, 'b, 'upper>(v: bool)
 where
     'upper: 'a,
     'upper: 'b,
-    'a: 'lower,
-    'b: 'lower,
 
 {
     let _: &'upper () = match v {
@@ -27,10 +25,8 @@ where
     };
 }
 
-fn contra_fn<'a, 'b, 'upper, 'lower>(v: bool)
+fn contra_fn<'a, 'b, 'lower>(v: bool)
 where
-    'upper: 'a,
-    'upper: 'b,
     'a: 'lower,
     'b: 'lower,
 
@@ -43,10 +39,8 @@ where
     };
 }
 
-fn contra_struct<'a, 'b, 'upper, 'lower>(v: bool)
+fn contra_struct<'a, 'b, 'lower>(v: bool)
 where
-    'upper: 'a,
-    'upper: 'b,
     'a: 'lower,
     'b: 'lower,
 

@@ -1,7 +1,7 @@
 error: lifetime may not live long enough
-  --> $DIR/empty-binders-err.rs:22:12
+  --> $DIR/empty-binders-err.rs:20:12
    |
-LL | fn covariance<'a, 'b, 'upper, 'lower>(v: bool)
+LL | fn covariance<'a, 'b, 'upper>(v: bool)
    |               --      ------ lifetime `'upper` defined here
    |               |
    |               lifetime `'a` defined here
@@ -12,9 +12,9 @@ LL |     let _: &'upper () = match v {
    = help: consider adding the following bound: `'a: 'upper`
 
 error: lifetime may not live long enough
-  --> $DIR/empty-binders-err.rs:22:12
+  --> $DIR/empty-binders-err.rs:20:12
    |
-LL | fn covariance<'a, 'b, 'upper, 'lower>(v: bool)
+LL | fn covariance<'a, 'b, 'upper>(v: bool)
    |                   --  ------ lifetime `'upper` defined here
    |                   |
    |                   lifetime `'b` defined here
@@ -30,10 +30,10 @@ help: the following changes may resolve your lifetime errors
    = help: add bound `'b: 'upper`
 
 error: lifetime may not live long enough
-  --> $DIR/empty-binders-err.rs:39:12
+  --> $DIR/empty-binders-err.rs:35:12
    |
-LL | fn contra_fn<'a, 'b, 'upper, 'lower>(v: bool)
-   |              --              ------ lifetime `'lower` defined here
+LL | fn contra_fn<'a, 'b, 'lower>(v: bool)
+   |              --      ------ lifetime `'lower` defined here
    |              |
    |              lifetime `'a` defined here
 ...
@@ -43,10 +43,10 @@ LL |     let _: fn(&'lower ()) = match v {
    = help: consider adding the following bound: `'lower: 'a`
 
 error: lifetime may not live long enough
-  --> $DIR/empty-binders-err.rs:54:12
+  --> $DIR/empty-binders-err.rs:48:12
    |
-LL | fn contra_struct<'a, 'b, 'upper, 'lower>(v: bool)
-   |                  --              ------ lifetime `'lower` defined here
+LL | fn contra_struct<'a, 'b, 'lower>(v: bool)
+   |                  --      ------ lifetime `'lower` defined here
    |                  |
    |                  lifetime `'a` defined here
 ...
