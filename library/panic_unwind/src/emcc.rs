@@ -105,6 +105,11 @@ extern "C" fn exception_cleanup(ptr: *mut libc::c_void) -> *mut libc::c_void {
     }
 }
 
+
+// This is required by the compiler to exist (e.g., it's a lang item), but it's
+// never actually called by the compiler.  Emscripten EH doesn't use a
+// personality function at all, it instead uses __cxa_find_matching_catch.
+// Wasm error handling would use __gxx_personality_wasm0.
 #[lang = "eh_personality"]
 unsafe extern "C" fn rust_eh_personality(
     version: c_int,
@@ -113,7 +118,7 @@ unsafe extern "C" fn rust_eh_personality(
     exception_object: *mut uw::_Unwind_Exception,
     context: *mut uw::_Unwind_Context,
 ) -> uw::_Unwind_Reason_Code {
-    __gxx_personality_v0(version, actions, exception_class, exception_object, context)
+    core::intrinsics::abort()
 }
 
 extern "C" {
