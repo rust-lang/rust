@@ -203,7 +203,9 @@ impl<I: Idx> IntervalSet<I> {
 
     pub fn insert_all(&mut self) {
         self.clear();
-        self.map.push((0, self.domain.try_into().unwrap()));
+        if let Some(end) = self.domain.checked_sub(1) {
+            self.map.push((0, end.try_into().unwrap()));
+        }
         debug_assert!(self.check_invariants());
     }
 
