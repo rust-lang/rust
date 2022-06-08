@@ -128,7 +128,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
     ) -> PatKind<'tcx> {
         assert_eq!(lo.ty(), ty);
         assert_eq!(hi.ty(), ty);
-        let cmp = compare_const_vals(self.tcx, lo, hi, self.param_env, ty);
+        let cmp = compare_const_vals(self.tcx, lo, hi, self.param_env);
         match (end, cmp) {
             // `x..y` where `x < y`.
             // Non-empty because the range includes at least `x`.
@@ -752,15 +752,14 @@ pub(crate) fn compare_const_vals<'tcx>(
     a: mir::ConstantKind<'tcx>,
     b: mir::ConstantKind<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    ty: Ty<'tcx>,
 ) -> Option<Ordering> {
     assert_eq!(a.ty(), b.ty());
-    assert_eq!(a.ty(), ty);
 
     if a == b {
         return Some(Ordering::Equal);
     }
 
+    let ty = a.ty();
     let a_bits = a.try_eval_bits(tcx, param_env, ty);
     let b_bits = b.try_eval_bits(tcx, param_env, ty);
 

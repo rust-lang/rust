@@ -639,16 +639,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     return Some(0);
                 }
 
-                let tcx = self.tcx;
-                let test_ty = test.lo.ty();
-
                 // For performance, it's important to only do the second
                 // `compare_const_vals` if necessary.
                 let no_overlap = if matches!(
-                    (compare_const_vals(tcx, test.hi, pat.lo, self.param_env, test_ty)?, test.end),
+                    (compare_const_vals(self.tcx, test.hi, pat.lo, self.param_env)?, test.end),
                     (Less, _) | (Equal, RangeEnd::Excluded) // test < pat
                 ) || matches!(
-                    (compare_const_vals(tcx, test.lo, pat.hi, self.param_env, test_ty)?, pat.end),
+                    (compare_const_vals(self.tcx, test.lo, pat.hi, self.param_env)?, pat.end),
                     (Greater, _) | (Equal, RangeEnd::Excluded) // test > pat
                 ) {
                     Some(1)
@@ -762,15 +759,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ) -> Option<bool> {
         use std::cmp::Ordering::*;
 
-        let tcx = self.tcx;
-        let param_env = self.param_env;
-        let ty = range.lo.ty();
         // For performance, it's important to only do the second
         // `compare_const_vals` if necessary.
         Some(
-            matches!(compare_const_vals(tcx, range.lo, value, param_env, ty)?, Less | Equal)
+            matches!(compare_const_vals(self.tcx, range.lo, value, self.param_env)?, Less | Equal)
                 && matches!(
-                    (compare_const_vals(tcx, value, range.hi, param_env, ty)?, range.end),
+                    (compare_const_vals(self.tcx, value, range.hi, self.param_env)?, range.end),
                     (Less, _) | (Equal, RangeEnd::Included)
                 ),
         )

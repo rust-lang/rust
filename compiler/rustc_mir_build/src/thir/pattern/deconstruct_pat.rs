@@ -828,14 +828,8 @@ impl<'tcx> Constructor<'tcx> {
                 FloatRange(other_from, other_to, other_end),
             ) => {
                 match (
-                    compare_const_vals(pcx.cx.tcx, *self_to, *other_to, pcx.cx.param_env, pcx.ty),
-                    compare_const_vals(
-                        pcx.cx.tcx,
-                        *self_from,
-                        *other_from,
-                        pcx.cx.param_env,
-                        pcx.ty,
-                    ),
+                    compare_const_vals(pcx.cx.tcx, *self_to, *other_to, pcx.cx.param_env),
+                    compare_const_vals(pcx.cx.tcx, *self_from, *other_from, pcx.cx.param_env),
                 ) {
                     (Some(to), Some(from)) => {
                         (from == Ordering::Greater || from == Ordering::Equal)
