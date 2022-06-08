@@ -77,7 +77,6 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::undo_log::UndoLogs;
 use rustc_hir as hir;
 use smallvec::smallvec;
-use std::iter;
 
 impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     /// Registers that the given region obligation must be resolved
@@ -192,13 +191,14 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
         }
     }
 
-    pub fn nested_outlives_obligations(
+    fn compute_nested_outlives_obligations(
         &self,
         cause: &ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         ty: Ty<'tcx>,
         region: ty::Region<'tcx>,
-    ) -> Vec<PredicateObligation<'tcx>> {
+        obligations: &mut Vec<PredicateObligation<'tcx>>,
+    ) {
         let to_obligation = |pred: ty::Binder<'tcx, ty::PredicateKind<'tcx>>| {
             Obligation::new(cause.clone(), param_env, pred.to_predicate(self.tcx))
         };
@@ -212,56 +212,8 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
                 ty::OutlivesPredicate(reg, region),
             )))
         };
+
         match ty.kind() {
-            ty::Infer(..) | ty::Bound(..) => bug!("unexpected type: {:?}", ty),
-            ty::FnDef(_, substs) => {
-                substs
-                    .iter()
-                    .filter_map(|arg| match arg.unpack() {
-                        GenericArgKind::Type(ty) => Some(ty_outlives(ty)),
-                        GenericArgKind::Lifetime(_) => {
-                            // HACK(eddyb) ignore lifetimes found shallowly in `substs`.
-                            // This is inconsistent with `ty::Adt` (including all substs)
-                            // and with `ty::Closure` (ignoring all substs other than
-                            // upvars, of which a `ty::FnDef` doesn't have any), but
-                            // consistent with previous (accidental) behavior.
-                            // See https://github.com/rust-lang/rust/issues/70917
-                            // for further background and discussion.
-                            None
-                        }
-                        GenericArgKind::Const(_) => None,
-                    })
-                    .collect()
-            }
-
-            &ty::Ref(re, ty, _) => {
-                vec![reg_outlives(re), ty_outlives(ty)]
-            }
-
-            &ty::RawPtr(ty::TypeAndMut { ty, mutbl: _ }) | &ty::Slice(ty) | &ty::Array(ty, _) => {
-                vec![ty_outlives(ty)]
-            }
-
-            ty::Closure(_, substs) => {
-                let tupled_ty = substs.as_closure().tupled_upvars_ty();
-                vec![ty_outlives(tupled_ty)]
-            }
-
-            ty::Generator(_, substs, _) => {
-                let tupled_ty = substs.as_generator().tupled_upvars_ty();
-                vec![ty_outlives(tupled_ty)]
-            }
-
-            // All regions are bound inside a witness
-            ty::GeneratorWitness(..) => vec![],
-
-            // FIXME: These two should ideally happen eagerly here, but
-            // require some kind of `Any` bound which we don't have yet.
-            ty::Param(_) | ty::Projection(_) => {
-                self.register_region_obligation_with_cause(ty, region, cause);
-                vec![]
-            }
-
             // Trivial types
             ty::Bool
             | ty::Char
@@ -270,18 +222,103 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
             | ty::Float(..)
             | ty::Never
             | ty::Str
-            | ty::Foreign(..) => vec![],
+            | ty::Foreign(..) => (),
 
-            ty::Adt(_, substs) | ty::Opaque(_, substs) => substs
-                .iter()
-                .filter_map(|arg| match arg.unpack() {
-                    GenericArgKind::Lifetime(re) => Some(reg_outlives(re)),
-                    GenericArgKind::Type(ty) => Some(ty_outlives(ty)),
-                    GenericArgKind::Const(_) => None,
-                })
-                .collect(),
+            // For `&'a T` to be well formed, we require `T: 'a`.
+            //
+            // `&'a T: 'b` holds if both `'a: 'b` and `T: 'b` holds.
+            // `T: 'b` is implied by `'a: 'b`, so we don't have to recurse
+            // the type.
+            &ty::Ref(re, _, _) => obligations.push(reg_outlives(re)),
 
-            ty::Tuple(fields) => fields.iter().map(|ty| ty_outlives(ty)).collect(),
+            &ty::RawPtr(ty::TypeAndMut { ty, mutbl: _ }) | &ty::Slice(ty) | &ty::Array(ty, _) => {
+                self.compute_nested_outlives_obligations(cause, param_env, ty, region, obligations)
+            }
+
+            &ty::Adt(_, substs) | &ty::Opaque(_, substs) => {
+                for arg in substs {
+                    match arg.unpack() {
+                        GenericArgKind::Lifetime(re) => obligations.push(reg_outlives(re)),
+                        GenericArgKind::Type(ty) => self.compute_nested_outlives_obligations(
+                            cause,
+                            param_env,
+                            ty,
+                            region,
+                            obligations,
+                        ),
+                        GenericArgKind::Const(_) => (),
+                    }
+                }
+            }
+
+            ty::Infer(..) => obligations.push(ty_outlives(ty)),
+
+            &ty::FnDef(_, substs) => {
+                for arg in substs {
+                    match arg.unpack() {
+                        GenericArgKind::Type(ty) => self.compute_nested_outlives_obligations(
+                            cause,
+                            param_env,
+                            ty,
+                            region,
+                            obligations,
+                        ),
+                        // HACK(eddyb) ignore lifetimes found shallowly in `substs`.
+                        // This is inconsistent with `ty::Adt` (including all substs)
+                        // and with `ty::Closure` (ignoring all substs other than
+                        // upvars, of which a `ty::FnDef` doesn't have any), but
+                        // consistent with previous (accidental) behavior.
+                        // See https://github.com/rust-lang/rust/issues/70917
+                        // for further background and discussion.
+                        GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => {}
+                    }
+                }
+            }
+
+            // FIXME: Add comment on why we can ignore the signature.
+            ty::Closure(_, substs) => {
+                let tupled_ty = substs.as_closure().tupled_upvars_ty();
+                self.compute_nested_outlives_obligations(
+                    cause,
+                    param_env,
+                    tupled_ty,
+                    region,
+                    obligations,
+                )
+            }
+
+            // FIXME: Add comment on why we can ignore the signature.
+            ty::Generator(_, substs, _) => {
+                let tupled_ty = substs.as_generator().tupled_upvars_ty();
+                self.compute_nested_outlives_obligations(
+                    cause,
+                    param_env,
+                    tupled_ty,
+                    region,
+                    obligations,
+                )
+            }
+
+            // All regions are bound inside a witness
+            ty::GeneratorWitness(..) => {}
+
+            // FIXME: These two should ideally happen eagerly here, but
+            // require some kind of `Any` bound which we don't have yet.
+            ty::Param(_) | ty::Projection(_) => {
+                self.register_region_obligation_with_cause(ty, region, cause)
+            }
+
+            &ty::Tuple(fields) => {
+                for field in fields {
+                    self.compute_nested_outlives_obligations(
+                        cause,
+                        param_env,
+                        field,
+                        region,
+                        obligations,
+                    )
+                }
+            }
 
             &ty::FnPtr(data) => {
                 let (data, _) = self.replace_bound_vars_with_fresh_vars(
@@ -289,12 +326,20 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
                     LateBoundRegionConversionTime::HigherRankedType,
                     data,
                 );
-                data.inputs_and_output.iter().map(|ty| ty_outlives(ty)).collect()
+                for ty in data.inputs_and_output {
+                    self.compute_nested_outlives_obligations(
+                        cause,
+                        param_env,
+                        ty,
+                        region,
+                        obligations,
+                    )
+                }
             }
 
-            &ty::Dynamic(traits, region) => traits
-                .iter()
-                .flat_map(|predicate| {
+            &ty::Dynamic(traits, region) => {
+                obligations.push(reg_outlives(region));
+                let traits_iter = traits.iter().flat_map(|predicate| {
                     let (predicate, _) = self.replace_bound_vars_with_fresh_vars(
                         cause.span,
                         LateBoundRegionConversionTime::HigherRankedType,
@@ -306,30 +351,50 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
                         ty::ExistentialPredicate::AutoTrait(_) => (InternalSubsts::empty(), None),
                     };
 
-                    substs
-                        .iter()
-                        .rev()
-                        .chain(opt_ty.map(|term| match term {
-                            ty::Term::Ty(ty) => ty.into(),
-                            ty::Term::Const(ct) => ct.into(),
-                        }))
-                        .map(move |arg| arg)
-                })
-                .filter_map(|arg| match arg.unpack() {
-                    GenericArgKind::Lifetime(re) => Some(reg_outlives(re)),
-                    GenericArgKind::Type(ty) => Some(ty_outlives(ty)),
-                    GenericArgKind::Const(_) => None,
-                })
-                .chain(iter::once(reg_outlives(region)))
-                .collect(),
+                    substs.iter().rev().chain(opt_ty.and_then(|term| match term {
+                        ty::Term::Ty(ty) => Some(ty.into()),
+                        ty::Term::Const(_) => None,
+                    }))
+                });
+                for arg in traits_iter {
+                    match arg.unpack() {
+                        GenericArgKind::Lifetime(re) => obligations.push(reg_outlives(re)),
+                        GenericArgKind::Type(ty) => self.compute_nested_outlives_obligations(
+                            cause,
+                            param_env,
+                            ty,
+                            region,
+                            obligations,
+                        ),
+                        GenericArgKind::Const(_) => (),
+                    }
+                }
+            }
 
             // FIXME: The way we deal with placeholders is wrong for now.
             //
             // Have to check for bounds in the `param_env`.
-            ty::Placeholder(..) => vec![],
+            ty::Placeholder(..) => {}
 
-            ty::Error(_) => vec![],
+            ty::Bound(..) => bug!("unexpected type: {:?}", ty),
+
+            ty::Error(_) => {}
         }
+    }
+
+    pub fn nested_outlives_obligations(
+        &self,
+        cause: &ObligationCause<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        ty: Ty<'tcx>,
+        region: ty::Region<'tcx>,
+    ) -> Vec<PredicateObligation<'tcx>> {
+        // Directly using this for inference variables would cause
+        // the trait solver to be stuck.
+        assert!(!ty.is_ty_infer());
+        let mut obligations = Vec::new();
+        self.compute_nested_outlives_obligations(cause, param_env, ty, region, &mut obligations);
+        obligations
     }
 }
 
