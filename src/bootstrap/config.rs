@@ -3,7 +3,7 @@
 //! This module implements parsing `config.toml` configuration files to tweak
 //! how the build runs.
 
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::cmp;
 use std::collections::{HashMap, HashSet};
 use std::env;
@@ -20,6 +20,7 @@ use crate::channel::GitInfo;
 pub use crate::flags::Subcommand;
 use crate::flags::{Color, Flags};
 use crate::util::{exe, output, program_out_of_date, t};
+use crate::RustfmtMetadata;
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Deserializer};
 
@@ -204,8 +205,25 @@ pub struct Config {
     // These are either the stage0 downloaded binaries or the locally installed ones.
     pub initial_cargo: PathBuf,
     pub initial_rustc: PathBuf,
-    pub initial_rustfmt: Option<PathBuf>,
+    #[cfg(not(test))]
+    initial_rustfmt: RefCell<RustfmtState>,
+    #[cfg(test)]
+    pub initial_rustfmt: RefCell<RustfmtState>,
     pub out: PathBuf,
+}
+
+#[derive(Clone, Debug)]
+pub enum RustfmtState {
+    SystemToolchain(PathBuf),
+    Downloaded(PathBuf),
+    Unavailable,
+    LazyEvaluated,
+}
+
+impl Default for RustfmtState {
+    fn default() -> Self {
+        RustfmtState::LazyEvaluated
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -859,9 +877,6 @@ impl Config {
         set(&mut config.full_bootstrap, build.full_bootstrap);
         set(&mut config.extended, build.extended);
         config.tools = build.tools;
-        if build.rustfmt.is_some() {
-            config.initial_rustfmt = build.rustfmt;
-        }
         set(&mut config.verbose, build.verbose);
         set(&mut config.sanitizers, build.sanitizers);
         set(&mut config.profiler, build.profiler);
@@ -1154,18 +1169,22 @@ impl Config {
             set(&mut config.missing_tools, t.missing_tools);
         }
 
-        config.initial_rustfmt = config.initial_rustfmt.or_else({
-            let build = config.build;
-            let initial_rustc = &config.initial_rustc;
-
-            move || {
-                // Cargo does not provide a RUSTFMT environment variable, so we
-                // synthesize it manually.
-                let rustfmt = initial_rustc.with_file_name(exe("rustfmt", build));
-
-                if rustfmt.exists() { Some(rustfmt) } else { None }
+        if let Some(r) = build.rustfmt {
+            *config.initial_rustfmt.borrow_mut() = if r.exists() {
+                RustfmtState::SystemToolchain(r)
+            } else {
+                RustfmtState::Unavailable
+            };
+        } else {
+            // If using a system toolchain for bootstrapping, see if that has rustfmt available.
+            let host = config.build;
+            let rustfmt_path = config.initial_rustc.with_file_name(exe("rustfmt", host));
+            let bin_root = config.out.join(host.triple).join("stage0");
+            if !rustfmt_path.starts_with(&bin_root) {
+                // Using a system-provided toolchain; we shouldn't download rustfmt.
+                *config.initial_rustfmt.borrow_mut() = RustfmtState::SystemToolchain(rustfmt_path);
             }
-        });
+        }
 
         // Now that we've reached the end of our configuration, infer the
         // default values for all options that we haven't otherwise stored yet.
@@ -1335,6 +1354,25 @@ impl Config {
         })
     }
 
+    pub(crate) fn initial_rustfmt(builder: &Builder<'_>) -> Option<PathBuf> {
+        match &mut *builder.config.initial_rustfmt.borrow_mut() {
+            RustfmtState::SystemToolchain(p) | RustfmtState::Downloaded(p) => Some(p.clone()),
+            RustfmtState::Unavailable => None,
+            r @ RustfmtState::LazyEvaluated => {
+                if builder.config.dry_run {
+                    return Some(PathBuf::new());
+                }
+                let path = maybe_download_rustfmt(builder);
+                *r = if let Some(p) = &path {
+                    RustfmtState::Downloaded(p.clone())
+                } else {
+                    RustfmtState::Unavailable
+                };
+                path
+            }
+        }
+    }
+
     pub fn verbose(&self) -> bool {
         self.verbose > 0
     }
@@ -1445,6 +1483,28 @@ fn download_ci_rustc_commit(download_rustc: Option<StringOrBool>, verbose: bool)
     Some(commit.to_string())
 }
 
+fn maybe_download_rustfmt(builder: &Builder<'_>) -> Option<PathBuf> {
+    let RustfmtMetadata { date, version } = builder.stage0_metadata.rustfmt.as_ref()?;
+    let channel = format!("{version}-{date}");
+
+    let host = builder.config.build;
+    let rustfmt_path = builder.config.initial_rustc.with_file_name(exe("rustfmt", host));
+    let bin_root = builder.config.out.join(host.triple).join("stage0");
+    let rustfmt_stamp = bin_root.join(".rustfmt-stamp");
+    if rustfmt_path.exists() && !program_out_of_date(&rustfmt_stamp, &channel) {
+        return Some(rustfmt_path);
+    }
+
+    let filename = format!("rustfmt-{version}-{build}.tar.xz", build = host.triple);
+    download_component(builder, DownloadSource::Dist, filename, "rustfmt-preview", &date, "stage0");
+
+    builder.fix_bin_or_dylib(&bin_root.join("bin").join("rustfmt"));
+    builder.fix_bin_or_dylib(&bin_root.join("bin").join("cargo-fmt"));
+
+    builder.create(&rustfmt_stamp, &channel);
+    Some(rustfmt_path)
+}
+
 fn download_ci_rustc(builder: &Builder<'_>, commit: &str) {
     builder.verbose(&format!("using downloaded stage2 artifacts from CI (commit {commit})"));
     // FIXME: support downloading artifacts from the beta channel
@@ -1459,12 +1519,12 @@ fn download_ci_rustc(builder: &Builder<'_>, commit: &str) {
         }
         let filename = format!("rust-std-{CHANNEL}-{host}.tar.xz");
         let pattern = format!("rust-std-{host}");
-        download_component(builder, filename, &pattern, commit);
+        download_ci_component(builder, filename, &pattern, commit);
         let filename = format!("rustc-{CHANNEL}-{host}.tar.xz");
-        download_component(builder, filename, "rustc", commit);
+        download_ci_component(builder, filename, "rustc", commit);
         // download-rustc doesn't need its own cargo, it can just use beta's.
         let filename = format!("rustc-dev-{CHANNEL}-{host}.tar.xz");
-        download_component(builder, filename, "rustc-dev", commit);
+        download_ci_component(builder, filename, "rustc-dev", commit);
 
         builder.fix_bin_or_dylib(&bin_root.join("bin").join("rustc"));
         builder.fix_bin_or_dylib(&bin_root.join("bin").join("rustdoc"));
@@ -1479,21 +1539,83 @@ fn download_ci_rustc(builder: &Builder<'_>, commit: &str) {
     }
 }
 
+pub(crate) enum DownloadSource {
+    CI,
+    Dist,
+}
+
 /// Download a single component of a CI-built toolchain (not necessarily a published nightly).
 // NOTE: intentionally takes an owned string to avoid downloading multiple times by accident
-fn download_component(builder: &Builder<'_>, filename: String, prefix: &str, commit: &str) {
+fn download_ci_component(builder: &Builder<'_>, filename: String, prefix: &str, commit: &str) {
+    download_component(builder, DownloadSource::CI, filename, prefix, commit, "ci-rustc")
+}
+
+fn download_component(
+    builder: &Builder<'_>,
+    mode: DownloadSource,
+    filename: String,
+    prefix: &str,
+    key: &str,
+    destination: &str,
+) {
     let cache_dst = builder.out.join("cache");
-    let rustc_cache = cache_dst.join(commit);
-    if !rustc_cache.exists() {
-        t!(fs::create_dir_all(&rustc_cache));
+    let cache_dir = cache_dst.join(key);
+    if !cache_dir.exists() {
+        t!(fs::create_dir_all(&cache_dir));
     }
 
-    let base = "https://ci-artifacts.rust-lang.org";
-    let url = format!("rustc-builds/{commit}");
-    let tarball = rustc_cache.join(&filename);
-    if !tarball.exists() {
-        builder.download_component(base, &format!("{url}/{filename}"), &tarball, "");
+    let bin_root = builder.out.join(builder.config.build.triple).join(destination);
+    let tarball = cache_dir.join(&filename);
+    let (base_url, url, should_verify) = match mode {
+        DownloadSource::CI => (
+            "https://ci-artifacts.rust-lang.org/rustc-builds".to_string(),
+            format!("{key}/{filename}"),
+            false,
+        ),
+        DownloadSource::Dist => {
+            let dist_server = env::var("RUSTUP_DIST_SERVER")
+                .unwrap_or(builder.stage0_metadata.dist_server.to_string());
+            // NOTE: make `dist` part of the URL because that's how it's stored in src/stage0.json
+            (dist_server, format!("dist/{key}/{filename}"), true)
+        }
+    };
+
+    // For the beta compiler, put special effort into ensuring the checksums are valid.
+    // FIXME: maybe we should do this for download-rustc as well? but it would be a pain to update
+    // this on each and every nightly ...
+    let checksum = if should_verify {
+        let error = format!(
+            "src/stage0.json doesn't contain a checksum for {url}. \
+            Pre-built artifacts might not be available for this \
+            target at this time, see https://doc.rust-lang.org/nightly\
+            /rustc/platform-support.html for more information."
+        );
+        let sha256 = builder.stage0_metadata.checksums_sha256.get(&url).expect(&error);
+        if tarball.exists() {
+            if builder.verify(&tarball, sha256) {
+                builder.unpack(&tarball, &bin_root, prefix);
+                return;
+            } else {
+                builder.verbose(&format!(
+                    "ignoring cached file {} due to failed verification",
+                    tarball.display()
+                ));
+                builder.remove(&tarball);
+            }
+        }
+        Some(sha256)
+    } else if tarball.exists() {
+        return;
+    } else {
+        None
+    };
+
+    builder.download_component(&base_url, &url, &tarball, "");
+    if let Some(sha256) = checksum {
+        if !builder.verify(&tarball, sha256) {
+            panic!("failed to verify {}", tarball.display());
+        }
     }
-    let bin_root = builder.out.join(builder.config.build.triple).join("ci-rustc");
-    builder.unpack(&tarball, &bin_root, prefix)
+
+    builder.unpack(&tarball, &bin_root, prefix);
 }
