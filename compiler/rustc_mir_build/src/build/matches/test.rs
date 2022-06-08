@@ -769,14 +769,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         use std::cmp::Ordering::*;
 
         let tcx = self.tcx;
-
-        let a = compare_const_vals(tcx, range.lo, value, self.param_env, range.lo.ty())?;
-        let b = compare_const_vals(tcx, value, range.hi, self.param_env, range.lo.ty())?;
-
-        match (b, range.end) {
-            (Less, _) | (Equal, RangeEnd::Included) if a != Greater => Some(true),
-            _ => Some(false),
-        }
+        let param_env = self.param_env;
+        let ty = range.lo.ty();
+        // For performance, it's important to only do the second
+        // `compare_const_vals` if necessary.
+        Some(
+            matches!(compare_const_vals(tcx, range.lo, value, param_env, ty)?, Less | Equal)
+                && matches!(
+                    (compare_const_vals(tcx, value, range.hi, param_env, ty)?, range.end),
+                    (Less, _) | (Equal, RangeEnd::Included)
+                ),
+        )
     }
 
     fn values_not_contained_in_range(
