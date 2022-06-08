@@ -295,7 +295,12 @@ impl client::Client<super::super::TokenStream, super::super::TokenStream> {
     }
 }
 
-impl client::Client<(super::super::TokenStream, super::super::TokenStream), super::super::TokenStream> {
+impl
+    client::Client<
+        (super::super::TokenStream, super::super::TokenStream),
+        super::super::TokenStream,
+    >
+{
     pub fn run<S: Server>(
         &self,
         strategy: &impl ExecutionStrategy,

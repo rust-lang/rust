@@ -431,7 +431,9 @@ fn run_client<A: for<'a, 's> DecodeMut<'a, 's, ()>, R: Encode<()>>(
 }
 
 impl Client<super::super::TokenStream, super::super::TokenStream> {
-    pub const fn expand1(f: impl Fn(super::super::TokenStream) -> super::super::TokenStream + Copy) -> Self {
+    pub const fn expand1(
+        f: impl Fn(super::super::TokenStream) -> super::super::TokenStream + Copy,
+    ) -> Self {
         Client {
             get_handle_counters: HandleCounters::get,
             run: super::selfless_reify::reify_to_extern_c_fn_hrt_bridge(move |bridge| {
@@ -444,7 +446,8 @@ impl Client<super::super::TokenStream, super::super::TokenStream> {
 
 impl Client<(super::super::TokenStream, super::super::TokenStream), super::super::TokenStream> {
     pub const fn expand2(
-        f: impl Fn(super::super::TokenStream, super::super::TokenStream) -> super::super::TokenStream + Copy,
+        f: impl Fn(super::super::TokenStream, super::super::TokenStream) -> super::super::TokenStream
+            + Copy,
     ) -> Self {
         Client {
             get_handle_counters: HandleCounters::get,
@@ -469,7 +472,10 @@ pub enum ProcMacro {
 
     Attr {
         name: &'static str,
-        client: Client<(super::super::TokenStream, super::super::TokenStream), super::super::TokenStream>,
+        client: Client<
+            (super::super::TokenStream, super::super::TokenStream),
+            super::super::TokenStream,
+        >,
     },
 
     Bang {
@@ -497,7 +503,8 @@ impl ProcMacro {
 
     pub const fn attr(
         name: &'static str,
-        expand: impl Fn(super::super::TokenStream, super::super::TokenStream) -> super::super::TokenStream + Copy,
+        expand: impl Fn(super::super::TokenStream, super::super::TokenStream) -> super::super::TokenStream
+            + Copy,
     ) -> Self {
         ProcMacro::Attr { name, client: Client::expand2(expand) }
     }
