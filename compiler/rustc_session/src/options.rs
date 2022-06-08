@@ -1277,6 +1277,8 @@ options! {
         "version of DWARF debug information to emit (default: 2 or 4, depending on platform)"),
     emit_stack_sizes: bool = (false, parse_bool, [UNTRACKED],
         "emit a section containing stack size metadata (default: no)"),
+    emit_thin_lto: bool = (true, parse_bool, [TRACKED],
+        "emit the bc module with thin LTO info (default: yes)"),
     fewer_names: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "reduce memory use by retaining fewer names within compilation artifacts (LLVM-IR) \
         (default: no)"),

@@ -99,6 +99,7 @@ pub struct ModuleConfig {
     pub emit_ir: bool,
     pub emit_asm: bool,
     pub emit_obj: EmitObj,
+    pub emit_thin_lto: bool,
     pub bc_cmdline: String,
 
     // Miscellaneous flags.  These are mostly copied from command-line
@@ -218,6 +219,7 @@ impl ModuleConfig {
                 false
             ),
             emit_obj,
+            emit_thin_lto: sess.opts.unstable_opts.emit_thin_lto,
             bc_cmdline: sess.target.bitcode_llvm_cmdline.to_string(),
 
             verify_llvm_ir: sess.verify_llvm_ir(),

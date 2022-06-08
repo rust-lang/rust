@@ -199,7 +199,7 @@ pub(crate) fn run_thin(
 
 pub(crate) fn prepare_thin(module: ModuleCodegen<ModuleLlvm>) -> (String, ThinBuffer) {
     let name = module.name.clone();
-    let buffer = ThinBuffer::new(module.module_llvm.llmod());
+    let buffer = ThinBuffer::new(module.module_llvm.llmod(), true);
     (name, buffer)
 }
 
@@ -709,9 +709,9 @@ unsafe impl Send for ThinBuffer {}
 unsafe impl Sync for ThinBuffer {}
 
 impl ThinBuffer {
-    pub fn new(m: &llvm::Module) -> ThinBuffer {
+    pub fn new(m: &llvm::Module, is_thin: bool) -> ThinBuffer {
         unsafe {
-            let buffer = llvm::LLVMRustThinLTOBufferCreate(m);
+            let buffer = llvm::LLVMRustThinLTOBufferCreate(m, is_thin);
             ThinBuffer(buffer)
         }
     }

@@ -35,6 +35,7 @@
     -Z                       dump-mir-spanview=val -- in addition to `.mir` files, create `.html` files to view spans for all `statement`s (including terminators), only `terminator` spans, or computed `block` spans (one span encompassing a block's terminator and all statements). If `-Z instrument-coverage` is also enabled, create an additional `.html` file showing the computed coverage spans.
     -Z                           dwarf-version=val -- version of DWARF debug information to emit (default: 2 or 4, depending on platform)
     -Z                        emit-stack-sizes=val -- emit a section containing stack size metadata (default: no)
+    -Z                           emit-thin-lto=val -- emit the bc module with thin LTO info (default: yes)
     -Z                             fewer-names=val -- reduce memory use by retaining fewer names within compilation artifacts (LLVM-IR) (default: no)
     -Z              force-unstable-if-unmarked=val -- force all crates to be `rustc_private` unstable (default: no)
     -Z                                    fuel=val -- set the optimization fuel quota for a crate
