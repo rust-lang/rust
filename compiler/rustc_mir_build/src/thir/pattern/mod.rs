@@ -15,7 +15,6 @@ use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::pat_util::EnumerateAndAdjustIterator;
 use rustc_hir::RangeEnd;
 use rustc_index::vec::Idx;
-use rustc_middle::mir::interpret::{get_slice_bytes, ConstValue};
 use rustc_middle::mir::interpret::{ErrorHandled, LitToConstError, LitToConstInput};
 use rustc_middle::mir::{self, UserTypeProjection};
 use rustc_middle::mir::{BorrowKind, Field, Mutability};
@@ -793,16 +792,6 @@ pub(crate) fn compare_const_vals<'tcx>(
             }
             _ => Some(a.cmp(&b)),
         };
-    }
-
-    if let ty::Str = ty.kind() && let (
-        Some(a_val @ ConstValue::Slice { .. }),
-        Some(b_val @ ConstValue::Slice { .. }),
-    ) = (a.try_to_value(tcx), b.try_to_value(tcx))
-    {
-        let a_bytes = get_slice_bytes(&tcx, a_val);
-        let b_bytes = get_slice_bytes(&tcx, b_val);
-        return from_bool(a_bytes == b_bytes);
     }
 
     fallback()
