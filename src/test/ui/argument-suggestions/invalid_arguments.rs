@@ -15,29 +15,50 @@ fn main() {
   // Providing one or two invalid arguments to a two parameter function
   two_arg_same(1, ""); //~ ERROR mismatched types
   two_arg_same("", 1); //~ ERROR mismatched types
-  two_arg_same("", ""); //~ ERROR arguments to this function are incorrect
+  two_arg_same("", "");
+  //~^ ERROR mismatched types
+  //~| ERROR mismatched types
   two_arg_diff(1, ""); //~ ERROR mismatched types
   two_arg_diff("", 1.0); //~ ERROR mismatched types
-  two_arg_diff("", ""); //~ ERROR arguments to this function are incorrect
-
+  two_arg_diff("", "");
+  //~^ ERROR mismatched types
+  //~| ERROR mismatched types
   // Providing invalid arguments to a three parameter function
   three_arg_diff(X{}, 1.0, ""); //~ ERROR mismatched types
   three_arg_diff(1, X {}, ""); //~ ERROR mismatched types
   three_arg_diff(1, 1.0, X {}); //~ ERROR mismatched types
 
-  three_arg_diff(X {}, X {}, ""); //~ ERROR arguments to this function are incorrect
-  three_arg_diff(X {}, 1.0, X {}); //~ ERROR arguments to this function are incorrect
-  three_arg_diff(1, X {}, X {}); //~ ERROR arguments to this function are incorrect
+  three_arg_diff(X {}, X {}, "");
+  //~^ ERROR mismatched types
+  //~| ERROR mismatched types
+  three_arg_diff(X {}, 1.0, X {});
+  //~^ ERROR mismatched types
+  //~| ERROR mismatched types
+  three_arg_diff(1, X {}, X {});
+  //~^ ERROR mismatched types
+  //~| ERROR mismatched types
 
-  three_arg_diff(X {}, X {}, X {}); //~ ERROR arguments to this function are incorrect
+  three_arg_diff(X {}, X {}, X {});
+  //~^ ERROR mismatched types
+  //~| ERROR mismatched types
+  //~| ERROR mismatched types
 
   three_arg_repeat(X {}, 1, ""); //~ ERROR mismatched types
   three_arg_repeat(1, X {}, ""); //~ ERROR mismatched types
   three_arg_repeat(1, 1, X {}); //~ ERROR mismatched types
 
-  three_arg_repeat(X {}, X {}, ""); //~ ERROR arguments to this function are incorrect
-  three_arg_repeat(X {}, 1, X {}); //~ ERROR arguments to this function are incorrect
-  three_arg_repeat(1, X {}, X{}); //~ ERROR arguments to this function are incorrect
+  three_arg_repeat(X {}, X {}, "");
+  //~^ ERROR mismatched types
+  //~| ERROR mismatched types
+  three_arg_repeat(X {}, 1, X {});
+  //~^ ERROR mismatched types
+  //~| ERROR mismatched types
+  three_arg_repeat(1, X {}, X{});
+  //~^ ERROR mismatched types
+  //~| ERROR mismatched types
 
-  three_arg_repeat(X {}, X {}, X {}); //~ ERROR arguments to this function are incorrect
+  three_arg_repeat(X {}, X {}, X {});
+  //~^ ERROR mismatched types
+  //~| ERROR mismatched types
+  //~| ERROR mismatched types
 }

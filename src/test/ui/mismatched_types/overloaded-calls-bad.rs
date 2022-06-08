@@ -21,13 +21,11 @@ impl FnOnce<(isize,)> for S {
 }
 
 fn main() {
-    let mut s = S {
-        x: 3,
-        y: 3,
-    };
-    let ans = s("what");    //~ ERROR mismatched types
+    let mut s = S { x: 3, y: 3 };
+    let ans = s("what"); //~ ERROR mismatched types
     let ans = s();
     //~^ ERROR this function takes 1 argument but 0 arguments were supplied
     let ans = s("burma", "shave");
     //~^ ERROR this function takes 1 argument but 2 arguments were supplied
+    //~| ERROR mismatched types
 }

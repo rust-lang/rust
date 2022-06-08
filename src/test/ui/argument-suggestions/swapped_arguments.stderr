@@ -1,95 +1,84 @@
-error[E0308]: arguments to this function are incorrect
-  --> $DIR/swapped_arguments.rs:8:3
+error[E0308]: mismatched types
+  --> $DIR/swapped_arguments.rs:8:12
    |
 LL |   two_args(1.0, 1);
-   |   ^^^^^^^^ ---  - expected `f32`,found `{integer}`
-   |            |
-   |            expected `i32`,found `{float}`
-   |
-note: function defined here
-  --> $DIR/swapped_arguments.rs:3:4
-   |
-LL | fn two_args(_a: i32, _b: f32) {}
-   |    ^^^^^^^^ -------  -------
-help: swap these arguments
-   |
-LL |   two_args(1, 1.0);
-   |   ~~~~~~~~~~~~~~~~
+   |            ^^^ expected `i32`, found floating-point number
 
-error[E0308]: arguments to this function are incorrect
-  --> $DIR/swapped_arguments.rs:9:3
+error[E0308]: mismatched types
+  --> $DIR/swapped_arguments.rs:8:17
+   |
+LL |   two_args(1.0, 1);
+   |                 ^
+   |                 |
+   |                 expected `f32`, found integer
+   |                 help: use a float literal: `1.0`
+
+error[E0308]: mismatched types
+  --> $DIR/swapped_arguments.rs:11:14
    |
 LL |   three_args(1.0,   1,  "");
-   |   ^^^^^^^^^^ ---    - expected `f32`,found `{integer}`
-   |              |
-   |              expected `i32`,found `{float}`
-   |
-note: function defined here
-  --> $DIR/swapped_arguments.rs:4:4
-   |
-LL | fn three_args(_a: i32, _b: f32, _c: &str) {}
-   |    ^^^^^^^^^^ -------  -------  --------
-help: swap these arguments
-   |
-LL |   three_args(1, 1.0, "");
-   |   ~~~~~~~~~~~~~~~~~~~~~~
+   |              ^^^ expected `i32`, found floating-point number
 
-error[E0308]: arguments to this function are incorrect
-  --> $DIR/swapped_arguments.rs:10:3
+error[E0308]: mismatched types
+  --> $DIR/swapped_arguments.rs:11:21
+   |
+LL |   three_args(1.0,   1,  "");
+   |                     ^
+   |                     |
+   |                     expected `f32`, found integer
+   |                     help: use a float literal: `1.0`
+
+error[E0308]: mismatched types
+  --> $DIR/swapped_arguments.rs:14:20
    |
 LL |   three_args(  1,  "", 1.0);
-   |   ^^^^^^^^^^       --  --- expected `&str`,found `{float}`
-   |                    |
-   |                    expected `f32`,found `&'static str`
-   |
-note: function defined here
-  --> $DIR/swapped_arguments.rs:4:4
-   |
-LL | fn three_args(_a: i32, _b: f32, _c: &str) {}
-   |    ^^^^^^^^^^ -------  -------  --------
-help: swap these arguments
-   |
-LL |   three_args(1, 1.0, "");
-   |   ~~~~~~~~~~~~~~~~~~~~~~
+   |                    ^^ expected `f32`, found `&str`
 
-error[E0308]: arguments to this function are incorrect
-  --> $DIR/swapped_arguments.rs:11:3
+error[E0308]: mismatched types
+  --> $DIR/swapped_arguments.rs:14:24
+   |
+LL |   three_args(  1,  "", 1.0);
+   |                        ^^^ expected `&str`, found floating-point number
+
+error[E0308]: mismatched types
+  --> $DIR/swapped_arguments.rs:17:15
    |
 LL |   three_args( "", 1.0,   1);
-   |   ^^^^^^^^^^  --         - expected `&str`,found `{integer}`
-   |               |
-   |               expected `i32`,found `&'static str`
-   |
-note: function defined here
-  --> $DIR/swapped_arguments.rs:4:4
-   |
-LL | fn three_args(_a: i32, _b: f32, _c: &str) {}
-   |    ^^^^^^^^^^ -------  -------  --------
-help: swap these arguments
-   |
-LL |   three_args(1, 1.0, "");
-   |   ~~~~~~~~~~~~~~~~~~~~~~
+   |               ^^ expected `i32`, found `&str`
 
-error[E0308]: arguments to this function are incorrect
-  --> $DIR/swapped_arguments.rs:13:3
+error[E0308]: mismatched types
+  --> $DIR/swapped_arguments.rs:17:26
+   |
+LL |   three_args( "", 1.0,   1);
+   |                          ^ expected `&str`, found integer
+
+error[E0308]: mismatched types
+  --> $DIR/swapped_arguments.rs:20:13
    |
 LL |   four_args(1.0, 1, X {}, "");
-   |   ^^^^^^^^^ ---  -  ----  -- expected `X`,found `&'static str`
-   |             |    |  |
-   |             |    |  expected `&str`,found `X`
-   |             |    expected `f32`,found `{integer}`
-   |             expected `i32`,found `{float}`
-   |
-note: function defined here
-  --> $DIR/swapped_arguments.rs:5:4
-   |
-LL | fn four_args(_a: i32, _b: f32, _c: &str, _d: X) {}
-   |    ^^^^^^^^^ -------  -------  --------  -----
-help: did you mean
-   |
-LL |   four_args(1, 1.0, "", X {});
-   |   ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   |             ^^^ expected `i32`, found floating-point number
 
-error: aborting due to 5 previous errors
+error[E0308]: mismatched types
+  --> $DIR/swapped_arguments.rs:20:18
+   |
+LL |   four_args(1.0, 1, X {}, "");
+   |                  ^
+   |                  |
+   |                  expected `f32`, found integer
+   |                  help: use a float literal: `1.0`
+
+error[E0308]: mismatched types
+  --> $DIR/swapped_arguments.rs:20:21
+   |
+LL |   four_args(1.0, 1, X {}, "");
+   |                     ^^^^ expected `&str`, found struct `X`
+
+error[E0308]: mismatched types
+  --> $DIR/swapped_arguments.rs:20:27
+   |
+LL |   four_args(1.0, 1, X {}, "");
+   |                           ^^ expected struct `X`, found `&str`
+
+error: aborting due to 12 previous errors
 
 For more information about this error, try `rustc --explain E0308`.

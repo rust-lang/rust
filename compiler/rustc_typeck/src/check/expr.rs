@@ -1416,13 +1416,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         let tcx = self.tcx;
 
-        let expected_inputs =
-            self.expected_inputs_for_expected_output(span, expected, adt_ty, &[adt_ty]);
-        let adt_ty_hint = if let Some(expected_inputs) = expected_inputs {
-            expected_inputs.get(0).cloned().unwrap_or(adt_ty)
-        } else {
-            adt_ty
-        };
+        let adt_ty_hint = self
+            .expected_inputs_for_expected_output(span, expected, adt_ty, &[adt_ty])
+            .get(0)
+            .cloned()
+            .unwrap_or(adt_ty);
         // re-link the regions that EIfEO can erase.
         self.demand_eqtype(span, adt_ty_hint, adt_ty);
 

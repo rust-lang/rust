@@ -1,43 +1,51 @@
-error[E0308]: arguments to this function are incorrect
-  --> $DIR/permuted_arguments.rs:10:3
+error[E0308]: mismatched types
+  --> $DIR/permuted_arguments.rs:10:14
    |
 LL |   three_args(1.0, "", 1);
-   |   ^^^^^^^^^^ ---  --  - expected `&str`,found `{integer}`
-   |              |    |
-   |              |    expected `f32`,found `&'static str`
-   |              expected `i32`,found `{float}`
-   |
-note: function defined here
-  --> $DIR/permuted_arguments.rs:5:4
-   |
-LL | fn three_args(_a: i32, _b: f32, _c: &str) {}
-   |    ^^^^^^^^^^ -------  -------  --------
-help: reorder these arguments
-   |
-LL |   three_args(1, 1.0, "");
-   |   ~~~~~~~~~~~~~~~~~~~~~~
+   |              ^^^ expected `i32`, found floating-point number
 
-error[E0308]: arguments to this function are incorrect
-  --> $DIR/permuted_arguments.rs:12:3
+error[E0308]: mismatched types
+  --> $DIR/permuted_arguments.rs:10:19
+   |
+LL |   three_args(1.0, "", 1);
+   |                   ^^ expected `f32`, found `&str`
+
+error[E0308]: mismatched types
+  --> $DIR/permuted_arguments.rs:10:23
+   |
+LL |   three_args(1.0, "", 1);
+   |                       ^ expected `&str`, found integer
+
+error[E0308]: mismatched types
+  --> $DIR/permuted_arguments.rs:15:13
    |
 LL |   many_args(X {}, Y {}, 1, 1.0, "");
-   |   ^^^^^^^^^ ----  ----  -  ---  -- expected `Y`,found `&'static str`
-   |             |     |     |  |
-   |             |     |     |  expected `X`,found `{float}`
-   |             |     |     expected `&str`,found `{integer}`
-   |             |     expected `f32`,found `Y`
-   |             expected `i32`,found `X`
-   |
-note: function defined here
-  --> $DIR/permuted_arguments.rs:6:4
-   |
-LL | fn many_args(_a: i32, _b: f32, _c: &str, _d: X, _e: Y) {}
-   |    ^^^^^^^^^ -------  -------  --------  -----  -----
-help: reorder these arguments
-   |
-LL |   many_args(1, 1.0, "", X {}, Y {});
-   |   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   |             ^^^^ expected `i32`, found struct `X`
 
-error: aborting due to 2 previous errors
+error[E0308]: mismatched types
+  --> $DIR/permuted_arguments.rs:15:19
+   |
+LL |   many_args(X {}, Y {}, 1, 1.0, "");
+   |                   ^^^^ expected `f32`, found struct `Y`
+
+error[E0308]: mismatched types
+  --> $DIR/permuted_arguments.rs:15:25
+   |
+LL |   many_args(X {}, Y {}, 1, 1.0, "");
+   |                         ^ expected `&str`, found integer
+
+error[E0308]: mismatched types
+  --> $DIR/permuted_arguments.rs:15:28
+   |
+LL |   many_args(X {}, Y {}, 1, 1.0, "");
+   |                            ^^^ expected struct `X`, found floating-point number
+
+error[E0308]: mismatched types
+  --> $DIR/permuted_arguments.rs:15:33
+   |
+LL |   many_args(X {}, Y {}, 1, 1.0, "");
+   |                                 ^^ expected struct `Y`, found `&str`
+
+error: aborting due to 8 previous errors
 
 For more information about this error, try `rustc --explain E0308`.

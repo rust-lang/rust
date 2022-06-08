@@ -2,9 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-46112.rs:9:21
    |
 LL | fn main() { test(Ok(())); }
-   |                  -- ^^ expected enum `Option`, found `()`
-   |                  |
-   |                  arguments to this enum variant are incorrect
+   |                     ^^ expected enum `Option`, found `()`
    |
    = note:   expected enum `Option<()>`
            found unit type `()`

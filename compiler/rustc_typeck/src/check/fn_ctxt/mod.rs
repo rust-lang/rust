@@ -1,5 +1,4 @@
 mod _impl;
-mod arg_matrix;
 mod checks;
 mod suggestions;
 
