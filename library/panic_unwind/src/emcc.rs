@@ -129,11 +129,4 @@ extern "C" {
         tinfo: *const TypeInfo,
         dest: extern "C" fn(*mut libc::c_void) -> *mut libc::c_void,
     ) -> !;
-    fn __gxx_personality_v0(
-        version: c_int,
-        actions: uw::_Unwind_Action,
-        exception_class: uw::_Unwind_Exception_Class,
-        exception_object: *mut uw::_Unwind_Exception,
-        context: *mut uw::_Unwind_Context,
-    ) -> uw::_Unwind_Reason_Code;
 }
