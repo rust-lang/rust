@@ -105,7 +105,6 @@ extern "C" fn exception_cleanup(ptr: *mut libc::c_void) -> *mut libc::c_void {
     }
 }
 
-
 // This is required by the compiler to exist (e.g., it's a lang item), but it's
 // never actually called by the compiler.  Emscripten EH doesn't use a
 // personality function at all, it instead uses __cxa_find_matching_catch.
