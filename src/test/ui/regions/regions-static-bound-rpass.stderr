@@ -4,6 +4,7 @@ warning: unnecessary lifetime parameter `'a`
 LL |     where 'a: 'static { t }
    |           ^^
    |
+   = note: `#[warn(needless_lifetime)]` on by default
    = help: you can use the `'static` lifetime directly, in place of `'a`
 
 warning: unnecessary lifetime parameter `'a`

@@ -4,6 +4,7 @@ warning: unnecessary lifetime parameter `'a`
 LL |     type Y<'a: 'static>;
    |            ^^
    |
+   = note: `#[warn(needless_lifetime)]` on by default
    = help: you can use the `'static` lifetime directly, in place of `'a`
 
 error[E0478]: lifetime bound not satisfied
