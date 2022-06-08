@@ -199,6 +199,9 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
         region: ty::Region<'tcx>,
         obligations: &mut Vec<PredicateObligation<'tcx>>,
     ) {
+        let nested = |ty, obligations| {
+            self.compute_nested_outlives_obligations(cause, param_env, ty, region, obligations)
+        };
         let to_obligation = |pred: ty::Binder<'tcx, ty::PredicateKind<'tcx>>| {
             Obligation::new(cause.clone(), param_env, pred.to_predicate(self.tcx))
         };
@@ -232,20 +235,14 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
             &ty::Ref(re, _, _) => obligations.push(reg_outlives(re)),
 
             &ty::RawPtr(ty::TypeAndMut { ty, mutbl: _ }) | &ty::Slice(ty) | &ty::Array(ty, _) => {
-                self.compute_nested_outlives_obligations(cause, param_env, ty, region, obligations)
+                nested(ty, obligations)
             }
 
             &ty::Adt(_, substs) | &ty::Opaque(_, substs) => {
                 for arg in substs {
                     match arg.unpack() {
                         GenericArgKind::Lifetime(re) => obligations.push(reg_outlives(re)),
-                        GenericArgKind::Type(ty) => self.compute_nested_outlives_obligations(
-                            cause,
-                            param_env,
-                            ty,
-                            region,
-                            obligations,
-                        ),
+                        GenericArgKind::Type(ty) => nested(ty, obligation),
                         GenericArgKind::Const(_) => (),
                     }
                 }
@@ -256,13 +253,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
             &ty::FnDef(_, substs) => {
                 for arg in substs {
                     match arg.unpack() {
-                        GenericArgKind::Type(ty) => self.compute_nested_outlives_obligations(
-                            cause,
-                            param_env,
-                            ty,
-                            region,
-                            obligations,
-                        ),
+                        GenericArgKind::Type(ty) => nested(ty, obligations),
                         // HACK(eddyb) ignore lifetimes found shallowly in `substs`.
                         // This is inconsistent with `ty::Adt` (including all substs)
                         // and with `ty::Closure` (ignoring all substs other than
@@ -278,25 +269,13 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
             // FIXME: Add comment on why we can ignore the signature.
             ty::Closure(_, substs) => {
                 let tupled_ty = substs.as_closure().tupled_upvars_ty();
-                self.compute_nested_outlives_obligations(
-                    cause,
-                    param_env,
-                    tupled_ty,
-                    region,
-                    obligations,
-                )
+                nested(tupled_ty, obligations)
             }
 
             // FIXME: Add comment on why we can ignore the signature.
             ty::Generator(_, substs, _) => {
                 let tupled_ty = substs.as_generator().tupled_upvars_ty();
-                self.compute_nested_outlives_obligations(
-                    cause,
-                    param_env,
-                    tupled_ty,
-                    region,
-                    obligations,
-                )
+                nested(tupled_ty, obligations)
             }
 
             // All regions are bound inside a witness
@@ -310,13 +289,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
 
             &ty::Tuple(fields) => {
                 for field in fields {
-                    self.compute_nested_outlives_obligations(
-                        cause,
-                        param_env,
-                        field,
-                        region,
-                        obligations,
-                    )
+                    nested(field, obligations)
                 }
             }
 
@@ -327,13 +300,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
                     data,
                 );
                 for ty in data.inputs_and_output {
-                    self.compute_nested_outlives_obligations(
-                        cause,
-                        param_env,
-                        ty,
-                        region,
-                        obligations,
-                    )
+                    nested(ty, obligations)
                 }
             }
 
@@ -359,13 +326,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
                 for arg in traits_iter {
                     match arg.unpack() {
                         GenericArgKind::Lifetime(re) => obligations.push(reg_outlives(re)),
-                        GenericArgKind::Type(ty) => self.compute_nested_outlives_obligations(
-                            cause,
-                            param_env,
-                            ty,
-                            region,
-                            obligations,
-                        ),
+                        GenericArgKind::Type(ty) => nested(ty, obligations),
                         GenericArgKind::Const(_) => (),
                     }
                 }
