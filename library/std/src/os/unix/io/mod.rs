@@ -52,8 +52,8 @@
 //! and writes happen outside the control of the Rust compiler, so they do not
 //! uphold Rust's memory safety guarantees.
 //!
-//! Does this mean that all APIs that might allow `/proc/self/mem` to be opened
-//! and read from or written to must be `unsafe`? No. Rust's safety guarantees
+//! However, this does not mean that all APIs that might allow `/proc/self/mem`
+//! to be opened and read from or written must be `unsafe`. Rust's safety guarantees
 //! only cover what the program itself can do, and not what entities outside
 //! the program can do to it. `/proc/self/mem` is considered to be such an
 //! external entity, along with debugging interfaces, and people with physical access to
