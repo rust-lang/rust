@@ -24,11 +24,6 @@ impl Condvar {
         Condvar { counter: AtomicUsize::new(0), sem1: ptr::null(), sem2: ptr::null() }
     }
 
-    pub unsafe fn init(&mut self) {
-        let _ = abi::sem_init(&mut self.sem1 as *mut *const c_void, 0);
-        let _ = abi::sem_init(&mut self.sem2 as *mut *const c_void, 0);
-    }
-
     pub unsafe fn notify_one(&self) {
         if self.counter.load(SeqCst) > 0 {
             self.counter.fetch_sub(1, SeqCst);
