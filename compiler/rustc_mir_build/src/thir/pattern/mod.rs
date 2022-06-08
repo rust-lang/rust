@@ -757,10 +757,8 @@ pub(crate) fn compare_const_vals<'tcx>(
     assert_eq!(a.ty(), b.ty());
     assert_eq!(a.ty(), ty);
 
-    let from_bool = |v: bool| v.then_some(Ordering::Equal);
-
     if a == b {
-        return from_bool(true);
+        return Some(Ordering::Equal);
     }
 
     let a_bits = a.try_eval_bits(tcx, param_env, ty);
@@ -790,5 +788,5 @@ pub(crate) fn compare_const_vals<'tcx>(
         };
     }
 
-    from_bool(a == b)
+    None
 }
