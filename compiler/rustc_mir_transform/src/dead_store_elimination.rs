@@ -34,7 +34,7 @@ pub fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, borrowed: &BitS
         for (statement_index, statement) in bb_data.statements.iter().enumerate().rev() {
             let loc = Location { block: bb, statement_index };
             if let StatementKind::Assign(assign) = &statement.kind {
-                if assign.1.is_pointer_int_cast() {
+                if !assign.1.is_safe_to_remove() {
                     continue;
                 }
             }

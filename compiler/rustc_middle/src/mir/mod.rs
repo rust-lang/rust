@@ -2605,9 +2605,34 @@ pub enum Rvalue<'tcx> {
 static_assert_size!(Rvalue<'_>, 40);
 
 impl<'tcx> Rvalue<'tcx> {
+    /// Returns true if rvalue can be safely removed when the result is unused.
     #[inline]
-    pub fn is_pointer_int_cast(&self) -> bool {
-        matches!(self, Rvalue::Cast(CastKind::PointerExposeAddress, _, _))
+    pub fn is_safe_to_remove(&self) -> bool {
+        match self {
+            // Pointer to int casts may be side-effects due to exposing the provenance.
+            // While the model is undecided, we should be conservative. See
+            // <https://www.ralfj.de/blog/2022/04/11/provenance-exposed.html>
+            Rvalue::Cast(CastKind::PointerExposeAddress, _, _) => false,
+
+            Rvalue::Use(_)
+            | Rvalue::Repeat(_, _)
+            | Rvalue::Ref(_, _, _)
+            | Rvalue::ThreadLocalRef(_)
+            | Rvalue::AddressOf(_, _)
+            | Rvalue::Len(_)
+            | Rvalue::Cast(
+                CastKind::Misc | CastKind::Pointer(_) | CastKind::PointerFromExposedAddress,
+                _,
+                _,
+            )
+            | Rvalue::BinaryOp(_, _)
+            | Rvalue::CheckedBinaryOp(_, _)
+            | Rvalue::NullaryOp(_, _)
+            | Rvalue::UnaryOp(_, _)
+            | Rvalue::Discriminant(_)
+            | Rvalue::Aggregate(_, _)
+            | Rvalue::ShallowInitBox(_, _) => true,
+        }
     }
 }
 
