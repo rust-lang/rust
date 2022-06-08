@@ -37,6 +37,9 @@
 #![recursion_limit = "256"]
 #![allow(rustc::potential_query_instability)]
 
+#[macro_use]
+extern crate tracing;
+
 use rustc_ast::visit;
 use rustc_ast::{self as ast, *};
 use rustc_ast_pretty::pprust;
@@ -63,7 +66,6 @@ use rustc_span::{Span, DUMMY_SP};
 
 use smallvec::SmallVec;
 use std::collections::hash_map::Entry;
-use tracing::{debug, trace};
 
 macro_rules! arena_vec {
     ($this:expr; $($x:expr),*) => (
@@ -439,7 +441,7 @@ pub fn lower_crate<'a, 'hir>(
     arena.alloc(krate)
 }
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 enum ParamMode {
     /// Any path in a type context.
     Explicit,
@@ -455,6 +457,7 @@ enum ParenthesizedGenericArgs {
 }
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
+    #[instrument(level = "debug", skip(self, f))]
     fn with_hir_id_owner(
         &mut self,
         owner: NodeId,
@@ -599,12 +602,15 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.lower_node_id(node_id)
     }
 
+    #[instrument(level = "trace", skip(self))]
     fn lower_res(&mut self, res: Res<NodeId>) -> Res {
         let res: Result<Res, ()> = res.apply_id(|id| {
             let owner = self.current_hir_id_owner;
             let local_id = self.node_id_to_local_id.get(&id).copied().ok_or(())?;
             Ok(hir::HirId { owner, local_id })
         });
+        trace!(?res);
+
         // We may fail to find a HirId when the Res points to a Local from an enclosing HIR owner.
         // This can happen when trying to lower the return type `x` in erroneous code like
         //   async fn foo(x: u8) -> x {}
@@ -851,6 +857,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// ```
     ///
     /// returns a `hir::TypeBinding` representing `Item`.
+    #[instrument(level = "debug", skip(self))]
     fn lower_assoc_ty_constraint(
         &mut self,
         constraint: &AssocConstraint,
@@ -1011,6 +1018,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         err.emit();
     }
 
+    #[instrument(level = "debug", skip(self))]
     fn lower_generic_arg(
         &mut self,
         arg: &ast::GenericArg,
@@ -1081,6 +1089,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
     }
 
+    #[instrument(level = "debug", skip(self))]
     fn lower_ty(&mut self, t: &Ty, itctx: ImplTraitContext) -> &'hir hir::Ty<'hir> {
         self.arena.alloc(self.lower_ty_direct(t, itctx))
     }
@@ -1212,41 +1221,15 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         )
                     }
                     ImplTraitContext::Universal => {
-                        // Add a definition for the in-band `Param`.
-                        let def_id = self.resolver.local_def_id(def_node_id);
-
-                        let hir_bounds =
-                            self.lower_param_bounds(bounds, ImplTraitContext::Universal);
-                        // Set the name to `impl Bound1 + Bound2`.
+                        let span = t.span;
                         let ident = Ident::from_str_and_span(&pprust::ty_to_string(t), span);
-                        let param = hir::GenericParam {
-                            hir_id: self.lower_node_id(def_node_id),
-                            name: ParamName::Plain(self.lower_ident(ident)),
-                            pure_wrt_drop: false,
-                            span: self.lower_span(span),
-                            kind: hir::GenericParamKind::Type { default: None, synthetic: true },
-                            colon_span: None,
-                        };
+                        let (param, bounds, path) =
+                            self.lower_generic_and_bounds(def_node_id, span, ident, bounds);
                         self.impl_trait_defs.push(param);
-
-                        if let Some(preds) = self.lower_generic_bound_predicate(
-                            ident,
-                            def_node_id,
-                            &GenericParamKind::Type { default: None },
-                            hir_bounds,
-                            hir::PredicateOrigin::ImplTrait,
-                        ) {
-                            self.impl_trait_bounds.push(preds)
+                        if let Some(bounds) = bounds {
+                            self.impl_trait_bounds.push(bounds);
                         }
-
-                        hir::TyKind::Path(hir::QPath::Resolved(
-                            None,
-                            self.arena.alloc(hir::Path {
-                                span: self.lower_span(span),
-                                res: Res::Def(DefKind::TyParam, def_id.to_def_id()),
-                                segments: arena_vec![self; hir::PathSegment::from_ident(self.lower_ident(ident))],
-                            }),
-                        ))
+                        path
                     }
                     ImplTraitContext::Disallowed(position) => {
                         let mut err = struct_span_err!(
@@ -1737,6 +1720,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         )
     }
 
+    #[instrument(level = "trace", skip(self))]
     fn lower_param_bound(
         &mut self,
         tpb: &GenericBound,
@@ -1862,8 +1846,27 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.arena.alloc_from_iter(self.lower_generic_params_mut(params))
     }
 
+    #[instrument(level = "trace", skip(self))]
     fn lower_generic_param(&mut self, param: &GenericParam) -> hir::GenericParam<'hir> {
-        let (name, kind) = match param.kind {
+        let (name, kind) = self.lower_generic_param_kind(param);
+
+        let hir_id = self.lower_node_id(param.id);
+        self.lower_attrs(hir_id, &param.attrs);
+        hir::GenericParam {
+            hir_id,
+            name,
+            span: self.lower_span(param.span()),
+            pure_wrt_drop: self.sess.contains_name(&param.attrs, sym::may_dangle),
+            kind,
+            colon_span: param.colon_span.map(|s| self.lower_span(s)),
+        }
+    }
+
+    fn lower_generic_param_kind(
+        &mut self,
+        param: &GenericParam,
+    ) -> (hir::ParamName, hir::GenericParamKind<'hir>) {
+        match param.kind {
             GenericParamKind::Lifetime => {
                 // AST resolution emitted an error on those parameters, so we lower them using
                 // `ParamName::Error`.
@@ -1897,17 +1900,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     hir::GenericParamKind::Const { ty, default },
                 )
             }
-        };
-
-        let hir_id = self.lower_node_id(param.id);
-        self.lower_attrs(hir_id, &param.attrs);
-        hir::GenericParam {
-            hir_id,
-            name,
-            span: self.lower_span(param.span()),
-            pure_wrt_drop: self.sess.contains_name(&param.attrs, sym::may_dangle),
-            kind,
-            colon_span: param.colon_span.map(|s| self.lower_span(s)),
         }
     }
 
@@ -1952,6 +1944,47 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         itctx: ImplTraitContext,
     ) -> impl Iterator<Item = hir::GenericBound<'hir>> + Captures<'s> + Captures<'a> {
         bounds.iter().map(move |bound| self.lower_param_bound(bound, itctx))
+    }
+
+    fn lower_generic_and_bounds(
+        &mut self,
+        node_id: NodeId,
+        span: Span,
+        ident: Ident,
+        bounds: &[GenericBound],
+    ) -> (hir::GenericParam<'hir>, Option<hir::WherePredicate<'hir>>, hir::TyKind<'hir>) {
+        // Add a definition for the in-band `Param`.
+        let def_id = self.resolver.local_def_id(node_id);
+
+        let hir_bounds = self.lower_param_bounds(bounds, ImplTraitContext::Universal);
+        // Set the name to `impl Bound1 + Bound2`.
+        let param = hir::GenericParam {
+            hir_id: self.lower_node_id(node_id),
+            name: ParamName::Plain(self.lower_ident(ident)),
+            pure_wrt_drop: false,
+            span: self.lower_span(span),
+            kind: hir::GenericParamKind::Type { default: None, synthetic: true },
+            colon_span: None,
+        };
+
+        let preds = self.lower_generic_bound_predicate(
+            ident,
+            node_id,
+            &GenericParamKind::Type { default: None },
+            hir_bounds,
+            hir::PredicateOrigin::ImplTrait,
+        );
+
+        let ty = hir::TyKind::Path(hir::QPath::Resolved(
+            None,
+            self.arena.alloc(hir::Path {
+                span: self.lower_span(span),
+                res: Res::Def(DefKind::TyParam, def_id.to_def_id()),
+                segments: arena_vec![self; hir::PathSegment::from_ident(self.lower_ident(ident))],
+            }),
+        ));
+
+        (param, preds, ty)
     }
 
     /// Lowers a block directly to an expression, presuming that it
