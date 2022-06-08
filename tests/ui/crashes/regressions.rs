@@ -1,4 +1,4 @@
-#![allow(clippy::blacklisted_name)]
+#![allow(clippy::disallowed_name)]
 
 pub fn foo(bar: *const u8) {
     println!("{:#p}", bar);

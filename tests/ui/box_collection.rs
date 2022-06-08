@@ -1,10 +1,5 @@
 #![warn(clippy::all)]
-#![allow(
-    clippy::boxed_local,
-    clippy::needless_pass_by_value,
-    clippy::blacklisted_name,
-    unused
-)]
+#![allow(clippy::boxed_local, clippy::needless_pass_by_value, clippy::disallowed_name, unused)]
 
 use std::collections::{BTreeMap, BTreeSet, BinaryHeap, HashMap, HashSet, LinkedList, VecDeque};
 
