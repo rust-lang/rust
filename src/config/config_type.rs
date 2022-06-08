@@ -61,9 +61,6 @@ macro_rules! create_config {
         #[derive(Clone)]
         #[allow(unreachable_pub)]
         pub struct Config {
-            // if a license_template_path has been specified, successfully read, parsed and compiled
-            // into a regex, it will be stored here
-            pub license_template: Option<Regex>,
             // For each config item, we store a bool indicating whether it has
             // been accessed and the value, and a bool whether the option was
             // manually initialised, or taken from the default,
@@ -104,7 +101,6 @@ macro_rules! create_config {
                     | "struct_variant_width"
                     | "array_width"
                     | "chain_width" => self.0.set_heuristics(),
-                    "license_template_path" => self.0.set_license_template(),
                     "merge_imports" => self.0.set_merge_imports(),
                     &_ => (),
                 }
@@ -163,7 +159,6 @@ macro_rules! create_config {
                 }
             )+
                 self.set_heuristics();
-                self.set_license_template();
                 self.set_ignore(dir);
                 self.set_merge_imports();
                 self
@@ -247,7 +242,6 @@ macro_rules! create_config {
                     | "struct_variant_width"
                     | "array_width"
                     | "chain_width" => self.set_heuristics(),
-                    "license_template_path" => self.set_license_template(),
                     "merge_imports" => self.set_merge_imports(),
                     &_ => (),
                 }
@@ -386,21 +380,6 @@ macro_rules! create_config {
                 };
             }
 
-            fn set_license_template(&mut self) {
-                if self.was_set().license_template_path() {
-                    let lt_path = self.license_template_path();
-                    if lt_path.len() > 0 {
-                        match license::load_and_compile_template(&lt_path) {
-                            Ok(re) => self.license_template = Some(re),
-                            Err(msg) => eprintln!("Warning for license template file {:?}: {}",
-                                                lt_path, msg),
-                        }
-                    } else {
-                        self.license_template = None;
-                    }
-                }
-            }
-
             fn set_ignore(&mut self, dir: &Path) {
                 self.ignore.2.add_prefix(dir);
             }
@@ -437,7 +416,6 @@ macro_rules! create_config {
         impl Default for Config {
             fn default() -> Config {
                 Config {
-                    license_template: None,
                     $(
                         $i: (Cell::new(false), false, $def, $stb),
                     )+

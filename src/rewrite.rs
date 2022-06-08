@@ -12,6 +12,7 @@ use crate::shape::Shape;
 use crate::skip::SkipContext;
 use crate::visitor::SnippetProvider;
 use crate::FormatReport;
+use rustc_data_structures::stable_map::FxHashMap;
 
 pub(crate) trait Rewrite {
     /// Rewrite self into shape.
@@ -24,10 +25,22 @@ impl<T: Rewrite> Rewrite for ptr::P<T> {
     }
 }
 
+#[derive(Clone, PartialEq, Eq, Hash)]
+pub(crate) struct QueryId {
+    pub(crate) shape: Shape,
+    pub(crate) span: Span,
+}
+
+// We use Option<HashMap> instead of HashMap, because in case of `None`
+// the function clean the memoize map, but it doesn't clean when
+// there is `Some(empty)`, so they are different.
+pub(crate) type Memoize = Rc<Cell<Option<FxHashMap<QueryId, Option<String>>>>>;
+
 #[derive(Clone)]
 pub(crate) struct RewriteContext<'a> {
     pub(crate) parse_sess: &'a ParseSess,
     pub(crate) config: &'a Config,
+    pub(crate) memoize: Memoize,
     pub(crate) inside_macro: Rc<Cell<bool>>,
     // Force block indent style even if we are using visual indent style.
     pub(crate) use_block: Cell<bool>,
