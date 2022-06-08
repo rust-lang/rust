@@ -345,6 +345,48 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
         }
     }
 
+    fn visit_fn_decl(&mut self, fd: &'tcx hir::FnDecl<'tcx>) {
+        let output = match fd.output {
+            hir::FnRetTy::DefaultReturn(_) => None,
+            hir::FnRetTy::Return(ref output) => {
+                let parent = self.tcx.hir().get_parent_node(output.hir_id);
+                let static_for_output = match self.tcx.hir().get(parent) {
+                    // `fn` definitions and methods.
+                    Node::Item(_) | Node::TraitItem(_) | Node::ImplItem(_) => true,
+
+                    // Foreign functions, `fn(...) -> R` and `Trait(...) -> R` (both types and bounds).
+                    Node::ForeignItem(_) | Node::Ty(_) | Node::TraitRef(_) => true,
+
+                    Node::TypeBinding(_) => matches!(
+                        self.tcx.hir().get(self.tcx.hir().get_parent_node(parent)),
+                        Node::TraitRef(_)
+                    ),
+
+                    // Everything else (only closures?) doesn't
+                    // actually enjoy elision in return types.
+                    _ => false,
+                };
+                Some((output, static_for_output))
+            }
+        };
+
+        // Lifetime elision prescribes a `'static` default lifetime.
+        let scope = Scope::ObjectLifetimeDefault { lifetime: Some(Region::Static), s: self.scope };
+        self.with(scope, |this| {
+            for ty in fd.inputs {
+                this.visit_ty(ty)
+            }
+
+            if let Some((output, static_for_output)) = output && static_for_output {
+                this.visit_ty(output)
+            }
+        });
+
+        if let Some((output, static_for_output)) = output && !static_for_output {
+            self.visit_ty(output)
+        }
+    }
+
     fn visit_path(&mut self, path: &'tcx hir::Path<'tcx>, _: hir::HirId) {
         for (i, segment) in path.segments.iter().enumerate() {
             let depth = path.segments.len() - i - 1;
@@ -423,11 +465,17 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         generic_args: &'tcx hir::GenericArgs<'tcx>,
     ) {
         if generic_args.parenthesized {
-            for input in generic_args.inputs() {
-                self.visit_ty(input);
-            }
-            let output = generic_args.bindings[0].ty();
-            self.visit_ty(output);
+            // Lifetime elision rules require us to use a `'static` default lifetime.
+            let scope =
+                Scope::ObjectLifetimeDefault { lifetime: Some(Region::Static), s: self.scope };
+            self.with(scope, |this| {
+                for input in generic_args.inputs() {
+                    this.visit_ty(input);
+                }
+
+                let output = generic_args.bindings[0].ty();
+                this.visit_ty(output);
+            });
             return;
         }
 
