@@ -665,7 +665,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             triple: tcx.sess.opts.target_triple.clone(),
             hash: tcx.crate_hash(LOCAL_CRATE),
             stable_crate_id: tcx.def_path_hash(LOCAL_CRATE.as_def_id()).stable_crate_id(),
-            panic_strategy: tcx.required_panic_strategy(()),
+            required_panic_strategy: tcx.required_panic_strategy(LOCAL_CRATE),
             panic_in_drop_strategy: tcx.sess.opts.debugging_opts.panic_in_drop,
             edition: tcx.sess.edition(),
             has_global_allocator: tcx.has_global_allocator(LOCAL_CRATE),

@@ -1369,10 +1369,7 @@ rustc_queries! {
         desc { |tcx| "check if `{}` contains FFI-unwind calls", tcx.def_path_str(key.to_def_id()) }
         cache_on_disk_if { true }
     }
-    query required_panic_strategy(_: ()) -> Option<PanicStrategy> {
-        desc { "compute the required panic strategy for the current crate" }
-    }
-    query panic_strategy(_: CrateNum) -> Option<PanicStrategy> {
+    query required_panic_strategy(_: CrateNum) -> Option<PanicStrategy> {
         fatal_cycle
         desc { "query a crate's required panic strategy" }
         separate_provide_extern

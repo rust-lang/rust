@@ -1,4 +1,4 @@
-use rustc_hir::def_id::{LocalDefId, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, LocalDefId, LOCAL_CRATE};
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout;
 use rustc_middle::ty::query::Providers;
@@ -123,7 +123,9 @@ fn has_ffi_unwind_calls(tcx: TyCtxt<'_>, local_def_id: LocalDefId) -> bool {
     tainted
 }
 
-fn required_panic_strategy(tcx: TyCtxt<'_>, (): ()) -> Option<PanicStrategy> {
+fn required_panic_strategy(tcx: TyCtxt<'_>, cnum: CrateNum) -> Option<PanicStrategy> {
+    assert_eq!(cnum, LOCAL_CRATE);
+
     if tcx.is_panic_runtime(LOCAL_CRATE) {
         return Some(tcx.sess.panic_strategy());
     }

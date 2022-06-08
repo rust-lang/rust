@@ -1759,8 +1759,8 @@ impl CrateMetadata {
         self.dep_kind.with_lock(|dep_kind| *dep_kind = f(*dep_kind))
     }
 
-    pub(crate) fn panic_strategy(&self) -> Option<PanicStrategy> {
-        self.root.panic_strategy
+    pub(crate) fn required_panic_strategy(&self) -> Option<PanicStrategy> {
+        self.root.required_panic_strategy
     }
 
     pub(crate) fn needs_panic_runtime(&self) -> bool {

@@ -368,7 +368,7 @@ fn verify_ok(tcx: TyCtxt<'_>, list: &[Linkage]) {
             }
             panic_runtime = Some((
                 cnum,
-                tcx.panic_strategy(cnum).unwrap_or_else(|| {
+                tcx.required_panic_strategy(cnum).unwrap_or_else(|| {
                     bug!("cannot determine panic strategy of a panic runtime");
                 }),
             ));
@@ -406,7 +406,7 @@ fn verify_ok(tcx: TyCtxt<'_>, list: &[Linkage]) {
                 continue;
             }
 
-            if let Some(found_strategy) = tcx.panic_strategy(cnum) && desired_strategy != found_strategy {
+            if let Some(found_strategy) = tcx.required_panic_strategy(cnum) && desired_strategy != found_strategy {
                 sess.err(&format!(
                     "the crate `{}` requires \
                                panic strategy `{}` which is \
