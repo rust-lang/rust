@@ -506,7 +506,7 @@ CLI flag:
 
 The possible compare modes are:
 
-* `polonius` — Runs with Polonius with `-Zpolonius -Zborrowck=mir`.
+* `polonius` — Runs with Polonius with `-Zpolonius`.
 * `chalk` — Runs with Chalk with `-Zchalk`.
 * `split-dwarf` — Runs with unpacked split-DWARF with `-Csplit-debuginfo=unpacked`.
 * `split-dwarf-single` — Runs with packed split-DWARF with `-Csplit-debuginfo=packed`.
