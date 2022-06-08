@@ -4,3 +4,7 @@ tex/*/out
 *.dot
 *.rs.bk
 .vscode
+*.mm_profdata
+perf.data
+perf.data.old
+flamegraph.svg
