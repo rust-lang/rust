@@ -12,6 +12,16 @@ use crate::sealed::Sealed;
 use crate::sys;
 use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 
+#[cfg(not(any(target_os = "vxworks", target_os = "espidf", target_os = "horizon")))]
+type UserId = u32;
+#[cfg(not(any(target_os = "vxworks", target_os = "espidf", target_os = "horizon")))]
+type GroupId = u32;
+
+#[cfg(any(target_os = "vxworks", target_os = "espidf", target_os = "horizon"))]
+type UserId = u16;
+#[cfg(any(target_os = "vxworks", target_os = "espidf", target_os = "horizon"))]
+type GroupId = u16;
+
 /// Unix-specific extensions to the [`process::Command`] builder.
 ///
 /// This trait is sealed: it cannot be implemented outside the standard library.
@@ -22,32 +32,17 @@ pub trait CommandExt: Sealed {
     /// `setuid` call in the child process. Failure in the `setuid`
     /// call will cause the spawn to fail.
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn uid(
-        &mut self,
-        #[cfg(not(any(target_os = "vxworks", target_os = "espidf", target_os = "horizon")))]
-        id: u32,
-        #[cfg(any(target_os = "vxworks", target_os = "espidf", target_os = "horizon"))] id: u16,
-    ) -> &mut process::Command;
+    fn uid(&mut self, id: UserId) -> &mut process::Command;
 
     /// Similar to `uid`, but sets the group ID of the child process. This has
     /// the same semantics as the `uid` field.
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn gid(
-        &mut self,
-        #[cfg(not(any(target_os = "vxworks", target_os = "espidf", target_os = "horizon")))]
-        id: u32,
-        #[cfg(any(target_os = "vxworks", target_os = "espidf", target_os = "horizon"))] id: u16,
-    ) -> &mut process::Command;
+    fn gid(&mut self, id: GroupId) -> &mut process::Command;
 
     /// Sets the supplementary group IDs for the calling process. Translates to
     /// a `setgroups` call in the child process.
     #[unstable(feature = "setgroups", issue = "90747")]
-    fn groups(
-        &mut self,
-        #[cfg(not(any(target_os = "vxworks", target_os = "espidf", target_os = "horizon")))] groups: &[u32],
-        #[cfg(any(target_os = "vxworks", target_os = "espidf", target_os = "horizon"))]
-        groups: &[u16],
-    ) -> &mut process::Command;
+    fn groups(&mut self, groups: &[GroupId]) -> &mut process::Command;
 
     /// Schedules a closure to be run just before the `exec` function is
     /// invoked.
@@ -161,32 +156,17 @@ pub trait CommandExt: Sealed {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl CommandExt for process::Command {
-    fn uid(
-        &mut self,
-        #[cfg(not(any(target_os = "vxworks", target_os = "espidf", target_os = "horizon")))]
-        id: u32,
-        #[cfg(any(target_os = "vxworks", target_os = "espidf", target_os = "horizon"))] id: u16,
-    ) -> &mut process::Command {
+    fn uid(&mut self, id: UserId) -> &mut process::Command {
         self.as_inner_mut().uid(id);
         self
     }
 
-    fn gid(
-        &mut self,
-        #[cfg(not(any(target_os = "vxworks", target_os = "espidf", target_os = "horizon")))]
-        id: u32,
-        #[cfg(any(target_os = "vxworks", target_os = "espidf", target_os = "horizon"))] id: u16,
-    ) -> &mut process::Command {
+    fn gid(&mut self, id: GroupId) -> &mut process::Command {
         self.as_inner_mut().gid(id);
         self
     }
 
-    fn groups(
-        &mut self,
-        #[cfg(not(any(target_os = "vxworks", target_os = "espidf", target_os = "horizon")))] groups: &[u32],
-        #[cfg(any(target_os = "vxworks", target_os = "espidf", target_os = "horizon"))]
-        groups: &[u16],
-    ) -> &mut process::Command {
+    fn groups(&mut self, groups: &[GroupId]) -> &mut process::Command {
         self.as_inner_mut().groups(groups);
         self
     }
