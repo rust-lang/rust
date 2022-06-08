@@ -16,14 +16,17 @@ use smallvec::smallvec;
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
     #[instrument(level = "trace", skip(self))]
-    pub(crate) fn lower_qpath(
+    pub(crate) fn lower_qpath<'itctx>(
         &mut self,
         id: NodeId,
-        qself: &Option<QSelf>,
-        p: &Path,
+        qself: &'itctx Option<QSelf>,
+        p: &'itctx Path,
         param_mode: ParamMode,
-        mut itctx: ImplTraitContext<'_>,
-    ) -> hir::QPath<'hir> {
+        mut itctx: ImplTraitContext<'_, 'itctx>,
+    ) -> hir::QPath<'hir>
+    where
+        'a: 'itctx,
+    {
         let qself_position = qself.as_ref().map(|q| q.position);
         let qself = qself.as_ref().map(|q| self.lower_ty(&q.ty, itctx.reborrow()));
 
@@ -174,14 +177,17 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.lower_path_extra(res, p, param_mode)
     }
 
-    pub(crate) fn lower_path_segment(
+    pub(crate) fn lower_path_segment<'itctx>(
         &mut self,
         path_span: Span,
-        segment: &PathSegment,
+        segment: &'itctx PathSegment,
         param_mode: ParamMode,
         parenthesized_generic_args: ParenthesizedGenericArgs,
-        itctx: ImplTraitContext<'_>,
-    ) -> hir::PathSegment<'hir> {
+        itctx: ImplTraitContext<'_, 'itctx>,
+    ) -> hir::PathSegment<'hir>
+    where
+        'a: 'itctx,
+    {
         debug!("path_span: {:?}, lower_path_segment(segment: {:?})", path_span, segment,);
         let (mut generic_args, infer_args) = if let Some(ref generic_args) = segment.args {
             match **generic_args {
@@ -214,15 +220,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             None
                         };
                         self.tcx.sess.emit_err(GenericTypeWithParentheses { span: data.span, sub });
-                        (
-                            self.lower_angle_bracketed_parameter_data(
-                                &data.as_angle_bracketed_args(),
-                                param_mode,
-                                itctx,
-                            )
-                            .0,
-                            false,
-                        )
+                        let aba = self.lowering_arena.aba.alloc(data.as_angle_bracketed_args());
+                        (self.lower_angle_bracketed_parameter_data(aba, param_mode, itctx).0, false)
                     }
                 },
             }
@@ -312,12 +311,15 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         );
     }
 
-    pub(crate) fn lower_angle_bracketed_parameter_data(
+    pub(crate) fn lower_angle_bracketed_parameter_data<'itctx>(
         &mut self,
-        data: &AngleBracketedArgs,
+        data: &'itctx AngleBracketedArgs,
         param_mode: ParamMode,
-        mut itctx: ImplTraitContext<'_>,
-    ) -> (GenericArgsCtor<'hir>, bool) {
+        mut itctx: ImplTraitContext<'_, 'itctx>,
+    ) -> (GenericArgsCtor<'hir>, bool)
+    where
+        'a: 'itctx,
+    {
         let has_non_lt_args = data.args.iter().any(|arg| match arg {
             AngleBracketedArg::Arg(ast::GenericArg::Lifetime(_))
             | AngleBracketedArg::Constraint(_) => false,
