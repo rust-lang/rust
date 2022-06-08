@@ -296,6 +296,20 @@ static HOOK: AtomicPtr<()> = AtomicPtr::new(ptr::null_mut());
 /// about the allocation that failed.
 ///
 /// The allocation error hook is a global resource.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(alloc_error_hook)]
+///
+/// use std::alloc::{Layout, set_alloc_error_hook};
+///
+/// fn custom_alloc_error_hook(layout: Layout) {
+///    panic!("memory allocation of {} bytes failed", layout.size());
+/// }
+///
+/// set_alloc_error_hook(custom_alloc_error_hook);
+/// ```
 #[unstable(feature = "alloc_error_hook", issue = "51245")]
 pub fn set_alloc_error_hook(hook: fn(Layout)) {
     HOOK.store(hook as *mut (), Ordering::SeqCst);
