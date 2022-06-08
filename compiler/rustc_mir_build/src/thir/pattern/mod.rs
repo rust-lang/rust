@@ -759,8 +759,6 @@ pub(crate) fn compare_const_vals<'tcx>(
 
     let from_bool = |v: bool| v.then_some(Ordering::Equal);
 
-    let fallback = || from_bool(a == b);
-
     if a == b {
         return from_bool(true);
     }
@@ -792,5 +790,5 @@ pub(crate) fn compare_const_vals<'tcx>(
         };
     }
 
-    fallback()
+    from_bool(a == b)
 }
