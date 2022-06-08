@@ -754,12 +754,14 @@ pub(crate) fn compare_const_vals<'tcx>(
     param_env: ty::ParamEnv<'tcx>,
     ty: Ty<'tcx>,
 ) -> Option<Ordering> {
+    assert_eq!(a.ty(), b.ty());
+
     let from_bool = |v: bool| v.then_some(Ordering::Equal);
 
     let fallback = || from_bool(a == b);
 
     // Use the fallback if any type differs
-    if a.ty() != b.ty() || a.ty() != ty {
+    if a.ty() != ty {
         return fallback();
     }
 
