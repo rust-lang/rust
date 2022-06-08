@@ -1920,7 +1920,7 @@ impl EmitterWriter {
             // Only show an underline in the suggestions if the suggestion is not the
             // entirety of the code being shown and the displayed code is not multiline.
             if let DisplaySuggestion::Diff | DisplaySuggestion::Underline = show_code_change {
-                draw_col_separator(&mut buffer, row_num, max_line_num_len + 1);
+                draw_col_separator_no_space(&mut buffer, row_num, max_line_num_len + 1);
                 for part in parts {
                     let span_start_pos = sm.lookup_char_pos(part.span.lo()).col_display;
                     let span_end_pos = sm.lookup_char_pos(part.span.hi()).col_display;

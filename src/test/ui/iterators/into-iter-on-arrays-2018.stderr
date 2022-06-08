@@ -59,7 +59,7 @@ help: or remove `.into_iter()` to iterate by value
    |
 LL -     for _ in [1, 2, 3].into_iter() {}
 LL +     for _ in [1, 2, 3] {}
-   | 
+   |
 
 warning: 5 warnings emitted
 

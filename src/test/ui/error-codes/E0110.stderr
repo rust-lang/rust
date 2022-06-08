@@ -10,7 +10,7 @@ help: primitive type `u32` doesn't have generic parameters
    |
 LL - type X = u32<'static>;
 LL + type X = u32;
-   | 
+   |
 
 error: aborting due to previous error
 

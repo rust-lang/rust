@@ -13,7 +13,7 @@ help: remove the `.await`
    |
 LL -     m::f1().await;
 LL +     m::f1();
-   | 
+   |
 help: alternatively, consider making `fn f1` asynchronous
    |
 LL |     pub async fn f1() {}
@@ -34,7 +34,7 @@ help: remove the `.await`
    |
 LL -     m::f2().await;
 LL +     m::f2();
-   | 
+   |
 help: alternatively, consider making `fn f2` asynchronous
    |
 LL |     pub(crate) async fn f2() {}
@@ -55,7 +55,7 @@ help: remove the `.await`
    |
 LL -     m::f3().await;
 LL +     m::f3();
-   | 
+   |
 help: alternatively, consider making `fn f3` asynchronous
    |
 LL |     pub async

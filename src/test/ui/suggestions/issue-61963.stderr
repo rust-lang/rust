@@ -15,7 +15,7 @@ help: use `dyn`
    |
 LL -     bar: Box<Bar>,
 LL +     bar: Box<dyn Bar>,
-   | 
+   |
 
 error: trait objects without an explicit `dyn` are deprecated
   --> $DIR/issue-61963.rs:18:1
@@ -29,7 +29,7 @@ help: use `dyn`
    |
 LL - pub struct Foo {
 LL + dyn pub struct Foo {
-   | 
+   |
 
 error: trait objects without an explicit `dyn` are deprecated
   --> $DIR/issue-61963.rs:28:14
@@ -43,7 +43,7 @@ help: use `dyn`
    |
 LL -     bar: Box<Bar>,
 LL +     bar: Box<dyn Bar>,
-   | 
+   |
 
 error: trait objects without an explicit `dyn` are deprecated
   --> $DIR/issue-61963.rs:28:14
@@ -57,7 +57,7 @@ help: use `dyn`
    |
 LL -     bar: Box<Bar>,
 LL +     bar: Box<dyn Bar>,
-   | 
+   |
 
 error: trait objects without an explicit `dyn` are deprecated
   --> $DIR/issue-61963.rs:18:1
@@ -71,7 +71,7 @@ help: use `dyn`
    |
 LL - pub struct Foo {
 LL + dyn pub struct Foo {
-   | 
+   |
 
 error: trait objects without an explicit `dyn` are deprecated
   --> $DIR/issue-61963.rs:18:1
@@ -85,7 +85,7 @@ help: use `dyn`
    |
 LL - pub struct Foo {
 LL + dyn pub struct Foo {
-   | 
+   |
 
 error: trait objects without an explicit `dyn` are deprecated
   --> $DIR/issue-61963.rs:18:1
@@ -99,7 +99,7 @@ help: use `dyn`
    |
 LL - pub struct Foo {
 LL + dyn pub struct Foo {
-   | 
+   |
 
 error: aborting due to 7 previous errors
 

@@ -10,7 +10,7 @@ help: primitive type `usize` doesn't have generic parameters
    |
 LL -     let x: usize<foo>;
 LL +     let x: usize;
-   | 
+   |
 
 error: aborting due to previous error
 

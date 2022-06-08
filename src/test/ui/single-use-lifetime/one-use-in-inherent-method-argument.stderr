@@ -15,7 +15,7 @@ help: elide the single-use lifetime
    |
 LL - impl<'f> Foo<'f> {
 LL + impl Foo<'_> {
-   | 
+   |
 
 error: lifetime parameter `'a` only used once
   --> $DIR/one-use-in-inherent-method-argument.rs:13:19
@@ -29,7 +29,7 @@ help: elide the single-use lifetime
    |
 LL -     fn inherent_a<'a>(&self, data: &'a u32) {
 LL +     fn inherent_a(&self, data: &u32) {
-   | 
+   |
 
 error: aborting due to 2 previous errors
 

@@ -11,7 +11,7 @@ help: to annotate the function, change the attribute from inner to outer style
    |
 LL - #![lang = "foo"]
 LL + #[lang = "foo"]
-   | 
+   |
 
 error: aborting due to previous error
 

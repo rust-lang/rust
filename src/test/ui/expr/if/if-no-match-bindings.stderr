@@ -30,7 +30,7 @@ help: consider removing the borrow
    |
 LL -     if &true {}
 LL +     if true {}
-   | 
+   |
 
 error[E0308]: mismatched types
   --> $DIR/if-no-match-bindings.rs:21:8
@@ -42,7 +42,7 @@ help: consider removing the borrow
    |
 LL -     if &mut true {}
 LL +     if true {}
-   | 
+   |
 
 error[E0308]: mismatched types
   --> $DIR/if-no-match-bindings.rs:24:11
@@ -76,7 +76,7 @@ help: consider removing the borrow
    |
 LL -     while &true {}
 LL +     while true {}
-   | 
+   |
 
 error[E0308]: mismatched types
   --> $DIR/if-no-match-bindings.rs:27:11
@@ -88,7 +88,7 @@ help: consider removing the borrow
    |
 LL -     while &mut true {}
 LL +     while true {}
-   | 
+   |
 
 error: aborting due to 8 previous errors
 
