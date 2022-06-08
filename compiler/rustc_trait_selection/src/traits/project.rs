@@ -29,7 +29,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::resolve::OpportunisticRegionResolver;
 use rustc_middle::traits::select::OverflowError;
-use rustc_middle::ty::fold::{MaxUniverse, TypeFoldable, TypeFolder};
+use rustc_middle::ty::fold::{MaxUniverse, TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{self, EarlyBinder, Term, ToPredicate, Ty, TyCtxt};
 use rustc_span::symbol::sym;
@@ -514,7 +514,7 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
                             self.selcx.infcx().report_overflow_error(&obligation, true);
                         }
 
-                        let substs = substs.super_fold_with(self);
+                        let substs = substs.fold_with(self);
                         let generic_ty = self.tcx().bound_type_of(def_id);
                         let concrete_ty = generic_ty.subst(self.tcx(), substs);
                         self.depth += 1;
@@ -531,8 +531,7 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
                 // placeholders (see branch below). *Also*, we know that we can
                 // register an obligation to *later* project, since we know
                 // there won't be bound vars there.
-
-                let data = data.super_fold_with(self);
+                let data = data.fold_with(self);
                 let normalized_ty = if self.eager_inference_replacement {
                     normalize_projection_type(
                         self.selcx,
@@ -581,7 +580,7 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
                 let infcx = self.selcx.infcx();
                 let (data, mapped_regions, mapped_types, mapped_consts) =
                     BoundVarReplacer::replace_bound_vars(infcx, &mut self.universes, data);
-                let data = data.super_fold_with(self);
+                let data = data.fold_with(self);
                 let normalized_ty = opt_normalize_projection_type(
                     self.selcx,
                     self.param_env,
@@ -671,7 +670,7 @@ impl<'me, 'tcx> BoundVarReplacer<'me, 'tcx> {
             universe_indices,
         };
 
-        let value = value.super_fold_with(&mut replacer);
+        let value = value.fold_with(&mut replacer);
 
         (value, replacer.mapped_regions, replacer.mapped_types, replacer.mapped_consts)
     }
@@ -794,7 +793,7 @@ impl<'me, 'tcx> PlaceholderReplacer<'me, 'tcx> {
             universe_indices,
             current_index: ty::INNERMOST,
         };
-        value.super_fold_with(&mut replacer)
+        value.fold_with(&mut replacer)
     }
 }
 

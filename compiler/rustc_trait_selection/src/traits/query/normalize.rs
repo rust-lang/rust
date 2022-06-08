@@ -12,7 +12,7 @@ use rustc_data_structures::sso::SsoHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_infer::traits::Normalized;
 use rustc_middle::mir;
-use rustc_middle::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder};
+use rustc_middle::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitor};
 
@@ -205,7 +205,7 @@ impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                     Reveal::UserFacing => ty.try_super_fold_with(self),
 
                     Reveal::All => {
-                        let substs = substs.try_super_fold_with(self)?;
+                        let substs = substs.try_fold_with(self)?;
                         let recursion_limit = self.tcx().recursion_limit();
                         if !recursion_limit.value_within_limit(self.anon_depth) {
                             let obligation = Obligation::with_depth(
@@ -242,7 +242,7 @@ impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                 // we don't need to replace them with placeholders (see branch below).
 
                 let tcx = self.infcx.tcx;
-                let data = data.try_super_fold_with(self)?;
+                let data = data.try_fold_with(self)?;
 
                 let mut orig_values = OriginalQueryValues::default();
                 // HACK(matthewjasper) `'static` is special-cased in selection,
@@ -281,7 +281,7 @@ impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                         &mut self.universes,
                         data,
                     );
-                let data = data.try_super_fold_with(self)?;
+                let data = data.try_fold_with(self)?;
 
                 let mut orig_values = OriginalQueryValues::default();
                 // HACK(matthewjasper) `'static` is special-cased in selection,
@@ -334,7 +334,7 @@ impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
         &mut self,
         constant: mir::ConstantKind<'tcx>,
     ) -> Result<mir::ConstantKind<'tcx>, Self::Error> {
-        let constant_kind = match constant {
+        Ok(match constant {
             mir::ConstantKind::Ty(c) => {
                 let const_folded = c.try_fold_with(self)?;
                 match const_folded.val() {
@@ -347,8 +347,6 @@ impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                 }
             }
             mir::ConstantKind::Val(_, _) => constant.try_super_fold_with(self)?,
-        };
-
-        Ok(constant_kind)
+        })
     }
 }

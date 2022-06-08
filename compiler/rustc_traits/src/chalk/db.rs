@@ -9,7 +9,7 @@
 use rustc_middle::traits::ChalkRustInterner as RustInterner;
 use rustc_middle::ty::subst::{InternalSubsts, Subst, SubstsRef};
 use rustc_middle::ty::{
-    self, AssocItemContainer, AssocKind, EarlyBinder, Ty, TyCtxt, TypeFoldable,
+    self, AssocItemContainer, AssocKind, EarlyBinder, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable,
 };
 
 use rustc_ast::ast;

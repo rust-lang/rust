@@ -70,7 +70,7 @@ use rustc_middle::ty::{
     self,
     error::TypeError,
     subst::{GenericArgKind, Subst, SubstsRef},
-    Binder, EarlyBinder, List, Region, Ty, TyCtxt, TypeFoldable,
+    Binder, EarlyBinder, List, Region, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable,
 };
 use rustc_span::{sym, symbol::kw, BytePos, DesugaringKind, Pos, Span};
 use rustc_target::spec::abi;

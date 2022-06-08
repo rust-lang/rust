@@ -7,7 +7,7 @@ use rustc_hir::OpaqueTyOrigin;
 use rustc_infer::infer::error_reporting::unexpected_hidden_region_diagnostic;
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt as _};
 use rustc_infer::traits::{Obligation, ObligationCause, TraitEngine};
-use rustc_middle::ty::fold::{TypeFoldable, TypeFolder};
+use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, InternalSubsts};
 use rustc_middle::ty::{self, OpaqueHiddenType, OpaqueTypeKey, ToPredicate, Ty, TyCtxt};
 use rustc_span::Span;

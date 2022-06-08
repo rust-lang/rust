@@ -13,7 +13,7 @@ use rustc_middle::mir::{
 };
 use rustc_middle::ty::{
     self,
-    fold::{TypeFoldable, TypeVisitor},
+    fold::{TypeFoldable, TypeSuperFoldable, TypeVisitor},
     query::Providers,
     subst::SubstsRef,
     Const, Ty, TyCtxt,

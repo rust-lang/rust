@@ -27,7 +27,7 @@ use rustc_infer::traits::TraitEngine;
 use rustc_middle::thir::abstract_const::NotConstEvaluatable;
 use rustc_middle::traits::select::OverflowError;
 use rustc_middle::ty::error::ExpectedFound;
-use rustc_middle::ty::fold::TypeFolder;
+use rustc_middle::ty::fold::{TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::{
     self, SubtypePredicate, ToPolyTraitRef, ToPredicate, TraitRef, Ty, TyCtxt, TypeFoldable,
 };

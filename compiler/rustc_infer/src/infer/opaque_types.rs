@@ -9,7 +9,7 @@ use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::subst::{GenericArgKind, Subst};
 use rustc_middle::ty::{
-    self, OpaqueHiddenType, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable, TypeVisitor,
+    self, OpaqueHiddenType, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable, TypeVisitor,
 };
 use rustc_span::Span;
 
@@ -470,7 +470,7 @@ where
         &mut self,
         t: &ty::Binder<'tcx, T>,
     ) -> ControlFlow<Self::BreakTy> {
-        t.as_ref().skip_binder().visit_with(self);
+        t.super_visit_with(self);
         ControlFlow::CONTINUE
     }
 

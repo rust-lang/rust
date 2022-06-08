@@ -10,7 +10,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{walk_ty, Visitor};
 use rustc_hir::{self as hir, GenericBound, Item, ItemKind, Lifetime, LifetimeName, Node, TyKind};
 use rustc_middle::ty::{
-    self, AssocItemContainer, StaticLifetimeVisitor, Ty, TyCtxt, TypeFoldable, TypeVisitor,
+    self, AssocItemContainer, StaticLifetimeVisitor, Ty, TyCtxt, TypeSuperFoldable, TypeVisitor,
 };
 use rustc_span::symbol::Ident;
 use rustc_span::Span;

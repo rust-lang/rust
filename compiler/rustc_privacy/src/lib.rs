@@ -20,11 +20,10 @@ use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::privacy::{AccessLevel, AccessLevels};
 use rustc_middle::span_bug;
 use rustc_middle::thir::abstract_const::Node as ACNode;
-use rustc_middle::ty::fold::TypeVisitor;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::{self, Const, DefIdTree, GenericParamDefKind};
-use rustc_middle::ty::{TraitRef, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{TraitRef, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable, TypeVisitor};
 use rustc_session::lint;
 use rustc_span::hygiene::Transparency;
 use rustc_span::symbol::{kw, Ident};
@@ -181,7 +180,8 @@ where
 
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<V::BreakTy> {
         let tcx = self.def_id_visitor.tcx();
-        // InternalSubsts are not visited here because they are visited below in `super_visit_with`.
+        // InternalSubsts are not visited here because they are visited below
+        // in `super_visit_with`.
         match *ty.kind() {
             ty::Adt(ty::AdtDef(Interned(&ty::AdtDefData { did: def_id, .. }, _)), ..)
             | ty::Foreign(def_id)
