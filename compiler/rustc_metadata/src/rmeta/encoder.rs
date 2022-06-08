@@ -1068,6 +1068,41 @@ fn should_encode_type(tcx: TyCtxt<'_>, def_id: LocalDefId, def_kind: DefKind) ->
     }
 }
 
+fn should_encode_const(def_kind: DefKind) -> bool {
+    match def_kind {
+        DefKind::Const | DefKind::AssocConst | DefKind::AnonConst => true,
+
+        DefKind::Struct
+        | DefKind::Union
+        | DefKind::Enum
+        | DefKind::Variant
+        | DefKind::Ctor(..)
+        | DefKind::Field
+        | DefKind::Fn
+        | DefKind::Static(..)
+        | DefKind::TyAlias
+        | DefKind::OpaqueTy
+        | DefKind::ForeignTy
+        | DefKind::Impl
+        | DefKind::AssocFn
+        | DefKind::Closure
+        | DefKind::Generator
+        | DefKind::ConstParam
+        | DefKind::InlineConst
+        | DefKind::AssocTy
+        | DefKind::TyParam
+        | DefKind::Trait
+        | DefKind::TraitAlias
+        | DefKind::Mod
+        | DefKind::ForeignMod
+        | DefKind::Macro(..)
+        | DefKind::Use
+        | DefKind::LifetimeParam
+        | DefKind::GlobalAsm
+        | DefKind::ExternCrate => false,
+    }
+}
+
 impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn encode_attrs(&mut self, def_id: LocalDefId) {
         let mut attrs = self
@@ -1093,7 +1128,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             let def_kind = tcx.opt_def_kind(local_id);
             let Some(def_kind) = def_kind else { continue };
             self.tables.opt_def_kind.set(def_id.index, def_kind);
-            record!(self.tables.def_span[def_id] <- tcx.def_span(def_id));
+            let def_span = tcx.def_span(local_id);
+            record!(self.tables.def_span[def_id] <- def_span);
             self.encode_attrs(local_id);
             record!(self.tables.expn_that_defined[def_id] <- self.tcx.expn_that_defined(def_id));
             if let Some(ident_span) = tcx.def_ident_span(def_id) {
@@ -1126,6 +1162,15 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
             if should_encode_type(tcx, local_id, def_kind) {
                 record!(self.tables.type_of[def_id] <- self.tcx.type_of(def_id));
+            }
+            if should_encode_const(def_kind) && tcx.is_mir_available(def_id) {
+                let qualifs = tcx.at(def_span).mir_const_qualif(def_id);
+                record!(self.tables.mir_const_qualif[def_id] <- qualifs);
+                let body_id = tcx.hir().maybe_body_owned_by(local_id);
+                if let Some(body_id) = body_id {
+                    let const_data = self.encode_rendered_const_for_body(body_id);
+                    record!(self.tables.rendered_const[def_id] <- const_data);
+                }
             }
             if let DefKind::TyParam | DefKind::ConstParam = def_kind {
                 if let Some(default) = self.tcx.object_lifetime_default(def_id) {
@@ -1296,14 +1341,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         match trait_item.kind {
             ty::AssocKind::Const => {
-                let rendered = rustc_hir_pretty::to_string(
-                    &(&self.tcx.hir() as &dyn intravisit::Map<'_>),
-                    |s| s.print_trait_item(ast_item),
-                );
-
-                record!(self.tables.kind[def_id] <- EntryKind::AssocConst(ty::AssocItemContainer::TraitContainer));
-                record!(self.tables.mir_const_qualif[def_id] <- mir::ConstQualifs::default());
-                record!(self.tables.rendered_const[def_id] <- rendered);
+                let container = trait_item.container;
+                record!(self.tables.kind[def_id] <- EntryKind::AssocConst(container));
             }
             ty::AssocKind::Fn => {
                 let hir::TraitItemKind::Fn(m_sig, m) = &ast_item.kind else { bug!() };
@@ -1342,16 +1381,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         match impl_item.kind {
             ty::AssocKind::Const => {
-                if let hir::ImplItemKind::Const(_, body_id) = ast_item.kind {
-                    let qualifs = self.tcx.at(ast_item.span).mir_const_qualif(def_id);
-                    let const_data = self.encode_rendered_const_for_body(body_id);
-
-                    record!(self.tables.kind[def_id] <- EntryKind::AssocConst(ty::AssocItemContainer::ImplContainer));
-                    record!(self.tables.mir_const_qualif[def_id] <- qualifs);
-                    record!(self.tables.rendered_const[def_id] <- const_data);
-                } else {
-                    bug!()
-                }
+                let container = impl_item.container;
+                record!(self.tables.kind[def_id] <- EntryKind::AssocConst(container));
             }
             ty::AssocKind::Fn => {
                 let hir::ImplItemKind::Fn(ref sig, body) = ast_item.kind else { bug!() };
@@ -1487,13 +1518,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         let entry_kind = match item.kind {
             hir::ItemKind::Static(..) => EntryKind::Static,
-            hir::ItemKind::Const(_, body_id) => {
-                let qualifs = self.tcx.at(item.span).mir_const_qualif(def_id);
-                let const_data = self.encode_rendered_const_for_body(body_id);
-                record!(self.tables.mir_const_qualif[def_id] <- qualifs);
-                record!(self.tables.rendered_const[def_id] <- const_data);
-                EntryKind::Const
-            }
+            hir::ItemKind::Const(..) => EntryKind::Const,
             hir::ItemKind::Fn(ref sig, .., body) => {
                 self.tables.asyncness.set(def_id.index, sig.header.asyncness);
                 record_array!(self.tables.fn_arg_names[def_id] <- self.tcx.hir().body_param_names(body));
@@ -1662,13 +1687,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn encode_info_for_anon_const(&mut self, id: hir::HirId) {
         let def_id = self.tcx.hir().local_def_id(id);
         debug!("EncodeContext::encode_info_for_anon_const({:?})", def_id);
-        let body_id = self.tcx.hir().body_owned_by(def_id);
-        let const_data = self.encode_rendered_const_for_body(body_id);
-        let qualifs = self.tcx.mir_const_qualif(def_id);
-
         record!(self.tables.kind[def_id.to_def_id()] <- EntryKind::AnonConst);
-        record!(self.tables.mir_const_qualif[def_id.to_def_id()] <- qualifs);
-        record!(self.tables.rendered_const[def_id.to_def_id()] <- const_data);
     }
 
     fn encode_native_libraries(&mut self) -> LazyArray<NativeLib> {
