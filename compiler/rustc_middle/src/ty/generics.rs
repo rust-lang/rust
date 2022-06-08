@@ -230,6 +230,8 @@ impl<'tcx> Generics {
 
     /// Returns the substs corresponding to the generic parameters
     /// of this item, excluding `Self`.
+    ///
+    /// **This should only be used for diagnostics purposes.**
     pub fn own_substs_no_defaults(
         &'tcx self,
         tcx: TyCtxt<'tcx>,
@@ -261,6 +263,8 @@ impl<'tcx> Generics {
     }
 
     /// Returns the substs corresponding to the generic parameters of this item, excluding `Self`.
+    ///
+    /// **This should only be used for diagnostics purposes.**
     pub fn own_substs(
         &'tcx self,
         substs: &'tcx [ty::GenericArg<'tcx>],
