@@ -395,6 +395,8 @@ define_tables! {
     may_have_doc_links: Table<DefIndex, ()>,
     variant_data: Table<DefIndex, LazyValue<VariantData>>,
     assoc_container: Table<DefIndex, ty::AssocItemContainer>,
+    macro_definition: Table<DefIndex, LazyValue<ast::MacroDef>>,
+    proc_macro: Table<DefIndex, MacroKind>,
 }
 
 #[derive(Copy, Clone, MetadataEncodable, MetadataDecodable)]
@@ -418,8 +420,8 @@ enum EntryKind {
     Fn,
     ForeignFn,
     Mod(LazyArray<ModChild>),
-    MacroDef(LazyValue<ast::MacArgs>, /*macro_rules*/ bool),
-    ProcMacro(MacroKind),
+    MacroDef,
+    ProcMacro,
     Closure,
     Generator,
     Trait,

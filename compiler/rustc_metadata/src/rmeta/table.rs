@@ -148,6 +148,14 @@ fixed_size_enum! {
     }
 }
 
+fixed_size_enum! {
+    MacroKind {
+        ( Attr   )
+        ( Bang   )
+        ( Derive )
+    }
+}
+
 // We directly encode `DefPathHash` because a `LazyValue` would incur a 25% cost.
 impl FixedSizeEncoding for Option<DefPathHash> {
     type ByteArray = [u8; 16];

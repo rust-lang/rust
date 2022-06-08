@@ -1512,7 +1512,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 EntryKind::Fn
             }
             hir::ItemKind::Macro(ref macro_def, _) => {
-                EntryKind::MacroDef(self.lazy(&*macro_def.body), macro_def.macro_rules)
+                record!(self.tables.macro_definition[def_id] <- macro_def);
+                EntryKind::MacroDef
             }
             hir::ItemKind::Mod(ref m) => {
                 return self.encode_info_for_mod(item.def_id, m);
@@ -1819,7 +1820,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
                 let def_id = id.to_def_id();
                 self.tables.opt_def_kind.set(def_id.index, DefKind::Macro(macro_kind));
-                record!(self.tables.kind[def_id] <- EntryKind::ProcMacro(macro_kind));
+                self.tables.proc_macro.set(def_id.index, macro_kind);
+                record!(self.tables.kind[def_id] <- EntryKind::ProcMacro);
                 self.encode_attrs(id);
                 record!(self.tables.def_keys[def_id] <- def_key);
                 record!(self.tables.def_ident_span[def_id] <- span);

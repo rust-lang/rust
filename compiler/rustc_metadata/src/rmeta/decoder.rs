@@ -4,7 +4,6 @@ use crate::creader::{CStore, CrateMetadataRef};
 use crate::rmeta::*;
 
 use rustc_ast as ast;
-use rustc_ast::ptr::P;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::svh::Svh;
@@ -1025,10 +1024,15 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 let vis = self.get_visibility(child_index);
                 let span = self.get_span(child_index, sess);
                 let macro_rules = match kind {
-                    DefKind::Macro(..) => match self.kind(child_index) {
-                        EntryKind::MacroDef(_, macro_rules) => macro_rules,
-                        _ => unreachable!(),
-                    },
+                    DefKind::Macro(..) => {
+                        self.root
+                            .tables
+                            .macro_definition
+                            .get(self, child_index)
+                            .unwrap()
+                            .decode((self, sess))
+                            .macro_rules
+                    }
                     _ => false,
                 };
 
@@ -1344,8 +1348,8 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
 
     fn get_macro(self, id: DefIndex, sess: &Session) -> ast::MacroDef {
         match self.kind(id) {
-            EntryKind::MacroDef(mac_args, macro_rules) => {
-                ast::MacroDef { body: P(mac_args.decode((self, sess))), macro_rules }
+            EntryKind::MacroDef => {
+                self.root.tables.macro_definition.get(self, id).unwrap().decode((self, sess))
             }
             _ => bug!(),
         }
