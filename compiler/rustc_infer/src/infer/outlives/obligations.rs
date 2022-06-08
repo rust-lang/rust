@@ -199,7 +199,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
         region: ty::Region<'tcx>,
         obligations: &mut Vec<PredicateObligation<'tcx>>,
     ) {
-        let nested = |ty, obligations| {
+        let nested = |ty, obligations: &mut _| {
             self.compute_nested_outlives_obligations(cause, param_env, ty, region, obligations)
         };
         let to_obligation = |pred: ty::Binder<'tcx, ty::PredicateKind<'tcx>>| {
@@ -242,7 +242,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
                 for arg in substs {
                     match arg.unpack() {
                         GenericArgKind::Lifetime(re) => obligations.push(reg_outlives(re)),
-                        GenericArgKind::Type(ty) => nested(ty, obligation),
+                        GenericArgKind::Type(ty) => nested(ty, obligations),
                         GenericArgKind::Const(_) => (),
                     }
                 }
