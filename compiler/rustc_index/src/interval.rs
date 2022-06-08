@@ -11,6 +11,10 @@ use smallvec::SmallVec;
 mod tests;
 
 /// Stores a set of intervals on the indices.
+///
+/// The elements in `map` are sorted and non-adjacent, which means
+/// the second value of the previous element is *greater* than the
+/// first value of the following element.
 #[derive(Debug, Clone)]
 pub struct IntervalSet<I> {
     // Start, end
@@ -84,7 +88,7 @@ impl<I: Idx> IntervalSet<I> {
         // continue to the next range. We're looking here for the first
         // range which starts *non-adjacently* to our end.
         let next = self.map.partition_point(|r| r.0 <= end + 1);
-        if let Some(right) = next.checked_sub(1) {
+        let result = if let Some(right) = next.checked_sub(1) {
             let (prev_start, prev_end) = self.map[right];
             if prev_end + 1 >= start {
                 // If the start for the inserted range is adjacent to the
@@ -99,7 +103,7 @@ impl<I: Idx> IntervalSet<I> {
                     if left != right {
                         self.map.drain(left..right);
                     }
-                    return true;
+                    true
                 } else {
                     // We overlap with the previous range, increase it to
                     // include us.
@@ -107,17 +111,17 @@ impl<I: Idx> IntervalSet<I> {
                     // Make sure we're actually going to *increase* it though --
                     // it may be that end is just inside the previously existing
                     // set.
-                    return if end > prev_end {
+                    if end > prev_end {
                         self.map[right].1 = end;
                         true
                     } else {
                         false
-                    };
+                    }
                 }
             } else {
                 // Otherwise, we don't overlap, so just insert
                 self.map.insert(right + 1, (start, end));
-                return true;
+                true
             }
         } else {
             if self.map.is_empty() {
@@ -127,8 +131,16 @@ impl<I: Idx> IntervalSet<I> {
             } else {
                 self.map.insert(next, (start, end));
             }
-            return true;
-        }
+            true
+        };
+        debug_assert!(
+            self.check_invariants(),
+            "wrong intervals after insert {:?}..={:?} to {:?}",
+            start,
+            end,
+            self
+        );
+        result
     }
 
     pub fn contains(&self, needle: I) -> bool {
@@ -192,6 +204,7 @@ impl<I: Idx> IntervalSet<I> {
     pub fn insert_all(&mut self) {
         self.clear();
         self.map.push((0, self.domain.try_into().unwrap()));
+        debug_assert!(self.check_invariants());
     }
 
     pub fn union(&mut self, other: &IntervalSet<I>) -> bool
@@ -203,7 +216,20 @@ impl<I: Idx> IntervalSet<I> {
         for range in other.iter_intervals() {
             did_insert |= self.insert_range(range);
         }
+        debug_assert!(self.check_invariants());
         did_insert
+    }
+
+    // Check the intervals are valid, sorted and non-adjacent
+    fn check_invariants(&self) -> bool {
+        let mut current: Option<u32> = None;
+        for (start, end) in &self.map {
+            if start > end || current.map_or(false, |x| x + 1 >= *start) {
+                return false;
+            }
+            current = Some(*end);
+        }
+        current.map_or(true, |x| x < self.domain as u32)
     }
 }
 
