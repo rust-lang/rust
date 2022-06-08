@@ -265,13 +265,21 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
             );
         }
         match (source, self.diagnostic_metadata.in_if_condition) {
-            (PathSource::Expr(_), Some(Expr { span, kind: ExprKind::Assign(..), .. })) => {
-                err.span_suggestion_verbose(
-                    span.shrink_to_lo(),
-                    "you might have meant to use pattern matching",
-                    "let ".to_string(),
-                    Applicability::MaybeIncorrect,
-                );
+            (
+                PathSource::Expr(_),
+                Some(Expr { span: expr_span, kind: ExprKind::Assign(lhs, _, _), .. }),
+            ) => {
+                // Icky heuristic so we don't suggest:
+                // `if (i + 2) = 2` => `if let (i + 2) = 2` (approximately pattern)
+                // `if 2 = i` => `if let 2 = i` (lhs needs to contain error span)
+                if lhs.is_approximately_pattern() && lhs.span.contains(span) {
+                    err.span_suggestion_verbose(
+                        expr_span.shrink_to_lo(),
+                        "you might have meant to use pattern matching",
+                        "let ".to_string(),
+                        Applicability::MaybeIncorrect,
+                    );
+                }
             }
             _ => {}
         }

@@ -1813,6 +1813,20 @@ impl Expr<'_> {
             | ExprKind::Err => true,
         }
     }
+
+    // To a first-order approximation, is this a pattern
+    pub fn is_approximately_pattern(&self) -> bool {
+        match &self.kind {
+            ExprKind::Box(_)
+            | ExprKind::Array(_)
+            | ExprKind::Call(..)
+            | ExprKind::Tup(_)
+            | ExprKind::Lit(_)
+            | ExprKind::Path(_)
+            | ExprKind::Struct(..) => true,
+            _ => false,
+        }
+    }
 }
 
 /// Checks if the specified expression is a built-in range literal.
