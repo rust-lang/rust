@@ -304,22 +304,24 @@ pub fn get_vtable_index_of_object_method<'tcx, N>(
     tcx: TyCtxt<'tcx>,
     object: &super::ImplSourceObjectData<'tcx, N>,
     method_def_id: DefId,
-) -> usize {
+) -> Option<usize> {
     let existential_trait_ref = object
         .upcast_trait_ref
         .map_bound(|trait_ref| ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref));
     let existential_trait_ref = tcx.erase_regions(existential_trait_ref);
+
     // Count number of methods preceding the one we are selecting and
     // add them to the total offset.
-    let index = tcx
+    if let Some(index) = tcx
         .own_existential_vtable_entries(existential_trait_ref)
         .iter()
         .copied()
         .position(|def_id| def_id == method_def_id)
-        .unwrap_or_else(|| {
-            bug!("get_vtable_index_of_object_method: {:?} was not found", method_def_id);
-        });
-    object.vtable_base + index
+    {
+        Some(object.vtable_base + index)
+    } else {
+        None
+    }
 }
 
 pub fn closure_trait_ref_and_return_type<'tcx>(
