@@ -1939,7 +1939,7 @@ impl<'test> TestCx<'test> {
 
         match self.config.compare_mode {
             Some(CompareMode::Polonius) => {
-                rustc.args(&["-Zpolonius", "-Zborrowck=mir"]);
+                rustc.args(&["-Zpolonius"]);
             }
             Some(CompareMode::Chalk) => {
                 rustc.args(&["-Zchalk"]);
