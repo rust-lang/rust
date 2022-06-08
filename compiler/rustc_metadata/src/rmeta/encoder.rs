@@ -1326,11 +1326,11 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let ast_item = tcx.hir().expect_trait_item(def_id.expect_local());
         self.tables.impl_defaultness.set(def_id.index, ast_item.defaultness);
         let trait_item = tcx.associated_item(def_id);
+        self.tables.assoc_container.set(def_id.index, trait_item.container);
 
         match trait_item.kind {
             ty::AssocKind::Const => {
-                let container = trait_item.container;
-                record!(self.tables.kind[def_id] <- EntryKind::AssocConst(container));
+                record!(self.tables.kind[def_id] <- EntryKind::AssocConst);
             }
             ty::AssocKind::Fn => {
                 let hir::TraitItemKind::Fn(m_sig, m) = &ast_item.kind else { bug!() };
@@ -1345,13 +1345,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 self.tables.asyncness.set(def_id.index, m_sig.header.asyncness);
                 self.tables.constness.set(def_id.index, hir::Constness::NotConst);
                 record!(self.tables.kind[def_id] <- EntryKind::AssocFn {
-                    container: ty::AssocItemContainer::TraitContainer,
                     has_self: trait_item.fn_has_self_parameter,
                 });
             }
             ty::AssocKind::Type => {
                 self.encode_explicit_item_bounds(def_id);
-                record!(self.tables.kind[def_id] <- EntryKind::AssocType(ty::AssocItemContainer::TraitContainer));
+                record!(self.tables.kind[def_id] <- EntryKind::AssocType);
             }
         }
         if trait_item.kind == ty::AssocKind::Fn {
@@ -1366,11 +1365,11 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let ast_item = self.tcx.hir().expect_impl_item(def_id.expect_local());
         self.tables.impl_defaultness.set(def_id.index, ast_item.defaultness);
         let impl_item = self.tcx.associated_item(def_id);
+        self.tables.assoc_container.set(def_id.index, impl_item.container);
 
         match impl_item.kind {
             ty::AssocKind::Const => {
-                let container = impl_item.container;
-                record!(self.tables.kind[def_id] <- EntryKind::AssocConst(container));
+                record!(self.tables.kind[def_id] <- EntryKind::AssocConst);
             }
             ty::AssocKind::Fn => {
                 let hir::ImplItemKind::Fn(ref sig, body) = ast_item.kind else { bug!() };
@@ -1384,12 +1383,11 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 };
                 self.tables.constness.set(def_id.index, constness);
                 record!(self.tables.kind[def_id] <- EntryKind::AssocFn {
-                    container: ty::AssocItemContainer::ImplContainer,
                     has_self: impl_item.fn_has_self_parameter,
                 });
             }
             ty::AssocKind::Type => {
-                record!(self.tables.kind[def_id] <- EntryKind::AssocType(ty::AssocItemContainer::ImplContainer));
+                record!(self.tables.kind[def_id] <- EntryKind::AssocType);
             }
         }
         if let Some(trait_item_def_id) = impl_item.trait_item_def_id {

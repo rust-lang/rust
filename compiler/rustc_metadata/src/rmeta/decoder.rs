@@ -1112,7 +1112,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
 
     fn get_fn_has_self_parameter(self, id: DefIndex) -> bool {
         match self.kind(id) {
-            EntryKind::AssocFn { has_self, .. } => has_self,
+            EntryKind::AssocFn { has_self } => has_self,
             _ => false,
         }
     }
@@ -1134,12 +1134,13 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     fn get_associated_item(self, id: DefIndex) -> ty::AssocItem {
         let name = self.item_name(id);
 
-        let (kind, container, has_self) = match self.kind(id) {
-            EntryKind::AssocConst(container) => (ty::AssocKind::Const, container, false),
-            EntryKind::AssocFn { container, has_self } => (ty::AssocKind::Fn, container, has_self),
-            EntryKind::AssocType(container) => (ty::AssocKind::Type, container, false),
-            _ => bug!("cannot get associated-item of `{:?}`", id),
+        let (kind, has_self) = match self.kind(id) {
+            EntryKind::AssocConst => (ty::AssocKind::Const, false),
+            EntryKind::AssocFn { has_self } => (ty::AssocKind::Fn, has_self),
+            EntryKind::AssocType => (ty::AssocKind::Type, false),
+            _ => bug!("cannot get associated-item of `{:?}`", self.def_key(id)),
         };
+        let container = self.root.tables.assoc_container.get(self, id).unwrap();
 
         ty::AssocItem {
             name,

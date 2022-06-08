@@ -394,6 +394,7 @@ define_tables! {
     generator_diagnostic_data: Table<DefIndex, LazyValue<GeneratorDiagnosticData<'static>>>,
     may_have_doc_links: Table<DefIndex, ()>,
     variant_data: Table<DefIndex, LazyValue<VariantData>>,
+    assoc_container: Table<DefIndex, ty::AssocItemContainer>,
 }
 
 #[derive(Copy, Clone, MetadataEncodable, MetadataDecodable)]
@@ -423,9 +424,9 @@ enum EntryKind {
     Generator,
     Trait,
     Impl,
-    AssocFn { container: ty::AssocItemContainer, has_self: bool },
-    AssocType(ty::AssocItemContainer),
-    AssocConst(ty::AssocItemContainer),
+    AssocFn { has_self: bool },
+    AssocType,
+    AssocConst,
     TraitAlias,
 }
 
