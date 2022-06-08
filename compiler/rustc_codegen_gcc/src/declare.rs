@@ -11,7 +11,7 @@ use crate::intrinsic::llvm;
 impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     pub fn get_or_insert_global(&self, name: &str, ty: Type<'gcc>, is_tls: bool, link_section: Option<Symbol>) -> LValue<'gcc> {
         if self.globals.borrow().contains_key(name) {
-            let typ = self.globals.borrow().get(name).expect("global").get_type();
+            let typ = self.globals.borrow()[name].get_type();
             let global = self.context.new_global(None, GlobalKind::Imported, typ, name);
             if is_tls {
                 global.set_tls_model(self.tls_model);
@@ -103,11 +103,13 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
 /// update the declaration and return existing Value instead.
 fn declare_raw_fn<'gcc>(cx: &CodegenCx<'gcc, '_>, name: &str, _callconv: () /*llvm::CallConv*/, return_type: Type<'gcc>, param_types: &[Type<'gcc>], variadic: bool) -> Function<'gcc> {
     if name.starts_with("llvm.") {
-        return llvm::intrinsic(name, cx);
+        let intrinsic = llvm::intrinsic(name, cx);
+        cx.intrinsics.borrow_mut().insert(name.to_string(), intrinsic);
+        return intrinsic;
     }
     let func =
         if cx.functions.borrow().contains_key(name) {
-            *cx.functions.borrow().get(name).expect("function")
+            cx.functions.borrow()[name]
         }
         else {
             let params: Vec<_> = param_types.into_iter().enumerate()
