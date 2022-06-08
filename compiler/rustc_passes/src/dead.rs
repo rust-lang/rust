@@ -164,10 +164,9 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                     if let (Res::Local(id_l), Res::Local(id_r)) = (
                         typeck_results.qpath_res(qpath_l, lhs.hir_id),
                         typeck_results.qpath_res(qpath_r, rhs.hir_id),
-                    ) {
-                        if id_l == id_r {
-                            return true;
-                        }
+                    ) && id_l == id_r
+                    {
+                        return true;
                     }
                     return false;
                 }
@@ -183,10 +182,10 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             }
         }
 
-        if let hir::ExprKind::Assign(lhs, rhs, _) = assign.kind {
-            if check_for_self_assign_helper(self.typeck_results(), lhs, rhs)
+        if let hir::ExprKind::Assign(lhs, rhs, _) = assign.kind
+            && check_for_self_assign_helper(self.typeck_results(), lhs, rhs)
                 && !assign.span.from_expansion()
-            {
+        {
                 let is_field_assign = matches!(lhs.kind, hir::ExprKind::Field(..));
                 self.tcx.struct_span_lint_hir(
                     lint::builtin::DEAD_CODE,
@@ -201,7 +200,6 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                         .emit();
                     },
                 )
-            }
         }
     }
 
@@ -251,19 +249,19 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                 return false;
             }
 
-            if let Some(trait_of) = self.tcx.trait_id_of_impl(impl_of) {
-                if self.tcx.has_attr(trait_of, sym::rustc_trivial_field_reads) {
-                    let trait_ref = self.tcx.impl_trait_ref(impl_of).unwrap();
-                    if let ty::Adt(adt_def, _) = trait_ref.self_ty().kind() {
-                        if let Some(adt_def_id) = adt_def.did().as_local() {
-                            self.ignored_derived_traits
-                                .entry(adt_def_id)
-                                .or_default()
-                                .push((trait_of, impl_of));
-                        }
-                    }
-                    return true;
+            if let Some(trait_of) = self.tcx.trait_id_of_impl(impl_of)
+                && self.tcx.has_attr(trait_of, sym::rustc_trivial_field_reads)
+            {
+                let trait_ref = self.tcx.impl_trait_ref(impl_of).unwrap();
+                if let ty::Adt(adt_def, _) = trait_ref.self_ty().kind()
+                    && let Some(adt_def_id) = adt_def.did().as_local()
+                {
+                    self.ignored_derived_traits
+                        .entry(adt_def_id)
+                        .or_default()
+                        .push((trait_of, impl_of));
                 }
+                return true;
             }
         }
 
@@ -271,13 +269,13 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
     }
 
     fn visit_node(&mut self, node: Node<'tcx>) {
-        if let Some(item_def_id) = match node {
-            Node::ImplItem(hir::ImplItem { def_id, .. }) => Some(def_id.to_def_id()),
-            _ => None,
-        } {
-            if self.should_ignore_item(item_def_id) {
+        match node {
+            Node::ImplItem(hir::ImplItem { def_id, .. })
+                if self.should_ignore_item(def_id.to_def_id()) =>
+            {
                 return;
             }
+            _ => (),
         }
 
         let had_repr_c = self.repr_has_repr_c;
@@ -534,10 +532,10 @@ fn check_item<'tcx>(
         }
         DefKind::Struct => {
             let item = tcx.hir().item(id);
-            if let hir::ItemKind::Struct(ref variant_data, _) = item.kind {
-                if let Some(ctor_hir_id) = variant_data.ctor_hir_id() {
-                    struct_constructors.insert(tcx.hir().local_def_id(ctor_hir_id), item.def_id);
-                }
+            if let hir::ItemKind::Struct(ref variant_data, _) = item.kind
+                && let Some(ctor_hir_id) = variant_data.ctor_hir_id()
+            {
+                struct_constructors.insert(tcx.hir().local_def_id(ctor_hir_id), item.def_id);
             }
         }
         DefKind::GlobalAsm => {
@@ -630,6 +628,7 @@ struct DeadVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
     live_symbols: &'tcx FxHashSet<LocalDefId>,
     ignored_derived_traits: &'tcx FxHashMap<LocalDefId, Vec<(DefId, DefId)>>,
+    ignored_struct_def: FxHashSet<LocalDefId>,
 }
 
 impl<'tcx> DeadVisitor<'tcx> {
@@ -677,10 +676,10 @@ impl<'tcx> DeadVisitor<'tcx> {
         let inherent_impls = self.tcx.inherent_impls(def_id);
         for &impl_did in inherent_impls.iter() {
             for item_did in self.tcx.associated_item_def_ids(impl_did) {
-                if let Some(def_id) = item_did.as_local() {
-                    if self.live_symbols.contains(&def_id) {
-                        return true;
-                    }
+                if let Some(def_id) = item_did.as_local()
+                    && self.live_symbols.contains(&def_id)
+                {
+                    return true;
                 }
             }
         }
@@ -698,9 +697,20 @@ impl<'tcx> DeadVisitor<'tcx> {
             self.tcx.struct_span_lint_hir(lint::builtin::DEAD_CODE, id, span, |lint| {
                 let def_id = self.tcx.hir().local_def_id(id);
                 let descr = self.tcx.def_kind(def_id).descr(def_id.to_def_id());
-                let mut err = lint.build(&format!("{} is never {}: `{}`", descr, participle, name));
+                let mut err = lint.build(&format!("{descr} is never {participle}: `{name}`"));
                 let hir = self.tcx.hir();
-                if let Some(encl_scope) = hir.get_enclosing_scope(id)
+                let is_field_in_same_struct =
+                    if let Some(parent_hir_id) = self.tcx.hir().find_parent_node(id)
+                        && let Some(parent_node) = self.tcx.hir().find(parent_hir_id)
+                        && let Node::Item(hir::Item{kind: hir::ItemKind::Struct(..), ..}) = parent_node
+                        && let Some(did) = self.tcx.hir().opt_local_def_id(parent_hir_id)
+                    {
+                        !self.ignored_struct_def.insert(did)
+                    } else {
+                        false
+                    };
+                if !is_field_in_same_struct
+                    && let Some(encl_scope) = hir.get_enclosing_scope(id)
                     && let Some(encl_def_id) = hir.opt_local_def_id(encl_scope)
                     && let Some(ign_traits) = self.ignored_derived_traits.get(&encl_def_id)
                 {
@@ -857,7 +867,12 @@ impl<'tcx> Visitor<'tcx> for DeadVisitor<'tcx> {
 
 fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalDefId) {
     let (live_symbols, ignored_derived_traits) = tcx.live_symbols_and_ignored_derived_traits(());
-    let mut visitor = DeadVisitor { tcx, live_symbols, ignored_derived_traits };
+    let mut visitor = DeadVisitor {
+        tcx,
+        live_symbols,
+        ignored_derived_traits,
+        ignored_struct_def: FxHashSet::default(),
+    };
     let (module, _, module_id) = tcx.hir().get_module(module);
     // Do not use an ItemLikeVisitor since we may want to skip visiting some items
     // when a surrounding one is warned against or `_`.
