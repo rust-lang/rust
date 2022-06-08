@@ -678,8 +678,8 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
     fn ptr_from_addr_cast(
         ecx: &MiriEvalContext<'mir, 'tcx>,
         addr: u64,
-    ) -> Pointer<Option<Self::PointerTag>> {
-        intptrcast::GlobalStateInner::ptr_from_addr_cast(ecx, addr)
+    ) -> InterpResult<'tcx, Pointer<Option<Self::PointerTag>>> {
+        Ok(intptrcast::GlobalStateInner::ptr_from_addr_cast(ecx, addr))
     }
 
     #[inline(always)]
