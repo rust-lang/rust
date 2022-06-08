@@ -3,7 +3,7 @@ warning: deny(warnings) incompatible with previous forbid
    |
 LL | #![forbid(warnings)]
    |           -------- `forbid` level set here
-LL | 
+LL |
 LL | #[deny(warnings)]
    |        ^^^^^^^^ overruled by previous forbid
    |
@@ -16,7 +16,7 @@ warning: deny(warnings) incompatible with previous forbid
    |
 LL | #![forbid(warnings)]
    |           -------- `forbid` level set here
-LL | 
+LL |
 LL | #[deny(warnings)]
    |        ^^^^^^^^ overruled by previous forbid
    |
@@ -28,7 +28,7 @@ warning: deny(warnings) incompatible with previous forbid
    |
 LL | #![forbid(warnings)]
    |           -------- `forbid` level set here
-LL | 
+LL |
 LL | #[deny(warnings)]
    |        ^^^^^^^^ overruled by previous forbid
    |

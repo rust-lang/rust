@@ -819,7 +819,7 @@ impl EmitterWriter {
         }
         buffer.puts(line_offset, 0, &self.maybe_anonymized(line_index), Style::LineNumber);
 
-        draw_col_separator(buffer, line_offset, width_offset - 2);
+        draw_col_separator_no_space(buffer, line_offset, width_offset - 2);
     }
 
     fn render_source_line(

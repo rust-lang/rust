@@ -3,7 +3,7 @@ error: conflicting implementations of trait `TheTrait` for type `fn(&u8)`
    |
 LL | impl<'a> TheTrait for fn(&'a u8) {}
    | -------------------------------- first implementation here
-LL | 
+LL |
 LL | impl TheTrait for fn(&u8) {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `fn(&u8)`
    |

@@ -3,7 +3,7 @@ error[E0382]: borrow of moved value: `arc_v`
    |
 LL |     let arc_v = Arc::new(v);
    |         ----- move occurs because `arc_v` has type `Arc<Vec<i32>>`, which does not implement the `Copy` trait
-LL | 
+LL |
 LL |     thread::spawn(move|| {
    |                   ------ value moved into closure here
 LL |         assert_eq!((*arc_v)[3], 4);

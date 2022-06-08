@@ -3,7 +3,7 @@ error[E0446]: private type `Bar` in public interface
    |
 LL |     struct Bar(u32);
    |     ---------------- `Bar` declared as private
-LL | 
+LL |
 LL |     pub fn bar() -> Bar {
    |     ^^^^^^^^^^^^^^^^^^^ can't leak private type
 

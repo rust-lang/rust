@@ -23,7 +23,7 @@ error[E0599]: the method `use_eq` exists for struct `Object<NoDerives>`, but its
    |
 LL | pub struct NoDerives;
    | --------------------- doesn't satisfy `NoDerives: Eq`
-LL | 
+LL |
 LL | struct Object<T>(T);
    | -------------------- method `use_eq` not found for this
 ...
@@ -42,7 +42,7 @@ error[E0599]: the method `use_ord` exists for struct `Object<NoDerives>`, but it
    |
 LL | pub struct NoDerives;
    | --------------------- doesn't satisfy `NoDerives: Ord`
-LL | 
+LL |
 LL | struct Object<T>(T);
    | -------------------- method `use_ord` not found for this
 ...
@@ -64,7 +64,7 @@ LL | pub struct NoDerives;
    | |
    | doesn't satisfy `NoDerives: Ord`
    | doesn't satisfy `NoDerives: PartialOrd`
-LL | 
+LL |
 LL | struct Object<T>(T);
    | -------------------- method `use_ord_and_partial_ord` not found for this
 ...

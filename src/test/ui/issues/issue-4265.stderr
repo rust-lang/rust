@@ -5,7 +5,7 @@ LL | /     fn bar() {
 LL | |         Foo { baz: 0 }.bar();
 LL | |     }
    | |_____- previous definition of `bar` here
-LL | 
+LL |
 LL | /     fn bar() {
 LL | |     }
    | |_____^ duplicate definition

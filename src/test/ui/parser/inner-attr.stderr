@@ -3,7 +3,7 @@ error: an inner attribute is not permitted following an outer attribute
    |
 LL | #[feature(lang_items)]
    | ---------------------- previous outer attribute
-LL | 
+LL |
 LL | #![recursion_limit="100"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^ not permitted following an outer attribute
 LL | fn main() {}

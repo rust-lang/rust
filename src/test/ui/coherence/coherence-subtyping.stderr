@@ -3,7 +3,7 @@ warning: conflicting implementations of trait `TheTrait` for type `for<'a, 'b> f
    |
 LL | impl TheTrait for for<'a, 'b> fn(&'a u8, &'b u8) -> &'a u8 {}
    | ---------------------------------------------------------- first implementation here
-LL | 
+LL |
 LL | impl TheTrait for for<'a> fn(&'a u8, &'a u8) -> &'a u8 {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `for<'a, 'b> fn(&'a u8, &'b u8) -> &'a u8`
    |
