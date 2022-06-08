@@ -863,6 +863,9 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                                         // See the `need_type_info/type-alias.rs` test for
                                         // some examples.
                                     }
+                                    // There cannot be inference variables in the self type,
+                                    // so there's nothing for us to do here.
+                                    Res::SelfTy { .. } => {}
                                     _ => warn!(
                                         "unexpected path: def={:?} substs={:?} path={:?}",
                                         def, substs, path,
