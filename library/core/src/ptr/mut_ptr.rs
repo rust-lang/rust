@@ -1311,7 +1311,7 @@ impl<T: ?Sized> *mut T {
     /// See [`ptr::copy`] for safety concerns and examples.
     ///
     /// [`ptr::copy`]: crate::ptr::copy()
-    #[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "80697")]
+    #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.63.0")]
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline(always)]
     pub const unsafe fn copy_to(self, dest: *mut T, count: usize)
@@ -1330,7 +1330,7 @@ impl<T: ?Sized> *mut T {
     /// See [`ptr::copy_nonoverlapping`] for safety concerns and examples.
     ///
     /// [`ptr::copy_nonoverlapping`]: crate::ptr::copy_nonoverlapping()
-    #[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "80697")]
+    #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.63.0")]
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline(always)]
     pub const unsafe fn copy_to_nonoverlapping(self, dest: *mut T, count: usize)
@@ -1349,7 +1349,7 @@ impl<T: ?Sized> *mut T {
     /// See [`ptr::copy`] for safety concerns and examples.
     ///
     /// [`ptr::copy`]: crate::ptr::copy()
-    #[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "80697")]
+    #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.63.0")]
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline(always)]
     pub const unsafe fn copy_from(self, src: *const T, count: usize)
@@ -1368,7 +1368,7 @@ impl<T: ?Sized> *mut T {
     /// See [`ptr::copy_nonoverlapping`] for safety concerns and examples.
     ///
     /// [`ptr::copy_nonoverlapping`]: crate::ptr::copy_nonoverlapping()
-    #[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "80697")]
+    #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.63.0")]
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline(always)]
     pub const unsafe fn copy_from_nonoverlapping(self, src: *const T, count: usize)
