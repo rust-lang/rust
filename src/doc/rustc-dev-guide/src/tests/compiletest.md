@@ -501,23 +501,22 @@ To run the tests in a different mode, you need to pass the `--compare-mode`
 CLI flag:
 
 ```bash
-./x.py test src/test/ui --compare-mode=nll
+./x.py test src/test/ui --compare-mode=chalk
 ```
 
 The possible compare modes are:
 
-* `nll` — Runs in the "true" NLL mode with `-Zborrowck=mir`.
-  See [UI compare modes](ui.md#compare-modes) for more.
-* `polonius` — Runs with Polonius with `-Zpolonius -Zborrowck=mir`, and reuses
-  the `nll` stderr files.
+* `polonius` — Runs with Polonius with `-Zpolonius -Zborrowck=mir`.
 * `chalk` — Runs with Chalk with `-Zchalk`.
 * `split-dwarf` — Runs with unpacked split-DWARF with `-Csplit-debuginfo=unpacked`.
 * `split-dwarf-single` — Runs with packed split-DWARF with `-Csplit-debuginfo=packed`.
 
+See [UI compare modes](ui.md#compare-modes) for more information about how UI
+tests support different output for different modes.
+
 In CI, compare modes are only used in one Linux builder, and only with the
 following settings:
 
-* `src/test/ui`: Uses `nll` mode.
 * `src/test/debuginfo`: Uses `split-dwarf` mode.
   This helps ensure that none of the debuginfo tests are affected when
   enabling split-DWARF.

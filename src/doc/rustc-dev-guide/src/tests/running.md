@@ -196,13 +196,13 @@ of the `build` directory from time to time.
 ## Running tests with different "compare modes"
 
 UI tests may have different output depending on certain "modes" that
-the compiler is in. For example, when in "non-lexical lifetimes" (NLL)
-mode a test `foo.rs` will first look for expected output in
-`foo.nll.stderr`, falling back to the usual `foo.stderr` if not found.
-To run the UI test suite in NLL mode, one would use the following:
+the compiler is in. For example, when using the Polonius
+mode, a test `foo.rs` will first look for expected output in
+`foo.polonius.stderr`, falling back to the usual `foo.stderr` if not found.
+The following will run the UI test suite in Polonius mode:
 
 ```bash
-./x.py test src/test/ui --compare-mode=nll
+./x.py test src/test/ui --compare-mode=polonius
 ```
 
 See [Compare modes](compiletest.md#compare-modes) for more details.

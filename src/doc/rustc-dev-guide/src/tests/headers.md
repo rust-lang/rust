@@ -125,7 +125,7 @@ Some examples of `X` in `ignore-X` or `only-X`:
 * When [remote testing] is used: `remote`
 * When debug-assertions are enabled: `debug`
 * When particular debuggers are being tested: `cdb`, `gdb`, `lldb`
-* Specific [compare modes]: `compare-mode-nll`, `compare-mode-polonius`,
+* Specific [compare modes]: `compare-mode-polonius`,
   `compare-mode-chalk`, `compare-mode-split-dwarf`,
   `compare-mode-split-dwarf-single`
 

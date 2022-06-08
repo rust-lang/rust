@@ -74,7 +74,7 @@ The general form is:
   * `32bit.stderr` — compiler stderr with `stderr-per-bitwidth` header on a 32-bit target
 
 A simple example would be `foo.stderr` next to a `foo.rs` test.
-A more complex example would be `foo.my-revision.nll.stderr`.
+A more complex example would be `foo.my-revision.polonius.stderr`.
 
 There are several [headers](headers.md) which will change how compiletest will
 check for output files:
@@ -496,12 +496,11 @@ In some cases, this might result in different output from the compiler.
 To support this, different output files can be saved which contain the
 output based on the compare mode.
 
-For example, when in "non-lexical lifetimes" (NLL) mode a test `foo.rs` will
-first look for expected output in `foo.nll.stderr`, falling back to the usual
+For example, when using the Polonius mode, a test `foo.rs` will
+first look for expected output in `foo.polonius.stderr`, falling back to the usual
 `foo.stderr` if not found.
-This is useful as "true" NLL mode can sometimes result in different
-diagnostics and behavior compared to the "migrate mode" NLL (which is the
-current default).
+This is useful as different modes can sometimes result in different
+diagnostics and behavior.
 This can help track which tests have differences between the modes, and to
 visually inspect those diagnostic differences.
 
@@ -509,7 +508,7 @@ If in the rare case you encounter a test that has different behavior, you can
 run something like the following to generate the alternate stderr file:
 
 ```sh
-./x.py test src/test/ui --compare-mode=nll --bless
+./x.py test src/test/ui --compare-mode=polonius --bless
 ```
 
-Currently, only `nll` mode is checked in CI for UI tests.
+Currently none of the compare modes are checked in CI for UI tests.
