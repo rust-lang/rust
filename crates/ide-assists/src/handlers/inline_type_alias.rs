@@ -7,13 +7,8 @@ use hir::{HasSource, PathResolution};
 use itertools::Itertools;
 use std::collections::HashMap;
 use syntax::{
-    ast::{
-        self,
-        make::{self},
-        HasGenericParams, HasName,
-    },
-    ted::{self},
-    AstNode, NodeOrToken, SyntaxNode,
+    ast::{self, make, HasGenericParams, HasName},
+    ted, AstNode, NodeOrToken, SyntaxNode,
 };
 
 use crate::{
