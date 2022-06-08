@@ -858,19 +858,14 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     }
 
     fn get_variant(self, kind: &EntryKind, index: DefIndex, parent_did: DefId) -> ty::VariantDef {
-        let data = match kind {
-            EntryKind::Variant(data) | EntryKind::Struct(data) | EntryKind::Union(data) => {
-                data.decode(self)
-            }
+        let adt_kind = match kind {
+            EntryKind::Variant => ty::AdtKind::Enum,
+            EntryKind::Struct => ty::AdtKind::Struct,
+            EntryKind::Union => ty::AdtKind::Union,
             _ => bug!(),
         };
 
-        let adt_kind = match kind {
-            EntryKind::Variant(_) => ty::AdtKind::Enum,
-            EntryKind::Struct(..) => ty::AdtKind::Struct,
-            EntryKind::Union(..) => ty::AdtKind::Union,
-            _ => bug!(),
-        };
+        let data = self.root.tables.variant_data.get(self, index).unwrap().decode(self);
 
         let variant_did =
             if adt_kind == ty::AdtKind::Enum { Some(self.local_def_id(index)) } else { None };
@@ -907,8 +902,8 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
 
         let adt_kind = match kind {
             EntryKind::Enum => ty::AdtKind::Enum,
-            EntryKind::Struct(_) => ty::AdtKind::Struct,
-            EntryKind::Union(_) => ty::AdtKind::Union,
+            EntryKind::Struct => ty::AdtKind::Struct,
+            EntryKind::Union => ty::AdtKind::Union,
             _ => bug!("get_adt_def called on a non-ADT {:?}", did),
         };
         let repr = self.root.tables.repr_options.get(self, item_id).unwrap().decode(self);
@@ -1158,8 +1153,8 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
 
     fn get_ctor_def_id_and_kind(self, node_id: DefIndex) -> Option<(DefId, CtorKind)> {
         match self.kind(node_id) {
-            EntryKind::Struct(data) | EntryKind::Variant(data) => {
-                let vdata = data.decode(self);
+            EntryKind::Struct | EntryKind::Variant => {
+                let vdata = self.root.tables.variant_data.get(self, node_id).unwrap().decode(self);
                 vdata.ctor.map(|index| (self.local_def_id(index), vdata.ctor_kind))
             }
             _ => None,

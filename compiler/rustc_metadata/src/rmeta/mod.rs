@@ -393,6 +393,7 @@ define_tables! {
     proc_macro_quoted_spans: Table<usize, LazyValue<Span>>,
     generator_diagnostic_data: Table<DefIndex, LazyValue<GeneratorDiagnosticData<'static>>>,
     may_have_doc_links: Table<DefIndex, ()>,
+    variant_data: Table<DefIndex, LazyValue<VariantData>>,
 }
 
 #[derive(Copy, Clone, MetadataEncodable, MetadataDecodable)]
@@ -410,9 +411,9 @@ enum EntryKind {
     OpaqueTy,
     Enum,
     Field,
-    Variant(LazyValue<VariantData>),
-    Struct(LazyValue<VariantData>),
-    Union(LazyValue<VariantData>),
+    Variant,
+    Struct,
+    Union,
     Fn,
     ForeignFn,
     Mod(LazyArray<ModChild>),

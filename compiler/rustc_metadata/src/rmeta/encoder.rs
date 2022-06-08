@@ -1206,7 +1206,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             is_non_exhaustive: variant.is_field_list_non_exhaustive(),
         };
 
-        record!(self.tables.kind[def_id] <- EntryKind::Variant(self.lazy(data)));
+        record!(self.tables.variant_data[def_id] <- data);
+        record!(self.tables.kind[def_id] <- EntryKind::Variant);
         self.tables.constness.set(def_id.index, hir::Constness::Const);
         record_array!(self.tables.children[def_id] <- variant.fields.iter().map(|f| {
             assert!(f.did.is_local());
@@ -1234,7 +1235,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             is_non_exhaustive: variant.is_field_list_non_exhaustive(),
         };
 
-        record!(self.tables.kind[def_id] <- EntryKind::Variant(self.lazy(data)));
+        record!(self.tables.variant_data[def_id] <- data);
+        record!(self.tables.kind[def_id] <- EntryKind::Variant);
         self.tables.constness.set(def_id.index, hir::Constness::Const);
         if variant.ctor_kind == CtorKind::Fn {
             record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
@@ -1301,8 +1303,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         };
 
         record!(self.tables.repr_options[def_id] <- adt_def.repr());
+        record!(self.tables.variant_data[def_id] <- data);
+        record!(self.tables.kind[def_id] <- EntryKind::Struct);
         self.tables.constness.set(def_id.index, hir::Constness::Const);
-        record!(self.tables.kind[def_id] <- EntryKind::Struct(self.lazy(data)));
         if variant.ctor_kind == CtorKind::Fn {
             record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
         }
@@ -1541,24 +1544,26 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     .map(|ctor_hir_id| self.tcx.hir().local_def_id(ctor_hir_id).local_def_index);
 
                 let variant = adt_def.non_enum_variant();
-                EntryKind::Struct(self.lazy(VariantData {
+                record!(self.tables.variant_data[def_id] <- VariantData {
                     ctor_kind: variant.ctor_kind,
                     discr: variant.discr,
                     ctor,
                     is_non_exhaustive: variant.is_field_list_non_exhaustive(),
-                }))
+                });
+                EntryKind::Struct
             }
             hir::ItemKind::Union(..) => {
                 let adt_def = self.tcx.adt_def(def_id);
                 record!(self.tables.repr_options[def_id] <- adt_def.repr());
 
                 let variant = adt_def.non_enum_variant();
-                EntryKind::Union(self.lazy(VariantData {
+                record!(self.tables.variant_data[def_id] <- VariantData {
                     ctor_kind: variant.ctor_kind,
                     discr: variant.discr,
                     ctor: None,
                     is_non_exhaustive: variant.is_field_list_non_exhaustive(),
-                }))
+                });
+                EntryKind::Union
             }
             hir::ItemKind::Impl(hir::Impl { defaultness, constness, .. }) => {
                 self.tables.impl_defaultness.set(def_id.index, *defaultness);
