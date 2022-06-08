@@ -5,7 +5,7 @@ LL |     let fancy_ref = &fancy_num;
    |                     ---------- borrow of `fancy_num` occurs here
 LL |     fancy_num = FancyNum { num: 6 };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ assignment to borrowed `fancy_num` occurs here
-LL | 
+LL |
 LL |     println!("Num: {}, Ref: {}", fancy_num.num, fancy_ref.num);
    |                                                 ------------- borrow later used here
 

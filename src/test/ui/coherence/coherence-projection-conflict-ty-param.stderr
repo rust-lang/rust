@@ -3,7 +3,7 @@ error[E0119]: conflicting implementations of trait `Foo<_>` for type `std::optio
    |
 LL | impl <P, T: Foo<P>> Foo<P> for Option<T> {}
    | ---------------------------------------- first implementation here
-LL | 
+LL |
 LL | impl<T, U> Foo<T> for Option<U> { }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `std::option::Option<_>`
 

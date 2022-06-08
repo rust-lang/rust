@@ -3,7 +3,7 @@ error[E0502]: cannot borrow `v` as mutable because it is also borrowed as immuta
    |
 LL |     let shared = &v;
    |                  -- immutable borrow occurs here
-LL | 
+LL |
 LL |     v.extend(shared);
    |     ^^------^^^^^^^^
    |     | |

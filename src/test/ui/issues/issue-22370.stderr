@@ -3,7 +3,7 @@ error[E0393]: the type parameter `T` must be explicitly specified
    |
 LL | trait A<T=Self> {}
    | ------------------ type parameter `T` must be specified for this
-LL | 
+LL |
 LL | fn f(a: &dyn A) {}
    |              ^ help: set the type parameter to the desired type: `A<T>`
    |

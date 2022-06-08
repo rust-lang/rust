@@ -21,7 +21,7 @@ error[E0308]: mismatched types
    |
 LL | type Closure = impl FnOnce();
    |                ------------- the expected opaque type
-LL | 
+LL |
 LL | fn c() -> Closure {
    |           ------- expected `Closure` because of return type
 LL |     || -> Closure { || () }

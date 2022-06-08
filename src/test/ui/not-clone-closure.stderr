@@ -6,7 +6,7 @@ LL |       let hello = move || {
 LL | |         println!("Hello {}", a.0);
 LL | |     };
    | |_____- within this `[closure@$DIR/not-clone-closure.rs:7:17: 9:6]`
-LL | 
+LL |
 LL |       let hello = hello.clone();
    |                         ^^^^^ within `[closure@$DIR/not-clone-closure.rs:7:17: 9:6]`, the trait `Clone` is not implemented for `S`
    |
