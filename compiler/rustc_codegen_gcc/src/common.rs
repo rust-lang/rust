@@ -121,8 +121,8 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         unimplemented!();
     }
 
-    fn const_real(&self, _t: Type<'gcc>, _val: f64) -> RValue<'gcc> {
-        unimplemented!();
+    fn const_real(&self, typ: Type<'gcc>, val: f64) -> RValue<'gcc> {
+        self.context.new_rvalue_from_double(typ, val)
     }
 
     fn const_str(&self, s: Symbol) -> (RValue<'gcc>, RValue<'gcc>) {
@@ -279,6 +279,21 @@ impl<'gcc, 'tcx> SignType<'gcc, 'tcx> for Type<'gcc> {
         else if self.is_u128(cx) {
             cx.i128_type
         }
+        else if self.is_uchar(cx) {
+            cx.char_type
+        }
+        else if self.is_ushort(cx) {
+            cx.short_type
+        }
+        else if self.is_uint(cx) {
+            cx.int_type
+        }
+        else if self.is_ulong(cx) {
+            cx.long_type
+        }
+        else if self.is_ulonglong(cx) {
+            cx.longlong_type
+        }
         else {
             self.clone()
         }
@@ -300,6 +315,21 @@ impl<'gcc, 'tcx> SignType<'gcc, 'tcx> for Type<'gcc> {
         else if self.is_i128(cx) {
             cx.u128_type
         }
+        else if self.is_char(cx) {
+            cx.uchar_type
+        }
+        else if self.is_short(cx) {
+            cx.ushort_type
+        }
+        else if self.is_int(cx) {
+            cx.uint_type
+        }
+        else if self.is_long(cx) {
+            cx.ulong_type
+        }
+        else if self.is_longlong(cx) {
+            cx.ulonglong_type
+        }
         else {
             self.clone()
         }
@@ -312,6 +342,11 @@ pub trait TypeReflection<'gcc, 'tcx>  {
     fn is_uint(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool;
     fn is_ulong(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool;
     fn is_ulonglong(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool;
+    fn is_char(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool;
+    fn is_short(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool;
+    fn is_int(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool;
+    fn is_long(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool;
+    fn is_longlong(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool;
 
     fn is_i8(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool;
     fn is_u8(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool;
@@ -326,15 +361,17 @@ pub trait TypeReflection<'gcc, 'tcx>  {
 
     fn is_f32(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool;
     fn is_f64(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool;
+
+    fn is_vector(&self) -> bool;
 }
 
 impl<'gcc, 'tcx> TypeReflection<'gcc, 'tcx> for Type<'gcc> {
     fn is_uchar(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool {
-        self.unqualified() == cx.u8_type
+        self.unqualified() == cx.uchar_type
     }
 
     fn is_ushort(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool {
-        self.unqualified() == cx.u16_type
+        self.unqualified() == cx.ushort_type
     }
 
     fn is_uint(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool {
@@ -347,6 +384,26 @@ impl<'gcc, 'tcx> TypeReflection<'gcc, 'tcx> for Type<'gcc> {
 
     fn is_ulonglong(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool {
         self.unqualified() == cx.ulonglong_type
+    }
+
+    fn is_char(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool {
+        self.unqualified() == cx.char_type
+    }
+
+    fn is_short(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool {
+        self.unqualified() == cx.short_type
+    }
+
+    fn is_int(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool {
+        self.unqualified() == cx.int_type
+    }
+
+    fn is_long(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool {
+        self.unqualified() == cx.long_type
+    }
+
+    fn is_longlong(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool {
+        self.unqualified() == cx.longlong_type
     }
 
     fn is_i8(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool {
@@ -395,5 +452,22 @@ impl<'gcc, 'tcx> TypeReflection<'gcc, 'tcx> for Type<'gcc> {
 
     fn is_f64(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool {
         self.unqualified() == cx.context.new_type::<f64>()
+    }
+
+    fn is_vector(&self) -> bool {
+        let mut typ = self.clone();
+        loop {
+            if typ.dyncast_vector().is_some() {
+                return true;
+            }
+
+            let old_type = typ;
+            typ = typ.unqualified();
+            if old_type == typ {
+                break;
+            }
+        }
+
+        false
     }
 }

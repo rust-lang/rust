@@ -13,9 +13,13 @@ perf.data.old
 /rust
 /simple-raytracer
 /regex
+/rand
 gimple*
 *asm
 res
 test-backend
 gcc_path
 benchmarks
+tools/llvm-project
+tools/llvmint
+tools/llvmint-2

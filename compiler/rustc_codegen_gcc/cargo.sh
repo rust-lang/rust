@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 if [ -z $CHANNEL ]; then
 export CHANNEL='debug'
@@ -20,4 +20,4 @@ fi
 cmd=$1
 shift
 
-RUSTDOCFLAGS="$RUSTFLAGS" cargo +${TOOLCHAIN} $cmd --target $TARGET_TRIPLE $@
+RUSTDOCFLAGS="$RUSTFLAGS" cargo +${TOOLCHAIN} $cmd $@

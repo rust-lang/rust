@@ -2,7 +2,7 @@ set -e
 
 export CARGO_INCREMENTAL=0
 
-if [ -f ./gcc_path ]; then 
+if [ -f ./gcc_path ]; then
     export GCC_PATH=$(cat gcc_path)
 else
     echo 'Please put the path to your custom build of libgccjit in the file `gcc_path`, see Readme.md for details'
@@ -38,7 +38,7 @@ if [[ "$HOST_TRIPLE" != "$TARGET_TRIPLE" ]]; then
    fi
 fi
 
-export RUSTFLAGS="$linker -Cpanic=abort -Csymbol-mangling-version=v0 -Cdebuginfo=2 -Clto=off -Zpanic-abort-tests -Zcodegen-backend=$(pwd)/target/${CHANNEL:-debug}/librustc_codegen_gcc.$dylib_ext --sysroot $(pwd)/build_sysroot/sysroot"
+export RUSTFLAGS="$CG_RUSTFLAGS $linker -Cpanic=abort -Csymbol-mangling-version=v0 -Cdebuginfo=2 -Clto=off -Zpanic-abort-tests -Zcodegen-backend=$(pwd)/target/${CHANNEL:-debug}/librustc_codegen_gcc.$dylib_ext --sysroot $(pwd)/build_sysroot/sysroot"
 
 # FIXME(antoyo): remove once the atomic shim is gone
 if [[ `uname` == 'Darwin' ]]; then

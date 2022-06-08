@@ -25,7 +25,9 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
                 }
             }
         }
-        self.context.new_bitcast(None, value, typ)
+        // NOTE: since bitcast makes a value non-constant, don't bitcast if not necessary as some
+        // SIMD builtins require a constant value.
+        self.bitcast_if_needed(value, typ)
     }
 }
 
@@ -45,7 +47,10 @@ impl<'gcc, 'tcx> StaticMethods for CodegenCx<'gcc, 'tcx> {
             }
         }
         let global_value = self.static_addr_of_mut(cv, align, kind);
-        // TODO(antoyo): set global constant.
+        #[cfg(feature = "master")]
+        self.global_lvalues.borrow().get(&global_value)
+            .expect("`static_addr_of_mut` did not add the global to `self.global_lvalues`")
+            .global_set_readonly();
         self.const_globals.borrow_mut().insert(cv, global_value);
         global_value
     }
@@ -79,20 +84,15 @@ impl<'gcc, 'tcx> StaticMethods for CodegenCx<'gcc, 'tcx> {
 
         // TODO(antoyo): set alignment.
 
-        let value =
-            if value.get_type() != gcc_type {
-                self.context.new_bitcast(None, value, gcc_type)
-            }
-            else {
-                value
-            };
+        let value = self.bitcast_if_needed(value, gcc_type);
         global.global_set_initializer_rvalue(value);
 
         // As an optimization, all shared statics which do not have interior
         // mutability are placed into read-only memory.
         if !is_mutable {
             if self.type_is_freeze(ty) {
-                // TODO(antoyo): set global constant.
+                #[cfg(feature = "master")]
+                global.global_set_readonly();
             }
         }
 
@@ -171,8 +171,9 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
                 Some(kind) if !self.tcx.sess.fewer_names() => {
                     let name = self.generate_local_symbol_name(kind);
                     // TODO(antoyo): check if it's okay that no link_section is set.
-                    // TODO(antoyo): set alignment here as well.
-                    let global = self.declare_private_global(&name[..], self.val_ty(cv));
+
+                    let typ = self.val_ty(cv).get_aligned(align.bytes());
+                    let global = self.declare_private_global(&name[..], typ);
                     global
                 }
                 _ => {

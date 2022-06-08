@@ -728,7 +728,8 @@ impl<'a> Builder<'a> {
             Subcommand::Dist { ref paths } => (Kind::Dist, &paths[..]),
             Subcommand::Install { ref paths } => (Kind::Install, &paths[..]),
             Subcommand::Run { ref paths } => (Kind::Run, &paths[..]),
-            Subcommand::Format { .. } | Subcommand::Clean { .. } | Subcommand::Setup { .. } => {
+            Subcommand::Format { .. } => (Kind::Format, &[][..]),
+            Subcommand::Clean { .. } | Subcommand::Setup { .. } => {
                 panic!()
             }
         };
@@ -878,7 +879,6 @@ impl<'a> Builder<'a> {
     ) {
         // Use a temporary file in case we crash while downloading, to avoid a corrupt download in cache/.
         let tempfile = self.tempdir().join(dest_path.file_name().unwrap());
-        // FIXME: support `do_verify` (only really needed for nightly rustfmt)
         self.download_with_retries(&tempfile, &format!("{}/{}", base, url), help_on_error);
         t!(std::fs::rename(&tempfile, dest_path));
     }
@@ -968,6 +968,28 @@ impl<'a> Builder<'a> {
             t!(fs::rename(src_path, dst_path));
         }
         t!(fs::remove_dir_all(dst.join(directory_prefix)));
+    }
+
+    /// Returns whether the SHA256 checksum of `path` matches `expected`.
+    pub(crate) fn verify(&self, path: &Path, expected: &str) -> bool {
+        use sha2::Digest;
+
+        self.verbose(&format!("verifying {}", path.display()));
+        let mut hasher = sha2::Sha256::new();
+        // FIXME: this is ok for rustfmt (4.1 MB large at time of writing), but it seems memory-intensive for rustc and larger components.
+        // Consider using streaming IO instead?
+        let contents = if self.config.dry_run { vec![] } else { t!(fs::read(path)) };
+        hasher.update(&contents);
+        let found = hex::encode(hasher.finalize().as_slice());
+        let verified = found == expected;
+        if !verified && !self.config.dry_run {
+            println!(
+                "invalid checksum: \n\
+                found:    {found}\n\
+                expected: {expected}",
+            );
+        }
+        return verified;
     }
 
     /// Obtain a compiler at a given stage and for a given host. Explicitly does
@@ -1190,6 +1212,10 @@ impl<'a> Builder<'a> {
 
     pub(crate) fn download_rustc(&self) -> bool {
         Config::download_rustc(self)
+    }
+
+    pub(crate) fn initial_rustfmt(&self) -> Option<PathBuf> {
+        Config::initial_rustfmt(self)
     }
 
     /// Prepares an invocation of `cargo` to be run.
