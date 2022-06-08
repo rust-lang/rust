@@ -474,6 +474,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_null(dest)?;
             }
 
+            "getpid" => {
+                let [] = this.check_shim(abi, Abi::C { unwind: false}, link_name, args)?;
+                let result = this.getpid()?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
+            }
+
             // Platform-specific shims
             _ => {
                 match this.tcx.sess.target.os.as_ref() {
