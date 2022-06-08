@@ -632,39 +632,33 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
 
             (&TestKind::Range(test), &PatKind::Range(pat)) => {
+                use std::cmp::Ordering::*;
+
                 if test == pat {
                     self.candidate_without_match_pair(match_pair_index, candidate);
                     return Some(0);
                 }
 
-                let no_overlap = (|| {
-                    use rustc_hir::RangeEnd::*;
-                    use std::cmp::Ordering::*;
+                let tcx = self.tcx;
+                let test_ty = test.lo.ty();
 
-                    let tcx = self.tcx;
-
-                    let test_ty = test.lo.ty();
-                    let lo = compare_const_vals(tcx, test.lo, pat.hi, self.param_env, test_ty)?;
-                    let hi = compare_const_vals(tcx, test.hi, pat.lo, self.param_env, test_ty)?;
-
-                    match (test.end, pat.end, lo, hi) {
-                        // pat < test
-                        (_, _, Greater, _) |
-                        (_, Excluded, Equal, _) |
-                        // pat > test
-                        (_, _, _, Less) |
-                        (Excluded, _, _, Equal) => Some(true),
-                        _ => Some(false),
-                    }
-                })();
-
-                if let Some(true) = no_overlap {
-                    // Testing range does not overlap with pattern range,
-                    // so the pattern can be matched only if this test fails.
+                // For performance, it's important to only do the second
+                // `compare_const_vals` if necessary.
+                let no_overlap = if matches!(
+                    (compare_const_vals(tcx, test.hi, pat.lo, self.param_env, test_ty)?, test.end),
+                    (Less, _) | (Equal, RangeEnd::Excluded) // test < pat
+                ) || matches!(
+                    (compare_const_vals(tcx, test.lo, pat.hi, self.param_env, test_ty)?, pat.end),
+                    (Greater, _) | (Equal, RangeEnd::Excluded) // test > pat
+                ) {
                     Some(1)
                 } else {
                     None
-                }
+                };
+
+                // If the testing range does not overlap with pattern range,
+                // the pattern can be matched only if this test fails.
+                no_overlap
             }
 
             (&TestKind::Range(range), &PatKind::Constant { value }) => {
