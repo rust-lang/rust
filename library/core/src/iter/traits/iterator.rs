@@ -41,6 +41,10 @@ fn _assert_is_object_safe(_: &dyn Iterator<Item = ()>) {}
     ),
     on(_Self = "&[]", label = "`{Self}` is not an iterator; try calling `.iter()`"),
     on(
+        _Self = "std::vec::Vec<T, A>",
+        label = "`{Self}` is not an iterator; try calling `.into_iter()` or `.iter()`"
+    ),
+    on(
         _Self = "&str",
         label = "`{Self}` is not an iterator; try calling `.chars()` or `.bytes()`"
     ),
