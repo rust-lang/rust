@@ -1526,8 +1526,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         value: ty::Binder<'tcx, T>,
     ) -> T
     where
-        T: TypeFoldable<'tcx>,
+        T: TypeFoldable<'tcx> + Copy,
     {
+        if let Some(inner) = value.no_bound_vars() {
+            return inner;
+        }
+
         let mut region_map = BTreeMap::new();
         let fld_r = |br: ty::BoundRegion| {
             *region_map

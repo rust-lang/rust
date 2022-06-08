@@ -6,7 +6,6 @@ use super::{HigherRankedType, InferCtxt};
 use crate::infer::CombinedSnapshot;
 use rustc_middle::ty::relate::{Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::{self, Binder, TypeFoldable};
-use std::cell::Cell;
 
 impl<'a, 'tcx> CombineFields<'a, 'tcx> {
     /// Checks whether `for<..> sub <: for<..> sup` holds.
@@ -57,7 +56,7 @@ impl<'a, 'tcx> CombineFields<'a, 'tcx> {
 
             debug!("higher_ranked_sub: OK result={result:?}");
             // NOTE: returning the result here would be dangerous as it contains
-            // placeholders which **must not** be named after wards.
+            // placeholders which **must not** be named afterwards.
             Ok(())
         })
     }
@@ -65,7 +64,9 @@ impl<'a, 'tcx> CombineFields<'a, 'tcx> {
 
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// Replaces all bound variables (lifetimes, types, and constants) bound by
-    /// `binder` with placeholder variables.
+    /// `binder` with placeholder variables in a new universe. This means that the
+    /// new placeholders can only be named by inference variables created after
+    /// this method has been called.
     ///
     /// This is the first step of checking subtyping when higher-ranked things are involved.
     /// For more details visit the relevant sections of the [rustc dev guide].
@@ -74,18 +75,15 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     #[instrument(level = "debug", skip(self))]
     pub fn replace_bound_vars_with_placeholders<T>(&self, binder: ty::Binder<'tcx, T>) -> T
     where
-        T: TypeFoldable<'tcx>,
+        T: TypeFoldable<'tcx> + Copy,
     {
-        // Figure out what the next universe will be, but don't actually create
-        // it until after we've done the substitution (in particular there may
-        // be no bound variables). This is a performance optimization, since the
-        // leak check for example can be skipped if no new universes are created
-        // (i.e., if there are no placeholders).
-        let next_universe = self.universe().next_universe();
+        if let Some(inner) = binder.no_bound_vars() {
+            return inner;
+        }
 
-        let replaced_bound_var = Cell::new(false);
+        let next_universe = self.create_next_universe();
+
         let fld_r = |br: ty::BoundRegion| {
-            replaced_bound_var.set(true);
             self.tcx.mk_region(ty::RePlaceholder(ty::PlaceholderRegion {
                 universe: next_universe,
                 name: br.kind,
@@ -93,7 +91,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         };
 
         let fld_t = |bound_ty: ty::BoundTy| {
-            replaced_bound_var.set(true);
             self.tcx.mk_ty(ty::Placeholder(ty::PlaceholderType {
                 universe: next_universe,
                 name: bound_ty.var,
@@ -101,7 +98,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         };
 
         let fld_c = |bound_var: ty::BoundVar, ty| {
-            replaced_bound_var.set(true);
             self.tcx.mk_const(ty::ConstS {
                 val: ty::ConstKind::Placeholder(ty::PlaceholderConst {
                     universe: next_universe,
@@ -112,16 +108,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         };
 
         let result = self.tcx.replace_bound_vars_uncached(binder, fld_r, fld_t, fld_c);
-
-        // If there were higher-ranked regions to replace, then actually create
-        // the next universe (this avoids needlessly creating universes).
-        if replaced_bound_var.get() {
-            let n_u = self.create_next_universe();
-            assert_eq!(n_u, next_universe);
-        }
-
         debug!(?next_universe, ?result);
-
         result
     }
 
