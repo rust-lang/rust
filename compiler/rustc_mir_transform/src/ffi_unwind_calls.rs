@@ -136,6 +136,27 @@ fn required_panic_strategy(tcx: TyCtxt<'_>, cnum: CrateNum) -> Option<PanicStrat
 
     for def_id in tcx.hir().body_owners() {
         if tcx.has_ffi_unwind_calls(def_id) {
+            // Given that this crate is compiled in `-C panic=unwind`, the `AbortUnwindingCalls`
+            // MIR pass will not be run on FFI-unwind call sites, therefore a foreign exception
+            // can enter Rust through these sites.
+            //
+            // On the other hand, crates compiled with `-C panic=abort` expects that all Rust
+            // functions cannot unwind (whether it's caused by Rust panic or foreign exception),
+            // and this expectation mismatch can cause unsoundness (#96926).
+            //
+            // To address this issue, we enforce that if FFI-unwind calls are used in a crate
+            // compiled with `panic=unwind`, then the final panic strategy must be `panic=unwind`.
+            // This will ensure that no crates will have wrong unwindability assumption.
+            //
+            // It should be noted that it is okay to link `panic=unwind` into a `panic=abort`
+            // program if it contains no FFI-unwind calls. In such case foreign exception can only
+            // enter Rust in a `panic=abort` crate, which will lead to an abort. There will also
+            // be no exceptions generated from Rust, so the assumption which `panic=abort` crates
+            // make, that no Rust function can unwind, indeed holds for crates compiled with
+            // `panic=unwind` as well. In such case this function returns `None`, indicating that
+            // the crate does not require a particular final panic strategy, and can be freely
+            // linked to crates with either strategy (we need such ability for libstd and its
+            // dependencies).
             return Some(PanicStrategy::Unwind);
         }
     }
