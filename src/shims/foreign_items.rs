@@ -243,7 +243,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // First: functions that diverge.
         let ret = match ret {
             None =>
-                match &*link_name.as_str() {
+                match link_name.as_str() {
                     "miri_start_panic" => {
                         // `check_shim` happens inside `handle_miri_start_panic`.
                         this.handle_miri_start_panic(abi, link_name, args, unwind)?;
@@ -259,7 +259,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                         let panic_impl_id = tcx.lang_items().panic_impl().unwrap();
                         let panic_impl_instance = ty::Instance::mono(tcx, panic_impl_id);
                         return Ok(Some((
-                            &*this.load_mir(panic_impl_instance.def, None)?,
+                            this.load_mir(panic_impl_instance.def, None)?,
                             panic_impl_instance,
                         )));
                     }
@@ -361,7 +361,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         // Here we dispatch all the shims for foreign functions. If you have a platform specific
         // shim, add it to the corresponding submodule.
-        match &*link_name.as_str() {
+        match link_name.as_str() {
             // Miri-specific extern functions
             "miri_static_root" => {
                 let [ptr] = this.check_shim(abi, Abi::Rust, link_name, args)?;
@@ -573,7 +573,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let [f] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 // FIXME: Using host floats.
                 let f = f32::from_bits(this.read_scalar(f)?.to_u32()?);
-                let f = match &*link_name.as_str() {
+                let f = match link_name.as_str() {
                     "cbrtf" => f.cbrt(),
                     "coshf" => f.cosh(),
                     "sinhf" => f.sinh(),
@@ -596,7 +596,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // FIXME: Using host floats.
                 let f1 = f32::from_bits(this.read_scalar(f1)?.to_u32()?);
                 let f2 = f32::from_bits(this.read_scalar(f2)?.to_u32()?);
-                let n = match &*link_name.as_str() {
+                let n = match link_name.as_str() {
                     "_hypotf" | "hypotf" => f1.hypot(f2),
                     "atan2f" => f1.atan2(f2),
                     _ => bug!(),
@@ -615,7 +615,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let [f] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 // FIXME: Using host floats.
                 let f = f64::from_bits(this.read_scalar(f)?.to_u64()?);
-                let f = match &*link_name.as_str() {
+                let f = match link_name.as_str() {
                     "cbrt" => f.cbrt(),
                     "cosh" => f.cosh(),
                     "sinh" => f.sinh(),
@@ -636,7 +636,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // FIXME: Using host floats.
                 let f1 = f64::from_bits(this.read_scalar(f1)?.to_u64()?);
                 let f2 = f64::from_bits(this.read_scalar(f2)?.to_u64()?);
-                let n = match &*link_name.as_str() {
+                let n = match link_name.as_str() {
                     "_hypot" | "hypot" => f1.hypot(f2),
                     "atan2" => f1.atan2(f2),
                     _ => bug!(),
