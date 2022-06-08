@@ -109,6 +109,9 @@ declare_features! (
     /// Allows in-band quantification of lifetime bindings (e.g., `fn foo(x: &'a u8) -> &'a u8`).
     (removed, in_band_lifetimes, "1.23.0", Some(44524), None,
      Some("removed due to unsolved ergonomic questions and added lifetime resolution complexity")),
+    /// Allows inferring `'static` outlives requirements (RFC 2093).
+    (removed, infer_static_outlives_requirements, "1.63.0", Some(54185), None,
+     Some("removed as it caused some confusion and discussion was inactive for years")),
     /// Lazily evaluate constants. This allows constants to depend on type parameters.
     (removed, lazy_normalization_consts, "1.46.0", Some(72219), None, Some("superseded by `generic_const_exprs`")),
     /// Allows using the `#[link_args]` attribute.
