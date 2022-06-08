@@ -848,16 +848,7 @@ impl<'tcx> Constructor<'tcx> {
             (Str(self_val), Str(other_val)) => {
                 // FIXME Once valtrees are available we can directly use the bytes
                 // in the `Str` variant of the valtree for the comparison here.
-                match compare_const_vals(
-                    pcx.cx.tcx,
-                    *self_val,
-                    *other_val,
-                    pcx.cx.param_env,
-                    pcx.ty,
-                ) {
-                    Some(comparison) => comparison == Ordering::Equal,
-                    None => false,
-                }
+                self_val == other_val
             }
             (Slice(self_slice), Slice(other_slice)) => self_slice.is_covered_by(*other_slice),
 
