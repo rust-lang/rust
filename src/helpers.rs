@@ -255,7 +255,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
 
         // Push frame.
-        let mir = &*this.load_mir(f.def, None)?;
+        let mir = this.load_mir(f.def, None)?;
         this.push_stack_frame(f, mir, dest, stack_pop)?;
 
         // Initialize arguments.

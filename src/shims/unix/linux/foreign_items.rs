@@ -21,7 +21,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, EmulateByNameResult<'mir, 'tcx>> {
         let this = self.eval_context_mut();
 
-        match &*link_name.as_str() {
+        match link_name.as_str() {
             // errno
             "__errno_location" => {
                 let [] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;

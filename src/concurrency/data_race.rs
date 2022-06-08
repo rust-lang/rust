@@ -259,10 +259,7 @@ impl MemoryCellClocks {
     /// Load the internal atomic memory cells if they exist.
     #[inline]
     fn atomic(&self) -> Option<&AtomicMemoryCellClocks> {
-        match &self.atomic_ops {
-            Some(op) => Some(&*op),
-            None => None,
-        }
+        self.atomic_ops.as_deref()
     }
 
     /// Load or create the internal atomic memory metadata
@@ -1482,7 +1479,7 @@ impl GlobalState {
         let thread_name = &self.thread_info.borrow()[thread].thread_name;
         if let Some(name) = thread_name {
             let name: &str = name;
-            format!("Thread(id = {:?}, name = {:?})", thread.to_u32(), &*name)
+            format!("Thread(id = {:?}, name = {:?})", thread.to_u32(), name)
         } else {
             format!("Thread(id = {:?})", thread.to_u32())
         }

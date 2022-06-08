@@ -28,7 +28,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // DWORD = ULONG = u32
         // BOOL = i32
         // BOOLEAN = u8
-        match &*link_name.as_str() {
+        match link_name.as_str() {
             // Environment related shims
             "GetEnvironmentVariableW" => {
                 let [name, buf, size] =

@@ -446,7 +446,7 @@ trait EvalContextExtPrivate<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, '
                 }
             }
             Err(e) =>
-                return match e.raw_os_error() {
+                match e.raw_os_error() {
                     Some(error) => Ok(error),
                     None =>
                         throw_unsup_format!(
