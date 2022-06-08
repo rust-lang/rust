@@ -445,16 +445,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let found_errors = !errors.is_empty();
 
             errors.drain_filter(|error| {
-                let Error::Invalid(input_idx, arg_idx, Compatibility::Incompatible(error)) = error else { return false };
+                let Error::Invalid(input_idx, arg_idx, Compatibility::Incompatible(Some(e))) = error else { return false };
                 let expected_ty = expected_input_tys[*arg_idx];
-                let provided_ty = final_arg_types[*input_idx].map(|ty| ty.0).unwrap();
+                let provided_ty = final_arg_types[*input_idx].map(|ty| ty.0).unwrap_or_else(|| tcx.ty_error());
                 let cause = &self.misc(provided_args[*input_idx].span);
                 let trace = TypeTrace::types(cause, true, expected_ty, provided_ty);
-                if let Some(e) = error {
-                    if !matches!(trace.cause.as_failure_code(e), FailureCode::Error0308(_)) {
-                        self.report_and_explain_type_error(trace, e).emit();
-                        return true;
-                    }
+                if !matches!(trace.cause.as_failure_code(e), FailureCode::Error0308(_)) {
+                    self.report_and_explain_type_error(trace, e).emit();
+                    return true;
                 }
                 false
             });
@@ -585,7 +583,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 )) = errors.iter().next()
                 {
                     let expected_ty = expected_input_tys[*arg_idx];
-                    let provided_ty = final_arg_types[*arg_idx].map(|ty| ty.0).unwrap();
+                    let provided_ty = final_arg_types[*input_idx]
+                        .map(|ty| ty.0)
+                        .unwrap_or_else(|| tcx.ty_error());
                     let expected_ty = self.resolve_vars_if_possible(expected_ty);
                     let provided_ty = self.resolve_vars_if_possible(provided_ty);
                     let cause = &self.misc(provided_args[*input_idx].span);
@@ -595,7 +595,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         &mut err,
                         &provided_args[*input_idx],
                         provided_ty,
-                        final_arg_types[*input_idx].map(|ty| ty.1).unwrap(),
+                        final_arg_types[*input_idx]
+                            .map(|ty| ty.1)
+                            .unwrap_or_else(|| tcx.ty_error()),
                         None,
                         None,
                     );
@@ -652,7 +654,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 match error {
                     Error::Invalid(input_idx, arg_idx, compatibility) => {
                         let expected_ty = expected_input_tys[arg_idx];
-                        let provided_ty = final_arg_types[input_idx].map(|ty| ty.0).unwrap();
+                        let provided_ty = final_arg_types[input_idx]
+                            .map(|ty| ty.0)
+                            .unwrap_or_else(|| tcx.ty_error());
                         let expected_ty = self.resolve_vars_if_possible(expected_ty);
                         let provided_ty = self.resolve_vars_if_possible(provided_ty);
                         if let Compatibility::Incompatible(error) = &compatibility {
@@ -674,8 +678,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         self.emit_coerce_suggestions(
                             &mut err,
                             &provided_args[input_idx],
-                            final_arg_types[input_idx].map(|ty| ty.0).unwrap(),
-                            final_arg_types[input_idx].map(|ty| ty.1).unwrap(),
+                            provided_ty,
+                            // FIXME(compiler-errors): expected_ty?
+                            final_arg_types[input_idx]
+                                .map(|ty| ty.1)
+                                .unwrap_or_else(|| tcx.ty_error()),
                             None,
                             None,
                         );
@@ -860,7 +867,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let first_expected_ty =
                             self.resolve_vars_if_possible(expected_input_tys[arg_idx]);
                         let first_provided_ty = if let Some((ty, _)) = final_arg_types[input_idx] {
-                            format!(",found `{}`", ty)
+                            format!(", found `{}`", ty)
                         } else {
                             String::new()
                         };
@@ -872,7 +879,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             self.resolve_vars_if_possible(expected_input_tys[other_arg_idx]);
                         let other_provided_ty =
                             if let Some((ty, _)) = final_arg_types[other_input_idx] {
-                                format!(",found `{}`", ty)
+                                format!(", found `{}`", ty)
                             } else {
                                 String::new()
                             };
@@ -888,14 +895,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     Error::Permutation(args) => {
                         for (dst_arg, dest_input) in args {
                             let expected_ty =
-                                self.resolve_vars_if_possible(expected_input_tys[dest_input]);
-                            let provided_ty = if let Some((ty, _)) = final_arg_types[dst_arg] {
-                                format!(",found `{}`", ty)
+                                self.resolve_vars_if_possible(expected_input_tys[dst_arg]);
+                            let provided_ty = if let Some((ty, _)) = final_arg_types[dest_input] {
+                                format!(", found `{}`", ty)
                             } else {
                                 String::new()
                             };
                             labels.push((
-                                provided_args[dst_arg].span,
+                                provided_args[dest_input].span,
                                 format!("expected `{}`{}", expected_ty, provided_ty),
                             ));
                         }
