@@ -14,7 +14,6 @@ use rustc_data_structures::{
     fx::{FxHashSet, FxIndexMap, FxIndexSet},
     stack::ensure_sufficient_stack,
 };
-use rustc_hir::HirId;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::middle::region;
 use rustc_middle::mir::*;
@@ -690,7 +689,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub(crate) fn storage_live_binding(
         &mut self,
         block: BasicBlock,
-        var: HirId,
+        var: LocalVarId,
         span: Span,
         for_guard: ForGuard,
         schedule_drop: bool,
@@ -700,7 +699,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.cfg.push(block, Statement { source_info, kind: StatementKind::StorageLive(local_id) });
         // Altough there is almost always scope for given variable in corner cases
         // like #92893 we might get variable with no scope.
-        if let Some(region_scope) = self.region_scope_tree.var_scope(var.local_id) && schedule_drop{
+        if let Some(region_scope) = self.region_scope_tree.var_scope(var.0.local_id) && schedule_drop{
             self.schedule_drop(span, region_scope, local_id, DropKind::Storage);
         }
         Place::from(local_id)
@@ -708,12 +707,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
     pub(crate) fn schedule_drop_for_binding(
         &mut self,
-        var: HirId,
+        var: LocalVarId,
         span: Span,
         for_guard: ForGuard,
     ) {
         let local_id = self.var_local_id(var, for_guard);
-        if let Some(region_scope) = self.region_scope_tree.var_scope(var.local_id) {
+        if let Some(region_scope) = self.region_scope_tree.var_scope(var.0.local_id) {
             self.schedule_drop(span, region_scope, local_id, DropKind::Value);
         }
     }
@@ -730,7 +729,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             Mutability,
             Symbol,
             BindingMode,
-            HirId,
+            LocalVarId,
             Span,
             Ty<'tcx>,
             UserTypeProjections,
@@ -917,7 +916,7 @@ fn traverse_candidate<'pat, 'tcx: 'pat, C, T, I>(
 struct Binding<'tcx> {
     span: Span,
     source: Place<'tcx>,
-    var_id: HirId,
+    var_id: LocalVarId,
     binding_mode: BindingMode,
 }
 
@@ -2184,7 +2183,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         mutability: Mutability,
         name: Symbol,
         mode: BindingMode,
-        var_id: HirId,
+        var_id: LocalVarId,
         var_ty: Ty<'tcx>,
         user_ty: UserTypeProjections,
         has_guard: ArmHasGuard,
