@@ -46,9 +46,8 @@
 //!
 //! ## What about `/proc/self/mem` and similar OS features?
 //!
-//! Some platforms have special files, such as `/proc/self/mem`, which is a
-//! filesystem path that can be opened, producing a file descriptor that, when
-//! read from or written to, reads and writes the process's memory. These reads
+//! Some platforms have special files, such as `/proc/self/mem`, which 
+//! provide read and write access to the process's memory. Such reads
 //! and writes happen outside the control of the Rust compiler, so they do not
 //! uphold Rust's memory safety guarantees.
 //!
