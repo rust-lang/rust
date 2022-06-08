@@ -204,25 +204,7 @@ impl<'a> Parser<'a> {
         let mut def = || mem::replace(def, Defaultness::Final);
 
         let info = if self.eat_keyword(kw::Use) {
-            // USE ITEM
-            let tree = self.parse_use_tree()?;
-
-            // If wildcard or glob-like brace syntax doesn't have `;`,
-            // the user may not know `*` or `{}` should be the last.
-            if let Err(mut e) = self.expect_semi() {
-                match tree.kind {
-                    UseTreeKind::Glob => {
-                        e.note("the wildcard token must be last on the path");
-                    }
-                    UseTreeKind::Nested(..) => {
-                        e.note("glob-like brace syntax must be last on the path");
-                    }
-                    _ => (),
-                }
-                return Err(e);
-            }
-
-            (Ident::empty(), ItemKind::Use(tree))
+            self.parse_use_item()?
         } else if self.check_fn_front_matter(def_final) {
             // FUNCTION ITEM
             let (ident, sig, generics, body) = self.parse_fn(attrs, fn_parse_mode, lo, vis)?;
@@ -288,7 +270,12 @@ impl<'a> Parser<'a> {
         } else if let IsMacroRulesItem::Yes { has_bang } = self.is_macro_rules_item() {
             // MACRO_RULES ITEM
             self.parse_item_macro_rules(vis, has_bang)?
-        } else if vis.kind.is_pub() && self.isnt_macro_invocation() {
+        } else if self.isnt_macro_invocation()
+            && (self.token.is_ident_named(Symbol::intern("import"))
+                || self.token.is_ident_named(Symbol::intern("using")))
+        {
+            return self.recover_import_as_use();
+        } else if self.isnt_macro_invocation() && vis.kind.is_pub() {
             self.recover_missing_kw_before_item()?;
             return Ok(None);
         } else if macros_allowed && self.check_path() {
@@ -298,6 +285,48 @@ impl<'a> Parser<'a> {
             return Ok(None);
         };
         Ok(Some(info))
+    }
+
+    fn recover_import_as_use(&mut self) -> PResult<'a, Option<(Ident, ItemKind)>> {
+        let span = self.token.span;
+        let token_name = super::token_descr(&self.token);
+        let snapshot = self.create_snapshot_for_diagnostic();
+        self.bump();
+        match self.parse_use_item() {
+            Ok(u) => {
+                self.struct_span_err(span, format!("expected item, found {token_name}"))
+                    .span_suggestion_short(
+                        span,
+                        "items are imported using the `use` keyword",
+                        "use".to_owned(),
+                        Applicability::MachineApplicable,
+                    )
+                    .emit();
+                Ok(Some(u))
+            }
+            Err(e) => {
+                e.cancel();
+                self.restore_snapshot(snapshot);
+                Ok(None)
+            }
+        }
+    }
+
+    fn parse_use_item(&mut self) -> PResult<'a, (Ident, ItemKind)> {
+        let tree = self.parse_use_tree()?;
+        if let Err(mut e) = self.expect_semi() {
+            match tree.kind {
+                UseTreeKind::Glob => {
+                    e.note("the wildcard token must be last on the path");
+                }
+                UseTreeKind::Nested(..) => {
+                    e.note("glob-like brace syntax must be last on the path");
+                }
+                _ => (),
+            }
+            return Err(e);
+        }
+        Ok((Ident::empty(), ItemKind::Use(tree)))
     }
 
     /// When parsing a statement, would the start of a path be an item?
