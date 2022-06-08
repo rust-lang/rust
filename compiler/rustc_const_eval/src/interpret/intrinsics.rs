@@ -24,6 +24,7 @@ use super::{
 
 mod caller_location;
 mod type_name;
+mod validity_invariants_of;
 
 fn numeric_intrinsic<Tag>(name: Symbol, bits: u128, kind: Primitive) -> Scalar<Tag> {
     let size = match kind {
@@ -103,6 +104,11 @@ pub(crate) fn eval_nullary_intrinsic<'tcx>(
             | ty::Tuple(_)
             | ty::Error(_) => ConstValue::from_machine_usize(0u64, &tcx),
         },
+        sym::validity_invariants_of => {
+            ensure_monomorphic_enough(tcx, tp_ty)?;
+            let alloc = validity_invariants_of::alloc_validity_invariants_of(tcx, tp_ty);
+            ConstValue::Slice { data: alloc, start: 0, end: alloc.inner().len() }
+        }
         other => bug!("`{}` is not a zero arg intrinsic", other),
     })
 }
@@ -162,6 +168,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             | sym::needs_drop
             | sym::type_id
             | sym::type_name
+            | sym::validity_invariants_of
             | sym::variant_count => {
                 let gid = GlobalId { instance, promoted: None };
                 let ty = match intrinsic_name {
@@ -169,6 +176,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     sym::needs_drop => self.tcx.types.bool,
                     sym::type_id => self.tcx.types.u64,
                     sym::type_name => self.tcx.mk_static_str(),
+                    sym::validity_invariants_of => self.tcx.mk_static_bytes(),
                     _ => bug!(),
                 };
                 let val =

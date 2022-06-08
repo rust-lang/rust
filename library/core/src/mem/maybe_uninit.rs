@@ -631,6 +631,11 @@ impl<T> MaybeUninit<T> {
         // This also means that `self` must be a `value` variant.
         unsafe {
             intrinsics::assert_inhabited::<T>();
+
+            intrinsics::assert_unsafe_precondition!(intrinsics::assert_validity_of::<T>(
+                &self as *const MaybeUninit<T> as *const T
+            ));
+
             ManuallyDrop::into_inner(self.value)
         }
     }
@@ -795,6 +800,11 @@ impl<T> MaybeUninit<T> {
         // This also means that `self` must be a `value` variant.
         unsafe {
             intrinsics::assert_inhabited::<T>();
+
+            intrinsics::assert_unsafe_precondition!(intrinsics::assert_validity_of::<T>(
+                self as *const MaybeUninit<T> as *const T
+            ));
+
             &*self.as_ptr()
         }
     }
@@ -912,6 +922,11 @@ impl<T> MaybeUninit<T> {
         // This also means that `self` must be a `value` variant.
         unsafe {
             intrinsics::assert_inhabited::<T>();
+
+            intrinsics::assert_unsafe_precondition!(intrinsics::assert_validity_of::<T>(
+                self as *const MaybeUninit<T> as *const T
+            ));
+
             &mut *self.as_mut_ptr()
         }
     }

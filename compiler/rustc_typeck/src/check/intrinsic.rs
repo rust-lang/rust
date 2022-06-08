@@ -102,7 +102,8 @@ pub fn intrinsic_operation_unsafety(intrinsic: Symbol) -> hir::Unsafety {
         | sym::type_name
         | sym::forget
         | sym::black_box
-        | sym::variant_count => hir::Unsafety::Normal,
+        | sym::variant_count
+        | sym::validity_invariants_of => hir::Unsafety::Normal,
         _ => hir::Unsafety::Unsafe,
     }
 }
@@ -191,6 +192,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
             sym::needs_drop => (1, Vec::new(), tcx.types.bool),
 
             sym::type_name => (1, Vec::new(), tcx.mk_static_str()),
+            sym::validity_invariants_of => (1, Vec::new(), tcx.mk_static_bytes()),
             sym::type_id => (1, Vec::new(), tcx.types.u64),
             sym::offset | sym::arith_offset => (
                 1,

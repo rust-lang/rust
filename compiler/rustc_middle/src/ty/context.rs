@@ -2340,6 +2340,11 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
+    pub fn mk_static_bytes(self) -> Ty<'tcx> {
+        self.mk_imm_ref(self.lifetimes.re_static, self.mk_slice(self.types.u8))
+    }
+
+    #[inline]
     pub fn mk_adt(self, def: AdtDef<'tcx>, substs: SubstsRef<'tcx>) -> Ty<'tcx> {
         // Take a copy of substs so that we own the vectors inside.
         self.mk_ty(Adt(def, substs))
