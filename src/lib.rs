@@ -17,6 +17,7 @@
     clippy::single_match,
     clippy::useless_format,
     clippy::derive_partial_eq_without_eq,
+    clippy::derive_hash_xor_eq,
     clippy::too_many_arguments
 )]
 
