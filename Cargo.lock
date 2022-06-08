@@ -4375,6 +4375,7 @@ dependencies = [
  "rustc_feature",
  "rustc_hir",
  "rustc_index",
+ "rustc_lint_defs",
  "rustc_metadata",
  "rustc_middle",
  "rustc_query_system",

@@ -264,6 +264,26 @@ declare_lint! {
 }
 
 declare_lint! {
+    /// The `needless_lifetime` lint detects needless generic lifetime aliases.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![deny(needless_lifetime)]
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Needless lifetime aliases can tend to make code less readable.
+    ///
+    pub NEEDLESS_LIFETIME,
+    Warn,
+    "you can use the liftime directly"
+}
+
+declare_lint! {
     /// The `const_err` lint detects an erroneous expression while doing
     /// constant evaluation.
     ///

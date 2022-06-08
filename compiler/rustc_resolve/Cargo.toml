@@ -25,4 +25,5 @@ rustc_metadata = { path = "../rustc_metadata" }
 rustc_query_system = { path = "../rustc_query_system" }
 rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }
+rustc_lint_defs = { path = "../rustc_lint_defs" }
 smallvec = { version = "1.6.1", features = ["union", "may_dangle"] }
