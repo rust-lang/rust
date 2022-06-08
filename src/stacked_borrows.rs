@@ -27,10 +27,28 @@ pub type CallId = NonZeroU64;
 pub type AllocExtra = Stacks;
 
 /// Tracking pointer provenance
-#[derive(Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Copy, Clone, Hash, Eq)]
 pub enum SbTag {
     Tagged(PtrId),
     Untagged,
+}
+
+impl SbTag {
+    fn as_u64(self) -> u64 {
+        match self {
+            SbTag::Tagged(id) => id.get(),
+            SbTag::Untagged => 0,
+        }
+    }
+}
+
+impl PartialEq for SbTag {
+    fn eq(&self, other: &Self) -> bool {
+        // The codegen for the derived Partialeq is bad here and includes a branch.
+        // Since this code is extremely hot, this is optimized here.
+        // https://github.com/rust-lang/rust/issues/49892
+        self.as_u64() == other.as_u64()
+    }
 }
 
 impl fmt::Debug for SbTag {
