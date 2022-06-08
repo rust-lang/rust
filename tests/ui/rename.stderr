@@ -18,11 +18,11 @@ error: lint `clippy::box_vec` has been renamed to `clippy::box_collection`
 LL | #![warn(clippy::box_vec)]
    |         ^^^^^^^^^^^^^^^ help: use the new name: `clippy::box_collection`
 
-error: lint `clippy::blacklisted_name` has been renamed to `clippy::disallowed_name`
+error: lint `clippy::blacklisted_name` has been renamed to `clippy::disallowed_names`
   --> $DIR/rename.rs:40:9
    |
 LL | #![warn(clippy::blacklisted_name)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::disallowed_name`
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::disallowed_names`
 
 error: lint `clippy::const_static_lifetime` has been renamed to `clippy::redundant_static_lifetimes`
   --> $DIR/rename.rs:41:9

@@ -18,18 +18,18 @@ declare_clippy_lint! {
     /// let foo = 3.14;
     /// ```
     #[clippy::version = "pre 1.29.0"]
-    pub DISALLOWED_NAME,
+    pub DISALLOWED_NAMES,
     style,
     "usage of a disallowed/placeholder name"
 }
 
 #[derive(Clone, Debug)]
-pub struct DisallowedName {
+pub struct DisallowedNames {
     disallow: FxHashSet<String>,
     test_modules_deep: u32,
 }
 
-impl DisallowedName {
+impl DisallowedNames {
     pub fn new(disallow: FxHashSet<String>) -> Self {
         Self {
             disallow,
@@ -42,9 +42,9 @@ impl DisallowedName {
     }
 }
 
-impl_lint_pass!(DisallowedName => [DISALLOWED_NAME]);
+impl_lint_pass!(DisallowedNames => [DISALLOWED_NAMES]);
 
-impl<'tcx> LateLintPass<'tcx> for DisallowedName {
+impl<'tcx> LateLintPass<'tcx> for DisallowedNames {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
         if is_test_module_or_function(cx.tcx, item) {
             self.test_modules_deep = self.test_modules_deep.saturating_add(1);
@@ -61,7 +61,7 @@ impl<'tcx> LateLintPass<'tcx> for DisallowedName {
             if self.disallow.contains(&ident.name.to_string()) {
                 span_lint(
                     cx,
-                    DISALLOWED_NAME,
+                    DISALLOWED_NAMES,
                     ident.span,
                     &format!("use of a disallowed/placeholder name `{}`", ident.name),
                 );

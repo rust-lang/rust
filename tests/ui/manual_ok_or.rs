@@ -1,6 +1,6 @@
 // run-rustfix
 #![warn(clippy::manual_ok_or)]
-#![allow(clippy::disallowed_name)]
+#![allow(clippy::disallowed_names)]
 #![allow(clippy::redundant_closure)]
 #![allow(dead_code)]
 #![allow(unused_must_use)]

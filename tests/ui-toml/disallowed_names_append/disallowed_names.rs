@@ -1,4 +1,4 @@
-#[warn(clippy::disallowed_name)]
+#[warn(clippy::disallowed_names)]
 
 fn main() {
     // `foo` is part of the default configuration

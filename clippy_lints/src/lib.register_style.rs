@@ -17,7 +17,7 @@ store.register_group(true, "clippy::style", Some("clippy_style"), vec![
     LintId::of(dereference::NEEDLESS_BORROW),
     LintId::of(derive::DERIVE_PARTIAL_EQ_WITHOUT_EQ),
     LintId::of(disallowed_methods::DISALLOWED_METHODS),
-    LintId::of(disallowed_name::DISALLOWED_NAME),
+    LintId::of(disallowed_names::DISALLOWED_NAMES),
     LintId::of(disallowed_types::DISALLOWED_TYPES),
     LintId::of(doc::MISSING_SAFETY_DOC),
     LintId::of(doc::NEEDLESS_DOCTEST_MAIN),

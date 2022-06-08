@@ -4,7 +4,7 @@ error: use of a disallowed/placeholder name `toto`
 LL | fn test(toto: ()) {}
    |         ^^^^
    |
-   = note: `-D clippy::disallowed-name` implied by `-D warnings`
+   = note: `-D clippy::disallowed-names` implied by `-D warnings`
 
 error: use of a disallowed/placeholder name `toto`
   --> $DIR/conf_french_disallowed_name.rs:9:9

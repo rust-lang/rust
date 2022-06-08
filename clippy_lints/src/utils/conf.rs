@@ -231,7 +231,7 @@ define_Conf! {
     /// Use the Cognitive Complexity lint instead.
     #[conf_deprecated("Please use `cognitive-complexity-threshold` instead", cognitive_complexity_threshold)]
     (cyclomatic_complexity_threshold: u64 = 25),
-    /// Lint: DISALLOWED_NAME.
+    /// Lint: DISALLOWED_NAMES.
     ///
     /// The list of disallowed names to lint about. NB: `bar` is not here since it has legitimate uses. The value
     /// `".."` can be used as part of the list to indicate, that the configured values should be appended to the

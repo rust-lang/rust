@@ -204,7 +204,7 @@ mod dereference;
 mod derivable_impls;
 mod derive;
 mod disallowed_methods;
-mod disallowed_name;
+mod disallowed_names;
 mod disallowed_script_idents;
 mod disallowed_types;
 mod doc;
@@ -684,7 +684,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(overflow_check_conditional::OverflowCheckConditional));
     store.register_late_pass(|| Box::new(new_without_default::NewWithoutDefault::default()));
     let disallowed_names = conf.disallowed_names.iter().cloned().collect::<FxHashSet<_>>();
-    store.register_late_pass(move || Box::new(disallowed_name::DisallowedName::new(disallowed_names.clone())));
+    store.register_late_pass(move || Box::new(disallowed_names::DisallowedNames::new(disallowed_names.clone())));
     let too_many_arguments_threshold = conf.too_many_arguments_threshold;
     let too_many_lines_threshold = conf.too_many_lines_threshold;
     store.register_late_pass(move || {

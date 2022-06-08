@@ -115,7 +115,7 @@ store.register_lints(&[
     derive::EXPL_IMPL_CLONE_ON_COPY,
     derive::UNSAFE_DERIVE_DESERIALIZE,
     disallowed_methods::DISALLOWED_METHODS,
-    disallowed_name::DISALLOWED_NAME,
+    disallowed_names::DISALLOWED_NAMES,
     disallowed_script_idents::DISALLOWED_SCRIPT_IDENTS,
     disallowed_types::DISALLOWED_TYPES,
     doc::DOC_MARKDOWN,
