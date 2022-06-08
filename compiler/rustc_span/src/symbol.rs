@@ -1802,8 +1802,8 @@ impl fmt::Display for Symbol {
 }
 
 impl<S: Encoder> Encodable<S> for Symbol {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_str(self.as_str())
+    fn encode(&self, s: &mut S) {
+        s.emit_str(self.as_str());
     }
 }
 

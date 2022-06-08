@@ -117,8 +117,8 @@ impl<T: fmt::Debug> fmt::Debug for List<T> {
 
 impl<S: Encoder, T: Encodable<S>> Encodable<S> for List<T> {
     #[inline]
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        (**self).encode(s)
+    fn encode(&self, s: &mut S) {
+        (**self).encode(s);
     }
 }
 

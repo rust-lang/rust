@@ -1,7 +1,7 @@
 #![allow(rustc::internal)]
 
 use rustc_macros::{Decodable, Encodable};
-use rustc_serialize::opaque::{Decoder, Encoder};
+use rustc_serialize::opaque::{MemDecoder, MemEncoder};
 use rustc_serialize::{Decodable, Encodable};
 use std::fmt::Debug;
 
@@ -28,17 +28,18 @@ struct Struct {
     q: Option<u32>,
 }
 
-fn check_round_trip<T: Encodable<Encoder> + for<'a> Decodable<Decoder<'a>> + PartialEq + Debug>(
+fn check_round_trip<
+    T: Encodable<MemEncoder> + for<'a> Decodable<MemDecoder<'a>> + PartialEq + Debug,
+>(
     values: Vec<T>,
 ) {
-    let mut encoder = Encoder::new(Vec::new());
-
+    let mut encoder = MemEncoder::new();
     for value in &values {
-        Encodable::encode(value, &mut encoder).unwrap();
+        Encodable::encode(value, &mut encoder);
     }
 
-    let data = encoder.into_inner();
-    let mut decoder = Decoder::new(&data[..], 0);
+    let data = encoder.finish();
+    let mut decoder = MemDecoder::new(&data[..], 0);
 
     for value in values {
         let decoded = Decodable::decode(&mut decoder);

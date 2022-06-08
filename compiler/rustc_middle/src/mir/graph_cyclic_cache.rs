@@ -3,7 +3,7 @@ use rustc_data_structures::graph::{
 };
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::OnceCell;
-use rustc_serialize as serialize;
+use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 
 /// Helper type to cache the result of `graph::is_cyclic`.
 #[derive(Clone, Debug)]
@@ -36,17 +36,17 @@ impl GraphIsCyclicCache {
     }
 }
 
-impl<S: serialize::Encoder> serialize::Encodable<S> for GraphIsCyclicCache {
+impl<S: Encoder> Encodable<S> for GraphIsCyclicCache {
     #[inline]
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        serialize::Encodable::encode(&(), s)
+    fn encode(&self, s: &mut S) {
+        Encodable::encode(&(), s);
     }
 }
 
-impl<D: serialize::Decoder> serialize::Decodable<D> for GraphIsCyclicCache {
+impl<D: Decoder> Decodable<D> for GraphIsCyclicCache {
     #[inline]
     fn decode(d: &mut D) -> Self {
-        let () = serialize::Decodable::decode(d);
+        let () = Decodable::decode(d);
         Self::new()
     }
 }

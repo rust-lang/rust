@@ -75,6 +75,7 @@ enum WireProtocol {
 fn encode_json<T: for<'a> Encodable<JsonEncoder<'a>>>(val: &T, wr: &mut Cursor<Vec<u8>>) {
     write!(wr, "{}", as_json(val));
 }
+
 fn encode_opaque<T: Encodable<OpaqueEncoder>>(val: &T, wr: Vec<u8>) {
     let mut encoder = OpaqueEncoder(wr);
     val.encode(&mut encoder);

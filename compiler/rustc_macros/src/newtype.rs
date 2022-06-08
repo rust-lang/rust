@@ -137,8 +137,8 @@ impl Parse for Newtype {
                     }
                 }
                 impl<E: ::rustc_serialize::Encoder> ::rustc_serialize::Encodable<E> for #name {
-                    fn encode(&self, e: &mut E) -> Result<(), E::Error> {
-                        e.emit_u32(self.private)
+                    fn encode(&self, e: &mut E) {
+                        e.emit_u32(self.private);
                     }
                 }
             }

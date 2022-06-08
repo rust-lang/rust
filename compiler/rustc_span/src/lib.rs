@@ -194,12 +194,10 @@ impl Hash for RealFileName {
 // This is functionally identical to #[derive(Encodable)], with the exception of
 // an added assert statement
 impl<S: Encoder> Encodable<S> for RealFileName {
-    fn encode(&self, encoder: &mut S) -> Result<(), S::Error> {
+    fn encode(&self, encoder: &mut S) {
         match *self {
             RealFileName::LocalPath(ref local_path) => encoder.emit_enum_variant(0, |encoder| {
-                Ok({
-                    local_path.encode(encoder)?;
-                })
+                local_path.encode(encoder);
             }),
 
             RealFileName::Remapped { ref local_path, ref virtual_name } => encoder
@@ -207,9 +205,8 @@ impl<S: Encoder> Encodable<S> for RealFileName {
                     // For privacy and build reproducibility, we must not embed host-dependant path in artifacts
                     // if they have been remapped by --remap-path-prefix
                     assert!(local_path.is_none());
-                    local_path.encode(encoder)?;
-                    virtual_name.encode(encoder)?;
-                    Ok(())
+                    local_path.encode(encoder);
+                    virtual_name.encode(encoder);
                 }),
         }
     }
@@ -946,10 +943,10 @@ impl Default for Span {
 }
 
 impl<E: Encoder> Encodable<E> for Span {
-    default fn encode(&self, s: &mut E) -> Result<(), E::Error> {
+    default fn encode(&self, s: &mut E) {
         let span = self.data();
-        span.lo.encode(s)?;
-        span.hi.encode(s)
+        span.lo.encode(s);
+        span.hi.encode(s);
     }
 }
 impl<D: Decoder> Decodable<D> for Span {
@@ -1297,17 +1294,17 @@ pub struct SourceFile {
 }
 
 impl<S: Encoder> Encodable<S> for SourceFile {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        self.name.encode(s)?;
-        self.src_hash.encode(s)?;
-        self.start_pos.encode(s)?;
-        self.end_pos.encode(s)?;
+    fn encode(&self, s: &mut S) {
+        self.name.encode(s);
+        self.src_hash.encode(s);
+        self.start_pos.encode(s);
+        self.end_pos.encode(s);
 
         // We are always in `Lines` form by the time we reach here.
         assert!(self.lines.borrow().is_lines());
         self.lines(|lines| {
             // Store the length.
-            s.emit_u32(lines.len() as u32)?;
+            s.emit_u32(lines.len() as u32);
 
             // Compute and store the difference list.
             if lines.len() != 0 {
@@ -1329,10 +1326,10 @@ impl<S: Encoder> Encodable<S> for SourceFile {
                 };
 
                 // Encode the number of bytes used per diff.
-                s.emit_u8(bytes_per_diff as u8)?;
+                s.emit_u8(bytes_per_diff as u8);
 
                 // Encode the first element.
-                lines[0].encode(s)?;
+                lines[0].encode(s);
 
                 // Encode the difference list.
                 let diff_iter = lines.array_windows().map(|&[fst, snd]| snd - fst);
@@ -1359,16 +1356,15 @@ impl<S: Encoder> Encodable<S> for SourceFile {
                     }
                     _ => unreachable!(),
                 }
-                s.emit_raw_bytes(&raw_diffs)?;
+                s.emit_raw_bytes(&raw_diffs);
             }
-            Ok(())
-        })?;
+        });
 
-        self.multibyte_chars.encode(s)?;
-        self.non_narrow_chars.encode(s)?;
-        self.name_hash.encode(s)?;
-        self.normalized_pos.encode(s)?;
-        self.cnum.encode(s)
+        self.multibyte_chars.encode(s);
+        self.non_narrow_chars.encode(s);
+        self.name_hash.encode(s);
+        self.normalized_pos.encode(s);
+        self.cnum.encode(s);
     }
 }
 
@@ -1915,13 +1911,13 @@ impl_pos! {
     pub struct CharPos(pub usize);
 }
 
-impl<S: rustc_serialize::Encoder> Encodable<S> for BytePos {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_u32(self.0)
+impl<S: Encoder> Encodable<S> for BytePos {
+    fn encode(&self, s: &mut S) {
+        s.emit_u32(self.0);
     }
 }
 
-impl<D: rustc_serialize::Decoder> Decodable<D> for BytePos {
+impl<D: Decoder> Decodable<D> for BytePos {
     fn decode(d: &mut D) -> BytePos {
         BytePos(d.read_u32())
     }

@@ -14,7 +14,7 @@ use crate::UintTy;
 use self::TyKind::*;
 
 use rustc_data_structures::stable_hasher::HashStable;
-use rustc_serialize::{Decodable, Encodable};
+use rustc_serialize::{Decodable, Decoder, Encodable};
 
 /// Defines the kinds of types used by the type system.
 ///
@@ -715,115 +715,92 @@ where
     I::PredicateKind: Encodable<E>,
     I::AllocId: Encodable<E>,
 {
-    fn encode(&self, e: &mut E) -> Result<(), <E as rustc_serialize::Encoder>::Error> {
+    fn encode(&self, e: &mut E) {
         let disc = discriminant(self);
         match self {
-            Bool => e.emit_enum_variant(disc, |_| Ok(())),
-            Char => e.emit_enum_variant(disc, |_| Ok(())),
+            Bool => e.emit_enum_variant(disc, |_| {}),
+            Char => e.emit_enum_variant(disc, |_| {}),
             Int(i) => e.emit_enum_variant(disc, |e| {
-                i.encode(e)?;
-                Ok(())
+                i.encode(e);
             }),
             Uint(u) => e.emit_enum_variant(disc, |e| {
-                u.encode(e)?;
-                Ok(())
+                u.encode(e);
             }),
             Float(f) => e.emit_enum_variant(disc, |e| {
-                f.encode(e)?;
-                Ok(())
+                f.encode(e);
             }),
             Adt(adt, substs) => e.emit_enum_variant(disc, |e| {
-                adt.encode(e)?;
-                substs.encode(e)?;
-                Ok(())
+                adt.encode(e);
+                substs.encode(e);
             }),
             Foreign(def_id) => e.emit_enum_variant(disc, |e| {
-                def_id.encode(e)?;
-                Ok(())
+                def_id.encode(e);
             }),
-            Str => e.emit_enum_variant(disc, |_| Ok(())),
+            Str => e.emit_enum_variant(disc, |_| {}),
             Array(t, c) => e.emit_enum_variant(disc, |e| {
-                t.encode(e)?;
-                c.encode(e)?;
-                Ok(())
+                t.encode(e);
+                c.encode(e);
             }),
             Slice(t) => e.emit_enum_variant(disc, |e| {
-                t.encode(e)?;
-                Ok(())
+                t.encode(e);
             }),
             RawPtr(tam) => e.emit_enum_variant(disc, |e| {
-                tam.encode(e)?;
-                Ok(())
+                tam.encode(e);
             }),
             Ref(r, t, m) => e.emit_enum_variant(disc, |e| {
-                r.encode(e)?;
-                t.encode(e)?;
-                m.encode(e)?;
-                Ok(())
+                r.encode(e);
+                t.encode(e);
+                m.encode(e);
             }),
             FnDef(def_id, substs) => e.emit_enum_variant(disc, |e| {
-                def_id.encode(e)?;
-                substs.encode(e)?;
-                Ok(())
+                def_id.encode(e);
+                substs.encode(e);
             }),
             FnPtr(polyfnsig) => e.emit_enum_variant(disc, |e| {
-                polyfnsig.encode(e)?;
-                Ok(())
+                polyfnsig.encode(e);
             }),
             Dynamic(l, r) => e.emit_enum_variant(disc, |e| {
-                l.encode(e)?;
-                r.encode(e)?;
-                Ok(())
+                l.encode(e);
+                r.encode(e);
             }),
             Closure(def_id, substs) => e.emit_enum_variant(disc, |e| {
-                def_id.encode(e)?;
-                substs.encode(e)?;
-                Ok(())
+                def_id.encode(e);
+                substs.encode(e);
             }),
             Generator(def_id, substs, m) => e.emit_enum_variant(disc, |e| {
-                def_id.encode(e)?;
-                substs.encode(e)?;
-                m.encode(e)?;
-                Ok(())
+                def_id.encode(e);
+                substs.encode(e);
+                m.encode(e);
             }),
             GeneratorWitness(b) => e.emit_enum_variant(disc, |e| {
-                b.encode(e)?;
-                Ok(())
+                b.encode(e);
             }),
-            Never => e.emit_enum_variant(disc, |_| Ok(())),
+            Never => e.emit_enum_variant(disc, |_| {}),
             Tuple(substs) => e.emit_enum_variant(disc, |e| {
-                substs.encode(e)?;
-                Ok(())
+                substs.encode(e);
             }),
             Projection(p) => e.emit_enum_variant(disc, |e| {
-                p.encode(e)?;
-                Ok(())
+                p.encode(e);
             }),
             Opaque(def_id, substs) => e.emit_enum_variant(disc, |e| {
-                def_id.encode(e)?;
-                substs.encode(e)?;
-                Ok(())
+                def_id.encode(e);
+                substs.encode(e);
             }),
             Param(p) => e.emit_enum_variant(disc, |e| {
-                p.encode(e)?;
-                Ok(())
+                p.encode(e);
             }),
             Bound(d, b) => e.emit_enum_variant(disc, |e| {
-                d.encode(e)?;
-                b.encode(e)?;
-                Ok(())
+                d.encode(e);
+                b.encode(e);
             }),
             Placeholder(p) => e.emit_enum_variant(disc, |e| {
-                p.encode(e)?;
-                Ok(())
+                p.encode(e);
             }),
             Infer(i) => e.emit_enum_variant(disc, |e| {
-                i.encode(e)?;
-                Ok(())
+                i.encode(e);
             }),
             Error(d) => e.emit_enum_variant(disc, |e| {
-                d.encode(e)?;
-                Ok(())
+                d.encode(e);
             }),
         }
     }
@@ -856,56 +833,34 @@ where
     I::AllocId: Decodable<D>,
 {
     fn decode(d: &mut D) -> Self {
-        match rustc_serialize::Decoder::read_usize(d) {
+        match Decoder::read_usize(d) {
             0 => Bool,
             1 => Char,
-            2 => Int(rustc_serialize::Decodable::decode(d)),
-            3 => Uint(rustc_serialize::Decodable::decode(d)),
-            4 => Float(rustc_serialize::Decodable::decode(d)),
-            5 => Adt(rustc_serialize::Decodable::decode(d), rustc_serialize::Decodable::decode(d)),
-            6 => Foreign(rustc_serialize::Decodable::decode(d)),
+            2 => Int(Decodable::decode(d)),
+            3 => Uint(Decodable::decode(d)),
+            4 => Float(Decodable::decode(d)),
+            5 => Adt(Decodable::decode(d), Decodable::decode(d)),
+            6 => Foreign(Decodable::decode(d)),
             7 => Str,
-            8 => {
-                Array(rustc_serialize::Decodable::decode(d), rustc_serialize::Decodable::decode(d))
-            }
-            9 => Slice(rustc_serialize::Decodable::decode(d)),
-            10 => RawPtr(rustc_serialize::Decodable::decode(d)),
-            11 => Ref(
-                rustc_serialize::Decodable::decode(d),
-                rustc_serialize::Decodable::decode(d),
-                rustc_serialize::Decodable::decode(d),
-            ),
-            12 => {
-                FnDef(rustc_serialize::Decodable::decode(d), rustc_serialize::Decodable::decode(d))
-            }
-            13 => FnPtr(rustc_serialize::Decodable::decode(d)),
-            14 => Dynamic(
-                rustc_serialize::Decodable::decode(d),
-                rustc_serialize::Decodable::decode(d),
-            ),
-            15 => Closure(
-                rustc_serialize::Decodable::decode(d),
-                rustc_serialize::Decodable::decode(d),
-            ),
-            16 => Generator(
-                rustc_serialize::Decodable::decode(d),
-                rustc_serialize::Decodable::decode(d),
-                rustc_serialize::Decodable::decode(d),
-            ),
-            17 => GeneratorWitness(rustc_serialize::Decodable::decode(d)),
+            8 => Array(Decodable::decode(d), Decodable::decode(d)),
+            9 => Slice(Decodable::decode(d)),
+            10 => RawPtr(Decodable::decode(d)),
+            11 => Ref(Decodable::decode(d), Decodable::decode(d), Decodable::decode(d)),
+            12 => FnDef(Decodable::decode(d), Decodable::decode(d)),
+            13 => FnPtr(Decodable::decode(d)),
+            14 => Dynamic(Decodable::decode(d), Decodable::decode(d)),
+            15 => Closure(Decodable::decode(d), Decodable::decode(d)),
+            16 => Generator(Decodable::decode(d), Decodable::decode(d), Decodable::decode(d)),
+            17 => GeneratorWitness(Decodable::decode(d)),
             18 => Never,
-            19 => Tuple(rustc_serialize::Decodable::decode(d)),
-            20 => Projection(rustc_serialize::Decodable::decode(d)),
-            21 => {
-                Opaque(rustc_serialize::Decodable::decode(d), rustc_serialize::Decodable::decode(d))
-            }
-            22 => Param(rustc_serialize::Decodable::decode(d)),
-            23 => {
-                Bound(rustc_serialize::Decodable::decode(d), rustc_serialize::Decodable::decode(d))
-            }
-            24 => Placeholder(rustc_serialize::Decodable::decode(d)),
-            25 => Infer(rustc_serialize::Decodable::decode(d)),
-            26 => Error(rustc_serialize::Decodable::decode(d)),
+            19 => Tuple(Decodable::decode(d)),
+            20 => Projection(Decodable::decode(d)),
+            21 => Opaque(Decodable::decode(d), Decodable::decode(d)),
+            22 => Param(Decodable::decode(d)),
+            23 => Bound(Decodable::decode(d), Decodable::decode(d)),
+            24 => Placeholder(Decodable::decode(d)),
+            25 => Infer(Decodable::decode(d)),
+            26 => Error(Decodable::decode(d)),
             _ => panic!(
                 "{}",
                 format!(

@@ -146,21 +146,17 @@ fn encodable_body(
                     .map(|binding| {
                         let bind_ident = &binding.binding;
                         let result = quote! {
-                            match ::rustc_serialize::Encodable::<#encoder_ty>::encode(
+                            ::rustc_serialize::Encodable::<#encoder_ty>::encode(
                                 #bind_ident,
                                 __encoder,
-                            ) {
-                                ::std::result::Result::Ok(()) => (),
-                                ::std::result::Result::Err(__err)
-                                    => return ::std::result::Result::Err(__err),
-                            }
+                            );
                         };
                         result
                     })
                     .collect::<TokenStream>()
             });
             quote! {
-                ::std::result::Result::Ok(match *self { #encode_inner })
+                match *self { #encode_inner }
             }
         }
         _ => {
@@ -172,14 +168,10 @@ fn encodable_body(
                     .map(|binding| {
                         let bind_ident = &binding.binding;
                         let result = quote! {
-                            match ::rustc_serialize::Encodable::<#encoder_ty>::encode(
+                            ::rustc_serialize::Encodable::<#encoder_ty>::encode(
                                 #bind_ident,
                                 __encoder,
-                            ) {
-                                ::std::result::Result::Ok(()) => (),
-                                ::std::result::Result::Err(__err)
-                                    => return ::std::result::Result::Err(__err),
-                            }
+                            );
                         };
                         result
                     })
@@ -190,7 +182,7 @@ fn encodable_body(
                         ::rustc_serialize::Encoder::emit_enum_variant(
                             __encoder,
                             #variant_idx,
-                            |__encoder| { ::std::result::Result::Ok({ #encode_fields }) }
+                            |__encoder| { #encode_fields }
                         )
                     }
                 } else {
@@ -223,7 +215,7 @@ fn encodable_body(
             fn encode(
                 &self,
                 __encoder: &mut #encoder_ty,
-            ) -> ::std::result::Result<(), <#encoder_ty as ::rustc_serialize::Encoder>::Error> {
+            ) {
                 #lints
                 #encode_body
             }

@@ -10,9 +10,9 @@ use std::sync::Arc;
 use smallvec::{Array, SmallVec};
 
 impl<S: Encoder, A: Array<Item: Encodable<S>>> Encodable<S> for SmallVec<A> {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
+    fn encode(&self, s: &mut S) {
         let slice: &[A::Item] = self;
-        slice.encode(s)
+        slice.encode(s);
     }
 }
 
@@ -24,12 +24,11 @@ impl<D: Decoder, A: Array<Item: Decodable<D>>> Decodable<D> for SmallVec<A> {
 }
 
 impl<S: Encoder, T: Encodable<S>> Encodable<S> for LinkedList<T> {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_usize(self.len())?;
+    fn encode(&self, s: &mut S) {
+        s.emit_usize(self.len());
         for e in self.iter() {
-            e.encode(s)?;
+            e.encode(s);
         }
-        Ok(())
     }
 }
 
@@ -41,12 +40,11 @@ impl<D: Decoder, T: Decodable<D>> Decodable<D> for LinkedList<T> {
 }
 
 impl<S: Encoder, T: Encodable<S>> Encodable<S> for VecDeque<T> {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_usize(self.len())?;
+    fn encode(&self, s: &mut S) {
+        s.emit_usize(self.len());
         for e in self.iter() {
-            e.encode(s)?;
+            e.encode(s);
         }
-        Ok(())
     }
 }
 
@@ -62,13 +60,12 @@ where
     K: Encodable<S> + PartialEq + Ord,
     V: Encodable<S>,
 {
-    fn encode(&self, e: &mut S) -> Result<(), S::Error> {
-        e.emit_usize(self.len())?;
+    fn encode(&self, e: &mut S) {
+        e.emit_usize(self.len());
         for (key, val) in self.iter() {
-            key.encode(e)?;
-            val.encode(e)?;
+            key.encode(e);
+            val.encode(e);
         }
-        Ok(())
     }
 }
 
@@ -93,12 +90,11 @@ impl<S: Encoder, T> Encodable<S> for BTreeSet<T>
 where
     T: Encodable<S> + PartialEq + Ord,
 {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_usize(self.len())?;
+    fn encode(&self, s: &mut S) {
+        s.emit_usize(self.len());
         for e in self.iter() {
-            e.encode(s)?;
+            e.encode(s);
         }
-        Ok(())
     }
 }
 
@@ -122,13 +118,12 @@ where
     V: Encodable<E>,
     S: BuildHasher,
 {
-    fn encode(&self, e: &mut E) -> Result<(), E::Error> {
-        e.emit_usize(self.len())?;
+    fn encode(&self, e: &mut E) {
+        e.emit_usize(self.len());
         for (key, val) in self.iter() {
-            key.encode(e)?;
-            val.encode(e)?;
+            key.encode(e);
+            val.encode(e);
         }
-        Ok(())
     }
 }
 
@@ -156,12 +151,11 @@ where
     T: Encodable<E> + Eq,
     S: BuildHasher,
 {
-    fn encode(&self, s: &mut E) -> Result<(), E::Error> {
-        s.emit_usize(self.len())?;
+    fn encode(&self, s: &mut E) {
+        s.emit_usize(self.len());
         for e in self.iter() {
-            e.encode(s)?;
+            e.encode(s);
         }
-        Ok(())
     }
 }
 
@@ -187,13 +181,12 @@ where
     V: Encodable<E>,
     S: BuildHasher,
 {
-    fn encode(&self, e: &mut E) -> Result<(), E::Error> {
-        e.emit_usize(self.len())?;
+    fn encode(&self, e: &mut E) {
+        e.emit_usize(self.len());
         for (key, val) in self.iter() {
-            key.encode(e)?;
-            val.encode(e)?;
+            key.encode(e);
+            val.encode(e);
         }
-        Ok(())
     }
 }
 
@@ -221,12 +214,11 @@ where
     T: Encodable<E> + Hash + Eq,
     S: BuildHasher,
 {
-    fn encode(&self, s: &mut E) -> Result<(), E::Error> {
-        s.emit_usize(self.len())?;
+    fn encode(&self, s: &mut E) {
+        s.emit_usize(self.len());
         for e in self.iter() {
-            e.encode(s)?;
+            e.encode(s);
         }
-        Ok(())
     }
 }
 
@@ -247,9 +239,9 @@ where
 }
 
 impl<E: Encoder, T: Encodable<E>> Encodable<E> for Rc<[T]> {
-    fn encode(&self, s: &mut E) -> Result<(), E::Error> {
+    fn encode(&self, s: &mut E) {
         let slice: &[T] = self;
-        slice.encode(s)
+        slice.encode(s);
     }
 }
 
@@ -261,9 +253,9 @@ impl<D: Decoder, T: Decodable<D>> Decodable<D> for Rc<[T]> {
 }
 
 impl<E: Encoder, T: Encodable<E>> Encodable<E> for Arc<[T]> {
-    fn encode(&self, s: &mut E) -> Result<(), E::Error> {
+    fn encode(&self, s: &mut E) {
         let slice: &[T] = self;
-        slice.encode(s)
+        slice.encode(s);
     }
 }
 

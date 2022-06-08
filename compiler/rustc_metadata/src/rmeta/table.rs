@@ -4,8 +4,8 @@ use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_hir::def::{CtorKind, CtorOf};
 use rustc_index::vec::Idx;
 use rustc_middle::ty::ParameterizedOverTcx;
-use rustc_serialize::opaque::Encoder;
-use rustc_serialize::Encoder as _;
+use rustc_serialize::opaque::MemEncoder;
+use rustc_serialize::Encoder;
 use rustc_span::hygiene::MacroKind;
 use std::convert::TryInto;
 use std::marker::PhantomData;
@@ -281,13 +281,13 @@ where
         Some(value).write_to_bytes(&mut self.blocks[i]);
     }
 
-    pub(crate) fn encode<const N: usize>(&self, buf: &mut Encoder) -> LazyTable<I, T>
+    pub(crate) fn encode<const N: usize>(&self, buf: &mut MemEncoder) -> LazyTable<I, T>
     where
         Option<T>: FixedSizeEncoding<ByteArray = [u8; N]>,
     {
         let pos = buf.position();
         for block in &self.blocks {
-            buf.emit_raw_bytes(block).unwrap();
+            buf.emit_raw_bytes(block);
         }
         let num_bytes = self.blocks.len() * N;
         LazyTable::from_position_and_encoded_size(

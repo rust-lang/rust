@@ -41,8 +41,8 @@ impl fmt::Display for CrateNum {
 /// As a local identifier, a `CrateNum` is only meaningful within its context, e.g. within a tcx.
 /// Therefore, make sure to include the context when encode a `CrateNum`.
 impl<E: Encoder> Encodable<E> for CrateNum {
-    default fn encode(&self, s: &mut E) -> Result<(), E::Error> {
-        s.emit_u32(self.as_u32())
+    default fn encode(&self, s: &mut E) {
+        s.emit_u32(self.as_u32());
     }
 }
 
@@ -203,7 +203,7 @@ rustc_index::newtype_index! {
 }
 
 impl<E: Encoder> Encodable<E> for DefIndex {
-    default fn encode(&self, _: &mut E) -> Result<(), E::Error> {
+    default fn encode(&self, _: &mut E) {
         panic!("cannot encode `DefIndex` with `{}`", std::any::type_name::<E>());
     }
 }
@@ -306,9 +306,9 @@ impl DefId {
 }
 
 impl<E: Encoder> Encodable<E> for DefId {
-    default fn encode(&self, s: &mut E) -> Result<(), E::Error> {
-        self.krate.encode(s)?;
-        self.index.encode(s)
+    default fn encode(&self, s: &mut E) {
+        self.krate.encode(s);
+        self.index.encode(s);
     }
 }
 
@@ -382,8 +382,8 @@ impl fmt::Debug for LocalDefId {
 }
 
 impl<E: Encoder> Encodable<E> for LocalDefId {
-    fn encode(&self, s: &mut E) -> Result<(), E::Error> {
-        self.to_def_id().encode(s)
+    fn encode(&self, s: &mut E) {
+        self.to_def_id().encode(s);
     }
 }
 

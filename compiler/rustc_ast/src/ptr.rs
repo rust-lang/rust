@@ -121,8 +121,8 @@ impl<D: Decoder, T: 'static + Decodable<D>> Decodable<D> for P<T> {
 }
 
 impl<S: Encoder, T: Encodable<S>> Encodable<S> for P<T> {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        (**self).encode(s)
+    fn encode(&self, s: &mut S) {
+        (**self).encode(s);
     }
 }
 
@@ -191,8 +191,8 @@ impl<'a, T> IntoIterator for &'a P<[T]> {
 }
 
 impl<S: Encoder, T: Encodable<S>> Encodable<S> for P<[T]> {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        Encodable::encode(&**self, s)
+    fn encode(&self, s: &mut S) {
+        Encodable::encode(&**self, s);
     }
 }
 
