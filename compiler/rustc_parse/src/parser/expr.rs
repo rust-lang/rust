@@ -2718,13 +2718,12 @@ impl<'a> Parser<'a> {
                     ));
                 }
                 this.expect_one_of(&[token::Comma], &[token::CloseDelim(Delimiter::Brace)])
-                    .map_err(|mut err| {
-                        match (sm.span_to_lines(expr.span), sm.span_to_lines(arm_start_span)) {
-                            (Ok(ref expr_lines), Ok(ref arm_start_lines))
-                                if arm_start_lines.lines[0].end_col
-                                    == expr_lines.lines[0].end_col
-                                    && expr_lines.lines.len() == 2
-                                    && this.token == token::FatArrow =>
+                    .or_else(|mut err| {
+                        if this.token == token::FatArrow {
+                            if let Ok(expr_lines) = sm.span_to_lines(expr.span)
+                            && let Ok(arm_start_lines) = sm.span_to_lines(arm_start_span)
+                            && arm_start_lines.lines[0].end_col == expr_lines.lines[0].end_col
+                            && expr_lines.lines.len() == 2
                             {
                                 // We check whether there's any trailing code in the parse span,
                                 // if there isn't, we very likely have the following:
@@ -2743,15 +2742,41 @@ impl<'a> Parser<'a> {
                                     ",".to_owned(),
                                     Applicability::MachineApplicable,
                                 );
+                                return Err(err);
                             }
-                            _ => {
-                                err.span_label(
-                                    arrow_span,
-                                    "while parsing the `match` arm starting here",
-                                );
+                        } else {
+                            // FIXME(compiler-errors): We could also recover `; PAT =>` here
+
+                            // Try to parse a following `PAT =>`, if successful
+                            // then we should recover.
+                            let mut snapshot = this.create_snapshot_for_diagnostic();
+                            let pattern_follows = snapshot
+                                .parse_pat_allow_top_alt(
+                                    None,
+                                    RecoverComma::Yes,
+                                    RecoverColon::Yes,
+                                    CommaRecoveryMode::EitherTupleOrPipe,
+                                )
+                                .map_err(|err| err.cancel())
+                                .is_ok();
+                            if pattern_follows && snapshot.check(&TokenKind::FatArrow) {
+                                err.cancel();
+                                this.struct_span_err(
+                                    hi.shrink_to_hi(),
+                                    "expected `,` following `match` arm",
+                                )
+                                .span_suggestion(
+                                    hi.shrink_to_hi(),
+                                    "missing a comma here to end this `match` arm",
+                                    ",".to_owned(),
+                                    Applicability::MachineApplicable,
+                                )
+                                .emit();
+                                return Ok(true);
                             }
                         }
-                        err
+                        err.span_label(arrow_span, "while parsing the `match` arm starting here");
+                        Err(err)
                     })?;
             } else {
                 this.eat(&token::Comma);
