@@ -21,7 +21,7 @@ help: remove these parentheses
    |
 LL -         let mut registry_no = (format!("NX-{}", 74205));
 LL +         let mut registry_no = format!("NX-{}", 74205);
-   | 
+   |
 
 warning: variable does not need to be mutable
   --> $DIR/suggestions.rs:48:13

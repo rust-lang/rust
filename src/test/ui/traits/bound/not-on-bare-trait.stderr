@@ -11,7 +11,7 @@ help: use `dyn`
    |
 LL - fn foo(_x: Foo + Send) {
 LL + fn foo(_x: dyn Foo + Send) {
-   | 
+   |
 
 error[E0277]: the size for values of type `(dyn Foo + Send + 'static)` cannot be known at compilation time
   --> $DIR/not-on-bare-trait.rs:7:8

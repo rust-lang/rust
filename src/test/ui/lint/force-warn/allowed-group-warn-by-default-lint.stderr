@@ -11,7 +11,7 @@ help: use `dyn`
    |
 LL - pub fn function(_x: Box<SomeTrait>) {}
 LL + pub fn function(_x: Box<dyn SomeTrait>) {}
-   | 
+   |
 
 warning: trait objects without an explicit `dyn` are deprecated
   --> $DIR/allowed-group-warn-by-default-lint.rs:10:25
@@ -25,7 +25,7 @@ help: use `dyn`
    |
 LL - pub fn function(_x: Box<SomeTrait>) {}
 LL + pub fn function(_x: Box<dyn SomeTrait>) {}
-   | 
+   |
 
 warning: trait objects without an explicit `dyn` are deprecated
   --> $DIR/allowed-group-warn-by-default-lint.rs:10:25
@@ -39,7 +39,7 @@ help: use `dyn`
    |
 LL - pub fn function(_x: Box<SomeTrait>) {}
 LL + pub fn function(_x: Box<dyn SomeTrait>) {}
-   | 
+   |
 
 warning: 3 warnings emitted
 

@@ -27,7 +27,7 @@ help: if `bar` is a function, use the arguments directly
    |
 LL -         bar(baz: $rest)
 LL +         bar(: $rest)
-   | 
+   |
 
 error: aborting due to 2 previous errors
 

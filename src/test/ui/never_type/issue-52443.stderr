@@ -27,7 +27,7 @@ help: consider removing the borrow
    |
 LL -     [(); & { loop { continue } } ];
 LL +     [(); { loop { continue } } ];
-   | 
+   |
 
 error[E0308]: mismatched types
   --> $DIR/issue-52443.rs:4:17

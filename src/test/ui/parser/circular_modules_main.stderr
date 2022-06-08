@@ -18,7 +18,7 @@ help: if you import `hi_str`, refer to it directly
    |
 LL -     println!("{}", circular_modules_main::hi_str());
 LL +     println!("{}", hi_str());
-   | 
+   |
 
 error: aborting due to 2 previous errors
 

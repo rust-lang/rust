@@ -23,7 +23,7 @@ help: alternatively, remove the type ascription
    |
 LL -     vec![1, 2, 3]: Vec<i32>[0];
 LL +     vec![1, 2, 3][0];
-   | 
+   |
 
 error: casts cannot be followed by indexing
   --> $DIR/issue-35813-postfix-after-cast.rs:17:5
@@ -50,7 +50,7 @@ help: alternatively, remove the type ascription
    |
 LL -     (&[0i32]): &[i32; 1][0];
 LL +     (&[0i32])[0];
-   | 
+   |
 
 error: casts cannot be followed by a method call
   --> $DIR/issue-35813-postfix-after-cast.rs:39:13
@@ -66,7 +66,7 @@ help: alternatively, remove the type ascription
    |
 LL -     let _ = 0i32: i32: i32.count_ones();
 LL +     let _ = 0i32: i32.count_ones();
-   | 
+   |
 
 error: casts cannot be followed by a method call
   --> $DIR/issue-35813-postfix-after-cast.rs:41:13
@@ -82,7 +82,7 @@ help: alternatively, remove the type ascription
    |
 LL -     let _ = 0 as i32: i32.count_ones();
 LL +     let _ = 0 as i32.count_ones();
-   | 
+   |
 
 error: casts cannot be followed by a method call
   --> $DIR/issue-35813-postfix-after-cast.rs:43:13
@@ -131,7 +131,7 @@ help: alternatively, remove the type ascription
    |
 LL -     let _ = 0i32: i32.count_ones(): u32;
 LL +     let _ = 0i32.count_ones(): u32;
-   | 
+   |
 
 error: casts cannot be followed by a method call
   --> $DIR/issue-35813-postfix-after-cast.rs:51:13
@@ -158,7 +158,7 @@ help: alternatively, remove the type ascription
    |
 LL -     let _ = 0i32: i32.count_ones() as u32;
 LL +     let _ = 0i32.count_ones() as u32;
-   | 
+   |
 
 error: casts cannot be followed by a method call
   --> $DIR/issue-35813-postfix-after-cast.rs:55:13
@@ -185,7 +185,7 @@ help: alternatively, remove the type ascription
    |
 LL -     let _ = 0i32: i32: i32.count_ones() as u32 as i32;
 LL +     let _ = 0i32: i32.count_ones() as u32 as i32;
-   | 
+   |
 
 error: casts cannot be followed by a method call
   --> $DIR/issue-35813-postfix-after-cast.rs:62:13
@@ -237,7 +237,7 @@ help: alternatively, remove the type ascription
    |
 LL -     0: i32.max(0);
 LL +     0.max(0);
-   | 
+   |
 
 error: casts cannot be followed by a method call
   --> $DIR/issue-35813-postfix-after-cast.rs:92:8
@@ -264,7 +264,7 @@ help: alternatively, remove the type ascription
    |
 LL -     if 5u64: u64.max(0) == 0 {
 LL +     if 5u64.max(0) == 0 {
-   | 
+   |
 
 error: casts cannot be followed by a method call
   --> $DIR/issue-35813-postfix-after-cast.rs:102:9
@@ -291,7 +291,7 @@ help: alternatively, remove the type ascription
    |
 LL -         5u64: u64.max(0) == 0
 LL +         5u64.max(0) == 0
-   | 
+   |
 
 error: casts cannot be followed by indexing
   --> $DIR/issue-35813-postfix-after-cast.rs:111:24
@@ -318,7 +318,7 @@ help: alternatively, remove the type ascription
    |
 LL - static bar2: &[i32] = &(&[1i32,2,3]: &[i32; 3][0..1]);
 LL + static bar2: &[i32] = &(&[1i32,2,3][0..1]);
-   | 
+   |
 
 error: casts cannot be followed by `?`
   --> $DIR/issue-35813-postfix-after-cast.rs:119:5
@@ -345,7 +345,7 @@ help: alternatively, remove the type ascription
    |
 LL -     Err(0u64): Result<u64,u64>?;
 LL +     Err(0u64)?;
-   | 
+   |
 
 error: casts cannot be followed by a function call
   --> $DIR/issue-35813-postfix-after-cast.rs:145:5
@@ -372,7 +372,7 @@ help: alternatively, remove the type ascription
    |
 LL -     drop_ptr: fn(u8)(0);
 LL +     drop_ptr(0);
-   | 
+   |
 
 error: casts cannot be followed by `.await`
   --> $DIR/issue-35813-postfix-after-cast.rs:152:5
@@ -399,7 +399,7 @@ help: alternatively, remove the type ascription
    |
 LL -     Box::pin(noop()): Pin<Box<_>>.await;
 LL +     Box::pin(noop()).await;
-   | 
+   |
 
 error: casts cannot be followed by a field access
   --> $DIR/issue-35813-postfix-after-cast.rs:167:5
@@ -426,7 +426,7 @@ help: alternatively, remove the type ascription
    |
 LL -     Foo::default(): Foo.bar;
 LL +     Foo::default().bar;
-   | 
+   |
 
 error: casts cannot be followed by a method call
   --> $DIR/issue-35813-postfix-after-cast.rs:84:9
@@ -453,7 +453,7 @@ help: alternatively, remove the type ascription
    |
 LL -         if true { 33 } else { 44 }: i32.max(0)
 LL +         if true { 33 } else { 44 }.max(0)
-   | 
+   |
 
 error[E0214]: parenthesized type parameters may only be used with a `Fn` trait
   --> $DIR/issue-35813-postfix-after-cast.rs:131:13

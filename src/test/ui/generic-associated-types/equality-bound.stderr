@@ -9,7 +9,7 @@ help: if `Iterator::Item` is an associated type you're trying to set, use the as
    |
 LL - fn sum<I: Iterator<Item = ()>>(i: I) -> i32 where I::Item = i32 {
 LL + fn sum<I: Iterator<Item = (), Item = i32>>(i: I) -> i32 where  {
-   | 
+   |
 
 error: equality constraints are not yet supported in `where` clauses
   --> $DIR/equality-bound.rs:5:41
@@ -22,7 +22,7 @@ help: if `Iterator::Item` is an associated type you're trying to set, use the as
    |
 LL - fn sum2<I: Iterator>(i: I) -> i32 where I::Item = i32 {
 LL + fn sum2<I: Iterator<Item = i32>>(i: I) -> i32 where  {
-   | 
+   |
 
 error: equality constraints are not yet supported in `where` clauses
   --> $DIR/equality-bound.rs:9:41

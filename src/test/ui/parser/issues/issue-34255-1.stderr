@@ -12,7 +12,7 @@ help: if `Test::Drill` is a function, use the arguments directly
    |
 LL -     Test::Drill(field: 42);
 LL +     Test::Drill(42);
-   | 
+   |
 
 error: aborting due to previous error
 
