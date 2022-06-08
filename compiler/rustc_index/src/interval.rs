@@ -1,7 +1,7 @@
 use std::iter::Step;
 use std::marker::PhantomData;
-use std::ops::Bound;
 use std::ops::RangeBounds;
+use std::ops::{Bound, Range};
 
 use crate::vec::Idx;
 use crate::vec::IndexVec;
@@ -145,9 +145,26 @@ impl<I: Idx> IntervalSet<I> {
     where
         I: Step,
     {
-        // FIXME: Performance here is probably not great. We will be doing a lot
-        // of pointless tree traversals.
-        other.iter().all(|elem| self.contains(elem))
+        let mut sup_iter = self.iter_intervals();
+        let mut current = None;
+        let contains = |sup: Range<I>, sub: Range<I>, current: &mut Option<Range<I>>| {
+            if sup.end < sub.start {
+                // if `sup.end == sub.start`, the next sup doesn't contain `sub.start`
+                None // continue to the next sup
+            } else if sup.end >= sub.end && sup.start <= sub.start {
+                *current = Some(sup); // save the current sup
+                Some(true)
+            } else {
+                Some(false)
+            }
+        };
+        other.iter_intervals().all(|sub| {
+            current
+                .take()
+                .and_then(|sup| contains(sup, sub.clone(), &mut current))
+                .or_else(|| sup_iter.find_map(|sup| contains(sup, sub.clone(), &mut current)))
+                .unwrap_or(false)
+        })
     }
 
     pub fn is_empty(&self) -> bool {
