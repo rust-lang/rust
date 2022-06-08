@@ -203,13 +203,28 @@ impl<'tcx> Partitioner<'tcx> for DefaultPartitioning {
         cx: &PartitioningCx<'_, 'tcx>,
         partitioning: &mut PostInliningPartitioning<'tcx>,
     ) {
+        // Collect symbols used by GlobalAsm. A GlobalAsm effectively acts like
+        // its own codegen unit and needs to be able to access symbols that it
+        // imports using sym operands.
+        let mut global_asm_map: FxHashSet<MonoItem<'tcx>> = Default::default();
+        cx.inlining_map.iter_accesses(|accessor, accessees| {
+            if let MonoItem::GlobalAsm(_) = accessor {
+                for accessee in accessees {
+                    global_asm_map.insert(*accessee);
+                }
+            }
+        });
+
         if partitioning.codegen_units.len() == 1 {
             // Fast path for when there is only one codegen unit. In this case we
             // can internalize all candidates, since there is nowhere else they
             // could be accessed from.
             for cgu in &mut partitioning.codegen_units {
                 for candidate in &partitioning.internalization_candidates {
-                    cgu.items_mut().insert(*candidate, (Linkage::Internal, Visibility::Default));
+                    if !global_asm_map.contains(candidate) {
+                        cgu.items_mut()
+                            .insert(*candidate, (Linkage::Internal, Visibility::Default));
+                    }
                 }
             }
 
@@ -253,6 +268,11 @@ impl<'tcx> Partitioner<'tcx> for DefaultPartitioning {
                         // item without marking this one as internal.
                         continue;
                     }
+                }
+
+                // Don't internalize symbols used by GlobalAsm.
+                if global_asm_map.contains(accessee) {
+                    continue;
                 }
 
                 // If we got here, we did not find any accesses from other CGUs,
