@@ -771,8 +771,12 @@ impl EmitterWriter {
         self
     }
 
-    fn maybe_anonymized(&self, line_num: usize) -> String {
-        if self.ui_testing { ANONYMIZED_LINE_NUM.to_string() } else { line_num.to_string() }
+    fn maybe_anonymized(&self, line_num: usize) -> Cow<'static, str> {
+        if self.ui_testing {
+            Cow::Borrowed(ANONYMIZED_LINE_NUM)
+        } else {
+            Cow::Owned(line_num.to_string())
+        }
     }
 
     fn draw_line(
