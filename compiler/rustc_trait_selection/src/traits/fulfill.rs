@@ -433,7 +433,7 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                 }
 
                 ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(t_a, r_b)) => {
-                    if true {
+                    if self.register_region_obligations {
                         if t_a.is_ty_infer() {
                             pending_obligation.stalled_on =
                                 vec![TyOrConstInferVar::maybe_from_ty(t_a).unwrap()];
@@ -452,13 +452,6 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                             }
                         }
                     } else {
-                        if self.register_region_obligations {
-                            self.selcx.infcx().register_region_obligation_with_cause(
-                                t_a,
-                                r_b,
-                                &obligation.cause,
-                            );
-                        }
                         ProcessResult::Changed(vec![])
                     }
                 }
