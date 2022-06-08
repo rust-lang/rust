@@ -29,6 +29,7 @@ mod abi_1_54;
 mod abi_1_56;
 mod abi_1_57;
 mod abi_1_58;
+mod abi_1_63;
 
 use super::dylib::LoadProcMacroDylibError;
 pub(crate) use abi_1_48::Abi as Abi_1_48;
@@ -36,6 +37,7 @@ pub(crate) use abi_1_54::Abi as Abi_1_54;
 pub(crate) use abi_1_56::Abi as Abi_1_56;
 pub(crate) use abi_1_57::Abi as Abi_1_57;
 pub(crate) use abi_1_58::Abi as Abi_1_58;
+pub(crate) use abi_1_63::Abi as Abi_1_63;
 use libloading::Library;
 use proc_macro_api::{ProcMacroKind, RustCInfo};
 
@@ -55,6 +57,7 @@ pub(crate) enum Abi {
     Abi1_56(Abi_1_56),
     Abi1_57(Abi_1_57),
     Abi1_58(Abi_1_58),
+    Abi1_63(Abi_1_63),
 }
 
 impl Abi {
@@ -91,9 +94,13 @@ impl Abi {
                 let inner = unsafe { Abi_1_57::from_lib(lib, symbol_name) }?;
                 Ok(Abi::Abi1_57(inner))
             }
-            (1, 58..) => {
+            (1, 58..=62) => {
                 let inner = unsafe { Abi_1_58::from_lib(lib, symbol_name) }?;
                 Ok(Abi::Abi1_58(inner))
+            }
+            (1, 63..) => {
+                let inner = unsafe { Abi_1_63::from_lib(lib, symbol_name) }?;
+                Ok(Abi::Abi1_63(inner))
             }
             _ => Err(LoadProcMacroDylibError::UnsupportedABI),
         }
@@ -111,6 +118,7 @@ impl Abi {
             Self::Abi1_56(abi) => abi.expand(macro_name, macro_body, attributes),
             Self::Abi1_57(abi) => abi.expand(macro_name, macro_body, attributes),
             Self::Abi1_58(abi) => abi.expand(macro_name, macro_body, attributes),
+            Self::Abi1_63(abi) => abi.expand(macro_name, macro_body, attributes),
         }
     }
 
@@ -121,6 +129,7 @@ impl Abi {
             Self::Abi1_56(abi) => abi.list_macros(),
             Self::Abi1_57(abi) => abi.list_macros(),
             Self::Abi1_58(abi) => abi.list_macros(),
+            Self::Abi1_63(abi) => abi.list_macros(),
         }
     }
 }
