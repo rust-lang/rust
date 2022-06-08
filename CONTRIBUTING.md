@@ -28,6 +28,11 @@ install that exact version of rustc as a toolchain:
 This will set up a rustup toolchain called `miri` and set it as an override for
 the current directory.
 
+If you want to also have `clippy` installed, you need to run this:
+```
+./rustup-toolchain "" -c clippy
+```
+
 [`rustup-toolchain-install-master`]: https://github.com/kennytm/rustup-toolchain-install-master
 
 ## Building and testing Miri
