@@ -140,7 +140,7 @@ impl<D: Direction> MockAnalysis<'_, D> {
             SeekTarget::After(loc) => Effect::Primary.at_index(loc.statement_index),
         };
 
-        let mut pos = if D::is_forward() {
+        let mut pos = if D::IS_FORWARD {
             Effect::Before.at_index(0)
         } else {
             Effect::Before.at_index(self.body[block].statements.len())
@@ -153,7 +153,7 @@ impl<D: Direction> MockAnalysis<'_, D> {
                 return ret;
             }
 
-            if D::is_forward() {
+            if D::IS_FORWARD {
                 pos = pos.next_in_forward_order();
             } else {
                 pos = pos.next_in_backward_order();

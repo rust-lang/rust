@@ -1,6 +1,5 @@
 pub use super::*;
 
-use crate::storage::AlwaysLiveLocals;
 use crate::{CallReturnPlaces, GenKill, Results, ResultsRefCursor};
 use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
@@ -8,11 +7,11 @@ use std::cell::RefCell;
 
 #[derive(Clone)]
 pub struct MaybeStorageLive {
-    always_live_locals: AlwaysLiveLocals,
+    always_live_locals: BitSet<Local>,
 }
 
 impl MaybeStorageLive {
-    pub fn new(always_live_locals: AlwaysLiveLocals) -> Self {
+    pub fn new(always_live_locals: BitSet<Local>) -> Self {
         MaybeStorageLive { always_live_locals }
     }
 }

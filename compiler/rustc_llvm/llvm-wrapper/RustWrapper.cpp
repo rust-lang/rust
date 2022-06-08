@@ -1542,11 +1542,19 @@ extern "C" bool LLVMRustConstInt128Get(LLVMValueRef CV, bool sext, uint64_t *hig
     auto C = unwrap<llvm::ConstantInt>(CV);
     if (C->getBitWidth() > 128) { return false; }
     APInt AP;
+#if LLVM_VERSION_GE(15, 0)
+    if (sext) {
+        AP = C->getValue().sext(128);
+    } else {
+        AP = C->getValue().zext(128);
+    }
+#else
     if (sext) {
         AP = C->getValue().sextOrSelf(128);
     } else {
         AP = C->getValue().zextOrSelf(128);
     }
+#endif
     *low = AP.getLoBits(64).getZExtValue();
     *high = AP.getHiBits(64).getZExtValue();
     return true;
