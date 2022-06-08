@@ -1365,7 +1365,7 @@ pub fn build_global_var_di_node<'ll>(cx: &CodegenCx<'ll, '_>, def_id: DefId, glo
             is_local_to_unit,
             global,
             None,
-            global_align.bytes() as u32,
+            global_align.bits() as u32,
         );
     }
 }
