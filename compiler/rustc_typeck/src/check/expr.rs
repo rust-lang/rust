@@ -1035,7 +1035,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             } else {
                 (Applicability::MaybeIncorrect, false)
             };
-            if !lhs.is_syntactic_place_expr() && !matches!(lhs.kind, hir::ExprKind::Lit(_)) {
+            if !lhs.is_syntactic_place_expr()
+                && lhs.is_approximately_pattern()
+                && !matches!(lhs.kind, hir::ExprKind::Lit(_))
+            {
                 // Do not suggest `if let x = y` as `==` is way more likely to be the intention.
                 let hir = self.tcx.hir();
                 if let hir::Node::Expr(hir::Expr { kind: ExprKind::If { .. }, .. }) =

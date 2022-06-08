@@ -360,10 +360,7 @@ impl<'a> Parser<'a> {
             let mutbl = self.parse_mutability();
             self.parse_pat_ident(BindingMode::ByRef(mutbl))?
         } else if self.eat_keyword(kw::Box) {
-            // Parse `box pat`
-            let pat = self.parse_pat_with_range_pat(false, None)?;
-            self.sess.gated_spans.gate(sym::box_patterns, lo.to(self.prev_token.span));
-            PatKind::Box(pat)
+            self.parse_pat_box()?
         } else if self.check_inline_const(0) {
             // Parse `const pat`
             let const_expr = self.parse_const_block(lo.to(self.token.span), true)?;
@@ -913,6 +910,62 @@ impl<'a> Parser<'a> {
             self.sess.gated_spans.gate(sym::more_qualified_paths, path.span);
         }
         Ok(PatKind::TupleStruct(qself, path, fields))
+    }
+
+    /// Are we sure this could not possibly be the start of a pattern?
+    ///
+    /// Currently, this only accounts for tokens that can follow identifiers
+    /// in patterns, but this can be extended as necessary.
+    fn isnt_pattern_start(&self) -> bool {
+        [
+            token::Eq,
+            token::Colon,
+            token::Comma,
+            token::Semi,
+            token::At,
+            token::OpenDelim(Delimiter::Brace),
+            token::CloseDelim(Delimiter::Brace),
+            token::CloseDelim(Delimiter::Parenthesis),
+        ]
+        .contains(&self.token.kind)
+    }
+
+    /// Parses `box pat`
+    fn parse_pat_box(&mut self) -> PResult<'a, PatKind> {
+        let box_span = self.prev_token.span;
+
+        if self.isnt_pattern_start() {
+            self.struct_span_err(
+                self.token.span,
+                format!("expected pattern, found {}", super::token_descr(&self.token)),
+            )
+            .span_note(box_span, "`box` is a reserved keyword")
+            .span_suggestion_verbose(
+                box_span.shrink_to_lo(),
+                "escape `box` to use it as an identifier",
+                "r#",
+                Applicability::MaybeIncorrect,
+            )
+            .emit();
+
+            // We cannot use `parse_pat_ident()` since it will complain `box`
+            // is not an identifier.
+            let sub = if self.eat(&token::At) {
+                Some(self.parse_pat_no_top_alt(Some("binding pattern"))?)
+            } else {
+                None
+            };
+
+            Ok(PatKind::Ident(
+                BindingMode::ByValue(Mutability::Not),
+                Ident::new(kw::Box, box_span),
+                sub,
+            ))
+        } else {
+            let pat = self.parse_pat_with_range_pat(false, None)?;
+            self.sess.gated_spans.gate(sym::box_patterns, box_span.to(self.prev_token.span));
+            Ok(PatKind::Box(pat))
+        }
     }
 
     /// Parses the fields of a struct-like pattern.
