@@ -1136,7 +1136,7 @@ pub const unsafe fn read<T>(src: *const T) -> T {
     // We are calling the intrinsics directly to avoid function calls in the generated code
     // as `intrinsics::copy_nonoverlapping` is a wrapper function.
     extern "rust-intrinsic" {
-        #[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "80697")]
+        #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.63.0")]
         fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
     }
 
@@ -1331,7 +1331,7 @@ pub const unsafe fn write<T>(dst: *mut T, src: T) {
     // We are calling the intrinsics directly to avoid function calls in the generated code
     // as `intrinsics::copy_nonoverlapping` is a wrapper function.
     extern "rust-intrinsic" {
-        #[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "80697")]
+        #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.63.0")]
         fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
     }
 
