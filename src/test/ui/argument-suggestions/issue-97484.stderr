@@ -16,7 +16,7 @@ help: consider removing the ``
    |
 LL -     foo(&&A, B, C, D, E, F, G);
 LL +     foo(&&A, B, C, D, E, F, G);
-   | 
+   |
 help: remove the extra arguments
    |
 LL |     foo(&&A, D, {&E}, G);

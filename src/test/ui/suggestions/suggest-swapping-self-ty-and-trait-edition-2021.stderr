@@ -41,7 +41,7 @@ help: add `dyn` keyword before this trait
    |
 LL - impl<'a, T> Struct<T> for Trait<'a, T> {}
 LL + impl<'a, T> Struct<T> for dyn Trait<'a, T> {}
-   | 
+   |
 
 error: aborting due to 4 previous errors
 
