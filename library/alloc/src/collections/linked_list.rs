@@ -448,10 +448,10 @@ impl<T> LinkedList<T> {
     /// let list = LinkedList::from([1, 2, 3]);
     /// list.insert(1, 4);
     /// let i = list.iter();
-    /// assert_eq!(i.next(), Some(1));
-    /// assert_eq!(i.next(), Some(4));
-    /// assert_eq!(i.next(), Some(2));
-    /// assert_eq!(i.next(), Some(3));
+    /// assert_eq!(i.next(), Some(&1));
+    /// assert_eq!(i.next(), Some(&4));
+    /// assert_eq!(i.next(), Some(&2));
+    /// assert_eq!(i.next(), Some(&3));
     /// assert_eq!(i.next(), None);
     /// ```
     #[stable(feature = "insert_linkedlist", since = "1.63.0")]
