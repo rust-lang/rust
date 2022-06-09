@@ -111,11 +111,11 @@ extern "C" fn exception_cleanup(ptr: *mut libc::c_void) -> *mut libc::c_void {
 // Wasm error handling would use __gxx_personality_wasm0.
 #[lang = "eh_personality"]
 unsafe extern "C" fn rust_eh_personality(
-    version: c_int,
-    actions: uw::_Unwind_Action,
-    exception_class: uw::_Unwind_Exception_Class,
-    exception_object: *mut uw::_Unwind_Exception,
-    context: *mut uw::_Unwind_Context,
+    _version: c_int,
+    _actions: uw::_Unwind_Action,
+    _exception_class: uw::_Unwind_Exception_Class,
+    _exception_object: *mut uw::_Unwind_Exception,
+    _context: *mut uw::_Unwind_Context,
 ) -> uw::_Unwind_Reason_Code {
     core::intrinsics::abort()
 }
