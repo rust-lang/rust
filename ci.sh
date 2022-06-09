@@ -50,6 +50,7 @@ case $HOST_TARGET in
     MIRI_TEST_TARGET=i686-unknown-linux-gnu run_tests
     MIRI_TEST_TARGET=aarch64-apple-darwin run_tests
     MIRI_TEST_TARGET=i686-pc-windows-msvc run_tests
+    MIRI_TEST_TARGET=x86_64-unknown-freebsd run_tests
     ;;
   x86_64-apple-darwin)
     MIRI_TEST_TARGET=mips64-unknown-linux-gnuabi64 run_tests # big-endian architecture

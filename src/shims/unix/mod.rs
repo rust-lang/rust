@@ -7,5 +7,6 @@ mod thread;
 
 mod linux;
 mod macos;
+mod freebsd;
 
 pub use fs::{DirHandler, FileHandler};
