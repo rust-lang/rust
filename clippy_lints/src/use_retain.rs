@@ -220,14 +220,14 @@ fn make_sugg(
 }
 
 fn match_acceptable_def_path(cx: &LateContext<'_>, collect_def_id: DefId) -> bool {
-    return ACCEPTABLE_METHODS
+    ACCEPTABLE_METHODS
         .iter()
-        .any(|&method| match_def_path(cx, collect_def_id, method));
+        .any(|&method| match_def_path(cx, collect_def_id, method))
 }
 
 fn match_acceptable_type(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
     let expr_ty = cx.typeck_results().expr_ty(expr).peel_refs();
-    return ACCEPTABLE_TYPES
+    ACCEPTABLE_TYPES
         .iter()
-        .any(|&ty| is_type_diagnostic_item(cx, expr_ty, ty));
+        .any(|&ty| is_type_diagnostic_item(cx, expr_ty, ty))
 }
