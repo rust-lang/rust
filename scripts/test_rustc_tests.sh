@@ -89,6 +89,7 @@ rm src/test/ui/consts/issue-33537.rs # same
 rm -r src/test/run-make/emit-shared-files # requires the rustdoc executable in build/bin/
 rm -r src/test/run-make/unstable-flag-required # same
 rm -r src/test/run-make/rustdoc-* # same
+rm -r src/test/run-make/remap-path-prefix-dwarf # requires llvm-dwarfdump
 
 # genuine bugs
 # ============

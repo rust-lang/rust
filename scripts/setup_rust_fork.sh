@@ -29,14 +29,15 @@ diff --git a/src/tools/compiletest/src/runtest.rs b/src/tools/compiletest/src/ru
 index 8431aa7b818..a3ff7e68ce5 100644
 --- a/src/tools/compiletest/src/runtest.rs
 +++ b/src/tools/compiletest/src/runtest.rs
-@@ -3489,11 +3489,7 @@ fn normalize_output(&self, output: &str, custom_rules: &[(String, String)]) -> S
-             .join("library");
-         normalize_path(&src_dir, "$(echo '$SRC_DIR')");
+@@ -3489,12 +3489,7 @@ fn normalize_output(&self, output: &str, custom_rules: &[(String, String)]) -> S
+         let compiler_src_dir = base_dir.join("compiler");
+         normalize_path(&compiler_src_dir, "$(echo '$COMPILER_DIR')");
 
 -        if let Some(virtual_rust_source_base_dir) =
 -            option_env!("CFG_VIRTUAL_RUST_SOURCE_BASE_DIR").map(PathBuf::from)
 -        {
 -            normalize_path(&virtual_rust_source_base_dir.join("library"), "$(echo '$SRC_DIR')");
+-            normalize_path(&virtual_rust_source_base_dir.join("compiler"), "$(echo '$COMPILER_DIR')");
 -        }
 +        normalize_path(&Path::new("$(cd ../build_sysroot/sysroot_src/library; pwd)"), "$(echo '$SRC_DIR')");
 
