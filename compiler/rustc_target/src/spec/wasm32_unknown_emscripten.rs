@@ -16,11 +16,7 @@ pub fn target() -> Target {
     let mut post_link_args = LinkArgs::new();
     post_link_args.insert(
         LinkerFlavor::Em,
-        vec![
-            "-s".into(),
-            "ABORTING_MALLOC=0".into(),
-            "-Wl,--fatal-warnings".into(),
-        ],
+        vec!["-sABORTING_MALLOC=0".into(), "-Wl,--fatal-warnings".into()],
     );
 
     let opts = TargetOptions {
