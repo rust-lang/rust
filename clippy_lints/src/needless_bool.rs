@@ -34,11 +34,10 @@ declare_clippy_lint! {
     /// # let x = true;
     /// if x {
     ///     false
-    /// # ;
     /// } else {
     ///     true
-    /// # ;
     /// }
+    /// # ;
     /// ```
     ///
     /// Use instead:
