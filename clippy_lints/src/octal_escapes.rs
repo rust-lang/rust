@@ -42,7 +42,7 @@ declare_clippy_lint! {
     /// let one = "\x1b[1mWill this be bold?\x1b[0m";
     /// let two = "\x0033\x00";
     /// ```
-    #[clippy::version = "1.58.0"]
+    #[clippy::version = "1.59.0"]
     pub OCTAL_ESCAPES,
     suspicious,
     "string escape sequences looking like octal characters"

@@ -163,7 +163,7 @@ declare_clippy_lint! {
     ///     }
     /// }
     /// ```
-    #[clippy::version = "1.52.0"]
+    #[clippy::version = "1.51.0"]
     pub MISSING_PANICS_DOC,
     pedantic,
     "`pub fn` may panic without `# Panics` in doc comment"

@@ -141,7 +141,7 @@ declare_clippy_lint! {
     /// vec.iter().take(10).cloned();
     /// vec.iter().last().cloned();
     /// ```
-    #[clippy::version = "1.59.0"]
+    #[clippy::version = "1.60.0"]
     pub ITER_OVEREAGER_CLONED,
     perf,
     "using `cloned()` early with `Iterator::iter()` can lead to some performance inefficiencies"
@@ -1907,7 +1907,7 @@ declare_clippy_lint! {
     /// let x = [1, 2, 3];
     /// let y: Vec<_> = x.iter().map(|x| 2*x).collect();
     /// ```
-    #[clippy::version = "1.52.0"]
+    #[clippy::version = "1.47.0"]
     pub MAP_IDENTITY,
     complexity,
     "using iterator.map(|x| x)"
@@ -2100,7 +2100,7 @@ declare_clippy_lint! {
     /// let str = "key=value=add";
     /// let _ = str.split('=').next().unwrap();
     /// ```
-    #[clippy::version = "1.58.0"]
+    #[clippy::version = "1.59.0"]
     pub NEEDLESS_SPLITN,
     complexity,
     "usages of `str::splitn` that can be replaced with `str::split`"
@@ -2131,7 +2131,7 @@ declare_clippy_lint! {
     /// foo(&path.to_string_lossy());
     /// fn foo(s: &str) {}
     /// ```
-    #[clippy::version = "1.58.0"]
+    #[clippy::version = "1.59.0"]
     pub UNNECESSARY_TO_OWNED,
     perf,
     "unnecessary calls to `to_owned`-like functions"

@@ -414,7 +414,7 @@ declare_clippy_lint! {
     /// enum E { X = 256 };
     /// let _ = E::X as u8;
     /// ```
-    #[clippy::version = "1.60.0"]
+    #[clippy::version = "1.61.0"]
     pub CAST_ENUM_TRUNCATION,
     suspicious,
     "casts from an enum type to an integral type which will truncate the value"
@@ -459,7 +459,7 @@ declare_clippy_lint! {
     ///     println!("{:?}", &*new_ptr);
     /// }
     /// ```
-    #[clippy::version = "1.60.0"]
+    #[clippy::version = "1.61.0"]
     pub CAST_SLICE_DIFFERENT_SIZES,
     correctness,
     "casting using `as` between raw pointers to slices of types with different sizes"

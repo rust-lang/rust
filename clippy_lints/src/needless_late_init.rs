@@ -56,7 +56,7 @@ declare_clippy_lint! {
     ///     -1
     /// };
     /// ```
-    #[clippy::version = "1.58.0"]
+    #[clippy::version = "1.59.0"]
     pub NEEDLESS_LATE_INIT,
     style,
     "late initializations that can be replaced by a `let` statement with an initializer"
