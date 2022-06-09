@@ -1,13 +1,13 @@
 //! Completion for use trees
 
 use hir::ScopeDef;
-use ide_db::FxHashSet;
+use ide_db::{FxHashSet, SymbolKind};
 use syntax::{ast, AstNode};
 
 use crate::{
     context::{CompletionContext, NameRefContext, PathCompletionCtx, PathKind, PathQualifierCtx},
     item::Builder,
-    CompletionRelevance, Completions,
+    CompletionItem, CompletionItemKind, CompletionRelevance, Completions,
 };
 
 pub(crate) fn complete_use_tree(acc: &mut Completions, ctx: &CompletionContext) {
@@ -105,20 +105,26 @@ pub(crate) fn complete_use_tree(acc: &mut Completions, ctx: &CompletionContext) 
         None => {
             cov_mark::hit!(unqualified_path_selected_only);
             ctx.process_all_names(&mut |name, res| {
-                let should_add_resolution = match res {
-                    ScopeDef::ModuleDef(hir::ModuleDef::Module(_)) => true,
-                    ScopeDef::ModuleDef(hir::ModuleDef::Adt(hir::Adt::Enum(_))) => {
-                        match res.krate(ctx.db) {
-                            // exclude prelude enum
-                            Some(krate) => !krate.is_builtin(ctx.db),
-                            _ => true,
+                match res {
+                    ScopeDef::ModuleDef(hir::ModuleDef::Module(_)) => {
+                        acc.add_resolution(ctx, name, res);
+                    }
+                    ScopeDef::ModuleDef(hir::ModuleDef::Adt(hir::Adt::Enum(e))) => {
+                        // exclude prelude enum
+                        let is_builtin =
+                            res.krate(ctx.db).map_or(false, |krate| krate.is_builtin(ctx.db));
+
+                        if !is_builtin {
+                            let item = CompletionItem::new(
+                                CompletionItemKind::SymbolKind(SymbolKind::Enum),
+                                ctx.source_range(),
+                                format!("{}::", e.name(ctx.db)),
+                            );
+                            acc.add(item.build());
                         }
                     }
-                    _ => false,
+                    _ => {}
                 };
-                if should_add_resolution {
-                    acc.add_resolution(ctx, name, res);
-                }
             });
             acc.add_nameref_keywords_with_colon(ctx);
         }

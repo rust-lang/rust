@@ -26,7 +26,7 @@ mod foo {}
 // nothing here
 "#,
         expect![[r#"
-            en FooBar
+            en FooBar::
             md foo
             md other_crate
             kw crate::
