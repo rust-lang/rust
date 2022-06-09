@@ -1,5 +1,5 @@
 error[E0658]: meta-variable expressions are unstable
-  --> $DIR/required-feature.rs:3:10
+  --> $DIR/required-features.rs:3:10
    |
 LL |         ${ count(e) }
    |          ^^^^^^^^^^^^
@@ -8,43 +8,7 @@ LL |         ${ count(e) }
    = help: add `#![feature(macro_metavar_expr)]` to the crate attributes to enable
 
 error[E0658]: meta-variable expressions are unstable
-  --> $DIR/required-feature.rs:11:16
-   |
-LL |             ( $$( $$any:tt )* ) => { $$( $$any )* };
-   |                ^
-   |
-   = note: see issue #83527 <https://github.com/rust-lang/rust/issues/83527> for more information
-   = help: add `#![feature(macro_metavar_expr)]` to the crate attributes to enable
-
-error[E0658]: meta-variable expressions are unstable
-  --> $DIR/required-feature.rs:11:20
-   |
-LL |             ( $$( $$any:tt )* ) => { $$( $$any )* };
-   |                    ^
-   |
-   = note: see issue #83527 <https://github.com/rust-lang/rust/issues/83527> for more information
-   = help: add `#![feature(macro_metavar_expr)]` to the crate attributes to enable
-
-error[E0658]: meta-variable expressions are unstable
-  --> $DIR/required-feature.rs:11:39
-   |
-LL |             ( $$( $$any:tt )* ) => { $$( $$any )* };
-   |                                       ^
-   |
-   = note: see issue #83527 <https://github.com/rust-lang/rust/issues/83527> for more information
-   = help: add `#![feature(macro_metavar_expr)]` to the crate attributes to enable
-
-error[E0658]: meta-variable expressions are unstable
-  --> $DIR/required-feature.rs:11:43
-   |
-LL |             ( $$( $$any:tt )* ) => { $$( $$any )* };
-   |                                           ^
-   |
-   = note: see issue #83527 <https://github.com/rust-lang/rust/issues/83527> for more information
-   = help: add `#![feature(macro_metavar_expr)]` to the crate attributes to enable
-
-error[E0658]: meta-variable expressions are unstable
-  --> $DIR/required-feature.rs:22:13
+  --> $DIR/required-features.rs:10:13
    |
 LL |         $( ${ignore(e)} ${index()} )*
    |             ^^^^^^^^^^^
@@ -53,7 +17,7 @@ LL |         $( ${ignore(e)} ${index()} )*
    = help: add `#![feature(macro_metavar_expr)]` to the crate attributes to enable
 
 error[E0658]: meta-variable expressions are unstable
-  --> $DIR/required-feature.rs:22:26
+  --> $DIR/required-features.rs:10:26
    |
 LL |         $( ${ignore(e)} ${index()} )*
    |                          ^^^^^^^^^
@@ -62,7 +26,7 @@ LL |         $( ${ignore(e)} ${index()} )*
    = help: add `#![feature(macro_metavar_expr)]` to the crate attributes to enable
 
 error[E0658]: meta-variable expressions are unstable
-  --> $DIR/required-feature.rs:30:19
+  --> $DIR/required-features.rs:18:19
    |
 LL |         0 $( + 1 ${ignore(i)} )*
    |                   ^^^^^^^^^^^
@@ -71,7 +35,7 @@ LL |         0 $( + 1 ${ignore(i)} )*
    = help: add `#![feature(macro_metavar_expr)]` to the crate attributes to enable
 
 error[E0658]: meta-variable expressions are unstable
-  --> $DIR/required-feature.rs:37:13
+  --> $DIR/required-features.rs:25:13
    |
 LL |         $( ${ignore(e)} ${length()} )*
    |             ^^^^^^^^^^^
@@ -80,7 +44,7 @@ LL |         $( ${ignore(e)} ${length()} )*
    = help: add `#![feature(macro_metavar_expr)]` to the crate attributes to enable
 
 error[E0658]: meta-variable expressions are unstable
-  --> $DIR/required-feature.rs:37:26
+  --> $DIR/required-features.rs:25:26
    |
 LL |         $( ${ignore(e)} ${length()} )*
    |                          ^^^^^^^^^^
@@ -88,6 +52,6 @@ LL |         $( ${ignore(e)} ${length()} )*
    = note: see issue #83527 <https://github.com/rust-lang/rust/issues/83527> for more information
    = help: add `#![feature(macro_metavar_expr)]` to the crate attributes to enable
 
-error: aborting due to 10 previous errors
+error: aborting due to 6 previous errors
 
 For more information about this error, try `rustc --explain E0658`.
