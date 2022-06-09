@@ -151,26 +151,17 @@ fn check_opt_like<'a>(
         return;
     }
 
-    if paths_and_types.iter().all(|info| in_candidate_enum(cx, info)) {
+    if paths_and_types.iter().all(|ty| in_candidate_enum(cx, *ty)) {
         report_single_pattern(cx, ex, arms, expr, els);
     }
 }
 
-fn in_candidate_enum<'a>(cx: &LateContext<'a>, path_info: &(String, Ty<'_>)) -> bool {
+fn in_candidate_enum<'a>(cx: &LateContext<'a>, ty: Ty<'_>) -> bool {
     // list of candidate `Enum`s we know will never get any more members
-    let candidates = &[
-        (&paths::COW, "Borrowed"),
-        (&paths::COW, "Cow::Borrowed"),
-        (&paths::COW, "Cow::Owned"),
-        (&paths::COW, "Owned"),
-        (&paths::OPTION, "None"),
-        (&paths::RESULT, "Err"),
-        (&paths::RESULT, "Ok"),
-    ];
+    let candidates = [&paths::COW, &paths::OPTION, &paths::RESULT];
 
-    let (path, ty) = path_info;
-    for &(ty_path, pat_path) in candidates {
-        if path == pat_path && match_type(cx, *ty, ty_path) {
+    for candidate_ty in candidates {
+        if match_type(cx, ty, candidate_ty) {
             return true;
         }
     }
@@ -179,29 +170,15 @@ fn in_candidate_enum<'a>(cx: &LateContext<'a>, path_info: &(String, Ty<'_>)) -> 
 
 /// Collects paths and their types from the given patterns. Returns true if the given pattern could
 /// be simplified, false otherwise.
-fn collect_pat_paths<'a>(acc: &mut Vec<(String, Ty<'a>)>, cx: &LateContext<'a>, pat: &Pat<'_>, ty: Ty<'a>) -> bool {
+fn collect_pat_paths<'a>(acc: &mut Vec<Ty<'a>>, cx: &LateContext<'a>, pat: &Pat<'_>, ty: Ty<'a>) -> bool {
     match pat.kind {
         PatKind::Wild => true,
         PatKind::Tuple(inner, _) => inner.iter().all(|p| {
             let p_ty = cx.typeck_results().pat_ty(p);
             collect_pat_paths(acc, cx, p, p_ty)
         }),
-        PatKind::TupleStruct(ref path, ..) => {
-            let path = rustc_hir_pretty::to_string(rustc_hir_pretty::NO_ANN, |s| {
-                s.print_qpath(path, false);
-            });
-            acc.push((path, ty));
-            true
-        },
-        PatKind::Binding(BindingAnnotation::Unannotated, .., ident, None) => {
-            acc.push((ident.to_string(), ty));
-            true
-        },
-        PatKind::Path(ref path) => {
-            let path = rustc_hir_pretty::to_string(rustc_hir_pretty::NO_ANN, |s| {
-                s.print_qpath(path, false);
-            });
-            acc.push((path, ty));
+        PatKind::TupleStruct(..) | PatKind::Binding(BindingAnnotation::Unannotated, .., None) | PatKind::Path(_) => {
+            acc.push(ty);
             true
         },
         _ => false,
@@ -265,14 +242,7 @@ fn form_exhaustive_matches<'a>(cx: &LateContext<'a>, ty: Ty<'a>, left: &Pat<'_>,
             }
             true
         },
-        (PatKind::TupleStruct(..), PatKind::Path(_) | PatKind::TupleStruct(..)) => {
-            let mut paths_and_types = Vec::new();
-            if !collect_pat_paths(&mut paths_and_types, cx, right, ty) {
-                return false;
-            }
-
-            paths_and_types.iter().all(|info| in_candidate_enum(cx, info))
-        },
+        (PatKind::TupleStruct(..), PatKind::Path(_) | PatKind::TupleStruct(..)) => in_candidate_enum(cx, ty),
         _ => false,
     }
 }
