@@ -960,7 +960,7 @@ mod prim_tuple {}
 // Required to make auto trait impls render.
 // See /src/librustdoc/passes/collect_trait_impls.rs:collect_trait_impls
 #[doc(hidden)]
-impl<T, U> (T, U) {}
+impl<T> (T,) {}
 
 // Fake impl that's only really used for docs.
 #[cfg(doc)]
