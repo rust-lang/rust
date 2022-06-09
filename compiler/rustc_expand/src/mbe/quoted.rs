@@ -234,8 +234,6 @@ fn parse_tree(
                             sess,
                             &Token { kind: token::Dollar, span },
                         );
-                    } else {
-                        maybe_emit_macro_metavar_expr_feature(features, sess, span);
                     }
                     TokenTree::token(token::Dollar, span)
                 }
