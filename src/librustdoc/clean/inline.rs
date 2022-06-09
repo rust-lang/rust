@@ -640,7 +640,7 @@ fn filter_non_trait_generics(trait_did: DefId, mut g: clean::Generics) -> clean:
 
     g.where_predicates.retain(|pred| match pred {
         clean::WherePredicate::BoundPredicate {
-            ty: clean::QPath { self_type: box clean::Generic(ref s), trait_, .. },
+            ty: clean::QPath(box clean::QPathData { self_type: clean::Generic(ref s), trait_, .. }),
             bounds,
             ..
         } => !(bounds.is_empty() || *s == kw::SelfUpper && trait_.def_id() == trait_did),

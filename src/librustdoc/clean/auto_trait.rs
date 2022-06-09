@@ -6,7 +6,7 @@ use rustc_trait_selection::traits::auto_trait::{self, AutoTraitResult};
 
 use std::fmt::Debug;
 
-use super::*;
+use crate::clean::{self, *};
 
 #[derive(Eq, PartialEq, Hash, Copy, Clone, Debug)]
 enum RegionTarget<'tcx> {
@@ -485,7 +485,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                     // of the type.
                     // Therefore, we make sure that we never add a ?Sized
                     // bound for projections
-                    if let Type::QPath { .. } = ty {
+                    if let Type::QPath(_) = ty {
                         has_sized.insert(ty.clone());
                     }
 
@@ -546,13 +546,18 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                 }
                 WherePredicate::EqPredicate { lhs, rhs } => {
                     match lhs {
-                        Type::QPath { ref assoc, ref self_type, ref trait_, .. } => {
+                        Type::QPath(box clean::QPathData {
+                            ref assoc,
+                            ref self_type,
+                            ref trait_,
+                            ..
+                        }) => {
                             let ty = &*self_type;
                             let mut new_trait = trait_.clone();
 
                             if self.is_fn_trait(trait_) && assoc.name == sym::Output {
                                 ty_to_fn
-                                    .entry(*ty.clone())
+                                    .entry(ty.clone())
                                     .and_modify(|e| {
                                         *e = (e.0.clone(), Some(rhs.ty().unwrap().clone()))
                                     })
@@ -571,7 +576,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                                 // to 'T: Iterator<Item=u8>'
                                 GenericArgs::AngleBracketed { ref mut bindings, .. } => {
                                     bindings.push(TypeBinding {
-                                        assoc: *assoc.clone(),
+                                        assoc: assoc.clone(),
                                         kind: TypeBindingKind::Equality { term: rhs },
                                     });
                                 }
@@ -585,7 +590,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                                 }
                             }
 
-                            let bounds = ty_to_bounds.entry(*ty.clone()).or_default();
+                            let bounds = ty_to_bounds.entry(ty.clone()).or_default();
 
                             bounds.insert(GenericBound::TraitBound(
                                 PolyTrait { trait_: new_trait, generic_params: Vec::new() },
@@ -602,7 +607,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                             ));
                             // Avoid creating any new duplicate bounds later in the outer
                             // loop
-                            ty_to_traits.entry(*ty.clone()).or_default().insert(trait_.clone());
+                            ty_to_traits.entry(ty.clone()).or_default().insert(trait_.clone());
                         }
                         _ => panic!("Unexpected LHS {:?} for {:?}", lhs, item_def_id),
                     }

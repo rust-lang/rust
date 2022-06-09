@@ -395,12 +395,12 @@ fn clean_projection<'tcx>(
         self_type.def_id(&cx.cache)
     };
     let should_show_cast = compute_should_show_cast(self_def_id, &trait_, &self_type);
-    Type::QPath {
-        assoc: Box::new(projection_to_path_segment(ty, cx)),
+    Type::QPath(Box::new(QPathData {
+        assoc: projection_to_path_segment(ty, cx),
         should_show_cast,
-        self_type: box self_type,
+        self_type: self_type,
         trait_,
-    }
+    }))
 }
 
 impl<'tcx> Clean<'tcx, Type> for ty::ProjectionTy<'tcx> {
@@ -1180,7 +1180,10 @@ impl<'tcx> Clean<'tcx, Item> for ty::AssocItem {
                         .where_predicates
                         .drain_filter(|pred| match *pred {
                             WherePredicate::BoundPredicate {
-                                ty: QPath { ref assoc, ref self_type, ref trait_, .. },
+                                ty:
+                                    QPath(box QPathData {
+                                        ref assoc, ref self_type, ref trait_, ..
+                                    }),
                                 ..
                             } => {
                                 if assoc.name != my_name {
@@ -1189,7 +1192,7 @@ impl<'tcx> Clean<'tcx, Item> for ty::AssocItem {
                                 if trait_.def_id() != self.container.id() {
                                     return false;
                                 }
-                                match **self_type {
+                                match *self_type {
                                     Generic(ref s) if *s == kw::SelfUpper => {}
                                     _ => return false,
                                 }
@@ -1315,12 +1318,12 @@ fn clean_qpath<'tcx>(hir_ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> Type 
             let self_def_id = DefId::local(qself.hir_id.owner.local_def_index);
             let self_type = qself.clean(cx);
             let should_show_cast = compute_should_show_cast(Some(self_def_id), &trait_, &self_type);
-            Type::QPath {
-                assoc: Box::new(p.segments.last().expect("segments were empty").clean(cx)),
+            Type::QPath(Box::new(QPathData {
+                assoc: p.segments.last().expect("segments were empty").clean(cx),
                 should_show_cast,
-                self_type: box self_type,
+                self_type,
                 trait_,
-            }
+            }))
         }
         hir::QPath::TypeRelative(qself, segment) => {
             let ty = hir_ty_to_ty(cx.tcx, hir_ty);
@@ -1335,12 +1338,12 @@ fn clean_qpath<'tcx>(hir_ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> Type 
             let self_def_id = res.opt_def_id();
             let self_type = qself.clean(cx);
             let should_show_cast = compute_should_show_cast(self_def_id, &trait_, &self_type);
-            Type::QPath {
-                assoc: Box::new(segment.clean(cx)),
+            Type::QPath(Box::new(QPathData {
+                assoc: segment.clean(cx),
                 should_show_cast,
-                self_type: box self_type,
+                self_type,
                 trait_,
-            }
+            }))
         }
         hir::QPath::LangItem(..) => bug!("clean: requiring documentation of lang item"),
     }

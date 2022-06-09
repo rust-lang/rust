@@ -1564,13 +1564,7 @@ pub(crate) enum Type {
     BorrowedRef { lifetime: Option<Lifetime>, mutability: Mutability, type_: Box<Type> },
 
     /// A qualified path to an associated item: `<Type as Trait>::Name`
-    QPath {
-        assoc: Box<PathSegment>,
-        self_type: Box<Type>,
-        /// FIXME: compute this field on demand.
-        should_show_cast: bool,
-        trait_: Path,
-    },
+    QPath(Box<QPathData>),
 
     /// A type that is inferred: `_`
     Infer,
@@ -1581,7 +1575,16 @@ pub(crate) enum Type {
 
 // `Type` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(Type, 72);
+rustc_data_structures::static_assert_size!(Type, 56);
+
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
+pub(crate) struct QPathData {
+    pub(crate) assoc: PathSegment,
+    pub(crate) self_type: Type,
+    /// FIXME: compute this field on demand.
+    pub(crate) should_show_cast: bool,
+    pub(crate) trait_: Path,
+}
 
 impl Type {
     /// When comparing types for equality, it can help to ignore `&` wrapping.
@@ -1676,8 +1679,9 @@ impl Type {
     }
 
     pub(crate) fn projection(&self) -> Option<(&Type, DefId, PathSegment)> {
-        if let QPath { self_type, trait_, assoc, .. } = self {
-            Some((self_type, trait_.def_id(), *assoc.clone()))
+        if let QPath(qpath) = self {
+            let QPathData { self_type, trait_, assoc, .. } = &**qpath;
+            Some((self_type, trait_.def_id(), assoc.clone()))
         } else {
             None
         }
@@ -1701,7 +1705,7 @@ impl Type {
             Slice(..) => PrimitiveType::Slice,
             Array(..) => PrimitiveType::Array,
             RawPointer(..) => PrimitiveType::RawPointer,
-            QPath { ref self_type, .. } => return self_type.inner_def_id(cache),
+            QPath(ref qpath) => return qpath.self_type.inner_def_id(cache),
             Generic(_) | Infer | ImplTrait(_) => return None,
         };
         cache.and_then(|c| Primitive(t).def_id(c))
@@ -2222,7 +2226,7 @@ pub(crate) enum GenericArg {
 // `GenericArg` can occur many times in a single `Path`, so make sure it
 // doesn't increase in size unexpectedly.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(GenericArg, 80);
+rustc_data_structures::static_assert_size!(GenericArg, 64);
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub(crate) enum GenericArgs {

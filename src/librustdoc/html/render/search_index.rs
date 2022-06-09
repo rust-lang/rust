@@ -235,7 +235,7 @@ fn get_index_type_name(clean_type: &clean::Type) -> Option<Symbol> {
         | clean::Tuple(_)
         | clean::Slice(_)
         | clean::Array(_, _)
-        | clean::QPath { .. }
+        | clean::QPath(_)
         | clean::Infer => None,
     }
 }

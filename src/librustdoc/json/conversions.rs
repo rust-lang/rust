@@ -473,13 +473,13 @@ impl FromWithTcx<clean::Type> for Type {
                 mutable: mutability == ast::Mutability::Mut,
                 type_: Box::new((*type_).into_tcx(tcx)),
             },
-            QPath { assoc, self_type, trait_, .. } => {
+            QPath(box clean::QPathData { assoc, self_type, trait_, .. }) => {
                 // FIXME: should `trait_` be a clean::Path equivalent in JSON?
                 let trait_ = clean::Type::Path { path: trait_ }.into_tcx(tcx);
                 Type::QualifiedPath {
                     name: assoc.name.to_string(),
                     args: Box::new(assoc.args.clone().into_tcx(tcx)),
-                    self_type: Box::new((*self_type).into_tcx(tcx)),
+                    self_type: Box::new(self_type.into_tcx(tcx)),
                     trait_: Box::new(trait_),
                 }
             }
