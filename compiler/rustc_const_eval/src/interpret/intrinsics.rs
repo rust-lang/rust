@@ -169,7 +169,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     sym::needs_drop => self.tcx.types.bool,
                     sym::type_id => self.tcx.types.u64,
                     sym::type_name => self.tcx.mk_static_str(),
-                    _ => bug!("already checked for nullary intrinsics"),
+                    _ => bug!(),
                 };
                 let val =
                     self.tcx.const_eval_global_id(self.param_env, gid, Some(self.tcx.span))?;
@@ -215,7 +215,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     sym::add_with_overflow => BinOp::Add,
                     sym::sub_with_overflow => BinOp::Sub,
                     sym::mul_with_overflow => BinOp::Mul,
-                    _ => bug!("Already checked for int ops"),
+                    _ => bug!(),
                 };
                 self.binop_with_overflow(bin_op, &lhs, &rhs, dest)?;
             }
@@ -251,7 +251,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     sym::unchecked_mul => BinOp::Mul,
                     sym::unchecked_div => BinOp::Div,
                     sym::unchecked_rem => BinOp::Rem,
-                    _ => bug!("Already checked for int ops"),
+                    _ => bug!(),
                 };
                 let (val, overflowed, _ty) = self.overflowing_binary_op(bin_op, &l, &r)?;
                 if overflowed {

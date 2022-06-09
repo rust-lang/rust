@@ -154,14 +154,14 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let result = match bin_op {
                     Shl => l.checked_shl(r).unwrap(),
                     Shr => l.checked_shr(r).unwrap(),
-                    _ => bug!("it has already been checked that this is a shift op"),
+                    _ => bug!(),
                 };
                 result as u128
             } else {
                 match bin_op {
                     Shl => l.checked_shl(r).unwrap(),
                     Shr => l.checked_shr(r).unwrap(),
-                    _ => bug!("it has already been checked that this is a shift op"),
+                    _ => bug!(),
                 }
             };
             let truncated = self.truncate(result, left_layout);

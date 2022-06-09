@@ -55,32 +55,31 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         };
         let basic_block = &self.body().basic_blocks()[loc.block];
 
-        let old_frames = self.frame_idx();
-
         if let Some(stmt) = basic_block.statements.get(loc.statement_index) {
-            assert_eq!(old_frames, self.frame_idx());
+            let old_frames = self.frame_idx();
             self.statement(stmt)?;
+            // Make sure we are not updating `statement_index` of the wrong frame.
+            assert_eq!(old_frames, self.frame_idx());
+            // Advance the program counter.
+            self.frame_mut().loc.as_mut().unwrap().statement_index += 1;
             return Ok(true);
         }
 
         M::before_terminator(self)?;
 
         let terminator = basic_block.terminator();
-        assert_eq!(old_frames, self.frame_idx());
         self.terminator(terminator)?;
         Ok(true)
     }
 
     /// Runs the interpretation logic for the given `mir::Statement` at the current frame and
-    /// statement counter. This also moves the statement counter forward.
+    /// statement counter.
+    ///
+    /// This does NOT move the statement counter forward, the caller has to do that!
     pub fn statement(&mut self, stmt: &mir::Statement<'tcx>) -> InterpResult<'tcx> {
         info!("{:?}", stmt);
 
         use rustc_middle::mir::StatementKind::*;
-
-        // Some statements (e.g., box) push new stack frames.
-        // We have to record the stack frame number *before* executing the statement.
-        let frame_idx = self.frame_idx();
 
         match &stmt.kind {
             Assign(box (place, rvalue)) => self.eval_rvalue_into_place(rvalue, *place)?,
@@ -144,7 +143,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Nop => {}
         }
 
-        self.stack_mut()[frame_idx].loc.as_mut().unwrap().statement_index += 1;
         Ok(())
     }
 
@@ -300,6 +298,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         Ok(())
     }
 
+    /// Evaluate the given terminator. Will also adjust the stack frame and statement position accordingly.
     fn terminator(&mut self, terminator: &mir::Terminator<'tcx>) -> InterpResult<'tcx> {
         info!("{:?}", terminator.kind);
 

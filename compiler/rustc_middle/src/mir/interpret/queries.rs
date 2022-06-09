@@ -3,9 +3,9 @@ use super::{ErrorHandled, EvalToConstValueResult, GlobalId};
 use crate::mir;
 use crate::ty::fold::TypeFoldable;
 use crate::ty::subst::InternalSubsts;
-use crate::ty::{self, TyCtxt};
+use crate::ty::{self, query::TyCtxtAt, TyCtxt};
 use rustc_hir::def_id::DefId;
-use rustc_span::Span;
+use rustc_span::{Span, DUMMY_SP};
 
 impl<'tcx> TyCtxt<'tcx> {
     /// Evaluates a constant without providing any substitutions. This is useful to evaluate consts
@@ -87,13 +87,24 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// Evaluate a static's initializer, returning the allocation of the initializer's memory.
+    #[inline(always)]
+    pub fn eval_static_initializer(
+        self,
+        def_id: DefId,
+    ) -> Result<mir::ConstAllocation<'tcx>, ErrorHandled> {
+        self.at(DUMMY_SP).eval_static_initializer(def_id)
+    }
+}
+
+impl<'tcx> TyCtxtAt<'tcx> {
+    /// Evaluate a static's initializer, returning the allocation of the initializer's memory.
     pub fn eval_static_initializer(
         self,
         def_id: DefId,
     ) -> Result<mir::ConstAllocation<'tcx>, ErrorHandled> {
         trace!("eval_static_initializer: Need to compute {:?}", def_id);
         assert!(self.is_static(def_id));
-        let instance = ty::Instance::mono(self, def_id);
+        let instance = ty::Instance::mono(*self, def_id);
         let gid = GlobalId { instance, promoted: None };
         self.eval_to_allocation(gid, ty::ParamEnv::reveal_all())
     }
@@ -109,7 +120,9 @@ impl<'tcx> TyCtxt<'tcx> {
         let raw_const = self.eval_to_allocation_raw(param_env.and(gid))?;
         Ok(self.global_alloc(raw_const.alloc_id).unwrap_memory())
     }
+}
 
+impl<'tcx> TyCtxt<'tcx> {
     /// Destructure a type-level constant ADT or array into its variant index and its field values.
     /// Panics if the destructuring fails, use `try_destructure_const` for fallible version.
     pub fn destructure_const(
