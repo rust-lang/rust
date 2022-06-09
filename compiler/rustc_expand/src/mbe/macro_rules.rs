@@ -539,11 +539,11 @@ pub fn compile_declarative_macro(
         None => {}
     }
 
-    // Compute the spans of the macro rules
-    // We only take the span of the lhs here,
-    // so that the spans of created warnings are smaller.
+    // Compute the spans of the macro rules for unused rule linting.
+    // To avoid warning noise, only consider the rules of this
+    // macro for the lint, if all rules are valid.
     // Also, we are only interested in non-foreign macros.
-    let rule_spans = if def.id != DUMMY_NODE_ID {
+    let rule_spans = if valid && def.id != DUMMY_NODE_ID {
         lhses
             .iter()
             .zip(rhses.iter())
@@ -551,6 +551,8 @@ pub fn compile_declarative_macro(
             // If the rhs contains an invocation like compile_error!,
             // don't consider the rule for the unused rule lint.
             .filter(|(_idx, (_lhs, rhs))| !has_compile_error_macro(rhs))
+            // We only take the span of the lhs here,
+            // so that the spans of created warnings are smaller.
             .map(|(idx, (lhs, _rhs))| (idx, lhs.span()))
             .collect::<Vec<_>>()
     } else {
