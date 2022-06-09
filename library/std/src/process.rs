@@ -1708,6 +1708,10 @@ impl crate::error::Error for ExitStatusError {}
 #[stable(feature = "process_exitcode", since = "1.61.0")]
 pub struct ExitCode(imp::ExitCode);
 
+/// Allows extension traits within `std`.
+#[unstable(feature = "sealed", issue = "none")]
+impl crate::sealed::Sealed for ExitCode {}
+
 #[stable(feature = "process_exitcode", since = "1.61.0")]
 impl ExitCode {
     /// The canonical `ExitCode` for successful termination on this platform.
@@ -1795,6 +1799,18 @@ impl From<u8> for ExitCode {
     /// Construct an `ExitCode` from an arbitrary u8 value.
     fn from(code: u8) -> Self {
         ExitCode(imp::ExitCode::from(code))
+    }
+}
+
+impl AsInner<imp::ExitCode> for ExitCode {
+    fn as_inner(&self) -> &imp::ExitCode {
+        &self.0
+    }
+}
+
+impl FromInner<imp::ExitCode> for ExitCode {
+    fn from_inner(s: imp::ExitCode) -> ExitCode {
+        ExitCode(s)
     }
 }
 
