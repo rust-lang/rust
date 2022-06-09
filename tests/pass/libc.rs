@@ -5,14 +5,14 @@
 
 extern crate libc;
 
-#[cfg(target_os = "linux, freebsd")]
+#[cfg(any(target_os = "linux", target_os = "freebsd"))]
 fn tmp() -> std::path::PathBuf {
     std::env::var("MIRI_TEMP")
         .map(std::path::PathBuf::from)
         .unwrap_or_else(|_| std::env::temp_dir())
 }
 
-#[cfg(target_os = "linux, freebsd")]
+#[cfg(any(target_os = "linux", target_os = "freebsd"))]
 fn test_posix_fadvise() {
     use std::convert::TryInto;
     use std::fs::{remove_file, File};
@@ -42,7 +42,7 @@ fn test_posix_fadvise() {
     assert_eq!(result, 0);
 }
 
-#[cfg(target_os = "linux, freebsd")]
+#[cfg(any(target_os = "linux", target_os = "freebsd"))]
 fn test_sync_file_range() {
     use std::fs::{remove_file, File};
     use std::io::Write;
@@ -208,7 +208,7 @@ fn test_rwlock_libc_static_initializer() {
 /// Test whether the `prctl` shim correctly sets the thread name.
 ///
 /// Note: `prctl` exists only on Linux.
-#[cfg(target_os = "linux,freebsd")]
+#[cfg(any(target_os = "linux", target_os = "freebsd"))]
 fn test_prctl_thread_name() {
     use libc::c_long;
     use std::ffi::CString;
@@ -277,7 +277,7 @@ fn test_thread_local_errno() {
 }
 
 /// Tests whether clock support exists at all
-#[cfg(target_os = "linux,freebsd")]
+#[cfg(any(target_os = "linux", target_os = "freebsd"))]
 fn test_clocks() {
     let mut tp = std::mem::MaybeUninit::<libc::timespec>::uninit();
     let is_error = unsafe { libc::clock_gettime(libc::CLOCK_REALTIME, tp.as_mut_ptr()) };
@@ -291,10 +291,10 @@ fn test_clocks() {
 }
 
 fn main() {
-    #[cfg(target_os = "linux,freebsd")]
+    #[cfg(any(target_os = "linux", target_os = "freebsd"))]
     test_posix_fadvise();
 
-    #[cfg(target_os = "linux,freebsd")]
+    #[cfg(any(target_os = "linux", target_os = "freebsd"))]
     test_sync_file_range();
 
     test_mutex_libc_init_recursive();
@@ -302,14 +302,14 @@ fn main() {
     test_mutex_libc_init_errorcheck();
     test_rwlock_libc_static_initializer();
 
-    #[cfg(target_os = "linux,freebsd")]
+    #[cfg(any(target_os = "linux", target_os = "freebsd"))]
     test_mutex_libc_static_initializer_recursive();
 
-    #[cfg(target_os = "linux,freebsd")]
+    #[cfg(any(target_os = "linux", target_os = "freebsd"))]
     test_prctl_thread_name();
 
     test_thread_local_errno();
 
-    #[cfg(target_os = "linux,freebsd")]
+    #[cfg(any(target_os = "linux", target_os = "freebsd"))]
     test_clocks();
 }

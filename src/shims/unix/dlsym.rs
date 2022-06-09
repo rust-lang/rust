@@ -2,15 +2,15 @@ use rustc_middle::mir;
 use rustc_target::spec::abi::Abi;
 
 use crate::*;
+use shims::unix::freebsd::dlsym as freebsd;
 use shims::unix::linux::dlsym as linux;
 use shims::unix::macos::dlsym as macos;
-use shims::unix::freebsd::dlsym as freebsd;
 
 #[derive(Debug, Copy, Clone)]
 pub enum Dlsym {
     Linux(linux::Dlsym),
     MacOs(macos::Dlsym),
-    FreeBSD(freebsd::Dlsym)
+    FreeBSD(freebsd::Dlsym),
 }
 
 impl Dlsym {
@@ -43,7 +43,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         match dlsym {
             Dlsym::Linux(dlsym) => linux::EvalContextExt::call_dlsym(this, dlsym, args, dest, ret),
             Dlsym::MacOs(dlsym) => macos::EvalContextExt::call_dlsym(this, dlsym, args, dest, ret),
-            Dlsym::FreeBSD(dlsym) => freebsd::EvalContextExt::call_dlsym(this, dlsym, args, dest, ret)
+            Dlsym::FreeBSD(dlsym) =>
+                freebsd::EvalContextExt::call_dlsym(this, dlsym, args, dest, ret),
         }
     }
 }

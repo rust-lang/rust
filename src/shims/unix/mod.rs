@@ -5,8 +5,8 @@ mod fs;
 mod sync;
 mod thread;
 
+mod freebsd;
 mod linux;
 mod macos;
-mod freebsd;
 
 pub use fs::{DirHandler, FileHandler};

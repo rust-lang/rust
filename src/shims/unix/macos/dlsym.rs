@@ -3,10 +3,12 @@ use rustc_middle::mir;
 use log::trace;
 
 use crate::*;
+use helpers::check_arg_count;
 
 #[derive(Debug, Copy, Clone)]
 #[allow(non_camel_case_types)]
 pub enum Dlsym {
+    getentropy,
 }
 
 impl Dlsym {
@@ -14,7 +16,8 @@ impl Dlsym {
     // should become a NULL pointer (pretend it does not exist).
     pub fn from_str<'tcx>(name: &str) -> InterpResult<'tcx, Option<Dlsym>> {
         Ok(match name {
-            _ => throw_unsup_format!("unsupported freebsd dlsym: {}", name),
+            "getentropy" => Some(Dlsym::getentropy),
+            _ => throw_unsup_format!("unsupported macOS dlsym: {}", name),
         })
     }
 }
@@ -30,7 +33,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let ret = ret.expect("we don't support any diverging dlsym");
-        assert!(this.tcx.sess.target.os == "freebsd");
+        assert!(this.tcx.sess.target.os == "macos");
 
         match dlsym {
             Dlsym::getentropy => {

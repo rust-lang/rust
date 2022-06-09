@@ -1,13 +1,10 @@
 use rustc_middle::mir;
 
 use crate::*;
-use helpers::check_arg_count;
 
 #[derive(Debug, Copy, Clone)]
 #[allow(non_camel_case_types)]
-pub enum Dlsym {
-    getentropy,
-}
+pub enum Dlsym {}
 
 impl Dlsym {
     // Returns an error for unsupported symbols, and None if this symbol
