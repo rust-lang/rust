@@ -15,7 +15,9 @@ use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::pat_util::EnumerateAndAdjustIterator;
 use rustc_hir::RangeEnd;
 use rustc_index::vec::Idx;
-use rustc_middle::mir::interpret::{ErrorHandled, LitToConstError, LitToConstInput};
+use rustc_middle::mir::interpret::{
+    ConstValue, ErrorHandled, LitToConstError, LitToConstInput, Scalar,
+};
 use rustc_middle::mir::{self, UserTypeProjection};
 use rustc_middle::mir::{BorrowKind, Field, Mutability};
 use rustc_middle::thir::{Ascription, BindingMode, FieldPat, LocalVarId, Pat, PatKind, PatRange};
@@ -755,11 +757,24 @@ pub(crate) fn compare_const_vals<'tcx>(
 ) -> Option<Ordering> {
     assert_eq!(a.ty(), b.ty());
 
-    if a == b {
-        return Some(Ordering::Equal);
+    let ty = a.ty();
+
+    // This code is hot when compiling matches with many ranges. So we
+    // special-case extraction of evaluated scalars for speed, for types where
+    // raw data comparisons are appropriate. E.g. `unicode-normalization` has
+    // many ranges such as '\u{037A}'..='\u{037F}', and chars can be compared
+    // in this way.
+    match ty.kind() {
+        ty::Float(_) | ty::Int(_) => {} // require special handling, see below
+        _ => match (a, b) {
+            (
+                mir::ConstantKind::Val(ConstValue::Scalar(Scalar::Int(a)), _a_ty),
+                mir::ConstantKind::Val(ConstValue::Scalar(Scalar::Int(b)), _b_ty),
+            ) => return Some(a.cmp(&b)),
+            _ => {}
+        },
     }
 
-    let ty = a.ty();
     let a = a.eval_bits(tcx, param_env, ty);
     let b = b.eval_bits(tcx, param_env, ty);
 
