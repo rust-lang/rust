@@ -760,32 +760,28 @@ pub(crate) fn compare_const_vals<'tcx>(
     }
 
     let ty = a.ty();
-    let a_bits = a.try_eval_bits(tcx, param_env, ty);
-    let b_bits = b.try_eval_bits(tcx, param_env, ty);
+    let a = a.eval_bits(tcx, param_env, ty);
+    let b = b.eval_bits(tcx, param_env, ty);
 
-    if let (Some(a), Some(b)) = (a_bits, b_bits) {
-        use rustc_apfloat::Float;
-        return match *ty.kind() {
-            ty::Float(ty::FloatTy::F32) => {
-                let l = rustc_apfloat::ieee::Single::from_bits(a);
-                let r = rustc_apfloat::ieee::Single::from_bits(b);
-                l.partial_cmp(&r)
-            }
-            ty::Float(ty::FloatTy::F64) => {
-                let l = rustc_apfloat::ieee::Double::from_bits(a);
-                let r = rustc_apfloat::ieee::Double::from_bits(b);
-                l.partial_cmp(&r)
-            }
-            ty::Int(ity) => {
-                use rustc_middle::ty::layout::IntegerExt;
-                let size = rustc_target::abi::Integer::from_int_ty(&tcx, ity).size();
-                let a = size.sign_extend(a);
-                let b = size.sign_extend(b);
-                Some((a as i128).cmp(&(b as i128)))
-            }
-            _ => Some(a.cmp(&b)),
-        };
+    use rustc_apfloat::Float;
+    match *ty.kind() {
+        ty::Float(ty::FloatTy::F32) => {
+            let a = rustc_apfloat::ieee::Single::from_bits(a);
+            let b = rustc_apfloat::ieee::Single::from_bits(b);
+            a.partial_cmp(&b)
+        }
+        ty::Float(ty::FloatTy::F64) => {
+            let a = rustc_apfloat::ieee::Double::from_bits(a);
+            let b = rustc_apfloat::ieee::Double::from_bits(b);
+            a.partial_cmp(&b)
+        }
+        ty::Int(ity) => {
+            use rustc_middle::ty::layout::IntegerExt;
+            let size = rustc_target::abi::Integer::from_int_ty(&tcx, ity).size();
+            let a = size.sign_extend(a);
+            let b = size.sign_extend(b);
+            Some((a as i128).cmp(&(b as i128)))
+        }
+        _ => Some(a.cmp(&b)),
     }
-
-    None
 }
