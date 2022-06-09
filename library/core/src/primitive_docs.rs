@@ -916,24 +916,11 @@ mod prim_str {}
 ///
 /// # Trait implementations
 ///
-/// If every type inside a tuple implements one of the following traits, then a
-/// tuple itself also implements it.
-///
-/// * [`Clone`]
-/// * [`Copy`]
-/// * [`PartialEq`]
-/// * [`Eq`]
-/// * [`PartialOrd`]
-/// * [`Ord`]
-/// * [`Debug`]
-/// * [`Default`]
-/// * [`Hash`]
-///
-/// [`Debug`]: fmt::Debug
-/// [`Hash`]: hash::Hash
-///
-/// Due to a temporary restriction in Rust's type system, these traits are only
-/// implemented on tuples of arity 12 or less. In the future, this may change.
+/// In this documentation the shorthand `(T, ...)` is used to represent all
+/// tuples up to length twelve. When that is used, any trait bounds expressed
+/// on `T` applies to each field of the tuple independently. Note that this is
+/// a convenience notation to avoid repetitive documentation, not valid
+/// Rust syntax.
 ///
 /// # Examples
 ///
@@ -978,6 +965,7 @@ impl<T, U> (T, U) {}
 // Fake impl that's only really used for docs.
 #[cfg(doc)]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[doc(tuple_varadic)]
 /// This trait is implemented on arbitrary-length tuples.
 impl<T: Clone> Clone for (T,) {
     fn clone(&self) -> Self {
@@ -988,6 +976,7 @@ impl<T: Clone> Clone for (T,) {
 // Fake impl that's only really used for docs.
 #[cfg(doc)]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[doc(tuple_varadic)]
 /// This trait is implemented on arbitrary-length tuples.
 impl<T: Copy> Copy for (T,) {
     // empty

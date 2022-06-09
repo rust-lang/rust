@@ -2394,6 +2394,7 @@ impl Impl {
 pub(crate) enum ImplKind {
     Normal,
     Auto,
+    TupleVaradic,
     Blanket(Box<Type>),
 }
 
@@ -2404,6 +2405,10 @@ impl ImplKind {
 
     pub(crate) fn is_blanket(&self) -> bool {
         matches!(self, ImplKind::Blanket(_))
+    }
+
+    pub(crate) fn is_tuple_varadic(&self) -> bool {
+        matches!(self, ImplKind::TupleVaradic)
     }
 
     pub(crate) fn as_blanket_ty(&self) -> Option<&Type> {

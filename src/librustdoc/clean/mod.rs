@@ -1999,7 +1999,11 @@ fn clean_impl<'tcx>(
             for_,
             items,
             polarity: tcx.impl_polarity(def_id),
-            kind: ImplKind::Normal,
+            kind: if utils::has_doc_flag(tcx, def_id.to_def_id(), sym::tuple_varadic) {
+                ImplKind::TupleVaradic
+            } else {
+                ImplKind::Normal
+            },
         });
         Item::from_hir_id_and_parts(hir_id, None, kind, cx)
     };
