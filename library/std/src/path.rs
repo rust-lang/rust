@@ -2705,6 +2705,9 @@ impl Path {
 
     /// Returns `true` if the path points at an existing entity.
     ///
+    /// Warning: this method may be error-prone, consider using [`try_exists()`] instead!
+    /// It also has a risk of introducing time-of-check to time-of-use (TOCTOU) bugs.
+    ///
     /// This function will traverse symbolic links to query information about the
     /// destination file.
     ///
@@ -2721,7 +2724,9 @@ impl Path {
     /// # See Also
     ///
     /// This is a convenience function that coerces errors to false. If you want to
-    /// check errors, call [`fs::metadata`].
+    /// check errors, call [`Path::try_exists`].
+    ///
+    /// [`try_exists()`]: Self::try_exists
     #[stable(feature = "path_ext", since = "1.5.0")]
     #[must_use]
     #[inline]
@@ -2738,20 +2743,20 @@ impl Path {
     /// unrelated to the path not existing. (E.g. it will return `Err(_)` in case of permission
     /// denied on some of the parent directories.)
     ///
+    /// Note that while this avoids some pitfalls of the `exists()` method, it still can not
+    /// prevent time-of-check to time-of-use (TOCTOU) bugs. You should only use it in scenarios
+    /// where those bugs are not an issue.
+    ///
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(path_try_exists)]
-    ///
     /// use std::path::Path;
     /// assert!(!Path::new("does_not_exist.txt").try_exists().expect("Can't check existence of file does_not_exist.txt"));
     /// assert!(Path::new("/root/secret_file.txt").try_exists().is_err());
     /// ```
     ///
     /// [`exists()`]: Self::exists
-    // FIXME: stabilization should modify documentation of `exists()` to recommend this method
-    // instead.
-    #[unstable(feature = "path_try_exists", issue = "83186")]
+    #[stable(feature = "path_try_exists", since = "1.63.0")]
     #[inline]
     pub fn try_exists(&self) -> io::Result<bool> {
         fs::try_exists(self)

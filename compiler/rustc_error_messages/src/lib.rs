@@ -1,6 +1,5 @@
 #![feature(let_chains)]
 #![feature(once_cell)]
-#![feature(path_try_exists)]
 #![feature(rustc_attrs)]
 #![feature(type_alias_impl_trait)]
 
