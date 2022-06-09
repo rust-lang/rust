@@ -380,7 +380,7 @@ pub fn compile_declarative_macro(
     features: &Features,
     def: &ast::Item,
     edition: Edition,
-) -> (SyntaxExtension, Vec<Span>) {
+) -> (SyntaxExtension, Vec<(usize, Span)>) {
     debug!("compile_declarative_macro: {:?}", def);
     let mk_syn_ext = |expander| {
         SyntaxExtension::new(
@@ -542,8 +542,17 @@ pub fn compile_declarative_macro(
     // Compute the spans of the macro rules
     // We only take the span of the lhs here,
     // so that the spans of created warnings are smaller.
+    // Also, we are only interested in non-foreign macros.
     let rule_spans = if def.id != DUMMY_NODE_ID {
-        lhses.iter().map(|lhs| lhs.span()).collect::<Vec<_>>()
+        lhses
+            .iter()
+            .zip(rhses.iter())
+            .enumerate()
+            // If the rhs contains an invocation like compile_error!,
+            // don't consider the rule for the unused rule lint.
+            .filter(|(_idx, (_lhs, rhs))| !has_compile_error_macro(rhs))
+            .map(|(idx, (lhs, _rhs))| (idx, lhs.span()))
+            .collect::<Vec<_>>()
     } else {
         Vec::new()
     };
@@ -649,6 +658,29 @@ fn check_matcher(sess: &ParseSess, def: &ast::Item, matcher: &[mbe::TokenTree]) 
     let err = sess.span_diagnostic.err_count();
     check_matcher_core(sess, def, &first_sets, matcher, &empty_suffix);
     err == sess.span_diagnostic.err_count()
+}
+
+fn has_compile_error_macro(rhs: &mbe::TokenTree) -> bool {
+    match rhs {
+        mbe::TokenTree::Delimited(_sp, d) => {
+            let has_compile_error = d.tts.array_windows::<3>().any(|[ident, bang, args]| {
+                if let mbe::TokenTree::Token(ident) = ident &&
+                        let TokenKind::Ident(ident, _) = ident.kind &&
+                        ident == sym::compile_error &&
+                        let mbe::TokenTree::Token(bang) = bang &&
+                        let TokenKind::Not = bang.kind &&
+                        let mbe::TokenTree::Delimited(_, del) = args &&
+                        del.delim != Delimiter::Invisible
+                    {
+                        true
+                    } else {
+                        false
+                    }
+            });
+            if has_compile_error { true } else { d.tts.iter().any(has_compile_error_macro) }
+        }
+        _ => false,
+    }
 }
 
 // `The FirstSets` for a matcher is a mapping from subsequences in the
