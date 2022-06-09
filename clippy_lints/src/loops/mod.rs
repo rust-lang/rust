@@ -596,7 +596,7 @@ declare_clippy_lint! {
     ///     std::hint::spin_loop()
     /// }
     /// ```
-    #[clippy::version = "1.59.0"]
+    #[clippy::version = "1.61.0"]
     pub MISSING_SPIN_LOOP,
     perf,
     "An empty busy waiting loop"

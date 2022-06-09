@@ -33,7 +33,7 @@ declare_clippy_lint! {
     ///     source: &'src str,
     /// }
     /// ```
-    #[clippy::version = "1.59.0"]
+    #[clippy::version = "1.60.0"]
     pub SINGLE_CHAR_LIFETIME_NAMES,
     restriction,
     "warns against single-character lifetime names"

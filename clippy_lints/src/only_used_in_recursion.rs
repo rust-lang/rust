@@ -87,7 +87,7 @@ declare_clippy_lint! {
     /// #     print!("{}", f(1));
     /// # }
     /// ```
-    #[clippy::version = "1.60.0"]
+    #[clippy::version = "1.61.0"]
     pub ONLY_USED_IN_RECURSION,
     nursery,
     "arguments that is only used in recursion can be removed"
