@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
+use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_hir_and_then};
 use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::sugg::has_enclosing_paren;
 use clippy_utils::ty::peel_mid_ty_refs;
@@ -135,6 +135,7 @@ pub struct Dereferencing {
 struct StateData {
     /// Span of the top level expression
     span: Span,
+    hir_id: HirId,
 }
 
 enum State {
@@ -169,6 +170,8 @@ struct RefPat {
     app: Applicability,
     /// All the replacements which need to be made.
     replacements: Vec<(Span, String)>,
+    /// The [`HirId`] that the lint should be emitted at.
+    hir_id: HirId,
 }
 
 impl<'tcx> LateLintPass<'tcx> for Dereferencing {
@@ -222,7 +225,10 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing {
                                 is_final_ufcs: matches!(expr.kind, ExprKind::Call(..)),
                                 target_mut,
                             },
-                            StateData { span: expr.span },
+                            StateData {
+                                span: expr.span,
+                                hir_id: expr.hir_id,
+                            },
                         ));
                     },
                     RefOp::AddrOf => {
@@ -294,7 +300,10 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing {
                                     required_precedence,
                                     msg,
                                 },
-                                StateData { span: expr.span },
+                                StateData {
+                                    span: expr.span,
+                                    hir_id: expr.hir_id,
+                                },
                             ));
                         }
                     },
@@ -387,6 +396,7 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing {
                             spans: vec![pat.span],
                             app,
                             replacements: vec![(pat.span, snip.into())],
+                            hir_id: pat.hir_id
                         }),
                     );
                 }
@@ -399,13 +409,15 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing {
             for pat in self.ref_locals.drain(..).filter_map(|(_, x)| x) {
                 let replacements = pat.replacements;
                 let app = pat.app;
-                span_lint_and_then(
+                let lint = if pat.always_deref {
+                    NEEDLESS_BORROW
+                } else {
+                    REF_BINDING_TO_REFERENCE
+                };
+                span_lint_hir_and_then(
                     cx,
-                    if pat.always_deref {
-                        NEEDLESS_BORROW
-                    } else {
-                        REF_BINDING_TO_REFERENCE
-                    },
+                    lint,
+                    pat.hir_id,
                     pat.spans,
                     "this pattern creates a reference to a reference",
                     |diag| {
@@ -642,19 +654,14 @@ fn report<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>, state: State, data: S
         } => {
             let mut app = Applicability::MachineApplicable;
             let snip = snippet_with_context(cx, expr.span, data.span.ctxt(), "..", &mut app).0;
-            span_lint_and_sugg(
-                cx,
-                NEEDLESS_BORROW,
-                data.span,
-                msg,
-                "change this to",
-                if required_precedence > expr.precedence().order() && !has_enclosing_paren(&snip) {
+            span_lint_hir_and_then(cx, NEEDLESS_BORROW, data.hir_id, data.span, msg, |diag| {
+                let sugg = if required_precedence > expr.precedence().order() && !has_enclosing_paren(&snip) {
                     format!("({})", snip)
                 } else {
                     snip.into()
-                },
-                app,
-            );
+                };
+                diag.span_suggestion(data.span, "change this to", sugg, app);
+            });
         },
     }
 }

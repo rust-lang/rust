@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::implements_trait;
 use rustc_errors::Applicability;
@@ -64,9 +64,10 @@ impl<'tcx> LateLintPass<'tcx> for AsyncYieldsAsync {
                         _ => None,
                     };
                     if let Some(return_expr_span) = return_expr_span {
-                        span_lint_and_then(
+                        span_lint_hir_and_then(
                             cx,
                             ASYNC_YIELDS_ASYNC,
+                            body.value.hir_id,
                             return_expr_span,
                             "an async construct yields a type which is itself awaitable",
                             |db| {
