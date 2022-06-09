@@ -50,21 +50,16 @@ declare_lint_pass!(UseRetain => [USE_RETAIN]);
 
 impl<'tcx> LateLintPass<'tcx> for UseRetain {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
-        if_chain! {
-            if let Some(parent_expr) = get_parent_expr(cx, expr);
-            if let Assign(left_expr, collect_expr, _) = &parent_expr.kind;
-            if let hir::ExprKind::MethodCall(seg, _, _) = &collect_expr.kind;
-            if seg.args.is_none();
-
-            if let hir::ExprKind::MethodCall(_, [target_expr], _) = &collect_expr.kind;
-            if let Some(collect_def_id) = cx.typeck_results().type_dependent_def_id(collect_expr.hir_id);
-            if match_def_path(cx, collect_def_id, &paths::CORE_ITER_COLLECT);
-
-            then {
-                check_into_iter(cx, parent_expr, left_expr, target_expr);
-                check_iter(cx, parent_expr, left_expr, target_expr);
-                check_to_owned(cx, parent_expr, left_expr, target_expr);
-            }
+        if let Some(parent_expr) = get_parent_expr(cx, expr)
+            && let Assign(left_expr, collect_expr, _) = &parent_expr.kind
+            && let hir::ExprKind::MethodCall(seg, _, _) = &collect_expr.kind
+            && seg.args.is_none()
+            && let hir::ExprKind::MethodCall(_, [target_expr], _) = &collect_expr.kind
+            && let Some(collect_def_id) = cx.typeck_results().type_dependent_def_id(collect_expr.hir_id)
+            && match_def_path(cx, collect_def_id, &paths::CORE_ITER_COLLECT) {
+            check_into_iter(cx, parent_expr, left_expr, target_expr);
+            check_iter(cx, parent_expr, left_expr, target_expr);
+            check_to_owned(cx, parent_expr, left_expr, target_expr);
         }
     }
 }
@@ -75,21 +70,15 @@ fn check_into_iter(
     left_expr: &hir::Expr<'_>,
     target_expr: &hir::Expr<'_>,
 ) {
-    if_chain! {
-        if let hir::ExprKind::MethodCall(_, [into_iter_expr, _], _) = &target_expr.kind;
-        if let Some(filter_def_id) = cx.typeck_results().type_dependent_def_id(target_expr.hir_id);
-        if match_def_path(cx, filter_def_id, &paths::CORE_ITER_FILTER);
-
-        if let hir::ExprKind::MethodCall(_, [struct_expr], _) = &into_iter_expr.kind;
-        if let Some(into_iter_def_id) = cx.typeck_results().type_dependent_def_id(into_iter_expr.hir_id);
-        if match_def_path(cx, into_iter_def_id, &paths::CORE_ITER_INTO_ITER);
-        if match_acceptable_type(cx, left_expr);
-
-        if SpanlessEq::new(cx).eq_expr(left_expr, struct_expr);
-
-        then {
-            suggest(cx, parent_expr, left_expr, target_expr);
-        }
+    if let hir::ExprKind::MethodCall(_, [into_iter_expr, _], _) = &target_expr.kind
+        && let Some(filter_def_id) = cx.typeck_results().type_dependent_def_id(target_expr.hir_id)
+        && match_def_path(cx, filter_def_id, &paths::CORE_ITER_FILTER)
+        && let hir::ExprKind::MethodCall(_, [struct_expr], _) = &into_iter_expr.kind
+        && let Some(into_iter_def_id) = cx.typeck_results().type_dependent_def_id(into_iter_expr.hir_id)
+        && match_def_path(cx, into_iter_def_id, &paths::CORE_ITER_INTO_ITER)
+        && match_acceptable_type(cx, left_expr)
+        && SpanlessEq::new(cx).eq_expr(left_expr, struct_expr) {
+        suggest(cx, parent_expr, left_expr, target_expr);
     }
 }
 
@@ -99,24 +88,19 @@ fn check_iter(
     left_expr: &hir::Expr<'_>,
     target_expr: &hir::Expr<'_>,
 ) {
-    if_chain! {
-        if let hir::ExprKind::MethodCall(_, [filter_expr], _) = &target_expr.kind;
-        if let Some(copied_def_id) = cx.typeck_results().type_dependent_def_id(target_expr.hir_id);
-        if match_def_path(cx, copied_def_id, &paths::CORE_ITER_COPIED) || match_def_path(cx, copied_def_id, &paths::CORE_ITER_CLONED);
-
-        if let hir::ExprKind::MethodCall(_, [iter_expr, _], _) = &filter_expr.kind;
-        if let Some(filter_def_id) = cx.typeck_results().type_dependent_def_id(filter_expr.hir_id);
-        if match_def_path(cx, filter_def_id, &paths::CORE_ITER_FILTER);
-
-        if let hir::ExprKind::MethodCall(_, [struct_expr], _) = &iter_expr.kind;
-        if let Some(iter_expr_def_id) = cx.typeck_results().type_dependent_def_id(iter_expr.hir_id);
-        if match_acceptable_def_path(cx, iter_expr_def_id);
-        if match_acceptable_type(cx, left_expr);
-        if SpanlessEq::new(cx).eq_expr(left_expr, struct_expr);
-
-        then {
-            suggest(cx, parent_expr, left_expr, filter_expr);
-        }
+    if let hir::ExprKind::MethodCall(_, [filter_expr], _) = &target_expr.kind
+        && let Some(copied_def_id) = cx.typeck_results().type_dependent_def_id(target_expr.hir_id)
+        && (match_def_path(cx, copied_def_id, &paths::CORE_ITER_COPIED)
+            || match_def_path(cx, copied_def_id, &paths::CORE_ITER_CLONED))
+        && let hir::ExprKind::MethodCall(_, [iter_expr, _], _) = &filter_expr.kind
+        && let Some(filter_def_id) = cx.typeck_results().type_dependent_def_id(filter_expr.hir_id)
+        && match_def_path(cx, filter_def_id, &paths::CORE_ITER_FILTER)
+        && let hir::ExprKind::MethodCall(_, [struct_expr], _) = &iter_expr.kind
+        && let Some(iter_expr_def_id) = cx.typeck_results().type_dependent_def_id(iter_expr.hir_id)
+        && match_acceptable_def_path(cx, iter_expr_def_id)
+        && match_acceptable_type(cx, left_expr)
+        && SpanlessEq::new(cx).eq_expr(left_expr, struct_expr) {
+        suggest(cx, parent_expr, left_expr, filter_expr);
     }
 }
 
@@ -126,36 +110,28 @@ fn check_to_owned(
     left_expr: &hir::Expr<'_>,
     target_expr: &hir::Expr<'_>,
 ) {
-    if_chain! {
-        if let hir::ExprKind::MethodCall(_, [filter_expr], _) = &target_expr.kind;
-        if let Some(to_owned_def_id) = cx.typeck_results().type_dependent_def_id(target_expr.hir_id);
-        if match_def_path(cx, to_owned_def_id, &paths::TO_OWNED_METHOD);
-
-        if let hir::ExprKind::MethodCall(_, [chars_expr, _], _) = &filter_expr.kind;
-        if let Some(filter_def_id) = cx.typeck_results().type_dependent_def_id(filter_expr.hir_id);
-        if match_def_path(cx, filter_def_id, &paths::CORE_ITER_FILTER);
-
-        if let hir::ExprKind::MethodCall(_, [str_expr], _) = &chars_expr.kind;
-        if let Some(chars_expr_def_id) = cx.typeck_results().type_dependent_def_id(chars_expr.hir_id);
-        if match_def_path(cx, chars_expr_def_id, &paths::STR_CHARS);
-
-        let ty = cx.typeck_results().expr_ty(str_expr).peel_refs();
-        if is_type_diagnostic_item(cx, ty, sym::String);
-        if SpanlessEq::new(cx).eq_expr(left_expr, str_expr);
-
-        then {
-            suggest(cx, parent_expr, left_expr, filter_expr);
-        }
+    if let hir::ExprKind::MethodCall(_, [filter_expr], _) = &target_expr.kind
+        && let Some(to_owned_def_id) = cx.typeck_results().type_dependent_def_id(target_expr.hir_id)
+        && match_def_path(cx, to_owned_def_id, &paths::TO_OWNED_METHOD)
+        && let hir::ExprKind::MethodCall(_, [chars_expr, _], _) = &filter_expr.kind
+        && let Some(filter_def_id) = cx.typeck_results().type_dependent_def_id(filter_expr.hir_id)
+        && match_def_path(cx, filter_def_id, &paths::CORE_ITER_FILTER)
+        && let hir::ExprKind::MethodCall(_, [str_expr], _) = &chars_expr.kind
+        && let Some(chars_expr_def_id) = cx.typeck_results().type_dependent_def_id(chars_expr.hir_id)
+        && match_def_path(cx, chars_expr_def_id, &paths::STR_CHARS)
+        && let ty = cx.typeck_results().expr_ty(str_expr).peel_refs()
+        && is_type_diagnostic_item(cx, ty, sym::String)
+        && SpanlessEq::new(cx).eq_expr(left_expr, str_expr) {
+        suggest(cx, parent_expr, left_expr, filter_expr);
     }
 }
 
 fn suggest(cx: &LateContext<'_>, parent_expr: &hir::Expr<'_>, left_expr: &hir::Expr<'_>, filter_expr: &hir::Expr<'_>) {
-    if_chain! {
-        if let hir::ExprKind::MethodCall(_, [_, closure], _) = filter_expr.kind;
-        if let hir::ExprKind::Closure(_, _, filter_body_id, ..) = closure.kind;
-        let filter_body = cx.tcx.hir().body(filter_body_id);
-        if let [filter_params] = filter_body.params;
-        if let Some(sugg) = match filter_params.pat.kind {
+    if let hir::ExprKind::MethodCall(_, [_, closure], _) = filter_expr.kind
+        && let hir::ExprKind::Closure(_, _, filter_body_id, ..) = closure.kind
+        && let filter_body = cx.tcx.hir().body(filter_body_id)
+        && let [filter_params] = filter_body.params
+        && let Some(sugg) = match filter_params.pat.kind {
             hir::PatKind::Binding(_, _, filter_param_ident, None) => {
                 Some(format!("{}.retain(|{}| {})", snippet(cx, left_expr.span, ".."), filter_param_ident, snippet(cx, filter_body.value.span, "..")))
             },
@@ -171,18 +147,16 @@ fn suggest(cx: &LateContext<'_>, parent_expr: &hir::Expr<'_>, left_expr: &hir::E
                 }
             },
             _ => None
-        };
-        then {
-            span_lint_and_sugg(
-                cx,
-                USE_RETAIN,
-                parent_expr.span,
-                "this expression can be written more simply using `.retain()`",
-                "consider calling `.retain()` instead",
-                sugg,
-                Applicability::MachineApplicable
-            );
-        }
+        } {
+        span_lint_and_sugg(
+            cx,
+            USE_RETAIN,
+            parent_expr.span,
+            "this expression can be written more simply using `.retain()`",
+            "consider calling `.retain()` instead",
+            sugg,
+            Applicability::MachineApplicable
+        );
     }
 }
 
