@@ -376,9 +376,15 @@ pub(crate) fn codegen_terminator_call<'tcx>(
         RevealAllLayoutCx(fx.tcx).fn_abi_of_fn_ptr(fn_ty.fn_sig(fx.tcx), extra_args)
     };
 
-    let is_cold = instance
-        .map(|inst| fx.tcx.codegen_fn_attrs(inst.def_id()).flags.contains(CodegenFnAttrFlags::COLD))
-        .unwrap_or(false);
+    let is_cold = if fn_sig.abi == Abi::RustCold {
+        true
+    } else {
+        instance
+            .map(|inst| {
+                fx.tcx.codegen_fn_attrs(inst.def_id()).flags.contains(CodegenFnAttrFlags::COLD)
+            })
+            .unwrap_or(false)
+    };
     if is_cold {
         fx.bcx.set_cold_block(fx.bcx.current_block().unwrap());
         if let Some(destination_block) = target {
