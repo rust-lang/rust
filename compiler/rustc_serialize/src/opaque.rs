@@ -1,5 +1,5 @@
 use crate::leb128::{self, max_leb128_len};
-use crate::serialize::{Decodable, Decoder, Encodable, Encoder};
+use crate::serialize::{self, Decoder as _, Encoder as _};
 use std::convert::TryInto;
 use std::fs::File;
 use std::io::{self, Write};
@@ -11,13 +11,13 @@ use std::ptr;
 // Encoder
 // -----------------------------------------------------------------------------
 
-pub struct MemEncoder {
+pub struct Encoder {
     pub data: Vec<u8>,
 }
 
-impl MemEncoder {
-    pub fn new() -> MemEncoder {
-        MemEncoder { data: vec![] }
+impl Encoder {
+    pub fn new() -> Encoder {
+        Encoder { data: vec![] }
     }
 
     #[inline]
@@ -57,7 +57,7 @@ macro_rules! write_leb128 {
 /// [utf8]: https://en.wikipedia.org/w/index.php?title=UTF-8&oldid=1058865525#Codepage_layout
 const STR_SENTINEL: u8 = 0xC1;
 
-impl Encoder for MemEncoder {
+impl serialize::Encoder for Encoder {
     #[inline]
     fn emit_usize(&mut self, v: usize) {
         write_leb128!(self, v, usize, write_usize_leb128)
@@ -158,7 +158,7 @@ pub type FileEncodeResult = Result<usize, io::Error>;
 // `FileEncoder` encodes data to file via fixed-size buffer.
 //
 // When encoding large amounts of data to a file, using `FileEncoder` may be
-// preferred over using `MemEncoder` to encode to a `Vec`, and then writing the
+// preferred over using `Encoder` to encode to a `Vec`, and then writing the
 // `Vec` to file, as the latter uses as much memory as there is encoded data,
 // while the former uses the fixed amount of memory allocated to the buffer.
 // `FileEncoder` also has the advantage of not needing to reallocate as data
@@ -429,7 +429,7 @@ macro_rules! file_encoder_write_leb128 {
     }};
 }
 
-impl Encoder for FileEncoder {
+impl serialize::Encoder for FileEncoder {
     #[inline]
     fn emit_usize(&mut self, v: usize) {
         file_encoder_write_leb128!(self, v, usize, write_usize_leb128)
@@ -529,15 +529,15 @@ impl Encoder for FileEncoder {
 // Decoder
 // -----------------------------------------------------------------------------
 
-pub struct MemDecoder<'a> {
+pub struct Decoder<'a> {
     pub data: &'a [u8],
     position: usize,
 }
 
-impl<'a> MemDecoder<'a> {
+impl<'a> Decoder<'a> {
     #[inline]
-    pub fn new(data: &'a [u8], position: usize) -> MemDecoder<'a> {
-        MemDecoder { data, position }
+    pub fn new(data: &'a [u8], position: usize) -> Decoder<'a> {
+        Decoder { data, position }
     }
 
     #[inline]
@@ -560,7 +560,7 @@ macro_rules! read_leb128 {
     ($dec:expr, $fun:ident) => {{ leb128::$fun($dec.data, &mut $dec.position) }};
 }
 
-impl<'a> Decoder for MemDecoder<'a> {
+impl<'a> serialize::Decoder for Decoder<'a> {
     #[inline]
     fn read_u128(&mut self) -> u128 {
         read_leb128!(self, read_u128_leb128)
@@ -682,25 +682,25 @@ impl<'a> Decoder for MemDecoder<'a> {
 
 // Specialize encoding byte slices. This specialization also applies to encoding `Vec<u8>`s, etc.,
 // since the default implementations call `encode` on their slices internally.
-impl Encodable<MemEncoder> for [u8] {
-    fn encode(&self, e: &mut MemEncoder) {
-        Encoder::emit_usize(e, self.len());
+impl serialize::Encodable<Encoder> for [u8] {
+    fn encode(&self, e: &mut Encoder) {
+        serialize::Encoder::emit_usize(e, self.len());
         e.emit_raw_bytes(self);
     }
 }
 
-impl Encodable<FileEncoder> for [u8] {
+impl serialize::Encodable<FileEncoder> for [u8] {
     fn encode(&self, e: &mut FileEncoder) {
-        Encoder::emit_usize(e, self.len());
+        serialize::Encoder::emit_usize(e, self.len());
         e.emit_raw_bytes(self);
     }
 }
 
 // Specialize decoding `Vec<u8>`. This specialization also applies to decoding `Box<[u8]>`s, etc.,
 // since the default implementations call `decode` to produce a `Vec<u8>` internally.
-impl<'a> Decodable<MemDecoder<'a>> for Vec<u8> {
-    fn decode(d: &mut MemDecoder<'a>) -> Self {
-        let len = Decoder::read_usize(d);
+impl<'a> serialize::Decodable<Decoder<'a>> for Vec<u8> {
+    fn decode(d: &mut Decoder<'a>) -> Self {
+        let len = serialize::Decoder::read_usize(d);
         d.read_raw_bytes(len).to_owned()
     }
 }
@@ -712,9 +712,9 @@ impl IntEncodedWithFixedSize {
     pub const ENCODED_SIZE: usize = 8;
 }
 
-impl Encodable<MemEncoder> for IntEncodedWithFixedSize {
+impl serialize::Encodable<Encoder> for IntEncodedWithFixedSize {
     #[inline]
-    fn encode(&self, e: &mut MemEncoder) {
+    fn encode(&self, e: &mut Encoder) {
         let _start_pos = e.position();
         e.emit_raw_bytes(&self.0.to_le_bytes());
         let _end_pos = e.position();
@@ -722,7 +722,7 @@ impl Encodable<MemEncoder> for IntEncodedWithFixedSize {
     }
 }
 
-impl Encodable<FileEncoder> for IntEncodedWithFixedSize {
+impl serialize::Encodable<FileEncoder> for IntEncodedWithFixedSize {
     #[inline]
     fn encode(&self, e: &mut FileEncoder) {
         let _start_pos = e.position();
@@ -732,9 +732,9 @@ impl Encodable<FileEncoder> for IntEncodedWithFixedSize {
     }
 }
 
-impl<'a> Decodable<MemDecoder<'a>> for IntEncodedWithFixedSize {
+impl<'a> serialize::Decodable<Decoder<'a>> for IntEncodedWithFixedSize {
     #[inline]
-    fn decode(decoder: &mut MemDecoder<'a>) -> IntEncodedWithFixedSize {
+    fn decode(decoder: &mut Decoder<'a>) -> IntEncodedWithFixedSize {
         let _start_pos = decoder.position();
         let bytes = decoder.read_raw_bytes(IntEncodedWithFixedSize::ENCODED_SIZE);
         let value = u64::from_le_bytes(bytes.try_into().unwrap());

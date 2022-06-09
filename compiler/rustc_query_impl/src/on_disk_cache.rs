@@ -15,7 +15,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_query_system::dep_graph::DepContext;
 use rustc_query_system::query::{QueryCache, QueryContext, QuerySideEffects};
 use rustc_serialize::{
-    opaque::{FileEncodeResult, FileEncoder, IntEncodedWithFixedSize, MemDecoder},
+    opaque::{self, FileEncodeResult, FileEncoder, IntEncodedWithFixedSize},
     Decodable, Decoder, Encodable, Encoder,
 };
 use rustc_session::Session;
@@ -159,7 +159,7 @@ impl<'sess> rustc_middle::ty::OnDiskCache<'sess> for OnDiskCache<'sess> {
 
         // Wrap in a scope so we can borrow `data`.
         let footer: Footer = {
-            let mut decoder = MemDecoder::new(&data, start_pos);
+            let mut decoder = opaque::Decoder::new(&data, start_pos);
 
             // Decode the *position* of the footer, which can be found in the
             // last 8 bytes of the file.
@@ -438,7 +438,7 @@ impl<'sess> OnDiskCache<'sess> {
         let serialized_data = self.serialized_data.read();
         let mut decoder = CacheDecoder {
             tcx,
-            opaque: MemDecoder::new(serialized_data.as_deref().unwrap_or(&[]), pos.to_usize()),
+            opaque: opaque::Decoder::new(serialized_data.as_deref().unwrap_or(&[]), pos.to_usize()),
             source_map: self.source_map,
             file_index_to_file: &self.file_index_to_file,
             file_index_to_stable_id: &self.file_index_to_stable_id,
@@ -459,7 +459,7 @@ impl<'sess> OnDiskCache<'sess> {
 /// will also handle things that contain `Ty` instances.
 pub struct CacheDecoder<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    opaque: MemDecoder<'a>,
+    opaque: opaque::Decoder<'a>,
     source_map: &'a SourceMap,
     file_index_to_file: &'a Lock<FxHashMap<SourceFileIndex, Lrc<SourceFile>>>,
     file_index_to_stable_id: &'a FxHashMap<SourceFileIndex, EncodedSourceFileId>,
@@ -511,7 +511,7 @@ trait DecoderWithPosition: Decoder {
     fn position(&self) -> usize;
 }
 
-impl<'a> DecoderWithPosition for MemDecoder<'a> {
+impl<'a> DecoderWithPosition for opaque::Decoder<'a> {
     fn position(&self) -> usize {
         self.position()
     }
@@ -587,7 +587,7 @@ impl<'a, 'tcx> TyDecoder for CacheDecoder<'a, 'tcx> {
     {
         debug_assert!(pos < self.opaque.data.len());
 
-        let new_opaque = MemDecoder::new(self.opaque.data, pos);
+        let new_opaque = opaque::Decoder::new(self.opaque.data, pos);
         let old_opaque = mem::replace(&mut self.opaque, new_opaque);
         let r = f(self);
         self.opaque = old_opaque;

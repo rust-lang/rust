@@ -31,7 +31,7 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_macros::HashStable_Generic;
-use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
+use rustc_serialize::{self, Decoder, Encoder};
 use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
@@ -2488,11 +2488,11 @@ rustc_index::newtype_index! {
     }
 }
 
-impl<S: Encoder> Encodable<S> for AttrId {
+impl<S: Encoder> rustc_serialize::Encodable<S> for AttrId {
     fn encode(&self, _s: &mut S) {}
 }
 
-impl<D: Decoder> Decodable<D> for AttrId {
+impl<D: Decoder> rustc_serialize::Decodable<D> for AttrId {
     fn decode(_: &mut D) -> AttrId {
         crate::attr::mk_attr_id()
     }

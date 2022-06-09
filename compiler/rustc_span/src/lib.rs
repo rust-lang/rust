@@ -1911,13 +1911,13 @@ impl_pos! {
     pub struct CharPos(pub usize);
 }
 
-impl<S: Encoder> Encodable<S> for BytePos {
+impl<S: rustc_serialize::Encoder> Encodable<S> for BytePos {
     fn encode(&self, s: &mut S) {
         s.emit_u32(self.0);
     }
 }
 
-impl<D: Decoder> Decodable<D> for BytePos {
+impl<D: rustc_serialize::Decoder> Decodable<D> for BytePos {
     fn decode(d: &mut D) -> BytePos {
         BytePos(d.read_u32())
     }
