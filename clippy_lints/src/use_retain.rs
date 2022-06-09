@@ -29,7 +29,7 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for code to be replaced by `.retain()`.
     /// ### Why is this bad?
-    /// `.retain()` is simpler.
+    /// `.retain()` is simpler and avoids needless allocation.
     /// ### Example
     /// ```rust
     /// let mut vec = vec![0, 1, 2];
