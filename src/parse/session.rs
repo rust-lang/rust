@@ -33,6 +33,12 @@ impl Emitter for SilentEmitter {
         None
     }
     fn emit_diagnostic(&mut self, _db: &Diagnostic) {}
+    fn fluent_bundle(&self) -> Option<&Lrc<rustc_errors::FluentBundle>> {
+        None
+    }
+    fn fallback_fluent_bundle(&self) -> &rustc_errors::FluentBundle {
+        panic!("silent emitter attempted to translate a diagnostic");
+    }
 }
 
 fn silent_emitter() -> Box<dyn Emitter + Send> {
@@ -82,6 +88,14 @@ impl Emitter for SilentOnIgnoredFilesEmitter {
         }
         self.handle_non_ignoreable_error(db);
     }
+
+    fn fluent_bundle(&self) -> Option<&Lrc<rustc_errors::FluentBundle>> {
+        self.emitter.fluent_bundle()
+    }
+
+    fn fallback_fluent_bundle(&self) -> &rustc_errors::FluentBundle {
+        self.emitter.fallback_fluent_bundle()
+    }
 }
 
 fn default_handler(
@@ -100,9 +114,13 @@ fn default_handler(
     let emitter = if hide_parse_errors {
         silent_emitter()
     } else {
+        let fallback_bundle =
+            rustc_errors::fallback_fluent_bundle(rustc_errors::DEFAULT_LOCALE_RESOURCES, false);
         Box::new(EmitterWriter::stderr(
             color_cfg,
             Some(source_map.clone()),
+            None,
+            fallback_bundle,
             false,
             false,
             None,
@@ -313,7 +331,8 @@ mod tests {
         use super::*;
         use crate::config::IgnoreList;
         use crate::utils::mk_sp;
-        use rustc_span::{FileName as SourceMapFileName, MultiSpan, RealFileName};
+        use rustc_errors::MultiSpan;
+        use rustc_span::{FileName as SourceMapFileName, RealFileName};
         use std::path::PathBuf;
         use std::sync::atomic::AtomicU32;
 
@@ -327,6 +346,12 @@ mod tests {
             }
             fn emit_diagnostic(&mut self, _db: &Diagnostic) {
                 self.num_emitted_errors.fetch_add(1, Ordering::Release);
+            }
+            fn fluent_bundle(&self) -> Option<&Lrc<rustc_errors::FluentBundle>> {
+                None
+            }
+            fn fallback_fluent_bundle(&self) -> &rustc_errors::FluentBundle {
+                panic!("test emitter attempted to translate a diagnostic");
             }
         }
 

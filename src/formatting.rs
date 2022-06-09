@@ -6,7 +6,6 @@ use std::rc::Rc;
 use std::time::{Duration, Instant};
 
 use rustc_ast::ast;
-use rustc_ast::AstLike;
 use rustc_span::Span;
 
 use self::newline_style::apply_newline_style;

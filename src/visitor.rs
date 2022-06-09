@@ -1,7 +1,7 @@
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
-use rustc_ast::{ast, token::DelimToken, visit, AstLike};
+use rustc_ast::{ast, token::Delimiter, visit};
 use rustc_data_structures::sync::Lrc;
 use rustc_span::{symbol, BytePos, Pos, Span};
 
@@ -383,7 +383,6 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
     pub(crate) fn visit_fn(
         &mut self,
         fk: visit::FnKind<'_>,
-        generics: &ast::Generics,
         fd: &ast::FnDecl,
         s: Span,
         defaultness: ast::Defaultness,
@@ -392,12 +391,12 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         let indent = self.block_indent;
         let block;
         let rewrite = match fk {
-            visit::FnKind::Fn(_, ident, _, _, Some(ref b)) => {
+            visit::FnKind::Fn(_, ident, _, _, _, Some(ref b)) => {
                 block = b;
                 self.rewrite_fn_before_block(
                     indent,
                     ident,
-                    &FnSig::from_fn_kind(&fk, generics, fd, defaultness),
+                    &FnSig::from_fn_kind(&fk, fd, defaultness),
                     mk_sp(s.lo(), b.span.lo()),
                 )
             }
@@ -553,8 +552,14 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                             _ => visit::FnCtxt::Foreign,
                         };
                         self.visit_fn(
-                            visit::FnKind::Fn(fn_ctxt, item.ident, sig, &item.vis, Some(body)),
-                            generics,
+                            visit::FnKind::Fn(
+                                fn_ctxt,
+                                item.ident,
+                                sig,
+                                &item.vis,
+                                generics,
+                                Some(body),
+                            ),
                             &sig.decl,
                             item.span,
                             defaultness,
@@ -643,8 +648,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                     let inner_attrs = inner_attributes(&ai.attrs);
                     let fn_ctxt = visit::FnCtxt::Assoc(assoc_ctxt);
                     self.visit_fn(
-                        visit::FnKind::Fn(fn_ctxt, ai.ident, sig, &ai.vis, Some(body)),
-                        generics,
+                        visit::FnKind::Fn(fn_ctxt, ai.ident, sig, &ai.vis, generics, Some(body)),
                         &sig.decl,
                         ai.span,
                         defaultness,
@@ -686,7 +690,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         // with whitespace between the delimiters and trailing semi (i.e. `foo!(abc)     ;`)
         // are formatted correctly.
         let (span, rewrite) = match macro_style(mac, &self.get_context()) {
-            DelimToken::Bracket | DelimToken::Paren if MacroPosition::Item == pos => {
+            Delimiter::Bracket | Delimiter::Parenthesis if MacroPosition::Item == pos => {
                 let search_span = mk_sp(mac.span().hi(), self.snippet_provider.end_pos());
                 let hi = self.snippet_provider.span_before(search_span, ";");
                 let target_span = mk_sp(mac.span().lo(), hi + BytePos(1));
