@@ -10,24 +10,22 @@
       scope 1 {
           debug x => _1;                   // in scope 1 at $DIR/discriminant.rs:11:9: 11:10
       }
-      scope 2 {
-      }
   
       bb0: {
           StorageLive(_1);                 // scope 0 at $DIR/discriminant.rs:11:9: 11:10
           StorageLive(_2);                 // scope 0 at $DIR/discriminant.rs:11:13: 11:64
-          StorageLive(_3);                 // scope 2 at $DIR/discriminant.rs:11:34: 11:44
-          Deinit(_3);                      // scope 2 at $DIR/discriminant.rs:11:34: 11:44
-          ((_3 as Some).0: bool) = const true; // scope 2 at $DIR/discriminant.rs:11:34: 11:44
-          discriminant(_3) = 1;            // scope 2 at $DIR/discriminant.rs:11:34: 11:44
--         _4 = discriminant(_3);           // scope 2 at $DIR/discriminant.rs:11:21: 11:31
--         switchInt(move _4) -> [1_isize: bb1, otherwise: bb3]; // scope 2 at $DIR/discriminant.rs:11:21: 11:31
-+         _4 = const 1_isize;              // scope 2 at $DIR/discriminant.rs:11:21: 11:31
-+         switchInt(const 1_isize) -> [1_isize: bb1, otherwise: bb3]; // scope 2 at $DIR/discriminant.rs:11:21: 11:31
+          StorageLive(_3);                 // scope 0 at $DIR/discriminant.rs:11:34: 11:44
+          Deinit(_3);                      // scope 0 at $DIR/discriminant.rs:11:34: 11:44
+          ((_3 as Some).0: bool) = const true; // scope 0 at $DIR/discriminant.rs:11:34: 11:44
+          discriminant(_3) = 1;            // scope 0 at $DIR/discriminant.rs:11:34: 11:44
+-         _4 = discriminant(_3);           // scope 0 at $DIR/discriminant.rs:11:21: 11:31
+-         switchInt(move _4) -> [1_isize: bb1, otherwise: bb3]; // scope 0 at $DIR/discriminant.rs:11:21: 11:31
++         _4 = const 1_isize;              // scope 0 at $DIR/discriminant.rs:11:21: 11:31
++         switchInt(const 1_isize) -> [1_isize: bb1, otherwise: bb3]; // scope 0 at $DIR/discriminant.rs:11:21: 11:31
       }
   
       bb1: {
-          switchInt(((_3 as Some).0: bool)) -> [false: bb3, otherwise: bb2]; // scope 2 at $DIR/discriminant.rs:11:21: 11:31
+          switchInt(((_3 as Some).0: bool)) -> [false: bb3, otherwise: bb2]; // scope 0 at $DIR/discriminant.rs:11:21: 11:31
       }
   
       bb2: {

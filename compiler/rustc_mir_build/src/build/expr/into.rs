@@ -70,9 +70,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                         &this.thir[cond],
                                         Some(condition_scope),
                                         condition_scope,
-                                        then_expr.span
+                                        then_expr.span,
                                     ));
-
                                     this.expr_into_dest(destination, then_blk, then_expr)
                                 });
                             then_block.and(else_block)
@@ -98,7 +97,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ExprKind::Let { expr, ref pat } => {
                 let scope = this.local_scope();
                 let (true_block, false_block) = this.in_if_then_scope(scope, |this| {
-                    this.lower_let_expr(block, &this.thir[expr], pat, scope, None, expr_span)
+                    this.lower_let_expr(block, &this.thir[expr], pat, scope, expr_span)
                 });
 
                 this.cfg.push_assign_constant(

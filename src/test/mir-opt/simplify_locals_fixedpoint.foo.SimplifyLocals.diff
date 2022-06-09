@@ -8,33 +8,33 @@
       let mut _3: std::option::Option<T>;  // in scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:51: 4:68
       let mut _4: isize;                   // in scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:22: 4:26
       let mut _5: isize;                   // in scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:13: 4:20
+      let _6: u8;                          // in scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:18: 4:19
 -     let mut _7: bool;                    // in scope 0 at $DIR/simplify-locals-fixedpoint.rs:5:12: 5:20
 -     let mut _8: u8;                      // in scope 0 at $DIR/simplify-locals-fixedpoint.rs:5:12: 5:13
       scope 1 {
           debug a => _6;                   // in scope 1 at $DIR/simplify-locals-fixedpoint.rs:4:18: 4:19
-          let _6: u8;                      // in scope 1 at $DIR/simplify-locals-fixedpoint.rs:4:18: 4:19
       }
   
       bb0: {
-          StorageLive(_1);                 // scope 1 at $DIR/simplify-locals-fixedpoint.rs:4:30: 4:69
-          StorageLive(_2);                 // scope 1 at $DIR/simplify-locals-fixedpoint.rs:4:31: 4:49
-          Deinit(_2);                      // scope 1 at $DIR/simplify-locals-fixedpoint.rs:4:31: 4:49
-          discriminant(_2) = 0;            // scope 1 at $DIR/simplify-locals-fixedpoint.rs:4:31: 4:49
-          StorageLive(_3);                 // scope 1 at $DIR/simplify-locals-fixedpoint.rs:4:51: 4:68
-          Deinit(_3);                      // scope 1 at $DIR/simplify-locals-fixedpoint.rs:4:51: 4:68
-          discriminant(_3) = 0;            // scope 1 at $DIR/simplify-locals-fixedpoint.rs:4:51: 4:68
-          Deinit(_1);                      // scope 1 at $DIR/simplify-locals-fixedpoint.rs:4:30: 4:69
-          (_1.0: std::option::Option<u8>) = move _2; // scope 1 at $DIR/simplify-locals-fixedpoint.rs:4:30: 4:69
-          (_1.1: std::option::Option<T>) = move _3; // scope 1 at $DIR/simplify-locals-fixedpoint.rs:4:30: 4:69
-          StorageDead(_3);                 // scope 1 at $DIR/simplify-locals-fixedpoint.rs:4:68: 4:69
-          StorageDead(_2);                 // scope 1 at $DIR/simplify-locals-fixedpoint.rs:4:68: 4:69
-          _5 = discriminant((_1.0: std::option::Option<u8>)); // scope 1 at $DIR/simplify-locals-fixedpoint.rs:4:12: 4:27
-          switchInt(move _5) -> [1_isize: bb1, otherwise: bb3]; // scope 1 at $DIR/simplify-locals-fixedpoint.rs:4:12: 4:27
+          StorageLive(_1);                 // scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:30: 4:69
+          StorageLive(_2);                 // scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:31: 4:49
+          Deinit(_2);                      // scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:31: 4:49
+          discriminant(_2) = 0;            // scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:31: 4:49
+          StorageLive(_3);                 // scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:51: 4:68
+          Deinit(_3);                      // scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:51: 4:68
+          discriminant(_3) = 0;            // scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:51: 4:68
+          Deinit(_1);                      // scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:30: 4:69
+          (_1.0: std::option::Option<u8>) = move _2; // scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:30: 4:69
+          (_1.1: std::option::Option<T>) = move _3; // scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:30: 4:69
+          StorageDead(_3);                 // scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:68: 4:69
+          StorageDead(_2);                 // scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:68: 4:69
+          _5 = discriminant((_1.0: std::option::Option<u8>)); // scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:12: 4:27
+          switchInt(move _5) -> [1_isize: bb1, otherwise: bb3]; // scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:12: 4:27
       }
   
       bb1: {
-          _4 = discriminant((_1.1: std::option::Option<T>)); // scope 1 at $DIR/simplify-locals-fixedpoint.rs:4:12: 4:27
-          switchInt(move _4) -> [0_isize: bb2, otherwise: bb3]; // scope 1 at $DIR/simplify-locals-fixedpoint.rs:4:12: 4:27
+          _4 = discriminant((_1.1: std::option::Option<T>)); // scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:12: 4:27
+          switchInt(move _4) -> [0_isize: bb2, otherwise: bb3]; // scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:12: 4:27
       }
   
       bb2: {
