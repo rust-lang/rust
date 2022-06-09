@@ -965,7 +965,7 @@ impl<T> (T,) {}
 // Fake impl that's only really used for docs.
 #[cfg(doc)]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[doc(tuple_varadic)]
+#[cfg_attr(not(bootstrap), doc(tuple_varadic))]
 /// This trait is implemented on arbitrary-length tuples.
 impl<T: Clone> Clone for (T,) {
     fn clone(&self) -> Self {
@@ -976,7 +976,7 @@ impl<T: Clone> Clone for (T,) {
 // Fake impl that's only really used for docs.
 #[cfg(doc)]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[doc(tuple_varadic)]
+#[cfg_attr(not(bootstrap), doc(tuple_varadic))]
 /// This trait is implemented on arbitrary-length tuples.
 impl<T: Copy> Copy for (T,) {
     // empty
