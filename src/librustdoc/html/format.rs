@@ -714,6 +714,16 @@ fn primitive_link(
     name: &str,
     cx: &Context<'_>,
 ) -> fmt::Result {
+    primitive_link_fragment(f, prim, name, "", cx)
+}
+
+fn primitive_link_fragment(
+    f: &mut fmt::Formatter<'_>,
+    prim: clean::PrimitiveType,
+    name: &str,
+    fragment: &str,
+    cx: &Context<'_>,
+) -> fmt::Result {
     let m = &cx.cache();
     let mut needs_termination = false;
     if !f.alternate() {
@@ -723,7 +733,7 @@ fn primitive_link(
                 let len = if len == 0 { 0 } else { len - 1 };
                 write!(
                     f,
-                    "<a class=\"primitive\" href=\"{}primitive.{}.html\">",
+                    "<a class=\"primitive\" href=\"{}primitive.{}.html{fragment}\">",
                     "../".repeat(len),
                     prim.as_sym()
                 )?;
@@ -754,7 +764,7 @@ fn primitive_link(
                 };
                 if let Some(mut loc) = loc {
                     loc.push_fmt(format_args!("primitive.{}.html", prim.as_sym()));
-                    write!(f, "<a class=\"primitive\" href=\"{}\">", loc.finish())?;
+                    write!(f, "<a class=\"primitive\" href=\"{}{fragment}\">", loc.finish())?;
                     needs_termination = true;
                 }
             }
@@ -1039,7 +1049,11 @@ impl clean::Impl {
                 write!(f, " for ")?;
             }
 
-            if let Some(ty) = self.kind.as_blanket_ty() {
+            if let clean::Type::Tuple(types) = &self.for_ &&
+                let [clean::Type::Generic(name)] = &types[..] &&
+                (self.kind.is_tuple_varadic() || self.kind.is_auto()) {
+                primitive_link_fragment(f, PrimitiveType::Tuple, &format!("({name}, ...)"), "#trait-implementations-1", cx)?;
+            } else if let Some(ty) = self.kind.as_blanket_ty() {
                 fmt_type(ty, f, use_absolute, cx)?;
             } else {
                 fmt_type(&self.for_, f, use_absolute, cx)?;
