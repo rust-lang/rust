@@ -129,3 +129,9 @@ jobs:
         export RUN_RUNS=2
 
         ./test.sh --release --no-default-features
+
+  duplicates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - run: python tools/check_intrinsics_duplicates.py
