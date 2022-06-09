@@ -1,13 +1,13 @@
 //! Implementation of C++11-consistent weak memory emulation using store buffers
 //! based on Dynamic Race Detection for C++ ("the paper"):
-//! https://www.doc.ic.ac.uk/~afd/homepages/papers/pdfs/2017/POPL.pdf
+//! <https://www.doc.ic.ac.uk/~afd/homepages/papers/pdfs/2017/POPL.pdf>
 //!
 //! This implementation will never generate weak memory behaviours forbidden by the C++11 model,
 //! but it is incapable of producing all possible weak behaviours allowed by the model. There are
 //! certain weak behaviours observable on real hardware but not while using this.
 //!
 //! Note that this implementation does not take into account of C++20's memory model revision to SC accesses
-//! and fences introduced by P0668 (https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p0668r5.html).
+//! and fences introduced by P0668 (<https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p0668r5.html>).
 //! This implementation is not fully correct under the revised C++20 model and may generate behaviours C++20
 //! disallows.
 //!
@@ -15,14 +15,14 @@
 //! std::atomic<T> API). It is therefore possible for this implementation to generate behaviours never observable when the
 //! same program is compiled and run natively. Unfortunately, no literature exists at the time of writing which proposes
 //! an implementable and C++20-compatible relaxed memory model that supports all atomic operation existing in Rust. The closest one is
-//! A Promising Semantics for Relaxed-Memory Concurrency by Jeehoon Kang et al. (https://www.cs.tau.ac.il/~orilahav/papers/popl17.pdf)
+//! A Promising Semantics for Relaxed-Memory Concurrency by Jeehoon Kang et al. (<https://www.cs.tau.ac.il/~orilahav/papers/popl17.pdf>)
 //! However, this model lacks SC accesses and is therefore unusable by Miri (SC accesses are everywhere in library code).
 //!
 //! If you find anything that proposes a relaxed memory model that is C++20-consistent, supports all orderings Rust's atomic accesses
 //! and fences accept, and is implementable (with operational semanitcs), please open a GitHub issue!
 //!
 //! One characteristic of this implementation, in contrast to some other notable operational models such as ones proposed in
-//! Taming Release-Acquire Consistency by Ori Lahav et al. (https://plv.mpi-sws.org/sra/paper.pdf) or Promising Semantics noted above,
+//! Taming Release-Acquire Consistency by Ori Lahav et al. (<https://plv.mpi-sws.org/sra/paper.pdf>) or Promising Semantics noted above,
 //! is that this implementation does not require each thread to hold an isolated view of the entire memory. Here, store buffers are per-location
 //! and shared across all threads. This is more memory efficient but does require store elements (representing writes to a location) to record
 //! information about reads, whereas in the other two models it is the other way round: reads points to the write it got its value from.
@@ -38,7 +38,7 @@
 //! on the next non-atomic or imperfectly overlapping atomic access to that region.
 //! These lazy (de)allocations happen in memory_accessed() on non-atomic accesses, and
 //! get_or_create_store_buffer() on atomic accesses. This mostly works well, but it does
-//! lead to some issues (https://github.com/rust-lang/miri/issues/2164).
+//! lead to some issues (<https://github.com/rust-lang/miri/issues/2164>).
 //!
 //! One consequence of this difference is that safe/sound Rust allows for more operations on atomic locations
 //! than the C++20 atomic API was intended to allow, such as non-atomically accessing

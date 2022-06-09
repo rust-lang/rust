@@ -87,7 +87,7 @@ jobs:
         run: bash ./ci.sh
 
   clippy:
-    name: clippy
+    name: clippy + rustdoc
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -102,6 +102,8 @@ jobs:
       #  run: cargo clippy --manifest-path ui_test/Cargo.toml --all-targets -- -D warnings
       - name: Clippy (cargo-miri)
         run: cargo clippy --manifest-path cargo-miri/Cargo.toml --all-targets -- -D warnings
+      - name: Rustdoc
+        run: RUSTDOCFLAGS="-Dwarnings" cargo doc --document-private-items
 
   fmt:
     name: formatting (ignored by bors)
