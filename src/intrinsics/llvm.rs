@@ -10,10 +10,9 @@ pub(crate) fn codegen_llvm_intrinsic_call<'tcx>(
     intrinsic: &str,
     _substs: SubstsRef<'tcx>,
     args: &[mir::Operand<'tcx>],
-    destination: Option<(CPlace<'tcx>, BasicBlock)>,
+    ret: CPlace<'tcx>,
+    target: Option<BasicBlock>,
 ) {
-    let ret = destination.unwrap().0;
-
     intrinsic_match! {
         fx, intrinsic, args,
         _ => {
@@ -126,7 +125,7 @@ pub(crate) fn codegen_llvm_intrinsic_call<'tcx>(
         };
     }
 
-    let dest = destination.expect("all llvm intrinsics used by stdlib should return").1;
+    let dest = target.expect("all llvm intrinsics used by stdlib should return");
     let ret_block = fx.get_block(dest);
     fx.bcx.ins().jump(ret_block, &[]);
 }
