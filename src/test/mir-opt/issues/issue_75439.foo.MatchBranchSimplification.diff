@@ -10,9 +10,9 @@
       let mut _6: u32;                     // in scope 0 at $DIR/issue-75439.rs:10:33: 10:35
       scope 1 {
           debug dwords => _2;              // in scope 1 at $DIR/issue-75439.rs:7:9: 7:15
-          let _4: u32;                     // in scope 1 at $DIR/issue-75439.rs:9:27: 9:29
           scope 3 {
               debug ip => _4;              // in scope 3 at $DIR/issue-75439.rs:9:27: 9:29
+              let _4: u32;                 // in scope 3 at $DIR/issue-75439.rs:9:27: 9:29
           }
           scope 4 {
           }
@@ -32,15 +32,15 @@
   
       bb1: {
           StorageDead(_3);                 // scope 2 at $DIR/issue-75439.rs:7:52: 7:53
-          switchInt(_2[0 of 4]) -> [0_u32: bb2, otherwise: bb8]; // scope 1 at $DIR/issue-75439.rs:9:12: 9:30
+          switchInt(_2[0 of 4]) -> [0_u32: bb2, otherwise: bb8]; // scope 3 at $DIR/issue-75439.rs:9:12: 9:30
       }
   
       bb2: {
-          switchInt(_2[1 of 4]) -> [0_u32: bb3, otherwise: bb8]; // scope 1 at $DIR/issue-75439.rs:9:12: 9:30
+          switchInt(_2[1 of 4]) -> [0_u32: bb3, otherwise: bb8]; // scope 3 at $DIR/issue-75439.rs:9:12: 9:30
       }
   
       bb3: {
-          switchInt(_2[2 of 4]) -> [0_u32: bb5, 4294901760_u32: bb6, otherwise: bb8]; // scope 1 at $DIR/issue-75439.rs:9:12: 9:30
+          switchInt(_2[2 of 4]) -> [0_u32: bb5, 4294901760_u32: bb6, otherwise: bb8]; // scope 3 at $DIR/issue-75439.rs:9:12: 9:30
       }
   
       bb4: {
@@ -54,15 +54,15 @@
       }
   
       bb5: {
-          StorageLive(_4);                 // scope 1 at $DIR/issue-75439.rs:9:27: 9:29
-          _4 = _2[3 of 4];                 // scope 1 at $DIR/issue-75439.rs:9:27: 9:29
-          goto -> bb4;                     // scope 1 at $DIR/issue-75439.rs:9:12: 9:30
+          StorageLive(_4);                 // scope 3 at $DIR/issue-75439.rs:9:27: 9:29
+          _4 = _2[3 of 4];                 // scope 3 at $DIR/issue-75439.rs:9:27: 9:29
+          goto -> bb4;                     // scope 3 at $DIR/issue-75439.rs:9:12: 9:30
       }
   
       bb6: {
-          StorageLive(_4);                 // scope 1 at $DIR/issue-75439.rs:9:27: 9:29
-          _4 = _2[3 of 4];                 // scope 1 at $DIR/issue-75439.rs:9:27: 9:29
-          goto -> bb4;                     // scope 1 at $DIR/issue-75439.rs:9:12: 9:30
+          StorageLive(_4);                 // scope 3 at $DIR/issue-75439.rs:9:27: 9:29
+          _4 = _2[3 of 4];                 // scope 3 at $DIR/issue-75439.rs:9:27: 9:29
+          goto -> bb4;                     // scope 3 at $DIR/issue-75439.rs:9:12: 9:30
       }
   
       bb7: {

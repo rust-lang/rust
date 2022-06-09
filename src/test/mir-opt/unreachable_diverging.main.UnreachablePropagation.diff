@@ -11,31 +11,31 @@
       let mut _7: !;                       // in scope 0 at $DIR/unreachable_diverging.rs:18:9: 18:22
       scope 1 {
           debug x => _1;                   // in scope 1 at $DIR/unreachable_diverging.rs:13:9: 13:10
-          let _4: Empty;                   // in scope 1 at $DIR/unreachable_diverging.rs:14:17: 14:21
           scope 2 {
               debug bomb => _4;            // in scope 2 at $DIR/unreachable_diverging.rs:14:17: 14:21
+              let _4: Empty;               // in scope 2 at $DIR/unreachable_diverging.rs:14:17: 14:21
           }
       }
   
       bb0: {
           StorageLive(_1);                 // scope 0 at $DIR/unreachable_diverging.rs:13:9: 13:10
           _1 = const true;                 // scope 0 at $DIR/unreachable_diverging.rs:13:13: 13:17
-          StorageLive(_2);                 // scope 1 at $DIR/unreachable_diverging.rs:14:25: 14:32
-          _2 = empty() -> bb1;             // scope 1 at $DIR/unreachable_diverging.rs:14:25: 14:32
+          StorageLive(_2);                 // scope 2 at $DIR/unreachable_diverging.rs:14:25: 14:32
+          _2 = empty() -> bb1;             // scope 2 at $DIR/unreachable_diverging.rs:14:25: 14:32
                                            // mir::Constant
                                            // + span: $DIR/unreachable_diverging.rs:14:25: 14:30
                                            // + literal: Const { ty: fn() -> Option<Empty> {empty}, val: Value(Scalar(<ZST>)) }
       }
   
       bb1: {
-          _3 = discriminant(_2);           // scope 1 at $DIR/unreachable_diverging.rs:14:12: 14:22
--         switchInt(move _3) -> [1_isize: bb2, otherwise: bb6]; // scope 1 at $DIR/unreachable_diverging.rs:14:12: 14:22
-+         switchInt(move _3) -> [1_isize: bb2, otherwise: bb5]; // scope 1 at $DIR/unreachable_diverging.rs:14:12: 14:22
+          _3 = discriminant(_2);           // scope 2 at $DIR/unreachable_diverging.rs:14:12: 14:22
+-         switchInt(move _3) -> [1_isize: bb2, otherwise: bb6]; // scope 2 at $DIR/unreachable_diverging.rs:14:12: 14:22
++         switchInt(move _3) -> [1_isize: bb2, otherwise: bb5]; // scope 2 at $DIR/unreachable_diverging.rs:14:12: 14:22
       }
   
       bb2: {
-          StorageLive(_4);                 // scope 1 at $DIR/unreachable_diverging.rs:14:17: 14:21
-          _4 = move ((_2 as Some).0: Empty); // scope 1 at $DIR/unreachable_diverging.rs:14:17: 14:21
+          StorageLive(_4);                 // scope 2 at $DIR/unreachable_diverging.rs:14:17: 14:21
+          _4 = move ((_2 as Some).0: Empty); // scope 2 at $DIR/unreachable_diverging.rs:14:17: 14:21
           StorageLive(_5);                 // scope 1 at $DIR/unreachable_diverging.rs:15:9: 17:10
           StorageLive(_6);                 // scope 1 at $DIR/unreachable_diverging.rs:15:12: 15:13
           _6 = _1;                         // scope 1 at $DIR/unreachable_diverging.rs:15:12: 15:13
