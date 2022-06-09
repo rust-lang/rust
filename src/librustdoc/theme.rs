@@ -185,6 +185,7 @@ fn build_rule(v: &[u8], positions: &[usize]) -> String {
             .intersperse(" ")
             .collect::<String>(),
     )
+    .map(|css| css.to_string())
     .unwrap_or_else(|_| String::new())
 }
 
