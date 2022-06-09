@@ -102,7 +102,7 @@ fn check_iter(
     if_chain! {
         if let hir::ExprKind::MethodCall(_, [filter_expr], _) = &target_expr.kind;
         if let Some(copied_def_id) = cx.typeck_results().type_dependent_def_id(target_expr.hir_id);
-        if match_def_path(cx, copied_def_id, &paths::CORE_ITER_COPIED);
+        if match_def_path(cx, copied_def_id, &paths::CORE_ITER_COPIED) || match_def_path(cx, copied_def_id, &paths::CORE_ITER_CLONED);
 
         if let hir::ExprKind::MethodCall(_, [iter_expr, _], _) = &filter_expr.kind;
         if let Some(filter_def_id) = cx.typeck_results().type_dependent_def_id(filter_expr.hir_id);

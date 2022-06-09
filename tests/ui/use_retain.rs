@@ -25,10 +25,12 @@ fn binary_heap_retain() {
     let mut heap = BinaryHeap::from([1, 2, 3]);
     heap = heap.into_iter().filter(|x| x % 2 == 0).collect();
     heap = heap.iter().filter(|&x| x % 2 == 0).copied().collect();
+    heap = heap.iter().filter(|&x| x % 2 == 0).cloned().collect();
 
     // Do not lint, because type conversion is performed
     heap = heap.into_iter().filter(|x| x % 2 == 0).collect::<BinaryHeap<i8>>();
     heap = heap.iter().filter(|&x| x % 2 == 0).copied().collect::<BinaryHeap<i8>>();
+    heap = heap.iter().filter(|&x| x % 2 == 0).cloned().collect::<BinaryHeap<i8>>();
 
     // Do not lint, because this expression is not assign.
     let mut bar: BinaryHeap<i8> = heap.iter().filter(|&x| x % 2 == 0).copied().collect();
@@ -67,6 +69,7 @@ fn btree_set_retain() {
 
     // Do lint.
     btree_set = btree_set.iter().filter(|&x| x % 2 == 0).copied().collect();
+    btree_set = btree_set.iter().filter(|&x| x % 2 == 0).cloned().collect();
     btree_set = btree_set.into_iter().filter(|x| x % 2 == 0).collect();
 
     // Do not lint, because type conversion is performed
@@ -74,6 +77,12 @@ fn btree_set_retain() {
         .iter()
         .filter(|&x| x % 2 == 0)
         .copied()
+        .collect::<BTreeSet<i8>>();
+
+    btree_set = btree_set
+        .iter()
+        .filter(|&x| x % 2 == 0)
+        .cloned()
         .collect::<BTreeSet<i8>>();
 
     btree_set = btree_set.into_iter().filter(|x| x % 2 == 0).collect::<BTreeSet<i8>>();
@@ -84,6 +93,7 @@ fn btree_set_retain() {
 
     // Do not lint, because it is an assignment to a different variable.
     bar = foobar.iter().filter(|&x| x % 2 == 0).copied().collect();
+    bar = foobar.iter().filter(|&x| x % 2 == 0).cloned().collect();
     bar = foobar.into_iter().filter(|x| x % 2 == 0).collect();
 }
 
@@ -115,6 +125,7 @@ fn hash_set_retain() {
     // Do lint.
     hash_set = hash_set.into_iter().filter(|x| x % 2 == 0).collect();
     hash_set = hash_set.iter().filter(|&x| x % 2 == 0).copied().collect();
+    hash_set = hash_set.iter().filter(|&x| x % 2 == 0).cloned().collect();
 
     // Do not lint, because type conversion is performed
     hash_set = hash_set.into_iter().filter(|x| x % 2 == 0).collect::<HashSet<i8>>();
@@ -124,12 +135,19 @@ fn hash_set_retain() {
         .copied()
         .collect::<HashSet<i8>>();
 
+    hash_set = hash_set
+        .iter()
+        .filter(|&x| x % 2 == 0)
+        .cloned()
+        .collect::<HashSet<i8>>();
+
     // Do not lint, because this expression is not assign.
     let mut bar: HashSet<i8> = hash_set.iter().filter(|&x| x % 2 == 0).copied().collect();
     let mut foobar: HashSet<i8> = hash_set.into_iter().filter(|x| x % 2 == 0).collect();
 
     // Do not lint, because it is an assignment to a different variable.
     bar = foobar.iter().filter(|&x| x % 2 == 0).copied().collect();
+    bar = foobar.iter().filter(|&x| x % 2 == 0).cloned().collect();
     bar = foobar.into_iter().filter(|&x| x % 2 == 0).collect();
 }
 
@@ -149,11 +167,13 @@ fn vec_retain() {
     let mut vec = vec![0, 1, 2];
     // Do lint.
     vec = vec.iter().filter(|&x| x % 2 == 0).copied().collect();
+    vec = vec.iter().filter(|&x| x % 2 == 0).cloned().collect();
     vec = vec.into_iter().filter(|x| x % 2 == 0).collect();
 
     // Do not lint, because type conversion is performed
     vec = vec.into_iter().filter(|x| x % 2 == 0).collect::<Vec<i8>>();
     vec = vec.iter().filter(|&x| x % 2 == 0).copied().collect::<Vec<i8>>();
+    vec = vec.iter().filter(|&x| x % 2 == 0).cloned().collect::<Vec<i8>>();
 
     // Do not lint, because this expression is not assign.
     let mut bar: Vec<i8> = vec.iter().filter(|&x| x % 2 == 0).copied().collect();
@@ -161,6 +181,7 @@ fn vec_retain() {
 
     // Do not lint, because it is an assignment to a different variable.
     bar = foobar.iter().filter(|&x| x % 2 == 0).copied().collect();
+    bar = foobar.iter().filter(|&x| x % 2 == 0).cloned().collect();
     bar = foobar.into_iter().filter(|x| x % 2 == 0).collect();
 }
 
@@ -170,6 +191,7 @@ fn vec_queue_retain() {
 
     // Do lint.
     vec_deque = vec_deque.iter().filter(|&x| x % 2 == 0).copied().collect();
+    vec_deque = vec_deque.iter().filter(|&x| x % 2 == 0).cloned().collect();
     vec_deque = vec_deque.into_iter().filter(|x| x % 2 == 0).collect();
 
     // Do not lint, because type conversion is performed
@@ -177,6 +199,11 @@ fn vec_queue_retain() {
         .iter()
         .filter(|&x| x % 2 == 0)
         .copied()
+        .collect::<VecDeque<i8>>();
+    vec_deque = vec_deque
+        .iter()
+        .filter(|&x| x % 2 == 0)
+        .cloned()
         .collect::<VecDeque<i8>>();
     vec_deque = vec_deque.into_iter().filter(|x| x % 2 == 0).collect::<VecDeque<i8>>();
 
@@ -186,5 +213,6 @@ fn vec_queue_retain() {
 
     // Do not lint, because it is an assignment to a different variable.
     bar = foobar.iter().filter(|&x| x % 2 == 0).copied().collect();
+    bar = foobar.iter().filter(|&x| x % 2 == 0).cloned().collect();
     bar = foobar.into_iter().filter(|x| x % 2 == 0).collect();
 }

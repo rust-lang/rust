@@ -25,6 +25,7 @@ pub const BTREESET_ITER: [&str; 6] = ["alloc", "collections", "btree", "set", "B
 pub const CLONE_TRAIT_METHOD: [&str; 4] = ["core", "clone", "Clone", "clone"];
 pub const COW: [&str; 3] = ["alloc", "borrow", "Cow"];
 pub const CORE_ITER_COLLECT: [&str; 6] = ["core", "iter", "traits", "iterator", "Iterator", "collect"];
+pub const CORE_ITER_CLONED: [&str; 6] = ["core", "iter", "traits", "iterator", "Iterator", "cloned"];
 pub const CORE_ITER_COPIED: [&str; 6] = ["core", "iter", "traits", "iterator", "Iterator", "copied"];
 pub const CORE_ITER_FILTER: [&str; 6] = ["core", "iter", "traits", "iterator", "Iterator", "filter"];
 pub const CORE_ITER_INTO_ITER: [&str; 6] = ["core", "iter", "traits", "collect", "IntoIterator", "into_iter"];
