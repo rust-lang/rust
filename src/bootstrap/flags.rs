@@ -210,7 +210,7 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
         let j_msg = format!(
             "number of jobs to run in parallel; \
              defaults to {} (this host's logical CPU count)",
-            std::thread::available_parallelism().map_or(1, std::num::NonZeroUsize::get)
+            num_cpus::get()
         );
         opts.optopt("j", "jobs", &j_msg, "JOBS");
         opts.optflag("h", "help", "print this help message");
