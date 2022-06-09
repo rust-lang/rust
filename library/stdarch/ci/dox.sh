@@ -22,9 +22,6 @@ dox() {
   rm -rf "target/doc/${arch}"
   mkdir "target/doc/${arch}"
 
-  export RUSTFLAGS="--cfg core_arch_docs"
-  export RUSTDOCFLAGS="--cfg core_arch_docs"
-
   cargo build --verbose --target "${target}" --manifest-path crates/core_arch/Cargo.toml
   cargo build --verbose --target "${target}" --manifest-path crates/std_detect/Cargo.toml
 
@@ -32,16 +29,14 @@ dox() {
           -o "target/doc/${arch}" crates/core_arch/src/lib.rs \
           --edition=2018 \
           --crate-name core_arch \
-          --library-path "target/${target}/debug/deps" \
-          --cfg core_arch_docs
+          --library-path "target/${target}/debug/deps"
   rustdoc --verbose --target "${target}" \
           -o "target/doc/${arch}" crates/std_detect/src/lib.rs \
           --edition=2018 \
           --crate-name std_detect \
           --library-path "target/${target}/debug/deps" \
           --extern cfg_if="$(ls target/"${target}"/debug/deps/libcfg_if-*.rlib)" \
-          --extern libc="$(ls target/"${target}"/debug/deps/liblibc-*.rlib)" \
-          --cfg core_arch_docs
+          --extern libc="$(ls target/"${target}"/debug/deps/liblibc-*.rlib)"
 }
 
 dox i686 i686-unknown-linux-gnu

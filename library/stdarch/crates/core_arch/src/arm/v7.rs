@@ -76,7 +76,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(dont_compile_me)] // FIXME need to add `v7` upstream in rustc
     fn _rbit_u32() {
         unsafe {
             assert_eq!(
