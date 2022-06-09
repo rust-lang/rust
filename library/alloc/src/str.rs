@@ -271,6 +271,7 @@ impl str {
     /// let s = "this is old";
     ///
     /// assert_eq!("this is new", s.replace("old", "new"));
+    /// assert_eq!("than an old", s.replace("is", "an"));
     /// ```
     ///
     /// When the pattern doesn't match:
