@@ -18,8 +18,6 @@ pub fn target() -> Target {
         LinkerFlavor::Em,
         vec![
             "-s".into(),
-            "ERROR_ON_UNDEFINED_SYMBOLS=1".into(),
-            "-s".into(),
             "ABORTING_MALLOC=0".into(),
             "-Wl,--fatal-warnings".into(),
         ],
