@@ -1571,7 +1571,7 @@ fn _assert_sync_and_send() {
 ///
 /// On Linux:
 /// - It may overcount the amount of parallelism available when limited by a
-///   process-wide affinity mask or cgroup quotas and cgroup2 fs or `sched_getaffinity()` can't be
+///   process-wide affinity mask or cgroup quotas and `sched_getaffinity()` or cgroup fs can't be
 ///   queried, e.g. due to sandboxing.
 /// - It may undercount the amount of parallelism if the current thread's affinity mask
 ///   does not reflect the process' cpuset, e.g. due to pinned threads.

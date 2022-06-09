@@ -274,6 +274,7 @@
 #![feature(hasher_prefixfree_extras)]
 #![feature(hashmap_internals)]
 #![feature(int_error_internals)]
+#![feature(is_some_with)]
 #![feature(maybe_uninit_slice)]
 #![feature(maybe_uninit_write_slice)]
 #![feature(mixed_integer_ops)]

@@ -285,7 +285,7 @@ pub fn available_parallelism() -> io::Result<NonZeroUsize> {
         ))] {
             #[cfg(any(target_os = "android", target_os = "linux"))]
             {
-                let quota = cgroup2_quota().max(1);
+                let quota = cgroups::quota().max(1);
                 let mut set: libc::cpu_set_t = unsafe { mem::zeroed() };
                 unsafe {
                     if libc::sched_getaffinity(0, mem::size_of::<libc::cpu_set_t>(), &mut set) == 0 {
@@ -379,49 +379,77 @@ pub fn available_parallelism() -> io::Result<NonZeroUsize> {
     }
 }
 
-/// Returns cgroup CPU quota in core-equivalents, rounded down, or usize::MAX if the quota cannot
-/// be determined or is not set.
 #[cfg(any(target_os = "android", target_os = "linux"))]
-fn cgroup2_quota() -> usize {
+mod cgroups {
     use crate::ffi::OsString;
     use crate::fs::{try_exists, File};
     use crate::io::Read;
     use crate::os::unix::ffi::OsStringExt;
     use crate::path::PathBuf;
+    use crate::str::from_utf8;
 
-    let mut quota = usize::MAX;
-    if cfg!(miri) {
-        // Attempting to open a file fails under default flags due to isolation.
-        // And Miri does not have parallelism anyway.
-        return quota;
+    enum Cgroup {
+        V1,
+        V2,
     }
 
-    let _: Option<()> = try {
-        let mut buf = Vec::with_capacity(128);
-        // find our place in the cgroup hierarchy
-        File::open("/proc/self/cgroup").ok()?.read_to_end(&mut buf).ok()?;
-        let cgroup_path = buf
-            .split(|&c| c == b'\n')
-            .filter_map(|line| {
-                let mut fields = line.splitn(3, |&c| c == b':');
-                // expect cgroupv2 which has an empty 2nd field
-                if fields.nth(1) != Some(b"") {
-                    return None;
-                }
-                let path = fields.last()?;
-                // skip leading slash
-                Some(path[1..].to_owned())
-            })
-            .next()?;
-        let cgroup_path = PathBuf::from(OsString::from_vec(cgroup_path));
+    /// Returns cgroup CPU quota in core-equivalents, rounded down, or usize::MAX if the quota cannot
+    /// be determined or is not set.
+    pub(super) fn quota() -> usize {
+        let mut quota = usize::MAX;
+        if cfg!(miri) {
+            // Attempting to open a file fails under default flags due to isolation.
+            // And Miri does not have parallelism anyway.
+            return quota;
+        }
+
+        let _: Option<()> = try {
+            let mut buf = Vec::with_capacity(128);
+            // find our place in the cgroup hierarchy
+            File::open("/proc/self/cgroup").ok()?.read_to_end(&mut buf).ok()?;
+            let (cgroup_path, version) = buf
+                .split(|&c| c == b'\n')
+                .filter_map(|line| {
+                    let mut fields = line.splitn(3, |&c| c == b':');
+                    // 2nd field is a list of controllers for v1 or empty for v2
+                    let version = match fields.nth(1) {
+                        Some(b"") => Some(Cgroup::V2),
+                        Some(controllers)
+                            if from_utf8(controllers)
+                                .is_ok_and(|c| c.split(",").any(|c| c == "cpu")) =>
+                        {
+                            Some(Cgroup::V1)
+                        }
+                        _ => None,
+                    }?;
+
+                    let path = fields.last()?;
+                    // skip leading slash
+                    Some((path[1..].to_owned(), version))
+                })
+                .next()?;
+            let cgroup_path = PathBuf::from(OsString::from_vec(cgroup_path));
+
+            quota = match version {
+                Cgroup::V1 => quota_v1(cgroup_path),
+                Cgroup::V2 => quota_v2(cgroup_path),
+            };
+        };
+
+        quota
+    }
+
+    fn quota_v2(group_path: PathBuf) -> usize {
+        let mut quota = usize::MAX;
 
         let mut path = PathBuf::with_capacity(128);
         let mut read_buf = String::with_capacity(20);
 
+        // standard mount location defined in file-hierarchy(7) manpage
         let cgroup_mount = "/sys/fs/cgroup";
 
         path.push(cgroup_mount);
-        path.push(&cgroup_path);
+        path.push(&group_path);
 
         path.push("cgroup.controllers");
 
@@ -432,30 +460,81 @@ fn cgroup2_quota() -> usize {
 
         path.pop();
 
-        while path.starts_with(cgroup_mount) {
-            path.push("cpu.max");
+        let _: Option<()> = try {
+            while path.starts_with(cgroup_mount) {
+                path.push("cpu.max");
 
-            read_buf.clear();
+                read_buf.clear();
 
-            if File::open(&path).and_then(|mut f| f.read_to_string(&mut read_buf)).is_ok() {
-                let raw_quota = read_buf.lines().next()?;
-                let mut raw_quota = raw_quota.split(' ');
-                let limit = raw_quota.next()?;
-                let period = raw_quota.next()?;
-                match (limit.parse::<usize>(), period.parse::<usize>()) {
-                    (Ok(limit), Ok(period)) => {
-                        quota = quota.min(limit / period);
+                if File::open(&path).and_then(|mut f| f.read_to_string(&mut read_buf)).is_ok() {
+                    let raw_quota = read_buf.lines().next()?;
+                    let mut raw_quota = raw_quota.split(' ');
+                    let limit = raw_quota.next()?;
+                    let period = raw_quota.next()?;
+                    match (limit.parse::<usize>(), period.parse::<usize>()) {
+                        (Ok(limit), Ok(period)) => {
+                            quota = quota.min(limit / period);
+                        }
+                        _ => {}
                     }
-                    _ => {}
                 }
+
+                path.pop(); // pop filename
+                path.pop(); // pop dir
+            }
+        };
+
+        quota
+    }
+
+    fn quota_v1(group_path: PathBuf) -> usize {
+        let mut quota = usize::MAX;
+        let mut path = PathBuf::with_capacity(128);
+        let mut read_buf = String::with_capacity(20);
+
+        // Hardcode commonly used locations mentioned in the cgroups(7) manpage
+        // since scanning mountinfo can be expensive on some systems.
+        // This isn't exactly standardized since cgroupv1 was meant to allow flexibly
+        // mixing and matching controller hierarchies.
+        let mounts = ["/sys/fs/cgroup/cpu", "/sys/fs/cgroup/cpu,cpuacct"];
+
+        for mount in mounts {
+            path.clear();
+            path.push(mount);
+            path.push(&group_path);
+
+            // skip if we guessed the mount incorrectly
+            if matches!(try_exists(&path), Err(_) | Ok(false)) {
+                continue;
             }
 
-            path.pop(); // pop filename
-            path.pop(); // pop dir
-        }
-    };
+            while path.starts_with(mount) {
+                let mut parse_file = |name| {
+                    path.push(name);
+                    read_buf.clear();
 
-    quota
+                    let mut f = File::open(&path).ok()?;
+                    f.read_to_string(&mut read_buf).ok()?;
+                    let parsed = read_buf.trim().parse::<usize>().ok()?;
+
+                    path.pop();
+                    Some(parsed)
+                };
+
+                let limit = parse_file("cpu.cfs_quota_us");
+                let period = parse_file("cpu.cfs_period_us");
+
+                match (limit, period) {
+                    (Some(limit), Some(period)) => quota = quota.min(limit / period),
+                    _ => {}
+                }
+
+                path.pop();
+            }
+        }
+
+        quota
+    }
 }
 
 #[cfg(all(
