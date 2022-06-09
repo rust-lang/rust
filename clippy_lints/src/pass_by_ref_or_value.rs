@@ -57,12 +57,11 @@ declare_clippy_lint! {
     /// ### Example
     ///
     /// ```rust
-    /// // Bad
     /// fn foo(v: &u32) {}
     /// ```
     ///
+    /// Use instead:
     /// ```rust
-    /// // Better
     /// fn foo(v: u32) {}
     /// ```
     #[clippy::version = "pre 1.29.0"]
@@ -89,14 +88,13 @@ declare_clippy_lint! {
     /// #[derive(Clone, Copy)]
     /// struct TooLarge([u8; 2048]);
     ///
-    /// // Bad
     /// fn foo(v: TooLarge) {}
     /// ```
-    /// ```rust
-    /// #[derive(Clone, Copy)]
-    /// struct TooLarge([u8; 2048]);
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
+    /// # #[derive(Clone, Copy)]
+    /// # struct TooLarge([u8; 2048]);
     /// fn foo(v: &TooLarge) {}
     /// ```
     #[clippy::version = "1.49.0"]

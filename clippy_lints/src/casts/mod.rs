@@ -219,13 +219,14 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// // Bad
     /// fn fun() -> i32 { 1 }
-    /// let a = fun as i64;
+    /// let _ = fun as i64;
+    /// ```
     ///
-    /// // Good
-    /// fn fun2() -> i32 { 1 }
-    /// let a = fun2 as usize;
+    /// Use instead:
+    /// ```rust
+    /// # fn fun() -> i32 { 1 }
+    /// let _ = fun as usize;
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub FN_TO_NUMERIC_CAST,
@@ -245,17 +246,19 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// // Bad
     /// fn fn1() -> i16 {
     ///     1
     /// };
     /// let _ = fn1 as i32;
+    /// ```
     ///
-    /// // Better: Cast to usize first, then comment with the reason for the truncation
-    /// fn fn2() -> i16 {
+    /// Use instead:
+    /// ```rust
+    /// // Cast to usize first, then comment with the reason for the truncation
+    /// fn fn1() -> i16 {
     ///     1
     /// };
-    /// let fn_ptr = fn2 as usize;
+    /// let fn_ptr = fn1 as usize;
     /// let fn_ptr_truncated = fn_ptr as i32;
     /// ```
     #[clippy::version = "pre 1.29.0"]
@@ -277,19 +280,24 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// // Bad: fn1 is cast as `usize`
+    /// // fn1 is cast as `usize`
     /// fn fn1() -> u16 {
     ///     1
     /// };
     /// let _ = fn1 as usize;
+    /// ```
     ///
-    /// // Good: maybe you intended to call the function?
+    /// Use instead:
+    /// ```rust
+    /// // maybe you intended to call the function?
     /// fn fn2() -> u16 {
     ///     1
     /// };
     /// let _ = fn2() as usize;
     ///
-    /// // Good: maybe you intended to cast it to a function type?
+    /// // or
+    ///
+    /// // maybe you intended to cast it to a function type?
     /// fn fn3() -> u16 {
     ///     1
     /// }

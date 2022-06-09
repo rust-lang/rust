@@ -58,12 +58,14 @@ declare_clippy_lint! {
     /// ```rust
     /// use std::sync::atomic::{AtomicUsize, Ordering::SeqCst};
     ///
-    /// // Bad.
     /// const CONST_ATOM: AtomicUsize = AtomicUsize::new(12);
     /// CONST_ATOM.store(6, SeqCst); // the content of the atomic is unchanged
     /// assert_eq!(CONST_ATOM.load(SeqCst), 12); // because the CONST_ATOM in these lines are distinct
+    /// ```
     ///
-    /// // Good.
+    /// Use instead:
+    /// ```rust
+    /// # use std::sync::atomic::{AtomicUsize, Ordering::SeqCst};
     /// static STATIC_ATOM: AtomicUsize = AtomicUsize::new(15);
     /// STATIC_ATOM.store(9, SeqCst);
     /// assert_eq!(STATIC_ATOM.load(SeqCst), 9); // use a `static` item to refer to the same instance
@@ -104,11 +106,15 @@ declare_clippy_lint! {
     /// use std::sync::atomic::{AtomicUsize, Ordering::SeqCst};
     /// const CONST_ATOM: AtomicUsize = AtomicUsize::new(12);
     ///
-    /// // Bad.
     /// CONST_ATOM.store(6, SeqCst); // the content of the atomic is unchanged
     /// assert_eq!(CONST_ATOM.load(SeqCst), 12); // because the CONST_ATOM in these lines are distinct
+    /// ```
     ///
-    /// // Good.
+    /// Use instead:
+    /// ```rust
+    /// use std::sync::atomic::{AtomicUsize, Ordering::SeqCst};
+    /// const CONST_ATOM: AtomicUsize = AtomicUsize::new(12);
+    ///
     /// static STATIC_ATOM: AtomicUsize = CONST_ATOM;
     /// STATIC_ATOM.store(9, SeqCst);
     /// assert_eq!(STATIC_ATOM.load(SeqCst), 9); // use a `static` item to refer to the same instance

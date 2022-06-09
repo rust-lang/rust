@@ -30,13 +30,14 @@ declare_clippy_lint! {
     /// let a: &mut String = &mut String::from("foo");
     /// let b: &str = a.deref();
     /// ```
-    /// Could be written as:
+    ///
+    /// Use instead:
     /// ```rust
     /// let a: &mut String = &mut String::from("foo");
     /// let b = &*a;
     /// ```
     ///
-    /// This lint excludes
+    /// This lint excludes:
     /// ```rust,ignore
     /// let _ = d.unwrap().deref();
     /// ```
@@ -59,11 +60,13 @@ declare_clippy_lint! {
     /// ```rust
     /// fn fun(_a: &i32) {}
     ///
-    /// // Bad
     /// let x: &i32 = &&&&&&5;
     /// fun(&x);
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
+    /// # fn fun(_a: &i32) {}
     /// let x: &i32 = &5;
     /// fun(x);
     /// ```
@@ -82,13 +85,14 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// // Bad
     /// let x = Some("");
     /// if let Some(ref x) = x {
     ///     // use `x` here
     /// }
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
     /// let x = Some("");
     /// if let Some(x) = x {
     ///     // use `&x` here

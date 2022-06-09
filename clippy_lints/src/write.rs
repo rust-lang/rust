@@ -25,10 +25,11 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// // Bad
     /// println!("");
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
     /// println!();
     /// ```
     #[clippy::version = "pre 1.29.0"]
@@ -177,10 +178,13 @@ declare_clippy_lint! {
     /// ```rust
     /// # use std::fmt::Write;
     /// # let mut buf = String::new();
-    /// // Bad
     /// writeln!(buf, "");
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
+    /// # use std::fmt::Write;
+    /// # let mut buf = String::new();
     /// writeln!(buf);
     /// ```
     #[clippy::version = "pre 1.29.0"]
@@ -204,10 +208,14 @@ declare_clippy_lint! {
     /// # use std::fmt::Write;
     /// # let mut buf = String::new();
     /// # let name = "World";
-    /// // Bad
     /// write!(buf, "Hello {}!\n", name);
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
+    /// # use std::fmt::Write;
+    /// # let mut buf = String::new();
+    /// # let name = "World";
     /// writeln!(buf, "Hello {}!", name);
     /// ```
     #[clippy::version = "pre 1.29.0"]
@@ -233,10 +241,13 @@ declare_clippy_lint! {
     /// ```rust
     /// # use std::fmt::Write;
     /// # let mut buf = String::new();
-    /// // Bad
     /// writeln!(buf, "{}", "foo");
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
+    /// # use std::fmt::Write;
+    /// # let mut buf = String::new();
     /// writeln!(buf, "foo");
     /// ```
     #[clippy::version = "pre 1.29.0"]

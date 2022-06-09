@@ -89,12 +89,11 @@ declare_clippy_lint! {
     /// warning/error messages.
     ///
     /// ### Example
-    /// Bad:
     /// ```rust,ignore
     /// cx.span_lint(LINT_NAME, "message");
     /// ```
     ///
-    /// Good:
+    /// Use instead:
     /// ```rust,ignore
     /// utils::span_lint(cx, LINT_NAME, "message");
     /// ```
@@ -112,12 +111,11 @@ declare_clippy_lint! {
     /// `cx.outer_expn_data()` is faster and more concise.
     ///
     /// ### Example
-    /// Bad:
     /// ```rust,ignore
     /// expr.span.ctxt().outer().expn_data()
     /// ```
     ///
-    /// Good:
+    /// Use instead:
     /// ```rust,ignore
     /// expr.span.ctxt().outer_expn_data()
     /// ```
@@ -135,7 +133,6 @@ declare_clippy_lint! {
     /// ICE in large quantities can damage your teeth
     ///
     /// ### Example
-    /// Bad:
     /// ```rust,ignore
     /// 🍦🍦🍦🍦🍦
     /// ```
@@ -153,12 +150,11 @@ declare_clippy_lint! {
     /// Indicates that the lint is not finished.
     ///
     /// ### Example
-    /// Bad:
     /// ```rust,ignore
     /// declare_lint! { pub COOL_LINT, nursery, "default lint description" }
     /// ```
     ///
-    /// Good:
+    /// Use instead:
     /// ```rust,ignore
     /// declare_lint! { pub COOL_LINT, nursery, "a great new lint" }
     /// ```
@@ -183,7 +179,6 @@ declare_clippy_lint! {
     /// convenient, readable and less error prone.
     ///
     /// ### Example
-    /// Bad:
     /// ```rust,ignore
     /// span_lint_and_then(cx, TEST_LINT, expr.span, lint_msg, |diag| {
     ///     diag.span_suggestion(
@@ -207,7 +202,7 @@ declare_clippy_lint! {
     /// });
     /// ```
     ///
-    /// Good:
+    /// Use instead:
     /// ```rust,ignore
     /// span_lint_and_sugg(
     ///     cx,
@@ -237,12 +232,11 @@ declare_clippy_lint! {
     /// `utils::is_type_diagnostic_item()` does not require hardcoded paths.
     ///
     /// ### Example
-    /// Bad:
     /// ```rust,ignore
     /// utils::match_type(cx, ty, &paths::VEC)
     /// ```
     ///
-    /// Good:
+    /// Use instead:
     /// ```rust,ignore
     /// utils::is_type_diagnostic_item(cx, ty, sym::Vec)
     /// ```
@@ -273,12 +267,11 @@ declare_clippy_lint! {
     /// It's faster and easier to use the symbol constant.
     ///
     /// ### Example
-    /// Bad:
     /// ```rust,ignore
     /// let _ = sym!(f32);
     /// ```
     ///
-    /// Good:
+    /// Use instead:
     /// ```rust,ignore
     /// let _ = sym::f32;
     /// ```
@@ -295,12 +288,11 @@ declare_clippy_lint! {
     /// It's faster use symbols directly instead of strings.
     ///
     /// ### Example
-    /// Bad:
     /// ```rust,ignore
     /// symbol.as_str() == "clippy";
     /// ```
     ///
-    /// Good:
+    /// Use instead:
     /// ```rust,ignore
     /// symbol == sym::clippy;
     /// ```

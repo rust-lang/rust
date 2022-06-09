@@ -21,11 +21,12 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust,ignore
-    /// // Bad
     /// let a = f(*&mut b);
     /// let c = *&d;
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust,ignore
     /// let a = f(b);
     /// let c = d;
     /// ```

@@ -15,11 +15,12 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// // Bad
     /// let x = 3 / 2;
     /// println!("{}", x);
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
     /// let x = 3f32 / 2f32;
     /// println!("{}", x);
     /// ```

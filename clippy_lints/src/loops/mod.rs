@@ -42,7 +42,8 @@ declare_clippy_lint! {
     ///     dst[i + 64] = src[i];
     /// }
     /// ```
-    /// Could be written as:
+    ///
+    /// Use instead:
     /// ```rust
     /// # let src = vec![1];
     /// # let mut dst = vec![0; 65];
@@ -70,7 +71,8 @@ declare_clippy_lint! {
     ///     println!("{}", vec[i]);
     /// }
     /// ```
-    /// Could be written as:
+    ///
+    /// Use instead:
     /// ```rust
     /// let vec = vec!['a', 'b', 'c'];
     /// for i in vec {
@@ -103,7 +105,8 @@ declare_clippy_lint! {
     ///     // ..
     /// }
     /// ```
-    /// can be rewritten to
+    ///
+    /// Use instead:
     /// ```rust
     /// # let y = vec![1];
     /// for x in &y {
@@ -286,7 +289,8 @@ declare_clippy_lint! {
     ///     i += 1;
     /// }
     /// ```
-    /// Could be written as
+    ///
+    /// Use instead:
     /// ```rust
     /// # let v = vec![1];
     /// # fn bar(bar: usize, baz: usize) {}
@@ -473,7 +477,7 @@ declare_clippy_lint! {
     ///
     /// ### Why is this bad?
     /// This kind of operation can be expressed more succinctly with
-    /// `vec![item;SIZE]` or `vec.resize(NEW_SIZE, item)` and using these alternatives may also
+    /// `vec![item; SIZE]` or `vec.resize(NEW_SIZE, item)` and using these alternatives may also
     /// have better performance.
     ///
     /// ### Example
@@ -488,7 +492,8 @@ declare_clippy_lint! {
     ///     vec.push(item2);
     /// }
     /// ```
-    /// could be written as
+    ///
+    /// Use instead:
     /// ```rust
     /// let item1 = 2;
     /// let item2 = 3;
@@ -516,7 +521,8 @@ declare_clippy_lint! {
     ///     println!("{}", item);
     /// }
     /// ```
-    /// could be written as
+    ///
+    /// Use instead:
     /// ```rust
     /// let item1 = 2;
     /// let item = &item1;

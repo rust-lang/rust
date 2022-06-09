@@ -54,12 +54,11 @@ declare_clippy_lint! {
     /// API easier to use.
     ///
     /// ### Example
-    /// Bad:
     /// ```rust,ignore
     /// fn f(is_round: bool, is_hot: bool) { ... }
     /// ```
     ///
-    /// Good:
+    /// Use instead:
     /// ```rust,ignore
     /// enum Shape {
     ///     Round,

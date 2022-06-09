@@ -99,11 +99,12 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// // Bad
-    /// let bs = "a byte string".as_bytes();
+    /// let bstr = "a byte string".as_bytes();
+    /// ```
     ///
-    /// // Good
-    /// let bs = b"a byte string";
+    /// Use instead:
+    /// ```rust
+    /// let bstr = b"a byte string";
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub STRING_LIT_AS_BYTES,
@@ -223,11 +224,12 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// let _ = std::str::from_utf8(&"Hello World!".as_bytes()[6..11]).unwrap();
+    /// std::str::from_utf8(&"Hello World!".as_bytes()[6..11]).unwrap();
     /// ```
-    /// could be written as
+    ///
+    /// Use instead:
     /// ```rust
-    /// let _ = &"Hello World!"[6..11];
+    /// &"Hello World!"[6..11];
     /// ```
     #[clippy::version = "1.50.0"]
     pub STRING_FROM_UTF8_AS_BYTES,
