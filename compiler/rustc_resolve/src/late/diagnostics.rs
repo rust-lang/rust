@@ -250,25 +250,8 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         let code = source.error_code(res.is_some());
         let mut err =
             self.r.session.struct_span_err_with_code(base_error.span, &base_error.msg, code);
-        if let Some((trait_ref, self_ty)) =
-            self.diagnostic_metadata.currently_processing_impl_trait.clone()
-            && let TyKind::Path(_, self_ty_path) = &self_ty.kind
-            && let PathResult::Module(ModuleOrUniformRoot::Module(module)) = self.resolve_path(&Segment::from_path(self_ty_path), Some(TypeNS), None)
-            && let ModuleKind::Def(DefKind::Trait, ..) = module.kind
-            && trait_ref.path.span == span
-            && let PathSource::Trait(_) = source
-            && let Some(Res::Def(DefKind::Struct, _)) = res
-            && let Ok(self_ty_str) =
-                self.r.session.source_map().span_to_snippet(self_ty.span)
-            && let Ok(trait_ref_str) =
-                self.r.session.source_map().span_to_snippet(trait_ref.path.span)
-        {
-                err.multipart_suggestion(
-                    "consider swapping the struct and the trait",
-                    vec![(trait_ref.path.span, self_ty_str), (self_ty.span, trait_ref_str)],
-                    Applicability::MaybeIncorrect,
-                );
-        }
+
+        self.suggest_swapping_misplaced_self_ty_and_trait(&mut err, source, res, base_error.span);
 
         if let Some(sugg) = base_error.suggestion {
             err.span_suggestion_verbose(sugg.0, sugg.1, sugg.2, Applicability::MaybeIncorrect);
@@ -701,6 +684,35 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                     }
                 }
             }
+        }
+    }
+
+    fn suggest_swapping_misplaced_self_ty_and_trait(
+        &mut self,
+        err: &mut Diagnostic,
+        source: PathSource<'_>,
+        res: Option<Res>,
+        span: Span,
+    ) {
+        if let Some((trait_ref, self_ty)) =
+            self.diagnostic_metadata.currently_processing_impl_trait.clone()
+            && let TyKind::Path(_, self_ty_path) = &self_ty.kind
+            && let PathResult::Module(ModuleOrUniformRoot::Module(module)) =
+                self.resolve_path(&Segment::from_path(self_ty_path), Some(TypeNS), None)
+            && let ModuleKind::Def(DefKind::Trait, ..) = module.kind
+            && trait_ref.path.span == span
+            && let PathSource::Trait(_) = source
+            && let Some(Res::Def(DefKind::Struct | DefKind::Enum | DefKind::Union, _)) = res
+            && let Ok(self_ty_str) =
+                self.r.session.source_map().span_to_snippet(self_ty.span)
+            && let Ok(trait_ref_str) =
+                self.r.session.source_map().span_to_snippet(trait_ref.path.span)
+        {
+                err.multipart_suggestion(
+                    "`impl` items mention the trait being implemented first and the type it is being implemented for second",
+                    vec![(trait_ref.path.span, self_ty_str), (self_ty.span, trait_ref_str)],
+                    Applicability::MaybeIncorrect,
+                );
         }
     }
 

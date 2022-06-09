@@ -1,16 +1,38 @@
 error[E0404]: expected trait, found struct `Struct`
-  --> $DIR/suggest-swapping-self-ty-and-trait.rs:5:13
+  --> $DIR/suggest-swapping-self-ty-and-trait.rs:10:13
    |
 LL | impl<'a, T> Struct<T> for Trait<'a, T> {}
    |             ^^^^^^^^^ not a trait
    |
-help: consider swapping the struct and the trait
+help: `impl` items mention the trait being implemented first and the type it is being implemented for second
    |
 LL | impl<'a, T> Trait<'a, T> for Struct<T> {}
    |             ~~~~~~~~~~~~     ~~~~~~~~~
 
+error[E0404]: expected trait, found enum `Enum`
+  --> $DIR/suggest-swapping-self-ty-and-trait.rs:15:13
+   |
+LL | impl<'a, T> Enum<T> for Trait<'a, T> {}
+   |             ^^^^^^^ not a trait
+   |
+help: `impl` items mention the trait being implemented first and the type it is being implemented for second
+   |
+LL | impl<'a, T> Trait<'a, T> for Enum<T> {}
+   |             ~~~~~~~~~~~~     ~~~~~~~
+
+error[E0404]: expected trait, found union `Union`
+  --> $DIR/suggest-swapping-self-ty-and-trait.rs:18:13
+   |
+LL | impl<'a, T> Union<T> for Trait<'a, T> {}
+   |             ^^^^^^^^ not a trait
+   |
+help: `impl` items mention the trait being implemented first and the type it is being implemented for second
+   |
+LL | impl<'a, T> Trait<'a, T> for Union<T> {}
+   |             ~~~~~~~~~~~~     ~~~~~~~~
+
 warning: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/suggest-swapping-self-ty-and-trait.rs:5:27
+  --> $DIR/suggest-swapping-self-ty-and-trait.rs:10:27
    |
 LL | impl<'a, T> Struct<T> for Trait<'a, T> {}
    |                           ^^^^^^^^^^^^
@@ -24,6 +46,6 @@ LL - impl<'a, T> Struct<T> for Trait<'a, T> {}
 LL + impl<'a, T> Struct<T> for dyn Trait<'a, T> {}
    | 
 
-error: aborting due to previous error; 1 warning emitted
+error: aborting due to 3 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0404`.
