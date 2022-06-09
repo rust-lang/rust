@@ -11,8 +11,8 @@ LL |     let _unused = NontrivialDrop;
    |         ~~~~~~~
 help: consider explicitly droping with `std::mem::drop`
    |
-LL |     let _ = drop(...);
-   |             ~~~~~~~~~
+LL |     let _ = drop(NontrivialDrop);
+   |             +++++              +
 
 warning: 1 warning emitted
 

@@ -11,8 +11,8 @@ LL |     let _unused = data.lock().unwrap();
    |         ~~~~~~~
 help: consider explicitly droping with `std::mem::drop`
    |
-LL |     let _ = drop(...);
-   |             ~~~~~~~~~
+LL |     let _ = drop(data.lock().unwrap());
+   |             +++++                    +
 
 error: aborting due to previous error
 

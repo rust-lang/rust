@@ -154,11 +154,13 @@ fn build_and_emit_lint(
             "_unused",
             Applicability::MachineApplicable,
         )
-        .span_suggestion_verbose(
-            init_span,
+        .multipart_suggestion(
             "consider explicitly droping with `std::mem::drop`",
-            "drop(...)",
-            Applicability::HasPlaceholders,
+            vec![
+                (init_span.shrink_to_lo(), "drop(".to_string()),
+                (init_span.shrink_to_hi(), ")".to_string()),
+            ],
+            Applicability::MachineApplicable,
         )
         .emit();
 }
