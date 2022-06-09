@@ -26,6 +26,7 @@ store.register_group(true, "clippy::perf", Some("clippy_perf"), vec![
     LintId::of(slow_vector_initialization::SLOW_VECTOR_INITIALIZATION),
     LintId::of(types::BOX_COLLECTION),
     LintId::of(types::REDUNDANT_ALLOCATION),
+    LintId::of(use_retain::USE_RETAIN),
     LintId::of(vec::USELESS_VEC),
     LintId::of(vec_init_then_push::VEC_INIT_THEN_PUSH),
 ])

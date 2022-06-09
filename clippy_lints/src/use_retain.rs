@@ -43,7 +43,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.63.0"]
     pub USE_RETAIN,
-    style,
+    perf,
     "`retain()` is simpler and the same functionalitys"
 }
 declare_lint_pass!(UseRetain => [USE_RETAIN]);
