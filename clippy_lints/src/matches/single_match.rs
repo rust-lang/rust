@@ -140,6 +140,23 @@ fn check_opt_like<'a>(
     ty: Ty<'a>,
     els: Option<&Expr<'_>>,
 ) {
+    // We want to suggest to exclude an arm that contains only wildcards or forms the exhaustive
+    // match with the second branch, without enum variants in matches.
+    if !contains_only_wilds(arms[1].pat) && !form_exhaustive_matches(cx, ty, arms[0].pat, arms[1].pat) {
+        return;
+    }
+
+    let mut paths_and_types = Vec::new();
+    if !collect_pat_paths(&mut paths_and_types, cx, arms[1].pat, ty) {
+        return;
+    }
+
+    if paths_and_types.iter().all(|info| in_candidate_enum(cx, info)) {
+        report_single_pattern(cx, ex, arms, expr, els);
+    }
+}
+
+fn in_candidate_enum<'a>(cx: &LateContext<'a>, path_info: &(String, Ty<'_>)) -> bool {
     // list of candidate `Enum`s we know will never get any more members
     let candidates = &[
         (&paths::COW, "Borrowed"),
@@ -151,29 +168,13 @@ fn check_opt_like<'a>(
         (&paths::RESULT, "Ok"),
     ];
 
-    // We want to suggest to exclude an arm that contains only wildcards or forms the exhaustive
-    // match with the second branch, without enum variants in matches.
-    if !contains_only_wilds(arms[1].pat) && !form_exhaustive_matches(arms[0].pat, arms[1].pat) {
-        return;
-    }
-
-    let mut paths_and_types = Vec::new();
-    if !collect_pat_paths(&mut paths_and_types, cx, arms[1].pat, ty) {
-        return;
-    }
-
-    let in_candidate_enum = |path_info: &(String, Ty<'_>)| -> bool {
-        let (path, ty) = path_info;
-        for &(ty_path, pat_path) in candidates {
-            if path == pat_path && match_type(cx, *ty, ty_path) {
-                return true;
-            }
+    let (path, ty) = path_info;
+    for &(ty_path, pat_path) in candidates {
+        if path == pat_path && match_type(cx, *ty, ty_path) {
+            return true;
         }
-        false
-    };
-    if paths_and_types.iter().all(in_candidate_enum) {
-        report_single_pattern(cx, ex, arms, expr, els);
     }
+    false
 }
 
 /// Collects paths and their types from the given patterns. Returns true if the given pattern could
@@ -218,7 +219,7 @@ fn contains_only_wilds(pat: &Pat<'_>) -> bool {
 
 /// Returns true if the given patterns forms only exhaustive matches that don't contain enum
 /// patterns without a wildcard.
-fn form_exhaustive_matches(left: &Pat<'_>, right: &Pat<'_>) -> bool {
+fn form_exhaustive_matches<'a>(cx: &LateContext<'a>, ty: Ty<'a>, left: &Pat<'_>, right: &Pat<'_>) -> bool {
     match (&left.kind, &right.kind) {
         (PatKind::Wild, _) | (_, PatKind::Wild) => true,
         (PatKind::Tuple(left_in, left_pos), PatKind::Tuple(right_in, right_pos)) => {
@@ -263,6 +264,14 @@ fn form_exhaustive_matches(left: &Pat<'_>, right: &Pat<'_>) -> bool {
                 }
             }
             true
+        },
+        (PatKind::TupleStruct(..), PatKind::Path(_) | PatKind::TupleStruct(..)) => {
+            let mut paths_and_types = Vec::new();
+            if !collect_pat_paths(&mut paths_and_types, cx, right, ty) {
+                return false;
+            }
+
+            paths_and_types.iter().all(|info| in_candidate_enum(cx, info))
         },
         _ => false,
     }
