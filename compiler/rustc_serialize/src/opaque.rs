@@ -24,10 +24,6 @@ impl Encoder {
     pub fn position(&self) -> usize {
         self.data.len()
     }
-
-    pub fn finish(self) -> Vec<u8> {
-        self.data
-    }
 }
 
 macro_rules! write_leb128 {
@@ -58,6 +54,9 @@ macro_rules! write_leb128 {
 const STR_SENTINEL: u8 = 0xC1;
 
 impl serialize::Encoder for Encoder {
+    type Ok = Vec<u8>;
+    type Err = !;
+
     #[inline]
     fn emit_usize(&mut self, v: usize) {
         write_leb128!(self, v, usize, write_usize_leb128)
@@ -150,6 +149,10 @@ impl serialize::Encoder for Encoder {
     #[inline]
     fn emit_raw_bytes(&mut self, s: &[u8]) {
         self.data.extend_from_slice(s);
+    }
+
+    fn finish(self) -> Result<Self::Ok, Self::Err> {
+        Ok(self.data)
     }
 }
 
@@ -386,13 +389,6 @@ impl FileEncoder {
             }
         }
     }
-
-    pub fn finish(mut self) -> Result<usize, io::Error> {
-        self.flush();
-
-        let res = std::mem::replace(&mut self.res, Ok(()));
-        res.map(|()| self.position())
-    }
 }
 
 impl Drop for FileEncoder {
@@ -430,6 +426,9 @@ macro_rules! file_encoder_write_leb128 {
 }
 
 impl serialize::Encoder for FileEncoder {
+    type Ok = usize;
+    type Err = io::Error;
+
     #[inline]
     fn emit_usize(&mut self, v: usize) {
         file_encoder_write_leb128!(self, v, usize, write_usize_leb128)
@@ -522,6 +521,13 @@ impl serialize::Encoder for FileEncoder {
     #[inline]
     fn emit_raw_bytes(&mut self, s: &[u8]) {
         self.write_all(s);
+    }
+
+    fn finish(mut self) -> Result<usize, io::Error> {
+        self.flush();
+
+        let res = std::mem::replace(&mut self.res, Ok(()));
+        res.map(|()| self.position())
     }
 }
 
