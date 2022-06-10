@@ -5,6 +5,7 @@ use smallvec::SmallVec;
 use std::hash::{BuildHasher, Hash, Hasher};
 use std::marker::PhantomData;
 use std::mem;
+use xxh3_port::Xxh3Hasher;
 
 #[cfg(test)]
 mod tests;
@@ -17,7 +18,8 @@ mod tests;
 /// hashing and the architecture dependent `isize` and `usize` types are
 /// extended to 64 bits if needed.
 pub struct StableHasher {
-    state: SipHasher128,
+    // state: SipHasher128,
+    state: Xxh3Hasher
 }
 
 impl ::std::fmt::Debug for StableHasher {
@@ -33,7 +35,7 @@ pub trait StableHasherResult: Sized {
 impl StableHasher {
     #[inline]
     pub fn new() -> Self {
-        StableHasher { state: SipHasher128::new_with_keys(0, 0) }
+        StableHasher { state: Xxh3Hasher::default() }
     }
 
     #[inline]
@@ -60,7 +62,8 @@ impl StableHasherResult for u64 {
 impl StableHasher {
     #[inline]
     pub fn finalize(self) -> (u64, u64) {
-        self.state.finish128()
+        let hash = self.state.digest128();
+        (hash.high64, hash.low64)
     }
 }
 
@@ -71,12 +74,12 @@ impl Hasher for StableHasher {
 
     #[inline]
     fn write(&mut self, bytes: &[u8]) {
-        self.state.write(bytes);
+        self.state.update(bytes);
     }
 
     #[inline]
     fn write_str(&mut self, s: &str) {
-        self.state.write_str(s);
+        self.state.update(s.as_bytes());
     }
 
     #[inline]
@@ -87,27 +90,27 @@ impl Hasher for StableHasher {
 
     #[inline]
     fn write_u8(&mut self, i: u8) {
-        self.state.write_u8(i);
+        self.state.update_fixed_size(&[i; 1]);
     }
 
     #[inline]
     fn write_u16(&mut self, i: u16) {
-        self.state.short_write(i.to_le_bytes());
+        self.state.update_fixed_size(&i.to_le_bytes());
     }
 
     #[inline]
     fn write_u32(&mut self, i: u32) {
-        self.state.short_write(i.to_le_bytes());
+        self.state.update_fixed_size(&i.to_le_bytes());
     }
 
     #[inline]
     fn write_u64(&mut self, i: u64) {
-        self.state.short_write(i.to_le_bytes());
+        self.state.update_fixed_size(&i.to_le_bytes());
     }
 
     #[inline]
     fn write_u128(&mut self, i: u128) {
-        self.state.write(&i.to_le_bytes());
+        self.state.update_fixed_size(&i.to_le_bytes());
     }
 
     #[inline]
@@ -115,32 +118,32 @@ impl Hasher for StableHasher {
         // Always treat usize as u64 so we get the same results on 32 and 64 bit
         // platforms. This is important for symbol hashes when cross compiling,
         // for example.
-        self.state.short_write((i as u64).to_le_bytes());
+        self.state.update_fixed_size(&(i as u64).to_le_bytes());
     }
 
     #[inline]
     fn write_i8(&mut self, i: i8) {
-        self.state.write_i8(i);
+        self.state.update_fixed_size(&[i as u8; 1]);
     }
 
     #[inline]
     fn write_i16(&mut self, i: i16) {
-        self.state.short_write((i as u16).to_le_bytes());
+        self.state.update_fixed_size(&(i as u16).to_le_bytes());
     }
 
     #[inline]
     fn write_i32(&mut self, i: i32) {
-        self.state.short_write((i as u32).to_le_bytes());
+        self.state.update_fixed_size(&(i as u32).to_le_bytes());
     }
 
     #[inline]
     fn write_i64(&mut self, i: i64) {
-        self.state.short_write((i as u64).to_le_bytes());
+        self.state.update_fixed_size(&(i as u64).to_le_bytes());
     }
 
     #[inline]
     fn write_i128(&mut self, i: i128) {
-        self.state.write(&(i as u128).to_le_bytes());
+        self.state.update_fixed_size(&(i as u128).to_le_bytes());
     }
 
     #[inline]
@@ -154,9 +157,9 @@ impl Hasher for StableHasher {
         // Cold path
         #[cold]
         #[inline(never)]
-        fn hash_value(state: &mut SipHasher128, value: u64) {
-            state.write_u8(0xFF);
-            state.short_write(value.to_le_bytes());
+        fn hash_value(state: &mut Xxh3Hasher, value: u64) {
+            state.update_fixed_size(&[0xFF; 1]);
+            state.update_fixed_size(&value.to_le_bytes());
         }
 
         // `isize` values often seem to have a small (positive) numeric value in practice.
@@ -174,7 +177,7 @@ impl Hasher for StableHasher {
         // `isize`s that fit within a different amount of bytes, they should always produce a different
         // byte stream for the hasher.
         if value < 0xFF {
-            self.state.write_u8(value as u8);
+            self.state.update_fixed_size(&[value as u8; 1]);
         } else {
             hash_value(&mut self.state, value);
         }
