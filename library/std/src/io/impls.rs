@@ -441,14 +441,12 @@ impl<A: Allocator> Read for VecDeque<u8, A> {
 impl<A: Allocator> Write for VecDeque<u8, A> {
     #[inline]
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        self.reserve(buf.len());
         self.extend(buf);
         Ok(buf.len())
     }
 
     #[inline]
     fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
-        self.reserve(buf.len());
         self.extend(buf);
         Ok(())
     }
