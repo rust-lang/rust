@@ -4,7 +4,7 @@ use clippy_utils::get_attr;
 use clippy_utils::source::{indent_of, snippet};
 use rustc_errors::{Applicability, Diagnostic};
 use rustc_hir::intravisit::{walk_expr, Visitor};
-use rustc_hir::{Expr, ExprKind, MatchSource};
+use rustc_hir::{Arm, Expr, ExprKind, MatchSource};
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{Ty, TypeAndMut};
@@ -16,12 +16,21 @@ pub(super) fn check<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &'tcx Expr<'tcx>,
     scrutinee: &'tcx Expr<'_>,
+    arms: &'tcx [Arm<'_>],
     source: MatchSource,
 ) {
     if let Some((suggestions, message)) = has_significant_drop_in_scrutinee(cx, scrutinee, source) {
         for found in suggestions {
             span_lint_and_then(cx, SIGNIFICANT_DROP_IN_SCRUTINEE, found.found_span, message, |diag| {
                 set_diagnostic(diag, cx, expr, found);
+                let s = Span::new(expr.span.hi(), expr.span.hi(), expr.span.ctxt(), None);
+                diag.span_label(s, "original temporary lives until here");
+                if let Some(spans) = has_significant_drop_in_arms(cx, arms) {
+                    for span in spans {
+                        diag.span_label(span, "significant drop in arm here");
+                    }
+                    diag.note("this might lead to deadlocks or other unexpected behavior");
+                }
             });
         }
     }
@@ -80,22 +89,77 @@ fn has_significant_drop_in_scrutinee<'tcx, 'a>(
     let mut helper = SigDropHelper::new(cx);
     helper.find_sig_drop(scrutinee).map(|drops| {
         let message = if source == MatchSource::Normal {
-            "temporary with significant drop in match scrutinee"
+            "temporary with drop impl with side effects in match scrutinee lives to end of block"
         } else {
-            "temporary with significant drop in for loop"
+            "temporary with drop impl with side effects in for loop condition lives to end of block"
         };
         (drops, message)
     })
 }
 
+struct SigDropChecker<'a, 'tcx> {
+    seen_types: FxHashSet<Ty<'tcx>>,
+    cx: &'a LateContext<'tcx>,
+}
+
+impl<'a, 'tcx> SigDropChecker<'a, 'tcx> {
+    fn new(cx: &'a LateContext<'tcx>) -> SigDropChecker<'a, 'tcx> {
+        SigDropChecker {
+            seen_types: FxHashSet::default(),
+            cx,
+        }
+    }
+
+    fn get_type(&self, ex: &'tcx Expr<'_>) -> Ty<'tcx> {
+        self.cx.typeck_results().expr_ty(ex)
+    }
+
+    fn has_seen_type(&mut self, ty: Ty<'tcx>) -> bool {
+        !self.seen_types.insert(ty)
+    }
+
+    fn has_sig_drop_attr(&mut self, cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
+        if let Some(adt) = ty.ty_adt_def() {
+            if get_attr(cx.sess(), cx.tcx.get_attrs_unchecked(adt.did()), "has_significant_drop").count() > 0 {
+                return true;
+            }
+        }
+
+        match ty.kind() {
+            rustc_middle::ty::Adt(a, b) => {
+                for f in a.all_fields() {
+                    let ty = f.ty(cx.tcx, b);
+                    if !self.has_seen_type(ty) && self.has_sig_drop_attr(cx, ty) {
+                        return true;
+                    }
+                }
+
+                for generic_arg in b.iter() {
+                    if let GenericArgKind::Type(ty) = generic_arg.unpack() {
+                        if self.has_sig_drop_attr(cx, ty) {
+                            return true;
+                        }
+                    }
+                }
+                false
+            },
+            rustc_middle::ty::Array(ty, _)
+            | rustc_middle::ty::RawPtr(TypeAndMut { ty, .. })
+            | rustc_middle::ty::Ref(_, ty, _)
+            | rustc_middle::ty::Slice(ty) => self.has_sig_drop_attr(cx, *ty),
+            _ => false,
+        }
+    }
+}
+
 struct SigDropHelper<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
     is_chain_end: bool,
-    seen_types: FxHashSet<Ty<'tcx>>,
     has_significant_drop: bool,
     current_sig_drop: Option<FoundSigDrop>,
     sig_drop_spans: Option<Vec<FoundSigDrop>>,
     special_handling_for_binary_op: bool,
+    sig_drop_checker: SigDropChecker<'a, 'tcx>,
 }
 
 #[expect(clippy::enum_variant_names)]
@@ -118,11 +182,11 @@ impl<'a, 'tcx> SigDropHelper<'a, 'tcx> {
         SigDropHelper {
             cx,
             is_chain_end: true,
-            seen_types: FxHashSet::default(),
             has_significant_drop: false,
             current_sig_drop: None,
             sig_drop_spans: None,
             special_handling_for_binary_op: false,
+            sig_drop_checker: SigDropChecker::new(cx),
         }
     }
 
@@ -163,7 +227,7 @@ impl<'a, 'tcx> SigDropHelper<'a, 'tcx> {
         if self.current_sig_drop.is_some() {
             return;
         }
-        let ty = self.get_type(expr);
+        let ty = self.sig_drop_checker.get_type(expr);
         if ty.is_ref() {
             // We checked that the type was ref, so builtin_deref will return Some TypeAndMut,
             // but let's avoid any chance of an ICE
@@ -187,14 +251,6 @@ impl<'a, 'tcx> SigDropHelper<'a, 'tcx> {
         }
     }
 
-    fn get_type(&self, ex: &'tcx Expr<'_>) -> Ty<'tcx> {
-        self.cx.typeck_results().expr_ty(ex)
-    }
-
-    fn has_seen_type(&mut self, ty: Ty<'tcx>) -> bool {
-        !self.seen_types.insert(ty)
-    }
-
     fn visit_exprs_for_binary_ops(
         &mut self,
         left: &'tcx Expr<'_>,
@@ -214,44 +270,15 @@ impl<'a, 'tcx> SigDropHelper<'a, 'tcx> {
 
         self.special_handling_for_binary_op = false;
     }
-
-    fn has_sig_drop_attr(&mut self, cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
-        if let Some(adt) = ty.ty_adt_def() {
-            if get_attr(cx.sess(), cx.tcx.get_attrs_unchecked(adt.did()), "has_significant_drop").count() > 0 {
-                return true;
-            }
-        }
-
-        match ty.kind() {
-            rustc_middle::ty::Adt(a, b) => {
-                for f in a.all_fields() {
-                    let ty = f.ty(cx.tcx, b);
-                    if !self.has_seen_type(ty) && self.has_sig_drop_attr(cx, ty) {
-                        return true;
-                    }
-                }
-
-                for generic_arg in b.iter() {
-                    if let GenericArgKind::Type(ty) = generic_arg.unpack() {
-                        if self.has_sig_drop_attr(cx, ty) {
-                            return true;
-                        }
-                    }
-                }
-                false
-            },
-            rustc_middle::ty::Array(ty, _)
-            | rustc_middle::ty::RawPtr(TypeAndMut { ty, .. })
-            | rustc_middle::ty::Ref(_, ty, _)
-            | rustc_middle::ty::Slice(ty) => self.has_sig_drop_attr(cx, *ty),
-            _ => false,
-        }
-    }
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for SigDropHelper<'a, 'tcx> {
     fn visit_expr(&mut self, ex: &'tcx Expr<'_>) {
-        if !self.is_chain_end && self.has_sig_drop_attr(self.cx, self.get_type(ex)) {
+        if !self.is_chain_end
+            && self
+                .sig_drop_checker
+                .has_sig_drop_attr(self.cx, self.sig_drop_checker.get_type(ex))
+        {
             self.has_significant_drop = true;
             return;
         }
@@ -328,5 +355,42 @@ impl<'a, 'tcx> Visitor<'tcx> for SigDropHelper<'a, 'tcx> {
         if self.has_significant_drop && !self.special_handling_for_binary_op {
             self.try_setting_current_suggestion(ex, false);
         }
+    }
+}
+
+struct ArmSigDropHelper<'a, 'tcx> {
+    sig_drop_checker: SigDropChecker<'a, 'tcx>,
+    found_sig_drop_spans: Option<FxHashSet<Span>>,
+}
+
+impl<'a, 'tcx> ArmSigDropHelper<'a, 'tcx> {
+    fn new(cx: &'a LateContext<'tcx>) -> ArmSigDropHelper<'a, 'tcx> {
+        ArmSigDropHelper {
+            sig_drop_checker: SigDropChecker::new(cx),
+            found_sig_drop_spans: None,
+        }
+    }
+}
+
+fn has_significant_drop_in_arms<'tcx, 'a>(cx: &'a LateContext<'tcx>, arms: &'tcx [Arm<'_>]) -> Option<FxHashSet<Span>> {
+    let mut helper = ArmSigDropHelper::new(cx);
+    for arm in arms {
+        helper.visit_expr(arm.body);
+    }
+    helper.found_sig_drop_spans
+}
+
+impl<'a, 'tcx> Visitor<'tcx> for ArmSigDropHelper<'a, 'tcx> {
+    fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) {
+        if self
+            .sig_drop_checker
+            .has_sig_drop_attr(self.sig_drop_checker.cx, self.sig_drop_checker.get_type(ex))
+        {
+            self.found_sig_drop_spans
+                .get_or_insert_with(FxHashSet::default)
+                .insert(ex.span);
+            return;
+        }
+        walk_expr(self, ex);
     }
 }

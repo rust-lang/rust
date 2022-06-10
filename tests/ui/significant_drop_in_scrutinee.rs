@@ -591,4 +591,20 @@ fn should_trigger_lint_for_read_write_lock_for_loop() {
     }
 }
 
+fn do_bar(mutex: &Mutex<State>) {
+    mutex.lock().unwrap().bar();
+}
+
+fn should_trigger_lint_without_significant_drop_in_arm() {
+    let mutex = Mutex::new(State {});
+
+    // Should trigger lint because the lifetime of the temporary MutexGuard is surprising because it
+    // is preserved until the end of the match, but there is no clear indication that this is the
+    // case.
+    match mutex.lock().unwrap().foo() {
+        true => do_bar(&mutex),
+        false => {},
+    };
+}
+
 fn main() {}
