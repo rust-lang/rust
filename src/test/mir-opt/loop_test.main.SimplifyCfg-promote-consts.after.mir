@@ -9,20 +9,18 @@ fn main() -> () {
     let mut _5: ();                      // in scope 0 at $DIR/loop_test.rs:6:1: 17:2
     let _6: i32;                         // in scope 0 at $DIR/loop_test.rs:14:13: 14:14
     scope 1 {
-    }
-    scope 2 {
-        debug x => _6;                   // in scope 2 at $DIR/loop_test.rs:14:13: 14:14
+        debug x => _6;                   // in scope 1 at $DIR/loop_test.rs:14:13: 14:14
     }
 
     bb0: {
         StorageLive(_1);                 // scope 0 at $DIR/loop_test.rs:10:5: 12:6
-        StorageLive(_2);                 // scope 1 at $DIR/loop_test.rs:10:8: 10:12
-        _2 = const true;                 // scope 1 at $DIR/loop_test.rs:10:8: 10:12
-        switchInt(move _2) -> [false: bb2, otherwise: bb1]; // scope 1 at $DIR/loop_test.rs:10:8: 10:12
+        StorageLive(_2);                 // scope 0 at $DIR/loop_test.rs:10:8: 10:12
+        _2 = const true;                 // scope 0 at $DIR/loop_test.rs:10:8: 10:12
+        switchInt(move _2) -> [false: bb2, otherwise: bb1]; // scope 0 at $DIR/loop_test.rs:10:8: 10:12
     }
 
     bb1: {
-        _0 = const ();                   // scope 1 at $DIR/loop_test.rs:11:9: 11:15
+        _0 = const ();                   // scope 0 at $DIR/loop_test.rs:11:9: 11:15
         StorageDead(_2);                 // scope 0 at $DIR/loop_test.rs:12:5: 12:6
         StorageDead(_1);                 // scope 0 at $DIR/loop_test.rs:12:5: 12:6
         return;                          // scope 0 at $DIR/loop_test.rs:17:2: 17:2

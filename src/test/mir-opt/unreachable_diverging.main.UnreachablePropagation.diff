@@ -14,8 +14,6 @@
           scope 2 {
               debug bomb => _4;            // in scope 2 at $DIR/unreachable_diverging.rs:14:17: 14:21
               let _4: Empty;               // in scope 2 at $DIR/unreachable_diverging.rs:14:17: 14:21
-              scope 3 {
-              }
           }
       }
   
@@ -39,15 +37,15 @@
           StorageLive(_4);                 // scope 2 at $DIR/unreachable_diverging.rs:14:17: 14:21
           _4 = move ((_2 as Some).0: Empty); // scope 2 at $DIR/unreachable_diverging.rs:14:17: 14:21
           StorageLive(_5);                 // scope 2 at $DIR/unreachable_diverging.rs:15:9: 17:10
-          StorageLive(_6);                 // scope 3 at $DIR/unreachable_diverging.rs:15:12: 15:13
-          _6 = _1;                         // scope 3 at $DIR/unreachable_diverging.rs:15:12: 15:13
--         switchInt(move _6) -> [false: bb4, otherwise: bb3]; // scope 3 at $DIR/unreachable_diverging.rs:15:12: 15:13
-+         goto -> bb3;                     // scope 3 at $DIR/unreachable_diverging.rs:15:12: 15:13
+          StorageLive(_6);                 // scope 2 at $DIR/unreachable_diverging.rs:15:12: 15:13
+          _6 = _1;                         // scope 2 at $DIR/unreachable_diverging.rs:15:12: 15:13
+-         switchInt(move _6) -> [false: bb4, otherwise: bb3]; // scope 2 at $DIR/unreachable_diverging.rs:15:12: 15:13
++         goto -> bb3;                     // scope 2 at $DIR/unreachable_diverging.rs:15:12: 15:13
       }
   
       bb3: {
--         _5 = loop_forever() -> bb5;      // scope 3 at $DIR/unreachable_diverging.rs:16:13: 16:27
-+         _5 = loop_forever() -> bb4;      // scope 3 at $DIR/unreachable_diverging.rs:16:13: 16:27
+-         _5 = loop_forever() -> bb5;      // scope 2 at $DIR/unreachable_diverging.rs:16:13: 16:27
++         _5 = loop_forever() -> bb4;      // scope 2 at $DIR/unreachable_diverging.rs:16:13: 16:27
                                            // mir::Constant
                                            // + span: $DIR/unreachable_diverging.rs:16:13: 16:25
                                            // + literal: Const { ty: fn() {loop_forever}, val: Value(Scalar(<ZST>)) }

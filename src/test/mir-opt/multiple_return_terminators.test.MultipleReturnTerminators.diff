@@ -4,8 +4,6 @@
   fn test(_1: bool) -> () {
       debug x => _1;                       // in scope 0 at $DIR/multiple_return_terminators.rs:4:9: 4:10
       let mut _0: ();                      // return place in scope 0 at $DIR/multiple_return_terminators.rs:4:18: 4:18
-      scope 1 {
-      }
   
       bb0: {
           return;                          // scope 0 at $DIR/multiple_return_terminators.rs:10:2: 10:2

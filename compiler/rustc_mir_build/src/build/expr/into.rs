@@ -63,9 +63,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         (if_then_scope, then_source_info),
                         LintLevel::Inherited,
                         |this| {
-                            let variable_scope =
-                                this.new_source_scope(then_expr.span, LintLevel::Inherited, None);
-                            this.source_scope = variable_scope;
+                            let source_info = if this.is_let(cond) {
+                                let variable_scope = this.new_source_scope(
+                                    then_expr.span,
+                                    LintLevel::Inherited,
+                                    None,
+                                );
+                                this.source_scope = variable_scope;
+                                SourceInfo { span: then_expr.span, scope: variable_scope }
+                            } else {
+                                this.source_info(then_expr.span)
+                            };
                             let (then_block, else_block) =
                                 this.in_if_then_scope(condition_scope, |this| {
                                     let then_blk = unpack!(this.then_else_break(
@@ -73,7 +81,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                         &this.thir[cond],
                                         Some(condition_scope),
                                         condition_scope,
-                                        SourceInfo { span: then_expr.span, scope: variable_scope }
+                                        source_info
                                     ));
 
                                     this.expr_into_dest(destination, then_blk, then_expr)
@@ -578,5 +586,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
 
         block_and
+    }
+
+    fn is_let(&self, expr: ExprId) -> bool {
+        match self.thir[expr].kind {
+            ExprKind::Let { .. } => true,
+            ExprKind::Scope { value, .. } => self.is_let(value),
+            _ => false,
+        }
     }
 }

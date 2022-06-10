@@ -13,8 +13,6 @@
       scope 1 {
           debug a => _6;                   // in scope 1 at $DIR/simplify-locals-fixedpoint.rs:4:18: 4:19
           let _6: u8;                      // in scope 1 at $DIR/simplify-locals-fixedpoint.rs:4:18: 4:19
-          scope 2 {
-          }
       }
   
       bb0: {
@@ -42,11 +40,11 @@
       bb2: {
           StorageLive(_6);                 // scope 1 at $DIR/simplify-locals-fixedpoint.rs:4:18: 4:19
           _6 = (((_1.0: std::option::Option<u8>) as Some).0: u8); // scope 1 at $DIR/simplify-locals-fixedpoint.rs:4:18: 4:19
--         StorageLive(_7);                 // scope 2 at $DIR/simplify-locals-fixedpoint.rs:5:12: 5:20
--         StorageLive(_8);                 // scope 2 at $DIR/simplify-locals-fixedpoint.rs:5:12: 5:13
--         _8 = _6;                         // scope 2 at $DIR/simplify-locals-fixedpoint.rs:5:12: 5:13
--         _7 = Gt(move _8, const 42_u8);   // scope 2 at $DIR/simplify-locals-fixedpoint.rs:5:12: 5:20
--         StorageDead(_8);                 // scope 2 at $DIR/simplify-locals-fixedpoint.rs:5:19: 5:20
+-         StorageLive(_7);                 // scope 1 at $DIR/simplify-locals-fixedpoint.rs:5:12: 5:20
+-         StorageLive(_8);                 // scope 1 at $DIR/simplify-locals-fixedpoint.rs:5:12: 5:13
+-         _8 = _6;                         // scope 1 at $DIR/simplify-locals-fixedpoint.rs:5:12: 5:13
+-         _7 = Gt(move _8, const 42_u8);   // scope 1 at $DIR/simplify-locals-fixedpoint.rs:5:12: 5:20
+-         StorageDead(_8);                 // scope 1 at $DIR/simplify-locals-fixedpoint.rs:5:19: 5:20
 -         StorageDead(_7);                 // scope 1 at $DIR/simplify-locals-fixedpoint.rs:7:9: 7:10
           StorageDead(_6);                 // scope 0 at $DIR/simplify-locals-fixedpoint.rs:8:5: 8:6
           goto -> bb3;                     // scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:5: 8:6
