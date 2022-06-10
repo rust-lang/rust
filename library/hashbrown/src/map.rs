@@ -1897,18 +1897,18 @@ impl<K, V, S, A: Allocator + Clone> HashMap<K, V, S, A> {
     /// # Examples
     ///
     /// ```
-    /// use hashbrown::{HashMap, hash_map::RawEntryMut};
+    /// use core::hash::{BuildHasher, Hash};
+    /// use hashbrown::hash_map::{HashMap, RawEntryMut};
     ///
     /// let mut map = HashMap::new();
     /// map.extend([("a", 100), ("b", 200), ("c", 300)]);
     ///
-    /// let compute_hash = |map: &HashMap<&str, i32>, k: &str| -> u64 {
-    ///     use core::hash::{BuildHasher, Hash, Hasher};
-    ///
-    ///     let mut hasher = map.hasher().build_hasher();
-    ///     k.hash(&mut hasher);
-    ///     hasher.finish()
-    /// };
+    /// fn compute_hash<K: Hash + ?Sized, S: BuildHasher>(hash_builder: &S, key: &K) -> u64 {
+    ///     use core::hash::Hasher;
+    ///     let mut state = hash_builder.build_hasher();
+    ///     key.hash(&mut state);
+    ///     state.finish()
+    /// }
     ///
     /// // Existing key (insert and update)
     /// match map.raw_entry_mut().from_key(&"a") {
@@ -1926,7 +1926,7 @@ impl<K, V, S, A: Allocator + Clone> HashMap<K, V, S, A> {
     /// assert_eq!(map.len(), 3);
     ///
     /// // Existing key (take)
-    /// let hash = compute_hash(&map, &"c");
+    /// let hash = compute_hash(map.hasher(), &"c");
     /// match map.raw_entry_mut().from_key_hashed_nocheck(hash, &"c") {
     ///     RawEntryMut::Vacant(_) => unreachable!(),
     ///     RawEntryMut::Occupied(view) => {
@@ -1938,7 +1938,7 @@ impl<K, V, S, A: Allocator + Clone> HashMap<K, V, S, A> {
     ///
     /// // Nonexistent key (insert and update)
     /// let key = "d";
-    /// let hash = compute_hash(&map, &key);
+    /// let hash = compute_hash(map.hasher(), &key);
     /// match map.raw_entry_mut().from_hash(hash, |q| *q == key) {
     ///     RawEntryMut::Occupied(_) => unreachable!(),
     ///     RawEntryMut::Vacant(view) => {
@@ -1983,21 +1983,21 @@ impl<K, V, S, A: Allocator + Clone> HashMap<K, V, S, A> {
     /// # Examples
     ///
     /// ```
+    /// use core::hash::{BuildHasher, Hash};
     /// use hashbrown::HashMap;
     ///
     /// let mut map = HashMap::new();
     /// map.extend([("a", 100), ("b", 200), ("c", 300)]);
     ///
-    /// let compute_hash = |map: &HashMap<&str, i32>, k: &str| -> u64 {
-    ///     use core::hash::{BuildHasher, Hash, Hasher};
-    ///
-    ///     let mut hasher = map.hasher().build_hasher();
-    ///     k.hash(&mut hasher);
-    ///     hasher.finish()
-    /// };
+    /// fn compute_hash<K: Hash + ?Sized, S: BuildHasher>(hash_builder: &S, key: &K) -> u64 {
+    ///     use core::hash::Hasher;
+    ///     let mut state = hash_builder.build_hasher();
+    ///     key.hash(&mut state);
+    ///     state.finish()
+    /// }
     ///
     /// for k in ["a", "b", "c", "d", "e", "f"] {
-    ///     let hash = compute_hash(&map, k);
+    ///     let hash = compute_hash(map.hasher(), k);
     ///     let v = map.get(&k).cloned();
     ///     let kv = v.as_ref().map(|v| (&k, v));
     ///
@@ -3963,7 +3963,7 @@ impl<'a, K, V, S, A: Allocator + Clone> RawVacantEntryMut<'a, K, V, S, A> {
     /// use core::hash::{BuildHasher, Hash};
     /// use hashbrown::hash_map::{HashMap, RawEntryMut};
     ///
-    /// fn compute_hash<K, S>(hash_builder: &S) -> impl Fn(&K) -> u64 + '_
+    /// fn make_hasher<K, S>(hash_builder: &S) -> impl Fn(&K) -> u64 + '_
     /// where
     ///     K: Hash + ?Sized,
     ///     S: BuildHasher,
@@ -3979,12 +3979,12 @@ impl<'a, K, V, S, A: Allocator + Clone> RawVacantEntryMut<'a, K, V, S, A> {
     /// let mut map: HashMap<&str, u32> = HashMap::new();
     /// let key = "a";
     /// let hash_builder = map.hasher().clone();
-    /// let hash = compute_hash(&hash_builder)(&key);
+    /// let hash = make_hasher(&hash_builder)(&key);
     ///
     /// match map.raw_entry_mut().from_hash(hash, |q| q == &key) {
     ///     RawEntryMut::Occupied(_) => panic!(),
     ///     RawEntryMut::Vacant(v) => assert_eq!(
-    ///         v.insert_with_hasher(hash, key, 100, compute_hash(&hash_builder)),
+    ///         v.insert_with_hasher(hash, key, 100, make_hasher(&hash_builder)),
     ///         (&mut "a", &mut 100)
     ///     ),
     /// }
@@ -4070,14 +4070,75 @@ impl<K, V, S, A: Allocator + Clone> Debug for RawEntryBuilder<'_, K, V, S, A> {
 ///
 /// [`HashMap`]: struct.HashMap.html
 /// [`entry`]: struct.HashMap.html#method.entry
+///
+/// # Examples
+///
+/// ```
+/// use hashbrown::hash_map::{Entry, HashMap, OccupiedEntry};
+///
+/// let mut map = HashMap::new();
+/// map.extend([("a", 10), ("b", 20), ("c", 30)]);
+/// assert_eq!(map.len(), 3);
+///
+/// // Existing key (insert)
+/// let entry: Entry<_, _, _> = map.entry("a");
+/// let _raw_o: OccupiedEntry<_, _, _> = entry.insert(1);
+/// assert_eq!(map.len(), 3);
+/// // Nonexistent key (insert)
+/// map.entry("d").insert(4);
+///
+/// // Existing key (or_insert)
+/// let v = map.entry("b").or_insert(2);
+/// assert_eq!(std::mem::replace(v, 2), 20);
+/// // Nonexistent key (or_insert)
+/// map.entry("e").or_insert(5);
+///
+/// // Existing key (or_insert_with)
+/// let v = map.entry("c").or_insert_with(|| 3);
+/// assert_eq!(std::mem::replace(v, 3), 30);
+/// // Nonexistent key (or_insert_with)
+/// map.entry("f").or_insert_with(|| 6);
+///
+/// println!("Our HashMap: {:?}", map);
+///
+/// let mut vec: Vec<_> = map.iter().map(|(&k, &v)| (k, v)).collect();
+/// // The `Iter` iterator produces items in arbitrary order, so the
+/// // items must be sorted to test them against a sorted array.
+/// vec.sort_unstable();
+/// assert_eq!(vec, [("a", 1), ("b", 2), ("c", 3), ("d", 4), ("e", 5), ("f", 6)]);
+/// ```
 pub enum Entry<'a, K, V, S, A = Global>
 where
     A: Allocator + Clone,
 {
     /// An occupied entry.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::hash_map::{Entry, HashMap};
+    /// let mut map: HashMap<_, _> = [("a", 100), ("b", 200)].into();
+    ///
+    /// match map.entry("a") {
+    ///     Entry::Vacant(_) => unreachable!(),
+    ///     Entry::Occupied(_) => { }
+    /// }
+    /// ```
     Occupied(OccupiedEntry<'a, K, V, S, A>),
 
     /// A vacant entry.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::hash_map::{Entry, HashMap};
+    /// let mut map: HashMap<&str, i32> = HashMap::new();
+    ///
+    /// match map.entry("a") {
+    ///     Entry::Occupied(_) => unreachable!(),
+    ///     Entry::Vacant(_) => { }
+    /// }
+    /// ```
     Vacant(VacantEntry<'a, K, V, S, A>),
 }
 
@@ -4094,6 +4155,42 @@ impl<K: Debug, V: Debug, S, A: Allocator + Clone> Debug for Entry<'_, K, V, S, A
 /// It is part of the [`Entry`] enum.
 ///
 /// [`Entry`]: enum.Entry.html
+///
+/// # Examples
+///
+/// ```
+/// use hashbrown::hash_map::{Entry, HashMap, OccupiedEntry};
+///
+/// let mut map = HashMap::new();
+/// map.extend([("a", 10), ("b", 20), ("c", 30)]);
+///
+/// let _entry_o: OccupiedEntry<_, _, _> = map.entry("a").insert(100);
+/// assert_eq!(map.len(), 3);
+///
+/// // Existing key (insert and update)
+/// match map.entry("a") {
+///     Entry::Vacant(_) => unreachable!(),
+///     Entry::Occupied(mut view) => {
+///         assert_eq!(view.get(), &100);
+///         let v = view.get_mut();
+///         *v *= 10;
+///         assert_eq!(view.insert(1111), 1000);
+///     }
+/// }
+///
+/// assert_eq!(map[&"a"], 1111);
+/// assert_eq!(map.len(), 3);
+///
+/// // Existing key (take)
+/// match map.entry("c") {
+///     Entry::Vacant(_) => unreachable!(),
+///     Entry::Occupied(view) => {
+///         assert_eq!(view.remove_entry(), ("c", 30));
+///     }
+/// }
+/// assert_eq!(map.get(&"c"), None);
+/// assert_eq!(map.len(), 2);
+/// ```
 pub struct OccupiedEntry<'a, K, V, S, A: Allocator + Clone = Global> {
     hash: u64,
     key: Option<K>,
@@ -4131,6 +4228,32 @@ impl<K: Debug, V: Debug, S, A: Allocator + Clone> Debug for OccupiedEntry<'_, K,
 /// It is part of the [`Entry`] enum.
 ///
 /// [`Entry`]: enum.Entry.html
+///
+/// # Examples
+///
+/// ```
+/// use hashbrown::hash_map::{Entry, HashMap, VacantEntry};
+///
+/// let mut map = HashMap::<&str, i32>::new();
+///
+/// let entry_v: VacantEntry<_, _, _> = match map.entry("a") {
+///     Entry::Vacant(view) => view,
+///     Entry::Occupied(_) => unreachable!(),
+/// };
+/// entry_v.insert(10);
+/// assert!(map[&"a"] == 10 && map.len() == 1);
+///
+/// // Nonexistent key (insert and update)
+/// match map.entry("b") {
+///     Entry::Occupied(_) => unreachable!(),
+///     Entry::Vacant(view) => {
+///         let value = view.insert(2);
+///         assert_eq!(*value, 2);
+///         *value = 20;
+///     }
+/// }
+/// assert!(map[&"b"] == 20 && map.len() == 2);
+/// ```
 pub struct VacantEntry<'a, K, V, S, A: Allocator + Clone = Global> {
     hash: u64,
     key: K,
@@ -4143,20 +4266,90 @@ impl<K: Debug, V, S, A: Allocator + Clone> Debug for VacantEntry<'_, K, V, S, A>
     }
 }
 
-/// A view into a single entry in a map, which may either be vacant or occupied.
+/// A view into a single entry in a map, which may either be vacant or occupied,
+/// with any borrowed form of the map's key type.
+///
 ///
 /// This `enum` is constructed from the [`entry_ref`] method on [`HashMap`].
 ///
+/// [`Hash`] and [`Eq`] on the borrowed form of the map's key type *must* match those
+/// for the key type. It also require that key may be constructed from the borrowed
+/// form through the [`From`] trait.
+///
 /// [`HashMap`]: struct.HashMap.html
 /// [`entry_ref`]: struct.HashMap.html#method.entry_ref
+/// [`Eq`]: https://doc.rust-lang.org/std/cmp/trait.Eq.html
+/// [`Hash`]: https://doc.rust-lang.org/std/hash/trait.Hash.html
+/// [`From`]: https://doc.rust-lang.org/std/convert/trait.From.html
+///
+/// # Examples
+///
+/// ```
+/// use hashbrown::hash_map::{EntryRef, HashMap, OccupiedEntryRef};
+///
+/// let mut map = HashMap::new();
+/// map.extend([("a".to_owned(), 10), ("b".into(), 20), ("c".into(), 30)]);
+/// assert_eq!(map.len(), 3);
+///
+/// // Existing key (insert)
+/// let key = String::from("a");
+/// let entry: EntryRef<_, _, _, _> = map.entry_ref(&key);
+/// let _raw_o: OccupiedEntryRef<_, _, _, _> = entry.insert(1);
+/// assert_eq!(map.len(), 3);
+/// // Nonexistent key (insert)
+/// map.entry_ref("d").insert(4);
+///
+/// // Existing key (or_insert)
+/// let v = map.entry_ref("b").or_insert(2);
+/// assert_eq!(std::mem::replace(v, 2), 20);
+/// // Nonexistent key (or_insert)
+/// map.entry_ref("e").or_insert(5);
+///
+/// // Existing key (or_insert_with)
+/// let v = map.entry_ref("c").or_insert_with(|| 3);
+/// assert_eq!(std::mem::replace(v, 3), 30);
+/// // Nonexistent key (or_insert_with)
+/// map.entry_ref("f").or_insert_with(|| 6);
+///
+/// println!("Our HashMap: {:?}", map);
+///
+/// for (key, value) in ["a", "b", "c", "d", "e", "f"].into_iter().zip(1..=6) {
+///     assert_eq!(map[key], value)
+/// }
+/// assert_eq!(map.len(), 6);
+/// ```
 pub enum EntryRef<'a, 'b, K, Q: ?Sized, V, S, A = Global>
 where
     A: Allocator + Clone,
 {
     /// An occupied entry.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::hash_map::{EntryRef, HashMap};
+    /// let mut map: HashMap<_, _> = [("a".to_owned(), 100), ("b".into(), 200)].into();
+    ///
+    /// match map.entry_ref("a") {
+    ///     EntryRef::Vacant(_) => unreachable!(),
+    ///     EntryRef::Occupied(_) => { }
+    /// }
+    /// ```
     Occupied(OccupiedEntryRef<'a, 'b, K, Q, V, S, A>),
 
     /// A vacant entry.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::hash_map::{EntryRef, HashMap};
+    /// let mut map: HashMap<String, i32> = HashMap::new();
+    ///
+    /// match map.entry_ref("a") {
+    ///     EntryRef::Occupied(_) => unreachable!(),
+    ///     EntryRef::Vacant(_) => { }
+    /// }
+    /// ```
     Vacant(VacantEntryRef<'a, 'b, K, Q, V, S, A>),
 }
 
@@ -4201,6 +4394,43 @@ impl<'a, K: Borrow<Q>, Q: ?Sized> AsRef<Q> for KeyOrRef<'a, K, Q> {
 /// It is part of the [`EntryRef`] enum.
 ///
 /// [`EntryRef`]: enum.EntryRef.html
+///
+/// # Examples
+///
+/// ```
+/// use hashbrown::hash_map::{EntryRef, HashMap, OccupiedEntryRef};
+///
+/// let mut map = HashMap::new();
+/// map.extend([("a".to_owned(), 10), ("b".into(), 20), ("c".into(), 30)]);
+///
+/// let key = String::from("a");
+/// let _entry_o: OccupiedEntryRef<_, _, _, _> = map.entry_ref(&key).insert(100);
+/// assert_eq!(map.len(), 3);
+///
+/// // Existing key (insert and update)
+/// match map.entry_ref("a") {
+///     EntryRef::Vacant(_) => unreachable!(),
+///     EntryRef::Occupied(mut view) => {
+///         assert_eq!(view.get(), &100);
+///         let v = view.get_mut();
+///         *v *= 10;
+///         assert_eq!(view.insert(1111), 1000);
+///     }
+/// }
+///
+/// assert_eq!(map["a"], 1111);
+/// assert_eq!(map.len(), 3);
+///
+/// // Existing key (take)
+/// match map.entry_ref("c") {
+///     EntryRef::Vacant(_) => unreachable!(),
+///     EntryRef::Occupied(view) => {
+///         assert_eq!(view.remove_entry(), ("c".to_owned(), 30));
+///     }
+/// }
+/// assert_eq!(map.get("c"), None);
+/// assert_eq!(map.len(), 2);
+/// ```
 pub struct OccupiedEntryRef<'a, 'b, K, Q: ?Sized, V, S, A: Allocator + Clone = Global> {
     hash: u64,
     key: Option<KeyOrRef<'b, K, Q>>,
@@ -4242,6 +4472,32 @@ impl<K: Borrow<Q>, Q: ?Sized + Debug, V: Debug, S, A: Allocator + Clone> Debug
 /// It is part of the [`EntryRef`] enum.
 ///
 /// [`EntryRef`]: enum.EntryRef.html
+///
+/// # Examples
+///
+/// ```
+/// use hashbrown::hash_map::{EntryRef, HashMap, VacantEntryRef};
+///
+/// let mut map = HashMap::<String, i32>::new();
+///
+/// let entry_v: VacantEntryRef<_, _, _, _> = match map.entry_ref("a") {
+///     EntryRef::Vacant(view) => view,
+///     EntryRef::Occupied(_) => unreachable!(),
+/// };
+/// entry_v.insert(10);
+/// assert!(map["a"] == 10 && map.len() == 1);
+///
+/// // Nonexistent key (insert and update)
+/// match map.entry_ref("b") {
+///     EntryRef::Occupied(_) => unreachable!(),
+///     EntryRef::Vacant(view) => {
+///         let value = view.insert(2);
+///         assert_eq!(*value, 2);
+///         *value = 20;
+///     }
+/// }
+/// assert!(map["b"] == 20 && map.len() == 2);
+/// ```
 pub struct VacantEntryRef<'a, 'b, K, Q: ?Sized, V, S, A: Allocator + Clone = Global> {
     hash: u64,
     key: KeyOrRef<'b, K, Q>,
@@ -4259,6 +4515,27 @@ impl<K: Borrow<Q>, Q: ?Sized + Debug, V, S, A: Allocator + Clone> Debug
 /// The error returned by [`try_insert`](HashMap::try_insert) when the key already exists.
 ///
 /// Contains the occupied entry, and the value that was not inserted.
+///
+/// # Examples
+///
+/// ```
+/// use hashbrown::hash_map::{HashMap, OccupiedError};
+///
+/// let mut map: HashMap<_, _> = [("a", 10), ("b", 20)].into();
+///
+/// // try_insert method returns mutable reference to the value if keys are vacant,
+/// // but if the map did have key present, nothing is updated, and the provided
+/// // value is returned inside `Err(_)` variant
+/// match map.try_insert("a", 100) {
+///     Err(OccupiedError { mut entry, value }) => {
+///         assert_eq!(entry.key(), &"a");
+///         assert_eq!(value, 100);
+///         assert_eq!(entry.insert(100), 10)
+///     }
+///     _ => unreachable!(),
+/// }
+/// assert_eq!(map[&"a"], 100);
+/// ```
 pub struct OccupiedError<'a, K, V, S, A: Allocator + Clone = Global> {
     /// The entry in the map that was already occupied.
     pub entry: OccupiedEntry<'a, K, V, S, A>,
@@ -4294,6 +4571,28 @@ impl<'a, K, V, S, A: Allocator + Clone> IntoIterator for &'a HashMap<K, V, S, A>
     type Item = (&'a K, &'a V);
     type IntoIter = Iter<'a, K, V>;
 
+    /// Creates an iterator over the entries of a `HashMap` in arbitrary order.
+    /// The iterator element type is `(&'a K, &'a V)`.
+    ///
+    /// Return the same `Iter` struct as by the [`iter`] method on [`HashMap`].
+    ///
+    /// [`iter`]: struct.HashMap.html#method.iter
+    /// [`HashMap`]: struct.HashMap.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    /// let map_one: HashMap<_, _> = [(1, "a"), (2, "b"), (3, "c")].into();
+    /// let mut map_two = HashMap::new();
+    ///
+    /// for (key, value) in &map_one {
+    ///     println!("Key: {}, Value: {}", key, value);
+    ///     map_two.insert_unique_unchecked(*key, *value);
+    /// }
+    ///
+    /// assert_eq!(map_one, map_two);
+    /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     fn into_iter(self) -> Iter<'a, K, V> {
         self.iter()
@@ -4304,6 +4603,33 @@ impl<'a, K, V, S, A: Allocator + Clone> IntoIterator for &'a mut HashMap<K, V, S
     type Item = (&'a K, &'a mut V);
     type IntoIter = IterMut<'a, K, V>;
 
+    /// Creates an iterator over the entries of a `HashMap` in arbitrary order
+    /// with mutable references to the values. The iterator element type is
+    /// `(&'a K, &'a mut V)`.
+    ///
+    /// Return the same `IterMut` struct as by the [`iter_mut`] method on
+    /// [`HashMap`].
+    ///
+    /// [`iter_mut`]: struct.HashMap.html#method.iter_mut
+    /// [`HashMap`]: struct.HashMap.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    /// let mut map: HashMap<_, _> = [("a", 1), ("b", 2), ("c", 3)].into();
+    ///
+    /// for (key, value) in &mut map {
+    ///     println!("Key: {}, Value: {}", key, value);
+    ///     *value *= 2;
+    /// }
+    ///
+    /// let mut vec = map.iter().collect::<Vec<_>>();
+    /// // The `Iter` iterator produces items in arbitrary order, so the
+    /// // items must be sorted to test them against a sorted array.
+    /// vec.sort_unstable();
+    /// assert_eq!(vec, [(&"a", &2), (&"b", &4), (&"c", &6)]);
+    /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     fn into_iter(self) -> IterMut<'a, K, V> {
         self.iter_mut()
@@ -4323,13 +4649,14 @@ impl<K, V, S, A: Allocator + Clone> IntoIterator for HashMap<K, V, S, A> {
     /// ```
     /// use hashbrown::HashMap;
     ///
-    /// let mut map = HashMap::new();
-    /// map.insert("a", 1);
-    /// map.insert("b", 2);
-    /// map.insert("c", 3);
+    /// let map: HashMap<_, _> = [("a", 1), ("b", 2), ("c", 3)].into();
     ///
     /// // Not possible with .iter()
-    /// let vec: Vec<(&str, i32)> = map.into_iter().collect();
+    /// let mut vec: Vec<(&str, i32)> = map.into_iter().collect();
+    /// // The `IntoIter` iterator produces items in arbitrary order, so
+    /// // the items must be sorted to test them against a sorted array.
+    /// vec.sort_unstable();
+    /// assert_eq!(vec, [("a", 1), ("b", 2), ("c", 3)]);
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     fn into_iter(self) -> IntoIter<K, V, A> {
@@ -4579,9 +4906,11 @@ impl<'a, K, V, S, A: Allocator + Clone> Entry<'a, K, V, S, A> {
     ///
     /// let mut map: HashMap<&str, u32> = HashMap::new();
     ///
+    /// // nonexistent key
     /// map.entry("poneyland").or_insert(3);
     /// assert_eq!(map["poneyland"], 3);
     ///
+    /// // existing key
     /// *map.entry("poneyland").or_insert(10) *= 2;
     /// assert_eq!(map["poneyland"], 6);
     /// ```
@@ -4605,12 +4934,15 @@ impl<'a, K, V, S, A: Allocator + Clone> Entry<'a, K, V, S, A> {
     /// ```
     /// use hashbrown::HashMap;
     ///
-    /// let mut map: HashMap<&str, String> = HashMap::new();
-    /// let s = "hoho".to_string();
+    /// let mut map: HashMap<&str, u32> = HashMap::new();
     ///
-    /// map.entry("poneyland").or_insert_with(|| s);
+    /// // nonexistent key
+    /// map.entry("poneyland").or_insert_with(|| 3);
+    /// assert_eq!(map["poneyland"], 3);
     ///
-    /// assert_eq!(map["poneyland"], "hoho".to_string());
+    /// // existing key
+    /// *map.entry("poneyland").or_insert_with(|| 10) *= 2;
+    /// assert_eq!(map["poneyland"], 6);
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn or_insert_with<F: FnOnce() -> V>(self, default: F) -> &'a mut V
@@ -4638,9 +4970,13 @@ impl<'a, K, V, S, A: Allocator + Clone> Entry<'a, K, V, S, A> {
     ///
     /// let mut map: HashMap<&str, usize> = HashMap::new();
     ///
+    /// // nonexistent key
     /// map.entry("poneyland").or_insert_with_key(|key| key.chars().count());
-    ///
     /// assert_eq!(map["poneyland"], 9);
+    ///
+    /// // existing key
+    /// *map.entry("poneyland").or_insert_with_key(|key| key.chars().count() * 10) *= 2;
+    /// assert_eq!(map["poneyland"], 18);
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn or_insert_with_key<F: FnOnce(&K) -> V>(self, default: F) -> &'a mut V
@@ -4665,7 +5001,11 @@ impl<'a, K, V, S, A: Allocator + Clone> Entry<'a, K, V, S, A> {
     /// use hashbrown::HashMap;
     ///
     /// let mut map: HashMap<&str, u32> = HashMap::new();
+    /// map.entry("poneyland").or_insert(3);
+    /// // existing key
     /// assert_eq!(map.entry("poneyland").key(), &"poneyland");
+    /// // nonexistent key
+    /// assert_eq!(map.entry("horseland").key(), &"horseland");
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn key(&self) -> &K {
@@ -4785,9 +5125,15 @@ impl<'a, K, V: Default, S, A: Allocator + Clone> Entry<'a, K, V, S, A> {
     /// use hashbrown::HashMap;
     ///
     /// let mut map: HashMap<&str, Option<u32>> = HashMap::new();
-    /// map.entry("poneyland").or_default();
     ///
+    /// // nonexistent key
+    /// map.entry("poneyland").or_default();
     /// assert_eq!(map["poneyland"], None);
+    ///
+    /// map.insert("horseland", Some(3));
+    ///
+    /// // existing key
+    /// assert_eq!(map.entry("horseland").or_default(), &mut Some(3));
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn or_default(self) -> &'a mut V
@@ -4808,11 +5154,15 @@ impl<'a, K, V, S, A: Allocator + Clone> OccupiedEntry<'a, K, V, S, A> {
     /// # Examples
     ///
     /// ```
-    /// use hashbrown::HashMap;
+    /// use hashbrown::hash_map::{Entry, HashMap};
     ///
     /// let mut map: HashMap<&str, u32> = HashMap::new();
     /// map.entry("poneyland").or_insert(12);
-    /// assert_eq!(map.entry("poneyland").key(), &"poneyland");
+    ///
+    /// match map.entry("poneyland") {
+    ///     Entry::Vacant(_) => panic!(),
+    ///     Entry::Occupied(entry) => assert_eq!(entry.key(), &"poneyland"),
+    /// }
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn key(&self) -> &K {
@@ -4820,6 +5170,7 @@ impl<'a, K, V, S, A: Allocator + Clone> OccupiedEntry<'a, K, V, S, A> {
     }
 
     /// Take the ownership of the key and value from the map.
+    /// Keeps the allocated memory for reuse.
     ///
     /// # Examples
     ///
@@ -4828,14 +5179,20 @@ impl<'a, K, V, S, A: Allocator + Clone> OccupiedEntry<'a, K, V, S, A> {
     /// use hashbrown::hash_map::Entry;
     ///
     /// let mut map: HashMap<&str, u32> = HashMap::new();
+    /// // The map is empty
+    /// assert!(map.is_empty() && map.capacity() == 0);
+    ///
     /// map.entry("poneyland").or_insert(12);
+    /// let capacity_before_remove = map.capacity();
     ///
     /// if let Entry::Occupied(o) = map.entry("poneyland") {
     ///     // We delete the entry from the map.
-    ///     o.remove_entry();
+    ///     assert_eq!(o.remove_entry(), ("poneyland", 12));
     /// }
     ///
     /// assert_eq!(map.contains_key("poneyland"), false);
+    /// // Now map hold none elements but capacity is equal to the old one
+    /// assert!(map.len() == 0 && map.capacity() == capacity_before_remove);
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn remove_entry(self) -> (K, V) {
@@ -4853,8 +5210,9 @@ impl<'a, K, V, S, A: Allocator + Clone> OccupiedEntry<'a, K, V, S, A> {
     /// let mut map: HashMap<&str, u32> = HashMap::new();
     /// map.entry("poneyland").or_insert(12);
     ///
-    /// if let Entry::Occupied(o) = map.entry("poneyland") {
-    ///     assert_eq!(o.get(), &12);
+    /// match map.entry("poneyland") {
+    ///     Entry::Vacant(_) => panic!(),
+    ///     Entry::Occupied(entry) => assert_eq!(entry.get(), &12),
     /// }
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
@@ -4904,16 +5262,19 @@ impl<'a, K, V, S, A: Allocator + Clone> OccupiedEntry<'a, K, V, S, A> {
     /// # Examples
     ///
     /// ```
-    /// use hashbrown::HashMap;
-    /// use hashbrown::hash_map::Entry;
+    /// use hashbrown::hash_map::{Entry, HashMap};
     ///
     /// let mut map: HashMap<&str, u32> = HashMap::new();
     /// map.entry("poneyland").or_insert(12);
     ///
     /// assert_eq!(map["poneyland"], 12);
-    /// if let Entry::Occupied(o) = map.entry("poneyland") {
-    ///     *o.into_mut() += 10;
+    ///
+    /// let value: &mut u32;
+    /// match map.entry("poneyland") {
+    ///     Entry::Occupied(entry) => value = entry.into_mut(),
+    ///     Entry::Vacant(_) => panic!(),
     /// }
+    /// *value += 10;
     ///
     /// assert_eq!(map["poneyland"], 22);
     /// ```
@@ -4945,6 +5306,7 @@ impl<'a, K, V, S, A: Allocator + Clone> OccupiedEntry<'a, K, V, S, A> {
     }
 
     /// Takes the value out of the entry, and returns it.
+    /// Keeps the allocated memory for reuse.
     ///
     /// # Examples
     ///
@@ -4953,13 +5315,19 @@ impl<'a, K, V, S, A: Allocator + Clone> OccupiedEntry<'a, K, V, S, A> {
     /// use hashbrown::hash_map::Entry;
     ///
     /// let mut map: HashMap<&str, u32> = HashMap::new();
+    /// // The map is empty
+    /// assert!(map.is_empty() && map.capacity() == 0);
+    ///
     /// map.entry("poneyland").or_insert(12);
+    /// let capacity_before_remove = map.capacity();
     ///
     /// if let Entry::Occupied(o) = map.entry("poneyland") {
     ///     assert_eq!(o.remove(), 12);
     /// }
     ///
     /// assert_eq!(map.contains_key("poneyland"), false);
+    /// // Now map hold none elements but capacity is equal to the old one
+    /// assert!(map.len() == 0 && map.capacity() == capacity_before_remove);
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn remove(self) -> V {
@@ -4976,19 +5344,26 @@ impl<'a, K, V, S, A: Allocator + Clone> OccupiedEntry<'a, K, V, S, A> {
     /// # Examples
     ///
     /// ```
-    /// use hashbrown::hash_map::{Entry, HashMap};
-    /// use std::rc::Rc;
+    ///  use hashbrown::hash_map::{Entry, HashMap};
+    ///  use std::rc::Rc;
     ///
-    /// let mut map: HashMap<Rc<String>, u32> = HashMap::new();
-    /// map.insert(Rc::new("Stringthing".to_string()), 15);
+    ///  let mut map: HashMap<Rc<String>, u32> = HashMap::new();
+    ///  let key_one = Rc::new("Stringthing".to_string());
+    ///  let key_two = Rc::new("Stringthing".to_string());
     ///
-    /// let my_key = Rc::new("Stringthing".to_string());
+    ///  map.insert(key_one.clone(), 15);
+    ///  assert!(Rc::strong_count(&key_one) == 2 && Rc::strong_count(&key_two) == 1);
     ///
-    /// if let Entry::Occupied(entry) = map.entry(my_key) {
-    ///     // Also replace the key with a handle to our other key.
-    ///     let (old_key, old_value): (Rc<String>, u32) = entry.replace_entry(16);
-    /// }
+    ///  match map.entry(key_two.clone()) {
+    ///      Entry::Occupied(entry) => {
+    ///          let (old_key, old_value): (Rc<String>, u32) = entry.replace_entry(16);
+    ///          assert!(Rc::ptr_eq(&key_one, &old_key) && old_value == 15);
+    ///      }
+    ///      Entry::Vacant(_) => panic!(),
+    ///  }
     ///
+    ///  assert!(Rc::strong_count(&key_one) == 1 && Rc::strong_count(&key_two) == 2);
+    ///  assert_eq!(map[&"Stringthing".to_owned()], 16);
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn replace_entry(self, value: V) -> (K, V) {
@@ -5012,17 +5387,33 @@ impl<'a, K, V, S, A: Allocator + Clone> OccupiedEntry<'a, K, V, S, A> {
     /// use hashbrown::hash_map::{Entry, HashMap};
     /// use std::rc::Rc;
     ///
-    /// let mut map: HashMap<Rc<String>, u32> = HashMap::new();
-    /// let mut known_strings: Vec<Rc<String>> = Vec::new();
+    /// let mut map: HashMap<Rc<String>, usize> = HashMap::with_capacity(6);
+    /// let mut keys_one: Vec<Rc<String>> = Vec::with_capacity(6);
+    /// let mut keys_two: Vec<Rc<String>> = Vec::with_capacity(6);
     ///
-    /// // Initialise known strings, run program, etc.
+    /// for (value, key) in ["a", "b", "c", "d", "e", "f"].into_iter().enumerate() {
+    ///     let rc_key = Rc::new(key.to_owned());
+    ///     keys_one.push(rc_key.clone());
+    ///     map.insert(rc_key.clone(), value);
+    ///     keys_two.push(Rc::new(key.to_owned()));
+    /// }
     ///
-    /// reclaim_memory(&mut map, &known_strings);
+    /// assert!(
+    ///     keys_one.iter().all(|key| Rc::strong_count(key) == 2)
+    ///         && keys_two.iter().all(|key| Rc::strong_count(key) == 1)
+    /// );
     ///
-    /// fn reclaim_memory(map: &mut HashMap<Rc<String>, u32>, known_strings: &[Rc<String>] ) {
-    ///     for s in known_strings {
-    ///         if let Entry::Occupied(entry) = map.entry(s.clone()) {
-    ///             // Replaces the entry's key with our version of it in `known_strings`.
+    /// reclaim_memory(&mut map, &keys_two);
+    ///
+    /// assert!(
+    ///     keys_one.iter().all(|key| Rc::strong_count(key) == 1)
+    ///         && keys_two.iter().all(|key| Rc::strong_count(key) == 2)
+    /// );
+    ///
+    /// fn reclaim_memory(map: &mut HashMap<Rc<String>, usize>, keys: &[Rc<String>]) {
+    ///     for key in keys {
+    ///         if let Entry::Occupied(entry) = map.entry(key.clone()) {
+    ///         // Replaces the entry's key with our version of it in `keys`.
     ///             entry.replace_key();
     ///         }
     ///     }
@@ -5136,13 +5527,13 @@ impl<'a, K, V, S, A: Allocator + Clone> VacantEntry<'a, K, V, S, A> {
     /// # Examples
     ///
     /// ```
-    /// use hashbrown::HashMap;
-    /// use hashbrown::hash_map::Entry;
+    /// use hashbrown::hash_map::{Entry, HashMap};
     ///
     /// let mut map: HashMap<&str, u32> = HashMap::new();
     ///
-    /// if let Entry::Vacant(v) = map.entry("poneyland") {
-    ///     v.into_key();
+    /// match map.entry("poneyland") {
+    ///     Entry::Occupied(_) => panic!(),
+    ///     Entry::Vacant(v) => assert_eq!(v.into_key(), "poneyland"),
     /// }
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
@@ -5239,9 +5630,11 @@ impl<'a, 'b, K, Q: ?Sized, V, S, A: Allocator + Clone> EntryRef<'a, 'b, K, Q, V,
     ///
     /// let mut map: HashMap<String, u32> = HashMap::new();
     ///
+    /// // nonexistent key
     /// map.entry_ref("poneyland").or_insert(3);
     /// assert_eq!(map["poneyland"], 3);
     ///
+    /// // existing key
     /// *map.entry_ref("poneyland").or_insert(10) *= 2;
     /// assert_eq!(map["poneyland"], 6);
     /// ```
@@ -5265,12 +5658,15 @@ impl<'a, 'b, K, Q: ?Sized, V, S, A: Allocator + Clone> EntryRef<'a, 'b, K, Q, V,
     /// ```
     /// use hashbrown::HashMap;
     ///
-    /// let mut map: HashMap<String, String> = HashMap::new();
-    /// let s = "hoho".to_string();
+    /// let mut map: HashMap<String, u32> = HashMap::new();
     ///
-    /// map.entry_ref("poneyland").or_insert_with(|| s);
+    /// // nonexistent key
+    /// map.entry_ref("poneyland").or_insert_with(|| 3);
+    /// assert_eq!(map["poneyland"], 3);
     ///
-    /// assert_eq!(map["poneyland"], "hoho".to_string());
+    /// // existing key
+    /// *map.entry_ref("poneyland").or_insert_with(|| 10) *= 2;
+    /// assert_eq!(map["poneyland"], 6);
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn or_insert_with<F: FnOnce() -> V>(self, default: F) -> &'a mut V
@@ -5298,9 +5694,13 @@ impl<'a, 'b, K, Q: ?Sized, V, S, A: Allocator + Clone> EntryRef<'a, 'b, K, Q, V,
     ///
     /// let mut map: HashMap<String, usize> = HashMap::new();
     ///
+    /// // nonexistent key
     /// map.entry_ref("poneyland").or_insert_with_key(|key| key.chars().count());
-    ///
     /// assert_eq!(map["poneyland"], 9);
+    ///
+    /// // existing key
+    /// *map.entry_ref("poneyland").or_insert_with_key(|key| key.chars().count() * 10) *= 2;
+    /// assert_eq!(map["poneyland"], 18);
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn or_insert_with_key<F: FnOnce(&Q) -> V>(self, default: F) -> &'a mut V
@@ -5325,7 +5725,11 @@ impl<'a, 'b, K, Q: ?Sized, V, S, A: Allocator + Clone> EntryRef<'a, 'b, K, Q, V,
     /// use hashbrown::HashMap;
     ///
     /// let mut map: HashMap<String, u32> = HashMap::new();
+    /// map.entry_ref("poneyland").or_insert(3);
+    /// // existing key
     /// assert_eq!(map.entry_ref("poneyland").key(), "poneyland");
+    /// // nonexistent key
+    /// assert_eq!(map.entry_ref("horseland").key(), "horseland");
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn key(&self) -> &Q
@@ -5448,10 +5852,16 @@ impl<'a, 'b, K, Q: ?Sized, V: Default, S, A: Allocator + Clone> EntryRef<'a, 'b,
     /// ```
     /// use hashbrown::HashMap;
     ///
-    /// let mut map: HashMap<&str, Option<u32>> = HashMap::new();
-    /// map.entry("poneyland").or_default();
+    /// let mut map: HashMap<String, Option<u32>> = HashMap::new();
     ///
+    /// // nonexistent key
+    /// map.entry_ref("poneyland").or_default();
     /// assert_eq!(map["poneyland"], None);
+    ///
+    /// map.insert("horseland".to_string(), Some(3));
+    ///
+    /// // existing key
+    /// assert_eq!(map.entry_ref("horseland").or_default(), &mut Some(3));
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn or_default(self) -> &'a mut V
@@ -5472,11 +5882,15 @@ impl<'a, 'b, K, Q: ?Sized, V, S, A: Allocator + Clone> OccupiedEntryRef<'a, 'b, 
     /// # Examples
     ///
     /// ```
-    /// use hashbrown::HashMap;
+    /// use hashbrown::hash_map::{EntryRef, HashMap};
     ///
     /// let mut map: HashMap<String, u32> = HashMap::new();
     /// map.entry_ref("poneyland").or_insert(12);
-    /// assert_eq!(map.entry_ref("poneyland").key(), "poneyland");
+    ///
+    /// match map.entry_ref("poneyland") {
+    ///     EntryRef::Vacant(_) => panic!(),
+    ///     EntryRef::Occupied(entry) => assert_eq!(entry.key(), "poneyland"),
+    /// }
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn key(&self) -> &Q
@@ -5487,6 +5901,7 @@ impl<'a, 'b, K, Q: ?Sized, V, S, A: Allocator + Clone> OccupiedEntryRef<'a, 'b, 
     }
 
     /// Take the ownership of the key and value from the map.
+    /// Keeps the allocated memory for reuse.
     ///
     /// # Examples
     ///
@@ -5495,14 +5910,20 @@ impl<'a, 'b, K, Q: ?Sized, V, S, A: Allocator + Clone> OccupiedEntryRef<'a, 'b, 
     /// use hashbrown::hash_map::EntryRef;
     ///
     /// let mut map: HashMap<String, u32> = HashMap::new();
+    /// // The map is empty
+    /// assert!(map.is_empty() && map.capacity() == 0);
+    ///
     /// map.entry_ref("poneyland").or_insert(12);
+    /// let capacity_before_remove = map.capacity();
     ///
     /// if let EntryRef::Occupied(o) = map.entry_ref("poneyland") {
     ///     // We delete the entry from the map.
-    ///     o.remove_entry();
+    ///     assert_eq!(o.remove_entry(), ("poneyland".to_owned(), 12));
     /// }
     ///
     /// assert_eq!(map.contains_key("poneyland"), false);
+    /// // Now map hold none elements but capacity is equal to the old one
+    /// assert!(map.len() == 0 && map.capacity() == capacity_before_remove);
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn remove_entry(self) -> (K, V) {
@@ -5520,8 +5941,9 @@ impl<'a, 'b, K, Q: ?Sized, V, S, A: Allocator + Clone> OccupiedEntryRef<'a, 'b, 
     /// let mut map: HashMap<String, u32> = HashMap::new();
     /// map.entry_ref("poneyland").or_insert(12);
     ///
-    /// if let EntryRef::Occupied(o) = map.entry_ref("poneyland") {
-    ///     assert_eq!(o.get(), &12);
+    /// match map.entry_ref("poneyland") {
+    ///     EntryRef::Vacant(_) => panic!(),
+    ///     EntryRef::Occupied(entry) => assert_eq!(entry.get(), &12),
     /// }
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
@@ -5571,16 +5993,17 @@ impl<'a, 'b, K, Q: ?Sized, V, S, A: Allocator + Clone> OccupiedEntryRef<'a, 'b, 
     /// # Examples
     ///
     /// ```
-    /// use hashbrown::HashMap;
-    /// use hashbrown::hash_map::EntryRef;
+    /// use hashbrown::hash_map::{EntryRef, HashMap};
     ///
     /// let mut map: HashMap<String, u32> = HashMap::new();
     /// map.entry_ref("poneyland").or_insert(12);
     ///
-    /// assert_eq!(map["poneyland"], 12);
-    /// if let EntryRef::Occupied(o) = map.entry_ref("poneyland") {
-    ///     *o.into_mut() += 10;
+    /// let value: &mut u32;
+    /// match map.entry_ref("poneyland") {
+    ///     EntryRef::Occupied(entry) => value = entry.into_mut(),
+    ///     EntryRef::Vacant(_) => panic!(),
     /// }
+    /// *value += 10;
     ///
     /// assert_eq!(map["poneyland"], 22);
     /// ```
@@ -5612,6 +6035,7 @@ impl<'a, 'b, K, Q: ?Sized, V, S, A: Allocator + Clone> OccupiedEntryRef<'a, 'b, 
     }
 
     /// Takes the value out of the entry, and returns it.
+    /// Keeps the allocated memory for reuse.
     ///
     /// # Examples
     ///
@@ -5620,13 +6044,19 @@ impl<'a, 'b, K, Q: ?Sized, V, S, A: Allocator + Clone> OccupiedEntryRef<'a, 'b, 
     /// use hashbrown::hash_map::EntryRef;
     ///
     /// let mut map: HashMap<String, u32> = HashMap::new();
+    /// // The map is empty
+    /// assert!(map.is_empty() && map.capacity() == 0);
+    ///
     /// map.entry_ref("poneyland").or_insert(12);
+    /// let capacity_before_remove = map.capacity();
     ///
     /// if let EntryRef::Occupied(o) = map.entry_ref("poneyland") {
     ///     assert_eq!(o.remove(), 12);
     /// }
     ///
     /// assert_eq!(map.contains_key("poneyland"), false);
+    /// // Now map hold none elements but capacity is equal to the old one
+    /// assert!(map.len() == 0 && map.capacity() == capacity_before_remove);
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn remove(self) -> V {
@@ -5647,13 +6077,21 @@ impl<'a, 'b, K, Q: ?Sized, V, S, A: Allocator + Clone> OccupiedEntryRef<'a, 'b, 
     /// use std::rc::Rc;
     ///
     /// let mut map: HashMap<Rc<str>, u32> = HashMap::new();
-    /// map.insert(Rc::from("Stringthing"), 15);
+    /// let key: Rc<str> = Rc::from("Stringthing");
     ///
-    /// if let EntryRef::Occupied(entry) = map.entry_ref("Stringthing") {
-    ///     // Also replace the key with a handle to our other key.
-    ///     let (old_key, old_value): (Rc<str>, u32) = entry.replace_entry(16);
+    /// map.insert(key.clone(), 15);
+    /// assert_eq!(Rc::strong_count(&key), 2);
+    ///
+    /// match map.entry_ref("Stringthing") {
+    ///     EntryRef::Occupied(entry) => {
+    ///         let (old_key, old_value): (Rc<str>, u32) = entry.replace_entry(16);
+    ///         assert!(Rc::ptr_eq(&key, &old_key) && old_value == 15);
+    ///     }
+    ///     EntryRef::Vacant(_) => panic!(),
     /// }
     ///
+    /// assert_eq!(Rc::strong_count(&key), 1);
+    /// assert_eq!(map["Stringthing"], 16);
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn replace_entry(self, value: V) -> (K, V)
@@ -5680,17 +6118,27 @@ impl<'a, 'b, K, Q: ?Sized, V, S, A: Allocator + Clone> OccupiedEntryRef<'a, 'b, 
     /// use hashbrown::hash_map::{EntryRef, HashMap};
     /// use std::rc::Rc;
     ///
-    /// let mut map: HashMap<Rc<str>, u32> = HashMap::new();
-    /// let mut known_strings: Vec<Rc<str>> = Vec::new();
+    /// let mut map: HashMap<Rc<str>, usize> = HashMap::with_capacity(6);
+    /// let mut keys: Vec<Rc<str>> = Vec::with_capacity(6);
     ///
-    /// // Initialise known strings, run program, etc.
+    /// for (value, key) in ["a", "b", "c", "d", "e", "f"].into_iter().enumerate() {
+    ///     let rc_key: Rc<str> = Rc::from(key);
+    ///     keys.push(rc_key.clone());
+    ///     map.insert(rc_key.clone(), value);
+    /// }
     ///
-    /// reclaim_memory(&mut map, &known_strings);
+    /// assert!(keys.iter().all(|key| Rc::strong_count(key) == 2));
     ///
-    /// fn reclaim_memory(map: &mut HashMap<Rc<str>, u32>, known_strings: &[Rc<str>] ) {
-    ///     for s in known_strings {
-    ///         if let EntryRef::Occupied(entry) = map.entry_ref(s.as_ref()) {
-    ///             // Replaces the entry's key with our version of it in `known_strings`.
+    /// // It doesn't matter that we kind of use a vector with the same keys,
+    /// // because all keys will be newly created from the references
+    /// reclaim_memory(&mut map, &keys);
+    ///
+    /// assert!(keys.iter().all(|key| Rc::strong_count(key) == 1));
+    ///
+    /// fn reclaim_memory(map: &mut HashMap<Rc<str>, usize>, keys: &[Rc<str>]) {
+    ///     for key in keys {
+    ///         if let EntryRef::Occupied(entry) = map.entry_ref(key.as_ref()) {
+    ///         /// Replaces the entry's key with our version of it in `keys`.
     ///             entry.replace_key();
     ///         }
     ///     }
@@ -5812,14 +6260,14 @@ impl<'a, 'b, K, Q: ?Sized, V, S, A: Allocator + Clone> VacantEntryRef<'a, 'b, K,
     /// # Examples
     ///
     /// ```
-    /// use hashbrown::HashMap;
-    /// use hashbrown::hash_map::EntryRef;
+    /// use hashbrown::hash_map::{EntryRef, HashMap};
     ///
     /// let mut map: HashMap<String, u32> = HashMap::new();
     /// let key: &str = "poneyland";
     ///
-    /// if let EntryRef::Vacant(v) = map.entry_ref(key) {
-    ///     v.into_key();
+    /// match map.entry_ref(key) {
+    ///     EntryRef::Occupied(_) => panic!(),
+    ///     EntryRef::Vacant(v) => assert_eq!(v.into_key(), "poneyland".to_owned()),
     /// }
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
@@ -5908,6 +6356,41 @@ where
     S: BuildHasher,
     A: Allocator + Clone,
 {
+    /// Inserts all new key-values from the iterator to existing `HashMap<K, V, S, A>`.
+    /// Replace values with existing keys with new values returned from the iterator.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::hash_map::HashMap;
+    ///
+    /// let mut map = HashMap::new();
+    /// map.insert(1, 100);
+    ///
+    /// let some_iter = [(1, 1), (2, 2)].into_iter();
+    /// map.extend(some_iter);
+    /// // Replace values with existing keys with new values returned from the iterator.
+    /// // So that the map.get(&1) doesn't return Some(&100).
+    /// assert_eq!(map.get(&1), Some(&1));
+    ///
+    /// let some_vec: Vec<_> = vec![(3, 3), (4, 4)];
+    /// map.extend(some_vec);
+    ///
+    /// let some_arr = [(5, 5), (6, 6)];
+    /// map.extend(some_arr);
+    /// let old_map_len = map.len();
+    ///
+    /// // You can also extend from another HashMap
+    /// let mut new_map = HashMap::new();
+    /// new_map.extend(map);
+    /// assert_eq!(new_map.len(), old_map_len);
+    ///
+    /// let mut vec: Vec<_> = new_map.into_iter().collect();
+    /// // The `IntoIter` iterator produces items in arbitrary order, so the
+    /// // items must be sorted to test them against a sorted array.
+    /// vec.sort_unstable();
+    /// assert_eq!(vec, [(1, 1), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6)]);
+    /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     fn extend<T: IntoIterator<Item = (K, V)>>(&mut self, iter: T) {
         // Keys may be already present or show multiple times in the iterator.
@@ -5948,6 +6431,8 @@ where
     }
 }
 
+/// Inserts all new key-values from the iterator and replaces values with existing
+/// keys with new values returned from the iterator.
 impl<'a, K, V, S, A> Extend<(&'a K, &'a V)> for HashMap<K, V, S, A>
 where
     K: Eq + Hash + Copy,
@@ -5955,6 +6440,44 @@ where
     S: BuildHasher,
     A: Allocator + Clone,
 {
+    /// Inserts all new key-values from the iterator to existing `HashMap<K, V, S, A>`.
+    /// Replace values with existing keys with new values returned from the iterator.
+    /// The keys and values must implement [`Copy`] trait.
+    ///
+    /// [`Copy`]: https://doc.rust-lang.org/core/marker/trait.Copy.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::hash_map::HashMap;
+    ///
+    /// let mut map = HashMap::new();
+    /// map.insert(1, 100);
+    ///
+    /// let arr = [(1, 1), (2, 2)];
+    /// let some_iter = arr.iter().map(|&(k, v)| (k, v));
+    /// map.extend(some_iter);
+    /// // Replace values with existing keys with new values returned from the iterator.
+    /// // So that the map.get(&1) doesn't return Some(&100).
+    /// assert_eq!(map.get(&1), Some(&1));
+    ///
+    /// let some_vec: Vec<_> = vec![(3, 3), (4, 4)];
+    /// map.extend(some_vec.iter().map(|&(k, v)| (k, v)));
+    ///
+    /// let some_arr = [(5, 5), (6, 6)];
+    /// map.extend(some_arr.iter().map(|&(k, v)| (k, v)));
+    ///
+    /// // You can also extend from another HashMap
+    /// let mut new_map = HashMap::new();
+    /// new_map.extend(&map);
+    /// assert_eq!(new_map, map);
+    ///
+    /// let mut vec: Vec<_> = new_map.into_iter().collect();
+    /// // The `IntoIter` iterator produces items in arbitrary order, so the
+    /// // items must be sorted to test them against a sorted array.
+    /// vec.sort_unstable();
+    /// assert_eq!(vec, [(1, 1), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6)]);
+    /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     fn extend<T: IntoIterator<Item = (&'a K, &'a V)>>(&mut self, iter: T) {
         self.extend(iter.into_iter().map(|(&key, &value)| (key, value)));
