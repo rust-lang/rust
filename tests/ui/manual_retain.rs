@@ -1,6 +1,6 @@
 // run-rustfix
 #![feature(custom_inner_attributes)]
-#![warn(clippy::use_retain)]
+#![warn(clippy::manual_retain)]
 #![allow(unused)]
 use std::collections::BTreeMap;
 use std::collections::BTreeSet;

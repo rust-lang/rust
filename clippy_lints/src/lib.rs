@@ -283,6 +283,7 @@ mod manual_bits;
 mod manual_non_exhaustive;
 mod manual_ok_or;
 mod manual_rem_euclid;
+mod manual_retain;
 mod manual_strip;
 mod map_clone;
 mod map_err_ignore;
@@ -410,7 +411,6 @@ mod unused_unit;
 mod unwrap;
 mod unwrap_in_result;
 mod upper_case_acronyms;
-mod use_retain;
 mod use_self;
 mod useless_conversion;
 mod vec;
@@ -915,7 +915,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(read_zero_byte_vec::ReadZeroByteVec));
     store.register_late_pass(|| Box::new(default_instead_of_iter_empty::DefaultIterEmpty));
     store.register_late_pass(move || Box::new(manual_rem_euclid::ManualRemEuclid::new(msrv)));
-    store.register_late_pass(move || Box::new(use_retain::UseRetain::new(msrv)));
+    store.register_late_pass(move || Box::new(manual_retain::ManualRetain::new(msrv)));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 

@@ -13,6 +13,7 @@ store.register_group(true, "clippy::perf", Some("clippy_perf"), vec![
     LintId::of(loops::MANUAL_MEMCPY),
     LintId::of(loops::MISSING_SPIN_LOOP),
     LintId::of(loops::NEEDLESS_COLLECT),
+    LintId::of(manual_retain::MANUAL_RETAIN),
     LintId::of(methods::EXPECT_FUN_CALL),
     LintId::of(methods::EXTEND_WITH_DRAIN),
     LintId::of(methods::ITER_NTH),
@@ -26,7 +27,6 @@ store.register_group(true, "clippy::perf", Some("clippy_perf"), vec![
     LintId::of(slow_vector_initialization::SLOW_VECTOR_INITIALIZATION),
     LintId::of(types::BOX_COLLECTION),
     LintId::of(types::REDUNDANT_ALLOCATION),
-    LintId::of(use_retain::USE_RETAIN),
     LintId::of(vec::USELESS_VEC),
     LintId::of(vec_init_then_push::VEC_INIT_THEN_PUSH),
 ])

@@ -44,25 +44,25 @@ declare_clippy_lint! {
     /// vec.retain(|x| x % 2 == 0);
     /// ```
     #[clippy::version = "1.63.0"]
-    pub USE_RETAIN,
+    pub MANUAL_RETAIN,
     perf,
     "`retain()` is simpler and the same functionalitys"
 }
 
-pub struct UseRetain {
+pub struct ManualRetain {
     msrv: Option<RustcVersion>,
 }
 
-impl UseRetain {
+impl ManualRetain {
     #[must_use]
     pub fn new(msrv: Option<RustcVersion>) -> Self {
         Self { msrv }
     }
 }
 
-impl_lint_pass!(UseRetain => [USE_RETAIN]);
+impl_lint_pass!(ManualRetain => [MANUAL_RETAIN]);
 
-impl<'tcx> LateLintPass<'tcx> for UseRetain {
+impl<'tcx> LateLintPass<'tcx> for ManualRetain {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
         if let Some(parent_expr) = get_parent_expr(cx, expr)
             && let Assign(left_expr, collect_expr, _) = &parent_expr.kind
@@ -170,7 +170,7 @@ fn suggest(cx: &LateContext<'_>, parent_expr: &hir::Expr<'_>, left_expr: &hir::E
         } {
         span_lint_and_sugg(
             cx,
-            USE_RETAIN,
+            MANUAL_RETAIN,
             parent_expr.span,
             "this expression can be written more simply using `.retain()`",
             "consider calling `.retain()` instead",
