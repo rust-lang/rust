@@ -721,12 +721,14 @@ define_config! {
 }
 
 #[derive(Default, Deserialize)]
+#[cfg_attr(test, derive(Clone))]
 pub struct Stage0Metadata {
     pub config: Stage0Config,
     pub checksums_sha256: HashMap<String, String>,
     pub rustfmt: Option<RustfmtMetadata>,
 }
 #[derive(Default, Deserialize)]
+#[cfg_attr(test, derive(Clone))]
 pub struct Stage0Config {
     pub dist_server: String,
     pub artifacts_server: String,
@@ -734,6 +736,7 @@ pub struct Stage0Config {
     pub git_merge_commit_email: String,
 }
 #[derive(Default, Deserialize)]
+#[cfg_attr(test, derive(Clone))]
 pub struct RustfmtMetadata {
     pub date: String,
     pub version: String,
