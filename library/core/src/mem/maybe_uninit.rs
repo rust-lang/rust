@@ -865,7 +865,7 @@ impl<T> MaybeUninit<T> {
     ///
     /// For instance, you cannot [`Read`] into an uninitialized buffer:
     ///
-    /// [`Read`]: https://doc.rust-lang.org/std/io/trait.Read.html
+    /// [`Read`]: ../../std/io/trait.Read.html
     ///
     /// ```rust,no_run
     /// use std::{io, mem::MaybeUninit};

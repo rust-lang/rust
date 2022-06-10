@@ -38,7 +38,7 @@ struct SipHasher24 {
 /// SipHash is a general-purpose hashing function: it runs at a good
 /// speed (competitive with Spooky and City) and permits strong _keyed_
 /// hashing. This lets you key your hash tables from a strong RNG, such as
-/// [`rand::os::OsRng`](https://doc.rust-lang.org/rand/rand/os/struct.OsRng.html).
+/// [`rand::os::OsRng`](https://docs.rs/rand/latest/rand/rngs/struct.OsRng.html).
 ///
 /// Although the SipHash algorithm is considered to be generally strong,
 /// it is not intended for cryptographic purposes. As such, all
