@@ -147,6 +147,7 @@ fn check_opt_like<'a>(
     }
 }
 
+/// Returns `true` if all of the types in the pattern are candidate enums
 fn pat_in_candidate_enum<'a>(cx: &LateContext<'a>, ty: Ty<'a>, pat: &Pat<'_>) -> bool {
     let mut paths_and_types = Vec::new();
     collect_pat_paths(&mut paths_and_types, cx, pat, ty);
@@ -166,7 +167,7 @@ fn in_candidate_enum<'a>(cx: &LateContext<'a>, ty: Ty<'_>) -> bool {
     false
 }
 
-/// Collects paths and their types from the given patterns
+/// Collects types from the given pattern
 fn collect_pat_paths<'a>(acc: &mut Vec<Ty<'a>>, cx: &LateContext<'a>, pat: &Pat<'_>, ty: Ty<'a>) {
     match pat.kind {
         PatKind::Tuple(inner, _) => inner.iter().for_each(|p| {
