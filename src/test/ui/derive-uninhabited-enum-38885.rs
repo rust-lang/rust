@@ -10,7 +10,7 @@ enum Void {}
 #[derive(Debug)]
 enum Foo {
     Bar(u8),
-    Void(Void), //~ WARN never constructed
+    Void(Void), //~ WARN variant `Void` is never constructed
 }
 
 fn main() {

@@ -1,6 +1,9 @@
-warning: variant is never constructed: `Void`
+warning: variant `Void` is never constructed
   --> $DIR/derive-uninhabited-enum-38885.rs:13:5
    |
+LL | enum Foo {
+   |      --- variant in this enum
+LL |     Bar(u8),
 LL |     Void(Void),
    |     ^^^^^^^^^^
    |

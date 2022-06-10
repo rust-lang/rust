@@ -3,15 +3,15 @@
 
 enum Enum1 {
     Variant1(isize),
-    Variant2 //~ ERROR: variant is never constructed
+    Variant2 //~ ERROR: variant `Variant2` is never constructed
 }
 
 enum Enum2 {
     Variant3(bool),
     #[allow(dead_code)]
     Variant4(isize),
-    Variant5 { _x: isize }, //~ ERROR: variant is never constructed: `Variant5`
-    Variant6(isize), //~ ERROR: variant is never constructed: `Variant6`
+    Variant5 { _x: isize }, //~ ERROR: variants `Variant5` and `Variant6` are never constructed
+    Variant6(isize),
     _Variant7,
     Variant8 { _field: bool },
     Variant9,
@@ -32,7 +32,7 @@ impl Enum2 {
     }
 }
 
-enum Enum3 { //~ ERROR: enum is never used
+enum Enum3 { //~ ERROR: enum `Enum3` is never used
     Variant8,
     Variant9
 }

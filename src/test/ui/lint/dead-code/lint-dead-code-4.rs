@@ -4,7 +4,7 @@
 
 struct Foo {
     x: usize,
-    b: bool, //~ ERROR: field is never read
+    b: bool, //~ ERROR: field `b` is never read
 }
 
 fn field_read(f: Foo) -> usize {
@@ -12,8 +12,8 @@ fn field_read(f: Foo) -> usize {
 }
 
 enum XYZ {
-    X, //~ ERROR variant is never constructed
-    Y { //~ ERROR variant is never constructed
+    X, //~ ERROR variants `X` and `Y` are never constructed
+    Y {
         a: String,
         b: i32,
         c: i32,
@@ -21,7 +21,7 @@ enum XYZ {
     Z
 }
 
-enum ABC { //~ ERROR enum is never used
+enum ABC { //~ ERROR enum `ABC` is never used
     A,
     B {
         a: String,
@@ -33,13 +33,13 @@ enum ABC { //~ ERROR enum is never used
 
 // ensure struct variants get warning for their fields
 enum IJK {
-    I, //~ ERROR variant is never constructed
+    I, //~ ERROR variants `I` and `K` are never constructed
     J {
         a: String,
-        b: i32, //~ ERROR field is never read
-        c: i32, //~ ERROR field is never read
+        b: i32, //~ ERROR fields `b` and `c` are never read
+        c: i32,
     },
-    K //~ ERROR variant is never constructed
+    K
 
 }
 
@@ -58,9 +58,9 @@ fn field_match_in_patterns(b: XYZ) -> String {
 }
 
 struct Bar {
-    x: usize, //~ ERROR: field is never read
+    x: usize, //~ ERROR: fields `x` and `c` are never read
     b: bool,
-    c: bool, //~ ERROR: field is never read
+    c: bool,
     _guard: ()
 }
 

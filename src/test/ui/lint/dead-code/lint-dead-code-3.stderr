@@ -1,4 +1,4 @@
-error: struct is never constructed: `Foo`
+error: struct `Foo` is never constructed
   --> $DIR/lint-dead-code-3.rs:14:8
    |
 LL | struct Foo;
@@ -10,25 +10,25 @@ note: the lint level is defined here
 LL | #![deny(dead_code)]
    |         ^^^^^^^^^
 
-error: associated function is never used: `foo`
+error: associated function `foo` is never used
   --> $DIR/lint-dead-code-3.rs:16:8
    |
 LL |     fn foo(&self) {
    |        ^^^
 
-error: function is never used: `bar`
+error: function `bar` is never used
   --> $DIR/lint-dead-code-3.rs:21:4
    |
 LL | fn bar() {
    |    ^^^
 
-error: enum is never used: `c_void`
+error: enum `c_void` is never used
   --> $DIR/lint-dead-code-3.rs:60:6
    |
 LL | enum c_void {}
    |      ^^^^^^
 
-error: function is never used: `free`
+error: function `free` is never used
   --> $DIR/lint-dead-code-3.rs:62:5
    |
 LL |     fn free(p: *const c_void);

@@ -1,4 +1,4 @@
-error: struct is never constructed: `F`
+error: struct `F` is never constructed
   --> $DIR/unused-enum.rs:3:8
    |
 LL | struct F;
@@ -11,13 +11,13 @@ LL | #![deny(unused)]
    |         ^^^^^^
    = note: `#[deny(dead_code)]` implied by `#[deny(unused)]`
 
-error: struct is never constructed: `B`
+error: struct `B` is never constructed
   --> $DIR/unused-enum.rs:4:8
    |
 LL | struct B;
    |        ^
 
-error: enum is never used: `E`
+error: enum `E` is never used
   --> $DIR/unused-enum.rs:6:6
    |
 LL | enum E {

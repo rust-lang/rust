@@ -24,7 +24,7 @@ warning: unused variable: `x`
 LL | fn foo(x: &dyn std::fmt::Display) {}
    |        ^ help: if this is intentional, prefix it with an underscore: `_x`
 
-warning: function is never used: `foo`
+warning: function `foo` is never used
   --> $DIR/display-output.rs:13:4
    |
 LL | fn foo(x: &dyn std::fmt::Display) {}

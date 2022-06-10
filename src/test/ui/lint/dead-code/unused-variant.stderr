@@ -1,6 +1,8 @@
-error: variant is never constructed: `Variant1`
+error: variant `Variant1` is never constructed
   --> $DIR/unused-variant.rs:5:5
    |
+LL | enum Enum {
+   |      ---- variant in this enum
 LL |     Variant1,
    |     ^^^^^^^^
    |
