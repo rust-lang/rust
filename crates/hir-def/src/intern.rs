@@ -3,7 +3,6 @@
 //! Eventually this should probably be replaced with salsa-based interning.
 
 use std::{
-    collections::HashMap,
     fmt::{self, Debug, Display},
     hash::{BuildHasherDefault, Hash, Hasher},
     ops::Deref,
@@ -11,17 +10,15 @@ use std::{
 };
 
 use dashmap::{DashMap, SharedValue};
-use lock_api::RwLockWriteGuard;
+use hashbrown::HashMap;
 use once_cell::sync::OnceCell;
-use parking_lot::RawRwLock;
 use rustc_hash::FxHasher;
 
 use crate::generics::GenericParams;
 
 type InternMap<T> = DashMap<Arc<T>, (), BuildHasherDefault<FxHasher>>;
-type Guard<T> = RwLockWriteGuard<
+type Guard<T> = dashmap::RwLockWriteGuard<
     'static,
-    RawRwLock,
     HashMap<Arc<T>, SharedValue<()>, BuildHasherDefault<FxHasher>>,
 >;
 

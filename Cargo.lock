@@ -294,13 +294,14 @@ dependencies = [
 
 [[package]]
 name = "dashmap"
-version = "5.2.0"
+version = "5.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4c8858831f7781322e539ea39e72449c46b059638250c14344fec8d0aa6e539c"
+checksum = "3495912c9c1ccf2e18976439f4443f3fee0fd61f424ff99fde6a66b15ecb448f"
 dependencies = [
  "cfg-if",
- "num_cpus",
- "parking_lot 0.12.0",
+ "hashbrown 0.12.1",
+ "lock_api",
+ "parking_lot_core 0.9.3",
 ]
 
 [[package]]
@@ -505,15 +506,14 @@ dependencies = [
  "either",
  "expect-test",
  "fst",
+ "hashbrown 0.12.1",
  "hir-expand",
  "indexmap",
  "itertools",
  "la-arena",
  "limit",
- "lock_api",
  "mbe",
  "once_cell",
- "parking_lot 0.12.0",
  "profile",
  "rustc-hash",
  "smallvec",
