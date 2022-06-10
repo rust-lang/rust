@@ -201,7 +201,7 @@ impl ChildExt for process::Child {
 /// This is so that future additional methods are not breaking changes.
 #[stable(feature = "windows_process_exit_code_from", since = "1.63.0")]
 pub trait ExitCodeExt: Sealed {
-    /// Creates a new `ExitStatus` from the raw underlying `u32` return value of
+    /// Creates a new `ExitCode` from the raw underlying `u32` return value of
     /// a process.
     #[stable(feature = "windows_process_exit_code_from", since = "1.63.0")]
     fn from_raw(raw: u32) -> Self;
