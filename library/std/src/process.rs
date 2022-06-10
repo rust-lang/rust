@@ -1423,7 +1423,7 @@ impl From<fs::File> for Stdio {
 /// the `Termination` trait, in contrast to `ExitStatus`, which represents the
 /// termination of a child process. These APIs are separate due to platform
 /// compatibility differences and their expected usage; it is not generally
-/// possible to exactly reproduce an ExitStatus from a child for the current
+/// possible to exactly reproduce an `ExitStatus` from a child for the current
 /// process after the fact.
 ///
 /// [`status`]: Command::status
@@ -1684,7 +1684,7 @@ impl crate::error::Error for ExitStatusError {}
 /// the `Termination` trait, in contrast to [`ExitStatus`], which represents the
 /// termination of a child process. These APIs are separate due to platform
 /// compatibility differences and their expected usage; it is not generally
-/// possible to exactly reproduce an ExitStatus from a child for the current
+/// possible to exactly reproduce an `ExitStatus` from a child for the current
 /// process after the fact.
 ///
 /// # Examples
