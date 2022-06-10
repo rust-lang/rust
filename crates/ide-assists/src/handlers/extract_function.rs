@@ -1017,7 +1017,7 @@ fn path_element_of_reference(
         stdx::never!(false, "cannot find token at variable usage: {:?}", reference);
         None
     })?;
-    let path = token.ancestors().find_map(ast::Expr::cast).or_else(|| {
+    let path = token.parent_ancestors().find_map(ast::Expr::cast).or_else(|| {
         stdx::never!(false, "cannot find path parent of variable usage: {:?}", token);
         None
     })?;

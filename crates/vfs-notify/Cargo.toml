@@ -10,7 +10,7 @@ rust-version = "1.57"
 doctest = false
 
 [dependencies]
-tracing = "0.1.32"
+tracing = "0.1.35"
 jod-thread = "0.1.2"
 walkdir = "2.3.2"
 crossbeam-channel = "0.5.4"

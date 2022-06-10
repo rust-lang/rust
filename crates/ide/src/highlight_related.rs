@@ -183,7 +183,7 @@ fn highlight_exit_points(
         }
         Some(highlights)
     }
-    for anc in token.ancestors() {
+    for anc in token.parent_ancestors() {
         return match_ast! {
             match anc {
                 ast::Fn(fn_) => hl(sema, fn_.body().map(ast::Expr::BlockExpr)),
@@ -254,7 +254,7 @@ fn highlight_break_points(token: SyntaxToken) -> Option<Vec<HighlightedRange>> {
         None => true,
     };
     let token_kind = token.kind();
-    for anc in token.ancestors().flat_map(ast::Expr::cast) {
+    for anc in token.parent_ancestors().flat_map(ast::Expr::cast) {
         return match anc {
             ast::Expr::LoopExpr(l) if label_matches(l.label()) => hl(
                 token_kind,
@@ -302,7 +302,7 @@ fn highlight_yield_points(token: SyntaxToken) -> Option<Vec<HighlightedRange>> {
         }
         Some(highlights)
     }
-    for anc in token.ancestors() {
+    for anc in token.parent_ancestors() {
         return match_ast! {
             match anc {
                 ast::Fn(fn_) => hl(fn_.async_token(), fn_.body().map(ast::Expr::BlockExpr)),

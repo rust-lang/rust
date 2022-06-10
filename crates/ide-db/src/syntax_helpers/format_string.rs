@@ -14,7 +14,7 @@ pub fn is_format_string(string: &ast::String) -> bool {
     // This setup lets us correctly highlight the components of `concat!("{}", "bla")` format
     // strings. It still fails for `concat!("{", "}")`, but that is rare.
     (|| {
-        let macro_call = string.syntax().ancestors().find_map(ast::MacroCall::cast)?;
+        let macro_call = string.syntax().parent_ancestors().find_map(ast::MacroCall::cast)?;
         let name = macro_call.path()?.segment()?.name_ref()?;
 
         if !matches!(

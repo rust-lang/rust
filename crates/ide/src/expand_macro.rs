@@ -46,10 +46,10 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
             return None;
         }
 
-        let name = descended.ancestors().filter_map(ast::Path::cast).last()?.to_string();
+        let name = descended.parent_ancestors().filter_map(ast::Path::cast).last()?.to_string();
         // up map out of the #[derive] expansion
         let token = hir::InFile::new(hir_file, descended).upmap(db)?.value;
-        let attr = token.ancestors().find_map(ast::Attr::cast)?;
+        let attr = token.parent_ancestors().find_map(ast::Attr::cast)?;
         let expansions = sema.expand_derive_macro(&attr)?;
         let idx = attr
             .token_tree()?
@@ -69,7 +69,7 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
 
     // FIXME: Intermix attribute and bang! expansions
     // currently we only recursively expand one of the two types
-    let mut anc = tok.ancestors();
+    let mut anc = tok.parent_ancestors();
     let (name, expanded, kind) = loop {
         let node = anc.next()?;
 

@@ -618,7 +618,7 @@ impl<'db> SemanticsImpl<'db> {
 
         if first == last {
             self.descend_into_macros_impl(first, &mut |InFile { value, .. }| {
-                if let Some(node) = value.ancestors().find_map(N::cast) {
+                if let Some(node) = value.parent_ancestors().find_map(N::cast) {
                     res.push(node)
                 }
                 false
@@ -737,7 +737,7 @@ impl<'db> SemanticsImpl<'db> {
             let was_not_remapped = (|| {
                 // are we inside an attribute macro call
                 let containing_attribute_macro_call = self.with_ctx(|ctx| {
-                    token.value.ancestors().filter_map(ast::Item::cast).find_map(|item| {
+                    token.value.parent_ancestors().filter_map(ast::Item::cast).find_map(|item| {
                         if item.attrs().next().is_none() {
                             // Don't force populate the dyn cache for items that don't have an attribute anyways
                             return None;
@@ -758,7 +758,12 @@ impl<'db> SemanticsImpl<'db> {
                 // or are we inside a function-like macro call
                 if let Some(tt) =
                     // FIXME replace map.while_some with take_while once stable
-                    token.value.ancestors().map(ast::TokenTree::cast).while_some().last()
+                    token
+                        .value
+                        .parent_ancestors()
+                        .map(ast::TokenTree::cast)
+                        .while_some()
+                        .last()
                 {
                     let parent = tt.syntax().parent()?;
                     // check for derive attribute here

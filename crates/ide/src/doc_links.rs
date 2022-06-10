@@ -231,7 +231,7 @@ pub(crate) fn token_as_doc_comment(doc_token: &SyntaxToken) -> Option<DocComment
     (match_ast! {
         match doc_token {
             ast::Comment(comment) => TextSize::try_from(comment.prefix().len()).ok(),
-            ast::String(string) => doc_token.ancestors().find_map(ast::Attr::cast)
+            ast::String(string) => doc_token.parent_ancestors().find_map(ast::Attr::cast)
                 .filter(|attr| attr.simple_name().as_deref() == Some("doc")).and_then(|_| string.open_quote_text_range().map(|it| it.len())),
             _ => None,
         }
@@ -255,7 +255,7 @@ impl DocCommentToken {
             let (node, descended_prefix_len) = match_ast! {
                 match t {
                     ast::Comment(comment) => (t.parent()?, TextSize::try_from(comment.prefix().len()).ok()?),
-                    ast::String(string) => (t.ancestors().skip_while(|n| n.kind() != ATTR).nth(1)?, string.open_quote_text_range()?.len()),
+                    ast::String(string) => (t.parent_ancestors().skip_while(|n| n.kind() != ATTR).nth(1)?, string.open_quote_text_range()?.len()),
                     _ => return None,
                 }
             };

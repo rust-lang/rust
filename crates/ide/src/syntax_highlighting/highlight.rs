@@ -27,7 +27,7 @@ pub(super) fn token(sema: &Semantics<RootDatabase>, token: SyntaxToken) -> Optio
 
     let highlight: Highlight = match token.kind() {
         STRING | BYTE_STRING => HlTag::StringLiteral.into(),
-        INT_NUMBER if token.ancestors().nth(1).map(|it| it.kind()) == Some(FIELD_EXPR) => {
+        INT_NUMBER if token.parent_ancestors().nth(1).map(|it| it.kind()) == Some(FIELD_EXPR) => {
             SymbolKind::Field.into()
         }
         INT_NUMBER | FLOAT_NUMBER => HlTag::NumericLiteral.into(),

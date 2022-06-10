@@ -178,7 +178,7 @@ pub(crate) fn is_in_token_of_for_loop(element: SyntaxElement) -> bool {
     (|| {
         let syntax_token = element.into_token()?;
         let range = syntax_token.text_range();
-        let for_expr = syntax_token.ancestors().find_map(ast::ForExpr::cast)?;
+        let for_expr = syntax_token.parent_ancestors().find_map(ast::ForExpr::cast)?;
 
         // check if the current token is the `in` token of a for loop
         if let Some(token) = for_expr.in_token() {
