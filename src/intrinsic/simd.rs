@@ -1,6 +1,4 @@
-use std::cmp::Ordering;
-
-use gccjit::{BinaryOp, RValue, Type, ToRValue};
+use gccjit::{BinaryOp, RValue, Type, ToRValue, ComparisonOp, UnaryOp};
 use rustc_codegen_ssa::base::compare_simd_types;
 use rustc_codegen_ssa::common::{TypeKind, span_invalid_monomorphization_error};
 use rustc_codegen_ssa::mir::operand::OperandRef;
@@ -215,48 +213,12 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
         let vector = args[0].immediate();
         let index = args[1].immediate();
         let value = args[2].immediate();
-        // TODO(antoyo): use a recursive unqualified() here.
-        let vector_type = vector.get_type().unqualified().dyncast_vector().expect("vector type");
-        let element_type = vector_type.get_element_type();
-        // NOTE: we cannot cast to an array and assign to its element here because the value might
-        // not be an l-value. So, call a builtin to set the element.
-        // TODO(antoyo): perhaps we could create a new vector or maybe there's a GIMPLE instruction for that?
-        // TODO(antoyo): don't use target specific builtins here.
-        let func_name =
-            match in_len {
-                2 => {
-                    if element_type == bx.i64_type {
-                        "__builtin_ia32_vec_set_v2di"
-                    }
-                    else {
-                        unimplemented!();
-                    }
-                },
-                4 => {
-                    if element_type == bx.i32_type {
-                        "__builtin_ia32_vec_set_v4si"
-                    }
-                    else {
-                        unimplemented!();
-                    }
-                },
-                8 => {
-                    if element_type == bx.i16_type {
-                        "__builtin_ia32_vec_set_v8hi"
-                    }
-                    else {
-                        unimplemented!();
-                    }
-                },
-                _ => unimplemented!("Len: {}", in_len),
-            };
-        let builtin = bx.context.get_target_builtin_function(func_name);
-        let param1_type = builtin.get_param(0).to_rvalue().get_type();
-        // TODO(antoyo): perhaps use __builtin_convertvector for vector casting.
-        let vector = bx.cx.bitcast_if_needed(vector, param1_type);
-        let result = bx.context.new_call(None, builtin, &[vector, value, bx.context.new_cast(None, index, bx.int_type)]);
-        // TODO(antoyo): perhaps use __builtin_convertvector for vector casting.
-        return Ok(bx.context.new_bitcast(None, result, vector.get_type()));
+        let variable = bx.current_func().new_local(None, vector.get_type(), "new_vector");
+        bx.llbb().add_assignment(None, variable, vector);
+        let lvalue = bx.context.new_vector_access(None, variable.to_rvalue(), index);
+        // TODO: if simd_insert is constant, use BIT_REF.
+        bx.llbb().add_assignment(None, lvalue, value);
+        return Ok(variable.to_rvalue());
     }
 
     #[cfg(feature="master")]
@@ -290,6 +252,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
         return Ok(bx.vector_select(args[0].immediate(), args[1].immediate(), args[2].immediate()));
     }
 
+    #[cfg(feature="master")]
     if name == sym::simd_cast {
         require_simd!(ret_ty, "return");
         let (out_len, out_elem) = ret_ty.simd_size_and_type(bx.tcx());
@@ -309,117 +272,37 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
 
         enum Style {
             Float,
-            Int(/* is signed? */ bool),
+            Int,
             Unsupported,
         }
 
-        let (in_style, in_width) = match in_elem.kind() {
-            // vectors of pointer-sized integers should've been
-            // disallowed before here, so this unwrap is safe.
-            ty::Int(i) => (
-                Style::Int(true),
-                i.normalize(bx.tcx().sess.target.pointer_width).bit_width().unwrap(),
-            ),
-            ty::Uint(u) => (
-                Style::Int(false),
-                u.normalize(bx.tcx().sess.target.pointer_width).bit_width().unwrap(),
-            ),
-            ty::Float(f) => (Style::Float, f.bit_width()),
-            _ => (Style::Unsupported, 0),
-        };
-        let (out_style, out_width) = match out_elem.kind() {
-            ty::Int(i) => (
-                Style::Int(true),
-                i.normalize(bx.tcx().sess.target.pointer_width).bit_width().unwrap(),
-            ),
-            ty::Uint(u) => (
-                Style::Int(false),
-                u.normalize(bx.tcx().sess.target.pointer_width).bit_width().unwrap(),
-            ),
-            ty::Float(f) => (Style::Float, f.bit_width()),
-            _ => (Style::Unsupported, 0),
-        };
-
-        let extend = |in_type, out_type| {
-            let vector_type = bx.context.new_vector_type(out_type, 8);
-            let vector = args[0].immediate();
-            let array_type = bx.context.new_array_type(None, in_type, 8);
-            // TODO(antoyo): switch to using new_vector_access or __builtin_convertvector for vector casting.
-            let array = bx.context.new_bitcast(None, vector, array_type);
-
-            let cast_vec_element = |index| {
-                let index = bx.context.new_rvalue_from_int(bx.int_type, index);
-                bx.context.new_cast(None, bx.context.new_array_access(None, array, index).to_rvalue(), out_type)
+        let in_style =
+            match in_elem.kind() {
+                ty::Int(_) | ty::Uint(_) => Style::Int,
+                ty::Float(_) => Style::Float,
+                 _ => Style::Unsupported,
             };
 
-            bx.context.new_rvalue_from_vector(None, vector_type, &[
-                cast_vec_element(0),
-                cast_vec_element(1),
-                cast_vec_element(2),
-                cast_vec_element(3),
-                cast_vec_element(4),
-                cast_vec_element(5),
-                cast_vec_element(6),
-                cast_vec_element(7),
-            ])
-        };
+        let out_style =
+            match out_elem.kind() {
+                ty::Int(_) | ty::Uint(_) => Style::Int,
+                ty::Float(_) => Style::Float,
+                 _ => Style::Unsupported,
+            };
 
         match (in_style, out_style) {
-            (Style::Int(in_is_signed), Style::Int(_)) => {
-                return Ok(match in_width.cmp(&out_width) {
-                    Ordering::Greater => bx.trunc(args[0].immediate(), llret_ty),
-                    Ordering::Equal => args[0].immediate(),
-                    Ordering::Less => {
-                        if in_is_signed {
-                            match (in_width, out_width) {
-                                // FIXME(antoyo): the function _mm_cvtepi8_epi16 should directly
-                                // call an intrinsic equivalent to __builtin_ia32_pmovsxbw128 so that
-                                // we can generate a call to it.
-                                (8, 16) => extend(bx.i8_type, bx.i16_type),
-                                (8, 32) => extend(bx.i8_type, bx.i32_type),
-                                (8, 64) => extend(bx.i8_type, bx.i64_type),
-                                (16, 32) => extend(bx.i16_type, bx.i32_type),
-                                (32, 64) => extend(bx.i32_type, bx.i64_type),
-                                (16, 64) => extend(bx.i16_type, bx.i64_type),
-                                _ => unimplemented!("in: {}, out: {}", in_width, out_width),
-                            }
-                        } else {
-                            match (in_width, out_width) {
-                                (8, 16) => extend(bx.u8_type, bx.u16_type),
-                                (8, 32) => extend(bx.u8_type, bx.u32_type),
-                                (8, 64) => extend(bx.u8_type, bx.u64_type),
-                                (16, 32) => extend(bx.u16_type, bx.u32_type),
-                                (16, 64) => extend(bx.u16_type, bx.u64_type),
-                                (32, 64) => extend(bx.u32_type, bx.u64_type),
-                                _ => unimplemented!("in: {}, out: {}", in_width, out_width),
-                            }
-                        }
-                    }
-                });
-            }
-            (Style::Int(_), Style::Float) => {
-                // TODO: add support for internal functions in libgccjit to get access to IFN_VEC_CONVERT which is
-                // doing like __builtin_convertvector?
-                // Or maybe provide convert_vector as an API since it might not easy to get the
-                // types of internal functions.
-                unimplemented!();
-            }
-            (Style::Float, Style::Int(_)) => {
-                unimplemented!();
-            }
-            (Style::Float, Style::Float) => {
-                unimplemented!();
-            }
-            _ => { /* Unsupported. Fallthrough. */ }
+            (Style::Unsupported, Style::Unsupported) => {
+                require!(
+                    false,
+                    "unsupported cast from `{}` with element `{}` to `{}` with element `{}`",
+                    in_ty,
+                    in_elem,
+                    ret_ty,
+                    out_elem
+                );
+            },
+            _ => return Ok(bx.context.convert_vector(None, args[0].immediate(), llret_ty)),
         }
-        require!(
-            false,
-            "unsupported cast from `{}` with element `{}` to `{}` with element `{}`",
-            in_ty,
-            in_elem,
-            ret_ty,
-            out_elem
-        );
     }
 
     macro_rules! arith_binary {
@@ -436,6 +319,67 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
                          in_ty,
                          in_elem)
             })*
+        }
+    }
+
+    if name == sym::simd_bitmask {
+        // The `fn simd_bitmask(vector) -> unsigned integer` intrinsic takes a
+        // vector mask and returns the most significant bit (MSB) of each lane in the form
+        // of either:
+        // * an unsigned integer
+        // * an array of `u8`
+        // If the vector has less than 8 lanes, a u8 is returned with zeroed trailing bits.
+        //
+        // The bit order of the result depends on the byte endianness, LSB-first for little
+        // endian and MSB-first for big endian.
+
+        let vector = args[0].immediate();
+        let vector_type = vector.get_type().dyncast_vector().expect("vector type");
+        let elem_type = vector_type.get_element_type();
+        let mut shifts = vec![];
+        let mut masks = vec![];
+        let mut mask = 1;
+        for i in 0..in_len {
+            shifts.push(bx.context.new_rvalue_from_int(elem_type, i as i32));
+            masks.push(bx.context.new_rvalue_from_int(elem_type, mask));
+            mask <<= 1;
+        }
+        masks.reverse();
+        let shifts = bx.context.new_rvalue_from_vector(None, vector.get_type(), &shifts);
+        let shifted = vector >> shifts;
+        let masks = bx.context.new_rvalue_from_vector(None, vector.get_type(), &masks);
+        let masked = shifted & masks;
+        let reduced = bx.vector_reduce_op(masked, BinaryOp::BitwiseOr);
+
+        let expected_int_bits = in_len.max(8);
+        let expected_bytes = expected_int_bits / 8 + ((expected_int_bits % 8 > 0) as u64);
+
+        match ret_ty.kind() {
+            ty::Uint(i) if i.bit_width() == Some(expected_int_bits) => {
+                // Zero-extend iN to the bitmask type:
+                return Ok(bx.zext(reduced, bx.type_ix(expected_int_bits)));
+            }
+            ty::Array(elem, len)
+                if matches!(elem.kind(), ty::Uint(ty::UintTy::U8))
+                    && len.try_eval_usize(bx.tcx, ty::ParamEnv::reveal_all())
+                        == Some(expected_bytes) =>
+            {
+                // Zero-extend iN to the array length:
+                let ze = bx.zext(reduced, bx.type_ix(expected_bytes * 8));
+
+                // Convert the integer to a byte array
+                let ptr = bx.alloca(bx.type_ix(expected_bytes * 8), Align::ONE);
+                bx.store(ze, ptr, Align::ONE);
+                let array_ty = bx.type_array(bx.type_i8(), expected_bytes);
+                let ptr = bx.pointercast(ptr, bx.cx.type_ptr_to(array_ty));
+                return Ok(bx.load(array_ty, ptr, Align::ONE));
+            }
+            _ => return_error!(
+                "cannot return `{}`, expected `u{}` or `[u8; {}]`",
+                ret_ty,
+                expected_int_bits,
+                expected_bytes
+            ),
         }
     }
 
@@ -578,40 +522,91 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
         let rhs = args[1].immediate();
         let is_add = name == sym::simd_saturating_add;
         let ptr_bits = bx.tcx().data_layout.pointer_size.bits() as _;
-        let (signed, elem_width, elem_ty) = match *in_elem.kind() {
-            ty::Int(i) => (true, i.bit_width().unwrap_or(ptr_bits), bx.cx.type_int_from_ty(i)),
-            ty::Uint(i) => (false, i.bit_width().unwrap_or(ptr_bits), bx.cx.type_uint_from_ty(i)),
-            _ => {
-                return_error!(
-                    "expected element type `{}` of vector type `{}` \
+        let (signed, elem_width, elem_ty) =
+            match *in_elem.kind() {
+                ty::Int(i) => (true, i.bit_width().unwrap_or(ptr_bits) / 8, bx.cx.type_int_from_ty(i)),
+                ty::Uint(i) => (false, i.bit_width().unwrap_or(ptr_bits) / 8, bx.cx.type_uint_from_ty(i)),
+                _ => {
+                    return_error!(
+                        "expected element type `{}` of vector type `{}` \
                      to be a signed or unsigned integer type",
-                    arg_tys[0].simd_size_and_type(bx.tcx()).1,
-                    arg_tys[0]
-                );
-            }
-        };
-        let builtin_name =
-            match (signed, is_add, in_len, elem_width) {
-                (true, true, 32, 8) => "__builtin_ia32_paddsb256", // TODO(antoyo): cast arguments to unsigned.
-                (false, true, 32, 8) => "__builtin_ia32_paddusb256",
-                (true, true, 16, 16) => "__builtin_ia32_paddsw256",
-                (false, true, 16, 16) => "__builtin_ia32_paddusw256",
-                (true, false, 16, 16) => "__builtin_ia32_psubsw256",
-                (false, false, 16, 16) => "__builtin_ia32_psubusw256",
-                (true, false, 32, 8) => "__builtin_ia32_psubsb256",
-                (false, false, 32, 8) => "__builtin_ia32_psubusb256",
-                _ => unimplemented!("signed: {}, is_add: {}, in_len: {}, elem_width: {}", signed, is_add, in_len, elem_width),
+                     arg_tys[0].simd_size_and_type(bx.tcx()).1,
+                     arg_tys[0]
+                    );
+                }
             };
-        let vec_ty = bx.cx.type_vector(elem_ty, in_len as u64);
 
-        let func = bx.context.get_target_builtin_function(builtin_name);
-        let param1_type = func.get_param(0).to_rvalue().get_type();
-        let param2_type = func.get_param(1).to_rvalue().get_type();
-        let lhs = bx.cx.bitcast_if_needed(lhs, param1_type);
-        let rhs = bx.cx.bitcast_if_needed(rhs, param2_type);
-        let result = bx.context.new_call(None, func, &[lhs, rhs]);
-        // TODO(antoyo): perhaps use __builtin_convertvector for vector casting.
-        return Ok(bx.context.new_bitcast(None, result, vec_ty));
+        let result =
+            match (signed, is_add) {
+                (false, true) => {
+                    let res = lhs + rhs;
+                    let cmp = bx.context.new_comparison(None, ComparisonOp::LessThan, res, lhs);
+                    res | cmp
+                },
+                (true, true) => {
+                    // Algorithm from: https://codereview.stackexchange.com/questions/115869/saturated-signed-addition
+                    // TODO: improve using conditional operators if possible.
+                    let arg_type = lhs.get_type();
+                    // TODO: convert lhs and rhs to unsigned.
+                    let sum = lhs + rhs;
+                    let vector_type = arg_type.dyncast_vector().expect("vector type");
+                    let unit = vector_type.get_num_units();
+                    let a = bx.context.new_rvalue_from_int(elem_ty, ((elem_width as i32) << 3) - 1);
+                    let width = bx.context.new_rvalue_from_vector(None, lhs.get_type(), &vec![a; unit]);
+
+                    let xor1 = lhs ^ rhs;
+                    let xor2 = lhs ^ sum;
+                    let and = bx.context.new_unary_op(None, UnaryOp::BitwiseNegate, arg_type, xor1) & xor2;
+                    let mask = and >> width;
+
+                    let one = bx.context.new_rvalue_one(elem_ty);
+                    let ones = bx.context.new_rvalue_from_vector(None, lhs.get_type(), &vec![one; unit]);
+                    let shift1 = ones << width;
+                    let shift2 = sum >> width;
+                    let mask_min = shift1 ^ shift2;
+
+                    let and1 = bx.context.new_unary_op(None, UnaryOp::BitwiseNegate, arg_type, mask) & sum;
+                    let and2 = mask & mask_min;
+
+                    and1 + and2
+                },
+                (false, false) => {
+                    let res = lhs - rhs;
+                    let cmp = bx.context.new_comparison(None, ComparisonOp::LessThanEquals, res, lhs);
+                    res & cmp
+                },
+                (true, false) => {
+                    let arg_type = lhs.get_type();
+                    // TODO(antoyo): this uses the same algorithm from saturating add, but add the
+                    // negative of the right operand. Find a proper subtraction algorithm.
+                    let rhs = bx.context.new_unary_op(None, UnaryOp::Minus, arg_type, rhs);
+
+                    // TODO: convert lhs and rhs to unsigned.
+                    let sum = lhs + rhs;
+                    let vector_type = arg_type.dyncast_vector().expect("vector type");
+                    let unit = vector_type.get_num_units();
+                    let a = bx.context.new_rvalue_from_int(elem_ty, ((elem_width as i32) << 3) - 1);
+                    let width = bx.context.new_rvalue_from_vector(None, lhs.get_type(), &vec![a; unit]);
+
+                    let xor1 = lhs ^ rhs;
+                    let xor2 = lhs ^ sum;
+                    let and = bx.context.new_unary_op(None, UnaryOp::BitwiseNegate, arg_type, xor1) & xor2;
+                    let mask = and >> width;
+
+                    let one = bx.context.new_rvalue_one(elem_ty);
+                    let ones = bx.context.new_rvalue_from_vector(None, lhs.get_type(), &vec![one; unit]);
+                    let shift1 = ones << width;
+                    let shift2 = sum >> width;
+                    let mask_min = shift1 ^ shift2;
+
+                    let and1 = bx.context.new_unary_op(None, UnaryOp::BitwiseNegate, arg_type, mask) & sum;
+                    let and2 = mask & mask_min;
+
+                    and1 + and2
+                }
+            };
+
+        return Ok(result);
     }
 
     macro_rules! arith_red {

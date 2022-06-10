@@ -213,7 +213,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 
                 let actual_ty = actual_val.get_type();
                 if expected_ty != actual_ty {
-                    if !actual_ty.is_vector() && !expected_ty.is_vector() && actual_ty.is_integral() && expected_ty.is_integral() && actual_ty.get_size() != expected_ty.get_size() {
+                    if !actual_ty.is_vector() && !expected_ty.is_vector() && actual_ty.is_integral() && expected_ty.is_integral() {
                         self.context.new_cast(None, actual_val, expected_ty)
                     }
                     else if on_stack_param_indices.contains(&index) {
@@ -275,21 +275,25 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
     }
 
     fn function_ptr_call(&mut self, func_ptr: RValue<'gcc>, args: &[RValue<'gcc>], _funclet: Option<&Funclet>) -> RValue<'gcc> {
-        let args = self.check_ptr_call("call", func_ptr, args);
+        let gcc_func = func_ptr.get_type().dyncast_function_ptr_type().expect("function ptr");
+        let func_name = format!("{:?}", func_ptr);
+        let previous_arg_count = args.len();
+        let args = llvm::adjust_intrinsic_arguments(&self, gcc_func, args.into(), &func_name);
+        let args_adjusted = args.len() != previous_arg_count;
+        let args = self.check_ptr_call("call", func_ptr, &*args);
 
         // gccjit requires to use the result of functions, even when it's not used.
         // That's why we assign the result to a local or call add_eval().
-        let gcc_func = func_ptr.get_type().dyncast_function_ptr_type().expect("function ptr");
         let return_type = gcc_func.get_return_type();
         let void_type = self.context.new_type::<()>();
         let current_func = self.block.get_function();
 
         if return_type != void_type {
             unsafe { RETURN_VALUE_COUNT += 1 };
-            let result = current_func.new_local(None, return_type, &format!("ptrReturnValue{}", unsafe { RETURN_VALUE_COUNT }));
-            let func_name = format!("{:?}", func_ptr);
-            let args = llvm::adjust_intrinsic_arguments(&self, gcc_func, args, &func_name);
-            self.block.add_assignment(None, result, self.cx.context.new_call_through_ptr(None, func_ptr, &args));
+            let return_value = self.cx.context.new_call_through_ptr(None, func_ptr, &args);
+            let return_value = llvm::adjust_intrinsic_return_value(&self, return_value, &func_name, &args, args_adjusted);
+            let result = current_func.new_local(None, return_value.get_type(), &format!("ptrReturnValue{}", unsafe { RETURN_VALUE_COUNT }));
+            self.block.add_assignment(None, result, return_value);
             result.to_rvalue()
         }
         else {
@@ -1386,18 +1390,20 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
     where F: Fn(RValue<'gcc>, RValue<'gcc>, &'gcc Context<'gcc>) -> RValue<'gcc>
     {
         let vector_type = src.get_type().unqualified().dyncast_vector().expect("vector type");
+        let element_type = vector_type.get_element_type();
+        let mask_element_type = self.type_ix(element_type.get_size() as u64 * 8);
         let element_count = vector_type.get_num_units();
         let mut vector_elements = vec![];
         for i in 0..element_count {
             vector_elements.push(i);
         }
-        let mask_type = self.context.new_vector_type(self.int_type, element_count as u64);
+        let mask_type = self.context.new_vector_type(mask_element_type, element_count as u64);
         let mut shift = 1;
         let mut res = src;
         while shift < element_count {
             let vector_elements: Vec<_> =
                 vector_elements.iter()
-                    .map(|i| self.context.new_rvalue_from_int(self.int_type, ((i + shift) % element_count) as i32))
+                    .map(|i| self.context.new_rvalue_from_int(mask_element_type, ((i + shift) % element_count) as i32))
                     .collect();
             let mask = self.context.new_rvalue_from_vector(None, mask_type, &vector_elements);
             let shifted = self.context.new_rvalue_vector_perm(None, res, res, mask);
@@ -1409,7 +1415,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
     }
 
     #[cfg(not(feature="master"))]
-    pub fn vector_reduce<F>(&mut self, src: RValue<'gcc>, op: F) -> RValue<'gcc>
+    pub fn vector_reduce<F>(&mut self, _src: RValue<'gcc>, _op: F) -> RValue<'gcc>
     where F: Fn(RValue<'gcc>, RValue<'gcc>, &'gcc Context<'gcc>) -> RValue<'gcc>
     {
         unimplemented!();
