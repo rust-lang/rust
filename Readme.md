@@ -127,6 +127,10 @@ To get the `rustc` command to run in `gdb`, add the `--verbose` flag to `cargo b
  * Build the stage2 compiler (`rustup toolchain link debug-current build/x86_64-unknown-linux-gnu/stage2`).
  * Clean and rebuild the codegen with `debug-current` in the file `rust-toolchain`.
 
+### How to use [mem-trace](https://github.com/antoyo/mem-trace)
+
+`rustc` needs to be built without `jemalloc` so that `mem-trace` can overload `malloc` since `jemalloc` is linked statically, so a `LD_PRELOAD`-ed library won't a chance to intercept the calls to `malloc`.
+
 ### How to build a cross-compiling libgccjit
 
 #### Building libgccjit

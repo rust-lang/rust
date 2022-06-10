@@ -216,7 +216,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
         let variable = bx.current_func().new_local(None, vector.get_type(), "new_vector");
         bx.llbb().add_assignment(None, variable, vector);
         let lvalue = bx.context.new_vector_access(None, variable.to_rvalue(), index);
-        // TODO: si simd_insert est constant, utiliser BIT_REF…
+        // TODO: if simd_insert is constant, use BIT_REF.
         bx.llbb().add_assignment(None, lvalue, value);
         return Ok(variable.to_rvalue());
     }
@@ -252,6 +252,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
         return Ok(bx.vector_select(args[0].immediate(), args[1].immediate(), args[2].immediate()));
     }
 
+    #[cfg(feature="master")]
     if name == sym::simd_cast {
         require_simd!(ret_ty, "return");
         let (out_len, out_elem) = ret_ty.simd_size_and_type(bx.tcx());
