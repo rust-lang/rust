@@ -219,6 +219,8 @@ declare_features! (
     (accepted, move_ref_pattern, "1.49.0", Some(68354), None),
     /// Allows specifying modifiers in the link attribute: `#[link(modifiers = "...")]`
     (accepted, native_link_modifiers, "1.61.0", Some(81490), None),
+    /// Allows specifying the bundle link modifier
+    (accepted, native_link_modifiers_bundle, "1.63.0", Some(81490), None),
     /// Allows specifying the whole-archive link modifier
     (accepted, native_link_modifiers_whole_archive, "1.61.0", Some(81490), None),
     /// Allows using non lexical lifetimes (RFC 2094).

@@ -97,24 +97,6 @@ impl<'tcx> Collector<'tcx> {
                         let span = item.name_value_literal_span().unwrap();
                         let link_kind = match link_kind.as_str() {
                             "static" => NativeLibKind::Static { bundle: None, whole_archive: None },
-                            "static-nobundle" => {
-                                sess.struct_span_warn(
-                                    span,
-                                    "link kind `static-nobundle` has been superseded by specifying \
-                                     modifier `-bundle` with link kind `static`",
-                                )
-                                .emit();
-                                if !features.static_nobundle {
-                                    feature_err(
-                                        &sess.parse_sess,
-                                        sym::static_nobundle,
-                                        span,
-                                        "link kind `static-nobundle` is unstable",
-                                    )
-                                    .emit();
-                                }
-                                NativeLibKind::Static { bundle: Some(false), whole_archive: None }
-                            }
                             "dylib" => NativeLibKind::Dylib { as_needed: None },
                             "framework" => {
                                 if !sess.target.is_like_osx {
@@ -264,7 +246,6 @@ impl<'tcx> Collector<'tcx> {
                     };
                     match (modifier, &mut kind) {
                         ("bundle", Some(NativeLibKind::Static { bundle, .. })) => {
-                            report_unstable_modifier!(native_link_modifiers_bundle);
                             assign_modifier(bundle)
                         }
                         ("bundle", _) => {
