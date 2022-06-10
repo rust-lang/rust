@@ -311,6 +311,7 @@ impl ParseSess {
         self.create_warning(warning).emit()
     }
 
+    #[cfg_attr(not(bootstrap), rustc_lint_diagnostics)]
     pub fn struct_err(
         &self,
         msg: impl Into<DiagnosticMessage>,
@@ -318,6 +319,7 @@ impl ParseSess {
         self.span_diagnostic.struct_err(msg)
     }
 
+    #[cfg_attr(not(bootstrap), rustc_lint_diagnostics)]
     pub fn struct_warn(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, ()> {
         self.span_diagnostic.struct_warn(msg)
     }

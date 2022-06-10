@@ -9,6 +9,7 @@
 #![feature(let_else)]
 #![feature(never_type)]
 #![feature(adt_const_params)]
+#![feature(rustc_attrs)]
 #![allow(incomplete_features)]
 #![allow(rustc::potential_query_instability)]
 
@@ -644,6 +645,7 @@ impl Handler {
     /// Attempting to `.emit()` the builder will only emit if either:
     /// * `can_emit_warnings` is `true`
     /// * `is_force_warn` was set in `DiagnosticId::Lint`
+    #[cfg_attr(not(bootstrap), rustc_lint_diagnostics)]
     pub fn struct_span_warn(
         &self,
         span: impl Into<MultiSpan>,
@@ -655,6 +657,7 @@ impl Handler {
     }
 
     /// Construct a builder at the `Allow` level at the given `span` and with the `msg`.
+    #[cfg_attr(not(bootstrap), rustc_lint_diagnostics)]
     pub fn struct_span_allow(
         &self,
         span: impl Into<MultiSpan>,
@@ -667,6 +670,7 @@ impl Handler {
 
     /// Construct a builder at the `Warning` level at the given `span` and with the `msg`.
     /// Also include a code.
+    #[cfg_attr(not(bootstrap), rustc_lint_diagnostics)]
     pub fn struct_span_warn_with_code(
         &self,
         span: impl Into<MultiSpan>,
@@ -683,16 +687,19 @@ impl Handler {
     /// Attempting to `.emit()` the builder will only emit if either:
     /// * `can_emit_warnings` is `true`
     /// * `is_force_warn` was set in `DiagnosticId::Lint`
+    #[cfg_attr(not(bootstrap), rustc_lint_diagnostics)]
     pub fn struct_warn(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, ()> {
         DiagnosticBuilder::new(self, Level::Warning, msg)
     }
 
     /// Construct a builder at the `Allow` level with the `msg`.
+    #[cfg_attr(not(bootstrap), rustc_lint_diagnostics)]
     pub fn struct_allow(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, ()> {
         DiagnosticBuilder::new(self, Level::Allow, msg)
     }
 
     /// Construct a builder at the `Expect` level with the `msg`.
+    #[cfg_attr(not(bootstrap), rustc_lint_diagnostics)]
     pub fn struct_expect(
         &self,
         msg: impl Into<DiagnosticMessage>,
@@ -702,6 +709,7 @@ impl Handler {
     }
 
     /// Construct a builder at the `Error` level at the given `span` and with the `msg`.
+    #[cfg_attr(not(bootstrap), rustc_lint_diagnostics)]
     pub fn struct_span_err(
         &self,
         span: impl Into<MultiSpan>,
@@ -713,6 +721,7 @@ impl Handler {
     }
 
     /// Construct a builder at the `Error` level at the given `span`, with the `msg`, and `code`.
+    #[cfg_attr(not(bootstrap), rustc_lint_diagnostics)]
     pub fn struct_span_err_with_code(
         &self,
         span: impl Into<MultiSpan>,
@@ -726,6 +735,7 @@ impl Handler {
 
     /// Construct a builder at the `Error` level with the `msg`.
     // FIXME: This method should be removed (every error should have an associated error code).
+    #[cfg_attr(not(bootstrap), rustc_lint_diagnostics)]
     pub fn struct_err(
         &self,
         msg: impl Into<DiagnosticMessage>,
@@ -740,6 +750,7 @@ impl Handler {
     }
 
     /// Construct a builder at the `Error` level with the `msg` and the `code`.
+    #[cfg_attr(not(bootstrap), rustc_lint_diagnostics)]
     pub fn struct_err_with_code(
         &self,
         msg: impl Into<DiagnosticMessage>,
@@ -751,6 +762,7 @@ impl Handler {
     }
 
     /// Construct a builder at the `Warn` level with the `msg` and the `code`.
+    #[cfg_attr(not(bootstrap), rustc_lint_diagnostics)]
     pub fn struct_warn_with_code(
         &self,
         msg: impl Into<DiagnosticMessage>,
@@ -762,6 +774,7 @@ impl Handler {
     }
 
     /// Construct a builder at the `Fatal` level at the given `span` and with the `msg`.
+    #[cfg_attr(not(bootstrap), rustc_lint_diagnostics)]
     pub fn struct_span_fatal(
         &self,
         span: impl Into<MultiSpan>,
@@ -773,6 +786,7 @@ impl Handler {
     }
 
     /// Construct a builder at the `Fatal` level at the given `span`, with the `msg`, and `code`.
+    #[cfg_attr(not(bootstrap), rustc_lint_diagnostics)]
     pub fn struct_span_fatal_with_code(
         &self,
         span: impl Into<MultiSpan>,
@@ -785,16 +799,19 @@ impl Handler {
     }
 
     /// Construct a builder at the `Error` level with the `msg`.
+    #[cfg_attr(not(bootstrap), rustc_lint_diagnostics)]
     pub fn struct_fatal(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, !> {
         DiagnosticBuilder::new_fatal(self, msg)
     }
 
     /// Construct a builder at the `Help` level with the `msg`.
+    #[cfg_attr(not(bootstrap), rustc_lint_diagnostics)]
     pub fn struct_help(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, ()> {
         DiagnosticBuilder::new(self, Level::Help, msg)
     }
 
     /// Construct a builder at the `Note` level with the `msg`.
+    #[cfg_attr(not(bootstrap), rustc_lint_diagnostics)]
     pub fn struct_note_without_error(
         &self,
         msg: impl Into<DiagnosticMessage>,
@@ -802,11 +819,13 @@ impl Handler {
         DiagnosticBuilder::new(self, Level::Note, msg)
     }
 
+    #[cfg_attr(not(bootstrap), rustc_lint_diagnostics)]
     pub fn span_fatal(&self, span: impl Into<MultiSpan>, msg: impl Into<DiagnosticMessage>) -> ! {
         self.emit_diag_at_span(Diagnostic::new(Fatal, msg), span);
         FatalError.raise()
     }
 
+    #[cfg_attr(not(bootstrap), rustc_lint_diagnostics)]
     pub fn span_fatal_with_code(
         &self,
         span: impl Into<MultiSpan>,
@@ -817,6 +836,7 @@ impl Handler {
         FatalError.raise()
     }
 
+    #[cfg_attr(not(bootstrap), rustc_lint_diagnostics)]
     pub fn span_err(
         &self,
         span: impl Into<MultiSpan>,
@@ -825,6 +845,7 @@ impl Handler {
         self.emit_diag_at_span(Diagnostic::new(Error { lint: false }, msg), span).unwrap()
     }
 
+    #[cfg_attr(not(bootstrap), rustc_lint_diagnostics)]
     pub fn span_err_with_code(
         &self,
         span: impl Into<MultiSpan>,
@@ -837,10 +858,12 @@ impl Handler {
         );
     }
 
+    #[cfg_attr(not(bootstrap), rustc_lint_diagnostics)]
     pub fn span_warn(&self, span: impl Into<MultiSpan>, msg: impl Into<DiagnosticMessage>) {
         self.emit_diag_at_span(Diagnostic::new(Warning, msg), span);
     }
 
+    #[cfg_attr(not(bootstrap), rustc_lint_diagnostics)]
     pub fn span_warn_with_code(
         &self,
         span: impl Into<MultiSpan>,
