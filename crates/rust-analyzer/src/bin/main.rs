@@ -70,7 +70,7 @@ fn try_main() -> Result<()> {
                 return Ok(());
             }
             if cmd.version {
-                println!("rust-analyzer {}", env!("REV"));
+                println!("rust-analyzer {}", rust_analyzer::version());
                 return Ok(());
             }
             if cmd.help {
@@ -148,7 +148,7 @@ fn with_extra_thread(
 }
 
 fn run_server() -> Result<()> {
-    tracing::info!("server version {} will start", env!("REV"));
+    tracing::info!("server version {} will start", rust_analyzer::version());
 
     let (connection, io_threads) = Connection::stdio();
 
@@ -190,7 +190,7 @@ fn run_server() -> Result<()> {
         capabilities: server_capabilities,
         server_info: Some(lsp_types::ServerInfo {
             name: String::from("rust-analyzer"),
-            version: Some(String::from(env!("REV"))),
+            version: Some(rust_analyzer::version().to_string()),
         }),
         offset_encoding: if supports_utf8(config.caps()) {
             Some("utf-8".to_string())

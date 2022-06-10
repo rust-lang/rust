@@ -74,7 +74,7 @@ impl GlobalState {
     /// panicky is a good idea, let's see if we can keep our awesome bleeding
     /// edge users from being upset!
     pub(crate) fn poke_rust_analyzer_developer(&mut self, message: String) {
-        let from_source_build = env!("REV").contains("dev");
+        let from_source_build = option_env!("POKE_RA_DEVS").is_some();
         let profiling_enabled = std::env::var("RA_PROFILE").is_ok();
         if from_source_build || profiling_enabled {
             self.show_message(lsp_types::MessageType::ERROR, message)

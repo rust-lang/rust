@@ -8,6 +8,7 @@ use serde::{de::DeserializeOwned, Serialize};
 use crate::{
     global_state::{GlobalState, GlobalStateSnapshot},
     main_loop::Task,
+    version::version,
     LspError, Result,
 };
 
@@ -144,7 +145,7 @@ impl<'a> RequestDispatcher<'a> {
         match res {
             Ok(params) => {
                 let panic_context =
-                    format!("\nversion: {}\nrequest: {} {:#?}", env!("REV"), R::METHOD, params);
+                    format!("\nversion: {}\nrequest: {} {:#?}", version(), R::METHOD, params);
                 Some((req, params, panic_context))
             }
             Err(err) => {
@@ -248,7 +249,7 @@ impl<'a> NotificationDispatcher<'a> {
         };
         let _pctx = stdx::panic_context::enter(format!(
             "\nversion: {}\nnotification: {}",
-            env!("REV"),
+            version(),
             N::METHOD
         ));
         f(self.global_state, params)?;

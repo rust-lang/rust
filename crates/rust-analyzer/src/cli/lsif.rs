@@ -22,6 +22,7 @@ use crate::cli::{
 };
 use crate::line_index::{LineEndings, LineIndex, OffsetEncoding};
 use crate::to_proto;
+use crate::version::version;
 
 /// Need to wrap Snapshot to provide `Clone` impl for `map_with`
 struct Snap<DB>(DB);
@@ -312,7 +313,7 @@ impl flags::Lsif {
             tool_info: Some(lsp_types::lsif::ToolInfo {
                 name: "rust-analyzer".to_string(),
                 args: vec![],
-                version: Some(env!("REV").to_string()),
+                version: Some(version().to_string()),
             }),
         }));
         for file in si.files {
