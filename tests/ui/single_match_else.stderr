@@ -60,5 +60,45 @@ LL +         return;
 LL +     }
    |
 
-error: aborting due to 3 previous errors
+error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
+  --> $DIR/single_match_else.rs:103:5
+   |
+LL | /     match Result::<i32, Infallible>::Ok(1) {
+LL | |         Ok(a) => println!("${:?}", a),
+LL | |         Err(_) => {
+LL | |             println!("else block");
+LL | |             return;
+LL | |         }
+LL | |     }
+   | |_____^
+   |
+help: try this
+   |
+LL ~     if let Ok(a) = Result::<i32, Infallible>::Ok(1) { println!("${:?}", a) } else {
+LL +         println!("else block");
+LL +         return;
+LL +     }
+   |
+
+error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
+  --> $DIR/single_match_else.rs:112:5
+   |
+LL | /     match Cow::from("moo") {
+LL | |         Cow::Owned(a) => println!("${:?}", a),
+LL | |         Cow::Borrowed(_) => {
+LL | |             println!("else block");
+LL | |             return;
+LL | |         }
+LL | |     }
+   | |_____^
+   |
+help: try this
+   |
+LL ~     if let Cow::Owned(a) = Cow::from("moo") { println!("${:?}", a) } else {
+LL +         println!("else block");
+LL +         return;
+LL +     }
+   |
+
+error: aborting due to 5 previous errors
 
