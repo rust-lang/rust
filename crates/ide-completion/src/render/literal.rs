@@ -4,7 +4,7 @@ use hir::{db::HirDatabase, Documentation, HasAttrs, StructKind};
 use ide_db::SymbolKind;
 
 use crate::{
-    context::{CompletionContext, PathCompletionCtx},
+    context::{CompletionContext, PathCompletionCtx, PathKind},
     item::{Builder, CompletionItem},
     render::{
         compute_ref_match, compute_type_match,
@@ -50,9 +50,15 @@ fn render(
     path: Option<hir::ModPath>,
 ) -> Option<Builder> {
     let db = completion.db;
-    let kind = thing.kind(db);
-    let has_call_parens =
-        matches!(completion.path_context(), Some(PathCompletionCtx { has_call_parens: true, .. }));
+    let mut kind = thing.kind(db);
+    let should_add_parens = match completion.path_context() {
+        Some(PathCompletionCtx { has_call_parens: true, .. }) => false,
+        Some(PathCompletionCtx { kind: PathKind::Use | PathKind::Type { .. }, .. }) => {
+            cov_mark::hit!(no_parens_in_use_item);
+            false
+        }
+        _ => true,
+    };
 
     let fields = thing.fields(completion)?;
     let (qualified_name, short_qualified_name, qualified) = match path {
@@ -69,10 +75,10 @@ fn render(
     let snippet_cap = ctx.snippet_cap();
 
     let mut rendered = match kind {
-        StructKind::Tuple if !has_call_parens => {
+        StructKind::Tuple if should_add_parens => {
             render_tuple_lit(db, snippet_cap, &fields, &qualified_name)
         }
-        StructKind::Record if !has_call_parens => {
+        StructKind::Record if should_add_parens => {
             render_record_lit(db, snippet_cap, &fields, &qualified_name)
         }
         _ => RenderedLiteral { literal: qualified_name.clone(), detail: qualified_name.clone() },
@@ -80,6 +86,11 @@ fn render(
 
     if snippet_cap.is_some() {
         rendered.literal.push_str("$0");
+    }
+
+    // only show name in label if not adding parens
+    if !should_add_parens {
+        kind = StructKind::Unit;
     }
 
     let mut item = CompletionItem::new(
