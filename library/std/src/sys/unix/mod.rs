@@ -77,50 +77,71 @@ pub unsafe fn init(argc: isize, argv: *const *const u8) {
     }
 
     unsafe fn sanitize_standard_fds() {
-        #[cfg(not(miri))]
-        // The standard fds are always available in Miri.
-        cfg_if::cfg_if! {
-            if #[cfg(not(any(
-                target_os = "emscripten",
-                target_os = "fuchsia",
-                target_os = "vxworks",
-                // The poll on Darwin doesn't set POLLNVAL for closed fds.
-                target_os = "macos",
-                target_os = "ios",
-                target_os = "redox",
-                target_os = "l4re",
-            )))] {
-                use crate::sys::os::errno;
-                let pfds: &mut [_] = &mut [
-                    libc::pollfd { fd: 0, events: 0, revents: 0 },
-                    libc::pollfd { fd: 1, events: 0, revents: 0 },
-                    libc::pollfd { fd: 2, events: 0, revents: 0 },
-                ];
-                while libc::poll(pfds.as_mut_ptr(), 3, 0) == -1 {
-                    if errno() == libc::EINTR {
-                        continue;
+        // fast path with a single syscall for systems with poll()
+        #[cfg(not(any(
+            miri,
+            target_os = "emscripten",
+            target_os = "fuchsia",
+            target_os = "vxworks",
+            // The poll on Darwin doesn't set POLLNVAL for closed fds.
+            target_os = "macos",
+            target_os = "ios",
+            target_os = "redox",
+            target_os = "l4re",
+        )))]
+        'poll: {
+            use crate::sys::os::errno;
+            let pfds: &mut [_] = &mut [
+                libc::pollfd { fd: 0, events: 0, revents: 0 },
+                libc::pollfd { fd: 1, events: 0, revents: 0 },
+                libc::pollfd { fd: 2, events: 0, revents: 0 },
+            ];
+
+            while libc::poll(pfds.as_mut_ptr(), 3, 0) == -1 {
+                match errno() {
+                    libc::EINTR => continue,
+                    libc::EINVAL | libc::EAGAIN | libc::ENOMEM => {
+                        // RLIMIT_NOFILE or temporary allocation failures
+                        // may be preventing use of poll(), fall back to fcntl
+                        break 'poll;
                     }
+                    _ => libc::abort(),
+                }
+            }
+            for pfd in pfds {
+                if pfd.revents & libc::POLLNVAL == 0 {
+                    continue;
+                }
+                if libc::open("/dev/null\0".as_ptr().cast(), libc::O_RDWR, 0) == -1 {
+                    // If the stream is closed but we failed to reopen it, abort the
+                    // process. Otherwise we wouldn't preserve the safety of
+                    // operations on the corresponding Rust object Stdin, Stdout, or
+                    // Stderr.
                     libc::abort();
                 }
-                for pfd in pfds {
-                    if pfd.revents & libc::POLLNVAL == 0 {
-                        continue;
-                    }
+            }
+            return;
+        }
+
+        // fallback in case poll isn't available or limited by RLIMIT_NOFILE
+        #[cfg(not(any(
+            // The standard fds are always available in Miri.
+            miri,
+            target_os = "emscripten",
+            target_os = "fuchsia",
+            target_os = "vxworks",
+            target_os = "l4re",
+        )))]
+        {
+            use crate::sys::os::errno;
+            for fd in 0..3 {
+                if libc::fcntl(fd, libc::F_GETFD) == -1 && errno() == libc::EBADF {
                     if libc::open("/dev/null\0".as_ptr().cast(), libc::O_RDWR, 0) == -1 {
                         // If the stream is closed but we failed to reopen it, abort the
                         // process. Otherwise we wouldn't preserve the safety of
                         // operations on the corresponding Rust object Stdin, Stdout, or
                         // Stderr.
                         libc::abort();
-                    }
-                }
-            } else if #[cfg(any(target_os = "macos", target_os = "ios", target_os = "redox"))] {
-                use crate::sys::os::errno;
-                for fd in 0..3 {
-                    if libc::fcntl(fd, libc::F_GETFD) == -1 && errno() == libc::EBADF {
-                        if libc::open("/dev/null\0".as_ptr().cast(), libc::O_RDWR, 0) == -1 {
-                            libc::abort();
-                        }
                     }
                 }
             }
