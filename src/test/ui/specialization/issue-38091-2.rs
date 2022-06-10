@@ -1,6 +1,4 @@
-// build-fail
-//~^ ERROR overflow evaluating the requirement `i32: Check`
-
+// check-pass
 #![feature(specialization)]
 //~^ WARN the feature `specialization` is incomplete
 
