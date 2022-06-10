@@ -203,6 +203,10 @@ impl ChildExt for process::Child {
 pub trait ExitCodeExt: Sealed {
     /// Creates a new `ExitCode` from the raw underlying `u32` return value of
     /// a process.
+    ///
+    /// The exit code should not be 259, as this conflicts with the `STILL_ACTIVE`
+    /// macro returned from the `GetExitCodeProcess` function to signal that the
+    /// process has yet to run to completion.
     #[stable(feature = "windows_process_exit_code_from", since = "1.63.0")]
     fn from_raw(raw: u32) -> Self;
 }
