@@ -400,6 +400,9 @@ struct HandlerInner {
     emitter: Box<dyn Emitter + sync::Send>,
     delayed_span_bugs: Vec<Diagnostic>,
     delayed_good_path_bugs: Vec<DelayedDiagnostic>,
+    /// This flag indicates that an expected diagnostic was emitted and suppressed.
+    /// This is used for the `delayed_good_path_bugs` check.
+    suppressed_expected_diag: bool,
 
     /// This set contains the `DiagnosticId` of all emitted diagnostics to avoid
     /// emitting the same diagnostic with extended help (`--teach`) twice, which
@@ -495,7 +498,7 @@ impl Drop for HandlerInner {
         // instead of "require some error happened". Sadly that isn't ideal, as
         // lints can be `#[allow]`'d, potentially leading to this triggering.
         // Also, "good path" should be replaced with a better naming.
-        if !self.has_any_message() {
+        if !self.has_any_message() && !self.suppressed_expected_diag {
             let bugs = std::mem::replace(&mut self.delayed_good_path_bugs, Vec::new());
             self.flush_delayed(
                 bugs.into_iter().map(DelayedDiagnostic::decorate),
@@ -577,6 +580,7 @@ impl Handler {
                 emitter,
                 delayed_span_bugs: Vec::new(),
                 delayed_good_path_bugs: Vec::new(),
+                suppressed_expected_diag: false,
                 taught_diagnostics: Default::default(),
                 emitted_diagnostic_codes: Default::default(),
                 emitted_diagnostics: Default::default(),
@@ -1000,20 +1004,20 @@ impl Handler {
         let mut inner = self.inner.borrow_mut();
         let diags = std::mem::take(&mut inner.unstable_expect_diagnostics);
         inner.check_unstable_expect_diagnostics = true;
-        if diags.is_empty() {
-            return;
-        }
 
-        for mut diag in diags.into_iter() {
-            diag.update_unstable_expectation_id(unstable_to_stable);
+        if !diags.is_empty() {
+            inner.suppressed_expected_diag = true;
+            for mut diag in diags.into_iter() {
+                diag.update_unstable_expectation_id(unstable_to_stable);
 
-            let stable_id = diag
-                .level
-                .get_expectation_id()
-                .expect("all diagnostics inside `unstable_expect_diagnostics` must have a `LintExpectationId`");
-            inner.fulfilled_expectations.insert(stable_id);
+                let stable_id = diag
+                    .level
+                    .get_expectation_id()
+                    .expect("all diagnostics inside `unstable_expect_diagnostics` must have a `LintExpectationId`");
+                inner.fulfilled_expectations.insert(stable_id);
 
-            (*TRACK_DIAGNOSTICS)(&diag);
+                (*TRACK_DIAGNOSTICS)(&diag);
+            }
         }
 
         inner
@@ -1100,6 +1104,7 @@ impl HandlerInner {
         (*TRACK_DIAGNOSTICS)(diagnostic);
 
         if let Level::Expect(expectation_id) = diagnostic.level {
+            self.suppressed_expected_diag = true;
             self.fulfilled_expectations.insert(expectation_id);
             return None;
         } else if diagnostic.level == Allow {
