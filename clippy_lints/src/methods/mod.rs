@@ -78,6 +78,7 @@ mod str_splitn;
 mod string_extend_chars;
 mod suspicious_map;
 mod suspicious_splitn;
+mod suspicious_to_owned;
 mod uninit_assumed_init;
 mod unit_hash;
 mod unnecessary_filter_map;
@@ -2055,6 +2056,55 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
+    /// Checks for the usage of `_.to_owned()`, on a `Cow<'_, _>`.
+    ///
+    /// ### Why is this bad?
+    /// Calling `to_owned()` on a `Cow` creates a clone of the `Cow`
+    /// itself, without taking ownership of the `Cow` contents (i.e.
+    /// it's equivalent to calling `Cow::clone`).
+    /// The similarly named `into_owned` method, on the other hand,
+    /// clones the `Cow` contents, effectively turning any `Cow::Borrowed`
+    /// into a `Cow::Owned`.
+    ///
+    /// Given the potential ambiguity, consider replacing `to_owned`
+    /// with `clone` for better readability or, if getting a `Cow::Owned`
+    /// was the original intent, using `into_owned` instead.
+    ///
+    /// ### Example
+    /// ```rust
+    /// # use std::borrow::Cow;
+    /// let s = "Hello world!";
+    /// let cow = Cow::Borrowed(s);
+    ///
+    /// let data = cow.to_owned();
+    /// assert!(matches!(data, Cow::Borrowed(_)))
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// # use std::borrow::Cow;
+    /// let s = "Hello world!";
+    /// let cow = Cow::Borrowed(s);
+    ///
+    /// let data = cow.clone();
+    /// assert!(matches!(data, Cow::Borrowed(_)))
+    /// ```
+    /// or
+    /// ```rust
+    /// # use std::borrow::Cow;
+    /// let s = "Hello world!";
+    /// let cow = Cow::Borrowed(s);
+    ///
+    /// let data = cow.into_owned();
+    /// assert!(matches!(data, String))
+    /// ```
+    #[clippy::version = "1.65.0"]
+    pub SUSPICIOUS_TO_OWNED,
+    suspicious,
+    "calls to `to_owned` on a `Cow<'_, _>` might not do what they are expected"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
     /// Checks for calls to [`splitn`]
     /// (https://doc.rust-lang.org/std/primitive.str.html#method.splitn) and
     /// related functions with either zero or one splits.
@@ -3075,6 +3125,7 @@ impl_lint_pass!(Methods => [
     FROM_ITER_INSTEAD_OF_COLLECT,
     INSPECT_FOR_EACH,
     IMPLICIT_CLONE,
+    SUSPICIOUS_TO_OWNED,
     SUSPICIOUS_SPLITN,
     MANUAL_STR_REPEAT,
     EXTEND_WITH_DRAIN,
@@ -3553,7 +3604,12 @@ impl Methods {
                     }
                     unnecessary_lazy_eval::check(cx, expr, recv, arg, "then_some");
                 },
-                ("to_os_string" | "to_owned" | "to_path_buf" | "to_vec", []) => {
+                ("to_owned", []) => {
+                    if !suspicious_to_owned::check(cx, expr, recv) {
+                        implicit_clone::check(cx, name, expr, recv);
+                    }
+                },
+                ("to_os_string" | "to_path_buf" | "to_vec", []) => {
                     implicit_clone::check(cx, name, expr, recv);
                 },
                 ("unwrap", []) => {

@@ -393,6 +393,7 @@ const RUSTFIX_COVERAGE_KNOWN_EXCEPTIONS: &[&str] = &[
     "search_is_some.rs",
     "single_component_path_imports_nested_first.rs",
     "string_add.rs",
+    "suspicious_to_owned.rs",
     "toplevel_ref_arg_non_rustfix.rs",
     "unit_arg.rs",
     "unnecessary_clone.rs",
