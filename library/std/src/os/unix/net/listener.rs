@@ -73,9 +73,13 @@ impl UnixListener {
         unsafe {
             let inner = Socket::new_raw(libc::AF_UNIX, libc::SOCK_STREAM)?;
             let (addr, len) = sockaddr_un(path.as_ref())?;
+            #[cfg(target_os = "linux")]
+            const backlog: libc::c_int = -1;
+            #[cfg(not(target_os = "linux"))]
+            const backlog: libc::c_int = 128;
 
             cvt(libc::bind(inner.as_inner().as_raw_fd(), &addr as *const _ as *const _, len as _))?;
-            cvt(libc::listen(inner.as_inner().as_raw_fd(), 128))?;
+            cvt(libc::listen(inner.as_inner().as_raw_fd(), backlog))?;
 
             Ok(UnixListener(inner))
         }
@@ -109,12 +113,16 @@ impl UnixListener {
     pub fn bind_addr(socket_addr: &SocketAddr) -> io::Result<UnixListener> {
         unsafe {
             let inner = Socket::new_raw(libc::AF_UNIX, libc::SOCK_STREAM)?;
+            #[cfg(target_os = "linux")]
+            const backlog: libc::c_int = -1;
+            #[cfg(not(target_os = "linux"))]
+            const backlog: libc::c_int = 128;
             cvt(libc::bind(
                 inner.as_raw_fd(),
                 &socket_addr.addr as *const _ as *const _,
                 socket_addr.len as _,
             ))?;
-            cvt(libc::listen(inner.as_raw_fd(), 128))?;
+            cvt(libc::listen(inner.as_raw_fd(), backlog))?;
             Ok(UnixListener(inner))
         }
     }
