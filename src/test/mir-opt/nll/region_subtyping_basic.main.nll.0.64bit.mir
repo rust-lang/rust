@@ -39,6 +39,8 @@ fn main() -> () {
             let _6: &'_#5r usize;        // in scope 2 at $DIR/region-subtyping-basic.rs:19:9: 19:10
             scope 3 {
                 debug q => _6;           // in scope 3 at $DIR/region-subtyping-basic.rs:19:9: 19:10
+                scope 4 {
+                }
             }
         }
     }
@@ -61,25 +63,25 @@ fn main() -> () {
         StorageLive(_6);                 // bb1[2]: scope 2 at $DIR/region-subtyping-basic.rs:19:9: 19:10
         _6 = _2;                         // bb1[3]: scope 2 at $DIR/region-subtyping-basic.rs:19:13: 19:14
         FakeRead(ForLet(None), _6);      // bb1[4]: scope 2 at $DIR/region-subtyping-basic.rs:19:9: 19:10
-        StorageLive(_7);                 // bb1[5]: scope 3 at $DIR/region-subtyping-basic.rs:20:8: 20:12
-        _7 = const ConstValue(Scalar(0x01): bool); // bb1[6]: scope 3 at $DIR/region-subtyping-basic.rs:20:8: 20:12
-        switchInt(move _7) -> [Const(Value(Scalar(0x00)): bool): bb4, otherwise: bb2]; // bb1[7]: scope 3 at $DIR/region-subtyping-basic.rs:20:8: 20:12
+        StorageLive(_7);                 // bb1[5]: scope 4 at $DIR/region-subtyping-basic.rs:20:8: 20:12
+        _7 = const ConstValue(Scalar(0x01): bool); // bb1[6]: scope 4 at $DIR/region-subtyping-basic.rs:20:8: 20:12
+        switchInt(move _7) -> [Const(Value(Scalar(0x00)): bool): bb4, otherwise: bb2]; // bb1[7]: scope 4 at $DIR/region-subtyping-basic.rs:20:8: 20:12
     }
 
     bb2: {
-        StorageLive(_8);                 // bb2[0]: scope 3 at $DIR/region-subtyping-basic.rs:21:9: 21:18
-        StorageLive(_9);                 // bb2[1]: scope 3 at $DIR/region-subtyping-basic.rs:21:15: 21:17
-        _9 = (*_6);                      // bb2[2]: scope 3 at $DIR/region-subtyping-basic.rs:21:15: 21:17
-        _8 = ConstValue(Scalar(<ZST>): fn(usize) -> bool {use_x})(move _9) -> [return: bb3, unwind: bb7]; // bb2[3]: scope 3 at $DIR/region-subtyping-basic.rs:21:9: 21:18
+        StorageLive(_8);                 // bb2[0]: scope 4 at $DIR/region-subtyping-basic.rs:21:9: 21:18
+        StorageLive(_9);                 // bb2[1]: scope 4 at $DIR/region-subtyping-basic.rs:21:15: 21:17
+        _9 = (*_6);                      // bb2[2]: scope 4 at $DIR/region-subtyping-basic.rs:21:15: 21:17
+        _8 = ConstValue(Scalar(<ZST>): fn(usize) -> bool {use_x})(move _9) -> [return: bb3, unwind: bb7]; // bb2[3]: scope 4 at $DIR/region-subtyping-basic.rs:21:9: 21:18
                                          // mir::Constant
                                          // + span: $DIR/region-subtyping-basic.rs:21:9: 21:14
                                          // + literal: Const { ty: fn(usize) -> bool {use_x}, val: Value(Scalar(<ZST>)) }
     }
 
     bb3: {
-        StorageDead(_9);                 // bb3[0]: scope 3 at $DIR/region-subtyping-basic.rs:21:17: 21:18
-        StorageDead(_8);                 // bb3[1]: scope 3 at $DIR/region-subtyping-basic.rs:21:18: 21:19
-        _0 = const ConstValue(Scalar(<ZST>): ()); // bb3[2]: scope 3 at $DIR/region-subtyping-basic.rs:20:13: 22:6
+        StorageDead(_9);                 // bb3[0]: scope 4 at $DIR/region-subtyping-basic.rs:21:17: 21:18
+        StorageDead(_8);                 // bb3[1]: scope 4 at $DIR/region-subtyping-basic.rs:21:18: 21:19
+        _0 = const ConstValue(Scalar(<ZST>): ()); // bb3[2]: scope 4 at $DIR/region-subtyping-basic.rs:20:13: 22:6
         goto -> bb6;                     // bb3[3]: scope 3 at $DIR/region-subtyping-basic.rs:20:5: 24:6
     }
 

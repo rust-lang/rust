@@ -41,7 +41,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         expr: &Expr<'tcx>,
         temp_scope_override: Option<region::Scope>,
         break_scope: region::Scope,
-        variable_span: Span,
+        variable_source_info: SourceInfo,
     ) -> BlockAnd<()> {
         let this = self;
         let expr_span = expr.span;
@@ -53,7 +53,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     &this.thir[lhs],
                     temp_scope_override,
                     break_scope,
-                    variable_span,
+                    variable_source_info,
                 ));
 
                 let rhs_then_block = unpack!(this.then_else_break(
@@ -61,7 +61,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     &this.thir[rhs],
                     temp_scope_override,
                     break_scope,
-                    variable_span,
+                    variable_source_info,
                 ));
 
                 rhs_then_block.unit()
@@ -74,23 +74,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         &this.thir[value],
                         temp_scope_override,
                         break_scope,
-                        variable_span,
+                        variable_source_info,
                     )
                 })
             }
-            ExprKind::Let { expr, ref pat } => {
-                let variable_scope =
-                    this.new_source_scope(variable_span, LintLevel::Inherited, None);
-                this.source_scope = variable_scope;
-                this.lower_let_expr(
-                    block,
-                    &this.thir[expr],
-                    pat,
-                    break_scope,
-                    Some(variable_scope),
-                    variable_span,
-                )
-            }
+            ExprKind::Let { expr, ref pat } => this.lower_let_expr(
+                block,
+                &this.thir[expr],
+                pat,
+                break_scope,
+                Some(variable_source_info.scope),
+                variable_source_info.span,
+            ),
             _ => {
                 let temp_scope = temp_scope_override.unwrap_or_else(|| this.local_scope());
                 let mutability = Mutability::Mut;
@@ -1988,7 +1983,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     Guard::If(e) => {
                         let e = &this.thir[e];
                         guard_span = e.span;
-                        this.then_else_break(block, e, None, match_scope, arm_span)
+                        this.then_else_break(
+                            block,
+                            e,
+                            None,
+                            match_scope,
+                            this.source_info(arm_span),
+                        )
                     }
                     Guard::IfLet(ref pat, scrutinee) => {
                         let s = &this.thir[scrutinee];

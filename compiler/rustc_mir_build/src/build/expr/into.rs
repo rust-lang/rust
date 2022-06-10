@@ -63,6 +63,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         (if_then_scope, then_source_info),
                         LintLevel::Inherited,
                         |this| {
+                            let variable_scope =
+                                this.new_source_scope(then_expr.span, LintLevel::Inherited, None);
+                            this.source_scope = variable_scope;
                             let (then_block, else_block) =
                                 this.in_if_then_scope(condition_scope, |this| {
                                     let then_blk = unpack!(this.then_else_break(
@@ -70,7 +73,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                         &this.thir[cond],
                                         Some(condition_scope),
                                         condition_scope,
-                                        then_expr.span
+                                        SourceInfo { span: then_expr.span, scope: variable_scope }
                                     ));
 
                                     this.expr_into_dest(destination, then_blk, then_expr)

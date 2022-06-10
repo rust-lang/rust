@@ -2,6 +2,8 @@
 
 fn hello() -> () {
     let mut _0: ();                      // return place in scope 0 at $DIR/control-flow-simplification.rs:11:14: 11:14
+    scope 1 {
+    }
 
     bb0: {
         return;                          // scope 0 at $DIR/control-flow-simplification.rs:15:2: 15:2

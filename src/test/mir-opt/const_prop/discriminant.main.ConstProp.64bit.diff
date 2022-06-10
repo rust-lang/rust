@@ -31,7 +31,7 @@
       }
   
       bb2: {
-          _2 = const 42_i32;               // scope 0 at $DIR/discriminant.rs:11:47: 11:49
+          _2 = const 42_i32;               // scope 2 at $DIR/discriminant.rs:11:47: 11:49
           goto -> bb4;                     // scope 0 at $DIR/discriminant.rs:11:13: 11:64
       }
   

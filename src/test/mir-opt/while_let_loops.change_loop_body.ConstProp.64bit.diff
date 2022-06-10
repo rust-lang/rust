@@ -34,9 +34,9 @@
       }
   
       bb2: {
-          _1 = const 1_i32;                // scope 1 at $DIR/while_let_loops.rs:8:9: 8:15
-          nop;                             // scope 1 at $DIR/while_let_loops.rs:9:9: 9:14
-          goto -> bb4;                     // scope 1 at $DIR/while_let_loops.rs:9:9: 9:14
+          _1 = const 1_i32;                // scope 2 at $DIR/while_let_loops.rs:8:9: 8:15
+          nop;                             // scope 2 at $DIR/while_let_loops.rs:9:9: 9:14
+          goto -> bb4;                     // scope 2 at $DIR/while_let_loops.rs:9:9: 9:14
       }
   
       bb3: {

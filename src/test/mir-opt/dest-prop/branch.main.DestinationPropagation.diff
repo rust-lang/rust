@@ -12,6 +12,8 @@
           scope 2 {
               debug y => _2;               // in scope 2 at $DIR/branch.rs:15:9: 15:10
           }
+          scope 3 {
+          }
       }
   
       bb0: {
@@ -24,19 +26,19 @@
   
       bb1: {
           StorageLive(_2);                 // scope 1 at $DIR/branch.rs:15:9: 15:10
-          StorageLive(_3);                 // scope 1 at $DIR/branch.rs:15:16: 15:22
-          _3 = cond() -> bb2;              // scope 1 at $DIR/branch.rs:15:16: 15:22
+          StorageLive(_3);                 // scope 3 at $DIR/branch.rs:15:16: 15:22
+          _3 = cond() -> bb2;              // scope 3 at $DIR/branch.rs:15:16: 15:22
                                            // mir::Constant
                                            // + span: $DIR/branch.rs:15:16: 15:20
                                            // + literal: Const { ty: fn() -> bool {cond}, val: Value(Scalar(<ZST>)) }
       }
   
       bb2: {
-          switchInt(move _3) -> [false: bb4, otherwise: bb3]; // scope 1 at $DIR/branch.rs:15:16: 15:22
+          switchInt(move _3) -> [false: bb4, otherwise: bb3]; // scope 3 at $DIR/branch.rs:15:16: 15:22
       }
   
       bb3: {
-          nop;                             // scope 1 at $DIR/branch.rs:16:9: 16:10
+          nop;                             // scope 3 at $DIR/branch.rs:16:9: 16:10
           goto -> bb6;                     // scope 1 at $DIR/branch.rs:15:13: 20:6
       }
   

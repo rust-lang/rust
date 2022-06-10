@@ -24,7 +24,7 @@
       }
   
       bb2: {
-          _0 = const 1_u32;                // scope 0 at $DIR/early_otherwise_branch_soundness.rs:13:38: 13:39
+          _0 = const 1_u32;                // scope 1 at $DIR/early_otherwise_branch_soundness.rs:13:38: 13:39
           goto -> bb4;                     // scope 0 at $DIR/early_otherwise_branch_soundness.rs:13:5: 13:52
       }
   

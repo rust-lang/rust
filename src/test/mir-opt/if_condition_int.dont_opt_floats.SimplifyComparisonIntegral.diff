@@ -6,18 +6,20 @@
       let mut _0: i32;                     // return place in scope 0 at $DIR/if-condition-int.rs:52:31: 52:34
       let mut _2: bool;                    // in scope 0 at $DIR/if-condition-int.rs:53:8: 53:18
       let mut _3: f32;                     // in scope 0 at $DIR/if-condition-int.rs:53:8: 53:9
+      scope 1 {
+      }
   
       bb0: {
-          StorageLive(_2);                 // scope 0 at $DIR/if-condition-int.rs:53:8: 53:18
-          StorageLive(_3);                 // scope 0 at $DIR/if-condition-int.rs:53:8: 53:9
-          _3 = _1;                         // scope 0 at $DIR/if-condition-int.rs:53:8: 53:9
-          _2 = Eq(move _3, const -42f32);  // scope 0 at $DIR/if-condition-int.rs:53:8: 53:18
-          StorageDead(_3);                 // scope 0 at $DIR/if-condition-int.rs:53:17: 53:18
-          switchInt(move _2) -> [false: bb2, otherwise: bb1]; // scope 0 at $DIR/if-condition-int.rs:53:8: 53:18
+          StorageLive(_2);                 // scope 1 at $DIR/if-condition-int.rs:53:8: 53:18
+          StorageLive(_3);                 // scope 1 at $DIR/if-condition-int.rs:53:8: 53:9
+          _3 = _1;                         // scope 1 at $DIR/if-condition-int.rs:53:8: 53:9
+          _2 = Eq(move _3, const -42f32);  // scope 1 at $DIR/if-condition-int.rs:53:8: 53:18
+          StorageDead(_3);                 // scope 1 at $DIR/if-condition-int.rs:53:17: 53:18
+          switchInt(move _2) -> [false: bb2, otherwise: bb1]; // scope 1 at $DIR/if-condition-int.rs:53:8: 53:18
       }
   
       bb1: {
-          _0 = const 0_i32;                // scope 0 at $DIR/if-condition-int.rs:53:21: 53:22
+          _0 = const 0_i32;                // scope 1 at $DIR/if-condition-int.rs:53:21: 53:22
           goto -> bb3;                     // scope 0 at $DIR/if-condition-int.rs:53:5: 53:35
       }
   
