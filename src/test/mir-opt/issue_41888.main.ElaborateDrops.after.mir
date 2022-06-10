@@ -14,9 +14,9 @@ fn main() -> () {
     let mut _11: isize;                  // in scope 0 at $DIR/issue-41888.rs:15:1: 15:2
     scope 1 {
         debug e => _1;                   // in scope 1 at $DIR/issue-41888.rs:7:9: 7:10
-        let _6: K;                       // in scope 1 at $DIR/issue-41888.rs:10:21: 10:23
         scope 2 {
             debug _k => _6;              // in scope 2 at $DIR/issue-41888.rs:10:21: 10:23
+            let _6: K;                   // in scope 2 at $DIR/issue-41888.rs:10:21: 10:23
         }
     }
 
@@ -51,8 +51,8 @@ fn main() -> () {
 
     bb4: {
         StorageDead(_3);                 // scope 1 at $DIR/issue-41888.rs:9:19: 9:20
-        _5 = discriminant(_1);           // scope 1 at $DIR/issue-41888.rs:10:16: 10:24
-        switchInt(move _5) -> [0_isize: bb5, otherwise: bb6]; // scope 1 at $DIR/issue-41888.rs:10:16: 10:24
+        _5 = discriminant(_1);           // scope 2 at $DIR/issue-41888.rs:10:16: 10:24
+        switchInt(move _5) -> [0_isize: bb5, otherwise: bb6]; // scope 2 at $DIR/issue-41888.rs:10:16: 10:24
     }
 
     bb5: {
