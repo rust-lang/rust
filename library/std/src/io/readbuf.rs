@@ -166,8 +166,8 @@ impl<'a> ReadBuf<'a> {
     ///
     /// The number of initialized bytes is not changed, and the contents of the buffer are not modified.
     #[inline]
-    pub fn clear(&mut self) {
-        self.set_filled(0); // The assertion in `set_filled` is optimized out
+    pub fn clear(&mut self) -> &mut Self {
+        self.set_filled(0) // The assertion in `set_filled` is optimized out
     }
 
     /// Increases the size of the filled region of the buffer.
@@ -178,8 +178,8 @@ impl<'a> ReadBuf<'a> {
     ///
     /// Panics if the filled region of the buffer would become larger than the initialized region.
     #[inline]
-    pub fn add_filled(&mut self, n: usize) {
-        self.set_filled(self.filled + n);
+    pub fn add_filled(&mut self, n: usize) -> &mut Self {
+        self.set_filled(self.filled + n)
     }
 
     /// Sets the size of the filled region of the buffer.
@@ -193,10 +193,11 @@ impl<'a> ReadBuf<'a> {
     ///
     /// Panics if the filled region of the buffer would become larger than the initialized region.
     #[inline]
-    pub fn set_filled(&mut self, n: usize) {
+    pub fn set_filled(&mut self, n: usize) -> &mut Self {
         assert!(n <= self.initialized);
 
         self.filled = n;
+        self
     }
 
     /// Asserts that the first `n` unfilled bytes of the buffer are initialized.
@@ -208,8 +209,9 @@ impl<'a> ReadBuf<'a> {
     ///
     /// The caller must ensure that the first `n` unfilled bytes of the buffer have already been initialized.
     #[inline]
-    pub unsafe fn assume_init(&mut self, n: usize) {
+    pub unsafe fn assume_init(&mut self, n: usize) -> &mut Self {
         self.initialized = cmp::max(self.initialized, self.filled + n);
+        self
     }
 
     /// Appends data to the buffer, advancing the written position and possibly also the initialized position.
@@ -227,7 +229,9 @@ impl<'a> ReadBuf<'a> {
         }
 
         // SAFETY: We just added the entire contents of buf to the filled section.
-        unsafe { self.assume_init(buf.len()) }
+        unsafe {
+            self.assume_init(buf.len());
+        }
         self.add_filled(buf.len());
     }
 
