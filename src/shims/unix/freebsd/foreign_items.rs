@@ -17,7 +17,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         _ret: mir::BasicBlock,
     ) -> InterpResult<'tcx, EmulateByNameResult<'mir, 'tcx>> {
         let this = self.eval_context_mut();
-        // match
+        match link_name.as_str() {
+            _ => return Ok(EmulateByNameResult::NotSupported),
+        }
         Ok(EmulateByNameResult::NeedsJumping)
     }
 }
