@@ -199,7 +199,7 @@ impl ChildExt for process::Child {
 ///
 /// This trait is sealed: it cannot be implemented outside the standard library.
 /// This is so that future additional methods are not breaking changes.
-#[stable(feature = "windows_process_exit_code_from", since = "1.63.0")]
+#[unstable(feature = "windows_process_exit_code_from", issue = "none")]
 pub trait ExitCodeExt: Sealed {
     /// Creates a new `ExitCode` from the raw underlying `u32` return value of
     /// a process.
@@ -207,11 +207,11 @@ pub trait ExitCodeExt: Sealed {
     /// The exit code should not be 259, as this conflicts with the `STILL_ACTIVE`
     /// macro returned from the `GetExitCodeProcess` function to signal that the
     /// process has yet to run to completion.
-    #[stable(feature = "windows_process_exit_code_from", since = "1.63.0")]
+    #[unstable(feature = "windows_process_exit_code_from", issue = "none")]
     fn from_raw(raw: u32) -> Self;
 }
 
-#[stable(feature = "windows_process_exit_code_from", since = "1.63.0")]
+#[unstable(feature = "windows_process_exit_code_from", issue = "none")]
 impl ExitCodeExt for process::ExitCode {
     fn from_raw(raw: u32) -> Self {
         process::ExitCode::from_inner(From::from(raw))
