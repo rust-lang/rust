@@ -1,5 +1,8 @@
 use ide_db::syntax_helpers::node_ext::for_each_break_and_continue_expr;
-use syntax::ast::{self, AstNode, HasLoopBody};
+use syntax::{
+    ast::{self, AstNode, HasLoopBody},
+    T,
+};
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 
@@ -25,26 +28,24 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 // }
 // ```
 pub(crate) fn add_label_to_loop(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
-    let loop_expr = ctx.find_node_at_offset::<ast::LoopExpr>()?;
+    let loop_kw = ctx.find_token_syntax_at_offset(T![loop])?;
+    let loop_expr = loop_kw.parent().and_then(ast::LoopExpr::cast)?;
     if loop_expr.label().is_some() {
         return None;
     }
-    let loop_body = loop_expr.loop_body().and_then(|it| it.stmt_list());
-    let mut related_exprs = vec![];
-    related_exprs.push(ast::Expr::LoopExpr(loop_expr.clone()));
-    for_each_break_and_continue_expr(loop_expr.label(), loop_body, &mut |expr| {
-        if let ast::Expr::BreakExpr(_) | ast::Expr::ContinueExpr(_) = expr {
-            related_exprs.push(expr)
-        }
-    });
 
     acc.add(
         AssistId("add_label_to_loop", AssistKind::Generate),
         "Add Label",
         loop_expr.syntax().text_range(),
         |builder| {
-            for expr in related_exprs {
-                match expr {
+            builder.insert(loop_kw.text_range().start(), "'l: ");
+
+            let loop_body = loop_expr.loop_body().and_then(|it| it.stmt_list());
+            for_each_break_and_continue_expr(
+                loop_expr.label(),
+                loop_body,
+                &mut |expr| match expr {
                     ast::Expr::BreakExpr(break_expr) => {
                         if let Some(break_token) = break_expr.break_token() {
                             builder.insert(break_token.text_range().end(), " 'l")
@@ -55,14 +56,9 @@ pub(crate) fn add_label_to_loop(acc: &mut Assists, ctx: &AssistContext) -> Optio
                             builder.insert(continue_token.text_range().end(), " 'l")
                         }
                     }
-                    ast::Expr::LoopExpr(loop_expr) => {
-                        if let Some(loop_token) = loop_expr.loop_token() {
-                            builder.insert(loop_token.text_range().start(), "'l: ")
-                        }
-                    }
                     _ => {}
-                }
-            }
+                },
+            );
         },
     )
 }
