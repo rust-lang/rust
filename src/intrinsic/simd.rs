@@ -216,7 +216,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
         let variable = bx.current_func().new_local(None, vector.get_type(), "new_vector");
         bx.llbb().add_assignment(None, variable, vector);
         let lvalue = bx.context.new_vector_access(None, variable.to_rvalue(), index);
-        // TODO: if simd_insert is constant, use BIT_REF.
+        // TODO(antoyo): if simd_insert is constant, use BIT_REF.
         bx.llbb().add_assignment(None, lvalue, value);
         return Ok(variable.to_rvalue());
     }
@@ -545,9 +545,9 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
                 },
                 (true, true) => {
                     // Algorithm from: https://codereview.stackexchange.com/questions/115869/saturated-signed-addition
-                    // TODO: improve using conditional operators if possible.
+                    // TODO(antoyo): improve using conditional operators if possible.
                     let arg_type = lhs.get_type();
-                    // TODO: convert lhs and rhs to unsigned.
+                    // TODO(antoyo): convert lhs and rhs to unsigned.
                     let sum = lhs + rhs;
                     let vector_type = arg_type.dyncast_vector().expect("vector type");
                     let unit = vector_type.get_num_units();
@@ -581,7 +581,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
                     // negative of the right operand. Find a proper subtraction algorithm.
                     let rhs = bx.context.new_unary_op(None, UnaryOp::Minus, arg_type, rhs);
 
-                    // TODO: convert lhs and rhs to unsigned.
+                    // TODO(antoyo): convert lhs and rhs to unsigned.
                     let sum = lhs + rhs;
                     let vector_type = arg_type.dyncast_vector().expect("vector type");
                     let unit = vector_type.get_num_units();
