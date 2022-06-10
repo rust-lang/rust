@@ -467,7 +467,7 @@ pub(crate) unsafe fn optimize_with_new_llvm_pass_manager(
     let llvm_selfprofiler =
         llvm_profiler.as_mut().map(|s| s as *mut _ as *mut c_void).unwrap_or(std::ptr::null_mut());
 
-    let extra_passes = config.passes.join(",");
+    let extra_passes = if !is_lto { config.passes.join(",") } else { "".to_string() };
 
     let llvm_plugins = config.llvm_plugins.join(",");
 
