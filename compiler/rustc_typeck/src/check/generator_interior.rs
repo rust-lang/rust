@@ -457,7 +457,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
 }
 
 #[derive(Default)]
-pub struct SuspendCheckData<'a, 'tcx> {
+struct SuspendCheckData<'a, 'tcx> {
     expr: Option<&'tcx Expr<'tcx>>,
     source_span: Span,
     yield_span: Span,
@@ -472,7 +472,7 @@ pub struct SuspendCheckData<'a, 'tcx> {
 //
 // Note that this technique was chosen over things like a `Suspend` marker trait
 // as it is simpler and has precedent in the compiler
-pub fn check_must_not_suspend_ty<'tcx>(
+fn check_must_not_suspend_ty<'tcx>(
     fcx: &FnCtxt<'_, 'tcx>,
     ty: Ty<'tcx>,
     hir_id: HirId,
@@ -582,7 +582,9 @@ pub fn check_must_not_suspend_ty<'tcx>(
                 },
             )
         }
-        ty::Ref(_region, ty, _mutability) => {
+        // If drop tracking is enabled, we want to look through references, since the referrent
+        // may not be considered live across the await point.
+        ty::Ref(_region, ty, _mutability) if fcx.sess().opts.debugging_opts.drop_tracking => {
             let descr_pre = &format!("{}reference{} to ", data.descr_pre, plural_suffix);
             check_must_not_suspend_ty(fcx, ty, hir_id, SuspendCheckData { descr_pre, ..data })
         }
