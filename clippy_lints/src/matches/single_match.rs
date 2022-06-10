@@ -242,7 +242,10 @@ fn form_exhaustive_matches<'a>(cx: &LateContext<'a>, ty: Ty<'a>, left: &Pat<'_>,
             }
             true
         },
-        (PatKind::TupleStruct(..), PatKind::Path(_) | PatKind::TupleStruct(..)) => in_candidate_enum(cx, ty),
+        (PatKind::TupleStruct(..), PatKind::Path(_)) => in_candidate_enum(cx, ty),
+        (PatKind::TupleStruct(..), PatKind::TupleStruct(_, inner, _)) => {
+            in_candidate_enum(cx, ty) && inner.iter().all(contains_only_wilds)
+        },
         _ => false,
     }
 }
