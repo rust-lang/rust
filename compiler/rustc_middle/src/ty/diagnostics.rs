@@ -478,7 +478,7 @@ impl<'tcx> TypeVisitor<'tcx> for IsSuggestableVisitor<'tcx> {
     }
 
     fn visit_const(&mut self, c: Const<'tcx>) -> ControlFlow<Self::BreakTy> {
-        match c.val() {
+        match c.kind() {
             ConstKind::Infer(..)
             | ConstKind::Bound(..)
             | ConstKind::Placeholder(..)

@@ -223,7 +223,7 @@ impl<'a, 'tcx> FallibleTypeFolder<'tcx> for FullTypeResolver<'a, 'tcx> {
             Ok(c) // micro-optimize -- if there is nothing in this const that this fold affects...
         } else {
             let c = self.infcx.shallow_resolve(c);
-            match c.val() {
+            match c.kind() {
                 ty::ConstKind::Infer(InferConst::Var(vid)) => {
                     return Err(FixupError::UnresolvedConst(vid));
                 }

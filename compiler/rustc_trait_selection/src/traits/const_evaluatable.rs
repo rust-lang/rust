@@ -245,7 +245,7 @@ impl<'tcx> AbstractConst<'tcx> {
         tcx: TyCtxt<'tcx>,
         ct: ty::Const<'tcx>,
     ) -> Result<Option<AbstractConst<'tcx>>, ErrorGuaranteed> {
-        match ct.val() {
+        match ct.kind() {
             ty::ConstKind::Unevaluated(uv) => AbstractConst::new(tcx, uv.shrink()),
             ty::ConstKind::Error(DelaySpanBugEmitted { reported, .. }) => Err(reported),
             _ => Ok(None),
@@ -414,7 +414,7 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
 
         for n in self.nodes.iter() {
             if let Node::Leaf(ct) = n {
-                if let ty::ConstKind::Unevaluated(ct) = ct.val() {
+                if let ty::ConstKind::Unevaluated(ct) = ct.kind() {
                     // `AbstractConst`s should not contain any promoteds as they require references which
                     // are not allowed.
                     assert_eq!(ct.promoted, None);
@@ -457,7 +457,7 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
                 let uneval = ty::Unevaluated::new(ty::WithOptConstParam::unknown(def_id), substs);
 
                 let constant = self.tcx.mk_const(ty::ConstS {
-                                val: ty::ConstKind::Unevaluated(uneval),
+                                kind: ty::ConstKind::Unevaluated(uneval),
                                 ty: node.ty,
                             });
 
@@ -466,7 +466,7 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
 
             ExprKind::ConstParam {param, ..} => {
                 let const_param = self.tcx.mk_const(ty::ConstS {
-                        val: ty::ConstKind::Param(*param),
+                        kind: ty::ConstKind::Param(*param),
                         ty: node.ty,
                     });
                 self.nodes.push(Node::Leaf(const_param))
@@ -748,7 +748,7 @@ impl<'tcx> ConstUnifyCtxt<'tcx> {
                     return false;
                 }
 
-                match (a_ct.val(), b_ct.val()) {
+                match (a_ct.kind(), b_ct.kind()) {
                     // We can just unify errors with everything to reduce the amount of
                     // emitted errors here.
                     (ty::ConstKind::Error(_), _) | (_, ty::ConstKind::Error(_)) => true,

@@ -902,7 +902,7 @@ impl<'tcx> CanonicalUserType<'tcx> {
                             _ => false,
                         },
 
-                        GenericArgKind::Const(ct) => match ct.val() {
+                        GenericArgKind::Const(ct) => match ct.kind() {
                             ty::ConstKind::Bound(debruijn, b) => {
                                 // We only allow a `ty::INNERMOST` index in substitutions.
                                 assert_eq!(debruijn, ty::INNERMOST);
@@ -991,7 +991,7 @@ impl<'tcx> CommonConsts<'tcx> {
 
         CommonConsts {
             unit: mk_const(ty::ConstS {
-                val: ty::ConstKind::Value(ConstValue::Scalar(Scalar::ZST)),
+                kind: ty::ConstKind::Value(ConstValue::Scalar(Scalar::ZST)),
                 ty: types.unit,
             }),
         }
@@ -1300,7 +1300,7 @@ impl<'tcx> TyCtxt<'tcx> {
     ) -> Const<'tcx> {
         let reported = self.sess.delay_span_bug(span, msg);
         self.mk_const(ty::ConstS {
-            val: ty::ConstKind::Error(DelaySpanBugEmitted { reported, _priv: () }),
+            kind: ty::ConstKind::Error(DelaySpanBugEmitted { reported, _priv: () }),
             ty,
         })
     }
@@ -2467,7 +2467,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn mk_const_var(self, v: ConstVid<'tcx>, ty: Ty<'tcx>) -> Const<'tcx> {
-        self.mk_const(ty::ConstS { val: ty::ConstKind::Infer(InferConst::Var(v)), ty })
+        self.mk_const(ty::ConstS { kind: ty::ConstKind::Infer(InferConst::Var(v)), ty })
     }
 
     #[inline]
@@ -2487,7 +2487,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn mk_const_infer(self, ic: InferConst<'tcx>, ty: Ty<'tcx>) -> ty::Const<'tcx> {
-        self.mk_const(ty::ConstS { val: ty::ConstKind::Infer(ic), ty })
+        self.mk_const(ty::ConstS { kind: ty::ConstKind::Infer(ic), ty })
     }
 
     #[inline]
@@ -2497,7 +2497,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn mk_const_param(self, index: u32, name: Symbol, ty: Ty<'tcx>) -> Const<'tcx> {
-        self.mk_const(ty::ConstS { val: ty::ConstKind::Param(ParamConst { index, name }), ty })
+        self.mk_const(ty::ConstS { kind: ty::ConstKind::Param(ParamConst { index, name }), ty })
     }
 
     pub fn mk_param_from_def(self, param: &ty::GenericParamDef) -> GenericArg<'tcx> {

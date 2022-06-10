@@ -153,7 +153,7 @@ impl IntRange {
                             return None;
                         }
                     }
-                    mir::ConstantKind::Ty(c) => match c.val() {
+                    mir::ConstantKind::Ty(c) => match c.kind() {
                         ty::ConstKind::Value(_) => bug!(
                             "encountered ConstValue in mir::ConstantKind::Ty, whereas this is expected to be in ConstantKind::Val"
                         ),

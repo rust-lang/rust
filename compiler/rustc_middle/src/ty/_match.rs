@@ -96,7 +96,7 @@ impl<'tcx> TypeRelation<'tcx> for Match<'tcx> {
             return Ok(a);
         }
 
-        match (a.val(), b.val()) {
+        match (a.kind(), b.kind()) {
             (_, ty::ConstKind::Infer(InferConst::Fresh(_))) => {
                 return Ok(a);
             }

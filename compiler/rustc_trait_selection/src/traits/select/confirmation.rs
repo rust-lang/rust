@@ -542,7 +542,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                 bound_vars.push(bound_var);
                                 tcx.mk_const(ty::ConstS {
                                     ty: tcx.type_of(param.def_id),
-                                    val: ty::ConstKind::Bound(
+                                    kind: ty::ConstKind::Bound(
                                         ty::INNERMOST,
                                         ty::BoundVar::from_usize(bound_vars.len() - 1),
                                     ),
@@ -989,7 +989,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     // Lifetimes aren't allowed to change during unsizing.
                     GenericArgKind::Lifetime(_) => None,
 
-                    GenericArgKind::Const(ct) => match ct.val() {
+                    GenericArgKind::Const(ct) => match ct.kind() {
                         ty::ConstKind::Param(p) => Some(p.index),
                         _ => None,
                     },

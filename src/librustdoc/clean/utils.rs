@@ -234,7 +234,7 @@ pub(crate) fn name_from_pat(p: &hir::Pat<'_>) -> Symbol {
 }
 
 pub(crate) fn print_const(cx: &DocContext<'_>, n: ty::Const<'_>) -> String {
-    match n.val() {
+    match n.kind() {
         ty::ConstKind::Unevaluated(ty::Unevaluated { def, substs: _, promoted }) => {
             let mut s = if let Some(def) = def.as_local() {
                 let hir_id = cx.tcx.hir().local_def_id_to_hir_id(def.did);
@@ -307,7 +307,7 @@ fn format_integer_with_underscore_sep(num: &str) -> String {
 fn print_const_with_custom_print_scalar(tcx: TyCtxt<'_>, ct: ty::Const<'_>) -> String {
     // Use a slightly different format for integer types which always shows the actual value.
     // For all other types, fallback to the original `pretty_print_const`.
-    match (ct.val(), ct.ty().kind()) {
+    match (ct.kind(), ct.ty().kind()) {
         (ty::ConstKind::Value(ConstValue::Scalar(int)), ty::Uint(ui)) => {
             format!("{}{}", format_integer_with_underscore_sep(&int.to_string()), ui.name_str())
         }
