@@ -87,7 +87,9 @@ on your documentation examples make requests to.
 #![doc(html_playground_url = "https://playground.example.com/")]
 ```
 
-Now, when you press "run", the button will make a request to this domain.
+Now, when you press "run", the button will make a request to this domain. The request 
+URL will contain 2 query parameters: `code` and `edition` for the code in the documentation
+and the Rust edition respectively. 
 
 If you don't use this attribute, there will be no run buttons.
 
