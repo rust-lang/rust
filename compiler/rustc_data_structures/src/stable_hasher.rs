@@ -1,4 +1,3 @@
-use crate::sip128::SipHasher128;
 use rustc_index::bit_set;
 use rustc_index::vec;
 use smallvec::SmallVec;
