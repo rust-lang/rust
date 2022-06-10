@@ -120,7 +120,7 @@ else
 	# So we end up with the following hack: we link use static:-bundle to only
 	# link the parts of libstdc++ that we actually use, which doesn't include
 	# the dependency on the pthreads DLL.
-	EXTRARSCXXFLAGS := -l static:-bundle=stdc++ -Z unstable-options
+	EXTRARSCXXFLAGS := -l static:-bundle=stdc++
 endif
 else
 ifeq ($(UNAME),Darwin)

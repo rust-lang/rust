@@ -1,5 +1,3 @@
-#![feature(native_link_modifiers_bundle)]
-
 use std::io::Write;
 
 #[link(name = "c_static_lib_with_constructor",
