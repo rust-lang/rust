@@ -60,13 +60,17 @@ export class Config {
 
         if (!requiresReloadOpt) return;
 
-        const userResponse = await vscode.window.showInformationMessage(
-            `Changing "${requiresReloadOpt}" requires a reload`,
-            "Reload now"
-        );
-
-        if (userResponse === "Reload now") {
+        if (this.restartServerOnConfigChange) {
             await vscode.commands.executeCommand("rust-analyzer.reload");
+        } else {
+            const userResponse = await vscode.window.showInformationMessage(
+                `Changing "${requiresReloadOpt}" requires a reload`,
+                "Reload now"
+            );
+
+            if (userResponse === "Reload now") {
+                await vscode.commands.executeCommand("rust-analyzer.reload");
+            }
         }
     }
 
@@ -117,6 +121,10 @@ export class Config {
 
     get runnableEnv() {
         return this.get<RunnableEnvCfg>("runnableEnv");
+    }
+
+    get restartServerOnConfigChange() {
+        return this.get<boolean>("restartServerOnConfigChange");
     }
 
     get debug() {

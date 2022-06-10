@@ -1115,6 +1115,11 @@
                         "Search in current workspace and dependencies."
                     ]
                 },
+                "rust-analyzer.restartServerOnConfigChange": {
+                    "markdownDescription": "Whether to restart the server automatically when certain settings that require a restart are changed.",
+                    "default": false,
+                    "type": "boolean"
+                },
                 "$generated-end": {}
             }
         },
