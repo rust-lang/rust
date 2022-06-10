@@ -57,7 +57,7 @@ unicode-segmentation = "1.9"
 unicode-width = "0.1"
 unicode_categories = "0.1"
 
-rustfmt-config_proc_macro = { version = "0.2", path = "config_proc_macro" }
+rustfmt-config_proc_macro = { version = "0.3", path = "config_proc_macro" }
 
 # A noop dependency that changes in the Rust repository, it's a bit of a hack.
 # See the `src/tools/rustc-workspace-hack/README.md` file in `rust-lang/rust`

@@ -1,5 +1,6 @@
 use proc_macro2::TokenStream;
-use quote::quote;
+use quote::{quote, quote_spanned};
+use syn::spanned::Spanned;
 
 use crate::attrs::*;
 use crate::utils::*;
@@ -47,10 +48,21 @@ fn process_variant(variant: &syn::Variant) -> TokenStream {
     let metas = variant
         .attrs
         .iter()
-        .filter(|attr| !is_doc_hint(attr) && !is_config_value(attr));
+        .filter(|attr| !is_doc_hint(attr) && !is_config_value(attr) && !is_unstable_variant(attr));
     let attrs = fold_quote(metas, |meta| quote!(#meta));
     let syn::Variant { ident, fields, .. } = variant;
     quote!(#attrs #ident #fields)
+}
+
+/// Return the correct syntax to pattern match on the enum variant, discarding all
+/// internal field data.
+fn fields_in_variant(variant: &syn::Variant) -> TokenStream {
+    // With thanks to https://stackoverflow.com/a/65182902
+    match &variant.fields {
+        syn::Fields::Unnamed(_) => quote_spanned! { variant.span() => (..) },
+        syn::Fields::Unit => quote_spanned! { variant.span() => },
+        syn::Fields::Named(_) => quote_spanned! { variant.span() => {..} },
+    }
 }
 
 fn impl_doc_hint(ident: &syn::Ident, variants: &Variants) -> TokenStream {
@@ -60,11 +72,25 @@ fn impl_doc_hint(ident: &syn::Ident, variants: &Variants) -> TokenStream {
         .collect::<Vec<_>>()
         .join("|");
     let doc_hint = format!("[{}]", doc_hint);
+
+    let variant_stables = variants
+        .iter()
+        .map(|v| (&v.ident, fields_in_variant(&v), !unstable_of_variant(v)));
+    let match_patterns = fold_quote(variant_stables, |(v, fields, stable)| {
+        quote! {
+            #ident::#v #fields => #stable,
+        }
+    });
     quote! {
         use crate::config::ConfigType;
         impl ConfigType for #ident {
             fn doc_hint() -> String {
                 #doc_hint.to_owned()
+            }
+            fn stable_variant(&self) -> bool {
+                match self {
+                    #match_patterns
+                }
             }
         }
     }
@@ -123,11 +149,19 @@ fn impl_from_str(ident: &syn::Ident, variants: &Variants) -> TokenStream {
 }
 
 fn doc_hint_of_variant(variant: &syn::Variant) -> String {
-    find_doc_hint(&variant.attrs).unwrap_or(variant.ident.to_string())
+    let mut text = find_doc_hint(&variant.attrs).unwrap_or(variant.ident.to_string());
+    if unstable_of_variant(&variant) {
+        text.push_str(" (unstable)")
+    };
+    text
 }
 
 fn config_value_of_variant(variant: &syn::Variant) -> String {
     find_config_value(&variant.attrs).unwrap_or(variant.ident.to_string())
+}
+
+fn unstable_of_variant(variant: &syn::Variant) -> bool {
+    any_unstable_variant(&variant.attrs)
 }
 
 fn impl_serde(ident: &syn::Ident, variants: &Variants) -> TokenStream {

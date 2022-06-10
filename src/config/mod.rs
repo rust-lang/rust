@@ -408,6 +408,15 @@ mod test {
     #[allow(dead_code)]
     mod mock {
         use super::super::*;
+        use rustfmt_config_proc_macro::config_type;
+
+        #[config_type]
+        pub enum PartiallyUnstableOption {
+            V1,
+            V2,
+            #[unstable_variant]
+            V3,
+        }
 
         create_config! {
             // Options that are used by the generated functions
@@ -451,6 +460,63 @@ mod test {
             // Options that are used by the tests
             stable_option: bool, false, true, "A stable option";
             unstable_option: bool, false, false, "An unstable option";
+            partially_unstable_option: PartiallyUnstableOption, PartiallyUnstableOption::V1, true,
+                "A partially unstable option";
+        }
+
+        #[cfg(test)]
+        mod partially_unstable_option {
+            use super::{Config, PartialConfig, PartiallyUnstableOption};
+            use rustfmt_config_proc_macro::{nightly_only_test, stable_only_test};
+            use std::path::Path;
+
+            /// From the config file, we can fill with a stable variant
+            #[test]
+            fn test_from_toml_stable_value() {
+                let toml = r#"
+                    partially_unstable_option = "V2"
+                "#;
+                let partial_config: PartialConfig = toml::from_str(toml).unwrap();
+                let config = Config::default();
+                let config = config.fill_from_parsed_config(partial_config, Path::new(""));
+                assert_eq!(
+                    config.partially_unstable_option(),
+                    PartiallyUnstableOption::V2
+                );
+            }
+
+            /// From the config file, we cannot fill with an unstable variant (stable only)
+            #[stable_only_test]
+            #[test]
+            fn test_from_toml_unstable_value_on_stable() {
+                let toml = r#"
+                    partially_unstable_option = "V3"
+                "#;
+                let partial_config: PartialConfig = toml::from_str(toml).unwrap();
+                let config = Config::default();
+                let config = config.fill_from_parsed_config(partial_config, Path::new(""));
+                assert_eq!(
+                    config.partially_unstable_option(),
+                    // default value from config, i.e. fill failed
+                    PartiallyUnstableOption::V1
+                );
+            }
+
+            /// From the config file, we can fill with an unstable variant (nightly only)
+            #[nightly_only_test]
+            #[test]
+            fn test_from_toml_unstable_value_on_nightly() {
+                let toml = r#"
+                    partially_unstable_option = "V3"
+                "#;
+                let partial_config: PartialConfig = toml::from_str(toml).unwrap();
+                let config = Config::default();
+                let config = config.fill_from_parsed_config(partial_config, Path::new(""));
+                assert_eq!(
+                    config.partially_unstable_option(),
+                    PartiallyUnstableOption::V3
+                );
+            }
         }
     }
 
@@ -489,6 +555,11 @@ mod test {
         assert_eq!(config.was_set().verbose(), false);
     }
 
+    const PRINT_DOCS_STABLE_OPTION: &str = "stable_option <boolean> Default: false";
+    const PRINT_DOCS_UNSTABLE_OPTION: &str = "unstable_option <boolean> Default: false (unstable)";
+    const PRINT_DOCS_PARTIALLY_UNSTABLE_OPTION: &str =
+        "partially_unstable_option [V1|V2|V3 (unstable)] Default: V1";
+
     #[test]
     fn test_print_docs_exclude_unstable() {
         use self::mock::Config;
@@ -497,10 +568,9 @@ mod test {
         Config::print_docs(&mut output, false);
 
         let s = str::from_utf8(&output).unwrap();
-
-        assert_eq!(s.contains("stable_option"), true);
-        assert_eq!(s.contains("unstable_option"), false);
-        assert_eq!(s.contains("(unstable)"), false);
+        assert_eq!(s.contains(PRINT_DOCS_STABLE_OPTION), true);
+        assert_eq!(s.contains(PRINT_DOCS_UNSTABLE_OPTION), false);
+        assert_eq!(s.contains(PRINT_DOCS_PARTIALLY_UNSTABLE_OPTION), true);
     }
 
     #[test]
@@ -511,9 +581,9 @@ mod test {
         Config::print_docs(&mut output, true);
 
         let s = str::from_utf8(&output).unwrap();
-        assert_eq!(s.contains("stable_option"), true);
-        assert_eq!(s.contains("unstable_option"), true);
-        assert_eq!(s.contains("(unstable)"), true);
+        assert_eq!(s.contains(PRINT_DOCS_STABLE_OPTION), true);
+        assert_eq!(s.contains(PRINT_DOCS_UNSTABLE_OPTION), true);
+        assert_eq!(s.contains(PRINT_DOCS_PARTIALLY_UNSTABLE_OPTION), true);
     }
 
     #[test]
@@ -919,6 +989,34 @@ make_backup = false
             let mut config = Config::default();
             config.override_value("single_line_if_else_max_width", "101");
             assert_eq!(config.single_line_if_else_max_width(), 100);
+        }
+    }
+
+    #[cfg(test)]
+    mod partially_unstable_option {
+        use super::mock::{Config, PartiallyUnstableOption};
+        use super::*;
+
+        /// From the command line, we can override with a stable variant.
+        #[test]
+        fn test_override_stable_value() {
+            let mut config = Config::default();
+            config.override_value("partially_unstable_option", "V2");
+            assert_eq!(
+                config.partially_unstable_option(),
+                PartiallyUnstableOption::V2
+            );
+        }
+
+        /// From the command line, we can override with an unstable variant.
+        #[test]
+        fn test_override_unstable_value() {
+            let mut config = Config::default();
+            config.override_value("partially_unstable_option", "V3");
+            assert_eq!(
+                config.partially_unstable_option(),
+                PartiallyUnstableOption::V3
+            );
         }
     }
 }
