@@ -147,7 +147,8 @@ fn check_opt_like<'a>(
     }
 }
 
-/// Returns `true` if all of the types in the pattern are candidate enums
+/// Returns `true` if all of the types in the pattern are enums which we know
+/// won't be expanded in the future
 fn pat_in_candidate_enum<'a>(cx: &LateContext<'a>, ty: Ty<'a>, pat: &Pat<'_>) -> bool {
     let mut paths_and_types = Vec::new();
     collect_pat_paths(&mut paths_and_types, cx, pat, ty);
