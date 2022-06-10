@@ -146,6 +146,5 @@ To get the `rustc` command to run in `gdb`, add the `--verbose` flag to `cargo b
  * Since rustc doesn't support this architecture yet, set it back to `TARGET_TRIPLE="mips-unknown-linux-gnu"` (or another target having the same attributes). Alternatively, create a [target specification file](https://book.avr-rust.com/005.1-the-target-specification-json-file.html) (note that the `arch` specified in this file must be supported by the rust compiler).
  * Set `linker='-Clinker=m68k-linux-gcc'`.
  * Set the path to the cross-compiling libgccjit in `gcc_path`.
- * Disable the 128-bit integer types if the target doesn't support them by using `let i128_type = context.new_type::<i64>();` in `context.rs` (same for u128_type).
  * Comment the line: `context.add_command_line_option("-masm=intel");` in src/base.rs.
  * (might not be necessary) Disable the compilation of libstd.so (and possibly libcore.so?).
