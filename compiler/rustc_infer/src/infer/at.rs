@@ -111,7 +111,7 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     }
 
     /// Makes `a <: b`, where `a` may or may not be expected.
-    /// 
+    ///
     /// See [`At::trace_exp`] and [`Trace::sub`] for a version of
     /// this method that only requires `T: Relate<'tcx>`
     pub fn sub_exp<T>(self, a_is_expected: bool, a: T, b: T) -> InferResult<'tcx, ()>
@@ -125,7 +125,7 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     /// call like `foo(x)`, where `foo: fn(i32)`, you might have
     /// `sup(i32, x)`, since the "expected" type is the type that
     /// appears in the signature.
-    /// 
+    ///
     /// See [`At::trace`] and [`Trace::sub`] for a version of
     /// this method that only requires `T: Relate<'tcx>`
     pub fn sup<T>(self, expected: T, actual: T) -> InferResult<'tcx, ()>
@@ -136,7 +136,7 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     }
 
     /// Makes `expected <: actual`.
-    /// 
+    ///
     /// See [`At::trace`] and [`Trace::sub`] for a version of
     /// this method that only requires `T: Relate<'tcx>`
     pub fn sub<T>(self, expected: T, actual: T) -> InferResult<'tcx, ()>
@@ -147,7 +147,7 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     }
 
     /// Makes `expected <: actual`.
-    /// 
+    ///
     /// See [`At::trace_exp`] and [`Trace::eq`] for a version of
     /// this method that only requires `T: Relate<'tcx>`
     pub fn eq_exp<T>(self, a_is_expected: bool, a: T, b: T) -> InferResult<'tcx, ()>
@@ -158,7 +158,7 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     }
 
     /// Makes `expected <: actual`.
-    /// 
+    ///
     /// See [`At::trace`] and [`Trace::eq`] for a version of
     /// this method that only requires `T: Relate<'tcx>`
     pub fn eq<T>(self, expected: T, actual: T) -> InferResult<'tcx, ()>
@@ -191,7 +191,7 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     /// this can result in an error (e.g., if asked to compute LUB of
     /// u32 and i32), it is meaningful to call one of them the
     /// "expected type".
-    /// 
+    ///
     /// See [`At::trace`] and [`Trace::lub`] for a version of
     /// this method that only requires `T: Relate<'tcx>`
     pub fn lub<T>(self, expected: T, actual: T) -> InferResult<'tcx, T>
@@ -204,7 +204,7 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     /// Computes the greatest-lower-bound, or mutual subtype, of two
     /// values. As with `lub` order doesn't matter, except for error
     /// cases.
-    /// 
+    ///
     /// See [`At::trace`] and [`Trace::glb`] for a version of
     /// this method that only requires `T: Relate<'tcx>`
     pub fn glb<T>(self, expected: T, actual: T) -> InferResult<'tcx, T>
