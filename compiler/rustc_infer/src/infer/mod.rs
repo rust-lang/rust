@@ -33,7 +33,6 @@ use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 
 use std::cell::{Cell, Ref, RefCell};
-use std::collections::BTreeMap;
 use std::fmt;
 
 use self::combine::CombineFields;
@@ -1532,14 +1531,14 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             return inner;
         }
 
-        let mut region_map = BTreeMap::new();
+        let mut region_map = FxHashMap::default();
         let fld_r = |br: ty::BoundRegion| {
             *region_map
                 .entry(br)
                 .or_insert_with(|| self.next_region_var(LateBoundRegion(span, br.kind, lbrct)))
         };
 
-        let mut ty_map = BTreeMap::new();
+        let mut ty_map = FxHashMap::default();
         let fld_t = |bt: ty::BoundTy| {
             *ty_map.entry(bt).or_insert_with(|| {
                 self.next_ty_var(TypeVariableOrigin {
@@ -1548,7 +1547,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 })
             })
         };
-        let mut ct_map = BTreeMap::new();
+        let mut ct_map = FxHashMap::default();
         let fld_c = |bc: ty::BoundVar, ty| {
             *ct_map.entry(bc).or_insert_with(|| {
                 self.next_const_var(
