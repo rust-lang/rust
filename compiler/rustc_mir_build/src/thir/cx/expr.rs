@@ -903,9 +903,12 @@ impl<'tcx> Cx<'tcx> {
         );
 
         if is_upvar {
-            ExprKind::UpvarRef { closure_def_id: self.body_owner, var_hir_id }
+            ExprKind::UpvarRef {
+                closure_def_id: self.body_owner,
+                var_hir_id: LocalVarId(var_hir_id),
+            }
         } else {
-            ExprKind::VarRef { id: var_hir_id }
+            ExprKind::VarRef { id: LocalVarId(var_hir_id) }
         }
     }
 

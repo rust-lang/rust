@@ -19,7 +19,7 @@ use rustc_middle::mir::interpret::{get_slice_bytes, ConstValue};
 use rustc_middle::mir::interpret::{ErrorHandled, LitToConstError, LitToConstInput};
 use rustc_middle::mir::{self, UserTypeProjection};
 use rustc_middle::mir::{BorrowKind, Field, Mutability};
-use rustc_middle::thir::{Ascription, BindingMode, FieldPat, Pat, PatKind, PatRange};
+use rustc_middle::thir::{Ascription, BindingMode, FieldPat, LocalVarId, Pat, PatKind, PatRange};
 use rustc_middle::ty::subst::{GenericArg, SubstsRef};
 use rustc_middle::ty::CanonicalUserTypeAnnotation;
 use rustc_middle::ty::{self, AdtDef, ConstKind, DefIdTree, Region, Ty, TyCtxt, UserType};
@@ -288,7 +288,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     mutability,
                     mode,
                     name: ident.name,
-                    var: id,
+                    var: LocalVarId(id),
                     ty: var_ty,
                     subpattern: self.lower_opt_pattern(sub),
                     is_primary: id == pat.hir_id,
@@ -664,7 +664,7 @@ macro_rules! ClonePatternFoldableImpls {
 }
 
 ClonePatternFoldableImpls! { <'tcx>
-    Span, Field, Mutability, Symbol, hir::HirId, usize, ty::Const<'tcx>,
+    Span, Field, Mutability, Symbol, LocalVarId, usize, ty::Const<'tcx>,
     Region<'tcx>, Ty<'tcx>, BindingMode, AdtDef<'tcx>,
     SubstsRef<'tcx>, &'tcx GenericArg<'tcx>, UserType<'tcx>,
     UserTypeProjection, CanonicalUserTypeAnnotation<'tcx>

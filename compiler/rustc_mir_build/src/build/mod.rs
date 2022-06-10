@@ -4,11 +4,12 @@ use crate::build::scope::DropKind;
 use crate::thir::constant::parse_float;
 use crate::thir::pattern::pat_from_hir;
 use rustc_ast as ast;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{GeneratorKind, HirIdMap, Node};
+use rustc_hir::{GeneratorKind, Node};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_middle::hir::place::PlaceBase as HirPlaceBase;
@@ -16,7 +17,7 @@ use rustc_middle::middle::region;
 use rustc_middle::mir::interpret::Allocation;
 use rustc_middle::mir::interpret::{ConstValue, LitToConstError, LitToConstInput, Scalar};
 use rustc_middle::mir::*;
-use rustc_middle::thir::{BindingMode, Expr, ExprId, LintLevel, PatKind, Thir};
+use rustc_middle::thir::{BindingMode, Expr, ExprId, LintLevel, LocalVarId, PatKind, Thir};
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeckResults};
 use rustc_span::symbol::sym;
@@ -445,7 +446,7 @@ struct Builder<'a, 'tcx> {
 
     /// Maps `HirId`s of variable bindings to the `Local`s created for them.
     /// (A match binding can have two locals; the 2nd is for the arm's guard.)
-    var_indices: HirIdMap<LocalsForNode>,
+    var_indices: FxHashMap<LocalVarId, LocalsForNode>,
     local_decls: IndexVec<Local, LocalDecl<'tcx>>,
     canonical_user_type_annotations: ty::CanonicalUserTypeAnnotations<'tcx>,
     upvar_mutbls: Vec<Mutability>,
@@ -455,11 +456,11 @@ struct Builder<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
-    fn is_bound_var_in_guard(&self, id: hir::HirId) -> bool {
+    fn is_bound_var_in_guard(&self, id: LocalVarId) -> bool {
         self.guard_context.iter().any(|frame| frame.locals.iter().any(|local| local.id == id))
     }
 
-    fn var_local_id(&self, id: hir::HirId, for_guard: ForGuard) -> Local {
+    fn var_local_id(&self, id: LocalVarId, for_guard: ForGuard) -> Local {
         self.var_indices[&id].local_id(for_guard)
     }
 }
@@ -543,11 +544,11 @@ enum LocalsForNode {
 
 #[derive(Debug)]
 struct GuardFrameLocal {
-    id: hir::HirId,
+    id: LocalVarId,
 }
 
 impl GuardFrameLocal {
-    fn new(id: hir::HirId, _binding_mode: BindingMode) -> Self {
+    fn new(id: LocalVarId, _binding_mode: BindingMode) -> Self {
         GuardFrameLocal { id }
     }
 }
