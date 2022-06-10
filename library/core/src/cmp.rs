@@ -1349,7 +1349,7 @@ mod impls {
             impl PartialOrd for $t {
                 #[inline]
                 fn partial_cmp(&self, other: &$t) -> Option<Ordering> {
-                    match (self <= other, self >= other) {
+                    match ((*self) <= (*other), (*self) >= (*other)) {
                         (false, false) => None,
                         (false, true) => Some(Greater),
                         (true, false) => Some(Less),
