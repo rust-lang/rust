@@ -649,39 +649,38 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    fn borrow_pat_suggestion(
-        &self,
-        err: &mut Diagnostic,
-        pat: &Pat<'_>,
-        inner: &Pat<'_>,
-        expected: Ty<'tcx>,
-    ) {
+    fn borrow_pat_suggestion(&self, err: &mut Diagnostic, pat: &Pat<'_>, inner: &Pat<'_>) {
         let tcx = self.tcx;
-        if let PatKind::Binding(..) = inner.kind {
+        if let PatKind::Ref(_, mutbl) = pat.kind
+        && let PatKind::Binding(_, _, binding, ..) = inner.kind {
             let binding_parent_id = tcx.hir().get_parent_node(pat.hir_id);
             let binding_parent = tcx.hir().get(binding_parent_id);
-            debug!("inner {:?} pat {:?} parent {:?}", inner, pat, binding_parent);
+            debug!(?inner, ?pat, ?binding_parent);
+
+            let mutability = match mutbl {
+                ast::Mutability::Mut => "mut",
+                ast::Mutability::Not => "",
+            };
+
             match binding_parent {
-                hir::Node::Param(hir::Param { span, .. })
-                    if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(inner.span) =>
-                {
-                    err.span_suggestion(
-                        *span,
-                        &format!("did you mean `{snippet}`"),
-                        format!(" &{expected}"),
-                        Applicability::MachineApplicable,
+                hir::Node::Param(hir::Param { ty_span, .. }) if binding.span.hi() <= ty_span.lo() => {
+                    err.multipart_suggestion_verbose(
+                        format!("to take parameter by ref, move `&{mutability}` to the type"), 
+                        vec![
+                            (pat.span.until(inner.span), "".to_owned()),
+                            (ty_span.shrink_to_lo(), format!("&{}", mutbl.prefix_str())),
+                        ],
+                        Applicability::MachineApplicable
                     );
                 }
-                hir::Node::Arm(_) | hir::Node::Pat(_) => {
+                hir::Node::Param(_) | hir::Node::Arm(_) | hir::Node::Pat(_) => {
                     // rely on match ergonomics or it might be nested `&&pat`
-                    if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(inner.span) {
-                        err.span_suggestion(
-                            pat.span,
-                            "you can probably remove the explicit borrow",
-                            snippet,
-                            Applicability::MaybeIncorrect,
-                        );
-                    }
+                    err.span_suggestion_verbose(
+                        pat.span.until(inner.span),
+                        format!("consider removing `&{mutability}` from the pattern"),
+                        "",
+                        Applicability::MaybeIncorrect,
+                    );
                 }
                 _ => {} // don't provide suggestions in other cases #55175
             }
@@ -1853,7 +1852,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             // Take region, inner-type from expected type if we can,
             // to avoid creating needless variables. This also helps with
-            // the bad  interactions of the given hack detailed in (note_1).
+            // the bad interactions of the given hack detailed in (note_1).
             debug!("check_pat_ref: expected={:?}", expected);
             match *expected.kind() {
                 ty::Ref(_, r_ty, r_mutbl) if r_mutbl == mutbl => (expected, r_ty),
@@ -1869,7 +1868,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // Look for a case like `fn foo(&foo: u32)` and suggest
                     // `fn foo(foo: &u32)`
                     if let Some(mut err) = err {
-                        self.borrow_pat_suggestion(&mut err, pat, inner, expected);
+                        self.borrow_pat_suggestion(&mut err, pat, inner);
                         err.emit();
                     }
                     (rptr_ty, inner_ty)
