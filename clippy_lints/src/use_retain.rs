@@ -2,12 +2,14 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{get_parent_expr, match_def_path, paths, SpanlessEq};
+use clippy_utils::{meets_msrv, msrvs};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::ExprKind::Assign;
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_semver::RustcVersion;
+use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::symbol::sym;
 
 const ACCEPTABLE_METHODS: [&[&str]; 4] = [
@@ -16,13 +18,13 @@ const ACCEPTABLE_METHODS: [&[&str]; 4] = [
     &paths::SLICE_INTO,
     &paths::VEC_DEQUE_ITER,
 ];
-const ACCEPTABLE_TYPES: [rustc_span::Symbol; 6] = [
-    sym::BTreeSet,
-    sym::BTreeMap,
-    sym::HashSet,
-    sym::HashMap,
-    sym::Vec,
-    sym::VecDeque,
+const ACCEPTABLE_TYPES: [(rustc_span::Symbol, Option<RustcVersion>); 6] = [
+    (sym::BTreeSet, Some(msrvs::BTREE_SET_RETAIN)),
+    (sym::BTreeMap, Some(msrvs::BTREE_MAP_RETAIN)),
+    (sym::HashSet, Some(msrvs::HASH_SET_RETAIN)),
+    (sym::HashMap, Some(msrvs::HASH_MAP_RETAIN)),
+    (sym::Vec, None),
+    (sym::VecDeque, None),
 ];
 
 declare_clippy_lint! {
@@ -46,7 +48,19 @@ declare_clippy_lint! {
     perf,
     "`retain()` is simpler and the same functionalitys"
 }
-declare_lint_pass!(UseRetain => [USE_RETAIN]);
+
+pub struct UseRetain {
+    msrv: Option<RustcVersion>,
+}
+
+impl UseRetain {
+    #[must_use]
+    pub fn new(msrv: Option<RustcVersion>) -> Self {
+        Self { msrv }
+    }
+}
+
+impl_lint_pass!(UseRetain => [USE_RETAIN]);
 
 impl<'tcx> LateLintPass<'tcx> for UseRetain {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
@@ -57,11 +71,13 @@ impl<'tcx> LateLintPass<'tcx> for UseRetain {
             && let hir::ExprKind::MethodCall(_, [target_expr], _) = &collect_expr.kind
             && let Some(collect_def_id) = cx.typeck_results().type_dependent_def_id(collect_expr.hir_id)
             && match_def_path(cx, collect_def_id, &paths::CORE_ITER_COLLECT) {
-            check_into_iter(cx, parent_expr, left_expr, target_expr);
-            check_iter(cx, parent_expr, left_expr, target_expr);
-            check_to_owned(cx, parent_expr, left_expr, target_expr);
+            check_into_iter(cx, parent_expr, left_expr, target_expr, self.msrv);
+            check_iter(cx, parent_expr, left_expr, target_expr, self.msrv);
+            check_to_owned(cx, parent_expr, left_expr, target_expr, self.msrv);
         }
     }
+
+    extract_msrv_attr!(LateContext);
 }
 
 fn check_into_iter(
@@ -69,6 +85,7 @@ fn check_into_iter(
     parent_expr: &hir::Expr<'_>,
     left_expr: &hir::Expr<'_>,
     target_expr: &hir::Expr<'_>,
+    msrv: Option<RustcVersion>,
 ) {
     if let hir::ExprKind::MethodCall(_, [into_iter_expr, _], _) = &target_expr.kind
         && let Some(filter_def_id) = cx.typeck_results().type_dependent_def_id(target_expr.hir_id)
@@ -76,7 +93,7 @@ fn check_into_iter(
         && let hir::ExprKind::MethodCall(_, [struct_expr], _) = &into_iter_expr.kind
         && let Some(into_iter_def_id) = cx.typeck_results().type_dependent_def_id(into_iter_expr.hir_id)
         && match_def_path(cx, into_iter_def_id, &paths::CORE_ITER_INTO_ITER)
-        && match_acceptable_type(cx, left_expr)
+        && match_acceptable_type(cx, left_expr, msrv)
         && SpanlessEq::new(cx).eq_expr(left_expr, struct_expr) {
         suggest(cx, parent_expr, left_expr, target_expr);
     }
@@ -87,6 +104,7 @@ fn check_iter(
     parent_expr: &hir::Expr<'_>,
     left_expr: &hir::Expr<'_>,
     target_expr: &hir::Expr<'_>,
+    msrv: Option<RustcVersion>,
 ) {
     if let hir::ExprKind::MethodCall(_, [filter_expr], _) = &target_expr.kind
         && let Some(copied_def_id) = cx.typeck_results().type_dependent_def_id(target_expr.hir_id)
@@ -98,7 +116,7 @@ fn check_iter(
         && let hir::ExprKind::MethodCall(_, [struct_expr], _) = &iter_expr.kind
         && let Some(iter_expr_def_id) = cx.typeck_results().type_dependent_def_id(iter_expr.hir_id)
         && match_acceptable_def_path(cx, iter_expr_def_id)
-        && match_acceptable_type(cx, left_expr)
+        && match_acceptable_type(cx, left_expr, msrv)
         && SpanlessEq::new(cx).eq_expr(left_expr, struct_expr) {
         suggest(cx, parent_expr, left_expr, filter_expr);
     }
@@ -109,8 +127,10 @@ fn check_to_owned(
     parent_expr: &hir::Expr<'_>,
     left_expr: &hir::Expr<'_>,
     target_expr: &hir::Expr<'_>,
+    msrv: Option<RustcVersion>,
 ) {
-    if let hir::ExprKind::MethodCall(_, [filter_expr], _) = &target_expr.kind
+    if meets_msrv(msrv,  msrvs::STRING_RETAIN)
+        && let hir::ExprKind::MethodCall(_, [filter_expr], _) = &target_expr.kind
         && let Some(to_owned_def_id) = cx.typeck_results().type_dependent_def_id(target_expr.hir_id)
         && match_def_path(cx, to_owned_def_id, &paths::TO_OWNED_METHOD)
         && let hir::ExprKind::MethodCall(_, [chars_expr, _], _) = &filter_expr.kind
@@ -199,9 +219,10 @@ fn match_acceptable_def_path(cx: &LateContext<'_>, collect_def_id: DefId) -> boo
         .any(|&method| match_def_path(cx, collect_def_id, method))
 }
 
-fn match_acceptable_type(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
+fn match_acceptable_type(cx: &LateContext<'_>, expr: &hir::Expr<'_>, msrv: Option<RustcVersion>) -> bool {
     let expr_ty = cx.typeck_results().expr_ty(expr).peel_refs();
-    ACCEPTABLE_TYPES
-        .iter()
-        .any(|&ty| is_type_diagnostic_item(cx, expr_ty, ty))
+    ACCEPTABLE_TYPES.iter().any(|(ty, acceptable_msrv)| {
+        is_type_diagnostic_item(cx, expr_ty, *ty)
+            && acceptable_msrv.map_or(true, |acceptable_msrv| meets_msrv(msrv, acceptable_msrv))
+    })
 }

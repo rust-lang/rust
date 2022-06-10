@@ -1,4 +1,5 @@
 // run-rustfix
+#![feature(custom_inner_attributes)]
 #![warn(clippy::use_retain)]
 #![allow(unused)]
 use std::collections::BTreeMap;
@@ -15,12 +16,16 @@ fn main() {
     hash_set_retain();
     hash_map_retain();
     string_retain();
-    vec_queue_retain();
+    vec_deque_retain();
     vec_retain();
+    _msrv_153();
+    _msrv_126();
+    _msrv_118();
 }
 
 fn binary_heap_retain() {
     // NOTE: Do not lint now, because binary_heap_retain is nighyly API.
+    // And we need to add a test case for msrv if we update this implmention.
     // https://github.com/rust-lang/rust/issues/71503
     let mut heap = BinaryHeap::from([1, 2, 3]);
     heap = heap.into_iter().filter(|x| x % 2 == 0).collect();
@@ -179,7 +184,7 @@ fn vec_retain() {
     bar = foobar.into_iter().filter(|x| x % 2 == 0).collect();
 }
 
-fn vec_queue_retain() {
+fn vec_deque_retain() {
     let mut vec_deque = VecDeque::new();
     vec_deque.extend(1..5);
 
@@ -209,4 +214,27 @@ fn vec_queue_retain() {
     bar = foobar.iter().filter(|&x| x % 2 == 0).copied().collect();
     bar = foobar.iter().filter(|&x| x % 2 == 0).cloned().collect();
     bar = foobar.into_iter().filter(|x| x % 2 == 0).collect();
+}
+
+fn _msrv_153() {
+    #![clippy::msrv = "1.52"]
+    let mut btree_map: BTreeMap<i8, i8> = (0..8).map(|x| (x, x * 10)).collect();
+    btree_map = btree_map.into_iter().filter(|(k, _)| k % 2 == 0).collect();
+
+    let mut btree_set = BTreeSet::from([1, 2, 3, 4, 5, 6]);
+    btree_set = btree_set.iter().filter(|&x| x % 2 == 0).copied().collect();
+}
+
+fn _msrv_126() {
+    #![clippy::msrv = "1.25"]
+    let mut s = String::from("foobar");
+    s = s.chars().filter(|&c| c != 'o').to_owned().collect();
+}
+
+fn _msrv_118() {
+    #![clippy::msrv = "1.17"]
+    let mut hash_set = HashSet::from([1, 2, 3, 4, 5, 6]);
+    hash_set = hash_set.into_iter().filter(|x| x % 2 == 0).collect();
+    let mut hash_map: HashMap<i8, i8> = (0..8).map(|x| (x, x * 10)).collect();
+    hash_map = hash_map.into_iter().filter(|(k, _)| k % 2 == 0).collect();
 }
