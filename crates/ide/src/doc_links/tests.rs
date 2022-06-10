@@ -61,7 +61,7 @@ fn def_under_cursor(
         .token_at_offset(position.offset)
         .left_biased()
         .unwrap()
-        .ancestors()
+        .parent_ancestors()
         .find_map(|it| node_to_def(sema, &it))
         .expect("no def found")
         .unwrap();

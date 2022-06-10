@@ -73,7 +73,7 @@ fn fill_fn_params(
         });
     };
 
-    for node in ctx.token.ancestors() {
+    for node in ctx.token.parent_ancestors() {
         match_ast! {
             match node {
                 ast::SourceFile(it) => it.items().filter_map(|item| match item {
@@ -159,7 +159,7 @@ fn should_add_self_completions(ctx: &CompletionContext, param_list: &ast::ParamL
 }
 
 fn comma_wrapper(ctx: &CompletionContext) -> Option<(impl Fn(&str) -> String, TextRange)> {
-    let param = ctx.token.ancestors().find(|node| node.kind() == SyntaxKind::PARAM)?;
+    let param = ctx.token.parent_ancestors().find(|node| node.kind() == SyntaxKind::PARAM)?;
 
     let next_token_kind = {
         let t = param.last_token()?.next_token()?;

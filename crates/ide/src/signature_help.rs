@@ -68,7 +68,7 @@ pub(crate) fn signature_help(db: &RootDatabase, position: FilePosition) -> Optio
         .and_then(|tok| algo::skip_trivia_token(tok, Direction::Prev))?;
     let token = sema.descend_into_macros_single(token);
 
-    for node in token.ancestors() {
+    for node in token.parent_ancestors() {
         match_ast! {
             match node {
                 ast::ArgList(arg_list) => {

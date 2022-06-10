@@ -10,6 +10,6 @@ rust-version = "1.57"
 doctest = false
 
 [dependencies]
-smol_str = "0.1.21"
+smol_str = "0.1.23"
 
 stdx = { path = "../stdx", version = "0.0.0" }

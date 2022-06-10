@@ -10,7 +10,7 @@ rust-version = "1.57"
 doctest = false
 
 [dependencies]
-anymap = "0.12.1"
+anymap = "1.0.0-beta.2"
 arrayvec = "0.7.2"
 bitflags = "1.3.2"
 cov-mark = "2.0.0-pre.1"
@@ -20,13 +20,13 @@ drop_bomb = "0.1.5"
 either = "1.6.1"
 fst = { version = "0.4.7", default-features = false }
 hashbrown = { version = "0.12.1", default-features = false }
-indexmap = "1.8.0"
+indexmap = "1.8.2"
 itertools = "0.10.3"
 la-arena = { version = "0.3.0", path = "../../lib/la-arena" }
-once_cell = "1.10.0"
+once_cell = "1.12.0"
 rustc-hash = "1.1.0"
 smallvec = "1.8.0"
-tracing = "0.1.32"
+tracing = "0.1.35"
 
 stdx = { path = "../stdx", version = "0.0.0" }
 base-db = { path = "../base-db", version = "0.0.0" }
@@ -40,4 +40,4 @@ limit = { path = "../limit", version = "0.0.0" }
 
 [dev-dependencies]
 test-utils = { path = "../test-utils" }
-expect-test = "1.2.2"
+expect-test = "1.3.0"

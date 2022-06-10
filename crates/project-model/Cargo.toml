@@ -10,14 +10,14 @@ rust-version = "1.57"
 doctest = false
 
 [dependencies]
-tracing = "0.1.32"
+tracing = "0.1.35"
 rustc-hash = "1.1.0"
 cargo_metadata = "0.14.2"
-semver = "1.0.6"
-serde = { version = "1.0.136", features = ["derive"] }
-serde_json = "1.0.79"
-anyhow = "1.0.56"
-expect-test = "1.2.2"
+semver = "1.0.10"
+serde = { version = "1.0.137", features = ["derive"] }
+serde_json = "1.0.81"
+anyhow = "1.0.57"
+expect-test = "1.3.0"
 la-arena = { version = "0.3.0", path = "../../lib/la-arena" }
 
 cfg = { path = "../cfg", version = "0.0.0" }

@@ -15,14 +15,14 @@ itertools = "0.10.3"
 arrayvec = "0.7.2"
 smallvec = "1.8.0"
 ena = "0.14.0"
-tracing = "0.1.32"
+tracing = "0.1.35"
 rustc-hash = "1.1.0"
 scoped-tls = "1.0.0"
 chalk-solve = { version = "0.82.0", default-features = false }
 chalk-ir = "0.82.0"
 chalk-recursive = { version = "0.82.0", default-features = false }
 la-arena = { version = "0.3.0", path = "../../lib/la-arena" }
-once_cell = "1.10.0"
+once_cell = "1.12.0"
 typed-arena = "2.0.1"
 
 stdx = { path = "../stdx", version = "0.0.0" }
@@ -35,10 +35,10 @@ limit = { path = "../limit", version = "0.0.0" }
 
 [dev-dependencies]
 test-utils = { path = "../test-utils" }
-expect-test = "1.2.2"
-tracing = "0.1.32"
-tracing-subscriber = { version = "0.3.9", default-features = false, features = [
+expect-test = "1.3.0"
+tracing = "0.1.35"
+tracing-subscriber = { version = "0.3.11", default-features = false, features = [
     "env-filter",
     "registry",
 ] }
-tracing-tree = "0.2.0"
+tracing-tree = "0.2.1"

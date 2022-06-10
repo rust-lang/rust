@@ -93,7 +93,7 @@ pub(crate) fn expand_glob_import(acc: &mut Assists, ctx: &AssistContext) -> Opti
 fn find_parent_and_path(
     star: &SyntaxToken,
 ) -> Option<(Either<ast::UseTree, ast::UseTreeList>, ast::Path)> {
-    return star.ancestors().find_map(|n| {
+    return star.parent_ancestors().find_map(|n| {
         find_use_tree_list(n.clone())
             .map(|(u, p)| (Either::Right(u), p))
             .or_else(|| find_use_tree(n).map(|(u, p)| (Either::Left(u), p)))
@@ -203,8 +203,13 @@ fn is_mod_visible_from(ctx: &AssistContext, module: Module, from: Module) -> boo
 // use baz::Baz;
 // ↑ ---------------
 fn find_imported_defs(ctx: &AssistContext, star: SyntaxToken) -> Option<Vec<Definition>> {
-    let parent_use_item_syntax =
-        star.ancestors().find_map(|n| if ast::Use::can_cast(n.kind()) { Some(n) } else { None })?;
+    let parent_use_item_syntax = star.parent_ancestors().find_map(|n| {
+        if ast::Use::can_cast(n.kind()) {
+            Some(n)
+        } else {
+            None
+        }
+    })?;
 
     Some(
         [Direction::Prev, Direction::Next]

@@ -86,7 +86,7 @@ pub(crate) fn outgoing_calls(db: &RootDatabase, position: FilePosition) -> Optio
 
     sema.descend_into_macros(token)
         .into_iter()
-        .filter_map(|it| it.ancestors().nth(1).and_then(ast::Item::cast))
+        .filter_map(|it| it.parent_ancestors().nth(1).and_then(ast::Item::cast))
         .filter_map(|item| match item {
             ast::Item::Const(c) => c.body().map(|it| it.syntax().descendants()),
             ast::Item::Fn(f) => f.body().map(|it| it.syntax().descendants()),

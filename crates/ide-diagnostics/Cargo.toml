@@ -25,7 +25,7 @@ hir = { path = "../hir", version = "0.0.0" }
 ide-db = { path = "../ide-db", version = "0.0.0" }
 
 [dev-dependencies]
-expect-test = "1.2.2"
+expect-test = "1.3.0"
 
 test-utils = { path = "../test-utils" }
 sourcegen = { path = "../sourcegen" }

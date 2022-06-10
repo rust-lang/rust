@@ -18,31 +18,31 @@ name = "rust-analyzer"
 path = "src/bin/main.rs"
 
 [dependencies]
-anyhow = "1.0.56"
+anyhow = "1.0.57"
 crossbeam-channel = "0.5.4"
-dissimilar = "1.0.3"
+dissimilar = "1.0.4"
 itertools = "0.10.3"
-lsp-types = { version = "0.93", features = ["proposed"] }
-parking_lot = "0.12.0"
+lsp-types = { version = "0.93.0", features = ["proposed"] }
+parking_lot = "0.12.1"
 xflags = "0.2.4"
 oorandom = "11.1.3"
 rustc-hash = "1.1.0"
-serde = { version = "1.0.136", features = ["derive"] }
-serde_json = { version = "1.0.79", features = ["preserve_order"] }
+serde = { version = "1.0.137", features = ["derive"] }
+serde_json = { version = "1.0.81", features = ["preserve_order"] }
 threadpool = "1.8.1"
-rayon = "1.5.1"
+rayon = "1.5.3"
 num_cpus = "1.13.1"
-mimalloc = { version = "0.1.28", default-features = false, optional = true }
+mimalloc = { version = "0.1.29", default-features = false, optional = true }
 lsp-server = { version = "0.6.0", path = "../../lib/lsp-server" }
-tracing = "0.1.32"
-tracing-subscriber = { version = "0.3.9", default-features = false, features = [
+tracing = "0.1.35"
+tracing-subscriber = { version = "0.3.11", default-features = false, features = [
     "env-filter",
     "registry",
     "fmt",
     "tracing-log",
 ] }
-tracing-log = "0.1.2"
-tracing-tree = "0.2.0"
+tracing-log = "0.1.3"
+tracing-tree = "0.2.1"
 always-assert = "0.1.2"
 
 stdx = { path = "../stdx", version = "0.0.0" }
@@ -70,12 +70,12 @@ proc-macro-srv = { path = "../proc-macro-srv", version = "0.0.0" }
 winapi = "0.3.9"
 
 [target.'cfg(not(target_env = "msvc"))'.dependencies]
-jemallocator = { version = "0.4.3", package = "tikv-jemallocator", optional = true }
+jemallocator = { version = "0.5.0", package = "tikv-jemallocator", optional = true }
 
 [dev-dependencies]
-expect-test = "1.2.2"
+expect-test = "1.3.0"
 jod-thread = "0.1.2"
-xshell = "0.2.1"
+xshell = "0.2.2"
 
 test-utils = { path = "../test-utils" }
 sourcegen = { path = "../sourcegen" }

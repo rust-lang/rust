@@ -209,8 +209,10 @@ impl ReplacementRenderer<'_> {
 fn token_is_method_call_receiver(token: &SyntaxToken) -> bool {
     // Find the first method call among the ancestors of `token`, then check if the only token
     // within the receiver is `token`.
-    if let Some(receiver) =
-        token.ancestors().find_map(ast::MethodCallExpr::cast).and_then(|call| call.receiver())
+    if let Some(receiver) = token
+        .parent_ancestors()
+        .find_map(ast::MethodCallExpr::cast)
+        .and_then(|call| call.receiver())
     {
         let tokens = receiver.syntax().descendants_with_tokens().filter_map(|node_or_token| {
             match node_or_token {

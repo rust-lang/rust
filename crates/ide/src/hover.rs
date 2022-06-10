@@ -119,7 +119,7 @@ pub(crate) fn hover(
 
     // FIXME: Definition should include known lints and the like instead of having this special case here
     let hovered_lint = descended.iter().find_map(|token| {
-        let attr = token.ancestors().find_map(ast::Attr::cast)?;
+        let attr = token.parent_ancestors().find_map(ast::Attr::cast)?;
         render::try_for_lint(&attr, token)
     });
     if let Some(res) = hovered_lint {
@@ -238,7 +238,7 @@ fn hover_type_fallback(
     original_token: &SyntaxToken,
 ) -> Option<RangeInfo<HoverResult>> {
     let node = token
-        .ancestors()
+        .parent_ancestors()
         .take_while(|it| !ast::Item::can_cast(it.kind()))
         .find(|n| ast::Expr::can_cast(n.kind()) || ast::Pat::can_cast(n.kind()))?;
 

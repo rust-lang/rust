@@ -42,7 +42,7 @@ pub(crate) fn complete_use_tree(acc: &mut Completions, ctx: &CompletionContext) 
             };
 
             let mut already_imported_names = FxHashSet::default();
-            if let Some(list) = ctx.token.ancestors().find_map(ast::UseTreeList::cast) {
+            if let Some(list) = ctx.token.parent_ancestors().find_map(ast::UseTreeList::cast) {
                 let use_tree = list.parent_use_tree();
                 if use_tree.path().as_ref() == Some(path) {
                     for tree in list.use_trees().filter(|tree| tree.is_simple_path()) {

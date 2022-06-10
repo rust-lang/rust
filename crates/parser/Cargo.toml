@@ -15,5 +15,5 @@ rustc_lexer = { version = "725.0.0", package = "rustc-ap-rustc_lexer" }
 limit = { path = "../limit", version = "0.0.0" }
 
 [dev-dependencies]
-expect-test = "1.2.2"
+expect-test = "1.3.0"
 sourcegen = { path = "../sourcegen" }
