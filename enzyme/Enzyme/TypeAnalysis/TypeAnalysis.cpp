@@ -2227,6 +2227,8 @@ void TypeAnalyzer::visitAtomicRMWInst(llvm::AtomicRMWInst &I) {
   }
 
   if (direction & DOWN) {
+    if (Ret[{-1}] == BaseType::Anything && LHS[{-1}] != BaseType::Anything)
+      Ret = LHS;
     if (I.getType()->isIntOrIntVectorTy() && Ret[{-1}] == BaseType::Anything) {
       if (mustRemainInteger(&I)) {
         Ret = TypeTree(BaseType::Integer).Only(-1);
