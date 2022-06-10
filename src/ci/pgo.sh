@@ -76,17 +76,36 @@ LLVM_PROFILE_MERGED_FILE=/tmp/llvm-pgo.profdata
 # Merge the profile data we gathered for LLVM
 # Note that this uses the profdata from the clang we used to build LLVM,
 # which likely has a different version than our in-tree clang.
-/rustroot/bin/llvm-profdata merge -o ${LLVM_PROFILE_MERGED_FILE} ${LLVM_PROFILE_DIRECTORY_ROOT}
+/rustroot/bin/llvm-profdata merge -o /tmp/llvm-pgo1.profdata /tmp/llvm1
 
-echo "LLVM PGO statistics"
-du -sh ${LLVM_PROFILE_MERGED_FILE}
-du -sh ${LLVM_PROFILE_DIRECTORY_ROOT}
+echo "LLVM PGO 1 statistics"
+du -sh /tmp/llvm-pgo1.profdata
+du -sh /tmp/llvm1
 echo "Profile file count"
-find ${LLVM_PROFILE_DIRECTORY_ROOT} -type f | wc -l
+find /tmp/llvm1 -type f | wc -l
 
 # Rustbuild currently doesn't support rebuilding LLVM when PGO options
 # change (or any other llvm-related options); so just clear out the relevant
 # directories ourselves.
+rm -r ./build/$PGO_HOST/llvm ./build/$PGO_HOST/lld
+
+LLVM_USE_CS_PGO=1 python3 ../x.py build --target=$PGO_HOST --host=$PGO_HOST \
+    --stage 2 library/std \
+    --llvm-profile-use=/tmp/llvm-pgo1.profdata \
+    --llvm-profile-generate
+
+gather_profiles "Debug,Opt" "Full" \
+"syn-1.0.89,cargo-0.60.0,serde-1.0.136,ripgrep-13.0.0,regex-1.5.5,clap-3.1.6,hyper-0.14.18"
+
+/rustroot/bin/llvm-profdata \
+    merge -o /tmp/llvm-pgo.profdata /tmp/llvm-pgo1.profdata /tmp/llvm2
+
+echo "LLVM PGO 2 statistics"
+du -sh /tmp/llvm-pgo.profdata
+du -sh /tmp/llvm2
+echo "Profile file count"
+find /tmp/llvm2 -type f | wc -l
+
 rm -r ./build/$PGO_HOST/llvm ./build/$PGO_HOST/lld
 
 # Okay, LLVM profiling is done, switch to rustc PGO.

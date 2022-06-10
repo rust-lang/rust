@@ -298,15 +298,25 @@ impl Step for Llvm {
         // This flag makes sure `FileCheck` is copied in the final binaries directory.
         cfg.define("LLVM_INSTALL_UTILS", "ON");
 
+        let mut cxxflags = "".to_string();
         if builder.config.llvm_profile_generate {
-            cfg.define("LLVM_BUILD_INSTRUMENTED", "IR");
             if let Ok(llvm_profile_dir) = std::env::var("LLVM_PROFILE_DIR") {
                 cfg.define("LLVM_PROFILE_DATA_DIR", llvm_profile_dir);
+            }
+
+            //cfg.define("LLVM_BUILD_INSTRUMENTED", "IR");
+            if std::env::var("LLVM_USE_CS_PGO").is_ok() {
+                cxxflags.push_str("-fcs-profile-generate=/tmp/llvm2");
+                // cfg.define("LLVM_VP_COUNTERS_PER_SITE", "8");
+                cxxflags.push_str(" -mllvm -vp-counters-per-site=10");
+            } else {
+                cxxflags.push_str("-fprofile-generate=/tmp/llvm1");
             }
             cfg.define("LLVM_BUILD_RUNTIME", "No");
         }
         if let Some(path) = builder.config.llvm_profile_use.as_ref() {
-            cfg.define("LLVM_PROFDATA_FILE", &path);
+            // cfg.define("LLVM_PROFDATA_FILE", &path);
+            cxxflags.push_str(&format!(" -fprofile-use={path}"));
         }
 
         if target != "aarch64-apple-darwin" && !target.contains("windows") {
@@ -442,7 +452,7 @@ impl Step for Llvm {
             cfg.define("LLVM_TEMPORARILY_ALLOW_OLD_TOOLCHAIN", "YES");
         }
 
-        configure_cmake(builder, target, &mut cfg, true, ldflags);
+        configure_cmake(builder, target, &mut cfg, true, ldflags, cxxflags);
 
         for (key, val) in &builder.config.llvm_build_config {
             cfg.define(key, val);
@@ -491,6 +501,7 @@ fn configure_cmake(
     cfg: &mut cmake::Config,
     use_compiler_launcher: bool,
     mut ldflags: LdFlags,
+    cxxflags2: String,
 ) {
     // Do not print installation messages for up-to-date files.
     // LLVM and LLD builds can produce a lot of those and hit CI limits on log size.
@@ -624,6 +635,9 @@ fn configure_cmake(
     if builder.config.llvm_clang_cl.is_some() {
         cxxflags.push(&format!(" --target={}", target));
     }
+    if !cxxflags2.is_empty() {
+        cxxflags.push(&format!(" {cxxflags2}"));
+    }
     cfg.define("CMAKE_CXX_FLAGS", cxxflags);
     if let Some(ar) = builder.ar(target) {
         if ar.is_absolute() {
@@ -717,7 +731,7 @@ impl Step for Lld {
         t!(fs::create_dir_all(&out_dir));
 
         let mut cfg = cmake::Config::new(builder.src.join("src/llvm-project/lld"));
-        configure_cmake(builder, target, &mut cfg, true, LdFlags::default());
+        configure_cmake(builder, target, &mut cfg, true, LdFlags::default(), "".to_string());
 
         // This is an awful, awful hack. Discovered when we migrated to using
         // clang-cl to compile LLVM/LLD it turns out that LLD, when built out of
@@ -919,7 +933,14 @@ impl Step for Sanitizers {
         // Unfortunately sccache currently lacks support to build them successfully.
         // Disable compiler launcher on Darwin targets to avoid potential issues.
         let use_compiler_launcher = !self.target.contains("apple-darwin");
-        configure_cmake(builder, self.target, &mut cfg, use_compiler_launcher, LdFlags::default());
+        configure_cmake(
+            builder,
+            self.target,
+            &mut cfg,
+            use_compiler_launcher,
+            LdFlags::default(),
+            "".to_string(),
+        );
 
         t!(fs::create_dir_all(&out_dir));
         cfg.out_dir(out_dir);
