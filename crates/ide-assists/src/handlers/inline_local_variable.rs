@@ -88,7 +88,6 @@ pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext) -> O
                     | ast::Expr::MethodCallExpr(_)
                     | ast::Expr::FieldExpr(_)
                     | ast::Expr::TryExpr(_)
-                    | ast::Expr::RefExpr(_)
                     | ast::Expr::Literal(_)
                     | ast::Expr::TupleExpr(_)
                     | ast::Expr::ArrayExpr(_)
@@ -575,7 +574,7 @@ fn foo() {
             r"
 fn foo() {
     let bar = 10;
-    let b = &bar * 10;
+    let b = (&bar) * 10;
 }",
         );
     }
