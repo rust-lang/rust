@@ -1,0 +1,39 @@
+From c3821e02fbd6cb5ad6e06d759fccdc9073712375 Mon Sep 17 00:00:00 2001
+From: Antoni Boucher <bouanto@zoho.com>
+Date: Tue, 7 Jun 2022 21:40:13 -0400
+Subject: [PATCH] Add stdarch Cargo.toml for testing
+
+---
+ library/stdarch/Cargo.toml | 20 ++++++++++++++++++++
+ 1 file changed, 20 insertions(+)
+ create mode 100644 library/stdarch/Cargo.toml
+
+diff --git a/library/stdarch/Cargo.toml b/library/stdarch/Cargo.toml
+new file mode 100644
+index 0000000..fbe0a95
+--- /dev/null
++++ b/library/stdarch/Cargo.toml
+@@ -0,0 +1,20 @@
++[workspace]
++members = [
++  "crates/core_arch",
++  "crates/std_detect",
++  "crates/stdarch-gen",
++  "examples/"
++]
++exclude = [
++  "crates/wasm-assert-instr-tests"
++]
++
++[profile.release]
++debug = true
++opt-level = 3
++incremental = true
++
++[profile.bench]
++debug = 1
++opt-level = 3
++incremental = true
+-- 
+2.26.2.7.g19db9cfb68.dirty
+
