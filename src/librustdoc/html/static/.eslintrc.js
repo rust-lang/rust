@@ -87,5 +87,6 @@ module.exports = {
         "no-lonely-if": "error",
         "no-mixed-operators": "error",
         "no-multi-assign": "error",
+        "no-return-assign": "error",
     }
 };
