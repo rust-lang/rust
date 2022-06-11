@@ -60,13 +60,11 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     // Replace the bound items in the fn sig with fresh
                     // variables, so that they represent the view from
                     // "inside" the closure.
-                    self.infcx
-                        .replace_bound_vars_with_fresh_vars(
-                            body.span,
-                            LateBoundRegionConversionTime::FnCall,
-                            poly_sig,
-                        )
-                        .0
+                    self.infcx.replace_bound_vars_with_fresh_vars(
+                        body.span,
+                        LateBoundRegionConversionTime::FnCall,
+                        poly_sig,
+                    )
                 },
             );
         }

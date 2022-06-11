@@ -1453,7 +1453,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         potentially_unnormalized_candidates: bool,
     ) -> ProjectionMatchesProjection {
         let mut nested_obligations = Vec::new();
-        let (infer_predicate, _) = self.infcx.replace_bound_vars_with_fresh_vars(
+        let infer_predicate = self.infcx.replace_bound_vars_with_fresh_vars(
             obligation.cause.span,
             LateBoundRegionConversionTime::HigherRankedType,
             env_predicate,

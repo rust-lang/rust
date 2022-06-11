@@ -33,7 +33,6 @@ use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 
 use std::cell::{Cell, Ref, RefCell};
-use std::collections::BTreeMap;
 use std::fmt;
 
 use self::combine::CombineFields;
@@ -1524,25 +1523,40 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         span: Span,
         lbrct: LateBoundRegionConversionTime,
         value: ty::Binder<'tcx, T>,
-    ) -> (T, BTreeMap<ty::BoundRegion, ty::Region<'tcx>>)
+    ) -> T
     where
-        T: TypeFoldable<'tcx>,
+        T: TypeFoldable<'tcx> + Copy,
     {
-        let fld_r =
-            |br: ty::BoundRegion| self.next_region_var(LateBoundRegion(span, br.kind, lbrct));
-        let fld_t = |_| {
-            self.next_ty_var(TypeVariableOrigin {
-                kind: TypeVariableOriginKind::MiscVariable,
-                span,
+        if let Some(inner) = value.no_bound_vars() {
+            return inner;
+        }
+
+        let mut region_map = FxHashMap::default();
+        let fld_r = |br: ty::BoundRegion| {
+            *region_map
+                .entry(br)
+                .or_insert_with(|| self.next_region_var(LateBoundRegion(span, br.kind, lbrct)))
+        };
+
+        let mut ty_map = FxHashMap::default();
+        let fld_t = |bt: ty::BoundTy| {
+            *ty_map.entry(bt).or_insert_with(|| {
+                self.next_ty_var(TypeVariableOrigin {
+                    kind: TypeVariableOriginKind::MiscVariable,
+                    span,
+                })
             })
         };
-        let fld_c = |_, ty| {
-            self.next_const_var(
-                ty,
-                ConstVariableOrigin { kind: ConstVariableOriginKind::MiscVariable, span },
-            )
+        let mut ct_map = FxHashMap::default();
+        let fld_c = |bc: ty::BoundVar, ty| {
+            *ct_map.entry(bc).or_insert_with(|| {
+                self.next_const_var(
+                    ty,
+                    ConstVariableOrigin { kind: ConstVariableOriginKind::MiscVariable, span },
+                )
+            })
         };
-        self.tcx.replace_bound_vars(value, fld_r, fld_t, fld_c)
+        self.tcx.replace_bound_vars_uncached(value, fld_r, fld_t, fld_c)
     }
 
     /// See the [`region_constraints::RegionConstraintCollector::verify_generic_bound`] method.

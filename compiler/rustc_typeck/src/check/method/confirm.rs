@@ -572,8 +572,8 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
 
     fn replace_bound_vars_with_fresh_vars<T>(&self, value: ty::Binder<'tcx, T>) -> T
     where
-        T: TypeFoldable<'tcx>,
+        T: TypeFoldable<'tcx> + Copy,
     {
-        self.fcx.replace_bound_vars_with_fresh_vars(self.span, infer::FnCall, value).0
+        self.fcx.replace_bound_vars_with_fresh_vars(self.span, infer::FnCall, value)
     }
 }
