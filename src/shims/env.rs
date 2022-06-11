@@ -114,11 +114,7 @@ impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mi
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
     fn getenv(&mut self, name_op: &OpTy<'tcx, Tag>) -> InterpResult<'tcx, Pointer<Option<Tag>>> {
         let this = self.eval_context_mut();
-        let target_os = &this.tcx.sess.target.os;
-        assert!(
-            target_os == "linux" || target_os == "macos",
-            "`getenv` is only available for the UNIX target family"
-        );
+        this.assert_target_os_is_unix("getenv");
 
         let name_ptr = this.read_pointer(name_op)?;
         let name = this.read_os_str_from_c_str(name_ptr)?;
@@ -212,11 +208,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         value_op: &OpTy<'tcx, Tag>,
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
-        let target_os = &this.tcx.sess.target.os;
-        assert!(
-            target_os == "linux" || target_os == "macos",
-            "`setenv` is only available for the UNIX target family"
-        );
+        this.assert_target_os_is_unix("setenv");
 
         let name_ptr = this.read_pointer(name_op)?;
         let value_ptr = this.read_pointer(value_op)?;
@@ -286,11 +278,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
     fn unsetenv(&mut self, name_op: &OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
-        let target_os = &this.tcx.sess.target.os;
-        assert!(
-            target_os == "linux" || target_os == "macos",
-            "`unsetenv` is only available for the UNIX target family"
-        );
+        this.assert_target_os_is_unix("unsetenv");
 
         let name_ptr = this.read_pointer(name_op)?;
         let mut success = None;
@@ -320,11 +308,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         size_op: &OpTy<'tcx, Tag>,
     ) -> InterpResult<'tcx, Pointer<Option<Tag>>> {
         let this = self.eval_context_mut();
-        let target_os = &this.tcx.sess.target.os;
-        assert!(
-            target_os == "linux" || target_os == "macos",
-            "`getcwd` is only available for the UNIX target family"
-        );
+        this.assert_target_os_is_unix("getcwd");
 
         let buf = this.read_pointer(buf_op)?;
         let size = this.read_scalar(size_op)?.to_machine_usize(&*this.tcx)?;
@@ -379,11 +363,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
     fn chdir(&mut self, path_op: &OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
-        let target_os = &this.tcx.sess.target.os;
-        assert!(
-            target_os == "linux" || target_os == "macos",
-            "`chdir` is only available for the UNIX target family"
-        );
+        this.assert_target_os_is_unix("chdir");
 
         let path = this.read_path_from_c_str(this.read_pointer(path_op)?)?;
 
@@ -469,11 +449,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
     fn getpid(&mut self) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
-        let target_os = &this.tcx.sess.target.os;
-        assert!(
-            target_os == "linux" || target_os == "macos",
-            "`getpid` is only available for the UNIX target family"
-        );
+        this.assert_target_os_is_unix("getpid");
 
         this.check_no_isolation("`getpid`")?;
 
