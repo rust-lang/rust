@@ -14,13 +14,13 @@ impl<'a> Hash for Bytes<'a> {
     }
 }
 
-fn hash_with<T: Hash>(mut st: SipHasher128, x: &T) -> (u64, u64) {
+fn hash_with<T: Hash>(mut st: Xxh3Hasher, x: &T) -> (u64, u64) {
     x.hash(&mut st);
     st.finish128()
 }
 
 fn hash<T: Hash>(x: &T) -> (u64, u64) {
-    hash_with(SipHasher128::new_with_keys(0, 0), x)
+    hash_with(Xxh3Hasher::new(), x)
 }
 
 const TEST_VECTOR: [[u8; 16]; 64] = [
@@ -285,13 +285,10 @@ const TEST_VECTOR: [[u8; 16]; 64] = [
 // Test vector from reference implementation
 #[test]
 fn test_siphash_2_4_test_vector() {
-    let k0 = 0x_07_06_05_04_03_02_01_00;
-    let k1 = 0x_0f_0e_0d_0c_0b_0a_09_08;
-
     let mut input: Vec<u8> = Vec::new();
 
     for i in 0..64 {
-        let out = hash_with(SipHasher128::new_with_keys(k0, k1), &Bytes(&input[..]));
+        let out = hash_with(Xxh3Hasher::new(), &Bytes(&input[..]));
         let expected = (
             ((TEST_VECTOR[i][0] as u64) << 0)
                 | ((TEST_VECTOR[i][1] as u64) << 8)
@@ -463,11 +460,11 @@ macro_rules! test_fill_buffer {
         for i in 1..=SIZE {
             let s = &input[..BUFFER_SIZE - i];
 
-            let mut h1 = SipHasher128::new_with_keys(7, 13);
+            let mut h1 = Xxh3Hasher::new();
             h1.write(s);
             h1.$write_method(x);
 
-            let mut h2 = SipHasher128::new_with_keys(7, 13);
+            let mut h2 = Xxh3Hasher::new();
             h2.write(s);
             h2.write(x_bytes);
 

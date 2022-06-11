@@ -58,7 +58,7 @@ pub mod macros;
 pub mod map_in_place;
 pub mod obligation_forest;
 pub mod owning_ref;
-pub mod sip128;
+mod xxhash;
 pub mod small_c_str;
 pub mod small_str;
 pub mod snapshot_map;

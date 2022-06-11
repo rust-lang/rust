@@ -4,7 +4,7 @@ use smallvec::SmallVec;
 use std::hash::{BuildHasher, Hash, Hasher};
 use std::marker::PhantomData;
 use std::mem;
-use xxh3_port::Xxh3Hasher;
+use crate::xxhash::Xxh3Hasher;
 
 #[cfg(test)]
 mod tests;
@@ -17,7 +17,6 @@ mod tests;
 /// hashing and the architecture dependent `isize` and `usize` types are
 /// extended to 64 bits if needed.
 pub struct StableHasher {
-    // state: SipHasher128,
     state: Xxh3Hasher
 }
 
