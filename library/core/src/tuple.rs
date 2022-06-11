@@ -154,4 +154,4 @@ macro_rules! last_type {
     ($a:ident, $($rest_a:ident,)+) => { last_type!($($rest_a,)+) };
 }
 
-tuple_impls!(A B C D E F G H I J K L);
+tuple_impls!(E D C B A Z Y X W V U T);

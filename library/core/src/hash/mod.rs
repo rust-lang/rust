@@ -918,18 +918,18 @@ mod impls {
     }
 
     impl_hash_tuple! {}
-    impl_hash_tuple! { A }
-    impl_hash_tuple! { A B }
-    impl_hash_tuple! { A B C }
-    impl_hash_tuple! { A B C D }
-    impl_hash_tuple! { A B C D E }
-    impl_hash_tuple! { A B C D E F }
-    impl_hash_tuple! { A B C D E F G }
-    impl_hash_tuple! { A B C D E F G H }
-    impl_hash_tuple! { A B C D E F G H I }
-    impl_hash_tuple! { A B C D E F G H I J }
-    impl_hash_tuple! { A B C D E F G H I J K }
-    impl_hash_tuple! { A B C D E F G H I J K L }
+    impl_hash_tuple! { T }
+    impl_hash_tuple! { T B }
+    impl_hash_tuple! { T B C }
+    impl_hash_tuple! { T B C D }
+    impl_hash_tuple! { T B C D E }
+    impl_hash_tuple! { T B C D E F }
+    impl_hash_tuple! { T B C D E F G }
+    impl_hash_tuple! { T B C D E F G H }
+    impl_hash_tuple! { T B C D E F G H I }
+    impl_hash_tuple! { T B C D E F G H I J }
+    impl_hash_tuple! { T B C D E F G H I J K }
+    impl_hash_tuple! { T B C D E F G H I J K L }
 
     #[stable(feature = "rust1", since = "1.0.0")]
     impl<T: Hash> Hash for [T] {
