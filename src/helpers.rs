@@ -729,10 +729,22 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
     fn frame_in_std(&self) -> bool {
         let this = self.eval_context_ref();
-        this.tcx.lang_items().start_fn().map_or(false, |start_fn| {
-            this.tcx.def_path(this.frame().instance.def_id()).krate
-                == this.tcx.def_path(start_fn).krate
-        })
+        let Some(start_fn) = this.tcx.lang_items().start_fn() else {
+            // no_std situations
+            return false;
+        };
+        let frame = this.frame();
+        // Make an attempt to get at the instance of the function this is inlined from.
+        let instance: Option<_> = try {
+            let scope = frame.current_source_info()?.scope;
+            let inlined_parent = frame.body.source_scopes[scope].inlined_parent_scope?;
+            let source = &frame.body.source_scopes[inlined_parent];
+            source.inlined.expect("inlined_parent_scope points to scope without inline info").0
+        };
+        // Fall back to the instance of the function itself.
+        let instance = instance.unwrap_or(frame.instance);
+        // Now check if this is in the same crate as start_fn.
+        this.tcx.def_path(instance.def_id()).krate == this.tcx.def_path(start_fn).krate
     }
 
     /// Handler that should be called when unsupported functionality is encountered.
