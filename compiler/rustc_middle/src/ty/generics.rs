@@ -39,6 +39,13 @@ impl GenericParamDefKind {
             GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => true,
         }
     }
+
+    pub fn is_synthetic(&self) -> bool {
+        match self {
+            GenericParamDefKind::Type { synthetic, .. } => *synthetic,
+            _ => false,
+        }
+    }
 }
 
 #[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable)]
