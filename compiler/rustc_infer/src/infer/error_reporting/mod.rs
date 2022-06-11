@@ -67,10 +67,8 @@ use rustc_hir::{Item, ItemKind, Node};
 use rustc_middle::dep_graph::DepContext;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
-    self,
-    error::TypeError,
-    subst::{GenericArgKind, Subst, SubstsRef},
-    Binder, EarlyBinder, List, Region, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable,
+    self, error::TypeError, Binder, List, Region, Subst, Ty, TyCtxt, TypeFoldable,
+    TypeSuperFoldable,
 };
 use rustc_span::{sym, symbol::kw, BytePos, DesugaringKind, Pos, Span};
 use rustc_target::spec::abi;
@@ -926,10 +924,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         mut t1_out: &mut DiagnosticStyledString,
         mut t2_out: &mut DiagnosticStyledString,
         path: String,
-        sub: ty::subst::SubstsRef<'tcx>,
+        sub: &'tcx [ty::GenericArg<'tcx>],
         other_path: String,
         other_ty: Ty<'tcx>,
     ) -> Option<()> {
+        // FIXME/HACK: Go back to `SubstsRef` to use its inherent methods,
+        // ideally that shouldn't be necessary.
+        let sub = self.tcx.intern_substs(sub);
         for (i, ta) in sub.types().enumerate() {
             if ta == other_ty {
                 self.highlight_outer(&mut t1_out, &mut t2_out, path, sub, i, other_ty);
@@ -958,45 +959,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             value.push_normal(", ");
             other_value.push_normal(", ");
         }
-    }
-
-    /// For generic types with parameters with defaults, remove the parameters corresponding to
-    /// the defaults. This repeats a lot of the logic found in `ty::print::pretty`.
-    fn strip_generic_default_params(
-        &self,
-        def_id: DefId,
-        substs: ty::subst::SubstsRef<'tcx>,
-    ) -> SubstsRef<'tcx> {
-        let generics = self.tcx.generics_of(def_id);
-        let mut num_supplied_defaults = 0;
-
-        let default_params = generics.params.iter().rev().filter_map(|param| match param.kind {
-            ty::GenericParamDefKind::Type { has_default: true, .. } => Some(param.def_id),
-            ty::GenericParamDefKind::Const { has_default: true } => Some(param.def_id),
-            _ => None,
-        });
-        for (def_id, actual) in iter::zip(default_params, substs.iter().rev()) {
-            match actual.unpack() {
-                GenericArgKind::Const(c) => {
-                    if EarlyBinder(self.tcx.const_param_default(def_id)).subst(self.tcx, substs)
-                        != c
-                    {
-                        break;
-                    }
-                }
-                GenericArgKind::Type(ty) => {
-                    if self.tcx.bound_type_of(def_id).subst(self.tcx, substs) != ty {
-                        break;
-                    }
-                }
-                _ => break,
-            }
-            num_supplied_defaults += 1;
-        }
-        let len = generics.params.len();
-        let mut generics = generics.clone();
-        generics.params.truncate(len - num_supplied_defaults);
-        substs.truncate_to(self.tcx, &generics)
     }
 
     /// Given two `fn` signatures highlight only sub-parts that are different.
@@ -1156,8 +1118,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             (&ty::Adt(def1, sub1), &ty::Adt(def2, sub2)) => {
                 let did1 = def1.did();
                 let did2 = def2.did();
-                let sub_no_defaults_1 = self.strip_generic_default_params(did1, sub1);
-                let sub_no_defaults_2 = self.strip_generic_default_params(did2, sub2);
+                let sub_no_defaults_1 =
+                    self.tcx.generics_of(did1).own_substs_no_defaults(self.tcx, sub1);
+                let sub_no_defaults_2 =
+                    self.tcx.generics_of(did2).own_substs_no_defaults(self.tcx, sub2);
                 let mut values = (DiagnosticStyledString::new(), DiagnosticStyledString::new());
                 let path1 = self.tcx.def_path_str(did1);
                 let path2 = self.tcx.def_path_str(did2);

@@ -825,12 +825,11 @@ pub trait PrettyPrinter<'tcx>:
 
         for (fn_once_trait_ref, entry) in fn_traits {
             // Get the (single) generic ty (the args) of this FnOnce trait ref.
-            let generics = self.generic_args_to_print(
-                self.tcx().generics_of(fn_once_trait_ref.def_id()),
-                fn_once_trait_ref.skip_binder().substs,
-            );
+            let generics = self.tcx().generics_of(fn_once_trait_ref.def_id());
+            let args =
+                generics.own_substs_no_defaults(self.tcx(), fn_once_trait_ref.skip_binder().substs);
 
-            match (entry.return_ty, generics[0].expect_ty()) {
+            match (entry.return_ty, args[0].expect_ty()) {
                 // We can only print `impl Fn() -> ()` if we have a tuple of args and we recorded
                 // a return type.
                 (Some(return_ty), arg_tys) if matches!(arg_tys.kind(), ty::Tuple(_)) => {
@@ -892,15 +891,13 @@ pub trait PrettyPrinter<'tcx>:
                 print(trait_ref.skip_binder().print_only_trait_name())
             );
 
-            let generics = self.generic_args_to_print(
-                self.tcx().generics_of(trait_ref.def_id()),
-                trait_ref.skip_binder().substs,
-            );
+            let generics = self.tcx().generics_of(trait_ref.def_id());
+            let args = generics.own_substs_no_defaults(self.tcx(), trait_ref.skip_binder().substs);
 
-            if !generics.is_empty() || !assoc_items.is_empty() {
+            if !args.is_empty() || !assoc_items.is_empty() {
                 let mut first = true;
 
-                for ty in generics {
+                for ty in args {
                     if first {
                         p!("<");
                         first = false;
@@ -1071,10 +1068,10 @@ pub trait PrettyPrinter<'tcx>:
                     let dummy_cx = cx.tcx().mk_ty_infer(ty::FreshTy(0));
                     let principal = principal.with_self_ty(cx.tcx(), dummy_cx);
 
-                    let args = cx.generic_args_to_print(
-                        cx.tcx().generics_of(principal.def_id),
-                        principal.substs,
-                    );
+                    let args = cx
+                        .tcx()
+                        .generics_of(principal.def_id)
+                        .own_substs_no_defaults(cx.tcx(), principal.substs);
 
                     // Don't print `'_` if there's no unerased regions.
                     let print_regions = args.iter().any(|arg| match arg.unpack() {
