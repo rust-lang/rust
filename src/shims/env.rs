@@ -465,4 +465,31 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         Ok(())
     }
+
+    fn getpid(&mut self) -> InterpResult<'tcx, i32> {
+        let this = self.eval_context_mut();
+        let target_os = &this.tcx.sess.target.os;
+        assert!(
+            target_os == "linux" || target_os == "macos",
+            "`getpid` is only available for the UNIX target family"
+        );
+
+        this.check_no_isolation("`getpid`")?;
+
+        // The reason we need to do this wacky of a conversion is because
+        // `libc::getpid` returns an i32, however, `std::process::id()` return an u32.
+        // So we un-do the conversion that stdlib does and turn it back into an i32.
+
+        Ok(std::process::id() as i32)
+    }
+
+    #[allow(non_snake_case)]
+    fn GetCurrentProcessId(&mut self) -> InterpResult<'tcx, u32> {
+        let this = self.eval_context_mut();
+        this.assert_target_os("windows", "GetCurrentProcessId");
+
+        this.check_no_isolation("`GetCurrentProcessId`")?;
+
+        Ok(std::process::id())
+    }
 }

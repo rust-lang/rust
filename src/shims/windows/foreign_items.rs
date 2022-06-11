@@ -419,6 +419,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let [] = this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 this.write_scalar(Scalar::from_machine_isize(1, this), dest)?;
             }
+            "GetCurrentProcessId" if this.frame_in_std() => {
+                let [] = this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
+                let result = this.GetCurrentProcessId()?;
+                this.write_scalar(Scalar::from_u32(result), dest)?;
+            }
 
             _ => return Ok(EmulateByNameResult::NotSupported),
         }
