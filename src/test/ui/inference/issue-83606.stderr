@@ -1,12 +1,12 @@
 error[E0282]: type annotations needed for `[usize; _]`
   --> $DIR/issue-83606.rs:8:9
    |
-LL |     let _ = foo("foo"); //<- Do not suggest `foo::<N>("foo");`!
+LL |     let _ = foo("foo");
    |         ^
    |
 help: consider giving this pattern a type, where the the value of const parameter `N` is specified
    |
-LL |     let _: [usize; _] = foo("foo"); //<- Do not suggest `foo::<N>("foo");`!
+LL |     let _: [usize; _] = foo("foo");
    |          ++++++++++++
 
 error: aborting due to previous error
