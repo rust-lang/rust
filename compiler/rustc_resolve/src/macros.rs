@@ -870,7 +870,7 @@ impl<'a> Resolver<'a> {
         &mut self,
         item: &ast::Item,
         edition: Edition,
-    ) -> (SyntaxExtension, Vec<Span>) {
+    ) -> (SyntaxExtension, Vec<(usize, Span)>) {
         let (mut result, mut rule_spans) = compile_declarative_macro(
             &self.session,
             self.session.features_untracked(),

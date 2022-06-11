@@ -1220,12 +1220,12 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         ident: Ident,
         def_id: LocalDefId,
         node_id: NodeId,
-        rule_spans: &[Span],
+        rule_spans: &[(usize, Span)],
     ) {
         if !ident.as_str().starts_with('_') {
             self.r.unused_macros.insert(def_id, (node_id, ident));
-            for (rule_i, rule_span) in rule_spans.iter().enumerate() {
-                self.r.unused_macro_rules.insert((def_id, rule_i), (ident, *rule_span));
+            for (rule_i, rule_span) in rule_spans.iter() {
+                self.r.unused_macro_rules.insert((def_id, *rule_i), (ident, *rule_span));
             }
         }
     }
