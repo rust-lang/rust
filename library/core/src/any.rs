@@ -94,7 +94,7 @@
 //! functions for requesting data from an object which implements `Provider`. Generally, end users
 //! should not call `request_*` directly, they are helper functions for intermediate implementers
 //! to use to implement a user-facing interface. This is purely for the sake of ergonomics, there is
-//! safety concern here; intermediate implementers can typically support methods rather than
+//! no safety concern here; intermediate implementers can typically support methods rather than
 //! free functions and use more specific names.
 //!
 //! Typically, a data provider is a trait object of a trait which extends `Provider`. A user will
@@ -1007,7 +1007,7 @@ mod tags {
         type Reified = T;
     }
 
-    /// Type-based tag similar to [`Value`] but which may be unsized (i.e., has a `'Sized` bound).
+    /// Type-based tag similar to [`Value`] but which may be unsized (i.e., has a `?Sized` bound).
     #[derive(Debug)]
     pub struct MaybeSizedValue<T: ?Sized + 'static>(PhantomData<T>);
 
