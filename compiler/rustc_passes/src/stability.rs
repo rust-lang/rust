@@ -772,17 +772,27 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                 let ty = self.tcx.type_of(item.def_id);
                 let ty::Adt(adt_def, substs) = ty.kind() else { bug!() };
 
-                #[allow(rustc::usage_of_qualified_ty)] // `Ty` is the wrong type here, we really want `ty::Ty`.
+                #[allow(rustc::usage_of_qualified_ty)] // `Ty` is `hir::Ty` here, we really want `ty::Ty`.
                 fn allowed_union_field<'tcx>(
                     tcx: TyCtxt<'tcx>,
                     param_env: ty::ParamEnv<'tcx>,
                     ty: ty::Ty<'tcx>,
                 ) -> bool {
-                    ty.ty_adt_def().map_or(false, |adt_def| adt_def.is_manually_drop())
-                        || ty.is_copy_modulo_regions(tcx.at(DUMMY_SP), param_env)
+                    // We don't just accept all !needs_drop fields, due to semver concerns.
+                    match ty.kind() {
+                        ty::Ref(..) => true, // references never drop (even mutable refs, which are non-Copy and hence fail the later check)
+                        ty::Tuple(tys) => {
+                            // allow tuples of allowed types
+                            tys.iter().all(|ty| allowed_union_field(tcx, param_env, ty))
+                        }
+                        _ => {
+                            ty.ty_adt_def().map_or(false, |adt_def| adt_def.is_manually_drop())
+                                || ty.is_copy_modulo_regions(tcx.at(DUMMY_SP), param_env)
+                        }
+                    }
                 }
 
-                // Non-`Copy` fields are unstable, except for `ManuallyDrop`.
+                // `allowed_union_field` determines which fields are allowed on stable.
                 let param_env = self.tcx.param_env(item.def_id);
                 for field in &adt_def.non_enum_variant().fields {
                     let field_ty = field.ty(self.tcx, substs);
@@ -799,10 +809,17 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                                 &self.tcx.sess.parse_sess,
                                 sym::untagged_unions,
                                 self.tcx.def_span(field.did),
-                                "unions with non-`Copy` fields other than `ManuallyDrop<T>` are unstable",
+                                "unions with non-`Copy` fields other than `ManuallyDrop<T>`, \
+                                references, and tuples of such types are unstable",
                             )
                             .emit();
                         }
+                    } else {
+                        // We allow this field. Make extra sure it does not drop.
+                        assert!(
+                            !field_ty.needs_drop(self.tcx, param_env),
+                            "we should accept no maybe-dropping union fields"
+                        );
                     }
                 }
             }

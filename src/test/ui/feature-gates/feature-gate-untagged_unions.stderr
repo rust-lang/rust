@@ -1,5 +1,5 @@
-error[E0658]: unions with non-`Copy` fields other than `ManuallyDrop<T>` are unstable
-  --> $DIR/feature-gate-untagged_unions.rs:20:5
+error[E0658]: unions with non-`Copy` fields other than `ManuallyDrop<T>`, references, and tuples of such types are unstable
+  --> $DIR/feature-gate-untagged_unions.rs:25:5
    |
 LL |     a: std::cell::RefCell<i32>,
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL |     a: std::cell::RefCell<i32>,
    = help: add `#![feature(untagged_unions)]` to the crate attributes to enable
 
 error[E0740]: unions cannot contain fields that may need dropping
-  --> $DIR/feature-gate-untagged_unions.rs:16:5
+  --> $DIR/feature-gate-untagged_unions.rs:21:5
    |
 LL |     a: String,
    |     ^^^^^^^^^
@@ -20,7 +20,7 @@ LL |     a: std::mem::ManuallyDrop<String>,
    |        +++++++++++++++++++++++      +
 
 error[E0740]: unions cannot contain fields that may need dropping
-  --> $DIR/feature-gate-untagged_unions.rs:24:5
+  --> $DIR/feature-gate-untagged_unions.rs:29:5
    |
 LL |     a: T,
    |     ^^^^
@@ -31,7 +31,19 @@ help: when the type does not implement `Copy`, wrap it inside a `ManuallyDrop<_>
 LL |     a: std::mem::ManuallyDrop<T>,
    |        +++++++++++++++++++++++ +
 
-error: aborting due to 3 previous errors
+error[E0740]: unions cannot contain fields that may need dropping
+  --> $DIR/feature-gate-untagged_unions.rs:41:5
+   |
+LL |     nest: U5,
+   |     ^^^^^^^^
+   |
+   = note: a type is guaranteed not to need dropping when it implements `Copy`, or when it is the special `ManuallyDrop<_>` type
+help: when the type does not implement `Copy`, wrap it inside a `ManuallyDrop<_>` and ensure it is manually dropped
+   |
+LL |     nest: std::mem::ManuallyDrop<U5>,
+   |           +++++++++++++++++++++++  +
+
+error: aborting due to 4 previous errors
 
 Some errors have detailed explanations: E0658, E0740.
 For more information about an error, try `rustc --explain E0658`.
