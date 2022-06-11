@@ -804,7 +804,7 @@ impl CheckAttrVisitor<'_> {
         true
     }
 
-    fn check_doc_tuple_varadic(&self, meta: &NestedMetaItem, hir_id: HirId) -> bool {
+    fn check_doc_tuple_variadic(&self, meta: &NestedMetaItem, hir_id: HirId) -> bool {
         match self.tcx.hir().find(hir_id).and_then(|node| match node {
             hir::Node::Item(item) => Some(&item.kind),
             _ => None,
@@ -815,7 +815,7 @@ impl CheckAttrVisitor<'_> {
                         .sess
                         .struct_span_err(
                             meta.span(),
-                            "`#[doc(tuple_varadic)]` can only be used on unary tuples",
+                            "`#[doc(tuple_variadic)]` can only be used on unary tuples",
                         )
                         .emit();
                     return false;
@@ -1095,9 +1095,9 @@ impl CheckAttrVisitor<'_> {
                             is_valid = false
                         }
 
-                        sym::tuple_varadic
-                            if !self.check_attr_not_crate_level(meta, hir_id, "tuple_varadic")
-                                || !self.check_doc_tuple_varadic(meta, hir_id) =>
+                        sym::tuple_variadic
+                            if !self.check_attr_not_crate_level(meta, hir_id, "tuple_variadic")
+                                || !self.check_doc_tuple_variadic(meta, hir_id) =>
                         {
                             is_valid = false
                         }
@@ -1156,7 +1156,7 @@ impl CheckAttrVisitor<'_> {
                         | sym::notable_trait
                         | sym::passes
                         | sym::plugins
-                        | sym::tuple_varadic => {}
+                        | sym::tuple_variadic => {}
 
                         sym::test => {
                             if !self.check_test_attr(meta, hir_id) {

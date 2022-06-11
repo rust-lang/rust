@@ -1439,7 +1439,7 @@ symbols! {
         tuple,
         tuple_from_req,
         tuple_indexing,
-        tuple_varadic,
+        tuple_variadic,
         two_phase,
         ty,
         type_alias_enum_variants,

@@ -2407,7 +2407,7 @@ impl ImplKind {
         matches!(self, ImplKind::Blanket(_))
     }
 
-    pub(crate) fn is_tuple_varadic(&self) -> bool {
+    pub(crate) fn is_tuple_variadic(&self) -> bool {
         matches!(self, ImplKind::TupleVaradic)
     }
 

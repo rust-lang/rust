@@ -7,10 +7,10 @@ LL | #[doc(keyword = "match")]
    = note: see issue #90418 <https://github.com/rust-lang/rust/issues/90418> for more information
    = help: add `#![feature(rustdoc_internals)]` to the crate attributes to enable
 
-error[E0658]: `#[doc(tuple_varadic)]` is meant for internal use only
+error[E0658]: `#[doc(tuple_variadic)]` is meant for internal use only
   --> $DIR/feature-gate-rustdoc_internals.rs:7:1
    |
-LL | #[doc(tuple_varadic)]
+LL | #[doc(tuple_variadic)]
    | ^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #90418 <https://github.com/rust-lang/rust/issues/90418> for more information
