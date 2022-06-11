@@ -28,6 +28,7 @@
 #![feature(iter_next_chunk)]
 #![feature(round_char_boundary)]
 #![feature(slice_partition_dedup)]
+#![feature(string_replace_in_place)]
 #![feature(string_remove_matches)]
 #![feature(const_btree_len)]
 #![feature(const_trait_impl)]
