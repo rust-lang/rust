@@ -84,5 +84,10 @@ module.exports = {
         "no-implicit-globals": "error",
         "no-implied-eval": "error",
         "no-label-var": "error",
+        "no-lonely-if": "error",
+        "no-mixed-operators": "error",
+        "no-multi-assign": "error",
+        "no-return-assign": "error",
+        "no-script-url": "error",
     }
 };
