@@ -5,11 +5,11 @@ LL |     let _ = data.lock().unwrap();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `#[deny(let_underscore_lock)]` on by default
-help: consider binding to an unused variable
+help: consider binding to an unused variable to avoid immediately dropping the value
    |
 LL |     let _unused = data.lock().unwrap();
    |         ~~~~~~~
-help: consider explicitly droping with `std::mem::drop`
+help: consider immediately dropping the value
    |
 LL |     let _ = drop(data.lock().unwrap());
    |             +++++                    +

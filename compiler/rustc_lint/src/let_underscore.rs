@@ -150,12 +150,12 @@ fn build_and_emit_lint(
     lint.build(msg)
         .span_suggestion_verbose(
             local.pat.span,
-            "consider binding to an unused variable",
+            "consider binding to an unused variable to avoid immediately dropping the value",
             "_unused",
             Applicability::MachineApplicable,
         )
         .multipart_suggestion(
-            "consider explicitly droping with `std::mem::drop`",
+            "consider immediately dropping the value",
             vec![
                 (init_span.shrink_to_lo(), "drop(".to_string()),
                 (init_span.shrink_to_hi(), ")".to_string()),
