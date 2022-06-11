@@ -88,5 +88,6 @@ module.exports = {
         "no-mixed-operators": "error",
         "no-multi-assign": "error",
         "no-return-assign": "error",
+        "no-script-url": "error",
     }
 };
