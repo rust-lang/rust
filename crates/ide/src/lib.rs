@@ -87,7 +87,7 @@ pub use crate::{
     },
     join_lines::JoinLinesConfig,
     markup::Markup,
-    moniker::{MonikerKind, MonikerResult, PackageInformation},
+    moniker::{MonikerDescriptorKind, MonikerKind, MonikerResult, PackageInformation},
     move_item::Direction,
     navigation_target::NavigationTarget,
     prime_caches::ParallelPrimeCachesProgress,
