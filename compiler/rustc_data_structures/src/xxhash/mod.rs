@@ -4,7 +4,11 @@
 
 mod pointers;
 
+use std::hash::Hasher;
 use pointers::{Ptr, PtrMut};
+
+#[cfg(test)]
+mod tests;
 
 use cfg_if::cfg_if;
 use std::mem::{size_of, size_of_val};
@@ -176,6 +180,16 @@ impl Default for Xxh3Hasher {
     }
 }
 
+impl Hasher for Xxh3Hasher {
+    fn finish(&self) -> u64 {
+        unimplemented!()
+    }
+
+    fn write(&mut self, bytes: &[u8]) {
+        self.update(bytes);
+    }
+}
+
 impl Xxh3Hasher {
     #[inline]
     fn secret(&self) -> &[u8] {
@@ -288,6 +302,12 @@ impl Xxh3Hasher {
             &self.buffer.0[..self.total_len as usize],
             &secret[..self.secret_limit + XXH_STRIPE_LEN],
         );
+    }
+
+    #[inline]
+    pub fn finish128(self) -> (u64, u64) {
+        let hash = self.digest128();
+        (hash.high64, hash.low64)
     }
 }
 
@@ -695,12 +715,11 @@ fn XXH3_accumulate(
 
         // This is taken from the C implementation. Not sure if it is completely safe.
         // It seems to improve performance a little bit, but not much.
-        #[cfg(feature = "nightly")]
-        #[cfg(not(debug_assertions))]
+        /*#[cfg(not(debug_assertions))]
         unsafe {
             const XXH_PREFETCH_DIST: usize = 320;
             std::intrinsics::prefetch_read_data(input.offset(XXH_PREFETCH_DIST).raw(), 1);
-        }
+        }*/
 
         f_acc512(acc, input, secret.offset(n * XXH_SECRET_CONSUME_RATE));
     }

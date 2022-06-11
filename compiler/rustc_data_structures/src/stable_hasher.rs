@@ -60,8 +60,7 @@ impl StableHasherResult for u64 {
 impl StableHasher {
     #[inline]
     pub fn finalize(self) -> (u64, u64) {
-        let hash = self.state.digest128();
-        (hash.high64, hash.low64)
+        self.state.finish128()
     }
 }
 
