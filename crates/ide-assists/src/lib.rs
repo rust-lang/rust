@@ -104,6 +104,7 @@ mod handlers {
     pub(crate) type Handler = fn(&mut Assists, &AssistContext) -> Option<()>;
 
     mod add_explicit_type;
+    mod add_label_to_loop;
     mod add_lifetime_to_type;
     mod add_missing_impl_members;
     mod add_turbo_fish;
@@ -193,6 +194,7 @@ mod handlers {
         &[
             // These are alphabetic for the foolish consistency
             add_explicit_type::add_explicit_type,
+            add_label_to_loop::add_label_to_loop,
             add_missing_match_arms::add_missing_match_arms,
             add_lifetime_to_type::add_lifetime_to_type,
             add_return_type::add_return_type,
