@@ -1479,10 +1479,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // re-link the regions that EIfEO can erase.
         self.demand_eqtype(span, adt_ty_hint, adt_ty);
 
-        let (substs, adt_kind, kind_name) = match adt_ty.kind() {
-            ty::Adt(adt, substs) => (substs, adt.adt_kind(), adt.variant_descr()),
-            _ => span_bug!(span, "non-ADT passed to check_expr_struct_fields"),
+        let ty::Adt(adt, substs) = adt_ty.kind() else {
+            span_bug!(span, "non-ADT passed to check_expr_struct_fields");
         };
+        let adt_kind = adt.adt_kind();
 
         let mut remaining_fields = variant
             .fields
@@ -1520,7 +1520,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     });
                 } else {
                     self.report_unknown_field(
-                        adt_ty, variant, field, ast_fields, kind_name, expr_span,
+                        adt_ty,
+                        variant,
+                        field,
+                        ast_fields,
+                        adt.variant_descr(),
+                        expr_span,
                     );
                 }
 
@@ -1533,7 +1538,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         // Make sure the programmer specified correct number of fields.
-        if kind_name == "union" {
+        if adt_kind == AdtKind::Union {
             if ast_fields.len() != 1 {
                 struct_span_err!(
                     tcx.sess,
@@ -1666,7 +1671,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             };
             self.typeck_results.borrow_mut().fru_field_types_mut().insert(expr_id, fru_tys);
-        } else if kind_name != "union" && !remaining_fields.is_empty() {
+        } else if adt_kind != AdtKind::Union && !remaining_fields.is_empty() {
             let inaccessible_remaining_fields = remaining_fields.iter().any(|(_, (_, field))| {
                 !field.vis.is_accessible_from(tcx.parent_module(expr_id).to_def_id(), tcx)
             });
