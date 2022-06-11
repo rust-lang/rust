@@ -304,11 +304,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         error_code: TypeAnnotationNeeded,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let error_code = error_code.into();
-        let mut err = self.tcx.sess.struct_span_err_with_code(
-            span,
-            &format!("type annotations needed"),
-            error_code,
-        );
+        let mut err =
+            self.tcx.sess.struct_span_err_with_code(span, "type annotations needed", error_code);
         err.span_label(span, arg_data.cannot_infer_msg());
         err
     }
