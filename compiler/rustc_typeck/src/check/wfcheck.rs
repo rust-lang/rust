@@ -4,24 +4,21 @@ use crate::constrained_generic_params::{identify_constrained_generic_params, Par
 
 use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::sync::par_for_each_in;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::intravisit as hir_visit;
-use rustc_hir::intravisit::Visitor;
-use rustc_hir::itemlikevisit::ParItemLikeVisitor;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::ItemKind;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::outlives::obligations::TypeOutlives;
 use rustc_infer::infer::region_constraints::GenericKind;
 use rustc_infer::infer::{self, InferCtxt, TyCtxtInferExt};
-use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts, Subst};
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
 use rustc_middle::ty::{
-    self, AdtKind, EarlyBinder, GenericParamDefKind, ToPredicate, Ty, TyCtxt, TypeFoldable,
-    TypeSuperFoldable, TypeVisitor,
+    self, AdtKind, DefIdTree, EarlyBinder, GenericParamDefKind, ToPredicate, Ty, TyCtxt,
+    TypeFoldable, TypeSuperFoldable, TypeVisitor,
 };
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::{sym, Ident, Symbol};
@@ -70,6 +67,23 @@ impl<'tcx> CheckWfFcxBuilder<'tcx> {
     }
 }
 
+pub(crate) fn check_well_formed(tcx: TyCtxt<'_>, def_id: LocalDefId) {
+    let node = tcx.hir().expect_owner(def_id);
+    match node {
+        hir::OwnerNode::Crate(_) => {}
+        hir::OwnerNode::Item(item) => check_item(tcx, item),
+        hir::OwnerNode::TraitItem(item) => check_trait_item(tcx, item),
+        hir::OwnerNode::ImplItem(item) => check_impl_item(tcx, item),
+        hir::OwnerNode::ForeignItem(item) => check_foreign_item(tcx, item),
+    }
+
+    if let Some(generics) = node.generics() {
+        for param in generics.params {
+            check_param_wf(tcx, param)
+        }
+    }
+}
+
 /// Checks that the field types (in a struct def'n) or argument types (in an enum def'n) are
 /// well-formed, meaning that they do not require any constraints not declared in the struct
 /// definition itself. For example, this definition would be illegal:
@@ -84,8 +98,8 @@ impl<'tcx> CheckWfFcxBuilder<'tcx> {
 /// not included it frequently leads to confusing errors in fn bodies. So it's better to check
 /// the types first.
 #[instrument(skip(tcx), level = "debug")]
-pub fn check_item_well_formed(tcx: TyCtxt<'_>, def_id: LocalDefId) {
-    let item = tcx.hir().expect_item(def_id);
+fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) {
+    let def_id = item.def_id;
 
     debug!(
         ?item.def_id,
@@ -156,20 +170,6 @@ pub fn check_item_well_formed(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         hir::ItemKind::Const(ty, ..) => {
             check_item_type(tcx, item.def_id, ty.span, false);
         }
-        hir::ItemKind::ForeignMod { items, .. } => {
-            for it in items.iter() {
-                let it = tcx.hir().foreign_item(it.id);
-                match it.kind {
-                    hir::ForeignItemKind::Fn(decl, ..) => {
-                        check_item_fn(tcx, it.def_id, it.ident, it.span, decl)
-                    }
-                    hir::ForeignItemKind::Static(ty, ..) => {
-                        check_item_type(tcx, it.def_id, ty.span, true)
-                    }
-                    hir::ForeignItemKind::Type => (),
-                }
-            }
-        }
         hir::ItemKind::Struct(ref struct_def, ref ast_generics) => {
             check_type_defn(tcx, item, false, |fcx| vec![fcx.non_enum_variant(struct_def)]);
 
@@ -191,13 +191,31 @@ pub fn check_item_well_formed(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         hir::ItemKind::TraitAlias(..) => {
             check_trait(tcx, item);
         }
+        // `ForeignItem`s are handled separately.
+        hir::ItemKind::ForeignMod { .. } => {}
         _ => {}
     }
 }
 
-pub fn check_trait_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
-    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
-    let trait_item = tcx.hir().expect_trait_item(def_id);
+fn check_foreign_item(tcx: TyCtxt<'_>, item: &hir::ForeignItem<'_>) {
+    let def_id = item.def_id;
+
+    debug!(
+        ?item.def_id,
+        item.name = ? tcx.def_path_str(def_id.to_def_id())
+    );
+
+    match item.kind {
+        hir::ForeignItemKind::Fn(decl, ..) => {
+            check_item_fn(tcx, item.def_id, item.ident, item.span, decl)
+        }
+        hir::ForeignItemKind::Static(ty, ..) => check_item_type(tcx, item.def_id, ty.span, true),
+        hir::ForeignItemKind::Type => (),
+    }
+}
+
+fn check_trait_item(tcx: TyCtxt<'_>, trait_item: &hir::TraitItem<'_>) {
+    let def_id = trait_item.def_id;
 
     let (method_sig, span) = match trait_item.kind {
         hir::TraitItemKind::Fn(ref sig, _) => (Some(sig), trait_item.span),
@@ -207,7 +225,7 @@ pub fn check_trait_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     check_object_unsafe_self_trait_by_name(tcx, trait_item);
     check_associated_item(tcx, trait_item.def_id, span, method_sig);
 
-    let encl_trait_def_id = tcx.hir().get_parent_item(hir_id);
+    let encl_trait_def_id = tcx.local_parent(def_id);
     let encl_trait = tcx.hir().expect_item(encl_trait_def_id);
     let encl_trait_def_id = encl_trait.def_id.to_def_id();
     let fn_lang_item_name = if Some(encl_trait_def_id) == tcx.lang_items().fn_trait() {
@@ -783,8 +801,8 @@ fn check_object_unsafe_self_trait_by_name(tcx: TyCtxt<'_>, item: &hir::TraitItem
     }
 }
 
-pub fn check_impl_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
-    let impl_item = tcx.hir().expect_impl_item(def_id);
+fn check_impl_item(tcx: TyCtxt<'_>, impl_item: &hir::ImplItem<'_>) {
+    let def_id = impl_item.def_id;
 
     let (method_sig, span) = match impl_item.kind {
         hir::ImplItemKind::Fn(ref sig, _) => (Some(sig), impl_item.span),
@@ -793,7 +811,7 @@ pub fn check_impl_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         _ => (None, impl_item.span),
     };
 
-    check_associated_item(tcx, impl_item.def_id, span, method_sig);
+    check_associated_item(tcx, def_id, span, method_sig);
 }
 
 fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) {
@@ -1840,67 +1858,12 @@ fn check_false_global_bounds(fcx: &FnCtxt<'_, '_>, mut span: Span, id: hir::HirI
     fcx.select_all_obligations_or_error();
 }
 
-#[derive(Clone, Copy)]
-pub struct CheckTypeWellFormedVisitor<'tcx> {
-    tcx: TyCtxt<'tcx>,
-}
-
-impl<'tcx> CheckTypeWellFormedVisitor<'tcx> {
-    pub fn new(tcx: TyCtxt<'tcx>) -> CheckTypeWellFormedVisitor<'tcx> {
-        CheckTypeWellFormedVisitor { tcx }
-    }
-}
-
-impl<'tcx> ParItemLikeVisitor<'tcx> for CheckTypeWellFormedVisitor<'tcx> {
-    fn visit_item(&self, i: &'tcx hir::Item<'tcx>) {
-        Visitor::visit_item(&mut self.clone(), i);
-    }
-
-    fn visit_trait_item(&self, trait_item: &'tcx hir::TraitItem<'tcx>) {
-        Visitor::visit_trait_item(&mut self.clone(), trait_item);
-    }
-
-    fn visit_impl_item(&self, impl_item: &'tcx hir::ImplItem<'tcx>) {
-        Visitor::visit_impl_item(&mut self.clone(), impl_item);
-    }
-
-    fn visit_foreign_item(&self, foreign_item: &'tcx hir::ForeignItem<'tcx>) {
-        Visitor::visit_foreign_item(&mut self.clone(), foreign_item)
-    }
-}
-
-impl<'tcx> Visitor<'tcx> for CheckTypeWellFormedVisitor<'tcx> {
-    type NestedFilter = nested_filter::OnlyBodies;
-
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.tcx.hir()
-    }
-
-    #[instrument(skip(self, i), level = "debug")]
-    fn visit_item(&mut self, i: &'tcx hir::Item<'tcx>) {
-        trace!(?i);
-        self.tcx.ensure().check_item_well_formed(i.def_id);
-        hir_visit::walk_item(self, i);
-    }
-
-    #[instrument(skip(self, trait_item), level = "debug")]
-    fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem<'tcx>) {
-        trace!(?trait_item);
-        self.tcx.ensure().check_trait_item_well_formed(trait_item.def_id);
-        hir_visit::walk_trait_item(self, trait_item);
-    }
-
-    #[instrument(skip(self, impl_item), level = "debug")]
-    fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>) {
-        trace!(?impl_item);
-        self.tcx.ensure().check_impl_item_well_formed(impl_item.def_id);
-        hir_visit::walk_impl_item(self, impl_item);
-    }
-
-    fn visit_generic_param(&mut self, p: &'tcx hir::GenericParam<'tcx>) {
-        check_param_wf(self.tcx, p);
-        hir_visit::walk_generic_param(self, p);
-    }
+pub(crate) fn check_wf_new(tcx: TyCtxt<'_>) {
+    let items = tcx.hir_crate_items(());
+    par_for_each_in(items.items(), |item| tcx.ensure().check_well_formed(item.def_id));
+    par_for_each_in(items.impl_items(), |item| tcx.ensure().check_well_formed(item.def_id));
+    par_for_each_in(items.trait_items(), |item| tcx.ensure().check_well_formed(item.def_id));
+    par_for_each_in(items.foreign_items(), |item| tcx.ensure().check_well_formed(item.def_id));
 }
 
 ///////////////////////////////////////////////////////////////////////////

@@ -46,6 +46,12 @@ help: consider further restricting this bound
 LL | pub trait ThriftService<Bug: NotFoo + Foo>:
    |                                     +++++
 
+error[E0277]: the trait bound `(): Foo` is not satisfied
+  --> $DIR/issue-59324.rs:23:29
+   |
+LL | fn with_factory<H>(factory: dyn ThriftService<()>) {}
+   |                             ^^^^^^^^^^^^^^^^^^^^^ the trait `Foo` is not implemented for `()`
+
 error[E0277]: the trait bound `Bug: Foo` is not satisfied
   --> $DIR/issue-59324.rs:19:10
    |
@@ -56,12 +62,6 @@ help: consider further restricting this bound
    |
 LL | pub trait ThriftService<Bug: NotFoo + Foo>:
    |                                     +++++
-
-error[E0277]: the trait bound `(): Foo` is not satisfied
-  --> $DIR/issue-59324.rs:23:29
-   |
-LL | fn with_factory<H>(factory: dyn ThriftService<()>) {}
-   |                             ^^^^^^^^^^^^^^^^^^^^^ the trait `Foo` is not implemented for `()`
 
 error: aborting due to 5 previous errors
 

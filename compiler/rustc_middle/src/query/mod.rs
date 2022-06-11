@@ -1398,13 +1398,7 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    query check_item_well_formed(key: LocalDefId) -> () {
-        desc { |tcx| "checking that `{}` is well-formed", tcx.def_path_str(key.to_def_id()) }
-    }
-    query check_trait_item_well_formed(key: LocalDefId) -> () {
-        desc { |tcx| "checking that `{}` is well-formed", tcx.def_path_str(key.to_def_id()) }
-    }
-    query check_impl_item_well_formed(key: LocalDefId) -> () {
+    query check_well_formed(key: LocalDefId) -> () {
         desc { |tcx| "checking that `{}` is well-formed", tcx.def_path_str(key.to_def_id()) }
     }
 

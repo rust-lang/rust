@@ -65,7 +65,6 @@
 //! example generator inference, and possibly also HIR borrowck.
 
 use crate::hir::*;
-use crate::itemlikevisit::ParItemLikeVisitor;
 use rustc_ast::walk_list;
 use rustc_ast::{Attribute, Label};
 use rustc_span::symbol::{Ident, Symbol};
@@ -74,29 +73,6 @@ use rustc_span::Span;
 pub trait IntoVisitor<'hir> {
     type Visitor: Visitor<'hir>;
     fn into_visitor(&self) -> Self::Visitor;
-}
-
-pub struct ParDeepVisitor<V>(pub V);
-
-impl<'hir, V> ParItemLikeVisitor<'hir> for ParDeepVisitor<V>
-where
-    V: IntoVisitor<'hir>,
-{
-    fn visit_item(&self, item: &'hir Item<'hir>) {
-        self.0.into_visitor().visit_item(item);
-    }
-
-    fn visit_trait_item(&self, trait_item: &'hir TraitItem<'hir>) {
-        self.0.into_visitor().visit_trait_item(trait_item);
-    }
-
-    fn visit_impl_item(&self, impl_item: &'hir ImplItem<'hir>) {
-        self.0.into_visitor().visit_impl_item(impl_item);
-    }
-
-    fn visit_foreign_item(&self, foreign_item: &'hir ForeignItem<'hir>) {
-        self.0.into_visitor().visit_foreign_item(foreign_item);
-    }
 }
 
 #[derive(Copy, Clone, Debug)]

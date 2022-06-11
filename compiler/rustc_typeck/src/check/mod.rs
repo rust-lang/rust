@@ -93,16 +93,14 @@ mod upvar;
 mod wfcheck;
 pub mod writeback;
 
-use check::{
-    check_abi, check_fn, check_impl_item_well_formed, check_item_well_formed, check_mod_item_types,
-    check_trait_item_well_formed,
-};
-pub use check::{check_item_type, check_wf_new};
+use check::{check_abi, check_fn, check_mod_item_types};
 pub use diverges::Diverges;
 pub use expectation::Expectation;
 pub use fn_ctxt::*;
 use hir::def::CtorOf;
 pub use inherited::{Inherited, InheritedBuilder};
+use wfcheck::check_well_formed;
+pub(crate) use wfcheck::check_wf_new;
 
 use crate::astconv::AstConv;
 use crate::check::gather_locals::GatherLocalsVisitor;
@@ -253,9 +251,7 @@ pub fn provide(providers: &mut Providers) {
         has_typeck_results,
         adt_destructor,
         used_trait_imports,
-        check_item_well_formed,
-        check_trait_item_well_formed,
-        check_impl_item_well_formed,
+        check_well_formed,
         check_mod_item_types,
         region_scope_tree,
         ..*providers
