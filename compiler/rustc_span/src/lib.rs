@@ -333,7 +333,7 @@ impl<'a> FileNameDisplay<'a> {
     pub fn to_string_lossy(&self) -> Cow<'a, str> {
         match self.inner {
             FileName::Real(ref inner) => inner.to_string_lossy(self.display_pref),
-            _ => Cow::from(format!("{}", self)),
+            _ => Cow::from(self.to_string()),
         }
     }
 }
