@@ -168,6 +168,10 @@ impl<'hir> Map<'hir> {
         par_for_each_in(&self.tcx.hir_crate_items(()).items[..], |id| f(*id));
     }
 
+    pub fn par_for_each_item_in_module(self, module: LocalDefId, f: impl Fn(ItemId) + Sync + Send) {
+        par_for_each_in(&self.tcx.hir_module_items(module).items[..], |id| f(*id));
+    }
+
     pub fn def_key(self, def_id: LocalDefId) -> DefKey {
         // Accessing the DefKey is ok, since it is part of DefPathHash.
         self.tcx.untracked_resolutions.definitions.def_key(def_id)
