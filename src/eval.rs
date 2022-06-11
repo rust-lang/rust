@@ -403,7 +403,7 @@ pub fn eval_entry<'tcx>(
 /// The string will be UTF-16 encoded and NUL terminated.
 ///
 /// Panics if the zeroth argument contains the `"` character because doublequotes
-/// in argv[0] cannot be encoded using the standard command line parsing rules.
+/// in `argv[0]` cannot be encoded using the standard command line parsing rules.
 ///
 /// Further reading:
 /// * [Parsing C++ command-line arguments](https://docs.microsoft.com/en-us/cpp/cpp/main-function-command-line-args?view=msvc-160#parsing-c-command-line-arguments)
