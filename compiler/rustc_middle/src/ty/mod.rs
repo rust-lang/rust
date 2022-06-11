@@ -22,7 +22,6 @@ use crate::mir::{Body, GeneratorLayout};
 use crate::traits::{self, Reveal};
 use crate::ty;
 use crate::ty::fast_reject::SimplifiedType;
-use crate::ty::subst::{GenericArg, InternalSubsts, Subst, SubstsRef};
 use crate::ty::util::Discr;
 pub use adt::*;
 pub use assoc::*;
@@ -44,6 +43,7 @@ use rustc_session::cstore::CrateStoreDyn;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
 use rustc_target::abi::Align;
+pub use subst::*;
 pub use vtable::*;
 
 use std::fmt::Debug;

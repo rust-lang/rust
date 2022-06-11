@@ -2,6 +2,7 @@ use crate::infer::type_variable::TypeVariableOriginKind;
 use crate::infer::InferCtxt;
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir as hir;
+use rustc_hir::def::Res;
 use rustc_hir::def::{CtorOf, DefKind, Namespace};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, Visitor};
@@ -11,7 +12,7 @@ use rustc_middle::infer::unify_key::ConstVariableOriginKind;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
 use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter, Print, Printer};
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, Subst, SubstsRef};
-use rustc_middle::ty::{self, DefIdTree, GenericParamDefKind, InferConst};
+use rustc_middle::ty::{self, DefIdTree, InferConst};
 use rustc_middle::ty::{Ty, TyCtxt, TypeckResults};
 use rustc_span::symbol::{kw, Ident};
 use rustc_span::{BytePos, Span};
@@ -853,12 +854,23 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                             hir::TyKind::Path(hir::QPath::Resolved(_self_ty, path)),
                         ) => {
                             if tcx.res_generics_def_id(path.res) != Some(def.did()) {
-                                bug!(
-                                    "unexpected path: def={:?} substs={:?} path={:?}",
-                                    def,
-                                    substs,
-                                    path,
-                                );
+                                match path.res {
+                                    Res::Def(DefKind::TyAlias, _) => {
+                                        // FIXME: Ideally we should support this. For that
+                                        // we have to map back from the self type to the
+                                        // type alias though. That's difficult.
+                                        //
+                                        // See the `need_type_info/type-alias.rs` test for
+                                        // some examples.
+                                    }
+                                    // There cannot be inference variables in the self type,
+                                    // so there's nothing for us to do here.
+                                    Res::SelfTy { .. } => {}
+                                    _ => warn!(
+                                        "unexpected path: def={:?} substs={:?} path={:?}",
+                                        def, substs, path,
+                                    ),
+                                }
                             } else {
                                 return Box::new(
                                     self.resolved_path_inferred_subst_iter(path, substs)
@@ -958,26 +970,8 @@ impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
                 generics.own_substs(substs).iter().position(|&arg| self.generic_arg_is_target(arg))
             {
                 let substs = self.infcx.resolve_vars_if_possible(substs);
-                let num_args = generics
-                    .params
-                    .iter()
-                    .rev()
-                    .filter(|&p| !matches!(p.kind, GenericParamDefKind::Lifetime))
-                    .skip_while(|&param| {
-                        if let Some(default) = param.default_value(tcx) {
-                            // FIXME: Using structural comparisions has a bunch of false negatives.
-                            //
-                            // We should instead try to replace inference variables with placeholders and
-                            // then use `infcx.can_eq`. That probably should be a separate method
-                            // generally used during error reporting.
-                            default.subst(tcx, substs) == substs[param.index as usize]
-                        } else {
-                            false
-                        }
-                    })
-                    .count();
-                let generic_args =
-                    &generics.own_substs(substs)[generics.own_counts().lifetimes..][..num_args];
+                let generic_args = &generics.own_substs_no_defaults(tcx, substs)
+                    [generics.own_counts().lifetimes..];
                 let span = match expr.kind {
                     ExprKind::MethodCall(path, _, _) => path.ident.span,
                     _ => expr.span,

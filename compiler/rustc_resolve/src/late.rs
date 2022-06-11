@@ -513,6 +513,9 @@ struct DiagnosticMetadata<'ast> {
 
     /// The current impl items (used to suggest).
     current_impl_items: Option<&'ast [P<AssocItem>]>,
+
+    /// When processing impl trait
+    currently_processing_impl_trait: Option<(TraitRef, Ty)>,
 }
 
 struct LateResolutionVisitor<'a, 'b, 'ast> {
@@ -2087,18 +2090,22 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     fn with_optional_trait_ref<T>(
         &mut self,
         opt_trait_ref: Option<&TraitRef>,
+        self_type: &'ast Ty,
         f: impl FnOnce(&mut Self, Option<DefId>) -> T,
     ) -> T {
         let mut new_val = None;
         let mut new_id = None;
         if let Some(trait_ref) = opt_trait_ref {
             let path: Vec<_> = Segment::from_path(&trait_ref.path);
+            self.diagnostic_metadata.currently_processing_impl_trait =
+                Some((trait_ref.clone(), self_type.clone()));
             let res = self.smart_resolve_path_fragment(
                 None,
                 &path,
                 PathSource::Trait(AliasPossibility::No),
                 Finalize::new(trait_ref.ref_id, trait_ref.path.span),
             );
+            self.diagnostic_metadata.currently_processing_impl_trait = None;
             if let Some(def_id) = res.base_res().opt_def_id() {
                 new_id = Some(def_id);
                 new_val = Some((self.r.expect_module(def_id), trait_ref.clone()));
@@ -2139,7 +2146,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             this.with_self_rib(Res::SelfTy { trait_: None, alias_to: None }, |this| {
                 this.with_lifetime_rib(LifetimeRibKind::AnonymousCreateParameter(item_id), |this| {
                     // Resolve the trait reference, if necessary.
-                    this.with_optional_trait_ref(opt_trait_reference.as_ref(), |this, trait_id| {
+                    this.with_optional_trait_ref(opt_trait_reference.as_ref(), self_type, |this, trait_id| {
                         let item_def_id = this.r.local_def_id(item_id);
 
                         // Register the trait definitions from here.

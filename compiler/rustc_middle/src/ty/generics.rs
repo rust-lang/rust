@@ -228,8 +228,47 @@ impl<'tcx> Generics {
         })
     }
 
+    /// Returns the substs corresponding to the generic parameters
+    /// of this item, excluding `Self`.
+    ///
+    /// **This should only be used for diagnostics purposes.**
+    pub fn own_substs_no_defaults(
+        &'tcx self,
+        tcx: TyCtxt<'tcx>,
+        substs: &'tcx [ty::GenericArg<'tcx>],
+    ) -> &'tcx [ty::GenericArg<'tcx>] {
+        let mut own_params = self.parent_count..self.count();
+        if self.has_self && self.parent.is_none() {
+            own_params.start = 1;
+        }
+
+        // Filter the default arguments.
+        //
+        // This currently uses structural equality instead
+        // of semantic equivalance. While not ideal, that's
+        // good enough for now as this should only be used
+        // for diagnostics anyways.
+        own_params.end -= self
+            .params
+            .iter()
+            .rev()
+            .take_while(|param| {
+                param.default_value(tcx).map_or(false, |default| {
+                    default.subst(tcx, substs) == substs[param.index as usize]
+                })
+            })
+            .count();
+
+        &substs[own_params]
+    }
+
     /// Returns the substs corresponding to the generic parameters of this item, excluding `Self`.
-    pub fn own_substs(&'tcx self, substs: SubstsRef<'tcx>) -> &'tcx [ty::GenericArg<'tcx>] {
+    ///
+    /// **This should only be used for diagnostics purposes.**
+    pub fn own_substs(
+        &'tcx self,
+        substs: &'tcx [ty::GenericArg<'tcx>],
+    ) -> &'tcx [ty::GenericArg<'tcx>] {
         let own = &substs[self.parent_count..][..self.params.len()];
         if self.has_self && self.parent.is_none() { &own[1..] } else { &own }
     }

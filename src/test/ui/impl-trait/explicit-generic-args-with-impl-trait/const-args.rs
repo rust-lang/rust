@@ -1,3 +1,5 @@
+// check-pass
+
 trait Usizer {
     fn m(self) -> usize;
 }
@@ -16,5 +18,4 @@ impl Usizer for Usizable {
 
 fn main() {
     assert_eq!(f::<4usize>(Usizable), 20usize);
-//~^ ERROR cannot provide explicit generic arguments when `impl Trait` is used in argument position
 }
