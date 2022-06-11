@@ -12,6 +12,7 @@ use rustc_query_system::query::{QueryContext, QueryJobId, QueryMap, QuerySideEff
 use rustc_data_structures::sync::Lock;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::{Diagnostic, Handler};
+use rustc_serialize::opaque;
 
 use std::any::Any;
 use std::num::NonZeroU64;
@@ -139,7 +140,7 @@ impl<'tcx> QueryCtxt<'tcx> {
 
     pub(super) fn encode_query_results(
         self,
-        encoder: &mut on_disk_cache::CacheEncoder<'_, 'tcx>,
+        encoder: &mut on_disk_cache::CacheEncoder<'_, 'tcx, opaque::FileEncoder>,
         query_result_index: &mut on_disk_cache::EncodedDepNodeIndex,
     ) {
         macro_rules! encode_queries {

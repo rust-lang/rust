@@ -1,7 +1,7 @@
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::OnceCell;
 use rustc_index::bit_set::BitSet;
-use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
+use rustc_serialize as serialize;
 
 use super::*;
 
@@ -365,12 +365,12 @@ impl PostorderCache {
     }
 }
 
-impl<S: Encoder> Encodable<S> for PostorderCache {
+impl<S: serialize::Encoder> serialize::Encodable<S> for PostorderCache {
     #[inline]
     fn encode(&self, _s: &mut S) {}
 }
 
-impl<D: Decoder> Decodable<D> for PostorderCache {
+impl<D: serialize::Decoder> serialize::Decodable<D> for PostorderCache {
     #[inline]
     fn decode(_: &mut D) -> Self {
         Self::new()
