@@ -185,7 +185,7 @@ pub fn local_used_after_expr(cx: &LateContext<'_>, local_id: HirId, after: &Expr
             matches!(
                 node,
                 Node::Expr(Expr {
-                    kind: ExprKind::Loop(..) | ExprKind::Closure(..),
+                    kind: ExprKind::Loop(..) | ExprKind::Closure { .. },
                     ..
                 })
             )

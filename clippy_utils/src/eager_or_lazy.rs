@@ -198,7 +198,7 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
                 | ExprKind::Let(..)
                 | ExprKind::If(..)
                 | ExprKind::Match(..)
-                | ExprKind::Closure(..)
+                | ExprKind::Closure { .. }
                 | ExprKind::Field(..)
                 | ExprKind::Path(_)
                 | ExprKind::AddrOf(..)
