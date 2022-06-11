@@ -157,7 +157,7 @@ fn build_and_emit_lint(
         .multipart_suggestion(
             "consider immediately dropping the value",
             vec![
-                (init_span.shrink_to_lo(), "drop(".to_string()),
+                (local.span.until(init_span), "drop(".to_string()),
                 (init_span.shrink_to_hi(), ")".to_string()),
             ],
             Applicability::MachineApplicable,

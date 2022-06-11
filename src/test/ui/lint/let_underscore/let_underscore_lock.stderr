@@ -11,8 +11,8 @@ LL |     let _unused = data.lock().unwrap();
    |         ~~~~~~~
 help: consider immediately dropping the value
    |
-LL |     let _ = drop(data.lock().unwrap());
-   |             +++++                    +
+LL |     drop(data.lock().unwrap());
+   |     ~~~~~                    +
 
 error: aborting due to previous error
 

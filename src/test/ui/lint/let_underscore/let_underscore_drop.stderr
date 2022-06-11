@@ -11,8 +11,8 @@ LL |     let _unused = NontrivialDrop;
    |         ~~~~~~~
 help: consider immediately dropping the value
    |
-LL |     let _ = drop(NontrivialDrop);
-   |             +++++              +
+LL |     drop(NontrivialDrop);
+   |     ~~~~~              +
 
 warning: 1 warning emitted
 
