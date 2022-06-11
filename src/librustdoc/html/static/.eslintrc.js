@@ -85,5 +85,6 @@ module.exports = {
         "no-implied-eval": "error",
         "no-label-var": "error",
         "no-lonely-if": "error",
+        "no-mixed-operators": "error",
     }
 };
