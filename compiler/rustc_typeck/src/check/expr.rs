@@ -1561,71 +1561,73 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // FIXME: We are currently creating two branches here in order to maintain
             // consistency. But they should be merged as much as possible.
             let fru_tys = if self.tcx.features().type_changing_struct_update {
-                if let ty::Adt(adt, substs) = adt_ty.kind() && adt.is_struct() {
-                    // Make an ADT with fresh inference substitutions. This
-                    // will allow us to guide inference along so that, e.g.
+                if adt.is_struct() {
+                    // Make an ADT with fresh inference substitutions.
+                    let fresh_substs = self.fresh_substs_for_item(base_expr.span, adt.did());
+                    // We do subtyping on the FRU fields first, so we can
+                    // learn exactly what types we expect the base expr
+                    // needs constrained to be compatible with the struct
+                    // type we expect from the expectation value.
+                    let fru_tys = variant
+                        .fields
+                        .iter()
+                        .map(|f| {
+                            let fru_ty = self.normalize_associated_types_in(
+                                expr_span,
+                                self.field_ty(base_expr.span, f, fresh_substs),
+                            );
+                            let ident = self.tcx.adjust_ident(f.ident(self.tcx), variant.def_id);
+                            if let Some(_) = remaining_fields.remove(&ident) {
+                                let target_ty = self.field_ty(base_expr.span, f, substs);
+                                let cause = self.misc(base_expr.span);
+                                match self.at(&cause, self.param_env).sup(target_ty, fru_ty) {
+                                    Ok(InferOk { obligations, value: () }) => {
+                                        self.register_predicates(obligations)
+                                    }
+                                    // FIXME: Need better diagnostics for `FieldMisMatch` error
+                                    Err(_) => {
+                                        self.report_mismatched_types(
+                                            &cause,
+                                            target_ty,
+                                            fru_ty,
+                                            FieldMisMatch(variant.name, ident.name),
+                                        )
+                                        .emit();
+                                    }
+                                }
+                            }
+                            self.resolve_vars_if_possible(fru_ty)
+                        })
+                        .collect();
+                    // The use of fresh substs that we have subtyped against
+                    // our existing ADT type allows us to guide inference along
+                    // so that, e.g.
                     // ```
-                    // let x = MyStruct<'a, B, const C: usize> {
-                    //    f: 1,
-                    //    ..Default::default()
+                    // MyStruct<'a, F1, F2, const C: usize> {
+                    //     f: F1,
+                    //     // Other fields that reference `'a`, `F2`, and `C`
+                    // }
+                    //
+                    // let x = MyStruct {
+                    //    f: 1usize,
+                    //    ..other_struct
                     // };
                     // ```
-                    // will have the default base expression constrained to
-                    // `MyStruct<'_, _, _>`, as opposed to just `_`... This
-                    // will allow us to then do a subtyping relation on all
-                    // of the `remaining_fields` below, per the RFC.
-                    let fresh_substs = self.fresh_substs_for_item(base_expr.span, adt.did());
+                    // will have the `other_struct` expression constrained to
+                    // `MyStruct<'a, _, F2, C>`, as opposed to just `_`...
+                    // This is important to allow coercions to happen in
+                    // `other_struct` itself. See `coerce-in-base-expr.rs`.
                     let fresh_base_ty = self.tcx.mk_adt(*adt, fresh_substs);
                     let base_ty = self.check_expr_has_type_or_error(
                         base_expr,
-                        fresh_base_ty,
+                        self.resolve_vars_if_possible(fresh_base_ty),
                         |_| {
                             error_happened = true;
                         },
                     );
-                    let base_ty = self.shallow_resolve(base_ty);
-                    if let ty::Adt(base_adt, base_substs) = base_ty.kind() && adt == base_adt {
-                        variant
-                            .fields
-                            .iter()
-                            .map(|f| {
-                                let fru_ty = self.normalize_associated_types_in(
-                                    expr_span,
-                                    self.field_ty(base_expr.span, f, base_substs),
-                                );
-                                let ident = self
-                                    .tcx
-                                    .adjust_ident(f.ident(self.tcx), variant.def_id);
-                                if let Some(_) = remaining_fields.remove(&ident) {
-                                    let target_ty =
-                                        self.field_ty(base_expr.span, f, substs);
-                                    let cause = self.misc(base_expr.span);
-                                    match self
-                                        .at(&cause, self.param_env)
-                                        .sup(target_ty, fru_ty)
-                                    {
-                                        Ok(InferOk { obligations, value: () }) => {
-                                            self.register_predicates(obligations)
-                                        }
-                                        // FIXME: Need better diagnostics for `FieldMisMatch` error
-                                        Err(_) => {
-                                            self.report_mismatched_types(
-                                                &cause,
-                                                target_ty,
-                                                fru_ty,
-                                                FieldMisMatch(variant.name, ident.name),
-                                            )
-                                            .emit();
-                                        }
-                                    }
-                                }
-                                self.resolve_vars_if_possible(fru_ty)
-                            })
-                            .collect()
+                    if !error_happened && !base_ty.references_error() {
+                        fru_tys
                     } else {
-                        if !error_happened && !base_ty.references_error() {
-                            span_bug!(base_expr.span, "expected an error to have been reported in `check_expr_has_type_or_error`");
-                        }
                         return;
                     }
                 } else {
