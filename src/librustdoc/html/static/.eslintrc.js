@@ -86,5 +86,6 @@ module.exports = {
         "no-label-var": "error",
         "no-lonely-if": "error",
         "no-mixed-operators": "error",
+        "no-multi-assign": "error",
     }
 };
