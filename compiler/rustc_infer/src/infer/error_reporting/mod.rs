@@ -1588,7 +1588,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                             Mismatch::Variable(infer::ExpectedFound { expected, found }),
                         )
                     }
-                    ValuePairs::TraitRefs(_) => (false, Mismatch::Fixed("trait")),
+                    ValuePairs::TraitRefs(_) | ValuePairs::PolyTraitRefs(_) => {
+                        (false, Mismatch::Fixed("trait"))
+                    }
                     _ => (false, Mismatch::Fixed("type")),
                 };
                 let vals = match self.values_str(values) {
