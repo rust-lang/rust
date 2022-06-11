@@ -18,8 +18,8 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, arg: &hir::Expr<
         return;
     }
 
-    if let hir::ExprKind::Closure(_, _, body_id, ..) = arg.kind {
-        let body = cx.tcx.hir().body(body_id);
+    if let hir::ExprKind::Closure { body, .. } = arg.kind {
+        let body = cx.tcx.hir().body(body);
         let arg_id = body.params[0].pat.hir_id;
         let mutates_arg =
             mutated_variables(&body.value, cx).map_or(true, |used_mutably| used_mutably.contains(&arg_id));

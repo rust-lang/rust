@@ -188,7 +188,7 @@ impl<'a, 'tcx> DropRangeVisitor<'a, 'tcx> {
             | ExprKind::If(..)
             | ExprKind::Loop(..)
             | ExprKind::Match(..)
-            | ExprKind::Closure(..)
+            | ExprKind::Closure { .. }
             | ExprKind::Block(..)
             | ExprKind::Assign(..)
             | ExprKind::AssignOp(..)
@@ -444,7 +444,7 @@ impl<'a, 'tcx> Visitor<'tcx> for DropRangeVisitor<'a, 'tcx> {
             | ExprKind::Block(..)
             | ExprKind::Box(..)
             | ExprKind::Cast(..)
-            | ExprKind::Closure(..)
+            | ExprKind::Closure { .. }
             | ExprKind::ConstBlock(..)
             | ExprKind::DropTemps(..)
             | ExprKind::Err

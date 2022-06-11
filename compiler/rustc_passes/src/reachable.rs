@@ -273,7 +273,7 @@ impl<'tcx> ReachableContext<'tcx> {
                 }
                 hir::ImplItemKind::TyAlias(_) => {}
             },
-            Node::Expr(&hir::Expr { kind: hir::ExprKind::Closure(.., body, _, _), .. }) => {
+            Node::Expr(&hir::Expr { kind: hir::ExprKind::Closure { body, .. }, .. }) => {
                 self.visit_nested_body(body);
             }
             // Nothing to recurse on for these

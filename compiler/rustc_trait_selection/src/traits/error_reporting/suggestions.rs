@@ -775,14 +775,14 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         // Get the name of the callable and the arguments to be used in the suggestion.
         let (snippet, sugg) = match hir.get_if_local(def_id) {
             Some(hir::Node::Expr(hir::Expr {
-                kind: hir::ExprKind::Closure(_, decl, _, span, ..),
+                kind: hir::ExprKind::Closure { fn_decl, fn_decl_span, .. },
                 ..
             })) => {
-                err.span_label(*span, "consider calling this closure");
+                err.span_label(*fn_decl_span, "consider calling this closure");
                 let Some(name) = self.get_closure_name(def_id, err, &msg) else {
                     return false;
                 };
-                let args = decl.inputs.iter().map(|_| "_").collect::<Vec<_>>().join(", ");
+                let args = fn_decl.inputs.iter().map(|_| "_").collect::<Vec<_>>().join(", ");
                 let sugg = format!("({})", args);
                 (format!("{}{}", name, sugg), sugg)
             }

@@ -182,7 +182,7 @@ fn never_loop_expr(expr: &Expr<'_>, main_loop_id: HirId) -> NeverLoopResult {
             .fold(NeverLoopResult::Otherwise, combine_both),
         ExprKind::Struct(_, _, None)
         | ExprKind::Yield(_, _)
-        | ExprKind::Closure(_, _, _, _, _)
+        | ExprKind::Closure { .. }
         | ExprKind::Path(_)
         | ExprKind::ConstBlock(_)
         | ExprKind::Lit(_)

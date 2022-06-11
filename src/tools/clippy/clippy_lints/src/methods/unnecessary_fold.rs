@@ -29,8 +29,8 @@ pub(super) fn check(
     ) {
         if_chain! {
             // Extract the body of the closure passed to fold
-            if let hir::ExprKind::Closure(_, _, body_id, _, _) = acc.kind;
-            let closure_body = cx.tcx.hir().body(body_id);
+            if let hir::ExprKind::Closure { body, .. } = acc.kind;
+            let closure_body = cx.tcx.hir().body(body);
             let closure_expr = peel_blocks(&closure_body.value);
 
             // Check if the closure body is of the form `acc <op> some_expr(x)`

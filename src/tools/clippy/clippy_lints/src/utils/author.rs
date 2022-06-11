@@ -466,7 +466,13 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 self.expr(scrutinee);
                 self.slice(arms, |arm| self.arm(arm));
             },
-            ExprKind::Closure(capture_by, fn_decl, body_id, _, movability) => {
+            ExprKind::Closure {
+                capture_clause,
+                fn_decl,
+                body: body_id,
+                movability,
+                ..
+            } => {
                 let movability = OptionPat::new(movability.map(|m| format!("Movability::{m:?}")));
 
                 let ret_ty = match fn_decl.output {
@@ -475,7 +481,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 };
 
                 bind!(self, fn_decl, body_id);
-                kind!("Closure(CaptureBy::{capture_by:?}, {fn_decl}, {body_id}, _, {movability})");
+                kind!("Closure(CaptureBy::{capture_clause:?}, {fn_decl}, {body_id}, _, {movability})");
                 out!("if let {ret_ty} = {fn_decl}.output;");
                 self.body(body_id);
             },

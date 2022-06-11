@@ -169,12 +169,12 @@ fn unit_closure<'tcx>(
     expr: &hir::Expr<'_>,
 ) -> Option<(&'tcx hir::Param<'tcx>, &'tcx hir::Expr<'tcx>)> {
     if_chain! {
-        if let hir::ExprKind::Closure(_, decl, inner_expr_id, _, _) = expr.kind;
-        let body = cx.tcx.hir().body(inner_expr_id);
+        if let hir::ExprKind::Closure { fn_decl, body, .. } = expr.kind;
+        let body = cx.tcx.hir().body(body);
         let body_expr = &body.value;
-        if decl.inputs.len() == 1;
+        if fn_decl.inputs.len() == 1;
         if is_unit_expression(cx, body_expr);
-        if let Some(binding) = iter_input_pats(decl, body).next();
+        if let Some(binding) = iter_input_pats(fn_decl, body).next();
         then {
             return Some((binding, body_expr));
         }

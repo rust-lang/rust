@@ -22,8 +22,8 @@ pub(super) fn check<'tcx>(
     let is_result = is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(recv), sym::Result);
 
     if is_option || is_result {
-        if let hir::ExprKind::Closure(_, _, eid, _, _) = arg.kind {
-            let body = cx.tcx.hir().body(eid);
+        if let hir::ExprKind::Closure { body, .. } = arg.kind {
+            let body = cx.tcx.hir().body(body);
             let body_expr = &body.value;
 
             if usage::BindingUsageFinder::are_params_used(cx, body) {

@@ -387,7 +387,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     continue;
                 }
 
-                let is_closure = matches!(arg.kind, ExprKind::Closure(..));
+                let is_closure = matches!(arg.kind, ExprKind::Closure { .. });
                 if is_closure != check_closures {
                     continue;
                 }
@@ -1774,10 +1774,10 @@ fn label_fn_like<'tcx>(
     } else {
         match tcx.hir().get_if_local(def_id) {
             Some(hir::Node::Expr(hir::Expr {
-                kind: hir::ExprKind::Closure(_, _, _, span, ..),
+                kind: hir::ExprKind::Closure { fn_decl_span, .. },
                 ..
             })) => {
-                let spans: MultiSpan = (*span).into();
+                let spans: MultiSpan = (*fn_decl_span).into();
 
                 // Note: We don't point to param spans here because they overlap
                 // with the closure span itself

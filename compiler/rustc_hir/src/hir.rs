@@ -1651,7 +1651,7 @@ impl Expr<'_> {
             ExprKind::Let(..) => ExprPrecedence::Let,
             ExprKind::Loop(..) => ExprPrecedence::Loop,
             ExprKind::Match(..) => ExprPrecedence::Match,
-            ExprKind::Closure(..) => ExprPrecedence::Closure,
+            ExprKind::Closure { .. } => ExprPrecedence::Closure,
             ExprKind::Block(..) => ExprPrecedence::Block,
             ExprKind::Assign(..) => ExprPrecedence::Assign,
             ExprKind::AssignOp(..) => ExprPrecedence::AssignOp,
@@ -1711,7 +1711,7 @@ impl Expr<'_> {
             | ExprKind::Tup(..)
             | ExprKind::If(..)
             | ExprKind::Match(..)
-            | ExprKind::Closure(..)
+            | ExprKind::Closure { .. }
             | ExprKind::Block(..)
             | ExprKind::Repeat(..)
             | ExprKind::Array(..)
@@ -1794,7 +1794,7 @@ impl Expr<'_> {
             | ExprKind::Match(..)
             | ExprKind::MethodCall(..)
             | ExprKind::Call(..)
-            | ExprKind::Closure(..)
+            | ExprKind::Closure { .. }
             | ExprKind::Block(..)
             | ExprKind::Repeat(..)
             | ExprKind::Break(..)
@@ -1929,7 +1929,13 @@ pub enum ExprKind<'hir> {
     ///
     /// This may also be a generator literal or an `async block` as indicated by the
     /// `Option<Movability>`.
-    Closure(CaptureBy, &'hir FnDecl<'hir>, BodyId, Span, Option<Movability>),
+    Closure {
+        capture_clause: CaptureBy,
+        fn_decl: &'hir FnDecl<'hir>,
+        body: BodyId,
+        fn_decl_span: Span,
+        movability: Option<Movability>,
+    },
     /// A block (e.g., `'label: { ... }`).
     Block(&'hir Block<'hir>, Option<Label>),
 
@@ -3455,7 +3461,7 @@ impl<'hir> Node<'hir> {
                 _ => None,
             },
             Node::Expr(e) => match e.kind {
-                ExprKind::Closure(..) => Some(FnKind::Closure),
+                ExprKind::Closure { .. } => Some(FnKind::Closure),
                 _ => None,
             },
             _ => None,

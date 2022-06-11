@@ -369,8 +369,8 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
                     self.visit_expr(expr);
                 }
             },
-            ExprKind::Closure(_, _, body_id, ..) => {
-                let body = self.cx.tcx.hir().body(body_id);
+            ExprKind::Closure { body, .. } => {
+                let body = self.cx.tcx.hir().body(body);
                 self.visit_expr(&body.value);
             },
             _ => walk_expr(self, expr),

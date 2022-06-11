@@ -1078,7 +1078,9 @@ impl<'a> State<'a> {
     // parses as the erroneous construct `if (return {})`, not `if (return) {}`.
     fn cond_needs_par(expr: &hir::Expr<'_>) -> bool {
         match expr.kind {
-            hir::ExprKind::Break(..) | hir::ExprKind::Closure(..) | hir::ExprKind::Ret(..) => true,
+            hir::ExprKind::Break(..) | hir::ExprKind::Closure { .. } | hir::ExprKind::Ret(..) => {
+                true
+            }
             _ => contains_exterior_struct_lit(expr),
         }
     }
@@ -1455,10 +1457,16 @@ impl<'a> State<'a> {
                 }
                 self.bclose(expr.span);
             }
-            hir::ExprKind::Closure(capture_clause, ref decl, body, _fn_decl_span, _gen) => {
+            hir::ExprKind::Closure {
+                capture_clause,
+                ref fn_decl,
+                body,
+                fn_decl_span: _,
+                movability: _,
+            } => {
                 self.print_capture_clause(capture_clause);
 
-                self.print_closure_params(&decl, body);
+                self.print_closure_params(&fn_decl, body);
                 self.space();
 
                 // This is a bare expression.

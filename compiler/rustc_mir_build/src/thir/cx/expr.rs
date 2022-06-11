@@ -418,7 +418,7 @@ impl<'tcx> Cx<'tcx> {
                 }
             },
 
-            hir::ExprKind::Closure(..) => {
+            hir::ExprKind::Closure { .. } => {
                 let closure_ty = self.typeck_results().expr_ty(expr);
                 let (def_id, substs, movability) = match *closure_ty.kind() {
                     ty::Closure(def_id, substs) => (def_id, UpvarSubsts::Closure(substs), None),

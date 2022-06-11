@@ -305,7 +305,7 @@ impl<'a, 'tcx> Visitor<'tcx> for SigDropHelper<'a, 'tcx> {
             ExprKind::Break(_, _) |
             ExprKind::Cast(_, _) |
             // Don't want to check the closure itself, only invocation, which is covered by MethodCall
-            ExprKind::Closure(_, _, _, _, _) |
+            ExprKind::Closure { .. } |
             ExprKind::ConstBlock(_) |
             ExprKind::Continue(_) |
             ExprKind::DropTemps(_) |

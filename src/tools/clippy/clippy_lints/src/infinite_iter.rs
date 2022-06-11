@@ -158,8 +158,8 @@ fn is_infinite(cx: &LateContext<'_>, expr: &Expr<'_>) -> Finiteness {
                 }
             }
             if method.ident.name == sym!(flat_map) && args.len() == 2 {
-                if let ExprKind::Closure(_, _, body_id, _, _) = args[1].kind {
-                    let body = cx.tcx.hir().body(body_id);
+                if let ExprKind::Closure { body, .. } = args[1].kind {
+                    let body = cx.tcx.hir().body(body);
                     return is_infinite(cx, &body.value);
                 }
             }
