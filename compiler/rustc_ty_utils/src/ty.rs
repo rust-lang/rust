@@ -5,7 +5,6 @@ use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{
     self, Binder, EarlyBinder, Predicate, PredicateKind, ToPredicate, Ty, TyCtxt,
 };
-use rustc_span::Span;
 use rustc_trait_selection::traits;
 
 fn sized_constraint_for_ty<'tcx>(
@@ -101,21 +100,6 @@ fn adt_sized_constraint(tcx: TyCtxt<'_>, def_id: DefId) -> ty::AdtSizedConstrain
     debug!("adt_sized_constraint: {:?} => {:?}", def, result);
 
     ty::AdtSizedConstraint(result)
-}
-
-fn def_ident_span(tcx: TyCtxt<'_>, def_id: DefId) -> Option<Span> {
-    tcx.hir()
-        .get_if_local(def_id)
-        .and_then(|node| match node {
-            // A `Ctor` doesn't have an identifier itself, but its parent
-            // struct/variant does. Compare with `hir::Map::opt_span`.
-            hir::Node::Ctor(ctor) => ctor
-                .ctor_hir_id()
-                .and_then(|ctor_id| tcx.hir().find(tcx.hir().get_parent_node(ctor_id)))
-                .and_then(|parent| parent.ident()),
-            _ => node.ident(),
-        })
-        .map(|ident| ident.span)
 }
 
 /// See `ParamEnv` struct definition for details.
@@ -480,7 +464,6 @@ pub fn provide(providers: &mut ty::query::Providers) {
     *providers = ty::query::Providers {
         asyncness,
         adt_sized_constraint,
-        def_ident_span,
         param_env,
         param_env_reveal_all_normalized,
         instance_def_size_estimate,

@@ -5,6 +5,12 @@ LL |     Ok(())
    |     -- ^^ expected `u16`, found `()`
    |     |
    |     arguments to this enum variant are incorrect
+   |
+note: tuple variant defined here
+  --> $SRC_DIR/core/src/result.rs:LL:COL
+   |
+LL |     Ok(#[stable(feature = "rust1", since = "1.0.0")] T),
+   |     ^^
 
 error[E0308]: mismatched types
   --> $DIR/issue-87461.rs:17:8
@@ -13,6 +19,12 @@ LL |     Ok(())
    |     -- ^^ expected `u16`, found `()`
    |     |
    |     arguments to this enum variant are incorrect
+   |
+note: tuple variant defined here
+  --> $SRC_DIR/core/src/result.rs:LL:COL
+   |
+LL |     Ok(#[stable(feature = "rust1", since = "1.0.0")] T),
+   |     ^^
 
 error[E0308]: mismatched types
   --> $DIR/issue-87461.rs:26:12
@@ -21,6 +33,12 @@ LL |         Ok(())
    |         -- ^^ expected `u16`, found `()`
    |         |
    |         arguments to this enum variant are incorrect
+   |
+note: tuple variant defined here
+  --> $SRC_DIR/core/src/result.rs:LL:COL
+   |
+LL |     Ok(#[stable(feature = "rust1", since = "1.0.0")] T),
+   |     ^^
 
 error: aborting due to 3 previous errors
 

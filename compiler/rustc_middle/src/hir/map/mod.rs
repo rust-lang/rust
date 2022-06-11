@@ -912,27 +912,33 @@ impl<'hir> Map<'hir> {
         }
     }
 
+    #[inline]
+    fn opt_ident(self, id: HirId) -> Option<Ident> {
+        match self.get(id) {
+            Node::Binding(&Pat { kind: PatKind::Binding(_, _, ident, _), .. }) => Some(ident),
+            // A `Ctor` doesn't have an identifier itself, but its parent
+            // struct/variant does. Compare with `hir::Map::opt_span`.
+            Node::Ctor(..) => match self.find(self.get_parent_node(id))? {
+                Node::Item(item) => Some(item.ident),
+                Node::Variant(variant) => Some(variant.ident),
+                _ => unreachable!(),
+            },
+            node => node.ident(),
+        }
+    }
+
+    #[inline]
+    pub(super) fn opt_ident_span(self, id: HirId) -> Option<Span> {
+        self.opt_ident(id).map(|ident| ident.span)
+    }
+
+    #[inline]
     pub fn opt_name(self, id: HirId) -> Option<Symbol> {
-        Some(match self.get(id) {
-            Node::Item(i) => i.ident.name,
-            Node::ForeignItem(fi) => fi.ident.name,
-            Node::ImplItem(ii) => ii.ident.name,
-            Node::TraitItem(ti) => ti.ident.name,
-            Node::Variant(v) => v.ident.name,
-            Node::Field(f) => f.ident.name,
-            Node::Lifetime(lt) => lt.name.ident().name,
-            Node::GenericParam(param) => param.name.ident().name,
-            Node::Binding(&Pat { kind: PatKind::Binding(_, _, l, _), .. }) => l.name,
-            Node::Ctor(..) => self.name(HirId::make_owner(self.get_parent_item(id))),
-            _ => return None,
-        })
+        self.opt_ident(id).map(|ident| ident.name)
     }
 
     pub fn name(self, id: HirId) -> Symbol {
-        match self.opt_name(id) {
-            Some(name) => name,
-            None => bug!("no name for {}", self.node_to_string(id)),
-        }
+        self.opt_name(id).unwrap_or_else(|| bug!("no name for {}", self.node_to_string(id)))
     }
 
     /// Given a node ID, gets a list of attributes associated with the AST
@@ -1008,7 +1014,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn span_if_local(self, id: DefId) -> Option<Span> {
-        id.as_local().and_then(|id| self.opt_span(self.local_def_id_to_hir_id(id)))
+        if id.is_local() { Some(self.tcx.def_span(id)) } else { None }
     }
 
     pub fn res_span(self, res: Res) -> Option<Span> {
