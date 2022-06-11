@@ -126,24 +126,26 @@ pub fn futex<'tcx>(
                 Align::from_bytes(4).unwrap(),
                 CheckInAllocMsg::MemoryAccessTest,
             )?;
+            // This SeqCst fence is paired with the SeqCst fence in futex_wake.
+            // Together, they make sure that our read on addr observes the latest
+            // value in modification order.
+            //
+            // If there is another thread which has changed the value of
+            // addr (to something other than expected) and called futex_wake
+            // before we get to run, then we must not block our thread
+            // because there'll be no one to wake us. We must see
+            // the value changed by the other thread and return without
+            // actually waiting.
+            this.atomic_fence(&[], AtomicFenceOp::SeqCst)?;
             // Read an `i32` through the pointer, regardless of any wrapper types.
             // It's not uncommon for `addr` to be passed as another type than `*mut i32`, such as `*const AtomicI32`.
             // FIXME: this fails if `addr` is not a pointer type.
-            // The atomic ordering for futex(https://man7.org/linux/man-pages/man2/futex.2.html):
-            //  "The load of the value of the futex word is an
-            //   atomic memory access (i.e., using atomic machine instructions
-            //   of the respective architecture).  This load, the comparison
-            //   with the expected value, and starting to sleep are performed
-            //   atomically and totally ordered with respect to other futex
-            //   operations on the same futex word."
-            // SeqCst is total order over all operations.
-            // FIXME: check if this should be changed when weak memory orders are added.
             let futex_val = this
                 .read_scalar_at_offset_atomic(
                     &addr.into(),
                     0,
                     this.machine.layouts.i32,
-                    AtomicReadOp::SeqCst,
+                    AtomicReadOp::Relaxed,
                 )?
                 .to_i32()?;
             if val == futex_val {
@@ -203,6 +205,10 @@ pub fn futex<'tcx>(
                 this.write_scalar(Scalar::from_machine_isize(-1, this), dest)?;
                 return Ok(());
             }
+            // Together with the SeqCst fence in futex_wait, this makes sure that futex_wait
+            // will see the latest value on addr which could be changed by our caller
+            // before doing the syscall.
+            this.atomic_fence(&[], AtomicFenceOp::SeqCst)?;
             let mut n = 0;
             for _ in 0..val {
                 if let Some(thread) = this.futex_wake(addr_usize, bitset) {
