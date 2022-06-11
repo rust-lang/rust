@@ -1,0 +1,18 @@
+error: internal compiler error: no errors encountered even though `delay_span_bug` issued
+
+error: internal compiler error: broken MIR in Item(WithOptConstParam { did: DefId(0:11 ~ select_param_env_instead_of_blanket[b1a3]::foo), const_param_did: None }) (end of phase transition to Optimized) at bb0[1]:
+                                encountered `Assign((_1, const 0_usize))` with incompatible types:
+                                left-hand side has type: <IntFactory as Factory<T>>::Item
+                                right-hand side has type: usize
+  --> $DIR/select-param-env-instead-of-blanket.rs:41:5
+   |
+LL |     let mut x: <IntFactory as Factory<T>>::Item = bar::<T>();
+   |                                                   ---------- in this inlined function call
+...
+LL |     0usize
+   |     ^^^^^^
+   |
+   = note: delayed at compiler/rustc_const_eval/src/transform/validate.rs:128:36
+
+thread 'rustc' panicked
+
