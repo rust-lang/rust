@@ -1,6 +1,6 @@
 use crate::alloc::Allocator;
 use crate::vec;
-use core::iter::TrustedLen;
+use core::iter::{ByRefSized, TrustedLen};
 use core::slice;
 
 use super::VecDeque;

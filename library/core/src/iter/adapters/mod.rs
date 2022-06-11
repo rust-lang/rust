@@ -32,7 +32,8 @@ pub use self::{
     scan::Scan, skip::Skip, skip_while::SkipWhile, take::Take, take_while::TakeWhile, zip::Zip,
 };
 
-pub(crate) use self::by_ref_sized::ByRefSized;
+#[unstable(feature = "std_internals", issue = "none")]
+pub use self::by_ref_sized::ByRefSized;
 
 #[stable(feature = "iter_cloned", since = "1.1.0")]
 pub use self::cloned::Cloned;
