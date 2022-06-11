@@ -84,5 +84,6 @@ module.exports = {
         "no-implicit-globals": "error",
         "no-implied-eval": "error",
         "no-label-var": "error",
+        "no-lonely-if": "error",
     }
 };
