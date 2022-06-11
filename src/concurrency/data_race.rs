@@ -24,7 +24,7 @@
 //! because it only re-uses vector indexes once all currently-active (not-terminated) threads have an internal
 //! vector clock that happens-after the join operation of the candidate thread. Threads that have not been joined
 //! on are not considered. Since the thread's vector clock will only increase and a data-race implies that
-//! there is some index x where clock\[x\] > thread_clock, when this is true clock\[candidate-idx\] > thread_clock
+//! there is some index x where `clock[x] > thread_clock`, when this is true `clock[candidate-idx] > thread_clock`
 //! can never hold and hence a data-race can never be reported in that vector index again.
 //! This means that the thread-index can be safely re-used, starting on the next timestamp for the newly created
 //! thread.
