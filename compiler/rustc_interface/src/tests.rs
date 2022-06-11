@@ -789,6 +789,7 @@ fn test_debugging_options_tracking_hash() {
     tracked!(thinlto, Some(true));
     tracked!(thir_unsafeck, true);
     tracked!(tls_model, Some(TlsModel::GeneralDynamic));
+    tracked!(translate_remapped_path_to_local_path, false);
     tracked!(trap_unreachable, Some(false));
     tracked!(treat_err_as_bug, NonZeroUsize::new(1));
     tracked!(tune_cpu, Some(String::from("abc")));
