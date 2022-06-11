@@ -971,7 +971,7 @@ Between `ref` and mach ergonomics, the latter is more ergonomic in most cases, a
 
 ## Empty Match Arms
 
-Ues `=> (),` when a match arm is intentionally empty:
+Use `=> (),` when a match arm is intentionally empty:
 
 ```rust
 // GOOD
