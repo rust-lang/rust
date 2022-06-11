@@ -3,8 +3,7 @@
 use crate::build::expr::category::Category;
 use crate::build::ForGuard::{OutsideGuard, RefWithinGuard};
 use crate::build::{BlockAnd, BlockAndExtension, Builder};
-use rustc_hir::def_id::DefId;
-use rustc_hir::HirId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::hir::place::Projection as HirProjection;
 use rustc_middle::hir::place::ProjectionKind as HirProjectionKind;
 use rustc_middle::middle::region;
@@ -57,7 +56,7 @@ pub(crate) enum PlaceBase {
     /// figure out that it is captured until all the `Field` projections are applied.
     Upvar {
         /// HirId of the upvar
-        var_hir_id: HirId,
+        var_hir_id: LocalVarId,
         /// DefId of the closure
         closure_def_id: DefId,
         /// The trait closure implements, `Fn`, `FnMut`, `FnOnce`
@@ -151,12 +150,12 @@ fn is_ancestor_or_same_capture(
 /// `ty::MinCaptureList` of the root variable `var_hir_id`.
 fn compute_capture_idx<'tcx>(
     closure_min_captures: &ty::RootVariableMinCaptureList<'tcx>,
-    var_hir_id: HirId,
+    var_hir_id: LocalVarId,
     root_var_idx: usize,
 ) -> usize {
     let mut res = 0;
     for (var_id, capture_list) in closure_min_captures {
-        if *var_id == var_hir_id {
+        if *var_id == var_hir_id.0 {
             res += root_var_idx;
             break;
         } else {
@@ -176,12 +175,12 @@ fn compute_capture_idx<'tcx>(
 /// Returns None, when the ancestor is not found.
 fn find_capture_matching_projections<'a, 'tcx>(
     typeck_results: &'a ty::TypeckResults<'tcx>,
-    var_hir_id: HirId,
+    var_hir_id: LocalVarId,
     closure_def_id: DefId,
     projections: &[PlaceElem<'tcx>],
 ) -> Option<(usize, &'a ty::CapturedPlace<'tcx>)> {
     let closure_min_captures = typeck_results.closure_min_captures.get(&closure_def_id)?;
-    let root_variable_min_captures = closure_min_captures.get(&var_hir_id)?;
+    let root_variable_min_captures = closure_min_captures.get(&var_hir_id.0)?;
 
     let hir_projections = convert_to_hir_projections_and_truncate_for_capture(projections);
 
@@ -500,8 +499,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 source_info,
             ),
             ExprKind::UpvarRef { closure_def_id, var_hir_id } => {
-                let upvar_id = ty::UpvarId::new(var_hir_id, closure_def_id.expect_local());
-                this.lower_captured_upvar(block, upvar_id)
+                this.lower_captured_upvar(block, closure_def_id.expect_local(), var_hir_id)
             }
 
             ExprKind::VarRef { id } => {
@@ -627,11 +625,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn lower_captured_upvar(
         &mut self,
         block: BasicBlock,
-        upvar_id: ty::UpvarId,
+        closure_expr_id: LocalDefId,
+        var_hir_id: LocalVarId,
     ) -> BlockAnd<PlaceBuilder<'tcx>> {
-        let closure_ty = self
-            .typeck_results
-            .node_type(self.tcx.hir().local_def_id_to_hir_id(upvar_id.closure_expr_id));
+        let closure_ty =
+            self.typeck_results.node_type(self.tcx.hir().local_def_id_to_hir_id(closure_expr_id));
 
         let closure_kind = if let ty::Closure(_, closure_substs) = closure_ty.kind() {
             self.infcx.closure_kind(closure_substs).unwrap()
@@ -641,8 +639,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         };
 
         block.and(PlaceBuilder::from(PlaceBase::Upvar {
-            var_hir_id: upvar_id.var_path.hir_id,
-            closure_def_id: upvar_id.closure_expr_id.to_def_id(),
+            var_hir_id,
+            closure_def_id: closure_expr_id.to_def_id(),
             closure_kind,
         }))
     }
