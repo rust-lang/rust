@@ -191,6 +191,20 @@ pub enum StmtKind<'tcx> {
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 rustc_data_structures::static_assert_size!(Expr<'_>, 104);
 
+#[derive(
+    Clone,
+    Debug,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    HashStable,
+    TyEncodable,
+    TyDecodable,
+    TypeFoldable
+)]
+pub struct LocalVarId(pub hir::HirId);
+
 /// A THIR expression.
 #[derive(Clone, Debug, HashStable)]
 pub struct Expr<'tcx> {
@@ -332,7 +346,7 @@ pub enum ExprKind<'tcx> {
     },
     /// A local variable.
     VarRef {
-        id: hir::HirId,
+        id: LocalVarId,
     },
     /// Used to represent upvars mentioned in a closure/generator
     UpvarRef {
@@ -340,7 +354,7 @@ pub enum ExprKind<'tcx> {
         closure_def_id: DefId,
 
         /// HirId of the root variable
-        var_hir_id: hir::HirId,
+        var_hir_id: LocalVarId,
     },
     /// A borrow, e.g. `&arg`.
     Borrow {
@@ -596,7 +610,7 @@ pub enum PatKind<'tcx> {
         mutability: Mutability,
         name: Symbol,
         mode: BindingMode,
-        var: hir::HirId,
+        var: LocalVarId,
         ty: Ty<'tcx>,
         subpattern: Option<Pat<'tcx>>,
         /// Is this the leftmost occurrence of the binding, i.e., is `var` the
