@@ -895,3 +895,9 @@ impl std::fmt::Display for HexRange {
         write!(f, "[{:#x}..{:#x}]", self.0.start.bytes(), self.0.end().bytes())
     }
 }
+
+/// Helper function used inside the shims of foreign functions to check that
+/// `target_os` is a supported UNIX OS.
+pub fn target_os_is_unix(target_os: &str) -> bool {
+    matches!(target_os, "linux" | "macos")
+}

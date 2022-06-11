@@ -8,6 +8,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_target::abi::Size;
 
+use crate::helpers::target_os_is_unix;
 use crate::*;
 
 /// Check whether an operation that writes to a target buffer was successful.
@@ -55,7 +56,7 @@ impl<'tcx> EnvVars<'tcx> {
                 };
                 if forward {
                     let var_ptr = match target_os {
-                        "linux" | "macos" =>
+                        target if target_os_is_unix(target) =>
                             alloc_env_var_as_c_str(name.as_ref(), value.as_ref(), ecx)?,
                         "windows" => alloc_env_var_as_wide_str(name.as_ref(), value.as_ref(), ecx)?,
                         unsupported =>
