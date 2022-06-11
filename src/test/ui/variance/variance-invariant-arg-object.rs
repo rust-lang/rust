@@ -12,8 +12,8 @@ fn get_min_from_max<'min, 'max>(v: Box<dyn Get<&'max i32>>)
     //~^ ERROR lifetime may not live long enough
 }
 
-fn get_max_from_min<'min, 'max, G>(v: Box<dyn Get<&'min i32>>)
-                                   -> Box<dyn Get<&'max i32>>
+fn get_max_from_min<'min, 'max>(v: Box<dyn Get<&'min i32>>)
+                                -> Box<dyn Get<&'max i32>>
     where 'max : 'min
 {
     v
