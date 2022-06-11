@@ -440,7 +440,7 @@ mod prim_char {}
 mod prim_unit {}
 
 // Required to make auto trait impls render.
-// See /src/librustdoc/passes/collect_trait_impls.rs:collect_trait_impls
+// See src/librustdoc/passes/collect_trait_impls.rs:collect_trait_impls
 #[doc(hidden)]
 impl () {}
 
@@ -958,7 +958,7 @@ mod prim_str {}
 mod prim_tuple {}
 
 // Required to make auto trait impls render.
-// See /src/librustdoc/passes/collect_trait_impls.rs:collect_trait_impls
+// See src/librustdoc/passes/collect_trait_impls.rs:collect_trait_impls
 #[doc(hidden)]
 impl<T> (T,) {}
 
