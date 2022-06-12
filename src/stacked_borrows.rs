@@ -250,14 +250,7 @@ pub fn err_sb_ub<'tcx>(
     help: Option<String>,
     history: Option<TagHistory>,
 ) -> InterpError<'tcx> {
-    err_machine_stop!(TerminationInfo::ExperimentalUb {
-        msg,
-        help,
-        url: format!(
-            "https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md"
-        ),
-        history
-    })
+    err_machine_stop!(TerminationInfo::StackedBorrowsUb { msg, help, history })
 }
 
 // # Stacked Borrows Core Begin

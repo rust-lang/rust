@@ -4,7 +4,7 @@ error: Undefined Behavior: not granting access to tag <untagged> because incompa
 LL |     let _val = unsafe { *x };
    |                         ^^ not granting access to tag <untagged> because incompatible item is protected: [Unique for <TAG> (call ID)]
    |
-   = help: this indicates a potential bug in the program: it performed an invalid operation, but the rules it violated are still experimental
+   = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
    = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information
 help: tag was most recently created at offsets [0x0..0x4]
   --> $DIR/invalidate_against_barrier1.rs:LL:CC

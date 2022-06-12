@@ -4,7 +4,7 @@ error: Undefined Behavior: deallocating while item is protected: [SharedReadWrit
 LL |     unsafe { __rust_dealloc(ptr, layout.size(), layout.align()) }
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ deallocating while item is protected: [SharedReadWrite for <TAG> (call ID)]
    |
-   = help: this indicates a potential bug in the program: it performed an invalid operation, but the rules it violated are still experimental
+   = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
    = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information
            
    = note: inside `std::alloc::dealloc` at RUSTLIB/alloc/src/alloc.rs:LL:CC
