@@ -8,7 +8,9 @@ use rustc_hir::{is_range_literal, Expr, ExprKind, Node};
 use rustc_macros::LintDiagnostic;
 use rustc_middle::ty::layout::{IntegerExt, LayoutOf, SizeSkeleton};
 use rustc_middle::ty::subst::SubstsRef;
-use rustc_middle::ty::{self, AdtKind, DefIdTree, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable};
+use rustc_middle::ty::{
+    self, AdtKind, DefIdTree, Subst, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
+};
 use rustc_span::source_map;
 use rustc_span::symbol::sym;
 use rustc_span::{Span, Symbol, DUMMY_SP};
@@ -1135,14 +1137,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             }
 
             ty::TyAlias(def_id, substs) => {
-                for ty in substs.types() {
-                    let ty = self.cx.tcx.normalize_erasing_regions(self.cx.param_env, ty);
-                    match self.check_type_for_ffi(cache, ty) {
-                        FfiSafe => {}
-                        r => return r,
-                    };
-                }
-                let ty = tcx.type_of(def_id);
+                let binder_ty = tcx.bound_type_of(def_id);
+                let ty = binder_ty.subst(tcx, substs);
                 let ty = self.cx.tcx.normalize_erasing_regions(self.cx.param_env, ty);
                 self.check_type_for_ffi(cache, ty)
             }

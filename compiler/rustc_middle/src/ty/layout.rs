@@ -365,6 +365,12 @@ impl<'tcx> SizeSkeleton<'tcx> {
                 }
             }
 
+            ty::TyAlias(def_id, substs) => {
+                let generic_ty = tcx.bound_type_of(def_id);
+                let concrete_ty = generic_ty.subst(tcx, substs);
+                SizeSkeleton::compute(concrete_ty, tcx, param_env)
+            }
+
             _ => Err(err),
         }
     }

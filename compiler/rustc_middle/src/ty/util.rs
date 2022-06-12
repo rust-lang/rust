@@ -1050,7 +1050,11 @@ impl<'tcx> Ty<'tcx> {
             | ty::Placeholder(_)
             | ty::Infer(_) => false,
 
-            ty::TyAlias(def_id, _) => tcx.type_of(def_id).is_structural_eq_shallow(tcx),
+            ty::TyAlias(def_id, substs) => {
+                let binder_ty = tcx.bound_type_of(*def_id);
+                let ty = binder_ty.subst(tcx, substs);
+                ty.is_structural_eq_shallow(tcx)
+            }
 
             ty::Foreign(_) | ty::GeneratorWitness(..) | ty::Error(_) => false,
         }
