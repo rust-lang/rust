@@ -1,11 +1,12 @@
-error[E0283]: type annotations needed
+error[E0789]: cannot call associated function on trait without specifying the corresponding `impl` type
   --> $DIR/associated-types-unconstrained.rs:14:20
    |
+LL |     fn bar() -> isize;
+   |     ------------------ `Foo::bar` defined here
+...
 LL |     let x: isize = Foo::bar();
-   |                    ^^^^^^^^ cannot infer type
-   |
-   = note: cannot satisfy `_: Foo`
+   |                    ^^^^^^^^ cannot call associated function of trait
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0283`.
+For more information about this error, try `rustc --explain E0789`.

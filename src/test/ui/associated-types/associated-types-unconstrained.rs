@@ -12,5 +12,5 @@ impl Foo for isize {
 
 pub fn main() {
     let x: isize = Foo::bar();
-    //~^ ERROR type annotations needed
+    //~^ ERROR E0789
 }

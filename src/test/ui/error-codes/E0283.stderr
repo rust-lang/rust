@@ -1,10 +1,16 @@
-error[E0283]: type annotations needed
+error[E0789]: cannot call associated function on trait without specifying the corresponding `impl` type
   --> $DIR/E0283.rs:30:21
    |
+LL |     fn create() -> u32;
+   |     ------------------- `Generator::create` defined here
+...
 LL |     let cont: u32 = Generator::create();
-   |                     ^^^^^^^^^^^^^^^^^ cannot infer type
+   |                     ^^^^^^^^^^^^^^^^^ cannot call associated function of trait
    |
-   = note: cannot satisfy `_: Generator`
+help: use a fully-qualified path to a specific available implementation (2 found)
+   |
+LL |     let cont: u32 = <::Impl as Generator>::create();
+   |                     ++++++++++          +
 
 error[E0283]: type annotations needed
   --> $DIR/E0283.rs:35:24
@@ -27,4 +33,5 @@ LL |     let bar = <Impl as Into<T>>::into(foo_impl) * 1u32;
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0283`.
+Some errors have detailed explanations: E0283, E0789.
+For more information about an error, try `rustc --explain E0283`.

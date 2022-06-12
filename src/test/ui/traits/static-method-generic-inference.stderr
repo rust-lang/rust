@@ -1,11 +1,17 @@
-error[E0283]: type annotations needed
+error[E0789]: cannot call associated function on trait without specifying the corresponding `impl` type
   --> $DIR/static-method-generic-inference.rs:24:25
    |
+LL |         fn new() -> T;
+   |         -------------- `HasNew::new` defined here
+...
 LL |     let _f: base::Foo = base::HasNew::new();
-   |                         ^^^^^^^^^^^^^^^^^ cannot infer type
+   |                         ^^^^^^^^^^^^^^^^^ cannot call associated function of trait
    |
-   = note: cannot satisfy `_: HasNew<Foo>`
+help: use the fully-qualified path to the only available implementation
+   |
+LL |     let _f: base::Foo = base::<::base::Foo as HasNew>::new();
+   |                               +++++++++++++++       +
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0283`.
+For more information about this error, try `rustc --explain E0789`.

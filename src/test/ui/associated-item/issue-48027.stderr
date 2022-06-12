@@ -13,19 +13,15 @@ LL |     const X: usize;
    |           ^ ...because it contains this associated `const`
    = help: consider moving `X` to another trait
 
-error[E0283]: type annotations needed
+error[E0789]: cannot refer to the associated constant on trait without specifying the corresponding `impl` type
   --> $DIR/issue-48027.rs:3:32
    |
+LL |     const X: usize;
+   |     --------------- `Bar::X` defined here
 LL |     fn return_n(&self) -> [u8; Bar::X];
-   |                                ^^^^^^
-   |                                |
-   |                                cannot infer type
-   |                                help: use the fully qualified path to an implementation: `<Type as Bar>::X`
-   |
-   = note: cannot satisfy `_: Bar`
-   = note: associated constants cannot be accessed directly on a `trait`, they can only be accessed through a specific `impl`
+   |                                ^^^^^^ cannot refer to the associated constant of trait
 
 error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0038, E0283.
+Some errors have detailed explanations: E0038, E0789.
 For more information about an error, try `rustc --explain E0038`.

@@ -27,7 +27,7 @@ impl Generator for AnotherImpl {
 }
 
 fn main() {
-    let cont: u32 = Generator::create(); //~ ERROR E0283
+    let cont: u32 = Generator::create(); //~ ERROR E0789
 }
 
 fn buzz() {
