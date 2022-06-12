@@ -384,12 +384,16 @@ where
 
 pub(crate) fn needs_normalization<'tcx, T: TypeVisitable<'tcx>>(value: &T, reveal: Reveal) -> bool {
     match reveal {
-        Reveal::UserFacing => value
-            .has_type_flags(ty::TypeFlags::HAS_TY_PROJECTION | ty::TypeFlags::HAS_CT_PROJECTION),
+        Reveal::UserFacing => value.has_type_flags(
+            ty::TypeFlags::HAS_TY_PROJECTION
+                | ty::TypeFlags::HAS_CT_PROJECTION
+                | ty::TypeFlags::HAS_TY_ALIAS,
+        ),
         Reveal::All => value.has_type_flags(
             ty::TypeFlags::HAS_TY_PROJECTION
                 | ty::TypeFlags::HAS_TY_OPAQUE
-                | ty::TypeFlags::HAS_CT_PROJECTION,
+                | ty::TypeFlags::HAS_CT_PROJECTION
+                | ty::TypeFlags::HAS_TY_ALIAS,
         ),
     }
 }

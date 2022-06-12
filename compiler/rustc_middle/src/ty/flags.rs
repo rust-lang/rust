@@ -156,7 +156,7 @@ impl FlagComputation {
             }
 
             &ty::TyAlias(_, substs) => {
-                self.add_flags(TypeFlags::HAS_TY_PROJECTION);
+                self.add_flags(TypeFlags::HAS_TY_ALIAS);
                 self.add_substs(substs);
             }
 

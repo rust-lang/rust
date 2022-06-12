@@ -230,7 +230,8 @@ bitflags! {
         /// Could this type be normalized further?
         const HAS_PROJECTION              = TypeFlags::HAS_TY_PROJECTION.bits
                                           | TypeFlags::HAS_TY_OPAQUE.bits
-                                          | TypeFlags::HAS_CT_PROJECTION.bits;
+                                          | TypeFlags::HAS_CT_PROJECTION.bits
+                                          | TypeFlags::HAS_TY_ALIAS.bits;
 
         /// Is an error type/const reachable?
         const HAS_ERROR                   = 1 << 13;
@@ -255,6 +256,9 @@ bitflags! {
 
         /// Does this value have `InferConst::Fresh`?
         const HAS_CT_FRESH                = 1 << 19;
+
+        /// Does this have `TyAlias`?
+        const HAS_TY_ALIAS                = 1 << 20;
     }
 }
 
