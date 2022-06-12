@@ -4,8 +4,8 @@ error[E0308]: mismatched types
 LL |     f: &id,
    |        ^^^ one type is more general than the other
    |
-   = note: expected type `for<'a, 'b> Fn<(&'a Foo<'b>,)>`
-              found type `Fn<(&Foo<'_>,)>`
+   = note: expected trait `for<'a, 'b> Fn<(&'a Foo<'b>,)>`
+              found trait `Fn<(&Foo<'_>,)>`
 
 error[E0308]: mismatched types
   --> $DIR/rfc1623.rs:28:8
@@ -13,8 +13,8 @@ error[E0308]: mismatched types
 LL |     f: &id,
    |        ^^^ one type is more general than the other
    |
-   = note: expected type `for<'a, 'b> Fn<(&'a Foo<'b>,)>`
-              found type `Fn<(&Foo<'_>,)>`
+   = note: expected trait `for<'a, 'b> Fn<(&'a Foo<'b>,)>`
+              found trait `Fn<(&Foo<'_>,)>`
 
 error: implementation of `FnOnce` is not general enough
   --> $DIR/rfc1623.rs:28:8

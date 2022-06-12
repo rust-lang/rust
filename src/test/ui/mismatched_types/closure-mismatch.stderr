@@ -13,8 +13,8 @@ error[E0308]: mismatched types
 LL |     baz(|_| ());
    |     ^^^^^^^^^^^ one type is more general than the other
    |
-   = note: expected type `for<'r> Fn<(&'r (),)>`
-              found type `Fn<(&(),)>`
+   = note: expected trait `for<'r> Fn<(&'r (),)>`
+              found trait `Fn<(&(),)>`
 note: this closure does not fulfill the lifetime requirements
   --> $DIR/closure-mismatch.rs:8:9
    |
