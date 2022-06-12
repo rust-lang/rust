@@ -667,6 +667,7 @@ fn cargo_to_crate_graph(
                 &public_deps,
                 cargo,
                 &pkg_crates,
+                build_scripts,
             );
         }
     }
@@ -728,6 +729,7 @@ fn handle_rustc_crates(
     public_deps: &SysrootPublicDeps,
     cargo: &CargoWorkspace,
     pkg_crates: &FxHashMap<la_arena::Idx<crate::PackageData>, Vec<(CrateId, TargetKind)>>,
+    build_scripts: &WorkspaceBuildScripts,
 ) {
     let mut rustc_pkg_crates = FxHashMap::default();
     // The root package of the rustc-dev component is rustc_driver, so we match that
@@ -781,7 +783,7 @@ fn handle_rustc_crates(
                     let crate_id = add_target_crate_root(
                         crate_graph,
                         &rustc_workspace[pkg],
-                        None,
+                        build_scripts.get_output(pkg),
                         cfg_options,
                         &mut |path| load_proc_macro(&rustc_workspace[tgt].name, path),
                         file_id,
