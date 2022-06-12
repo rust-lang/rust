@@ -8,7 +8,7 @@ use chalk_ir::{fold::Shift, BoundVar, DebruijnIndex};
 use hir_def::{
     db::DefDatabase,
     generics::{
-        GenericParams, TypeOrConstParamData, TypeParamData, TypeParamProvenance, WherePredicate,
+        GenericParams, TypeOrConstParamData, TypeParamProvenance, WherePredicate,
         WherePredicateTypeTarget,
     },
     intern::Interned,
@@ -204,25 +204,6 @@ pub(crate) struct Generics {
 }
 
 impl Generics {
-    // FIXME: we should drop this and handle const and type generics at the same time
-    pub(crate) fn type_iter<'a>(
-        &'a self,
-    ) -> impl Iterator<Item = (TypeOrConstParamId, &'a TypeParamData)> + 'a {
-        self.parent_generics
-            .as_ref()
-            .into_iter()
-            .flat_map(|it| {
-                it.params
-                    .type_iter()
-                    .map(move |(local_id, p)| (TypeOrConstParamId { parent: it.def, local_id }, p))
-            })
-            .chain(
-                self.params.type_iter().map(move |(local_id, p)| {
-                    (TypeOrConstParamId { parent: self.def, local_id }, p)
-                }),
-            )
-    }
-
     pub(crate) fn iter_id<'a>(
         &'a self,
     ) -> impl Iterator<Item = Either<TypeParamId, ConstParamId>> + 'a {

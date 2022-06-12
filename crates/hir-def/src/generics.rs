@@ -133,14 +133,6 @@ pub enum WherePredicateTypeTarget {
 }
 
 impl GenericParams {
-    // FIXME: almost every usecase of this function is wrong. every one should check
-    // const generics
-    pub fn type_iter<'a>(
-        &'a self,
-    ) -> impl Iterator<Item = (Idx<TypeOrConstParamData>, &TypeParamData)> {
-        self.type_or_consts.iter().filter_map(|x| x.1.type_param().map(|y| (x.0, y)))
-    }
-
     /// Iterator of type_or_consts field
     pub fn iter<'a>(
         &'a self,
