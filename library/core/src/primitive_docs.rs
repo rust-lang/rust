@@ -919,7 +919,7 @@ mod prim_str {}
 /// # Trait implementations
 ///
 /// In this documentation the shorthand `(T, ...)` is used to represent tuples of varying length.
-/// When that is used, any trait bounds expressed on `T` applies to each field of the tuple
+/// When that is used, any trait bound expressed on `T` applies to each element of the tuple
 /// independently. Note that this is a convenience notation to avoid repetitive documentation,
 /// not valid Rust syntax.
 ///
