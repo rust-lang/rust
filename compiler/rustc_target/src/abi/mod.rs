@@ -1350,7 +1350,7 @@ impl<'a, Ty> Deref for TyAndLayout<'a, Ty> {
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum PointerKind {
     /// Most general case, we know no restrictions to tell LLVM.
-    Shared,
+    SharedMutable,
 
     /// `&T` where `T` contains no `UnsafeCell`, is `noalias` and `readonly`.
     Frozen,
