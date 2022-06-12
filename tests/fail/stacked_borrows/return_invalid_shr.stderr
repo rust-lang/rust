@@ -7,7 +7,7 @@ LL |     ret
    |     trying to reborrow <TAG> for SharedReadOnly permission at ALLOC[0x4], but that tag does not exist in the borrow stack for this location
    |     this error occurs as part of a reborrow at ALLOC[0x4..0x8]
    |
-   = help: this indicates a potential bug in the program: it performed an invalid operation, but the rules it violated are still experimental
+   = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
    = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information
 help: <TAG> was created by a retag at offsets [0x4..0x8]
   --> $DIR/return_invalid_shr.rs:LL:CC

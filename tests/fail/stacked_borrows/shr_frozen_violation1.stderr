@@ -7,7 +7,7 @@ LL |     unsafe { *(x as *const i32 as *mut i32) = 7; }
    |              attempting a write access using <untagged> at ALLOC[0x0], but that tag only grants SharedReadOnly permission for this location
    |              this error occurs as part of an access at ALLOC[0x0..0x4]
    |
-   = help: this indicates a potential bug in the program: it performed an invalid operation, but the rules it violated are still experimental
+   = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
    = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information
 help: tag was most recently created at offsets [0x0..0x4]
   --> $DIR/shr_frozen_violation1.rs:LL:CC

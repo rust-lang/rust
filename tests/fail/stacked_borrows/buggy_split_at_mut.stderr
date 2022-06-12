@@ -7,7 +7,7 @@ LL |     let (a, b) = safe::split_at_mut(&mut array, 0);
    |          trying to reborrow <TAG> for Unique permission at ALLOC[0x0], but that tag does not exist in the borrow stack for this location
    |          this error occurs as part of a reborrow at ALLOC[0x0..0x10]
    |
-   = help: this indicates a potential bug in the program: it performed an invalid operation, but the rules it violated are still experimental
+   = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
    = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information
 help: <TAG> was created by a retag at offsets [0x0..0x10]
   --> $DIR/buggy_split_at_mut.rs:LL:CC
