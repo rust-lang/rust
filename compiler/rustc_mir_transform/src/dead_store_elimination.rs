@@ -13,16 +13,15 @@
 //!
 
 use rustc_index::bit_set::BitSet;
-use rustc_middle::{
-    mir::{visit::Visitor, *},
-    ty::TyCtxt,
-};
-use rustc_mir_dataflow::{impls::MaybeTransitiveLiveLocals, Analysis};
+use rustc_middle::mir::*;
+use rustc_middle::ty::TyCtxt;
+use rustc_mir_dataflow::impls::{borrowed_locals, MaybeTransitiveLiveLocals};
+use rustc_mir_dataflow::Analysis;
 
 /// Performs the optimization on the body
 ///
 /// The `borrowed` set must be a `BitSet` of all the locals that are ever borrowed in this body. It
-/// can be generated via the [`get_borrowed_locals`] function.
+/// can be generated via the [`borrowed_locals`] function.
 pub fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, borrowed: &BitSet<Local>) {
     let mut live = MaybeTransitiveLiveLocals::new(borrowed)
         .into_engine(tcx, body)
@@ -73,67 +72,6 @@ pub fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, borrowed: &BitS
     }
 }
 
-pub fn get_borrowed_locals(body: &Body<'_>) -> BitSet<Local> {
-    let mut b = BorrowedLocals(BitSet::new_empty(body.local_decls.len()));
-    b.visit_body(body);
-    b.0
-}
-
-struct BorrowedLocals(BitSet<Local>);
-
-impl<'tcx> Visitor<'tcx> for BorrowedLocals {
-    fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, loc: Location) {
-        self.super_rvalue(rvalue, loc);
-        match rvalue {
-            Rvalue::AddressOf(_, borrowed_place) | Rvalue::Ref(_, _, borrowed_place) => {
-                if !borrowed_place.is_indirect() {
-                    self.0.insert(borrowed_place.local);
-                }
-            }
-
-            Rvalue::Cast(..)
-            | Rvalue::ShallowInitBox(..)
-            | Rvalue::Use(..)
-            | Rvalue::Repeat(..)
-            | Rvalue::Len(..)
-            | Rvalue::BinaryOp(..)
-            | Rvalue::CheckedBinaryOp(..)
-            | Rvalue::NullaryOp(..)
-            | Rvalue::UnaryOp(..)
-            | Rvalue::Discriminant(..)
-            | Rvalue::Aggregate(..)
-            | Rvalue::ThreadLocalRef(..) => {}
-        }
-    }
-
-    fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
-        self.super_terminator(terminator, location);
-
-        match terminator.kind {
-            TerminatorKind::Drop { place: dropped_place, .. } => {
-                if !dropped_place.is_indirect() {
-                    self.0.insert(dropped_place.local);
-                }
-            }
-
-            TerminatorKind::Abort
-            | TerminatorKind::DropAndReplace { .. }
-            | TerminatorKind::Assert { .. }
-            | TerminatorKind::Call { .. }
-            | TerminatorKind::FalseEdge { .. }
-            | TerminatorKind::FalseUnwind { .. }
-            | TerminatorKind::GeneratorDrop
-            | TerminatorKind::Goto { .. }
-            | TerminatorKind::Resume
-            | TerminatorKind::Return
-            | TerminatorKind::SwitchInt { .. }
-            | TerminatorKind::Unreachable
-            | TerminatorKind::Yield { .. }
-            | TerminatorKind::InlineAsm { .. } => {}
-        }
-    }
-}
-
 pub struct DeadStoreElimination;
 
 impl<'tcx> MirPass<'tcx> for DeadStoreElimination {
@@ -142,7 +80,7 @@ impl<'tcx> MirPass<'tcx> for DeadStoreElimination {
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        let borrowed = get_borrowed_locals(body);
+        let borrowed = borrowed_locals(body);
         eliminate(tcx, body, &borrowed);
     }
 }
