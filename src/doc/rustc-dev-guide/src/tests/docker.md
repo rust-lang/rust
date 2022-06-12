@@ -8,7 +8,7 @@ build Rust within the image, and run the tests.
 You can run these images on your local development machine. This can be
 helpful to test environments different from your local system. First you will
 need to install Docker on a Linux, Windows, or macOS system (typically Linux
-will be much faster than Windows or macOS because the later use virtual
+will be much faster than Windows or macOS because the latter use virtual
 machines to emulate a Linux environment). To enter interactive mode which will
 start a bash shell in the container, run `src/ci/docker/run.sh --dev <IMAGE>`
 where `<IMAGE>` is one of the directory names in `src/ci/docker` (for example
