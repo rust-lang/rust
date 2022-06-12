@@ -356,8 +356,8 @@ impl From<TypeParamId> for TypeOrConstParamId {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 /// A TypeOrConstParamId with an invariant that it actually belongs to a const
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ConstParamId(TypeOrConstParamId);
 
 impl ConstParamId {

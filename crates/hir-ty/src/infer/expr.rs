@@ -1211,28 +1211,28 @@ impl<'a> InferenceContext<'a> {
     }
 
     /// Returns the argument indices to skip.
-    fn check_legacy_const_generics(&mut self, callee: Ty, args: &[ExprId]) -> Vec<u32> {
+    fn check_legacy_const_generics(&mut self, callee: Ty, args: &[ExprId]) -> Box<[u32]> {
         let (func, subst) = match callee.kind(Interner) {
             TyKind::FnDef(fn_id, subst) => {
                 let callable = CallableDefId::from_chalk(self.db, *fn_id);
                 let func = match callable {
                     CallableDefId::FunctionId(f) => f,
-                    _ => return Vec::new(),
+                    _ => return Default::default(),
                 };
                 (func, subst)
             }
-            _ => return Vec::new(),
+            _ => return Default::default(),
         };
 
         let data = self.db.function_data(func);
         if data.legacy_const_generics_indices.is_empty() {
-            return Vec::new();
+            return Default::default();
         }
 
         // only use legacy const generics if the param count matches with them
         if data.params.len() + data.legacy_const_generics_indices.len() != args.len() {
             if args.len() <= data.params.len() {
-                return Vec::new();
+                return Default::default();
             } else {
                 // there are more parameters than there should be without legacy
                 // const params; use them

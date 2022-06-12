@@ -28,7 +28,7 @@ pub struct FunctionData {
     pub attrs: Attrs,
     pub visibility: RawVisibility,
     pub abi: Option<Interned<str>>,
-    pub legacy_const_generics_indices: Vec<u32>,
+    pub legacy_const_generics_indices: Box<[u32]>,
     flags: FnFlags,
 }
 
@@ -131,7 +131,7 @@ impl FunctionData {
     }
 }
 
-fn parse_rustc_legacy_const_generics(tt: &tt::Subtree) -> Vec<u32> {
+fn parse_rustc_legacy_const_generics(tt: &tt::Subtree) -> Box<[u32]> {
     let mut indices = Vec::new();
     for args in tt.token_trees.chunks(2) {
         match &args[0] {
@@ -150,7 +150,7 @@ fn parse_rustc_legacy_const_generics(tt: &tt::Subtree) -> Vec<u32> {
         }
     }
 
-    indices
+    indices.into_boxed_slice()
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
