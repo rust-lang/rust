@@ -197,7 +197,7 @@ impl GlobalState {
         let was_quiescent = self.is_quiescent();
         match event {
             Event::Lsp(msg) => match msg {
-                lsp_server::Message::Request(req) => self.on_request(loop_start, req),
+                lsp_server::Message::Request(req) => self.on_new_request(loop_start, req),
                 lsp_server::Message::Notification(not) => {
                     self.on_notification(not)?;
                 }
@@ -209,7 +209,7 @@ impl GlobalState {
                 loop {
                     match task {
                         Task::Response(response) => self.respond(response),
-                        Task::Retry(req) => self.on_request(loop_start, req),
+                        Task::Retry(req) => self.on_request(req),
                         Task::Diagnostics(diagnostics_per_file) => {
                             for (file_id, diagnostics) in diagnostics_per_file {
                                 self.diagnostics.set_native_diagnostics(file_id, diagnostics)
@@ -555,9 +555,12 @@ impl GlobalState {
         Ok(())
     }
 
-    fn on_request(&mut self, request_received: Instant, req: Request) {
+    fn on_new_request(&mut self, request_received: Instant, req: Request) {
         self.register_request(&req, request_received);
+        self.on_request(req);
+    }
 
+    fn on_request(&mut self, req: Request) {
         if self.shutdown_requested {
             self.respond(lsp_server::Response::new_err(
                 req.id,
