@@ -357,12 +357,20 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                 .add_element(live_region_vid, location);
         });
 
+        // HACK(compiler-errors): Constants that are gathered into Body.required_consts
+        // have their locations erased...
+        let locations = if location != Location::START {
+            location.to_locations()
+        } else {
+            Locations::All(constant.span)
+        };
+
         if let Some(annotation_index) = constant.user_ty {
             if let Err(terr) = self.cx.relate_type_and_user_type(
                 constant.literal.ty(),
                 ty::Variance::Invariant,
                 &UserTypeProjection { base: annotation_index, projs: vec![] },
-                location.to_locations(),
+                locations,
                 ConstraintCategory::Boring,
             ) {
                 let annotation = &self.cx.user_type_annotations[annotation_index];
@@ -390,12 +398,9 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                                      promoted: &Body<'tcx>,
                                      ty,
                                      san_ty| {
-                        if let Err(terr) = verifier.cx.eq_types(
-                            ty,
-                            san_ty,
-                            location.to_locations(),
-                            ConstraintCategory::Boring,
-                        ) {
+                        if let Err(terr) =
+                            verifier.cx.eq_types(ty, san_ty, locations, ConstraintCategory::Boring)
+                        {
                             span_mirbug!(
                                 verifier,
                                 promoted,
@@ -416,7 +421,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                     }
                 } else {
                     if let Err(terr) = self.cx.fully_perform_op(
-                        location.to_locations(),
+                        locations,
                         ConstraintCategory::Boring,
                         self.cx.param_env.and(type_op::ascribe_user_type::AscribeUserType::new(
                             constant.literal.ty(),
@@ -435,7 +440,6 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                 }
             } else if let Some(static_def_id) = constant.check_static_ptr(tcx) {
                 let unnormalized_ty = tcx.type_of(static_def_id);
-                let locations = location.to_locations();
                 let normalized_ty = self.cx.normalize(unnormalized_ty, locations);
                 let literal_ty = constant.literal.ty().builtin_deref(true).unwrap().ty;
 
@@ -454,7 +458,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                 self.cx.normalize_and_prove_instantiated_predicates(
                     def_id,
                     instantiated_predicates,
-                    location.to_locations(),
+                    locations,
                 );
             }
         }
