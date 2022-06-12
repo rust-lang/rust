@@ -103,6 +103,8 @@ macro_rules! tuple_impls {
     }
 }
 
+// If this is a unary tuple, it adds a doc comment.
+// Otherwise, it hides the docs entirely.
 macro_rules! maybe_tuple_doc {
     ($a:ident @ #[$meta:meta] $item:item) => {
         #[cfg_attr(not(bootstrap), doc(tuple_variadic))]
