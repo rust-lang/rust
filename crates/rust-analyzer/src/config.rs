@@ -856,6 +856,7 @@ impl Config {
 
     pub fn diagnostics(&self) -> DiagnosticsConfig {
         DiagnosticsConfig {
+            attr_proc_macros_enabled: self.expand_proc_attr_macros(),
             disable_experimental: !self.data.diagnostics_experimental_enable,
             disabled: self.data.diagnostics_disabled.clone(),
             expr_fill_default: match self.data.assist_expressionFillDefault {
@@ -893,7 +894,7 @@ impl Config {
     }
 
     pub fn expand_proc_attr_macros(&self) -> bool {
-        self.data.procMacro_attributes_enable
+        self.data.procMacro_enable && self.data.procMacro_attributes_enable
     }
 
     pub fn files(&self) -> FilesConfig {
