@@ -193,6 +193,23 @@ impl fmt::Debug for OwnedFd {
     }
 }
 
+macro_rules! impl_is_terminal {
+    ($($t:ty),*$(,)?) => {$(
+        #[unstable(feature = "sealed", issue = "none")]
+        impl crate::sealed::Sealed for $t {}
+
+        #[unstable(feature = "is_terminal", issue = "98070")]
+        impl crate::io::IsTerminal for $t {
+            #[inline]
+            fn is_terminal(&self) -> bool {
+                crate::sys::io::is_terminal(self)
+            }
+        }
+    )*}
+}
+
+impl_is_terminal!(BorrowedFd<'_>, OwnedFd);
+
 /// A trait to borrow the file descriptor from an underlying object.
 ///
 /// This is only available on unix platforms and must be imported in order to
