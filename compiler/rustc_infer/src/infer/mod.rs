@@ -1058,30 +1058,47 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         ty: Ty<'tcx>,
         region: ty::Region<'tcx>,
     ) -> Option<Vec<traits::PredicateObligation<'tcx>>> {
-        // Only attempt to satisfy placeholder-replaced higher-ranked outlives
-        if !region.is_placeholder() {
+        if ty.is_ty_infer() {
             return None;
         }
 
         for caller_bound in param_env.caller_bounds() {
+            let ty::PredicateKind::TypeOutlives(bound_outlives) =
+                caller_bound.kind().skip_binder() else { continue };
+
             // Only use WC bounds that are themselves of the form `for<'a> TY: 'a`
-            if let ty::PredicateKind::TypeOutlives(bound_outlives) =
-                caller_bound.kind().skip_binder()
-                && bound_outlives.1.is_late_bound()
-            {
-                if let Ok(obligations) = self.commit_if_ok::<_, TypeError<'_>, _>(|_| {
-                    let ty::OutlivesPredicate(wc_ty, wc_region) = self.replace_bound_vars_with_fresh_vars(
+            if !bound_outlives.1.is_late_bound() {
+                continue;
+            }
+
+            let satisfies = self.commit_if_ok::<_, (), _>(|_| {
+                let ty::OutlivesPredicate(wc_ty, wc_region) = self
+                    .replace_bound_vars_with_fresh_vars(
                         cause.span,
                         LateBoundRegionConversionTime::HigherRankedType,
                         caller_bound.kind().rebind(bound_outlives),
                     );
-                    let t = self.at(cause, param_env).sub(wc_ty, ty)?;
-                    let mut r = self.at(cause, param_env).eq(wc_region, region)?;
+
+                let mut r = self.at(cause, param_env).eq(wc_region, region).map_err(|_| ())?;
+
+                // Specifically use two snapshots here, so we can make sure _not_
+                // to constrain the regions of `Ty` here. We probably should just
+                // use some custom `replace_bound_vars_with_fresh_vars` that doesn't
+                // replace `wc_region` with an infer variable, but eagerly replaces
+                // it with `region` instead.
+                self.commit_if_ok::<_, (), _>(|snapshot| {
+                    let t = self.at(cause, param_env).eq(wc_ty, ty).map_err(|_| ())?;
                     r.obligations.extend(t.into_obligations());
-                    Ok(r.obligations)
-                }) {
-                    return Some(obligations);
-                }
+                    if self.region_constraints_added_in_snapshot(snapshot).is_none() {
+                        Ok(r.obligations)
+                    } else {
+                        Err(())
+                    }
+                })
+            });
+
+            if let Ok(obligations) = satisfies {
+                return Some(obligations);
             }
         }
 

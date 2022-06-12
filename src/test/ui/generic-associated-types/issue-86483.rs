@@ -1,4 +1,5 @@
 // Regression test of #86483.
+// check-pass
 
 #![feature(generic_associated_types)]
 
@@ -7,7 +8,6 @@ where
     for<'a> T: 'a,
 {
     type Ice<'v>: IntoIterator<Item = &'v T>;
-    //~^ ERROR: the parameter type `T` may not live long enough
 }
 
 fn main() {}
