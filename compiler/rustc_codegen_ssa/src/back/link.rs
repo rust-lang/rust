@@ -1003,10 +1003,14 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
     let strip = strip_value(sess);
 
     if sess.target.is_like_osx {
-        match strip {
-            Strip::Debuginfo => strip_symbols_in_osx(sess, &out_filename, Some("-S")),
-            Strip::Symbols => strip_symbols_in_osx(sess, &out_filename, None),
-            Strip::None => {}
+        match (strip, crate_type) {
+            (Strip::Debuginfo, _) => strip_symbols_in_osx(sess, &out_filename, Some("-S")),
+            // Per the manpage, `-x` is the maximum safe strip level for dynamic libraries. (#93988)
+            (Strip::Symbols, CrateType::Dylib | CrateType::Cdylib | CrateType::ProcMacro) => {
+                strip_symbols_in_osx(sess, &out_filename, Some("-x"))
+            }
+            (Strip::Symbols, _) => strip_symbols_in_osx(sess, &out_filename, None),
+            (Strip::None, _) => {}
         }
     }
 }
