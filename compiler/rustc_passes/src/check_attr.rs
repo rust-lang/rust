@@ -815,7 +815,7 @@ impl CheckAttrVisitor<'_> {
                         .sess
                         .struct_span_err(
                             meta.span(),
-                            "`#[doc(tuple_variadic)]` can only be used on unary tuples",
+                            "`#[doc(tuple_variadic)]` must used on the first of a set of tuple trait impls with varying arity",
                         )
                         .emit();
                     return false;
