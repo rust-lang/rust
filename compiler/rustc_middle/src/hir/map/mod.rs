@@ -491,6 +491,15 @@ impl<'hir> Map<'hir> {
         par_for_each_in(&self.tcx.hir_crate_items(()).body_owners[..], |&def_id| f(def_id));
     }
 
+    #[inline]
+    pub fn par_body_owners_in_module(
+        self,
+        module: LocalDefId,
+        f: impl Fn(LocalDefId) + Sync + Send,
+    ) {
+        par_for_each_in(&self.tcx.hir_module_items(module).body_owners[..], |&def_id| f(def_id));
+    }
+
     pub fn ty_param_owner(self, def_id: LocalDefId) -> LocalDefId {
         let def_kind = self.tcx.def_kind(def_id);
         match def_kind {
