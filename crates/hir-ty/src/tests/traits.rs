@@ -83,6 +83,61 @@ async fn test() {
 }
 
 #[test]
+fn auto_sized_async_block() {
+    check_no_mismatches(
+        r#"
+//- minicore: future, sized
+
+use core::future::Future;
+struct MyFut<Fut>(Fut);
+
+impl<Fut> Future for MyFut<Fut>
+where Fut: Future
+{
+    type Output = Fut::Output;
+}
+async fn reproduction() -> usize {
+    let f = async {999usize};
+    MyFut(f).await
+}
+    "#,
+    );
+    check_no_mismatches(
+        r#"
+//- minicore: future
+//#11815
+#[lang = "sized"]
+pub trait Sized {}
+
+#[lang = "unsize"]
+pub trait Unsize<T: ?Sized> {}
+
+#[lang = "coerce_unsized"]
+pub trait CoerceUnsized<T> {}
+
+pub unsafe trait Allocator {}
+
+pub struct Global;
+unsafe impl Allocator for Global {}
+
+#[lang = "owned_box"]
+#[fundamental]
+pub struct Box<T: ?Sized, A: Allocator = Global>;
+
+impl<T: ?Sized + Unsize<U>, U: ?Sized, A: Allocator> CoerceUnsized<Box<U, A>> for Box<T, A> {}
+
+fn send() ->  Box<dyn Future<Output = ()> + Send + 'static>{
+    box async move {}
+}
+
+fn not_send() -> Box<dyn Future<Output = ()> + 'static> {
+    box async move {}
+}
+    "#,
+    );
+}
+
+#[test]
 fn infer_try() {
     check_types(
         r#"
