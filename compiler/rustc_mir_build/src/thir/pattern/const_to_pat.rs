@@ -139,7 +139,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 ty::RawPtr(..) => {
                     "raw pointers cannot be used in patterns".to_string()
                 }
-                traits::NonStructuralMatchTyKind::TyAlias => {
+                ty::TyAlias(..) => {
                     bug!("use of a value of a type alias inside a pattern")
                 }
                 _ => {
