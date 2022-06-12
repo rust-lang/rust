@@ -56,7 +56,7 @@ macro_rules! err_machine_stop {
 // In the `throw_*` macros, avoid `return` to make them work with `try {}`.
 #[macro_export]
 macro_rules! throw_unsup {
-    ($($tt:tt)*) => { Err::<!, _>(err_unsup!($($tt)*))? };
+    ($($tt:tt)*) => { do yeet err_unsup!($($tt)*) };
 }
 
 #[macro_export]
@@ -66,12 +66,12 @@ macro_rules! throw_unsup_format {
 
 #[macro_export]
 macro_rules! throw_inval {
-    ($($tt:tt)*) => { Err::<!, _>(err_inval!($($tt)*))? };
+    ($($tt:tt)*) => { do yeet err_inval!($($tt)*) };
 }
 
 #[macro_export]
 macro_rules! throw_ub {
-    ($($tt:tt)*) => { Err::<!, _>(err_ub!($($tt)*))? };
+    ($($tt:tt)*) => { do yeet err_ub!($($tt)*) };
 }
 
 #[macro_export]
@@ -81,12 +81,12 @@ macro_rules! throw_ub_format {
 
 #[macro_export]
 macro_rules! throw_exhaust {
-    ($($tt:tt)*) => { Err::<!, _>(err_exhaust!($($tt)*))? };
+    ($($tt:tt)*) => { do yeet err_exhaust!($($tt)*) };
 }
 
 #[macro_export]
 macro_rules! throw_machine_stop {
-    ($($tt:tt)*) => { Err::<!, _>(err_machine_stop!($($tt)*))? };
+    ($($tt:tt)*) => { do yeet err_machine_stop!($($tt)*) };
 }
 
 mod allocation;
