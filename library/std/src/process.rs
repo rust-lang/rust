@@ -2161,7 +2161,9 @@ impl Termination for ! {
 impl<E: fmt::Debug> Termination for Result<!, E> {
     fn report(self) -> ExitCode {
         let Err(err) = self;
-        eprintln!("Error: {err:?}");
+        // Ignore error if the write fails, for example because stderr is
+        // already closed. There is not much point panicking at this point.
+        let _ = writeln!(io::stderr(), "Error: {err:?}");
         ExitCode::FAILURE
     }
 }
