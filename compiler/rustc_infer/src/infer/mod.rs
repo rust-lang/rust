@@ -1049,6 +1049,45 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         })
     }
 
+    // Attempts to satisfy a type outlives predicate that is instantiated with
+    // a placeholder by using a higher-ranked type outlives caller bound.
+    pub fn type_outlives_predicate_from_param_env(
+        &self,
+        cause: &traits::ObligationCause<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        ty: Ty<'tcx>,
+        region: ty::Region<'tcx>,
+    ) -> Option<Vec<traits::PredicateObligation<'tcx>>> {
+        // Only attempt to satisfy placeholder-replaced higher-ranked outlives
+        if !region.is_placeholder() {
+            return None;
+        }
+
+        for caller_bound in param_env.caller_bounds() {
+            // Only use WC bounds that are themselves of the form `for<'a> TY: 'a`
+            if let ty::PredicateKind::TypeOutlives(bound_outlives) =
+                caller_bound.kind().skip_binder()
+                && bound_outlives.1.is_late_bound()
+            {
+                if let Ok(obligations) = self.commit_if_ok::<_, TypeError<'_>, _>(|_| {
+                    let ty::OutlivesPredicate(wc_ty, wc_region) = self.replace_bound_vars_with_fresh_vars(
+                        cause.span,
+                        LateBoundRegionConversionTime::HigherRankedType,
+                        caller_bound.kind().rebind(bound_outlives),
+                    );
+                    let t = self.at(cause, param_env).sub(wc_ty, ty)?;
+                    let mut r = self.at(cause, param_env).eq(wc_region, region)?;
+                    r.obligations.extend(t.into_obligations());
+                    Ok(r.obligations)
+                }) {
+                    return Some(obligations);
+                }
+            }
+        }
+
+        None
+    }
+
     /// Number of type variables created so far.
     pub fn num_ty_vars(&self) -> usize {
         self.inner.borrow_mut().type_variables().num_vars()

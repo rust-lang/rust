@@ -13,7 +13,7 @@ where
 {
     fn copy(&self) -> Self::Gat<'_> where T: Copy {
         *self.test()
-        //~^ mismatched types
+        //~^ ERROR mismatched types
     }
 }
 

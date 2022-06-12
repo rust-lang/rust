@@ -432,13 +432,17 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                     }
                 }
 
-                ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(t_a, r_b)) => {
+                ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(t_a, r_a)) => {
                     if self.register_region_obligations {
-                        self.selcx.infcx().register_region_obligation_with_cause(
-                            t_a,
-                            r_b,
+                        if let Some(obligations) = infcx.type_outlives_predicate_from_param_env(
                             &obligation.cause,
-                        );
+                            obligation.param_env,
+                            t_a,
+                            r_a,
+                        ) {
+                            return ProcessResult::Changed(mk_pending(obligations));
+                        }
+                        infcx.register_region_obligation_with_cause(t_a, r_a, &obligation.cause);
                     }
                     ProcessResult::Changed(vec![])
                 }
