@@ -336,7 +336,7 @@ struct InInTypo {
 // SnapshotParser is used to create a snapshot of the parser
 // without causing duplicate errors being emitted when the `Parser`
 // is dropped.
-pub(super) struct SnapshotParser<'a> {
+pub struct SnapshotParser<'a> {
     parser: Parser<'a>,
     unclosed_delims: Vec<UnmatchedBrace>,
 }
@@ -392,7 +392,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Create a snapshot of the `Parser`.
-    pub(super) fn create_snapshot_for_diagnostic(&self) -> SnapshotParser<'a> {
+    pub fn create_snapshot_for_diagnostic(&self) -> SnapshotParser<'a> {
         let mut snapshot = self.clone();
         let unclosed_delims = self.unclosed_delims.clone();
         // Clear `unclosed_delims` in snapshot to avoid
