@@ -292,9 +292,13 @@ impl<'a> TyLoweringContext<'a> {
                         if let Some(def) = self.resolver.generic_def() {
                             let generics = generics(self.db.upcast(), def);
                             let param = generics
-                                .type_iter()
+                                .iter()
                                 .filter(|(_, data)| {
-                                    data.provenance == TypeParamProvenance::ArgumentImplTrait
+                                    matches!(
+                                        data,
+                                        TypeOrConstParamData::TypeParamData(data)
+                                        if data.provenance == TypeParamProvenance::ArgumentImplTrait
+                                    )
                                 })
                                 .nth(idx as usize)
                                 .map_or(TyKind::Error, |(id, _)| {
