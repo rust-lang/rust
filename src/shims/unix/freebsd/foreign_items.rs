@@ -39,6 +39,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // Return success (`0`).
                 this.write_null(dest)?;
             }
+
+            // Linux's `pthread_getattr_np` equivalent
+            "pthread_attr_get_np" if this.frame_in_std() => {
+                let [_thread, _attr] =
+                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                this.write_null(dest)?;
+            }
             _ => return Ok(EmulateByNameResult::NotSupported),
         }
         Ok(EmulateByNameResult::NeedsJumping)
