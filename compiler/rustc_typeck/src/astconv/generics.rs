@@ -13,7 +13,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::GenericArg;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::ty::{
-    self, subst, subst::SubstsRef, GenericParamDef, GenericParamDefKind, Ty, TyCtxt,
+    self, subst, subst::SubstsRef, GenericParamDef, GenericParamDefKind, IsSuggestable, Ty, TyCtxt,
 };
 use rustc_session::lint::builtin::LATE_BOUND_LIFETIME_ARGUMENTS;
 use rustc_span::{symbol::kw, Span};

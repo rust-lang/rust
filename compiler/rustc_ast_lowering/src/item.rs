@@ -1377,7 +1377,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let mut params: SmallVec<[hir::GenericParam<'hir>; 4]> =
             self.lower_generic_params_mut(&generics.params).collect();
-        let has_where_clause = !generics.where_clause.predicates.is_empty();
+        let has_where_clause_predicates = !generics.where_clause.predicates.is_empty();
         let where_clause_span = self.lower_span(generics.where_clause.span);
         let span = self.lower_span(generics.span);
         let res = f(self);
@@ -1395,7 +1395,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let lowered_generics = self.arena.alloc(hir::Generics {
             params: self.arena.alloc_from_iter(params),
             predicates: self.arena.alloc_from_iter(predicates),
-            has_where_clause,
+            has_where_clause_predicates,
             where_clause_span,
             span,
         });

@@ -20,7 +20,7 @@ note: required by a bound in `X::U`
    |
 LL |     type U: PartialEq<T>;
    |             ^^^^^^^^^^^^ required by this bound in `X::U`
-help: consider introducing a `where` bound, but there might be an alternative better way to express this requirement
+help: consider introducing a `where` clause, but there might be an alternative better way to express this requirement
    |
 LL | impl<B: 'static, T> X<B> for T where &'static B: PartialEq<B> {
    |                                ++++++++++++++++++++++++++++++
