@@ -1,6 +1,10 @@
 use crate::marker::PhantomData;
+use crate::mem::size_of;
+use crate::os::windows::io::{AsHandle, AsRawHandle, BorrowedHandle};
 use crate::slice;
 use crate::sys::c;
+use core;
+use libc;
 
 #[derive(Copy, Clone)]
 #[repr(transparent)]
@@ -77,4 +81,59 @@ impl<'a> IoSliceMut<'a> {
     pub fn as_mut_slice(&mut self) -> &mut [u8] {
         unsafe { slice::from_raw_parts_mut(self.vec.buf as *mut u8, self.vec.len as usize) }
     }
+}
+
+pub fn is_terminal(h: &impl AsHandle) -> bool {
+    unsafe { handle_is_console(h.as_handle()) }
+}
+
+unsafe fn handle_is_console(handle: BorrowedHandle<'_>) -> bool {
+    let handle = handle.as_raw_handle();
+
+    let mut out = 0;
+    if c::GetConsoleMode(handle, &mut out) != 0 {
+        // False positives aren't possible. If we got a console then we definitely have a console.
+        return true;
+    }
+
+    // At this point, we *could* have a false negative. We can determine that this is a true
+    // negative if we can detect the presence of a console on any of the standard I/O streams. If
+    // another stream has a console, then we know we're in a Windows console and can therefore
+    // trust the negative.
+    for std_handle in [c::STD_INPUT_HANDLE, c::STD_OUTPUT_HANDLE, c::STD_ERROR_HANDLE] {
+        let std_handle = c::GetStdHandle(std_handle);
+        if std_handle != handle && c::GetConsoleMode(std_handle, &mut out) != 0 {
+            return false;
+        }
+    }
+
+    // Otherwise, we fall back to an msys hack to see if we can detect the presence of a pty.
+    msys_tty_on(handle)
+}
+
+unsafe fn msys_tty_on(handle: c::HANDLE) -> bool {
+    let size = size_of::<c::FILE_NAME_INFO>() + c::MAX_PATH * size_of::<c::WCHAR>();
+    let mut name_info_bytes = vec![0u8; size];
+    let res = c::GetFileInformationByHandleEx(
+        handle,
+        c::FileNameInfo,
+        name_info_bytes.as_mut_ptr() as *mut libc::c_void,
+        size as u32,
+    );
+    if res == 0 {
+        return false;
+    }
+    let name_info: &c::FILE_NAME_INFO = &*(name_info_bytes.as_ptr() as *const c::FILE_NAME_INFO);
+    let s = core::slice::from_raw_parts(
+        name_info.FileName.as_ptr(),
+        name_info.FileNameLength as usize / 2,
+    );
+    let name = String::from_utf16_lossy(s);
+    // This checks whether 'pty' exists in the file name, which indicates that
+    // a pseudo-terminal is attached. To mitigate against false positives
+    // (e.g., an actual file name that contains 'pty'), we also require that
+    // either the strings 'msys-' or 'cygwin-' are in the file name as well.)
+    let is_msys = name.contains("msys-") || name.contains("cygwin-");
+    let is_pty = name.contains("-pty");
+    is_msys && is_pty
 }
