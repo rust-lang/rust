@@ -135,7 +135,7 @@ is set the `MIRI_LIB_SRC` environment variable to the `library` folder of a
 `rust-lang/rust` repository checkout. Note that changing files in that directory
 does not automatically trigger a re-build of the standard library; you have to
 clear the Miri build cache manually (on Linux, `rm -rf ~/.cache/miri`;
-and on Windows, `rmdir /S "%LOCALAPPDATA%\rust-lang\miri"`).
+and on Windows, `rmdir /S "%LOCALAPPDATA%\rust-lang\miri\cache"`).
 
 ## Configuring `rust-analyzer`
 
@@ -228,7 +228,7 @@ rustup override set stage2
 
 Important: You need to delete the Miri cache when you change the stdlib; otherwise the
 old, chached version will be used. On Linux, the cache is located at `~/.cache/miri`,
-and on Windows, it is located at `%LOCALAPPDATA%\rust-lang\miri`; the exact
+and on Windows, it is located at `%LOCALAPPDATA%\rust-lang\miri\cache`; the exact
 location is printed after the library build: "A libstd for Miri is now available in ...".
 
 Note: `./x.py --stage 2 compiler/rustc` currently errors with `thread 'main'
