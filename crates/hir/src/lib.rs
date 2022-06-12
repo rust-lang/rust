@@ -628,35 +628,42 @@ fn emit_def_diagnostic(db: &dyn HirDatabase, acc: &mut Vec<AnyDiagnostic>, diag:
         }
 
         DefDiagnosticKind::UnresolvedProcMacro { ast } => {
-            let mut precise_location = None;
-            let (node, macro_name) = match ast {
+            let (node, precise_location, macro_name) = match ast {
                 MacroCallKind::FnLike { ast_id, .. } => {
                     let node = ast_id.to_node(db.upcast());
-                    (ast_id.with_value(SyntaxNodePtr::from(AstPtr::new(&node))), None)
+                    (
+                        ast_id.with_value(SyntaxNodePtr::from(AstPtr::new(&node))),
+                        node.path().map(|it| it.syntax().text_range()),
+                        node.path().and_then(|it| it.segment()).map(|it| it.to_string()),
+                    )
                 }
                 MacroCallKind::Derive { ast_id, derive_attr_index, derive_index } => {
                     let node = ast_id.to_node(db.upcast());
-
                     // Compute the precise location of the macro name's token in the derive
                     // list.
                     let token = (|| {
-                        let derive_attr = node.attrs().nth(*derive_attr_index as usize)?;
-                        derive_attr
+                        let derive_attr = node
+                            .doc_comments_and_attrs()
+                            .nth(*derive_attr_index as usize)
+                            .and_then(Either::left)?;
+                        let token_tree = derive_attr.meta()?.token_tree()?;
+                        let group_by = token_tree
                             .syntax()
                             .children_with_tokens()
                             .filter_map(|elem| match elem {
                                 syntax::NodeOrToken::Token(tok) => Some(tok),
                                 _ => None,
                             })
-                            .group_by(|t| t.kind() == T![,])
+                            .group_by(|t| t.kind() == T![,]);
+                        let (_, mut group) = group_by
                             .into_iter()
                             .filter(|&(comma, _)| !comma)
-                            .nth(*derive_index as usize)
-                            .and_then(|(_, mut g)| g.find(|t| t.kind() == T![ident]))
+                            .nth(*derive_index as usize)?;
+                        group.find(|t| t.kind() == T![ident])
                     })();
-                    precise_location = token.as_ref().map(|tok| tok.text_range());
                     (
                         ast_id.with_value(SyntaxNodePtr::from(AstPtr::new(&node))),
+                        token.as_ref().map(|tok| tok.text_range()),
                         token.as_ref().map(ToString::to_string),
                     )
                 }
@@ -667,8 +674,10 @@ fn emit_def_diagnostic(db: &dyn HirDatabase, acc: &mut Vec<AnyDiagnostic>, diag:
                         .nth((*invoc_attr_index) as usize)
                         .and_then(Either::left)
                         .unwrap_or_else(|| panic!("cannot find attribute #{}", invoc_attr_index));
+
                     (
                         ast_id.with_value(SyntaxNodePtr::from(AstPtr::new(&attr))),
+                        Some(attr.syntax().text_range()),
                         attr.path()
                             .and_then(|path| path.segment())
                             .and_then(|seg| seg.name_ref())
