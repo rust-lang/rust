@@ -528,7 +528,7 @@ E0788: include_str!("./error_codes/E0788.md"),
 //  E0190, // deprecated: can only cast a &-pointer to an &-object
 //  E0194, // merged into E0403
 //  E0196, // cannot determine a type for this closure
-    E0208,
+    E0208, // internal error code
 //  E0209, // builtin traits can only be implemented on structs or enums
 //  E0213, // associated types are not accepted in this context
 //  E0215, // angle-bracket notation is not stable with `Fn`
@@ -633,14 +633,14 @@ E0788: include_str!("./error_codes/E0788.md"),
 //  E0629, // missing 'feature' (rustc_const_unstable)
 //  E0630, // rustc_const_unstable attribute must be paired with stable/unstable
            // attribute
-    E0640, // infer outlives requirements
+    E0640, // infer outlives requirements, internal error code
 //  E0645, // trait aliases not finished
 //  E0694, // an unknown tool name found in scoped attributes
 //  E0702, // replaced with a generic attribute input check
 //  E0707, // multiple elided lifetimes used in arguments of `async fn`
 //  E0709, // multiple different lifetimes used in arguments of `async fn`
-    E0711, // a feature has been declared with conflicting stability attributes
-    E0717, // rustc_promotable without stability attribute
+    E0711, // a feature has been declared with conflicting stability attributes, internal error code
+    E0717, // rustc_promotable without stability attribute, internal error code
 //  E0721, // `await` keyword
 //  E0723, // unstable feature in `const` context
 //  E0738, // Removed; errored on `#[track_caller] fn`s in `extern "Rust" { ... }`.
