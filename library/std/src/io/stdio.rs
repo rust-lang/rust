@@ -7,6 +7,7 @@ use crate::io::prelude::*;
 
 use crate::cell::{Cell, RefCell};
 use crate::fmt;
+use crate::fs::File;
 use crate::io::{self, BufReader, IoSlice, IoSliceMut, LineWriter, Lines};
 use crate::sync::atomic::{AtomicBool, Ordering};
 use crate::sync::{Arc, Mutex, MutexGuard, OnceLock};
@@ -1034,6 +1035,34 @@ pub(crate) fn attempt_print_to_stderr(args: fmt::Arguments<'_>) {
     // closed. There is not much point panicking at this point.
     let _ = stderr().write_fmt(args);
 }
+
+/// Trait to determine if a descriptor/handle refers to a terminal/tty.
+#[unstable(feature = "is_terminal", issue = "98070")]
+pub trait IsTerminal: crate::sealed::Sealed {
+    /// Returns `true` if the descriptor/handle refers to a terminal/tty.
+    ///
+    /// On platforms where Rust does not know how to detect a terminal yet, this will return
+    /// `false`. This will also return `false` if an unexpected error occurred, such as from
+    /// passing an invalid file descriptor.
+    fn is_terminal(&self) -> bool;
+}
+
+macro_rules! impl_is_terminal {
+    ($($t:ty),*$(,)?) => {$(
+        #[unstable(feature = "sealed", issue = "none")]
+        impl crate::sealed::Sealed for $t {}
+
+        #[unstable(feature = "is_terminal", issue = "98070")]
+        impl IsTerminal for $t {
+            #[inline]
+            fn is_terminal(&self) -> bool {
+                crate::sys::io::is_terminal(self)
+            }
+        }
+    )*}
+}
+
+impl_is_terminal!(File, Stdin, StdinLock<'_>, Stdout, StdoutLock<'_>, Stderr, StderrLock<'_>);
 
 #[unstable(
     feature = "print_internals",
