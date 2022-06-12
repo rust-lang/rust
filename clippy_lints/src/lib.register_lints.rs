@@ -105,6 +105,7 @@ store.register_lints(&[
     dbg_macro::DBG_MACRO,
     default::DEFAULT_TRAIT_ACCESS,
     default::FIELD_REASSIGN_WITH_DEFAULT,
+    default_instead_of_iter_empty::DEFAULT_INSTEAD_OF_ITER_EMPTY,
     default_numeric_fallback::DEFAULT_NUMERIC_FALLBACK,
     default_union_representation::DEFAULT_UNION_REPRESENTATION,
     dereference::EXPLICIT_DEREF_METHODS,

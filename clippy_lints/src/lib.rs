@@ -199,6 +199,7 @@ mod crate_in_macro_def;
 mod create_dir;
 mod dbg_macro;
 mod default;
+mod default_instead_of_iter_empty;
 mod default_numeric_fallback;
 mod default_union_representation;
 mod dereference;
@@ -910,6 +911,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(mismatching_type_param_order::TypeParamMismatch));
     store.register_late_pass(|| Box::new(as_underscore::AsUnderscore));
     store.register_late_pass(|| Box::new(read_zero_byte_vec::ReadZeroByteVec));
+    store.register_late_pass(|| Box::new(default_instead_of_iter_empty::DefaultIterEmpty));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 
