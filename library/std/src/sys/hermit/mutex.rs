@@ -1,4 +1,4 @@
-pub use crate::sys::hermit::abi;
+use crate::sys::hermit::abi;
 
 pub struct Mutex {
     inner: abi::mutex::Mutex,
