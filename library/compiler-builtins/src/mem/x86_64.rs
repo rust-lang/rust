@@ -143,5 +143,16 @@ pub unsafe fn compare_bytes(a: *const u8, b: *const u8, n: usize) -> i32 {
     let c8 = |a: *const u64, b, n| cmp(a, b, n, c4);
     let c16 = |a: *const u128, b, n| cmp(a, b, n, c8);
     let c32 = |a: *const [u128; 2], b, n| cmp(a, b, n, c16);
-    c32(a.cast(), b.cast(), n)
+    // [u128; 2] internally uses raw_eq for comparisons, which may emit a call to memcmp
+    // above a certain size threshold. When SSE2 is enabled this threshold does not seem
+    // to be reached but without SSE2 a call is emitted, leading to infinite recursion.
+    //
+    // While replacing [u128; 2] with (u128, u128) fixes the issues it degrades performance
+    // severely. Likewise, removing c32() has a lesser but still significant impact. Instead the
+    // [u128; 2] case is only enabled when SSE2 is present.
+    if cfg!(target_feature = "sse2") {
+        c32(a.cast(), b.cast(), n)
+    } else {
+        c16(a.cast(), b.cast(), n)
+    }
 }
