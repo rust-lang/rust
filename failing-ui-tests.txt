@@ -40,7 +40,6 @@ src/test/ui/simd/intrinsic/generic-as.rs
 src/test/ui/simd/intrinsic/generic-bitmask-pass.rs
 src/test/ui/simd/intrinsic/generic-comparison-pass.rs
 src/test/ui/simd/intrinsic/generic-gather-pass.rs
-src/test/ui/simd/intrinsic/generic-reduction-pass.rs
 src/test/ui/simd/intrinsic/generic-select-pass.rs
 src/test/ui/simd/issue-17170.rs
 src/test/ui/simd/issue-39720.rs
