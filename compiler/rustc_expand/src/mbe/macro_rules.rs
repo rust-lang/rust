@@ -123,7 +123,7 @@ impl<'a> ParserAnyMacro<'a> {
             is_trailing_mac,
             is_local,
         } = *self;
-        let snapshot = &mut parser.clone();
+        let snapshot = &mut parser.create_snapshot_for_diagnostic();
         let fragment = match parse_ast_fragment(parser, kind) {
             Ok(f) => f,
             Err(err) => {
