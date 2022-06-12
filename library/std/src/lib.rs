@@ -252,6 +252,7 @@
 #![feature(dropck_eyepatch)]
 #![feature(exhaustive_patterns)]
 #![feature(intra_doc_pointers)]
+#![feature(is_terminal)]
 #![cfg_attr(bootstrap, feature(label_break_value))]
 #![feature(lang_items)]
 #![feature(let_chains)]
