@@ -550,7 +550,7 @@ pub(crate) fn load_proc_macro(
         }
     };
 
-    return client
+    let proc_macros: Vec<_> = client
         .map(|it| it.load_dylib(dylib))
         .into_iter()
         .flat_map(|it| match it {
@@ -568,6 +568,12 @@ pub(crate) fn load_proc_macro(
         })
         .map(|expander| expander_to_proc_macro(expander, dummy_replace))
         .collect();
+    tracing::info!(
+        "Loaded proc-macros for {}: {:?}",
+        path.display(),
+        proc_macros.iter().map(|it| it.name.clone()).collect::<Vec<_>>()
+    );
+    return proc_macros;
 
     fn expander_to_proc_macro(
         expander: proc_macro_api::ProcMacro,
