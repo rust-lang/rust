@@ -177,21 +177,19 @@ pub(crate) fn generics(db: &dyn DefDatabase, def: GenericDefId) -> Generics {
     let parent_generics = parent_generic_def(db, def).map(|def| Box::new(generics(db, def)));
     if parent_generics.is_some() && matches!(def, GenericDefId::TypeAliasId(_)) {
         let params = db.generic_params(def);
-        if params
-            .type_or_consts
-            .iter()
-            .any(|(_, x)| matches!(x, TypeOrConstParamData::ConstParamData(_)))
-        {
+        let has_consts =
+            params.iter().any(|(_, x)| matches!(x, TypeOrConstParamData::ConstParamData(_)));
+        return if has_consts {
             // XXX: treat const generic associated types as not existing to avoid crashes (#11769)
             //
             // Chalk expects the inner associated type's parameters to come
             // *before*, not after the trait's generics as we've always done it.
             // Adapting to this requires a larger refactoring
             cov_mark::hit!(ignore_gats);
-            return Generics { def, params: Interned::new(Default::default()), parent_generics };
+            Generics { def, params: Interned::new(Default::default()), parent_generics }
         } else {
-            return Generics { def, params, parent_generics };
-        }
+            Generics { def, params, parent_generics }
+        };
     }
     Generics { def, params: db.generic_params(def), parent_generics }
 }
@@ -219,68 +217,46 @@ impl Generics {
     pub(crate) fn iter<'a>(
         &'a self,
     ) -> impl DoubleEndedIterator<Item = (TypeOrConstParamId, &'a TypeOrConstParamData)> + 'a {
-        self.parent_generics
-            .as_ref()
+        let to_toc_id = |it: &'a Generics| {
+            move |(local_id, p)| (TypeOrConstParamId { parent: it.def, local_id }, p)
+        };
+        self.parent_generics()
             .into_iter()
-            .flat_map(|it| {
-                it.params
-                    .iter()
-                    .map(move |(local_id, p)| (TypeOrConstParamId { parent: it.def, local_id }, p))
-            })
-            .chain(
-                self.params.iter().map(move |(local_id, p)| {
-                    (TypeOrConstParamId { parent: self.def, local_id }, p)
-                }),
-            )
+            .flat_map(move |it| it.params.iter().map(to_toc_id(it)))
+            .chain(self.params.iter().map(to_toc_id(self)))
     }
 
     /// Iterator over types and const params of parent.
     pub(crate) fn iter_parent<'a>(
         &'a self,
     ) -> impl Iterator<Item = (TypeOrConstParamId, &'a TypeOrConstParamData)> + 'a {
-        self.parent_generics.as_ref().into_iter().flat_map(|it| {
-            it.params
-                .type_or_consts
-                .iter()
-                .map(move |(local_id, p)| (TypeOrConstParamId { parent: it.def, local_id }, p))
+        self.parent_generics().into_iter().flat_map(|it| {
+            let to_toc_id =
+                move |(local_id, p)| (TypeOrConstParamId { parent: it.def, local_id }, p);
+            it.params.iter().map(to_toc_id)
         })
     }
 
     pub(crate) fn len(&self) -> usize {
-        self.len_split().0
-    }
-
-    /// (total, parents, child)
-    pub(crate) fn len_split(&self) -> (usize, usize, usize) {
-        let parent = self.parent_generics.as_ref().map_or(0, |p| p.len());
+        let parent = self.parent_generics().map_or(0, Generics::len);
         let child = self.params.type_or_consts.len();
-        (parent + child, parent, child)
+        parent + child
     }
 
     /// (parent total, self param, type param list, const param list, impl trait)
     pub(crate) fn provenance_split(&self) -> (usize, usize, usize, usize, usize) {
-        let parent = self.parent_generics.as_ref().map_or(0, |p| p.len());
-        let self_params = self
-            .params
-            .iter()
-            .filter_map(|x| x.1.type_param())
-            .filter(|p| p.provenance == TypeParamProvenance::TraitSelf)
-            .count();
-        let type_params = self
-            .params
-            .type_or_consts
-            .iter()
-            .filter_map(|x| x.1.type_param())
-            .filter(|p| p.provenance == TypeParamProvenance::TypeParamList)
-            .count();
+        let ty_iter = || self.params.iter().filter_map(|x| x.1.type_param());
+
+        let self_params =
+            ty_iter().filter(|p| p.provenance == TypeParamProvenance::TraitSelf).count();
+        let type_params =
+            ty_iter().filter(|p| p.provenance == TypeParamProvenance::TypeParamList).count();
+        let impl_trait_params =
+            ty_iter().filter(|p| p.provenance == TypeParamProvenance::ArgumentImplTrait).count();
         let const_params = self.params.iter().filter_map(|x| x.1.const_param()).count();
-        let impl_trait_params = self
-            .params
-            .iter()
-            .filter_map(|x| x.1.type_param())
-            .filter(|p| p.provenance == TypeParamProvenance::ArgumentImplTrait)
-            .count();
-        (parent, self_params, type_params, const_params, impl_trait_params)
+
+        let parent_len = self.parent_generics().map_or(0, Generics::len);
+        (parent_len, self_params, type_params, const_params, impl_trait_params)
     }
 
     pub(crate) fn param_idx(&self, param: TypeOrConstParamId) -> Option<usize> {
@@ -291,16 +267,19 @@ impl Generics {
         if param.parent == self.def {
             let (idx, (_local_id, data)) = self
                 .params
-                .type_or_consts
                 .iter()
                 .enumerate()
                 .find(|(_, (idx, _))| *idx == param.local_id)
                 .unwrap();
-            let (_total, parent_len, _child) = self.len_split();
+            let parent_len = self.parent_generics().map_or(0, Generics::len);
             Some((parent_len + idx, data))
         } else {
-            self.parent_generics.as_ref().and_then(|g| g.find_param(param))
+            self.parent_generics().and_then(|g| g.find_param(param))
         }
+    }
+
+    fn parent_generics(&self) -> Option<&Generics> {
+        self.parent_generics.as_ref().map(|it| &**it)
     }
 
     /// Returns a Substitution that replaces each parameter by a bound variable.
@@ -377,10 +356,10 @@ pub fn is_fn_unsafe_to_call(db: &dyn HirDatabase, func: FunctionId) -> bool {
             // Function in an `extern` block are always unsafe to call, except when it has
             // `"rust-intrinsic"` ABI there are a few exceptions.
             let id = block.lookup(db.upcast()).id;
-            match id.item_tree(db.upcast())[id.value].abi.as_deref() {
-                Some("rust-intrinsic") => is_intrinsic_fn_unsafe(&data.name),
-                _ => true,
-            }
+            !matches!(
+                id.item_tree(db.upcast())[id.value].abi.as_deref(),
+                Some("rust-intrinsic") if !is_intrinsic_fn_unsafe(&data.name)
+            )
         }
         _ => false,
     }
