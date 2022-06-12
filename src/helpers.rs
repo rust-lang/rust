@@ -493,6 +493,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         )
     }
 
+    /// Helper function used inside the shims of foreign functions to assert that the target OS
+    /// is part of the UNIX family. It panics showing a message with the `name` of the foreign function
+    /// if this is not the case.
+    fn assert_target_os_is_unix(&self, name: &str) {
+        assert!(
+            target_os_is_unix(self.eval_context_ref().tcx.sess.target.os.as_ref()),
+            "`{}` is only available for supported UNIX family targets",
+            name,
+        );
+    }
+
     /// Get last error variable as a place, lazily allocating thread-local storage for it if
     /// necessary.
     fn last_error_place(&mut self) -> InterpResult<'tcx, MPlaceTy<'tcx, Tag>> {
@@ -894,4 +905,10 @@ impl std::fmt::Display for HexRange {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "[{:#x}..{:#x}]", self.0.start.bytes(), self.0.end().bytes())
     }
+}
+
+/// Helper function used inside the shims of foreign functions to check that
+/// `target_os` is a supported UNIX OS.
+pub fn target_os_is_unix(target_os: &str) -> bool {
+    matches!(target_os, "linux" | "macos")
 }
