@@ -890,14 +890,21 @@ impl Ord for UseSegment {
             | (Super(ref a), Super(ref b))
             | (Crate(ref a), Crate(ref b)) => match (a, b) {
                 (Some(sa), Some(sb)) => {
-                    sa.trim_start_matches("r#").cmp(sb.trim_start_matches("r#"))
+                    if self.version == Version::Two {
+                        sa.trim_start_matches("r#").cmp(sb.trim_start_matches("r#"))
+                    } else {
+                        a.cmp(b)
+                    }
                 }
                 (_, _) => a.cmp(b),
             },
             (Glob, Glob) => Ordering::Equal,
             (Ident(ref pia, ref aa), Ident(ref pib, ref ab)) => {
-                let ia = pia.trim_start_matches("r#");
-                let ib = pib.trim_start_matches("r#");
+                let (ia, ib) = if self.version == Version::Two {
+                    (pia.trim_start_matches("r#"), pib.trim_start_matches("r#"))
+                } else {
+                    (pia.as_str(), pib.as_str())
+                };
                 // snake_case < CamelCase < UPPER_SNAKE_CASE
                 if ia.starts_with(char::is_uppercase) && ib.starts_with(char::is_lowercase) {
                     return Ordering::Greater;
@@ -918,9 +925,14 @@ impl Ord for UseSegment {
                 match (aa, ab) {
                     (None, Some(_)) => Ordering::Less,
                     (Some(_), None) => Ordering::Greater,
-                    (Some(aas), Some(abs)) => aas
-                        .trim_start_matches("r#")
-                        .cmp(abs.trim_start_matches("r#")),
+                    (Some(aas), Some(abs)) => {
+                        if self.version == Version::Two {
+                            aas.trim_start_matches("r#")
+                                .cmp(abs.trim_start_matches("r#"))
+                        } else {
+                            aas.cmp(abs)
+                        }
+                    }
                     (None, None) => Ordering::Equal,
                 }
             }
