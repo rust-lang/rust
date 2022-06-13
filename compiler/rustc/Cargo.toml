@@ -9,6 +9,9 @@ rustc_driver = { path = "../rustc_driver" }
 # Make sure rustc_codegen_ssa ends up in the sysroot, because this
 # crate is intended to be used by codegen backends, which may not be in-tree.
 rustc_codegen_ssa = { path = "../rustc_codegen_ssa" }
+# Make sure rustc_smir ends up in the sysroot, because this
+# crate is intended to be used by stable MIR consumers, which are not in-tree
+rustc_smir = { path = "../rustc_smir" }
 
 [dependencies.jemalloc-sys]
 version = "0.5.0"

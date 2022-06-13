@@ -2,7 +2,7 @@ use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{Parser, Restrictions, TokenType};
 use crate::maybe_whole;
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, Delimiter, Token};
+use rustc_ast::token::{self, Delimiter, Token, TokenKind};
 use rustc_ast::{
     self as ast, AngleBracketedArg, AngleBracketedArgs, AnonConst, AssocConstraint,
     AssocConstraintKind, BlockCheckMode, GenericArg, GenericArgs, Generics, ParenthesizedArgs,
@@ -96,7 +96,7 @@ impl<'a> Parser<'a> {
     ///                ^ help: use double colon
     /// ```
     fn recover_colon_before_qpath_proj(&mut self) -> bool {
-        if self.token.kind != token::Colon
+        if !self.check_noexpect(&TokenKind::Colon)
             || self.look_ahead(1, |t| !t.is_ident() || t.is_reserved_ident())
         {
             return false;
@@ -478,7 +478,7 @@ impl<'a> Parser<'a> {
         while let Some(arg) = self.parse_angle_arg(ty_generics)? {
             args.push(arg);
             if !self.eat(&token::Comma) {
-                if self.token.kind == token::Semi
+                if self.check_noexpect(&TokenKind::Semi)
                     && self.look_ahead(1, |t| t.is_ident() || t.is_lifetime())
                 {
                     // Add `>` to the list of expected tokens.
@@ -517,7 +517,11 @@ impl<'a> Parser<'a> {
         let arg = self.parse_generic_arg(ty_generics)?;
         match arg {
             Some(arg) => {
-                if self.check(&token::Colon) | self.check(&token::Eq) {
+                // we are using noexpect here because we first want to find out if either `=` or `:`
+                // is present and then use that info to push the other token onto the tokens list
+                let separated =
+                    self.check_noexpect(&token::Colon) || self.check_noexpect(&token::Eq);
+                if separated && (self.check(&token::Colon) | self.check(&token::Eq)) {
                     let arg_span = arg.span();
                     let (binder, ident, gen_args) = match self.get_ident_from_generic_arg(&arg) {
                         Ok(ident_gen_args) => ident_gen_args,
@@ -553,6 +557,14 @@ impl<'a> Parser<'a> {
                         AssocConstraint { id: ast::DUMMY_NODE_ID, ident, gen_args, kind, span };
                     Ok(Some(AngleBracketedArg::Constraint(constraint)))
                 } else {
+                    // we only want to suggest `:` and `=` in contexts where the previous token
+                    // is an ident and the current token or the next token is an ident
+                    if self.prev_token.is_ident()
+                        && (self.token.is_ident() || self.look_ahead(1, |token| token.is_ident()))
+                    {
+                        self.check(&token::Colon);
+                        self.check(&token::Eq);
+                    }
                     Ok(Some(AngleBracketedArg::Arg(arg)))
                 }
             }

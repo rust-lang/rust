@@ -2606,7 +2606,7 @@ fn add_apple_sdk(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
     let os = &sess.target.os;
     let llvm_target = &sess.target.llvm_target;
     if sess.target.vendor != "apple"
-        || !matches!(os.as_ref(), "ios" | "tvos")
+        || !matches!(os.as_ref(), "ios" | "tvos" | "watchos")
         || flavor != LinkerFlavor::Gcc
     {
         return;
@@ -2616,11 +2616,16 @@ fn add_apple_sdk(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
         ("x86_64", "tvos") => "appletvsimulator",
         ("arm", "ios") => "iphoneos",
         ("aarch64", "ios") if llvm_target.contains("macabi") => "macosx",
-        ("aarch64", "ios") if llvm_target.contains("sim") => "iphonesimulator",
+        ("aarch64", "ios") if llvm_target.ends_with("-simulator") => "iphonesimulator",
         ("aarch64", "ios") => "iphoneos",
         ("x86", "ios") => "iphonesimulator",
         ("x86_64", "ios") if llvm_target.contains("macabi") => "macosx",
         ("x86_64", "ios") => "iphonesimulator",
+        ("x86_64", "watchos") => "watchsimulator",
+        ("arm64_32", "watchos") => "watchos",
+        ("aarch64", "watchos") if llvm_target.ends_with("-simulator") => "watchsimulator",
+        ("aarch64", "watchos") => "watchos",
+        ("arm", "watchos") => "watchos",
         _ => {
             sess.err(&format!("unsupported arch `{}` for os `{}`", arch, os));
             return;
@@ -2667,6 +2672,11 @@ fn get_apple_sdk_root(sdk_name: &str) -> Result<String, String> {
             "macosx10.15"
                 if sdkroot.contains("iPhoneOS.platform")
                     || sdkroot.contains("iPhoneSimulator.platform") => {}
+            "watchos"
+                if sdkroot.contains("WatchSimulator.platform")
+                    || sdkroot.contains("MacOSX.platform") => {}
+            "watchsimulator"
+                if sdkroot.contains("WatchOS.platform") || sdkroot.contains("MacOSX.platform") => {}
             // Ignore `SDKROOT` if it's not a valid path.
             _ if !p.is_absolute() || p == Path::new("/") || !p.exists() => {}
             _ => return Ok(sdkroot),

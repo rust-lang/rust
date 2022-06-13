@@ -547,6 +547,22 @@ impl<'a> Parser<'a> {
         is_present
     }
 
+    fn check_noexpect(&self, tok: &TokenKind) -> bool {
+        self.token == *tok
+    }
+
+    /// Consumes a token 'tok' if it exists. Returns whether the given token was present.
+    ///
+    /// the main purpose of this function is to reduce the cluttering of the suggestions list
+    /// which using the normal eat method could introduce in some cases.
+    pub fn eat_noexpect(&mut self, tok: &TokenKind) -> bool {
+        let is_present = self.check_noexpect(tok);
+        if is_present {
+            self.bump()
+        }
+        is_present
+    }
+
     /// Consumes a token 'tok' if it exists. Returns whether the given token was present.
     pub fn eat(&mut self, tok: &TokenKind) -> bool {
         let is_present = self.check(tok);
