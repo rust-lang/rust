@@ -313,78 +313,82 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let a = self.read_pointer(&args[0])?;
                 let b = self.read_pointer(&args[1])?;
 
-                // Special case: if both scalars are *equal integers*
-                // and not null, we pretend there is an allocation of size 0 right there,
-                // and their offset is 0. (There's never a valid object at null, making it an
-                // exception from the exception.)
-                // This is the dual to the special exception for offset-by-0
-                // in the inbounds pointer offset operation (see `ptr_offset_inbounds` below).
-                match (self.ptr_try_get_alloc_id(a), self.ptr_try_get_alloc_id(b)) {
-                    (Err(a), Err(b)) if a == b && a != 0 => {
-                        // Both are the same non-null integer.
-                        self.write_scalar(Scalar::from_machine_isize(0, self), dest)?;
-                    }
-                    (Err(offset), _) | (_, Err(offset)) => {
-                        throw_ub!(DanglingIntPointer(offset, CheckInAllocMsg::OffsetFromTest));
-                    }
-                    (Ok((a_alloc_id, a_offset, _)), Ok((b_alloc_id, b_offset, _))) => {
-                        // Both are pointers. They must be into the same allocation.
-                        if a_alloc_id != b_alloc_id {
+                let usize_layout = self.layout_of(self.tcx.types.usize)?;
+                let isize_layout = self.layout_of(self.tcx.types.isize)?;
+
+                // Get offsets for both that are at least relative to the same base.
+                let (a_offset, b_offset) =
+                    match (self.ptr_try_get_alloc_id(a), self.ptr_try_get_alloc_id(b)) {
+                        (Err(a), Err(b)) => {
+                            // Neither poiner points to an allocation.
+                            // If these are inequal or null, this *will* fail the deref check below.
+                            (a, b)
+                        }
+                        (Err(_), _) | (_, Err(_)) => {
+                            // We managed to find a valid allocation for one pointer, but not the other.
+                            // That means they are definitely not pointing to the same allocation.
                             throw_ub_format!(
-                                "{} cannot compute offset of pointers into different allocations.",
-                                intrinsic_name,
+                                "{} called on pointers into different allocations",
+                                intrinsic_name
                             );
                         }
-                        // And they must both be valid for zero-sized accesses ("in-bounds or one past the end").
-                        self.check_ptr_access_align(
-                            a,
-                            Size::ZERO,
-                            Align::ONE,
-                            CheckInAllocMsg::OffsetFromTest,
-                        )?;
-                        self.check_ptr_access_align(
-                            b,
-                            Size::ZERO,
-                            Align::ONE,
-                            CheckInAllocMsg::OffsetFromTest,
-                        )?;
-
-                        if intrinsic_name == sym::ptr_offset_from_unsigned && a_offset < b_offset {
-                            throw_ub_format!(
-                                "{} cannot compute a negative offset, but {} < {}",
-                                intrinsic_name,
-                                a_offset.bytes(),
-                                b_offset.bytes(),
-                            );
+                        (Ok((a_alloc_id, a_offset, _)), Ok((b_alloc_id, b_offset, _))) => {
+                            // Found allocation for both. They must be into the same allocation.
+                            if a_alloc_id != b_alloc_id {
+                                throw_ub_format!(
+                                    "{} called on pointers into different allocations",
+                                    intrinsic_name
+                                );
+                            }
+                            // Use these offsets for distance calculation.
+                            (a_offset.bytes(), b_offset.bytes())
                         }
+                    };
 
-                        // Compute offset.
-                        let usize_layout = self.layout_of(self.tcx.types.usize)?;
-                        let isize_layout = self.layout_of(self.tcx.types.isize)?;
-                        let ret_layout = if intrinsic_name == sym::ptr_offset_from {
-                            isize_layout
-                        } else {
-                            usize_layout
-                        };
-
-                        // The subtraction is always done in `isize` to enforce
-                        // the "no more than `isize::MAX` apart" requirement.
-                        let a_offset = ImmTy::from_uint(a_offset.bytes(), isize_layout);
-                        let b_offset = ImmTy::from_uint(b_offset.bytes(), isize_layout);
-                        let (val, overflowed, _ty) =
-                            self.overflowing_binary_op(BinOp::Sub, &a_offset, &b_offset)?;
-                        if overflowed {
-                            throw_ub_format!("Pointers were too far apart for {}", intrinsic_name);
-                        }
-
-                        let pointee_layout = self.layout_of(substs.type_at(0))?;
-                        // This re-interprets an isize at ret_layout, but we already checked
-                        // that if ret_layout is usize, then the result must be non-negative.
-                        let val = ImmTy::from_scalar(val, ret_layout);
-                        let size = ImmTy::from_int(pointee_layout.size.bytes(), ret_layout);
-                        self.exact_div(&val, &size, dest)?;
+                // Compute distance.
+                let distance = {
+                    // The subtraction is always done in `isize` to enforce
+                    // the "no more than `isize::MAX` apart" requirement.
+                    let a_offset = ImmTy::from_uint(a_offset, isize_layout);
+                    let b_offset = ImmTy::from_uint(b_offset, isize_layout);
+                    let (val, overflowed, _ty) =
+                        self.overflowing_binary_op(BinOp::Sub, &a_offset, &b_offset)?;
+                    if overflowed {
+                        throw_ub_format!("pointers were too far apart for {}", intrinsic_name);
                     }
+                    val.to_machine_isize(self)?
+                };
+
+                // Check that the range between them is dereferenceable ("in-bounds or one past the
+                // end of the same allocation"). This is like the check in ptr_offset_inbounds.
+                let min_ptr = if distance >= 0 { b } else { a };
+                self.check_ptr_access_align(
+                    min_ptr,
+                    Size::from_bytes(distance.unsigned_abs()),
+                    Align::ONE,
+                    CheckInAllocMsg::OffsetFromTest,
+                )?;
+
+                if intrinsic_name == sym::ptr_offset_from_unsigned && distance < 0 {
+                    throw_ub_format!(
+                        "{} called when first pointer has smaller offset than second: {} < {}",
+                        intrinsic_name,
+                        a_offset,
+                        b_offset,
+                    );
                 }
+
+                // Perform division by size to compute return value.
+                let ret_layout = if intrinsic_name == sym::ptr_offset_from_unsigned {
+                    usize_layout
+                } else {
+                    isize_layout
+                };
+                let pointee_layout = self.layout_of(substs.type_at(0))?;
+                // If ret_layout is unsigned, we checked that so is the distance, so we are good.
+                let val = ImmTy::from_int(distance, ret_layout);
+                let size = ImmTy::from_int(pointee_layout.size.bytes(), ret_layout);
+                self.exact_div(&val, &size, dest)?;
             }
 
             sym::transmute => {
@@ -575,11 +579,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // memory between these pointers must be accessible. Note that we do not require the
         // pointers to be properly aligned (unlike a read/write operation).
         let min_ptr = if offset_bytes >= 0 { ptr } else { offset_ptr };
-        let size = offset_bytes.unsigned_abs();
         // This call handles checking for integer/null pointers.
         self.check_ptr_access_align(
             min_ptr,
-            Size::from_bytes(size),
+            Size::from_bytes(offset_bytes.unsigned_abs()),
             Align::ONE,
             CheckInAllocMsg::PointerArithmeticTest,
         )?;

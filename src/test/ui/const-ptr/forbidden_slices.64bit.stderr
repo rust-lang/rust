@@ -243,7 +243,7 @@ error[E0080]: could not evaluate static initializer
 LL |         unsafe { intrinsics::ptr_offset_from_unsigned(self, origin) }
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                  |
-   |                  ptr_offset_from_unsigned cannot compute offset of pointers into different allocations.
+   |                  ptr_offset_from_unsigned called on pointers into different allocations
    |                  inside `ptr::const_ptr::<impl *const u32>::sub_ptr` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |
   ::: $SRC_DIR/core/src/slice/raw.rs:LL:COL
@@ -262,7 +262,7 @@ error[E0080]: could not evaluate static initializer
 LL |         unsafe { intrinsics::ptr_offset_from_unsigned(self, origin) }
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                  |
-   |                  ptr_offset_from_unsigned cannot compute offset of pointers into different allocations.
+   |                  ptr_offset_from_unsigned called on pointers into different allocations
    |                  inside `ptr::const_ptr::<impl *const u32>::sub_ptr` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |
   ::: $SRC_DIR/core/src/slice/raw.rs:LL:COL
