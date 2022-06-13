@@ -4888,3 +4888,33 @@ enum Enum {
         "#]],
     );
 }
+
+#[test]
+fn hover_trait_impl_assoc_item_def_doc_forwarding() {
+    check(
+        r#"
+trait T {
+    /// Trait docs
+    fn func() {}
+}
+impl T for () {
+    fn func$0() {}
+}
+"#,
+        expect![[r#"
+            *func*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            fn func()
+            ```
+
+            ---
+
+            Trait docs
+        "#]],
+    );
+}

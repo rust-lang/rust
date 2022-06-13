@@ -372,7 +372,20 @@ pub(super) fn definition(
         Definition::ToolModule(it) => return Some(Markup::fenced_block(&it.name(db))),
     };
 
-    markup(docs.filter(|_| config.documentation.is_some()).map(Into::into), label, mod_path)
+    let docs = match config.documentation {
+        Some(_) => docs.or_else(|| {
+            // docs are missing, for assoc items of trait impls try to fall back to the docs of the
+            // original item of the trait
+            let assoc = def.as_assoc_item(db)?;
+            let trait_ = assoc.containing_trait_impl(db)?;
+            let name = Some(assoc.name(db)?);
+            let item = trait_.items(db).into_iter().find(|it| it.name(db) == name)?;
+            item.docs(db)
+        }),
+        None => None,
+    };
+    let docs = docs.filter(|_| config.documentation.is_some()).map(Into::into);
+    markup(docs, label, mod_path)
 }
 
 fn render_builtin_attr(db: &RootDatabase, attr: hir::BuiltinAttr) -> Option<Markup> {
