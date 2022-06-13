@@ -649,9 +649,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    fn borrow_pat_suggestion(&self, err: &mut Diagnostic, pat: &Pat<'_>, inner: &Pat<'_>) {
+    // Precondition: pat is a Ref(_) pattern
+    fn borrow_pat_suggestion(&self, err: &mut Diagnostic, pat: &Pat<'_>) {
         let tcx = self.tcx;
-        if let PatKind::Ref(_, mutbl) = pat.kind
+        if let PatKind::Ref(inner, mutbl) = pat.kind
         && let PatKind::Binding(_, _, binding, ..) = inner.kind {
             let binding_parent_id = tcx.hir().get_parent_node(pat.hir_id);
             let binding_parent = tcx.hir().get(binding_parent_id);
@@ -1835,6 +1836,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         box_ty
     }
 
+    // Precondition: Pat is Ref(inner)
     fn check_pat_ref(
         &self,
         pat: &'tcx Pat<'tcx>,
@@ -1868,7 +1870,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // Look for a case like `fn foo(&foo: u32)` and suggest
                     // `fn foo(foo: &u32)`
                     if let Some(mut err) = err {
-                        self.borrow_pat_suggestion(&mut err, pat, inner);
+                        self.borrow_pat_suggestion(&mut err, pat);
                         err.emit();
                     }
                     (rptr_ty, inner_ty)
