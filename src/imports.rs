@@ -815,9 +815,16 @@ impl Ord for UseSegment {
         match (self, other) {
             (&Slf(ref a), &Slf(ref b))
             | (&Super(ref a), &Super(ref b))
-            | (&Crate(ref a), &Crate(ref b)) => a.cmp(b),
+            | (&Crate(ref a), &Crate(ref b)) => match (a, b) {
+                (Some(sa), Some(sb)) => {
+                    sa.trim_start_matches("r#").cmp(sb.trim_start_matches("r#"))
+                }
+                (_, _) => a.cmp(b),
+            },
             (&Glob, &Glob) => Ordering::Equal,
-            (&Ident(ref ia, ref aa), &Ident(ref ib, ref ab)) => {
+            (&Ident(ref pia, ref aa), &Ident(ref pib, ref ab)) => {
+                let ia = pia.trim_start_matches("r#");
+                let ib = pib.trim_start_matches("r#");
                 // snake_case < CamelCase < UPPER_SNAKE_CASE
                 if ia.starts_with(char::is_uppercase) && ib.starts_with(char::is_lowercase) {
                     return Ordering::Greater;
@@ -835,13 +842,14 @@ impl Ord for UseSegment {
                 if ident_ord != Ordering::Equal {
                     return ident_ord;
                 }
-                if aa.is_none() && ab.is_some() {
-                    return Ordering::Less;
+                match (aa, ab) {
+                    (None, Some(_)) => Ordering::Less,
+                    (Some(_), None) => Ordering::Greater,
+                    (Some(aas), Some(abs)) => aas
+                        .trim_start_matches("r#")
+                        .cmp(abs.trim_start_matches("r#")),
+                    (None, None) => Ordering::Equal,
                 }
-                if aa.is_some() && ab.is_none() {
-                    return Ordering::Greater;
-                }
-                aa.cmp(ab)
             }
             (&List(ref a), &List(ref b)) => {
                 for (a, b) in a.iter().zip(b.iter()) {
