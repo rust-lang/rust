@@ -1,6 +1,3 @@
-// Test that Cell is considered invariant with respect to its
-// type.
-
 #![feature(rustc_attrs)]
 
 use std::cell::Cell;
