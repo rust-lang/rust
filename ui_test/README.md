@@ -1,5 +1,10 @@
 A smaller version of compiletest-rs
 
+## Magic behavior
+
+* Tests are run in order of their filenames (files first, then recursing into folders).
+  So if you have any slow tests, prepend them with a small integral number to make them get run first, taking advantage of parallelism as much as possible (instead of waiting for the slow tests at the end).
+
 ## Supported magic comment annotations
 
 Note that the space after `//`, when it is present, is *not* optional -- it must be exactly one.
