@@ -2151,7 +2151,7 @@ pub struct Invariant {
 /// Returns a list of all validity invariants of the type.
 pub const fn validity_invariants_of<T>() -> &'static [Invariant] {
     extern "rust-intrinsic" {
-        #[rustc_const_stable(feature = "validity_invariants_of", since = "1.40.0")]
+        #[rustc_const_unstable(feature = "validity_invariants_of", issue = "none")]
         pub fn validity_invariants_of<T>() -> &'static [u8];
     }
 
