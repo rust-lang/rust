@@ -886,9 +886,9 @@ fn fmt_type<'cx>(
                 primitive_link(f, PrimitiveType::Slice, &format!("[{name}]"), cx)
             }
             _ => {
-                primitive_link(f, PrimitiveType::Slice, "[", cx)?;
+                write!(f, "[")?;
                 fmt::Display::fmt(&t.print(cx), f)?;
-                primitive_link(f, PrimitiveType::Slice, "]", cx)
+                write!(f, "]")
             }
         },
         clean::Array(ref t, ref n) => {
@@ -926,31 +926,6 @@ fn fmt_type<'cx>(
             let m = mutability.print_with_space();
             let amp = if f.alternate() { "&".to_string() } else { "&amp;".to_string() };
             match **ty {
-                clean::Slice(ref bt) => {
-                    // `BorrowedRef{ ... Slice(T) }` is `&[T]`
-                    match **bt {
-                        clean::Generic(name) => primitive_link(
-                            f,
-                            PrimitiveType::Slice,
-                            &format!("{amp}{lt}{m}[{name}]"),
-                            cx,
-                        ),
-                        _ => {
-                            primitive_link(
-                                f,
-                                PrimitiveType::Slice,
-                                &format!("{}{}{}[", amp, lt, m),
-                                cx,
-                            )?;
-                            if f.alternate() {
-                                write!(f, "{:#}", bt.print(cx))?;
-                            } else {
-                                write!(f, "{}", bt.print(cx))?;
-                            }
-                            primitive_link(f, PrimitiveType::Slice, "]", cx)
-                        }
-                    }
-                }
                 clean::DynTrait(ref bounds, ref trait_lt)
                     if bounds.len() > 1 || trait_lt.is_some() =>
                 {
