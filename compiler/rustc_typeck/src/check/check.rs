@@ -1354,10 +1354,10 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, sp: Span, adt: ty::AdtD
                 adt.descr(),
             );
 
-            if align.is_none() {
-                err.span_label(span, "may have alignment larger than 1");
+            if let Some(align) = align {
+                err.span_label(span, format!("has alignment of {align}, which is larger than 1"));
             } else {
-                err.span_label(span, "has alignment larger than 1");
+                err.span_label(span, "may have alignment larger than 1");
             };
 
             if let Some(item_list) =

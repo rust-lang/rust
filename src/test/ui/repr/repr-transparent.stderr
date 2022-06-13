@@ -24,7 +24,7 @@ error[E0691]: zero-sized field in transparent struct has alignment larger than 1
 LL | #[repr(transparent)]
    |        ----------- help: Try using `repr(C)` instead
 LL | struct NontrivialAlignZst(u32, [u16; 0]);
-   |                                ^^^^^^^^ has alignment larger than 1
+   |                                ^^^^^^^^ has alignment of 2, which is larger than 1
 
 error[E0691]: zero-sized field in transparent struct has alignment larger than 1
   --> $DIR/repr-transparent.rs:42:24
@@ -32,7 +32,7 @@ error[E0691]: zero-sized field in transparent struct has alignment larger than 1
 LL | #[repr(transparent)]
    |        ----------- help: Try using `repr(C)` instead
 LL | struct GenericAlign<T>(ZstAlign32<T>, u32);
-   |                        ^^^^^^^^^^^^^ has alignment larger than 1
+   |                        ^^^^^^^^^^^^^ has alignment of 32, which is larger than 1
 
 error[E0691]: zero-sized field in transparent struct has alignment larger than 1
   --> $DIR/repr-transparent.rs:45:33
@@ -83,7 +83,7 @@ LL | #[repr(transparent)]
    |        ----------- help: Try using `repr(C)` instead
 LL | enum NontrivialAlignZstEnum {
 LL |     Foo(u32, [u16; 0]),
-   |              ^^^^^^^^ has alignment larger than 1
+   |              ^^^^^^^^ has alignment of 2, which is larger than 1
 
 error[E0691]: zero-sized field in transparent enum has alignment larger than 1
   --> $DIR/repr-transparent.rs:79:11
@@ -92,7 +92,7 @@ LL | #[repr(transparent)]
    |        ----------- help: Try using `repr(C)` instead
 LL | enum GenericAlignEnum<T> {
 LL |     Foo { bar: ZstAlign32<T>, baz: u32 }
-   |           ^^^^^^^^^^^^^^^^^^ has alignment larger than 1
+   |           ^^^^^^^^^^^^^^^^^^ has alignment of 32, which is larger than 1
 
 error[E0691]: zero-sized field in transparent enum has alignment larger than 1
   --> $DIR/repr-transparent.rs:84:11
