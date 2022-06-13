@@ -179,21 +179,25 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx, const_eval::Memory
                 return Ok(false);
             }
 
-            // Now, check whether this alloc contains reference types (as relocations).
+            // Now, check whether this allocation contains reference types (as relocations).
+            //
+            // Note, this check may sometimes not be cheap, so we only do it when the walk we'd like
+            // to avoid could be expensive: on the potentially larger types, arrays and slices,
+            // rather than on all aggregates unconditionally.
+            if matches!(mplace.layout.ty.kind(), ty::Array(..) | ty::Slice(..)) {
+                let Some((size, align)) = self.ecx.size_and_align_of_mplace(&mplace)? else {
+                    // We do the walk if we can't determine the size of the mplace: we may be
+                    // dealing with extern types here in the future.
+                    return Ok(true);
+                };
 
-            // FIXME(lqd): checking the size and alignment could be expensive here, only do the
-            // following for the potentially bigger aggregates like arrays and slices.
-            let Some((size, align)) = self.ecx.size_and_align_of_mplace(&mplace)? else {
-                // We do the walk if we can't determine the size of the mplace: we may be dealing
-                // with extern types here in the future.
-                return Ok(true);
-            };
-
-            // If there are no refs or relocations in this allocation, we can avoid the interning
-            // walk.
-            if let Some(alloc) = self.ecx.get_ptr_alloc(mplace.ptr, size, align)?
-                && !alloc.has_relocations() {
-                return Ok(false);
+                // If there are no refs or relocations in this allocation, we can avoid the
+                // interning walk.
+                if let Some(alloc) = self.ecx.get_ptr_alloc(mplace.ptr, size, align)? {
+                    if !alloc.has_relocations() {
+                        return Ok(false);
+                    }
+                }
             }
 
             // In the general case, we do the walk.
