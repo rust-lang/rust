@@ -2596,7 +2596,7 @@ impl<'a> Parser<'a> {
         err.tool_only_span_suggestion(
             label.ident.span.until(self.token.span),
             "remove this block label",
-            String::new(),
+            "",
             Applicability::MachineApplicable,
         );
         err.emit();

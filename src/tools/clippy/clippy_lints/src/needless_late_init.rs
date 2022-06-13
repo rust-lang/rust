@@ -281,7 +281,7 @@ fn check<'tcx>(
                     diag.tool_only_span_suggestion(
                         local_stmt.span,
                         "remove the local",
-                        String::new(),
+                        "",
                         Applicability::MachineApplicable,
                     );
 
