@@ -21,7 +21,7 @@ use rustc_middle::ty::layout::{LayoutError, MAX_SIMD_LANES};
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::util::{Discr, IntTypeExt};
 use rustc_middle::ty::{
-    self, ParamEnv, ToPredicate, Ty, TyCtxt, TyKind, TypeFoldable, TypeSuperFoldable,
+    self, Array, ParamEnv, ToPredicate, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable,
 };
 use rustc_session::lint::builtin::{UNINHABITED_STATIC, UNSUPPORTED_CALLING_CONVENTIONS};
 use rustc_span::symbol::sym;
@@ -1206,17 +1206,17 @@ pub(super) fn check_packed(tcx: TyCtxt<'_>, sp: Span, def: ty::AdtDef<'_>) {
         for attr in tcx.get_attrs(def.did(), sym::repr) {
             for r in attr::parse_repr_attr(&tcx.sess, attr) {
                 if let attr::ReprPacked(pack) = r
-                && let Some(repr_pack) = repr.pack
-                && pack as u64 != repr_pack.bytes()
-            {
-                        struct_span_err!(
-                            tcx.sess,
-                            sp,
-                            E0634,
-                            "type has conflicting packed representation hints"
-                        )
-                        .emit();
-            }
+                    && let Some(repr_pack) = repr.pack
+                    && pack as u64 != repr_pack.bytes()
+                {
+                    struct_span_err!(
+                        tcx.sess,
+                        sp,
+                        E0634,
+                        "type has conflicting packed representation hints"
+                    )
+                    .emit();
+                }
             }
         }
         if repr.align.is_some() {
@@ -1330,7 +1330,7 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, sp: Span, adt: ty::AdtD
         // We are currently checking the type this field came from, so it must be local
         let span = tcx.hir().span_if_local(field.did).unwrap();
         let array_len = match ty.kind() {
-            TyKind::Array(_, len) => len.try_eval_usize(tcx, param_env),
+            Array(_, len) => len.try_eval_usize(tcx, param_env),
             _ => None,
         };
         let zst = array_len == Some(0) || layout.map_or(false, |layout| layout.is_zst());
@@ -1365,9 +1365,9 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, sp: Span, adt: ty::AdtD
             {
                 for item in item_list {
                     if item.name_or_empty() == sym::transparent {
-                        err.span_suggestion_verbose(
+                        err.span_suggestion_short(
                             item.span(),
-                            "Try using `#[repc(C)]` instead",
+                            "Try using `repr(C)` instead",
                             "C",
                             Applicability::MachineApplicable,
                         );
