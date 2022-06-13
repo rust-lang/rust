@@ -670,6 +670,13 @@ macro_rules! make_mir_visitor {
                         };
                         self.visit_place(path, ctx, location);
                     }
+                    Rvalue::VirtualRef(place) => {
+                        self.visit_place(
+                            place,
+                            PlaceContext::NonMutatingUse(NonMutatingUseContext::Inspect),
+                            location
+                        );
+                    }
 
                     Rvalue::AddressOf(m, path) => {
                         let ctx = match m {

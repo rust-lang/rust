@@ -289,6 +289,10 @@ impl<'cx, 'tcx> InvalidationGenerator<'cx, 'tcx> {
             | Rvalue::ShallowInitBox(ref operand, _ /*ty*/) => {
                 self.consume_operand(location, operand)
             }
+            Rvalue::VirtualRef(ref place) => {
+                let op = &Operand::Copy(*place);
+                self.consume_operand(location, op);
+            }
 
             Rvalue::Len(place) | Rvalue::Discriminant(place) => {
                 let af = match *rvalue {

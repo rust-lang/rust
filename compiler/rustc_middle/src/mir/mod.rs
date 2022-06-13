@@ -159,6 +159,8 @@ pub enum MirPhase {
     /// of the `mir_promoted` query), these promoted elements are available in the `promoted_mir`
     /// query.
     ConstsPromoted = 2,
+    /// After this projections may only contain deref projections as the first element.
+    Derefered = 3,
     /// Beginning with this phase, the following variants are disallowed:
     /// * [`TerminatorKind::DropAndReplace`](terminator::TerminatorKind::DropAndReplace)
     /// * [`TerminatorKind::FalseUnwind`](terminator::TerminatorKind::FalseUnwind)
@@ -173,9 +175,7 @@ pub enum MirPhase {
     /// Furthermore, `Drop` now uses explicit drop flags visible in the MIR and reaching a `Drop`
     /// terminator means that the auto-generated drop glue will be invoked. Also, `Copy` operands
     /// are allowed for non-`Copy` types.
-    DropsLowered = 3,
-    /// After this projections may only contain deref projections as the first element.
-    Derefered = 4,
+    DropsLowered = 4,
     /// Beginning with this phase, the following variant is disallowed:
     /// * [`Rvalue::Aggregate`] for any `AggregateKind` except `Array`
     ///
@@ -1172,6 +1172,15 @@ impl<'tcx> LocalDecl<'tcx> {
             Some(box LocalInfo::StaticRef { is_thread_local, .. }) => is_thread_local,
             _ => false,
         }
+    }
+
+    /// Returns `true` if this is a DerefTemp
+    pub fn is_deref_temp(&self) -> bool {
+        match self.local_info {
+            Some(box LocalInfo::DerefTemp) => return true,
+            _ => (),
+        }
+        return false;
     }
 
     /// Returns `true` is the local is from a compiler desugaring, e.g.,
@@ -2602,6 +2611,15 @@ pub enum Rvalue<'tcx> {
     /// initialized but its content as uninitialized. Like other pointer casts, this in general
     /// affects alias analysis.
     ShallowInitBox(Operand<'tcx>, Ty<'tcx>),
+
+    /// A virtual ref is equivalent to a read from a reference/pointer at the
+    /// codegen level, but is treated specially by drop elaboration. When such a read happens, it
+    /// is guaranteed that the only use of the returned value is a deref operation, immediately
+    /// followed by one or more projections. Drop elaboration treats this virtual ref as if the
+    /// read never happened and just projects further. This allows simplifying various MIR
+    /// optimizations and codegen backends that previously had to handle deref operations anywhere
+    /// in a place.
+    VirtualRef(Place<'tcx>),
 }
 
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
@@ -2618,6 +2636,7 @@ impl<'tcx> Rvalue<'tcx> {
             Rvalue::Cast(CastKind::PointerExposeAddress, _, _) => false,
 
             Rvalue::Use(_)
+            | Rvalue::VirtualRef(_)
             | Rvalue::Repeat(_, _)
             | Rvalue::Ref(_, _, _)
             | Rvalue::ThreadLocalRef(_)
@@ -2795,6 +2814,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                 };
                 write!(fmt, "&{}{}{:?}", region, kind_str, place)
             }
+            VirtualRef(ref place) => write!(fmt, "virt {:#?}", place),
 
             AddressOf(mutability, ref place) => {
                 let kind_str = match mutability {

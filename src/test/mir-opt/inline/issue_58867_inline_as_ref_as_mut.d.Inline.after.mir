@@ -16,7 +16,7 @@ fn d(_1: &Box<T>) -> &T {
         StorageLive(_3);                 // scope 0 at $DIR/issue-58867-inline-as-ref-as-mut.rs:18:5: 18:15
         _3 = &(*_1);                     // scope 0 at $DIR/issue-58867-inline-as-ref-as-mut.rs:18:5: 18:15
         StorageLive(_4);                 // scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
-        _4 = move (*_3);                 // scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
+        _4 = virt (*_3);                 // scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
         StorageLive(_5);                 // scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
         _5 = (((_4.0: std::ptr::Unique<T>).0: std::ptr::NonNull<T>).0: *const T); // scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
         _2 = &(*_5);                     // scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL

@@ -616,6 +616,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             // There's no other checking to do at this time.
             Rvalue::Aggregate(..)
             | Rvalue::Use(..)
+            | Rvalue::VirtualRef(..)
             | Rvalue::Repeat(..)
             | Rvalue::Len(..)
             | Rvalue::Cast(..)
