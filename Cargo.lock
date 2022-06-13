@@ -3512,6 +3512,7 @@ version = "1.0.0"
 dependencies = [
  "bstr",
  "byteorder",
+ "clap 3.1.1",
  "crossbeam-utils",
  "libc",
  "libz-sys",
