@@ -260,7 +260,10 @@ impl<'a> Parser<'a> {
                     if let Ok(snip) = self.span_to_snippet(pat.span) {
                         err.span_label(pat.span, format!("while parsing the type for `{}`", snip));
                     }
-                    let err = if self.check(&token::Eq) {
+                    // we use noexpect here because we don't actually expect Eq to be here
+                    // but we are still checking for it in order to be able to handle it if
+                    // it is there
+                    let err = if self.check_noexpect(&token::Eq) {
                         err.emit();
                         None
                     } else {

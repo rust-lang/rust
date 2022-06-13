@@ -28,6 +28,7 @@ use std::ops::{Deref, DerefMut};
 
 use std::mem::take;
 
+use crate::parser;
 use tracing::{debug, trace};
 
 const TURBOFISH_SUGGESTION_STR: &str =
@@ -481,6 +482,35 @@ impl<'a> Parser<'a> {
             .map(|x| TokenType::Token(x.clone()))
             .chain(inedible.iter().map(|x| TokenType::Token(x.clone())))
             .chain(self.expected_tokens.iter().cloned())
+            .filter_map(|token| {
+                // filter out suggestions which suggest the same token which was found and deemed incorrect
+                fn is_ident_eq_keyword(found: &TokenKind, expected: &TokenType) -> bool {
+                    if let TokenKind::Ident(current_sym, _) = found {
+                        if let TokenType::Keyword(suggested_sym) = expected {
+                            return current_sym == suggested_sym;
+                        }
+                    }
+                    false
+                }
+                if token != parser::TokenType::Token(self.token.kind.clone()) {
+                    let eq = is_ident_eq_keyword(&self.token.kind, &token);
+                    // if the suggestion is a keyword and the found token is an ident,
+                    // the content of which are equal to the suggestion's content,
+                    // we can remove that suggestion (see the return None statement below)
+
+                    // if this isn't the case however, and the suggestion is a token the
+                    // content of which is the same as the found token's, we remove it as well
+                    if !eq {
+                        if let TokenType::Token(kind) = &token {
+                            if kind == &self.token.kind {
+                                return None;
+                            }
+                        }
+                        return Some(token);
+                    }
+                }
+                return None;
+            })
             .collect::<Vec<_>>();
         expected.sort_by_cached_key(|x| x.to_string());
         expected.dedup();

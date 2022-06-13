@@ -21,11 +21,11 @@ error: expected one of `!`, `.`, `::`, `;`, `?`, `else`, `{`, or an operator, fo
 LL |     let outer_local:e_outer<&str, { let inner_local:e_inner<&str, }
    |                                                                 ^ expected one of 8 possible tokens
 
-error: expected one of `,`, `:`, `=`, or `>`, found `}`
+error: expected one of `,` or `>`, found `}`
   --> $DIR/issue-84117.rs:8:1
    |
 LL |     let outer_local:e_outer<&str, { let inner_local:e_inner<&str, }
-   |         ----------- while parsing the type for `outer_local`       - expected one of `,`, `:`, `=`, or `>`
+   |         ----------- while parsing the type for `outer_local`       - expected one of `,` or `>`
 ...
 LL | }
    | ^ unexpected token
