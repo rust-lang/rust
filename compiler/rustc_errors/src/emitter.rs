@@ -10,7 +10,7 @@
 use Destination::*;
 
 use rustc_span::source_map::SourceMap;
-use rustc_span::{SourceFile, Span};
+use rustc_span::{FileLines, SourceFile, Span};
 
 use crate::snippet::{Annotation, AnnotationType, Line, MultilineAnnotation, Style, StyledString};
 use crate::styled_buffer::StyledBuffer;
@@ -1756,12 +1756,6 @@ impl EmitterWriter {
             let has_deletion = parts.iter().any(|p| p.is_deletion());
             let is_multiline = complete.lines().count() > 1;
 
-            enum DisplaySuggestion {
-                Underline,
-                Diff,
-                None,
-            }
-
             if let Some(span) = span.primary_span() {
                 // Compare the primary span of the diagnostic with the span of the suggestion
                 // being emitted.  If they belong to the same file, we don't *need* to show the
@@ -1838,83 +1832,7 @@ impl EmitterWriter {
             for (line_pos, (line, highlight_parts)) in lines.by_ref().zip(highlights).enumerate() {
                 debug!(%line_pos, %line, ?highlight_parts);
 
-                let print_line = |line_pos: usize,
-                                  line: &str,
-                                  highlight_parts: &Vec<SubstitutionHighlight>,
-                                  buffer: &mut StyledBuffer,
-                                  row_num: &mut usize| {
-                    // Print the span column to avoid confusion
-                    buffer.puts(
-                        *row_num,
-                        0,
-                        &self.maybe_anonymized(line_start + line_pos),
-                        Style::LineNumber,
-                    );
-                    if let DisplaySuggestion::Diff = show_code_change {
-                        // Add the line number for both addition and removal to drive the point home.
-                        //
-                        // N - fn foo<A: T>(bar: A) {
-                        // N + fn foo(bar: impl T) {
-                        buffer.puts(
-                            *row_num - 1,
-                            0,
-                            &self.maybe_anonymized(line_start + line_pos),
-                            Style::LineNumber,
-                        );
-                        buffer.puts(*row_num - 1, max_line_num_len + 1, "- ", Style::Removal);
-                        buffer.puts(
-                            *row_num - 1,
-                            max_line_num_len + 3,
-                            &normalize_whitespace(
-                                &*file_lines
-                                    .file
-                                    .get_line(file_lines.lines[line_pos].line_index)
-                                    .unwrap(),
-                            ),
-                            Style::NoStyle,
-                        );
-                        buffer.puts(*row_num, max_line_num_len + 1, "+ ", Style::Addition);
-                    } else if is_multiline {
-                        match &highlight_parts[..] {
-                            [SubstitutionHighlight { start: 0, end }] if *end == line.len() => {
-                                buffer.puts(*row_num, max_line_num_len + 1, "+ ", Style::Addition);
-                            }
-                            [] => {
-                                draw_col_separator(buffer, *row_num, max_line_num_len + 1);
-                            }
-                            _ => {
-                                buffer.puts(*row_num, max_line_num_len + 1, "~ ", Style::Addition);
-                            }
-                        }
-                    } else {
-                        draw_col_separator(buffer, *row_num, max_line_num_len + 1);
-                    }
-
-                    // print the suggestion
-                    buffer.append(*row_num, &normalize_whitespace(line), Style::NoStyle);
-
-                    // Colorize addition/replacements with green.
-                    for &SubstitutionHighlight { start, end } in highlight_parts {
-                        // Account for tabs when highlighting (#87972).
-                        let tabs: usize = line
-                            .chars()
-                            .take(start)
-                            .map(|ch| match ch {
-                                '\t' => 3,
-                                _ => 0,
-                            })
-                            .sum();
-                        buffer.set_style_range(
-                            *row_num,
-                            max_line_num_len + 3 + start + tabs,
-                            max_line_num_len + 3 + end + tabs,
-                            Style::Addition,
-                            true,
-                        );
-                    }
-                    *row_num += 1;
-                };
-
+                // Remember lines that are not highlighted to hide them if needed
                 if highlight_parts.is_empty() {
                     unhighlighted_lines.push((line_pos, line));
                     continue;
@@ -1927,22 +1845,77 @@ impl EmitterWriter {
                     // (because then we just replace a line with ... which is
                     // not helpful)
                     n if n <= 3 => unhighlighted_lines.drain(..).for_each(|(p, l)| {
-                        print_line(p, l, &Vec::new(), &mut buffer, &mut row_num)
+                        self.draw_code_line(
+                            &mut buffer,
+                            &mut row_num,
+                            &Vec::new(),
+                            p,
+                            l,
+                            line_start,
+                            show_code_change,
+                            max_line_num_len,
+                            &file_lines,
+                            is_multiline,
+                        )
                     }),
+                    // Print first unhighlighted line, "..." and last unhighlighted line, like so:
+                    //
+                    // LL | this line was highlighted
+                    // LL | this line is just for context
+                    //   ...
+                    // LL | this line is just for context
+                    // LL | this line was highlighted
                     _ => {
-                        unhighlighted_lines
-                            .drain(..1)
-                            .next()
-                            .map(|(p, l)| print_line(p, l, &Vec::new(), &mut buffer, &mut row_num));
+                        let last_line = unhighlighted_lines.pop();
+                        let first_line = unhighlighted_lines.drain(..).next();
+
+                        first_line.map(|(p, l)| {
+                            self.draw_code_line(
+                                &mut buffer,
+                                &mut row_num,
+                                &Vec::new(),
+                                p,
+                                l,
+                                line_start,
+                                show_code_change,
+                                max_line_num_len,
+                                &file_lines,
+                                is_multiline,
+                            )
+                        });
+
                         buffer.puts(row_num, max_line_num_len - 1, "...", Style::LineNumber);
                         row_num += 1;
-                        unhighlighted_lines
-                            .pop()
-                            .map(|(p, l)| print_line(p, l, &Vec::new(), &mut buffer, &mut row_num));
+
+                        last_line.map(|(p, l)| {
+                            self.draw_code_line(
+                                &mut buffer,
+                                &mut row_num,
+                                &Vec::new(),
+                                p,
+                                l,
+                                line_start,
+                                show_code_change,
+                                max_line_num_len,
+                                &file_lines,
+                                is_multiline,
+                            )
+                        });
                     }
                 }
 
-                print_line(line_pos, line, highlight_parts, &mut buffer, &mut row_num)
+                self.draw_code_line(
+                    &mut buffer,
+                    &mut row_num,
+                    highlight_parts,
+                    line_pos,
+                    line,
+                    line_start,
+                    show_code_change,
+                    max_line_num_len,
+                    &file_lines,
+                    is_multiline,
+                )
             }
 
             // This offset and the ones below need to be signed to account for replacement code
@@ -2127,6 +2100,90 @@ impl EmitterWriter {
             }
         }
     }
+
+    fn draw_code_line(
+        &self,
+        buffer: &mut StyledBuffer,
+        row_num: &mut usize,
+        highlight_parts: &Vec<SubstitutionHighlight>,
+        line_pos: usize,
+        line: &str,
+        line_start: usize,
+        show_code_change: DisplaySuggestion,
+        max_line_num_len: usize,
+        file_lines: &FileLines,
+        is_multiline: bool,
+    ) {
+        // Print the span column to avoid confusion
+        buffer.puts(*row_num, 0, &self.maybe_anonymized(line_start + line_pos), Style::LineNumber);
+        if let DisplaySuggestion::Diff = show_code_change {
+            // Add the line number for both addition and removal to drive the point home.
+            //
+            // N - fn foo<A: T>(bar: A) {
+            // N + fn foo(bar: impl T) {
+            buffer.puts(
+                *row_num - 1,
+                0,
+                &self.maybe_anonymized(line_start + line_pos),
+                Style::LineNumber,
+            );
+            buffer.puts(*row_num - 1, max_line_num_len + 1, "- ", Style::Removal);
+            buffer.puts(
+                *row_num - 1,
+                max_line_num_len + 3,
+                &normalize_whitespace(
+                    &*file_lines.file.get_line(file_lines.lines[line_pos].line_index).unwrap(),
+                ),
+                Style::NoStyle,
+            );
+            buffer.puts(*row_num, max_line_num_len + 1, "+ ", Style::Addition);
+        } else if is_multiline {
+            match &highlight_parts[..] {
+                [SubstitutionHighlight { start: 0, end }] if *end == line.len() => {
+                    buffer.puts(*row_num, max_line_num_len + 1, "+ ", Style::Addition);
+                }
+                [] => {
+                    draw_col_separator(buffer, *row_num, max_line_num_len + 1);
+                }
+                _ => {
+                    buffer.puts(*row_num, max_line_num_len + 1, "~ ", Style::Addition);
+                }
+            }
+        } else {
+            draw_col_separator(buffer, *row_num, max_line_num_len + 1);
+        }
+
+        // print the suggestion
+        buffer.append(*row_num, &normalize_whitespace(line), Style::NoStyle);
+
+        // Colorize addition/replacements with green.
+        for &SubstitutionHighlight { start, end } in highlight_parts {
+            // Account for tabs when highlighting (#87972).
+            let tabs: usize = line
+                .chars()
+                .take(start)
+                .map(|ch| match ch {
+                    '\t' => 3,
+                    _ => 0,
+                })
+                .sum();
+            buffer.set_style_range(
+                *row_num,
+                max_line_num_len + 3 + start + tabs,
+                max_line_num_len + 3 + end + tabs,
+                Style::Addition,
+                true,
+            );
+        }
+        *row_num += 1;
+    }
+}
+
+#[derive(Clone, Copy)]
+enum DisplaySuggestion {
+    Underline,
+    Diff,
+    None,
 }
 
 impl FileWithAnnotatedLines {
