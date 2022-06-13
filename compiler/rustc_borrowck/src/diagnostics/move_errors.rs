@@ -417,7 +417,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             err.span_suggestion_verbose(
                 span.shrink_to_hi(),
                 &format!("consider borrowing the `{}`'s content", diag_name.unwrap()),
-                ".as_ref()".to_string(),
+                ".as_ref()",
                 Applicability::MaybeIncorrect,
             );
         } else if let Some(use_spans) = use_spans {

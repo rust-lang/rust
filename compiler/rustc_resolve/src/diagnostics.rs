@@ -408,7 +408,7 @@ impl<'a> Resolver<'a> {
                 err.span_suggestion(
                     import.use_span_with_attributes,
                     message,
-                    String::new(),
+                    "",
                     Applicability::MaybeIncorrect,
                 );
             }
@@ -416,7 +416,7 @@ impl<'a> Resolver<'a> {
             return;
         }
 
-        err.span_suggestion(span, message, String::new(), Applicability::MachineApplicable);
+        err.span_suggestion(span, message, "", Applicability::MachineApplicable);
     }
 
     pub(crate) fn lint_if_path_starts_with_module(
@@ -763,7 +763,7 @@ impl<'a> Resolver<'a> {
                         err.span_suggestion(
                             span,
                             "try using similarly named label",
-                            ident.name.to_string(),
+                            ident.name,
                             Applicability::MaybeIncorrect,
                         );
                     }
@@ -796,7 +796,7 @@ impl<'a> Resolver<'a> {
                     err.span_suggestion(
                         span,
                         "consider importing the module directly",
-                        "".to_string(),
+                        "",
                         Applicability::MachineApplicable,
                     );
 
@@ -1007,7 +1007,7 @@ impl<'a> Resolver<'a> {
                         err.span_suggestion(
                             span,
                             "try using similarly named label",
-                            ident.name.to_string(),
+                            ident.name,
                             Applicability::MaybeIncorrect,
                         );
                     }
@@ -1618,12 +1618,7 @@ impl<'a> Resolver<'a> {
                 format!("maybe you meant this {}", suggestion.res.descr())
             }
         };
-        err.span_suggestion(
-            span,
-            &msg,
-            suggestion.candidate.to_string(),
-            Applicability::MaybeIncorrect,
-        );
+        err.span_suggestion(span, &msg, suggestion.candidate, Applicability::MaybeIncorrect);
         true
     }
 
@@ -2535,7 +2530,7 @@ fn show_candidates(
                 err.span_suggestion_verbose(
                     first.ident.span.until(last.ident.span),
                     &format!("if you import `{}`, refer to it directly", last.ident),
-                    String::new(),
+                    "",
                     Applicability::Unspecified,
                 );
             }

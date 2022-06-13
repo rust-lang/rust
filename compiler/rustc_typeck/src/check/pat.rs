@@ -1150,14 +1150,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     err.span_suggestion_verbose(
                         all_fields_span,
                         "use `..` to ignore all fields",
-                        String::from(".."),
+                        "..",
                         Applicability::MaybeIncorrect,
                     );
                 } else {
                     err.span_suggestion_verbose(
                         tail_span,
                         "use `..` to ignore the rest of the fields",
-                        String::from(", .."),
+                        ", ..",
                         Applicability::MaybeIncorrect,
                     );
                 }
@@ -1428,7 +1428,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         err.span_suggestion_verbose(
             sp_comma,
             "add `..` at the end of the field list to ignore all other fields",
-            sugg.to_string(),
+            sugg,
             Applicability::MachineApplicable,
         );
         err.emit();
@@ -1502,7 +1502,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     err.span_suggestion(
                         pat_field.ident.span,
                         "a field with a similar name exists",
-                        suggested_name.to_string(),
+                        suggested_name,
                         Applicability::MaybeIncorrect,
                     );
 
@@ -1655,7 +1655,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             err.span_suggestion_verbose(
                 field.span.shrink_to_hi(),
                 "ignore the inaccessible and unused fields",
-                ", ..".to_string(),
+                ", ..",
                 Applicability::MachineApplicable,
             );
         } else {
@@ -1670,7 +1670,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             err.span_suggestion_verbose(
                 span,
                 "ignore the inaccessible and unused fields",
-                " { .. }".to_string(),
+                " { .. }",
                 Applicability::MachineApplicable,
             );
         }

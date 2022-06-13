@@ -271,7 +271,7 @@ impl<'a> Parser<'a> {
                 err.span_suggestion_verbose(
                     prev_token.shrink_to_hi().to(self.prev_token.span),
                     "consider joining the two `where` clauses into one",
-                    ",".to_owned(),
+                    ",",
                     Applicability::MaybeIncorrect,
                 );
                 err.emit();

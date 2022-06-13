@@ -1589,7 +1589,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             err.span_suggestion(
                 span.shrink_to_lo(),
                 "you are looking for the module in `std`, not the primitive type",
-                "std::".to_string(),
+                "std::",
                 Applicability::MachineApplicable,
             );
         } else {
@@ -1820,7 +1820,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                 err.span_suggestion_verbose(
                                     args_span,
                                     &format!("{type_name} doesn't have generic parameters"),
-                                    String::new(),
+                                    "",
                                     Applicability::MachineApplicable,
                                 );
                                 return;
@@ -1946,7 +1946,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         err.span_suggestion(
                             assoc_ident.span,
                             "there is a variant with a similar name",
-                            suggested_name.to_string(),
+                            suggested_name,
                             Applicability::MaybeIncorrect,
                         );
                     } else {
@@ -2422,7 +2422,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         err.span_suggestion_verbose(
                             ident.span.shrink_to_hi().to(args.span_ext),
                             "the `Self` type doesn't accept type parameters",
-                            String::new(),
+                            "",
                             Applicability::MaybeIncorrect,
                         );
                     }
@@ -2473,7 +2473,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                 err.span_suggestion_verbose(
                                     segment.ident.span.shrink_to_hi().to(args.span_ext),
                                     "the `Self` type doesn't accept type parameters",
-                                    String::new(),
+                                    "",
                                     Applicability::MachineApplicable,
                                 );
                                 return;
@@ -2549,7 +2549,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             err.span_suggestion_verbose(
                                 segment.ident.span.shrink_to_hi().to(args.span_ext),
                                 &format!("primitive type `{name}` doesn't have generic parameters"),
-                                String::new(),
+                                "",
                                 Applicability::MaybeIncorrect,
                             );
                         }

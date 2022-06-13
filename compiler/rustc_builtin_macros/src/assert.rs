@@ -132,7 +132,7 @@ fn parse_assert<'a>(cx: &mut ExtCtxt<'a>, sp: Span, stream: TokenStream) -> PRes
         err.span_suggestion(
             parser.token.span,
             "try removing semicolon",
-            String::new(),
+            "",
             Applicability::MaybeIncorrect,
         );
         err.emit();
@@ -153,7 +153,7 @@ fn parse_assert<'a>(cx: &mut ExtCtxt<'a>, sp: Span, stream: TokenStream) -> PRes
             err.span_suggestion_short(
                 comma_span,
                 "try adding a comma",
-                ", ".to_string(),
+                ", ",
                 Applicability::MaybeIncorrect,
             );
             err.emit();
