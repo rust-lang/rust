@@ -102,6 +102,7 @@ macro_rules! compat_fn {
             }
 
             #[allow(dead_code)]
+            #[inline(always)]
             pub fn option() -> Option<F> {
                 unsafe {
                     if cfg!(miri) {
