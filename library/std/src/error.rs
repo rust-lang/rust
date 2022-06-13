@@ -298,14 +298,13 @@ pub trait Error: Debug + Display {
 
     /// Provides type based access to context intended for error reports.
     ///
-    /// Used in conjunction with [`context`] and [`context_ref`] to extract
+    /// Used in conjunction with [`provide_value`] and [`provide_ref`] to extract
     /// references to member variables from `dyn Error` trait objects.
     ///
     /// # Example
     ///
     /// ```rust
     /// #![feature(provide_any)]
-    /// #![feature(error_in_core)]
     /// use core::fmt;
     /// use core::any::Demand;
     ///
