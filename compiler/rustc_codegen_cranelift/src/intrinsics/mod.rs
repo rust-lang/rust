@@ -720,7 +720,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             dest.write_cvalue(fx, val);
         };
 
-        pref_align_of | needs_drop | type_id | type_name | variant_count, () {
+        pref_align_of | needs_drop | type_id | type_name | variant_count | validity_invariants_of, () {
             let const_val =
                 fx.tcx.const_eval_instance(ParamEnv::reveal_all(), instance, None).unwrap();
             let val = crate::constant::codegen_const_value(
