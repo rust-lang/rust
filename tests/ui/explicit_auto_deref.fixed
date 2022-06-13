@@ -59,6 +59,10 @@ fn f_str_t<T>(_: &str, _: T) {}
 
 fn f_box_t<T>(_: &Box<T>) {}
 
+extern "C" {
+    fn var(_: u32, ...);
+}
+
 fn main() {
     let s = String::new();
 
@@ -202,4 +206,9 @@ fn main() {
 
     f_str(&&ref_str); // `needless_borrow` will suggest removing both references
     f_str(&ref_str); // `needless_borrow` will suggest removing only one reference
+
+    let x = &&40;
+    unsafe {
+        var(0, &**x);
+    }
 }
