@@ -207,6 +207,7 @@ target | std | host | notes
 -------|:---:|:----:|-------
 `aarch64-apple-ios-macabi` | ? |  | Apple Catalyst on ARM64
 `aarch64-apple-tvos` | * |  | ARM64 tvOS
+[`aarch64-apple-watchos-sim`](platform-support/apple-watchos.md) | ✓ |  | ARM64 Apple WatchOS Simulator
 [`aarch64-kmc-solid_asp3`](platform-support/kmc-solid.md) | ✓ |  | ARM64 SOLID with TOPPERS/ASP3
 [`aarch64-pc-windows-gnullvm`](platform-support/pc-windows-gnullvm.md) | ✓ | ✓ |
 `aarch64-unknown-freebsd` | ✓ | ✓ | ARM64 FreeBSD
@@ -220,6 +221,7 @@ target | std | host | notes
 `aarch64-wrs-vxworks` | ? |  |
 `aarch64_be-unknown-linux-gnu_ilp32` | ✓ | ✓ | ARM64 Linux (big-endian, ILP32 ABI)
 `aarch64_be-unknown-linux-gnu` | ✓ | ✓ | ARM64 Linux (big-endian)
+[`arm64_32-apple-watchos`](platform-support/apple-watchos.md) | ✓ | | ARM Apple WatchOS 64-bit with 32-bit pointers
 `armv4t-unknown-linux-gnueabi` | ? |  |
 `armv5te-unknown-linux-uclibceabi` | ? |  | ARMv5TE Linux with uClibc
 `armv6-unknown-freebsd` | ✓ | ✓ | ARMv6 FreeBSD
@@ -234,6 +236,7 @@ target | std | host | notes
 [`armv7a-kmc-solid_asp3-eabi`](platform-support/kmc-solid.md) | ✓ |  | ARM SOLID with TOPPERS/ASP3
 [`armv7a-kmc-solid_asp3-eabihf`](platform-support/kmc-solid.md) | ✓ |  | ARM SOLID with TOPPERS/ASP3, hardfloat
 `armv7a-none-eabihf` | * | | ARM Cortex-A, hardfloat
+[`armv7k-apple-watchos`](platform-support/apple-watchos.md) | ✓ | | ARM Apple WatchOS
 `armv7s-apple-ios` | ✓ |  |
 `avr-unknown-gnu-atmega328` | * |  | AVR. Requires `-Z build-std=core`
 `bpfeb-unknown-none` | * |  | BPF (big endian)
@@ -290,6 +293,7 @@ target | std | host | notes
 [`wasm64-unknown-unknown`](platform-support/wasm64-unknown-unknown.md) | ? |  | WebAssembly
 `x86_64-apple-ios-macabi` | ✓ |  | Apple Catalyst on x86_64
 `x86_64-apple-tvos` | * | | x86 64-bit tvOS
+[`x86_64-apple-watchos-sim`](platform-support/apple-watchos.md) | ✓ | | x86 64-bit Apple WatchOS simulator
 [`x86_64-pc-windows-gnullvm`](platform-support/pc-windows-gnullvm.md) | ✓ | ✓ |
 `x86_64-pc-windows-msvc` | * |  | 64-bit Windows XP support
 `x86_64-sun-solaris` | ? |  | Deprecated target for 64-bit Solaris 10/11, illumos

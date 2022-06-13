@@ -16,6 +16,7 @@
     - [Target Tier Policy](target-tier-policy.md)
     - [Template for Target-specific Documentation](platform-support/TEMPLATE.md)
     - [aarch64-apple-ios-sim](platform-support/aarch64-apple-ios-sim.md)
+    - [\*-apple-watchos\*](platform-support/apple-watchos.md)
     - [armv7-unknown-linux-uclibceabi](platform-support/armv7-unknown-linux-uclibceabi.md)
     - [armv7-unknown-linux-uclibceabihf](platform-support/armv7-unknown-linux-uclibceabihf.md)
     - [\*-kmc-solid_\*](platform-support/kmc-solid.md)
