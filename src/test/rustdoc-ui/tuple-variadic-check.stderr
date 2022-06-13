@@ -1,4 +1,4 @@
-error: `#[doc(tuple_variadic)]` must used on the first of a set of tuple trait impls with varying arity
+error: `#[doc(tuple_variadic)]` must be used on the first of a set of tuple trait impls with varying arity
   --> $DIR/tuple-variadic-check.rs:12:7
    |
 LL | #[doc(tuple_variadic)]
