@@ -136,7 +136,7 @@ impl<'tcx> LateLintPass<'tcx> for ArrayIntoIter {
                     diag.span_suggestion(
                         receiver_arg.span.shrink_to_hi().to(expr.span.shrink_to_hi()),
                         "or remove `.into_iter()` to iterate by value",
-                        String::new(),
+                        "",
                         Applicability::MaybeIncorrect,
                     );
                 } else if receiver_ty.is_array() {

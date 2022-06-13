@@ -921,7 +921,7 @@ impl CheckAttrVisitor<'_> {
                         .span_suggestion(
                             replacement_span,
                             "remove this attribute",
-                            String::new(),
+                            "",
                             Applicability::MachineApplicable,
                         )
                         .emit();
@@ -1161,7 +1161,7 @@ impl CheckAttrVisitor<'_> {
                                         diag.span_suggestion_short(
                                             i_meta.span,
                                             "use `notable_trait` instead",
-                                            String::from("notable_trait"),
+                                            "notable_trait",
                                             Applicability::MachineApplicable,
                                         );
                                         diag.note("`doc(spotlight)` is now a no-op");
@@ -1737,7 +1737,7 @@ impl CheckAttrVisitor<'_> {
                     .span_suggestion(
                         attr.span,
                         "remove this attribute",
-                        String::new(),
+                        "",
                         Applicability::MachineApplicable,
                     )
                     .emit();
@@ -2276,7 +2276,7 @@ impl CheckAttrVisitor<'_> {
                 .span_suggestion(
                     attr.span,
                     "remove this attribute",
-                    String::new(),
+                    "",
                     Applicability::MachineApplicable,
                 )
                 .note(&note)
@@ -2504,7 +2504,7 @@ fn check_duplicates(
                         db.span_note(other, "attribute also specified here").span_suggestion(
                             this,
                             "remove this attribute",
-                            String::new(),
+                            "",
                             Applicability::MachineApplicable,
                         );
                         if matches!(duplicates, FutureWarnFollowing | FutureWarnPreceding) {
@@ -2539,7 +2539,7 @@ fn check_duplicates(
                     .span_suggestion(
                         this,
                         "remove this attribute",
-                        String::new(),
+                        "",
                         Applicability::MachineApplicable,
                     )
                     .emit();

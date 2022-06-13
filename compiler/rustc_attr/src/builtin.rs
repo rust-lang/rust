@@ -59,7 +59,7 @@ fn handle_errors(sess: &ParseSess, span: Span, error: AttrError) {
                     err.span_suggestion(
                         span,
                         "consider removing the prefix",
-                        lint_str[1..].to_string(),
+                        &lint_str[1..],
                         Applicability::MaybeIncorrect,
                     );
                 }
@@ -942,7 +942,7 @@ pub fn parse_repr_attr(sess: &Session, attr: &Attribute) -> Vec<ReprAttr> {
                         err.span_suggestion(
                             item.span(),
                             "supply an argument here",
-                            "align(...)".to_string(),
+                            "align(...)",
                             Applicability::HasPlaceholders,
                         );
                         err.emit();

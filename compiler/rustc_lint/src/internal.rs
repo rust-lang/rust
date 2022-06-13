@@ -150,7 +150,7 @@ impl<'tcx> LateLintPass<'tcx> for TyTyKind {
                     .span_suggestion(
                         span,
                         "try using `ty::<kind>` directly",
-                        "ty".to_string(),
+                        "ty",
                         Applicability::MaybeIncorrect, // ty maybe needs an import
                     )
                     .emit();
@@ -179,7 +179,7 @@ impl<'tcx> LateLintPass<'tcx> for TyTyKind {
                                         .span_suggestion(
                                             path.span,
                                             "try using `ty::<kind>` directly",
-                                            "ty".to_string(),
+                                            "ty",
                                             Applicability::MaybeIncorrect, // ty maybe needs an import
                                         )
                                         .emit();
@@ -197,7 +197,7 @@ impl<'tcx> LateLintPass<'tcx> for TyTyKind {
                                         .span_suggestion(
                                             path.span,
                                             "try using `ty::<kind>` directly",
-                                            "ty".to_string(),
+                                            "ty",
                                             Applicability::MaybeIncorrect, // ty maybe needs an import
                                         )
                                         .emit();
@@ -217,7 +217,7 @@ impl<'tcx> LateLintPass<'tcx> for TyTyKind {
                                         .span_suggestion(
                                             path.span,
                                             "try using `ty::<kind>` directly",
-                                            "ty".to_string(),
+                                            "ty",
                                             Applicability::MaybeIncorrect, // ty maybe needs an import
                                         )
                                         .emit();

@@ -216,7 +216,7 @@ impl<'a> Parser<'a> {
                 .span_suggestion_short(
                     self.prev_token.span,
                     "use `->` instead",
-                    "->".to_string(),
+                    "->",
                     Applicability::MachineApplicable,
                 )
                 .emit();
@@ -479,7 +479,7 @@ impl<'a> Parser<'a> {
             err.span_suggestion(
                 span,
                 "place `mut` before `dyn`",
-                "&mut dyn".to_string(),
+                "&mut dyn",
                 Applicability::MachineApplicable,
             );
             err.emit();
@@ -548,7 +548,7 @@ impl<'a> Parser<'a> {
             .span_suggestion_short(
                 qual_span,
                 &format!("remove the `{}` qualifier", qual),
-                String::new(),
+                "",
                 Applicability::MaybeIncorrect,
             )
             .emit();
@@ -648,7 +648,7 @@ impl<'a> Parser<'a> {
                     .span_suggestion(
                         self.token.span,
                         "remove this keyword",
-                        String::new(),
+                        "",
                         Applicability::MachineApplicable,
                     )
                     .emit();

@@ -823,7 +823,7 @@ fn maybe_stage_features(sess: &Session, krate: &ast::Crate) {
                 err.span_suggestion(
                     attr.span,
                     "remove the attribute",
-                    String::new(),
+                    "",
                     Applicability::MachineApplicable,
                 );
             }

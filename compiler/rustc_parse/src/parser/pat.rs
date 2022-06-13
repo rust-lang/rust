@@ -218,12 +218,7 @@ impl<'a> Parser<'a> {
         if let token::OrOr = self.token.kind {
             let span = self.token.span;
             let mut err = self.struct_span_err(span, "unexpected `||` before function parameter");
-            err.span_suggestion(
-                span,
-                "remove the `||`",
-                String::new(),
-                Applicability::MachineApplicable,
-            );
+            err.span_suggestion(span, "remove the `||`", "", Applicability::MachineApplicable);
             err.note("alternatives in or-patterns are separated with `|`, not `||`");
             err.emit();
             self.bump();
@@ -287,7 +282,7 @@ impl<'a> Parser<'a> {
         err.span_suggestion(
             self.token.span,
             "use a single `|` to separate multiple alternative patterns",
-            "|".to_owned(),
+            "|",
             Applicability::MachineApplicable,
         );
         if let Some(lo) = lo {
@@ -303,7 +298,7 @@ impl<'a> Parser<'a> {
         err.span_suggestion(
             span,
             &format!("remove the `{}`", pprust::token_to_string(&self.token)),
-            String::new(),
+            "",
             Applicability::MachineApplicable,
         );
         if let Some(lo) = lo {
@@ -433,7 +428,7 @@ impl<'a> Parser<'a> {
             .span_suggestion_short(
                 lo,
                 "for a rest pattern, use `..` instead of `...`",
-                "..".to_owned(),
+                "..",
                 Applicability::MachineApplicable,
             )
             .emit();
@@ -537,12 +532,7 @@ impl<'a> Parser<'a> {
 
             let span = self.prev_token.span;
             self.struct_span_err(span, &format!("unexpected lifetime `{}` in pattern", name))
-                .span_suggestion(
-                    span,
-                    "remove the lifetime",
-                    String::new(),
-                    Applicability::MachineApplicable,
-                )
+                .span_suggestion(span, "remove the lifetime", "", Applicability::MachineApplicable)
                 .emit();
         }
     }
@@ -665,7 +655,7 @@ impl<'a> Parser<'a> {
             .span_suggestion(
                 span,
                 "remove the additional `mut`s",
-                String::new(),
+                "",
                 Applicability::MachineApplicable,
             )
             .emit();
@@ -759,24 +749,14 @@ impl<'a> Parser<'a> {
 
     fn error_inclusive_range_with_extra_equals(&self, span: Span) {
         self.struct_span_err(span, "unexpected `=` after inclusive range")
-            .span_suggestion_short(
-                span,
-                "use `..=` instead",
-                "..=".to_string(),
-                Applicability::MaybeIncorrect,
-            )
+            .span_suggestion_short(span, "use `..=` instead", "..=", Applicability::MaybeIncorrect)
             .note("inclusive ranges end with a single equals sign (`..=`)")
             .emit();
     }
 
     fn error_inclusive_range_with_no_end(&self, span: Span) {
         struct_span_err!(self.sess.span_diagnostic, span, E0586, "inclusive range with no end")
-            .span_suggestion_short(
-                span,
-                "use `..` instead",
-                "..".to_string(),
-                Applicability::MachineApplicable,
-            )
+            .span_suggestion_short(span, "use `..` instead", "..", Applicability::MachineApplicable)
             .note("inclusive ranges must be bounded at the end (`..=b` or `a..=b`)")
             .emit();
     }
@@ -794,7 +774,7 @@ impl<'a> Parser<'a> {
                 .span_suggestion_short(
                     re.span,
                     "use `..=` instead",
-                    "..=".to_string(),
+                    "..=",
                     Applicability::MachineApplicable,
                 )
                 .emit();
@@ -1035,7 +1015,7 @@ impl<'a> Parser<'a> {
                         err.span_suggestion_short(
                             sp,
                             "remove this comma",
-                            String::new(),
+                            "",
                             Applicability::MachineApplicable,
                         );
                     }
@@ -1107,7 +1087,7 @@ impl<'a> Parser<'a> {
             .span_suggestion(
                 self.token.span,
                 "to omit remaining fields, use one fewer `.`",
-                "..".to_owned(),
+                "..",
                 Applicability::MachineApplicable,
             )
             .emit();

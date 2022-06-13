@@ -78,7 +78,7 @@ impl<'a> Parser<'a> {
                         err.span_suggestion_verbose(
                             replacement_span,
                             "you might have meant to write a regular comment",
-                            String::new(),
+                            "",
                             rustc_errors::Applicability::MachineApplicable,
                         );
                     }
@@ -200,12 +200,11 @@ impl<'a> Parser<'a> {
                         item.kind.descr(),
                         attr_name
                     ),
-                    (match attr_type {
+                    match attr_type {
                         OuterAttributeType::Attribute => "",
                         OuterAttributeType::DocBlockComment => "*",
                         OuterAttributeType::DocComment => "/",
-                    })
-                    .to_string(),
+                    },
                     rustc_errors::Applicability::MachineApplicable,
                 );
                 return None;

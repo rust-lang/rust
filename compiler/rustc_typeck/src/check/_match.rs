@@ -174,7 +174,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     err.tool_only_span_suggestion(
                         semi_span,
                         "remove this semicolon",
-                        String::new(),
+                        "",
                         Applicability::MaybeIncorrect,
                     );
                 }),

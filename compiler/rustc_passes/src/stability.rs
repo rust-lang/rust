@@ -125,7 +125,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
                         .span_suggestion_short(
                             *span,
                             "remove the unnecessary deprecation attribute",
-                            String::new(),
+                            "",
                             rustc_errors::Applicability::MachineApplicable,
                         )
                         .emit();

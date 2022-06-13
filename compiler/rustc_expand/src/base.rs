@@ -1194,7 +1194,7 @@ pub fn expr_to_spanned_string<'a>(
                 err.span_suggestion(
                     expr.span.shrink_to_lo(),
                     "consider removing the leading `b`",
-                    String::new(),
+                    "",
                     Applicability::MaybeIncorrect,
                 );
                 Some((err, true))

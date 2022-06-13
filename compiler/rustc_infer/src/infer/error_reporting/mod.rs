@@ -670,7 +670,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                 err.span_suggestion(
                                     source_map.end_point(cause.span),
                                     "try removing this `?`",
-                                    "".to_string(),
+                                    "",
                                     Applicability::MachineApplicable,
                                 );
                             }
@@ -726,14 +726,14 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                             err.span_suggestion_short(
                                 sp,
                                 "consider removing this semicolon and boxing the expressions",
-                                String::new(),
+                                "",
                                 Applicability::MachineApplicable,
                             );
                         } else {
                             err.span_suggestion_short(
                                 sp,
                                 "consider removing this semicolon",
-                                String::new(),
+                                "",
                                 Applicability::MachineApplicable,
                             );
                         }
@@ -776,7 +776,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         err.span_suggestion_short(
                             sp,
                             "consider removing this semicolon",
-                            String::new(),
+                            "",
                             Applicability::MachineApplicable,
                         );
                     }
@@ -1935,7 +1935,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 diag.span_suggestion_verbose(
                     exp_span.shrink_to_hi(),
                     "consider `await`ing on the `Future`",
-                    ".await".to_string(),
+                    ".await",
                     Applicability::MaybeIncorrect,
                 );
             }
@@ -1945,7 +1945,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     diag.span_suggestion_verbose(
                         span.shrink_to_hi(),
                         "consider `await`ing on the `Future`",
-                        ".await".to_string(),
+                        ".await",
                         Applicability::MaybeIncorrect,
                     );
                 }

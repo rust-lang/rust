@@ -282,7 +282,7 @@ fn error_malformed_cfg_attr_missing(span: Span, parse_sess: &ParseSess) {
         .span_suggestion(
             span,
             "missing condition and attribute",
-            CFG_ATTR_GRAMMAR_HELP.to_string(),
+            CFG_ATTR_GRAMMAR_HELP,
             Applicability::HasPlaceholders,
         )
         .note(CFG_ATTR_NOTE_REF)
