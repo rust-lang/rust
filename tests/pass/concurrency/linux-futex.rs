@@ -212,7 +212,7 @@ const FREE: i32 = 0;
 const HELD: i32 = 1;
 fn concurrent_wait_wake() {
     static FUTEX: AtomicI32 = AtomicI32::new(0);
-    for _ in 0..100 {
+    for _ in 0..20 {
         // Suppose the main thread is holding a lock implemented using futex...
         FUTEX.store(HELD, Ordering::Relaxed);
 
