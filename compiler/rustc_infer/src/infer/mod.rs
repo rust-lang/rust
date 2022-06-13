@@ -84,20 +84,6 @@ pub(crate) type UnificationTable<'a, 'tcx, T> = ut::UnificationTable<
     ut::InPlace<T, &'a mut ut::UnificationStorage<T>, &'a mut InferCtxtUndoLogs<'tcx>>,
 >;
 
-/// How we should handle region solving.
-///
-/// This is used so that the region values inferred by HIR region solving are
-/// not exposed, and so that we can avoid doing work in HIR typeck that MIR
-/// typeck will also do.
-#[derive(Copy, Clone, Debug, Default)]
-pub enum RegionckMode {
-    /// The default mode: report region errors, don't erase regions.
-    #[default]
-    Solve,
-    /// Erase the results of region after solving.
-    Erase,
-}
-
 /// This type contains all the things within `InferCtxt` that sit within a
 /// `RefCell` and are involved with taking/rolling back snapshots. Snapshot
 /// operations are hot enough that we want only one call to `borrow_mut` per
@@ -1248,6 +1234,33 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         self.tainted_by_errors_flag.set(true)
     }
 
+    pub fn skip_region_resolution(&self) {
+        let (var_infos, _) = {
+            let mut inner = self.inner.borrow_mut();
+            let inner = &mut *inner;
+            // Note: `inner.region_obligations` may not be empty, because we
+            // didn't necessarily call `process_registered_region_obligations`.
+            // This is okay, because that doesn't introduce new vars.
+            inner
+                .region_constraint_storage
+                .take()
+                .expect("regions already resolved")
+                .with_log(&mut inner.undo_log)
+                .into_infos_and_data()
+        };
+
+        let lexical_region_resolutions = LexicalRegionResolutions {
+            error_region: self.tcx.lifetimes.re_static,
+            values: rustc_index::vec::IndexVec::from_elem_n(
+                crate::infer::lexical_region_resolve::VarValue::Value(self.tcx.lifetimes.re_erased),
+                var_infos.len(),
+            ),
+        };
+
+        let old_value = self.lexical_region_resolutions.replace(Some(lexical_region_resolutions));
+        assert!(old_value.is_none());
+    }
+
     /// Process the region constraints and return any any errors that
     /// result. After this, no more unification operations should be
     /// done -- or the compiler will panic -- but it is legal to use
@@ -1256,7 +1269,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         &self,
         region_context: DefId,
         outlives_env: &OutlivesEnvironment<'tcx>,
-        mode: RegionckMode,
     ) -> Vec<RegionResolutionError<'tcx>> {
         let (var_infos, data) = {
             let mut inner = self.inner.borrow_mut();
@@ -1278,7 +1290,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             &RegionRelations::new(self.tcx, region_context, outlives_env.free_region_map());
 
         let (lexical_region_resolutions, errors) =
-            lexical_region_resolve::resolve(region_rels, var_infos, data, mode);
+            lexical_region_resolve::resolve(region_rels, var_infos, data);
 
         let old_value = self.lexical_region_resolutions.replace(Some(lexical_region_resolutions));
         assert!(old_value.is_none());
@@ -1294,9 +1306,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         &self,
         region_context: DefId,
         outlives_env: &OutlivesEnvironment<'tcx>,
-        mode: RegionckMode,
     ) {
-        let errors = self.resolve_regions(region_context, outlives_env, mode);
+        let errors = self.resolve_regions(region_context, outlives_env);
 
         if !self.is_tainted_by_errors() {
             // As a heuristic, just skip reporting region errors

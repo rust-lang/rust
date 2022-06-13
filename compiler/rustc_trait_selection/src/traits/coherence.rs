@@ -5,7 +5,7 @@
 //! [trait-specialization]: https://rustc-dev-guide.rust-lang.org/traits/specialization.html
 
 use crate::infer::outlives::env::OutlivesEnvironment;
-use crate::infer::{CombinedSnapshot, InferOk, RegionckMode};
+use crate::infer::{CombinedSnapshot, InferOk};
 use crate::traits::select::IntercrateAmbiguityCause;
 use crate::traits::util::impl_subject_and_oblig;
 use crate::traits::SkipLeakCheck;
@@ -413,7 +413,7 @@ fn resolve_negative_obligation<'cx, 'tcx>(
         param_env,
     );
 
-    let errors = infcx.resolve_regions(region_context, &outlives_env, RegionckMode::default());
+    let errors = infcx.resolve_regions(region_context, &outlives_env);
 
     if !errors.is_empty() {
         return false;
