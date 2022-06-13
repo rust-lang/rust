@@ -46,7 +46,7 @@ pub(super) fn check<'tcx>(
                                 arg.as_ty(cx.tcx.mk_ptr(rty_and_mut)).as_ty(to_ty)
                             };
 
-                            diag.span_suggestion(e.span, "try", sugg.to_string(), Applicability::Unspecified);
+                            diag.span_suggestion(e.span, "try", sugg, Applicability::Unspecified);
                         }
                     },
                 );
@@ -64,7 +64,7 @@ pub(super) fn check<'tcx>(
                         diag.span_suggestion(
                             e.span,
                             "try",
-                            arg.as_ty(&to_ty.to_string()).to_string(),
+                            arg.as_ty(&to_ty.to_string()),
                             Applicability::Unspecified,
                         );
                     }

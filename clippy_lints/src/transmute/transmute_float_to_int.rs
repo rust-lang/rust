@@ -55,7 +55,7 @@ pub(super) fn check<'tcx>(
                         sugg
                     };
 
-                    diag.span_suggestion(e.span, "consider using", sugg.to_string(), Applicability::Unspecified);
+                    diag.span_suggestion(e.span, "consider using", sugg, Applicability::Unspecified);
                 },
             );
             true
