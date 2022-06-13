@@ -61,7 +61,7 @@ mod syntax;
 pub use syntax::*;
 mod switch_sources;
 pub mod tcx;
-mod terminator;
+pub mod terminator;
 pub use terminator::*;
 
 pub mod traversal;
@@ -923,6 +923,15 @@ impl<'tcx> LocalDecl<'tcx> {
             Some(box LocalInfo::StaticRef { is_thread_local, .. }) => is_thread_local,
             _ => false,
         }
+    }
+
+    /// Returns `true` if this is a DerefTemp
+    pub fn is_deref_temp(&self) -> bool {
+        match self.local_info {
+            Some(box LocalInfo::DerefTemp) => return true,
+            _ => (),
+        }
+        return false;
     }
 
     /// Returns `true` is the local is from a compiler desugaring, e.g.,
@@ -1795,6 +1804,7 @@ impl<'tcx> Rvalue<'tcx> {
             Rvalue::Cast(CastKind::PointerExposeAddress, _, _) => false,
 
             Rvalue::Use(_)
+            | Rvalue::CopyForDeref(_)
             | Rvalue::Repeat(_, _)
             | Rvalue::Ref(_, _, _)
             | Rvalue::ThreadLocalRef(_)
@@ -1888,6 +1898,8 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                 };
                 write!(fmt, "&{}{}{:?}", region, kind_str, place)
             }
+
+            CopyForDeref(ref place) => write!(fmt, "deref_copy {:#?}", place),
 
             AddressOf(mutability, ref place) => {
                 let kind_str = match mutability {
