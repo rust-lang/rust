@@ -2158,7 +2158,7 @@ pub const fn validity_invariants_of<T>() -> &'static [Invariant] {
     let invariants: &'static [u8] = validity_invariants_of::<T>();
     let sz = invariants.len() / core::mem::size_of::<Invariant>();
 
-    // SAFETY: we know this is valid.
+    // SAFETY: we know this is valid because the intrinsic promises an aligned slice.
     unsafe { core::slice::from_raw_parts(invariants.as_ptr().cast(), sz) }
 }
 
@@ -2428,10 +2428,13 @@ pub(crate) const unsafe fn assert_validity_of<T>(_: *const T) -> bool {
 /// Asserts that the value at `value` is valid at type T.
 /// Best effort, and is UB if the value is invalid.
 pub(crate) unsafe fn assert_validity_of<T>(value: *const T) -> bool {
+    // We have to do this, since we call assert_validity_of inside MaybeUninit::assume_init
+    // and if we had used ptr::read_unaligned, that would be a recursive call.
     #[repr(packed)]
     struct Unaligned<T>(T);
 
-    // SAFETY:
+    // SAFETY: The pointer dereferences here are valid if `value` is valid.
+    // though TODO: introduce a new size for "pointer", since reading a pointer as an int *is* UB.
     unsafe {
         let invariants = validity_invariants_of::<T>();
         for invariant in invariants {
@@ -2439,6 +2442,7 @@ pub(crate) unsafe fn assert_validity_of<T>(value: *const T) -> bool {
             let start = invariant.start;
             let end = invariant.end;
 
+            // TODO: Maybe replace this with an enum?
             let (value, max): (u128, u128) = match invariant.size {
                 1 => ((*(value.cast::<u8>().add(off))).into(), u8::MAX.into()),
                 2 => (

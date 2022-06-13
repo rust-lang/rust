@@ -15,6 +15,7 @@ struct Invariant {
     end: u128,
 }
 
+// TODO: Don't add duplicate invariants (maybe use a HashMap?)
 fn add_invariants<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, invs: &mut Vec<Invariant>, offset: Size) {
     let x = tcx.layout_of(ParamEnvAnd { param_env: ParamEnv::reveal_all(), value: ty });
 
