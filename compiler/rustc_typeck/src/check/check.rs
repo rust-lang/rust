@@ -20,7 +20,9 @@ use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::layout::{LayoutError, MAX_SIMD_LANES};
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::util::{Discr, IntTypeExt};
-use rustc_middle::ty::{self, ParamEnv, ToPredicate, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable};
+use rustc_middle::ty::{
+    self, ParamEnv, ToPredicate, Ty, TyCtxt, TyKind, TypeFoldable, TypeSuperFoldable,
+};
 use rustc_session::lint::builtin::{UNINHABITED_STATIC, UNSUPPORTED_CALLING_CONVENTIONS};
 use rustc_span::symbol::sym;
 use rustc_span::{self, Span};
@@ -1327,28 +1329,53 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, sp: Span, adt: ty::AdtD
         let layout = tcx.layout_of(param_env.and(ty));
         // We are currently checking the type this field came from, so it must be local
         let span = tcx.hir().span_if_local(field.did).unwrap();
-        let zst = layout.map_or(false, |layout| layout.is_zst());
-        let align1 = layout.map_or(false, |layout| layout.align.abi.bytes() == 1);
-        (span, zst, align1)
+        let array_len = match ty.kind() {
+            TyKind::Array(_, len) => len.try_eval_usize(tcx, param_env),
+            _ => None,
+        };
+        let zst = array_len == Some(0) || layout.map_or(false, |layout| layout.is_zst());
+        let align = layout.ok().map(|layout| layout.align.abi.bytes());
+        (span, zst, align)
     });
 
     let non_zst_fields =
-        field_infos.clone().filter_map(|(span, zst, _align1)| if !zst { Some(span) } else { None });
+        field_infos.clone().filter_map(|(span, zst, _align)| if !zst { Some(span) } else { None });
     let non_zst_count = non_zst_fields.clone().count();
     if non_zst_count >= 2 {
         bad_non_zero_sized_fields(tcx, adt, non_zst_count, non_zst_fields, sp);
     }
-    for (span, zst, align1) in field_infos {
-        if zst && !align1 {
-            struct_span_err!(
+    for (span, zst, align) in field_infos {
+        if zst && align != Some(1) {
+            let mut err = struct_span_err!(
                 tcx.sess,
                 span,
                 E0691,
                 "zero-sized field in transparent {} has alignment larger than 1",
                 adt.descr(),
-            )
-            .span_label(span, "has alignment larger than 1")
-            .emit();
+            );
+
+            if align.is_none() {
+                err.span_label(span, "may have alignment larger than 1");
+            } else {
+                err.span_label(span, "has alignment larger than 1");
+            };
+
+            if let Some(item_list) =
+                tcx.get_attr(adt.did(), sym::repr).and_then(|attr| attr.meta_item_list())
+            {
+                for item in item_list {
+                    if item.name_or_empty() == sym::transparent {
+                        err.span_suggestion_verbose(
+                            item.span(),
+                            "Try using `#[repc(C)]` instead",
+                            "C",
+                            Applicability::MachineApplicable,
+                        );
+                    }
+                }
+            }
+
+            err.emit();
         }
     }
 }
@@ -1475,7 +1502,7 @@ fn format_discriminant_overflow<'tcx>(
             && let rustc_ast::LitKind::Int(lit_value, _int_kind) = &lit.node
             && dis.val != *lit_value
         {
-                    return format!("`{dis}` (overflowed from `{lit_value}`)");
+            return format!("`{dis}` (overflowed from `{lit_value}`)");
         }
     }
 

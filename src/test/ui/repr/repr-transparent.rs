@@ -41,6 +41,9 @@ struct ZstAlign32<T>(PhantomData<T>);
 #[repr(transparent)]
 struct GenericAlign<T>(ZstAlign32<T>, u32); //~ ERROR alignment larger than 1
 
+#[repr(transparent)]
+struct GenericAlignZeroArray<T>([T; 0], u32); //~ ERROR alignment larger than 1
+
 #[repr(transparent)] //~ ERROR unsupported representation for zero-variant enum
 enum Void {} //~ ERROR transparent enum needs exactly one variant, but has 0
 
@@ -74,6 +77,11 @@ enum NontrivialAlignZstEnum {
 #[repr(transparent)]
 enum GenericAlignEnum<T> {
     Foo { bar: ZstAlign32<T>, baz: u32 } //~ ERROR alignment larger than 1
+}
+
+#[repr(transparent)]
+enum GenericAlignEnumZeroArray<T> {
+    Foo { bar: [T; 0], baz: u32 } //~ ERROR alignment larger than 1
 }
 
 #[repr(transparent)]
