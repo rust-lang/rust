@@ -173,17 +173,41 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx, const_eval::Memory
         //
         // As an optimization, however, if the allocation does not contain any pointers: we don't
         // need to do the walk. It can be costly for big arrays for example (e.g. issue #93215).
+        let is_walk_needed = |mplace: &MPlaceTy<'tcx>| -> InterpResult<'tcx, bool> {
+            // ZSTs cannot contain pointers, we can avoid the interning walk.
+            if mplace.layout.is_zst() {
+                return Ok(false);
+            }
 
-        let Some((size, align)) = self.ecx.size_and_align_of_mplace(&mplace)? else {
-            // We could be dealing with an extern type here in the future, so we do the regular
+            // Now, check whether this alloc contains reference types (as relocations).
+
+            // FIXME(lqd): checking the size and alignment could be expensive here, only do the
+            // following for the potentially bigger aggregates like arrays and slices.
+            let Some((size, align)) = self.ecx.size_and_align_of_mplace(&mplace)? else {
+                // We do the walk if we can't determine the size of the mplace: we may be dealing
+                // with extern types here in the future.
+                return Ok(true);
+            };
+
+            // If there are no refs or relocations in this allocation, we can avoid the interning
             // walk.
-            return self.walk_aggregate(mplace, fields);
+            if let Some(alloc) = self.ecx.get_ptr_alloc(mplace.ptr, size, align)?
+                && !alloc.has_relocations() {
+                return Ok(false);
+            }
+
+            // In the general case, we do the walk.
+            Ok(true)
         };
 
-        let Some(alloc) = self.ecx.get_ptr_alloc(mplace.ptr, size, align)? else {
-            // ZSTs cannot contain pointers, so we can skip them.
+        // If this allocation contains no references to intern, we avoid the potentially costly
+        // walk.
+        //
+        // We can do this before the checks for interior mutability below, because only references
+        // are relevant in that situation, and we're checking if there are any here.
+        if !is_walk_needed(mplace)? {
             return Ok(());
-        };
+        }
 
         if let Some(def) = mplace.layout.ty.ty_adt_def() {
             if Some(def.did()) == self.ecx.tcx.lang_items().unsafe_cell_type() {
@@ -196,11 +220,6 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx, const_eval::Memory
                 self.inside_unsafe_cell = old;
                 return walked;
             }
-        }
-
-        if !alloc.has_relocations() {
-            // There are no refs or relocations in this allocation, we can skip the interning walk.
-            return Ok(());
         }
 
         self.walk_aggregate(mplace, fields)
