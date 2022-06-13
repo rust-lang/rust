@@ -156,7 +156,7 @@ use core::array;
 use core::convert::Infallible;
 
 use crate::alloc::{AllocError, LayoutError};
-use crate::any::TypeId;
+use crate::any::{Demand, Provider, TypeId};
 use crate::backtrace::Backtrace;
 use crate::borrow::Cow;
 use crate::cell;
@@ -294,6 +294,84 @@ pub trait Error: Debug + Display {
     #[allow(missing_docs)]
     fn cause(&self) -> Option<&dyn Error> {
         self.source()
+    }
+
+    /// Provides type based access to context intended for error reports.
+    ///
+    /// Used in conjunction with [`context`] and [`context_ref`] to extract
+    /// references to member variables from `dyn Error` trait objects.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// #![feature(provide_any)]
+    /// #![feature(error_in_core)]
+    /// use core::fmt;
+    /// use core::any::Demand;
+    ///
+    /// #[derive(Debug)]
+    /// struct MyBacktrace {
+    ///     // ...
+    /// }
+    ///
+    /// impl MyBacktrace {
+    ///     fn new() -> MyBacktrace {
+    ///         // ...
+    ///         # MyBacktrace {}
+    ///     }
+    /// }
+    ///
+    /// #[derive(Debug)]
+    /// struct SourceError {
+    ///     // ...
+    /// }
+    ///
+    /// impl fmt::Display for SourceError {
+    ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    ///         write!(f, "Example Source Error")
+    ///     }
+    /// }
+    ///
+    /// impl std::error::Error for SourceError {}
+    ///
+    /// #[derive(Debug)]
+    /// struct Error {
+    ///     source: SourceError,
+    ///     backtrace: MyBacktrace,
+    /// }
+    ///
+    /// impl fmt::Display for Error {
+    ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    ///         write!(f, "Example Error")
+    ///     }
+    /// }
+    ///
+    /// impl std::error::Error for Error {
+    ///     fn provide<'a>(&'a self, req: &mut Demand<'a>) {
+    ///         req
+    ///             .provide_ref::<MyBacktrace>(&self.backtrace)
+    ///             .provide_ref::<dyn std::error::Error + 'static>(&self.source);
+    ///     }
+    /// }
+    ///
+    /// fn main() {
+    ///     let backtrace = MyBacktrace::new();
+    ///     let source = SourceError {};
+    ///     let error = Error { source, backtrace };
+    ///     let dyn_error = &error as &dyn std::error::Error;
+    ///     let backtrace_ref = dyn_error.request_ref::<MyBacktrace>().unwrap();
+    ///
+    ///     assert!(core::ptr::eq(&error.backtrace, backtrace_ref));
+    /// }
+    /// ```
+    #[unstable(feature = "generic_member_access", issue = "none")]
+    fn provide<'a>(&'a self, _req: &mut Demand<'a>) {}
+}
+
+#[unstable(feature = "generic_member_access", issue = "none")]
+impl Provider for dyn Error + 'static {
+    fn provide<'a>(&'a self, req: &mut Demand<'a>) {
+        self.provide(req)
     }
 }
 
@@ -831,6 +909,18 @@ impl dyn Error + 'static {
             None
         }
     }
+
+    /// Request a reference to context of type `T`.
+    #[unstable(feature = "generic_member_access", issue = "none")]
+    pub fn request_ref<T: ?Sized + 'static>(&self) -> Option<&T> {
+        core::any::request_ref(self)
+    }
+
+    /// Request a value to context of type `T`.
+    #[unstable(feature = "generic_member_access", issue = "none")]
+    pub fn request_value<T: 'static>(&self) -> Option<T> {
+        core::any::request_value(self)
+    }
 }
 
 impl dyn Error + 'static + Send {
@@ -854,6 +944,18 @@ impl dyn Error + 'static + Send {
     pub fn downcast_mut<T: Error + 'static>(&mut self) -> Option<&mut T> {
         <dyn Error + 'static>::downcast_mut::<T>(self)
     }
+
+    /// Request a reference to context of type `T`.
+    #[unstable(feature = "generic_member_access", issue = "none")]
+    pub fn request_ref<T: ?Sized + 'static>(&self) -> Option<&T> {
+        <dyn Error + 'static>::request_ref(self)
+    }
+
+    /// Request a value to context of type `T`.
+    #[unstable(feature = "generic_member_access", issue = "none")]
+    pub fn request_value<T: 'static>(&self) -> Option<T> {
+        <dyn Error + 'static>::request_value(self)
+    }
 }
 
 impl dyn Error + 'static + Send + Sync {
@@ -876,6 +978,18 @@ impl dyn Error + 'static + Send + Sync {
     #[inline]
     pub fn downcast_mut<T: Error + 'static>(&mut self) -> Option<&mut T> {
         <dyn Error + 'static>::downcast_mut::<T>(self)
+    }
+
+    /// Request a reference to context of type `T`.
+    #[unstable(feature = "generic_member_access", issue = "none")]
+    pub fn request_ref<T: ?Sized + 'static>(&self) -> Option<&T> {
+        <dyn Error + 'static>::request_ref(self)
+    }
+
+    /// Request a value to context of type `T`.
+    #[unstable(feature = "generic_member_access", issue = "none")]
+    pub fn request_value<T: 'static>(&self) -> Option<T> {
+        <dyn Error + 'static>::request_value(self)
     }
 }
 
