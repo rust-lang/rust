@@ -9,9 +9,7 @@ doctest = false
 
 [dependencies]
 libloading = "0.7.1"
-rustc_middle = { path = "../rustc_middle" }
 rustc_errors = { path = "../rustc_errors" }
-rustc_hir = { path = "../rustc_hir" }
 rustc_lint = { path = "../rustc_lint" }
 rustc_metadata = { path = "../rustc_metadata" }
 rustc_ast = { path = "../rustc_ast" }
