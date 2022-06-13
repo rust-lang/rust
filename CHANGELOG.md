@@ -2,12 +2,18 @@
 
 ## [Unreleased]
 
+## [1.5.0] 2022-06-13
+
 ### Changed
 
-- Also apply `empty_item_single_line=true` to trait definitions to match the behavior of empty functions, structs, enums, and impls [#5047](https://github.com/rust-lang/rustfmt/issues/5047)
+- Simplify the rustfmt help text by eliding the full path to the rustfmt binary path from the usage string when running `rustfmt --help` [#5214](https://github.com/rust-lang/rustfmt/issues/5214)
 
 ### Fixed
 
+- Remove duplicate imports when `imports_granularity` is set to `Item` [#4725](https://github.com/rust-lang/rustfmt/issues/4725)
+- Properly handle stdin input containing an inner skip attribute [#5368](https://github.com/rust-lang/rustfmt/issues/5368)
+- Maintain attributes on imports when `imports_granularity` is set to `Item` [#5030](https://github.com/rust-lang/rustfmt/issues/5030)
+- Format empty trait definitions as a single line when both `empty_item_single_line` is enabled and `brace_style` is set to `AlwaysNextLine` [#5047](https://github.com/rust-lang/rustfmt/issues/5047)
 - Don't change granularity of imports containing comments with `imports_granularity` if doing so could lose or misplace those comments [#5311](https://github.com/rust-lang/rustfmt/pull/5311)
 - Prevent rustfmt from removing trailing comments at the end of files annotated with inner `#![rustfmt::skip]` attributes [#5033](https://github.com/rust-lang/rustfmt/issues/5033)
 - Fixed various `error[internal]: left behind trailing whitespace"` issues:
@@ -60,7 +66,18 @@
 
 ### Removed
 
-- Remove rustfmt binary path from the usage string when running `rustfmt --help` [#5214](https://github.com/rust-lang/rustfmt/issues/5214)
+- Removed unstable, nightly-only config option `report_todo` [#5101](https://github.com/rust-lang/rustfmt/issues/5101)
+- Removed unstable, nightly-only config option `report_fixme` [#5102](https://github.com/rust-lang/rustfmt/issues/5102)
+- Removed unstable, nightly-only config option `license_template_path` [#5103](https://github.com/rust-lang/rustfmt/issues/5103)
+
+### Misc
+
+- Improved performance when formatting large and deeply nested expression trees, often found in generated code, which have many expressions that exceed `max_width` [#5128](https://github.com/rust-lang/rustfmt/issues/5128), [#4867](https://github.com/rust-lang/rustfmt/issues/4867), [#4476](https://github.com/rust-lang/rustfmt/issues/4476), [#5139](https://github.com/rust-lang/rustfmt/pull/5139)
+
+### Install/Download Options
+- **rustup (nightly)** - *pending*
+- **GitHub Release Binaries** - [Release v1.5.0](https://github.com/rust-lang/rustfmt/releases/tag/v1.5.0)
+- **Build from source** - [Tag v1.5.0](https://github.com/rust-lang/rustfmt/tree/v1.5.0), see instructions for how to [install rustfmt from source][install-from-source]
 
 ## [1.4.38] 2021-10-20
 
