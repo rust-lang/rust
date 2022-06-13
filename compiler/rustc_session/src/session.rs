@@ -209,6 +209,7 @@ pub struct PerfStats {
 
 /// Trait implemented by error types. This should not be implemented manually. Instead, use
 /// `#[derive(SessionDiagnostic)]` -- see [rustc_macros::SessionDiagnostic].
+#[rustc_diagnostic_item = "SessionDiagnostic"]
 pub trait SessionDiagnostic<'a, T: EmissionGuarantee = ErrorGuaranteed> {
     /// Write out as a diagnostic out of `sess`.
     #[must_use]
