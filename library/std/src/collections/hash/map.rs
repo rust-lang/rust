@@ -3140,6 +3140,7 @@ impl DefaultHasher {
     /// `DefaultHasher` instances, but is the same as all other `DefaultHasher`
     /// instances created through `new` or `default`.
     #[stable(feature = "hashmap_default_hasher", since = "1.13.0")]
+    #[inline]
     #[allow(deprecated)]
     #[must_use]
     pub fn new() -> DefaultHasher {
@@ -3153,6 +3154,7 @@ impl Default for DefaultHasher {
     /// See its documentation for more.
     ///
     /// [`new`]: DefaultHasher::new
+    #[inline]
     fn default() -> DefaultHasher {
         DefaultHasher::new()
     }
