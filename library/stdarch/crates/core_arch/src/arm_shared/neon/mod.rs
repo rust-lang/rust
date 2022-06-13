@@ -106,6 +106,7 @@ types! {
 }
 
 /// ARM-specific type containing two `int8x8_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -113,6 +114,7 @@ types! {
 )]
 pub struct int8x8x2_t(pub int8x8_t, pub int8x8_t);
 /// ARM-specific type containing three `int8x8_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -120,6 +122,7 @@ pub struct int8x8x2_t(pub int8x8_t, pub int8x8_t);
 )]
 pub struct int8x8x3_t(pub int8x8_t, pub int8x8_t, pub int8x8_t);
 /// ARM-specific type containing four `int8x8_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -128,6 +131,7 @@ pub struct int8x8x3_t(pub int8x8_t, pub int8x8_t, pub int8x8_t);
 pub struct int8x8x4_t(pub int8x8_t, pub int8x8_t, pub int8x8_t, pub int8x8_t);
 
 /// ARM-specific type containing two `int8x16_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -135,6 +139,7 @@ pub struct int8x8x4_t(pub int8x8_t, pub int8x8_t, pub int8x8_t, pub int8x8_t);
 )]
 pub struct int8x16x2_t(pub int8x16_t, pub int8x16_t);
 /// ARM-specific type containing three `int8x16_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -142,6 +147,7 @@ pub struct int8x16x2_t(pub int8x16_t, pub int8x16_t);
 )]
 pub struct int8x16x3_t(pub int8x16_t, pub int8x16_t, pub int8x16_t);
 /// ARM-specific type containing four `int8x16_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -150,6 +156,7 @@ pub struct int8x16x3_t(pub int8x16_t, pub int8x16_t, pub int8x16_t);
 pub struct int8x16x4_t(pub int8x16_t, pub int8x16_t, pub int8x16_t, pub int8x16_t);
 
 /// ARM-specific type containing two `uint8x8_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -157,6 +164,7 @@ pub struct int8x16x4_t(pub int8x16_t, pub int8x16_t, pub int8x16_t, pub int8x16_
 )]
 pub struct uint8x8x2_t(pub uint8x8_t, pub uint8x8_t);
 /// ARM-specific type containing three `uint8x8_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -164,6 +172,7 @@ pub struct uint8x8x2_t(pub uint8x8_t, pub uint8x8_t);
 )]
 pub struct uint8x8x3_t(pub uint8x8_t, pub uint8x8_t, pub uint8x8_t);
 /// ARM-specific type containing four `uint8x8_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -172,6 +181,7 @@ pub struct uint8x8x3_t(pub uint8x8_t, pub uint8x8_t, pub uint8x8_t);
 pub struct uint8x8x4_t(pub uint8x8_t, pub uint8x8_t, pub uint8x8_t, pub uint8x8_t);
 
 /// ARM-specific type containing two `uint8x16_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -179,6 +189,7 @@ pub struct uint8x8x4_t(pub uint8x8_t, pub uint8x8_t, pub uint8x8_t, pub uint8x8_
 )]
 pub struct uint8x16x2_t(pub uint8x16_t, pub uint8x16_t);
 /// ARM-specific type containing three `uint8x16_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -186,6 +197,7 @@ pub struct uint8x16x2_t(pub uint8x16_t, pub uint8x16_t);
 )]
 pub struct uint8x16x3_t(pub uint8x16_t, pub uint8x16_t, pub uint8x16_t);
 /// ARM-specific type containing four `uint8x16_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -199,6 +211,7 @@ pub struct uint8x16x4_t(
 );
 
 /// ARM-specific type containing two `poly8x8_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -206,6 +219,7 @@ pub struct uint8x16x4_t(
 )]
 pub struct poly8x8x2_t(pub poly8x8_t, pub poly8x8_t);
 /// ARM-specific type containing three `poly8x8_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -213,6 +227,7 @@ pub struct poly8x8x2_t(pub poly8x8_t, pub poly8x8_t);
 )]
 pub struct poly8x8x3_t(pub poly8x8_t, pub poly8x8_t, pub poly8x8_t);
 /// ARM-specific type containing four `poly8x8_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -221,6 +236,7 @@ pub struct poly8x8x3_t(pub poly8x8_t, pub poly8x8_t, pub poly8x8_t);
 pub struct poly8x8x4_t(pub poly8x8_t, pub poly8x8_t, pub poly8x8_t, pub poly8x8_t);
 
 /// ARM-specific type containing two `poly8x16_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -228,6 +244,7 @@ pub struct poly8x8x4_t(pub poly8x8_t, pub poly8x8_t, pub poly8x8_t, pub poly8x8_
 )]
 pub struct poly8x16x2_t(pub poly8x16_t, pub poly8x16_t);
 /// ARM-specific type containing three `poly8x16_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -235,6 +252,7 @@ pub struct poly8x16x2_t(pub poly8x16_t, pub poly8x16_t);
 )]
 pub struct poly8x16x3_t(pub poly8x16_t, pub poly8x16_t, pub poly8x16_t);
 /// ARM-specific type containing four `poly8x16_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -248,6 +266,7 @@ pub struct poly8x16x4_t(
 );
 
 /// ARM-specific type containing two `int16x4_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -255,6 +274,7 @@ pub struct poly8x16x4_t(
 )]
 pub struct int16x4x2_t(pub int16x4_t, pub int16x4_t);
 /// ARM-specific type containing three `int16x4_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -262,6 +282,7 @@ pub struct int16x4x2_t(pub int16x4_t, pub int16x4_t);
 )]
 pub struct int16x4x3_t(pub int16x4_t, pub int16x4_t, pub int16x4_t);
 /// ARM-specific type containing four `int16x4_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -270,6 +291,7 @@ pub struct int16x4x3_t(pub int16x4_t, pub int16x4_t, pub int16x4_t);
 pub struct int16x4x4_t(pub int16x4_t, pub int16x4_t, pub int16x4_t, pub int16x4_t);
 
 /// ARM-specific type containing two `int16x8_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -277,6 +299,7 @@ pub struct int16x4x4_t(pub int16x4_t, pub int16x4_t, pub int16x4_t, pub int16x4_
 )]
 pub struct int16x8x2_t(pub int16x8_t, pub int16x8_t);
 /// ARM-specific type containing three `int16x8_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -284,6 +307,7 @@ pub struct int16x8x2_t(pub int16x8_t, pub int16x8_t);
 )]
 pub struct int16x8x3_t(pub int16x8_t, pub int16x8_t, pub int16x8_t);
 /// ARM-specific type containing four `int16x8_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -292,6 +316,7 @@ pub struct int16x8x3_t(pub int16x8_t, pub int16x8_t, pub int16x8_t);
 pub struct int16x8x4_t(pub int16x8_t, pub int16x8_t, pub int16x8_t, pub int16x8_t);
 
 /// ARM-specific type containing two `uint16x4_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -299,6 +324,7 @@ pub struct int16x8x4_t(pub int16x8_t, pub int16x8_t, pub int16x8_t, pub int16x8_
 )]
 pub struct uint16x4x2_t(pub uint16x4_t, pub uint16x4_t);
 /// ARM-specific type containing three `uint16x4_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -306,6 +332,7 @@ pub struct uint16x4x2_t(pub uint16x4_t, pub uint16x4_t);
 )]
 pub struct uint16x4x3_t(pub uint16x4_t, pub uint16x4_t, pub uint16x4_t);
 /// ARM-specific type containing four `uint16x4_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -319,6 +346,7 @@ pub struct uint16x4x4_t(
 );
 
 /// ARM-specific type containing two `uint16x8_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -326,6 +354,7 @@ pub struct uint16x4x4_t(
 )]
 pub struct uint16x8x2_t(pub uint16x8_t, pub uint16x8_t);
 /// ARM-specific type containing three `uint16x8_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -333,6 +362,7 @@ pub struct uint16x8x2_t(pub uint16x8_t, pub uint16x8_t);
 )]
 pub struct uint16x8x3_t(pub uint16x8_t, pub uint16x8_t, pub uint16x8_t);
 /// ARM-specific type containing four `uint16x8_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -346,6 +376,7 @@ pub struct uint16x8x4_t(
 );
 
 /// ARM-specific type containing two `poly16x4_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -353,6 +384,7 @@ pub struct uint16x8x4_t(
 )]
 pub struct poly16x4x2_t(pub poly16x4_t, pub poly16x4_t);
 /// ARM-specific type containing three `poly16x4_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -360,6 +392,7 @@ pub struct poly16x4x2_t(pub poly16x4_t, pub poly16x4_t);
 )]
 pub struct poly16x4x3_t(pub poly16x4_t, pub poly16x4_t, pub poly16x4_t);
 /// ARM-specific type containing four `poly16x4_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -373,6 +406,7 @@ pub struct poly16x4x4_t(
 );
 
 /// ARM-specific type containing two `poly16x8_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -380,6 +414,7 @@ pub struct poly16x4x4_t(
 )]
 pub struct poly16x8x2_t(pub poly16x8_t, pub poly16x8_t);
 /// ARM-specific type containing three `poly16x8_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -387,6 +422,7 @@ pub struct poly16x8x2_t(pub poly16x8_t, pub poly16x8_t);
 )]
 pub struct poly16x8x3_t(pub poly16x8_t, pub poly16x8_t, pub poly16x8_t);
 /// ARM-specific type containing four `poly16x8_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -400,6 +436,7 @@ pub struct poly16x8x4_t(
 );
 
 /// ARM-specific type containing two `int32x2_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -407,6 +444,7 @@ pub struct poly16x8x4_t(
 )]
 pub struct int32x2x2_t(pub int32x2_t, pub int32x2_t);
 /// ARM-specific type containing three `int32x2_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -414,6 +452,7 @@ pub struct int32x2x2_t(pub int32x2_t, pub int32x2_t);
 )]
 pub struct int32x2x3_t(pub int32x2_t, pub int32x2_t, pub int32x2_t);
 /// ARM-specific type containing four `int32x2_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -422,6 +461,7 @@ pub struct int32x2x3_t(pub int32x2_t, pub int32x2_t, pub int32x2_t);
 pub struct int32x2x4_t(pub int32x2_t, pub int32x2_t, pub int32x2_t, pub int32x2_t);
 
 /// ARM-specific type containing two `int32x4_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -429,6 +469,7 @@ pub struct int32x2x4_t(pub int32x2_t, pub int32x2_t, pub int32x2_t, pub int32x2_
 )]
 pub struct int32x4x2_t(pub int32x4_t, pub int32x4_t);
 /// ARM-specific type containing three `int32x4_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -436,6 +477,7 @@ pub struct int32x4x2_t(pub int32x4_t, pub int32x4_t);
 )]
 pub struct int32x4x3_t(pub int32x4_t, pub int32x4_t, pub int32x4_t);
 /// ARM-specific type containing four `int32x4_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -444,6 +486,7 @@ pub struct int32x4x3_t(pub int32x4_t, pub int32x4_t, pub int32x4_t);
 pub struct int32x4x4_t(pub int32x4_t, pub int32x4_t, pub int32x4_t, pub int32x4_t);
 
 /// ARM-specific type containing two `uint32x2_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -451,6 +494,7 @@ pub struct int32x4x4_t(pub int32x4_t, pub int32x4_t, pub int32x4_t, pub int32x4_
 )]
 pub struct uint32x2x2_t(pub uint32x2_t, pub uint32x2_t);
 /// ARM-specific type containing three `uint32x2_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -458,6 +502,7 @@ pub struct uint32x2x2_t(pub uint32x2_t, pub uint32x2_t);
 )]
 pub struct uint32x2x3_t(pub uint32x2_t, pub uint32x2_t, pub uint32x2_t);
 /// ARM-specific type containing four `uint32x2_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -471,6 +516,7 @@ pub struct uint32x2x4_t(
 );
 
 /// ARM-specific type containing two `uint32x4_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -478,6 +524,7 @@ pub struct uint32x2x4_t(
 )]
 pub struct uint32x4x2_t(pub uint32x4_t, pub uint32x4_t);
 /// ARM-specific type containing three `uint32x4_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -485,6 +532,7 @@ pub struct uint32x4x2_t(pub uint32x4_t, pub uint32x4_t);
 )]
 pub struct uint32x4x3_t(pub uint32x4_t, pub uint32x4_t, pub uint32x4_t);
 /// ARM-specific type containing four `uint32x4_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -498,6 +546,7 @@ pub struct uint32x4x4_t(
 );
 
 /// ARM-specific type containing two `float32x2_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -505,6 +554,7 @@ pub struct uint32x4x4_t(
 )]
 pub struct float32x2x2_t(pub float32x2_t, pub float32x2_t);
 /// ARM-specific type containing three `float32x2_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -512,6 +562,7 @@ pub struct float32x2x2_t(pub float32x2_t, pub float32x2_t);
 )]
 pub struct float32x2x3_t(pub float32x2_t, pub float32x2_t, pub float32x2_t);
 /// ARM-specific type containing four `float32x2_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -525,6 +576,7 @@ pub struct float32x2x4_t(
 );
 
 /// ARM-specific type containing two `float32x4_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -532,6 +584,7 @@ pub struct float32x2x4_t(
 )]
 pub struct float32x4x2_t(pub float32x4_t, pub float32x4_t);
 /// ARM-specific type containing three `float32x4_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -539,6 +592,7 @@ pub struct float32x4x2_t(pub float32x4_t, pub float32x4_t);
 )]
 pub struct float32x4x3_t(pub float32x4_t, pub float32x4_t, pub float32x4_t);
 /// ARM-specific type containing four `float32x4_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -552,6 +606,7 @@ pub struct float32x4x4_t(
 );
 
 /// ARM-specific type containing four `int64x1_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -559,6 +614,7 @@ pub struct float32x4x4_t(
 )]
 pub struct int64x1x2_t(pub int64x1_t, pub int64x1_t);
 /// ARM-specific type containing four `int64x1_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -566,6 +622,7 @@ pub struct int64x1x2_t(pub int64x1_t, pub int64x1_t);
 )]
 pub struct int64x1x3_t(pub int64x1_t, pub int64x1_t, pub int64x1_t);
 /// ARM-specific type containing four `int64x1_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -574,6 +631,7 @@ pub struct int64x1x3_t(pub int64x1_t, pub int64x1_t, pub int64x1_t);
 pub struct int64x1x4_t(pub int64x1_t, pub int64x1_t, pub int64x1_t, pub int64x1_t);
 
 /// ARM-specific type containing four `int64x2_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -581,6 +639,7 @@ pub struct int64x1x4_t(pub int64x1_t, pub int64x1_t, pub int64x1_t, pub int64x1_
 )]
 pub struct int64x2x2_t(pub int64x2_t, pub int64x2_t);
 /// ARM-specific type containing four `int64x2_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -588,6 +647,7 @@ pub struct int64x2x2_t(pub int64x2_t, pub int64x2_t);
 )]
 pub struct int64x2x3_t(pub int64x2_t, pub int64x2_t, pub int64x2_t);
 /// ARM-specific type containing four `int64x2_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -596,6 +656,7 @@ pub struct int64x2x3_t(pub int64x2_t, pub int64x2_t, pub int64x2_t);
 pub struct int64x2x4_t(pub int64x2_t, pub int64x2_t, pub int64x2_t, pub int64x2_t);
 
 /// ARM-specific type containing four `uint64x1_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -603,6 +664,7 @@ pub struct int64x2x4_t(pub int64x2_t, pub int64x2_t, pub int64x2_t, pub int64x2_
 )]
 pub struct uint64x1x2_t(pub uint64x1_t, pub uint64x1_t);
 /// ARM-specific type containing four `uint64x1_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -610,6 +672,7 @@ pub struct uint64x1x2_t(pub uint64x1_t, pub uint64x1_t);
 )]
 pub struct uint64x1x3_t(pub uint64x1_t, pub uint64x1_t, pub uint64x1_t);
 /// ARM-specific type containing four `uint64x1_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -623,6 +686,7 @@ pub struct uint64x1x4_t(
 );
 
 /// ARM-specific type containing four `uint64x2_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -630,6 +694,7 @@ pub struct uint64x1x4_t(
 )]
 pub struct uint64x2x2_t(pub uint64x2_t, pub uint64x2_t);
 /// ARM-specific type containing four `uint64x2_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -637,6 +702,7 @@ pub struct uint64x2x2_t(pub uint64x2_t, pub uint64x2_t);
 )]
 pub struct uint64x2x3_t(pub uint64x2_t, pub uint64x2_t, pub uint64x2_t);
 /// ARM-specific type containing four `uint64x2_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -650,6 +716,7 @@ pub struct uint64x2x4_t(
 );
 
 /// ARM-specific type containing four `poly64x1_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -657,6 +724,7 @@ pub struct uint64x2x4_t(
 )]
 pub struct poly64x1x2_t(pub poly64x1_t, pub poly64x1_t);
 /// ARM-specific type containing four `poly64x1_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -664,6 +732,7 @@ pub struct poly64x1x2_t(pub poly64x1_t, pub poly64x1_t);
 )]
 pub struct poly64x1x3_t(pub poly64x1_t, pub poly64x1_t, pub poly64x1_t);
 /// ARM-specific type containing four `poly64x1_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -677,6 +746,7 @@ pub struct poly64x1x4_t(
 );
 
 /// ARM-specific type containing four `poly64x2_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -684,6 +754,7 @@ pub struct poly64x1x4_t(
 )]
 pub struct poly64x2x2_t(pub poly64x2_t, pub poly64x2_t);
 /// ARM-specific type containing four `poly64x2_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",
@@ -691,6 +762,7 @@ pub struct poly64x2x2_t(pub poly64x2_t, pub poly64x2_t);
 )]
 pub struct poly64x2x3_t(pub poly64x2_t, pub poly64x2_t, pub poly64x2_t);
 /// ARM-specific type containing four `poly64x2_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     target_arch = "aarch64",

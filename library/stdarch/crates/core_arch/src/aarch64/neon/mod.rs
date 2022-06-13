@@ -28,14 +28,17 @@ types! {
 }
 
 /// ARM-specific type containing two `float64x1_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub struct float64x1x2_t(pub float64x1_t, pub float64x1_t);
 /// ARM-specific type containing three `float64x1_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub struct float64x1x3_t(pub float64x1_t, pub float64x1_t, pub float64x1_t);
 /// ARM-specific type containing four `float64x1_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub struct float64x1x4_t(
@@ -46,14 +49,17 @@ pub struct float64x1x4_t(
 );
 
 /// ARM-specific type containing two `float64x2_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub struct float64x2x2_t(pub float64x2_t, pub float64x2_t);
 /// ARM-specific type containing three `float64x2_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub struct float64x2x3_t(pub float64x2_t, pub float64x2_t, pub float64x2_t);
 /// ARM-specific type containing four `float64x2_t` vectors.
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub struct float64x2x4_t(
