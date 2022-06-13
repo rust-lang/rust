@@ -108,7 +108,8 @@ pub enum LifetimeName {
     Error,
 
     /// User wrote an anonymous lifetime, either `'_` or nothing.
-    Underscore,
+    /// The semantics of this lifetime should be inferred by typechecking code.
+    Infer,
 
     /// User wrote `'static`.
     Static,
@@ -118,7 +119,7 @@ impl LifetimeName {
     pub fn ident(&self) -> Ident {
         match *self {
             LifetimeName::ImplicitObjectLifetimeDefault | LifetimeName::Error => Ident::empty(),
-            LifetimeName::Underscore => Ident::with_dummy_span(kw::UnderscoreLifetime),
+            LifetimeName::Infer => Ident::with_dummy_span(kw::UnderscoreLifetime),
             LifetimeName::Static => Ident::with_dummy_span(kw::StaticLifetime),
             LifetimeName::Param(_, param_name) => param_name.ident(),
         }
@@ -127,7 +128,7 @@ impl LifetimeName {
     pub fn is_anonymous(&self) -> bool {
         match *self {
             LifetimeName::ImplicitObjectLifetimeDefault
-            | LifetimeName::Underscore
+            | LifetimeName::Infer
             | LifetimeName::Param(_, ParamName::Fresh)
             | LifetimeName::Error => true,
             LifetimeName::Static | LifetimeName::Param(..) => false,
@@ -136,7 +137,7 @@ impl LifetimeName {
 
     pub fn is_elided(&self) -> bool {
         match self {
-            LifetimeName::ImplicitObjectLifetimeDefault | LifetimeName::Underscore => true,
+            LifetimeName::ImplicitObjectLifetimeDefault | LifetimeName::Infer => true,
 
             // It might seem surprising that `Fresh` counts as
             // *not* elided -- but this is because, as far as the code

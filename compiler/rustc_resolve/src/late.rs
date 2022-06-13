@@ -865,7 +865,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                             let previous_state = replace(&mut this.in_func_body, true);
                             // Resolve the function body, potentially inside the body of an async closure
                             this.with_lifetime_rib(
-                                LifetimeRibKind::Elided(LifetimeRes::Anonymous { binder: fn_id }),
+                                LifetimeRibKind::Elided(LifetimeRes::Infer),
                                 |this| this.visit_block(body),
                             );
 
@@ -893,9 +893,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                         this.with_lifetime_rib(
                             match binder {
                                 ClosureBinder::NotPresent => {
-                                    LifetimeRibKind::Elided(LifetimeRes::Anonymous {
-                                        binder: fn_id,
-                                    })
+                                    LifetimeRibKind::Elided(LifetimeRes::Infer)
                                 }
                                 ClosureBinder::For { .. } => LifetimeRibKind::AnonymousReportError,
                             },
@@ -907,7 +905,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                         let previous_state = replace(&mut this.in_func_body, true);
                         // Resolve the function body, potentially inside the body of an async closure
                         this.with_lifetime_rib(
-                            LifetimeRibKind::Elided(LifetimeRes::Anonymous { binder: fn_id }),
+                            LifetimeRibKind::Elided(LifetimeRes::Infer),
                             |this| this.visit_expr(body),
                         );
 
@@ -1645,35 +1643,12 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
             if !missing {
                 // Do not create a parameter for patterns and expressions.
-                for rib in self.lifetime_ribs.iter().rev() {
-                    match rib.kind {
-                        LifetimeRibKind::Elided(res @ LifetimeRes::Anonymous { .. }) => {
-                            for id in node_ids {
-                                self.record_lifetime_res(id, res, LifetimeElisionCandidate::Named);
-                            }
-                            break;
-                        }
-                        // `LifetimeRes::Error`, which would usually be used in the case of
-                        // `ReportError`, is unsuitable here, as we don't emit an error yet.  Instead,
-                        // we simply resolve to an implicit lifetime, which will be checked later, at
-                        // which point a suitable error will be emitted.
-                        LifetimeRibKind::AnonymousReportError | LifetimeRibKind::Item => {
-                            // FIXME(cjgillot) This resolution is wrong, but this does not matter
-                            // since these cases are erroneous anyway.  Lifetime resolution should
-                            // emit a "missing lifetime specifier" diagnostic.
-                            let res = LifetimeRes::Anonymous { binder: DUMMY_NODE_ID };
-                            for id in node_ids {
-                                self.record_lifetime_res(id, res, LifetimeElisionCandidate::Named);
-                            }
-                            break;
-                        }
-                        LifetimeRibKind::AnonymousCreateParameter { .. }
-                        | LifetimeRibKind::Elided(_)
-                        | LifetimeRibKind::ElisionFailure
-                        | LifetimeRibKind::Generics { .. }
-                        | LifetimeRibKind::ConstGeneric
-                        | LifetimeRibKind::AnonConst => {}
-                    }
+                for id in node_ids {
+                    self.record_lifetime_res(
+                        id,
+                        LifetimeRes::Infer,
+                        LifetimeElisionCandidate::Named,
+                    );
                 }
                 continue;
             }
@@ -1814,15 +1789,12 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             )
         }
         match res {
-            LifetimeRes::Param { .. }
-            | LifetimeRes::Fresh { .. }
-            | LifetimeRes::Anonymous { .. }
-            | LifetimeRes::Static => {
+            LifetimeRes::Param { .. } | LifetimeRes::Fresh { .. } | LifetimeRes::Static => {
                 if let Some(ref mut candidates) = self.lifetime_elision_candidates {
                     candidates.insert(res, candidate);
                 }
             }
-            LifetimeRes::Error | LifetimeRes::ElidedAnchor { .. } => {}
+            LifetimeRes::Infer | LifetimeRes::Error | LifetimeRes::ElidedAnchor { .. } => {}
         }
     }
 
@@ -2245,26 +2217,23 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     this.with_lifetime_rib(LifetimeRibKind::Elided(LifetimeRes::Static), |this| {
                         this.visit_ty(ty);
                     });
-                    this.with_lifetime_rib(
-                        LifetimeRibKind::Elided(LifetimeRes::Anonymous { binder: item.id }),
-                        |this| {
-                            if let Some(expr) = expr {
-                                let constant_item_kind = match item.kind {
-                                    ItemKind::Const(..) => ConstantItemKind::Const,
-                                    ItemKind::Static(..) => ConstantItemKind::Static,
-                                    _ => unreachable!(),
-                                };
-                                // We already forbid generic params because of the above item rib,
-                                // so it doesn't matter whether this is a trivial constant.
-                                this.with_constant_rib(
-                                    IsRepeatExpr::No,
-                                    HasGenericParams::Yes,
-                                    Some((item.ident, constant_item_kind)),
-                                    |this| this.visit_expr(expr),
-                                );
-                            }
-                        },
-                    );
+                    this.with_lifetime_rib(LifetimeRibKind::Elided(LifetimeRes::Infer), |this| {
+                        if let Some(expr) = expr {
+                            let constant_item_kind = match item.kind {
+                                ItemKind::Const(..) => ConstantItemKind::Const,
+                                ItemKind::Static(..) => ConstantItemKind::Static,
+                                _ => unreachable!(),
+                            };
+                            // We already forbid generic params because of the above item rib,
+                            // so it doesn't matter whether this is a trivial constant.
+                            this.with_constant_rib(
+                                IsRepeatExpr::No,
+                                HasGenericParams::Yes,
+                                Some((item.ident, constant_item_kind)),
+                                |this| this.visit_expr(expr),
+                            );
+                        }
+                    });
                 });
             }
 
@@ -2521,7 +2490,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                         // Type parameters can already be used and as associated consts are
                         // not used as part of the type system, this is far less surprising.
                         self.with_lifetime_rib(
-                            LifetimeRibKind::Elided(LifetimeRes::Anonymous { binder: item.id }),
+                            LifetimeRibKind::Elided(LifetimeRes::Infer),
                             |this| {
                                 this.with_constant_rib(
                                     IsRepeatExpr::No,
@@ -2694,17 +2663,14 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     //
                     // Type parameters can already be used and as associated consts are
                     // not used as part of the type system, this is far less surprising.
-                    self.with_lifetime_rib(
-                        LifetimeRibKind::Elided(LifetimeRes::Anonymous { binder: item.id }),
-                        |this| {
-                            this.with_constant_rib(
-                                IsRepeatExpr::No,
-                                HasGenericParams::Yes,
-                                None,
-                                |this| this.visit_expr(expr),
-                            )
-                        },
-                    );
+                    self.with_lifetime_rib(LifetimeRibKind::Elided(LifetimeRes::Infer), |this| {
+                        this.with_constant_rib(
+                            IsRepeatExpr::No,
+                            HasGenericParams::Yes,
+                            None,
+                            |this| this.visit_expr(expr),
+                        )
+                    });
                 }
             }
             AssocItemKind::Fn(box Fn { generics, .. }) => {
