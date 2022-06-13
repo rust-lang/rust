@@ -170,7 +170,7 @@ impl ParseSess {
     /// * `relative` - If Some(symbol), the symbol name is a directory relative to the dir_path.
     ///   If relative is Some, resolve the submodle at {dir_path}/{symbol}/{id}.rs
     ///   or {dir_path}/{symbol}/{id}/mod.rs. if None, resolve the module at {dir_path}/{id}.rs.
-    /// *  `dir_path` - Module resolution will occur relative to this direcotry.
+    /// *  `dir_path` - Module resolution will occur relative to this directory.
     pub(crate) fn default_submod_path(
         &self,
         id: symbol::Ident,
