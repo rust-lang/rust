@@ -6,7 +6,7 @@ LL | fn f() { assert_eq!(f(), (), assert_eq!(assert_eq!
    |        |           |
    |        |           unclosed delimiter
    |        unclosed delimiter
-LL | 
+LL |
 LL | fn main() {}
    |              ^
 
@@ -18,7 +18,7 @@ LL | fn f() { assert_eq!(f(), (), assert_eq!(assert_eq!
    |        |           |
    |        |           unclosed delimiter
    |        unclosed delimiter
-LL | 
+LL |
 LL | fn main() {}
    |              ^
 
@@ -30,7 +30,7 @@ LL | fn f() { assert_eq!(f(), (), assert_eq!(assert_eq!
    |        |           |
    |        |           unclosed delimiter
    |        unclosed delimiter
-LL | 
+LL |
 LL | fn main() {}
    |              ^
 
@@ -39,7 +39,7 @@ error: expected one of `(`, `[`, or `{`, found keyword `fn`
    |
 LL | fn f() { assert_eq!(f(), (), assert_eq!(assert_eq!
    |                                                   - expected one of `(`, `[`, or `{`
-LL | 
+LL |
 LL | fn main() {}
    | ^^ unexpected token
    |

@@ -771,8 +771,12 @@ impl EmitterWriter {
         self
     }
 
-    fn maybe_anonymized(&self, line_num: usize) -> String {
-        if self.ui_testing { ANONYMIZED_LINE_NUM.to_string() } else { line_num.to_string() }
+    fn maybe_anonymized(&self, line_num: usize) -> Cow<'static, str> {
+        if self.ui_testing {
+            Cow::Borrowed(ANONYMIZED_LINE_NUM)
+        } else {
+            Cow::Owned(line_num.to_string())
+        }
     }
 
     fn draw_line(
@@ -819,7 +823,7 @@ impl EmitterWriter {
         }
         buffer.puts(line_offset, 0, &self.maybe_anonymized(line_index), Style::LineNumber);
 
-        draw_col_separator(buffer, line_offset, width_offset - 2);
+        draw_col_separator_no_space(buffer, line_offset, width_offset - 2);
     }
 
     fn render_source_line(
@@ -1920,7 +1924,7 @@ impl EmitterWriter {
             // Only show an underline in the suggestions if the suggestion is not the
             // entirety of the code being shown and the displayed code is not multiline.
             if let DisplaySuggestion::Diff | DisplaySuggestion::Underline = show_code_change {
-                draw_col_separator(&mut buffer, row_num, max_line_num_len + 1);
+                draw_col_separator_no_space(&mut buffer, row_num, max_line_num_len + 1);
                 for part in parts {
                     let span_start_pos = sm.lookup_char_pos(part.span.lo()).col_display;
                     let span_end_pos = sm.lookup_char_pos(part.span.hi()).col_display;

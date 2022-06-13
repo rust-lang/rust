@@ -8,7 +8,7 @@ help: the `const` keyword is only needed in the definition of the type
    |
 LL - impl Foo<N = const 3> for Bar {
 LL + impl Foo<N = 3> for Bar {
-   | 
+   |
 
 error[E0658]: associated const equality is incomplete
   --> $DIR/issue-89013.rs:9:10

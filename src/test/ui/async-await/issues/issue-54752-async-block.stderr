@@ -9,7 +9,7 @@ help: remove these parentheses
    |
 LL - fn main() { let _a = (async { }); }
 LL + fn main() { let _a = async { }; }
-   | 
+   |
 
 warning: 1 warning emitted
 

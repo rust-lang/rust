@@ -8,7 +8,7 @@ help: remove wrapping parentheses to call the method
    |
 LL -         (a.unwrap)()
 LL +         a.unwrap()
-   | 
+   |
 
 error: aborting due to previous error
 

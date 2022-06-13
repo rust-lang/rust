@@ -23,7 +23,7 @@ error: boxed `Wow` trait object held across a suspend point, but should not be
    |
 LL |     let _guard2 = r#dyn();
    |         ^^^^^^^
-LL | 
+LL |
 LL |     other().await;
    |            ------ the value is held across this suspend point
    |

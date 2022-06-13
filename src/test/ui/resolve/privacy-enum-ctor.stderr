@@ -109,7 +109,7 @@ help: if you import `E`, refer to it directly
    |
 LL -     let _: E = m::E;
 LL +     let _: E = E;
-   | 
+   |
 
 error[E0423]: expected value, found struct variant `m::E::Struct`
   --> $DIR/privacy-enum-ctor.rs:45:16
@@ -347,7 +347,7 @@ help: `Z::Unit` is a unit variant, you need to write it without the parentheses
    |
 LL -         let _ = Z::Unit();
 LL +         let _ = Z::Unit;
-   | 
+   |
 
 error[E0308]: mismatched types
   --> $DIR/privacy-enum-ctor.rs:43:16
@@ -382,7 +382,7 @@ help: `m::E::Unit` is a unit variant, you need to write it without the parenthes
    |
 LL -     let _: E = m::E::Unit();
 LL +     let _: E = m::E::Unit;
-   | 
+   |
 
 error[E0308]: mismatched types
   --> $DIR/privacy-enum-ctor.rs:51:16
@@ -417,7 +417,7 @@ help: `E::Unit` is a unit variant, you need to write it without the parentheses
    |
 LL -     let _: E = E::Unit();
 LL +     let _: E = E::Unit;
-   | 
+   |
 
 error: aborting due to 23 previous errors
 

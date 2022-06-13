@@ -31,7 +31,7 @@ help: `Alias::Unit` is a unit variant, you need to write it without the parenthe
    |
 LL -     Alias::Unit();
 LL +     Alias::Unit;
-   | 
+   |
 
 error[E0164]: expected tuple struct or tuple variant, found unit variant `Alias::Unit`
   --> $DIR/incorrect-variant-form-through-alias-caught.rs:17:9

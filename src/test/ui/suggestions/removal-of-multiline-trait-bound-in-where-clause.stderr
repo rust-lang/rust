@@ -25,7 +25,7 @@ LL -     T
 LL -     :
 LL -     ?
 LL -     Sized
-   | 
+   |
 
 error[E0277]: the size for values of type `T` cannot be known at compilation time
   --> $DIR/removal-of-multiline-trait-bound-in-where-clause.rs:14:16
@@ -50,7 +50,7 @@ LL | struct Wrapper<T>(T);
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - where T: ?Sized
-   | 
+   |
 
 error[E0277]: the size for values of type `T` cannot be known at compilation time
   --> $DIR/removal-of-multiline-trait-bound-in-where-clause.rs:21:16
@@ -76,7 +76,7 @@ help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - where
 LL -     T: ?Sized
-   | 
+   |
 
 error: aborting due to 3 previous errors
 

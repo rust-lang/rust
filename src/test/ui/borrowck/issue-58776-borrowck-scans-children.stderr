@@ -5,7 +5,7 @@ LL |     let res = (|| (|| &greeting)())();
    |                --      -------- borrow occurs due to use in closure
    |                |
    |                borrow of `greeting` occurs here
-LL | 
+LL |
 LL |     greeting = "DEALLOCATED".to_string();
    |     ^^^^^^^^ assignment to borrowed `greeting` occurs here
 ...

@@ -98,7 +98,7 @@ help: to link to the associated function, add parentheses
    |
 LL - /// [type@Vec::into_iter]
 LL + /// [Vec::into_iter()]
-   | 
+   |
 
 error: unresolved link to `S`
   --> $DIR/errors.rs:68:6
@@ -110,7 +110,7 @@ help: to link to the struct, prefix with `struct@`
    |
 LL - /// [S!]
 LL + /// [struct@S]
-   | 
+   |
 
 error: unresolved link to `S::h`
   --> $DIR/errors.rs:78:6
@@ -122,7 +122,7 @@ help: to link to the associated function, add parentheses
    |
 LL - /// [type@S::h]
 LL + /// [S::h()]
-   | 
+   |
 
 error: unresolved link to `T::g`
   --> $DIR/errors.rs:86:6
@@ -134,7 +134,7 @@ help: to link to the associated function, add parentheses
    |
 LL - /// [type@T::g]
 LL + /// [T::g()]
-   | 
+   |
 
 error: unresolved link to `T::h`
   --> $DIR/errors.rs:91:6

@@ -58,7 +58,7 @@ help: consider removing the borrow
    |
 LL -         asm!("{}", const &0);
 LL +         asm!("{}", const 0);
-   | 
+   |
 
 error: invalid asm output
   --> $DIR/type-check-1.rs:15:29

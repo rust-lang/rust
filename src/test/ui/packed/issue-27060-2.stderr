@@ -12,7 +12,7 @@ help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - pub struct Bad<T: ?Sized> {
 LL + pub struct Bad<T> {
-   | 
+   |
 help: borrowed types always have a statically known size
    |
 LL |     data: &T,

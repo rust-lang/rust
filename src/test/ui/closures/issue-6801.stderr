@@ -5,7 +5,7 @@ LL |       let sq =  || { *x * *x };
    |                 --   -- borrow occurs due to use in closure
    |                 |
    |                 borrow of `x` occurs here
-LL | 
+LL |
 LL |       twice(x);
    |             ^ move out of `x` occurs here
 LL |       invoke(sq);

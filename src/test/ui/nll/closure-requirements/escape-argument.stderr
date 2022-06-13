@@ -32,7 +32,7 @@ LL |         closure(&mut p, &y);
 LL |
 LL |     }
    |     - `y` dropped here while still borrowed
-LL | 
+LL |
 LL |     deref(p);
    |           - borrow later used here
 

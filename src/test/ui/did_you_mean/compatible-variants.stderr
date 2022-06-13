@@ -71,7 +71,7 @@ help: try removing this `?`
    |
 LL -     c()?
 LL +     c()
-   | 
+   |
 help: try adding an expression at the end of the block
    |
 LL ~     c()?;

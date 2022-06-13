@@ -5,8 +5,8 @@ LL | fn p() { match s { v, E { [) {) }
    |        -         - unclosed delimiter
    |        |
    |        unclosed delimiter
-LL | 
-LL | 
+LL |
+LL |
    |  ^
 
 error: this file contains an unclosed delimiter
@@ -16,8 +16,8 @@ LL | fn p() { match s { v, E { [) {) }
    |        -         - unclosed delimiter
    |        |
    |        unclosed delimiter
-LL | 
-LL | 
+LL |
+LL |
    |  ^
 
 error: expected one of `,` or `}`, found `{`
@@ -51,8 +51,8 @@ error: expected one of `.`, `?`, `{`, or an operator, found `}`
    |
 LL | fn p() { match s { v, E { [) {) }
    |          ----- while parsing this `match` expression
-LL | 
-LL | 
+LL |
+LL |
    |  ^ expected one of `.`, `?`, `{`, or an operator
 
 error: mismatched closing delimiter: `)`
