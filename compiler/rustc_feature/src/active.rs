@@ -409,8 +409,6 @@ declare_features! (
     (active, if_let_guard, "1.47.0", Some(51114), None),
     /// Allows using imported `main` function
     (active, imported_main, "1.53.0", Some(28937), None),
-    /// Allows inferring `'static` outlives requirements (RFC 2093).
-    (active, infer_static_outlives_requirements, "1.26.0", Some(54185), None),
     /// Allows associated types in inherent impls.
     (incomplete, inherent_associated_types, "1.52.0", Some(8995), None),
     /// Allow anonymous constants from an inline `const` block

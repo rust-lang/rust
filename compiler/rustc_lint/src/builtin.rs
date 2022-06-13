@@ -2113,7 +2113,6 @@ impl ExplicitOutlivesRequirements {
         tcx: TyCtxt<'tcx>,
         bounds: &hir::GenericBounds<'_>,
         inferred_outlives: &[ty::Region<'tcx>],
-        infer_static: bool,
     ) -> Vec<(usize, Span)> {
         use rustc_middle::middle::resolve_lifetime::Region;
 
@@ -2123,9 +2122,6 @@ impl ExplicitOutlivesRequirements {
             .filter_map(|(i, bound)| {
                 if let hir::GenericBound::Outlives(lifetime) = bound {
                     let is_inferred = match tcx.named_region(lifetime.hir_id) {
-                        Some(Region::Static) if infer_static => {
-                            inferred_outlives.iter().any(|r| matches!(**r, ty::ReStatic))
-                        }
                         Some(Region::EarlyBound(index, ..)) => inferred_outlives.iter().any(|r| {
                             if let ty::ReEarlyBound(ebr) = **r { ebr.index == index } else { false }
                         }),
@@ -2201,7 +2197,6 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
         use rustc_middle::middle::resolve_lifetime::Region;
 
-        let infer_static = cx.tcx.features().infer_static_outlives_requirements;
         let def_id = item.def_id;
         if let hir::ItemKind::Struct(_, ref hir_generics)
         | hir::ItemKind::Enum(_, ref hir_generics)
@@ -2262,12 +2257,8 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
                     continue;
                 }
 
-                let bound_spans = self.collect_outlives_bound_spans(
-                    cx.tcx,
-                    bounds,
-                    &relevant_lifetimes,
-                    infer_static,
-                );
+                let bound_spans =
+                    self.collect_outlives_bound_spans(cx.tcx, bounds, &relevant_lifetimes);
                 bound_count += bound_spans.len();
 
                 let drop_predicate = bound_spans.len() == bounds.len();
