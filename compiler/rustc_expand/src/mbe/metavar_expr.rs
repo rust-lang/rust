@@ -52,7 +52,7 @@ impl MetaVarExpr {
                 err.span_suggestion(
                     ident.span,
                     "supported expressions are count, ignore, index and length",
-                    String::new(),
+                    "",
                     Applicability::MachineApplicable,
                 );
                 return Err(err);
@@ -142,7 +142,7 @@ fn parse_ident<'sess>(
         err.span_suggestion(
             token.span,
             &format!("try removing `{}`", &token_str),
-            String::new(),
+            "",
             Applicability::MaybeIncorrect,
         );
         return Err(err);

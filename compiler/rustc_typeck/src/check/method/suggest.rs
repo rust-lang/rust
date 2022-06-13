@@ -330,7 +330,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     err.span_suggestion(
                         span.shrink_to_lo(),
                         "you are looking for the module in `std`, not the primitive type",
-                        "std::".to_string(),
+                        "std::",
                         Applicability::MachineApplicable,
                     );
                 }
@@ -453,7 +453,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         err.span_suggestion_short(
                             span,
                             msg,
-                            String::from("len"),
+                            "len",
                             Applicability::MachineApplicable,
                         );
                     } else {
@@ -893,7 +893,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 item_name.span,
                                 "because of the in-memory representation of `&str`, to obtain \
                                  an `Iterator` over each of its codepoint use method `chars`",
-                                String::from("chars"),
+                                "chars",
                                 Applicability::MachineApplicable,
                             );
                         }
@@ -1006,7 +1006,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         err.span_suggestion(
                             span,
                             "there is a variant with a similar name",
-                            suggestion.to_string(),
+                            suggestion,
                             Applicability::MaybeIncorrect,
                         );
                     }
@@ -1019,12 +1019,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let call_expr =
                             self.tcx.hir().expect_expr(self.tcx.hir().get_parent_node(expr.hir_id));
                         if let Some(span) = call_expr.span.trim_start(expr.span) {
-                            err.span_suggestion(
-                                span,
-                                msg,
-                                String::new(),
-                                Applicability::MachineApplicable,
-                            );
+                            err.span_suggestion(span, msg, "", Applicability::MachineApplicable);
                             fallback_span = false;
                         }
                     }
@@ -1043,7 +1038,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 def_kind.article(),
                                 def_kind.descr(lev_candidate.def_id),
                             ),
-                            lev_candidate.name.to_string(),
+                            lev_candidate.name,
                             Applicability::MaybeIncorrect,
                         );
                     }
@@ -1164,7 +1159,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         err.span_suggestion(
                             span,
                             "remove the arguments",
-                            String::new(),
+                            "",
                             Applicability::MaybeIncorrect,
                         );
                     }
@@ -1418,7 +1413,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             "use the `?` operator to extract the `{self_ty}` value, propagating \
                             {article} `{kind}::{variant}` value to the caller"
                         ),
-                        "?".to_owned(),
+                        "?",
                         Applicability::MachineApplicable,
                     );
                 } else {
@@ -1428,7 +1423,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             "consider using `{kind}::expect` to unwrap the `{self_ty}` value, \
                              panicking if the value is {article} `{kind}::{variant}`"
                         ),
-                        ".expect(\"REASON\")".to_owned(),
+                        ".expect(\"REASON\")",
                         Applicability::HasPlaceholders,
                     );
                 }
@@ -1632,7 +1627,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             err.span_suggestion_verbose(
                 span.shrink_to_lo(),
                 "consider `await`ing on the `Future` and calling the method on its `Output`",
-                "await.".to_string(),
+                "await.",
                 Applicability::MaybeIncorrect,
             );
         }

@@ -122,7 +122,7 @@ fn unused_crates_lint(tcx: TyCtxt<'_>) {
                         .span_suggestion_short(
                             span_with_attrs,
                             "remove it",
-                            String::new(),
+                            "",
                             Applicability::MachineApplicable,
                         )
                         .emit();

@@ -225,7 +225,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                     .map(|n| format!("`{}`", n))
                                     .unwrap_or_else(|| "the value".to_string())
                             ),
-                            "ref ".to_string(),
+                            "ref ",
                             Applicability::MachineApplicable,
                         );
                         in_pattern = true;
@@ -276,7 +276,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                 .map(|n| format!("`{}`", n))
                                 .unwrap_or_else(|| "the mutable reference".to_string()),
                         ),
-                        "&mut *".to_string(),
+                        "&mut *",
                         Applicability::MachineApplicable,
                     );
                 }
@@ -1519,15 +1519,15 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             Ok(string) => {
                 if string.starts_with("async ") {
                     let pos = args_span.lo() + BytePos(6);
-                    (args_span.with_lo(pos).with_hi(pos), "move ".to_string())
+                    (args_span.with_lo(pos).with_hi(pos), "move ")
                 } else if string.starts_with("async|") {
                     let pos = args_span.lo() + BytePos(5);
-                    (args_span.with_lo(pos).with_hi(pos), " move".to_string())
+                    (args_span.with_lo(pos).with_hi(pos), " move")
                 } else {
-                    (args_span.shrink_to_lo(), "move ".to_string())
+                    (args_span.shrink_to_lo(), "move ")
                 }
             }
-            Err(_) => (args_span, "move |<args>| <body>".to_string()),
+            Err(_) => (args_span, "move |<args>| <body>"),
         };
         let kind = match use_span.generator_kind() {
             Some(generator_kind) => match generator_kind {

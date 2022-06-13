@@ -756,7 +756,7 @@ fn infer_placeholder_type<'a>(
                     diag.span_suggestion(
                         span,
                         "replace with the correct type",
-                        sugg_ty.to_string(),
+                        sugg_ty,
                         Applicability::MaybeIncorrect,
                     );
                 } else {

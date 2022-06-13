@@ -1168,7 +1168,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             .span_suggestion(
                                 e.span,
                                 "consider removing the trailing pattern",
-                                String::new(),
+                                "",
                                 rustc_errors::Applicability::MachineApplicable,
                             )
                             .emit();

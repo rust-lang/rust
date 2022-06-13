@@ -212,7 +212,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
                                         "consider adding semicolon after the expression so its \
                                         temporaries are dropped sooner, before the local variables \
                                         declared by the block are dropped",
-                                        ";".to_string(),
+                                        ";",
                                         Applicability::MaybeIncorrect,
                                     );
                                 }

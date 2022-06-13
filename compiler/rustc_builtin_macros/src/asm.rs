@@ -363,7 +363,7 @@ fn err_duplicate_option<'a>(p: &mut Parser<'a>, symbol: Symbol, span: Span) {
     err.tool_only_span_suggestion(
         full_span,
         "remove this option",
-        String::new(),
+        "",
         Applicability::MachineApplicable,
     );
 

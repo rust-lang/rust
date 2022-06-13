@@ -443,7 +443,7 @@ impl<'s> LintLevelsBuilder<'s> {
                                             .span_suggestion(
                                                 sp,
                                                 "change it to",
-                                                new_lint_name.to_string(),
+                                                new_lint_name,
                                                 Applicability::MachineApplicable,
                                             )
                                             .emit();
@@ -516,7 +516,7 @@ impl<'s> LintLevelsBuilder<'s> {
                                     err.span_suggestion(
                                         sp,
                                         "use the new name",
-                                        new_name.to_string(),
+                                        new_name,
                                         Applicability::MachineApplicable,
                                     );
                                 }
@@ -543,7 +543,7 @@ impl<'s> LintLevelsBuilder<'s> {
                                 db.span_suggestion(
                                     sp,
                                     "did you mean",
-                                    suggestion.to_string(),
+                                    suggestion,
                                     Applicability::MachineApplicable,
                                 );
                             }

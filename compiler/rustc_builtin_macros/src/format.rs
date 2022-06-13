@@ -330,7 +330,7 @@ impl<'a, 'b> Context<'a, 'b> {
                                 err.tool_only_span_suggestion(
                                     sp,
                                     &format!("use the `{}` trait", name),
-                                    (*fmt).to_string(),
+                                    *fmt,
                                     Applicability::MaybeIncorrect,
                                 );
                             }

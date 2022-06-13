@@ -160,7 +160,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                 lint.span_suggestion_verbose(
                     expr.span.shrink_to_lo(),
                     "use `let _ = ...` to ignore the resulting value",
-                    "let _ = ".to_string(),
+                    "let _ = ",
                     Applicability::MachineApplicable,
                 );
                 lint.emit();
