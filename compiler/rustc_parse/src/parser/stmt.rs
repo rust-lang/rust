@@ -209,7 +209,7 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, Stmt> {
         let stmt = self.recover_local_after_let(lo, attrs)?;
         self.struct_span_err(lo, "invalid variable declaration")
-            .span_suggestion(lo, msg, sugg.to_string(), Applicability::MachineApplicable)
+            .span_suggestion(lo, msg, sugg, Applicability::MachineApplicable)
             .emit();
         Ok(stmt)
     }
@@ -287,7 +287,7 @@ impl<'a> Parser<'a> {
                 err.span_suggestion_short(
                     colon_sp,
                     "use `=` if you meant to assign",
-                    " =".to_string(),
+                    " =",
                     Applicability::MachineApplicable,
                 );
                 err.emit();
@@ -391,7 +391,7 @@ impl<'a> Parser<'a> {
                 .span_suggestion_short(
                     self.token.span,
                     "initialize the variable",
-                    "=".to_string(),
+                    "=",
                     Applicability::MaybeIncorrect,
                 )
                 .help("if you meant to overwrite, remove the `let` binding")

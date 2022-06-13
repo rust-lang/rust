@@ -446,7 +446,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             err.span_suggestion_verbose(
                                 lhs_expr.span.shrink_to_lo(),
                                 msg,
-                                "*".to_string(),
+                                "*",
                                 rustc_errors::Applicability::MachineApplicable,
                             );
                         }
@@ -621,14 +621,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         err.span_suggestion_verbose(
                             lhs_expr.span.until(lhs_inner_expr.span),
                             rm_borrow_msg,
-                            "".to_owned(),
+                            "",
                             Applicability::MachineApplicable
                         );
                     } else {
                         err.span_suggestion_verbose(
                             lhs_expr.span.shrink_to_hi(),
                             to_owned_msg,
-                            ".to_owned()".to_owned(),
+                            ".to_owned()",
                             Applicability::MachineApplicable
                         );
                     }

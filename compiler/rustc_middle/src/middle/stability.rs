@@ -153,7 +153,7 @@ pub fn deprecation_suggestion(
         diag.span_suggestion(
             span,
             &format!("replace the use of the deprecated {}", kind),
-            suggestion.to_string(),
+            suggestion,
             Applicability::MachineApplicable,
         );
     }

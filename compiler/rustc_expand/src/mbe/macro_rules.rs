@@ -102,7 +102,7 @@ fn emit_frag_parse_err(
                 e.span_suggestion_verbose(
                     site_span.shrink_to_hi(),
                     "add `;` to interpret the expansion as a statement",
-                    ";".to_string(),
+                    ";",
                     Applicability::MaybeIncorrect,
                 );
             }
@@ -357,7 +357,7 @@ fn expand_macro<'cx>(
                     err.span_suggestion_short(
                         comma_span,
                         "missing comma here",
-                        ", ".to_string(),
+                        ", ",
                         Applicability::MachineApplicable,
                     );
                 }

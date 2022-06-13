@@ -112,7 +112,7 @@ impl<'a> Parser<'a> {
             .span_suggestion(
                 self.prev_token.span,
                 "use double colon",
-                "::".to_string(),
+                "::",
                 Applicability::MachineApplicable,
             )
             .emit();
@@ -283,7 +283,7 @@ impl<'a> Parser<'a> {
                             err.span_suggestion_verbose(
                                 arg.span().shrink_to_hi(),
                                 "you might have meant to end the type parameters here",
-                                ">".to_string(),
+                                ">",
                                 Applicability::MaybeIncorrect,
                             );
                         }
@@ -455,7 +455,7 @@ impl<'a> Parser<'a> {
                             "remove extra angle bracket{}",
                             pluralize!(snapshot.unmatched_angle_bracket_count)
                         ),
-                        String::new(),
+                        "",
                         Applicability::MachineApplicable,
                     )
                     .emit();
@@ -489,7 +489,7 @@ impl<'a> Parser<'a> {
                     err.span_suggestion_verbose(
                         self.prev_token.span.until(self.token.span),
                         "use a comma to separate type parameters",
-                        ", ".to_string(),
+                        ", ",
                         Applicability::MachineApplicable,
                     );
                     err.emit();
@@ -592,13 +592,13 @@ impl<'a> Parser<'a> {
                     err.span_suggestion(
                         self.sess.source_map().next_point(eq).to(before_next),
                         "to constrain the associated type, add a type after `=`",
-                        " TheType".to_string(),
+                        " TheType",
                         Applicability::HasPlaceholders,
                     );
                     err.span_suggestion(
                         eq.to(before_next),
                         &format!("remove the `=` if `{}` is a type", ident),
-                        String::new(),
+                        "",
                         Applicability::MaybeIncorrect,
                     )
                 } else {

@@ -1930,7 +1930,7 @@ fn infer_return_ty_for_fn_sig<'tcx>(
                 diag.span_suggestion(
                     ty.span,
                     "replace with the correct return type",
-                    ret_ty.to_string(),
+                    ret_ty,
                     Applicability::MachineApplicable,
                 );
             } else if matches!(ret_ty.kind(), ty::FnDef(..)) {
@@ -1939,7 +1939,7 @@ fn infer_return_ty_for_fn_sig<'tcx>(
                     diag.span_suggestion(
                         ty.span,
                         "replace with the correct return type",
-                        fn_sig.to_string(),
+                        fn_sig,
                         Applicability::MachineApplicable,
                     );
                 }
@@ -2584,7 +2584,7 @@ fn from_target_feature(
     let Some(list) = attr.meta_item_list() else { return };
     let bad_item = |span| {
         let msg = "malformed `target_feature` attribute input";
-        let code = "enable = \"..\"".to_owned();
+        let code = "enable = \"..\"";
         tcx.sess
             .struct_span_err(span, msg)
             .span_suggestion(span, "must be of the form", code, Applicability::HasPlaceholders)

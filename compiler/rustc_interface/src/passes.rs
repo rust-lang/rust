@@ -449,7 +449,7 @@ pub fn configure_and_expand(
                     .span_suggestion(
                         first_span,
                         "try using their name instead",
-                        "ferris".to_string(),
+                        "ferris",
                         Applicability::MaybeIncorrect,
                     )
                     .emit();

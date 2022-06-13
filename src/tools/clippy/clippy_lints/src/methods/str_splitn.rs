@@ -176,13 +176,13 @@ fn check_manual_split_once_indirect(
             diag.span_suggestion(
                 first.span,
                 &remove_msg,
-                String::new(),
+                "",
                 app,
             );
             diag.span_suggestion(
                 second.span,
                 &remove_msg,
-                String::new(),
+                "",
                 app,
             );
         });

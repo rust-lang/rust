@@ -715,7 +715,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
             err.span_suggestion(
                 span_redundant_lt_args,
                 &msg_lifetimes,
-                String::new(),
+                "",
                 Applicability::MaybeIncorrect,
             );
         };
@@ -757,7 +757,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
             err.span_suggestion(
                 span_redundant_type_or_const_args,
                 &msg_types_or_consts,
-                String::new(),
+                "",
                 Applicability::MaybeIncorrect,
             );
         };
@@ -797,7 +797,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                 if self.gen_args.parenthesized { "parenthetical " } else { "" },
             );
 
-            err.span_suggestion(span, &msg, String::new(), Applicability::MaybeIncorrect);
+            err.span_suggestion(span, &msg, "", Applicability::MaybeIncorrect);
         } else if redundant_lifetime_args && redundant_type_or_const_args {
             remove_lifetime_args(err);
             remove_type_or_const_args(err);

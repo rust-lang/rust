@@ -122,7 +122,7 @@ impl<'a, 'tcx> SyntaxChecker<'a, 'tcx> {
                     diag.span_suggestion(
                         sp.from_inner(InnerSpan::new(0, 3)).shrink_to_hi(),
                         explanation,
-                        String::from("text"),
+                        "text",
                         Applicability::MachineApplicable,
                     );
                 }

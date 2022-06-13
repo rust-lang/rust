@@ -75,7 +75,7 @@ impl<'tcx> LateLintPass<'tcx> for LargeConstArrays {
                         diag.span_suggestion(
                             sugg_span,
                             "make this a static item",
-                            "static".to_string(),
+                            "static",
                             Applicability::MachineApplicable,
                         );
                     }

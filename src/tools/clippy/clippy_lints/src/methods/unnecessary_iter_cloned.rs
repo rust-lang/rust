@@ -85,7 +85,7 @@ pub fn check_for_loop_iter(
                         match addr_of_expr.kind {
                             ExprKind::AddrOf(_, _, referent) => {
                                 let span = addr_of_expr.span.with_hi(referent.span.lo());
-                                diag.span_suggestion(span, "remove this `&`", String::new(), applicability);
+                                diag.span_suggestion(span, "remove this `&`", "", applicability);
                             }
                             _ => unreachable!(),
                         }

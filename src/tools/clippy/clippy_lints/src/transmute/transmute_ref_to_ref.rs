@@ -73,7 +73,7 @@ pub(super) fn check<'tcx>(
                             diag.span_suggestion(
                                 e.span,
                                 "try",
-                                sugg.to_string(),
+                                sugg,
                                 Applicability::Unspecified,
                             );
                         },

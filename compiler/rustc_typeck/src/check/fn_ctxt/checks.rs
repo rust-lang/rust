@@ -1458,14 +1458,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 err.span_suggestion_verbose(
                     span_semi,
                     "consider removing this semicolon and boxing the expression",
-                    String::new(),
+                    "",
                     Applicability::HasPlaceholders,
                 );
             } else {
                 err.span_suggestion_short(
                     span_semi,
                     "remove this semicolon",
-                    String::new(),
+                    "",
                     Applicability::MachineApplicable,
                 );
             }

@@ -426,7 +426,7 @@ fn do_mir_borrowck<'a, 'tcx>(
                 .span_suggestion_short(
                     mut_span,
                     "remove this `mut`",
-                    String::new(),
+                    "",
                     Applicability::MachineApplicable,
                 )
                 .emit();
