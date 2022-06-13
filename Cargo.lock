@@ -3440,6 +3440,7 @@ dependencies = [
  "jemalloc-sys",
  "rustc_codegen_ssa",
  "rustc_driver",
+ "rustc_smir",
 ]
 
 [[package]]
@@ -4435,6 +4436,21 @@ dependencies = [
  "rustc_span",
  "rustc_target",
  "tracing",
+]
+
+[[package]]
+name = "rustc_smir"
+version = "0.0.0"
+dependencies = [
+ "rustc_borrowck",
+ "rustc_driver",
+ "rustc_hir",
+ "rustc_interface",
+ "rustc_middle",
+ "rustc_mir_dataflow",
+ "rustc_mir_transform",
+ "rustc_serialize",
+ "rustc_trait_selection",
 ]
 
 [[package]]
