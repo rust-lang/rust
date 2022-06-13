@@ -8,7 +8,7 @@ LL | fn foo(&_a: Foo) {}
    |
    = note: expected struct `Foo`
            found reference `&_`
-help: to take parameter by ref, move `&` to the type
+help: to take parameter `_a` by reference, move `&` to the type
    |
 LL - fn foo(&_a: Foo) {}
 LL + fn foo(_a: &Foo) {}

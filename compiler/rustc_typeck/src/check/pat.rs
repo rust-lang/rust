@@ -666,7 +666,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             match binding_parent {
                 hir::Node::Param(hir::Param { ty_span, .. }) if binding.span.hi() <= ty_span.lo() => {
                     err.multipart_suggestion_verbose(
-                        format!("to take parameter by ref, move `&{mutability}` to the type"), 
+                        format!("to take parameter `{binding}` by reference, move `&{mutability}` to the type"), 
                         vec![
                             (pat.span.until(inner.span), "".to_owned()),
                             (ty_span.shrink_to_lo(), format!("&{}", mutbl.prefix_str())),
