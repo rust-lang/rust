@@ -1525,12 +1525,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         other: &EvaluatedCandidate<'tcx>,
         needs_infer: bool,
     ) -> bool {
-        // HACK(eddyb) remove instruction-counting noise from `-Z self-profile`.
-        #[cfg(target_arch = "x86_64")]
-        unsafe {
-            std::arch::asm!("mfence", options(nostack));
-        }
-
         if victim.candidate == other.candidate {
             return true;
         }
