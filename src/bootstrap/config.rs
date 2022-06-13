@@ -212,6 +212,28 @@ pub struct Config {
     pub out: PathBuf,
 }
 
+#[derive(Default, Deserialize)]
+#[cfg_attr(test, derive(Clone))]
+pub struct Stage0Metadata {
+    pub config: Stage0Config,
+    pub checksums_sha256: HashMap<String, String>,
+    pub rustfmt: Option<RustfmtMetadata>,
+}
+#[derive(Default, Deserialize)]
+#[cfg_attr(test, derive(Clone))]
+pub struct Stage0Config {
+    pub dist_server: String,
+    pub artifacts_server: String,
+    pub artifacts_with_llvm_assertions_server: String,
+    pub git_merge_commit_email: String,
+}
+#[derive(Default, Deserialize)]
+#[cfg_attr(test, derive(Clone))]
+pub struct RustfmtMetadata {
+    pub date: String,
+    pub version: String,
+}
+
 #[derive(Clone, Debug)]
 pub enum RustfmtState {
     SystemToolchain(PathBuf),
@@ -718,28 +740,6 @@ define_config! {
         qemu_rootfs: Option<String> = "qemu-rootfs",
         no_std: Option<bool> = "no-std",
     }
-}
-
-#[derive(Default, Deserialize)]
-#[cfg_attr(test, derive(Clone))]
-pub struct Stage0Metadata {
-    pub config: Stage0Config,
-    pub checksums_sha256: HashMap<String, String>,
-    pub rustfmt: Option<RustfmtMetadata>,
-}
-#[derive(Default, Deserialize)]
-#[cfg_attr(test, derive(Clone))]
-pub struct Stage0Config {
-    pub dist_server: String,
-    pub artifacts_server: String,
-    pub artifacts_with_llvm_assertions_server: String,
-    pub git_merge_commit_email: String,
-}
-#[derive(Default, Deserialize)]
-#[cfg_attr(test, derive(Clone))]
-pub struct RustfmtMetadata {
-    pub date: String,
-    pub version: String,
 }
 
 impl Config {
