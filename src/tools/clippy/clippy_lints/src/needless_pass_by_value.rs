@@ -258,7 +258,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                                 diag.span_suggestion(
                                     input.span,
                                     "consider changing the type to",
-                                    "&str".to_string(),
+                                    "&str",
                                     Applicability::Unspecified,
                                 );
 

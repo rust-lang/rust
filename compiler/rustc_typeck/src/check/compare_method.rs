@@ -354,7 +354,7 @@ fn compare_predicate_entailment<'tcx>(
                                         diag.span_suggestion_verbose(sp, msg, sugg, ap);
                                     }
                                     hir::FnRetTy::Return(hir_ty) => {
-                                        let sugg = trait_sig.output().to_string();
+                                        let sugg = trait_sig.output();
                                         diag.span_suggestion(hir_ty.span, msg, sugg, ap);
                                     }
                                 };
@@ -365,7 +365,7 @@ fn compare_predicate_entailment<'tcx>(
                         diag.span_suggestion(
                             impl_err_span,
                             "change the parameter type to match the trait",
-                            trait_ty.to_string(),
+                            trait_ty,
                             Applicability::MachineApplicable,
                         );
                     }

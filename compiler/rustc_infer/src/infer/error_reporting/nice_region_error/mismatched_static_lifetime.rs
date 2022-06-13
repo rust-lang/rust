@@ -85,7 +85,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                     err.span_suggestion_verbose(
                         span.shrink_to_hi(),
                         "consider relaxing the implicit `'static` requirement",
-                        " + '_".to_string(),
+                        " + '_",
                         Applicability::MaybeIncorrect,
                     );
                 }

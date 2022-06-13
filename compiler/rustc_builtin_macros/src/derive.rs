@@ -142,7 +142,7 @@ fn report_path_args(sess: &Session, meta: &ast::MetaItem) {
     let report_error = |title, action| {
         let span = meta.span.with_lo(meta.path.span.hi());
         sess.struct_span_err(span, title)
-            .span_suggestion(span, action, String::new(), Applicability::MachineApplicable)
+            .span_suggestion(span, action, "", Applicability::MachineApplicable)
             .emit();
     };
     match meta.kind {

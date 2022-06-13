@@ -864,7 +864,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             err.span_suggestion_verbose(
                 expr.span.shrink_to_lo(),
                 "you might have meant to use pattern destructuring",
-                "let ".to_string(),
+                "let ",
                 Applicability::MachineApplicable,
             );
         });
@@ -1042,7 +1042,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     err.span_suggestion_verbose(
                         expr.span.shrink_to_lo(),
                         "you might have meant to use pattern matching",
-                        "let ".to_string(),
+                        "let ",
                         applicability,
                     );
                 };
@@ -1051,7 +1051,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 err.span_suggestion_verbose(
                     span,
                     "you might have meant to compare for equality",
-                    "==".to_string(),
+                    "==",
                     applicability,
                 );
             }
@@ -1086,7 +1086,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     err.span_suggestion_verbose(
                         lhs.span.shrink_to_lo(),
                         "consider dereferencing here to assign to the mutably borrowed value",
-                        "*".to_string(),
+                        "*",
                         Applicability::MachineApplicable,
                     );
                 }
@@ -1790,7 +1790,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             err.span_suggestion(
                 range_start.span.shrink_to_hi(),
                 &format!("to set the remaining fields{instead}, separate the last named field with a comma"),
-                ",".to_string(),
+                ",",
                 Applicability::MaybeIncorrect,
             );
         }
@@ -1912,7 +1912,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     err.span_suggestion(
                         field.ident.span,
                         "a field with a similar name exists",
-                        field_name.to_string(),
+                        field_name,
                         Applicability::MaybeIncorrect,
                     );
                 } else {
@@ -2158,7 +2158,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     err.span_suggestion_verbose(
                         base.span.shrink_to_hi(),
                         "consider `await`ing on the `Future` and access the field of its `Output`",
-                        ".await".to_string(),
+                        ".await",
                         Applicability::MaybeIncorrect,
                     );
                 }
@@ -2358,7 +2358,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             err.span_suggestion(
                 field.span,
                 "a field with a similar name exists",
-                suggested_field_name.to_string(),
+                suggested_field_name,
                 Applicability::MaybeIncorrect,
             );
         } else {

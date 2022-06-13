@@ -161,7 +161,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             err.span_suggestion(
                 assoc_name.span,
                 "there is an associated type with a similar name",
-                suggested_name.to_string(),
+                suggested_name,
                 Applicability::MaybeIncorrect,
             );
         } else {
