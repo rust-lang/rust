@@ -12,7 +12,7 @@ use rustc_ast::ast;
 use rustc_span::{symbol::sym, Span};
 
 use crate::config::{Config, GroupImportsTactic};
-use crate::imports::{normalize_use_trees_with_granularity, UseSegment, UseTree};
+use crate::imports::{normalize_use_trees_with_granularity, UseSegmentKind, UseTree};
 use crate::items::{is_mod_decl, rewrite_extern_crate, rewrite_mod};
 use crate::lists::{itemize_list, write_list, ListFormatting, ListItem};
 use crate::rewrite::RewriteContext;
@@ -182,16 +182,16 @@ fn group_imports(uts: Vec<UseTree>) -> Vec<Vec<UseTree>> {
             external_imports.push(ut);
             continue;
         }
-        match &ut.path[0] {
-            UseSegment::Ident(id, _) => match id.as_ref() {
+        match &ut.path[0].kind {
+            UseSegmentKind::Ident(id, _) => match id.as_ref() {
                 "std" | "alloc" | "core" => std_imports.push(ut),
                 _ => external_imports.push(ut),
             },
-            UseSegment::Slf(_) | UseSegment::Super(_) | UseSegment::Crate(_) => {
+            UseSegmentKind::Slf(_) | UseSegmentKind::Super(_) | UseSegmentKind::Crate(_) => {
                 local_imports.push(ut)
             }
             // These are probably illegal here
-            UseSegment::Glob | UseSegment::List(_) => external_imports.push(ut),
+            UseSegmentKind::Glob | UseSegmentKind::List(_) => external_imports.push(ut),
         }
     }
 
