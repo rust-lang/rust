@@ -579,10 +579,15 @@ pub fn super_relate_consts<'tcx, R: TypeRelation<'tcx>>(
     debug!("{}.super_relate_consts(a = {:?}, b = {:?})", relation.tag(), a, b);
     let tcx = relation.tcx();
 
-    // FIXME(oli-obk): once const generics can have generic types, this assertion
-    // will likely get triggered. Move to `normalize_erasing_regions` at that point.
-    let a_ty = tcx.erase_regions(a.ty());
-    let b_ty = tcx.erase_regions(b.ty());
+    let a_ty;
+    let b_ty;
+    if relation.tcx().features().adt_const_params {
+        a_ty = tcx.normalize_erasing_regions(relation.param_env(), a.ty());
+        b_ty = tcx.normalize_erasing_regions(relation.param_env(), b.ty());
+    } else {
+        a_ty = tcx.erase_regions(a.ty());
+        b_ty = tcx.erase_regions(b.ty());
+    }
     if a_ty != b_ty {
         relation.tcx().sess.delay_span_bug(
             DUMMY_SP,
