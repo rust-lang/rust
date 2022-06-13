@@ -1310,7 +1310,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 err.span_suggestion(
                                     span,
                                     "use curly brackets",
-                                    String::from("Self { /* fields */ }"),
+                                    "Self { /* fields */ }",
                                     Applicability::HasPlaceholders,
                                 );
                             }

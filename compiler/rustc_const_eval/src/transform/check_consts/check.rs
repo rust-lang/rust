@@ -1035,7 +1035,7 @@ fn emit_unstable_in_stable_error(ccx: &ConstCx<'_, '_>, span: Span, gate: Symbol
         .span_suggestion(
             attr_span,
             "if it is not part of the public API, make this function unstably const",
-            concat!(r#"#[rustc_const_unstable(feature = "...", issue = "...")]"#, '\n').to_owned(),
+            concat!(r#"#[rustc_const_unstable(feature = "...", issue = "...")]"#, '\n'),
             Applicability::HasPlaceholders,
         )
         .span_suggestion(

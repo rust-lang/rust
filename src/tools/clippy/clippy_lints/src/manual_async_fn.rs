@@ -86,7 +86,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualAsyncFn {
                                 diag.span_suggestion(
                                     block.span,
                                     "move the body of the async block to the enclosing function",
-                                    body_snip.to_string(),
+                                    body_snip,
                                     Applicability::MachineApplicable
                                 );
                             }

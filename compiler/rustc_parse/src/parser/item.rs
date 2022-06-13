@@ -298,7 +298,7 @@ impl<'a> Parser<'a> {
                     .span_suggestion_short(
                         span,
                         "items are imported using the `use` keyword",
-                        "use".to_owned(),
+                        "use",
                         Applicability::MachineApplicable,
                     )
                     .emit();
@@ -458,7 +458,7 @@ impl<'a> Parser<'a> {
                     err.span_suggestion(
                         path.span,
                         "perhaps you meant to define a macro",
-                        "macro_rules".to_string(),
+                        "macro_rules",
                         Applicability::MachineApplicable,
                     );
                 }
@@ -486,7 +486,7 @@ impl<'a> Parser<'a> {
                 err.span_suggestion_verbose(
                     self.token.span,
                     "consider removing this semicolon",
-                    String::new(),
+                    "",
                     Applicability::MaybeIncorrect,
                 );
             }
@@ -606,7 +606,7 @@ impl<'a> Parser<'a> {
                         .span_suggestion_short(
                             missing_for_span,
                             "add `for` here",
-                            " for ".to_string(),
+                            " for ",
                             Applicability::MachineApplicable,
                         )
                         .emit();
@@ -1082,7 +1082,7 @@ impl<'a> Parser<'a> {
             .span_suggestion(
                 span.with_hi(ident.span.lo()),
                 "try using a static value",
-                "static ".to_string(),
+                "static ",
                 Applicability::MachineApplicable,
             )
             .note("for more information, visit https://doc.rust-lang.org/std/keyword.extern.html")
@@ -1121,7 +1121,7 @@ impl<'a> Parser<'a> {
                 .span_suggestion(
                     const_span,
                     "you might want to declare a static instead",
-                    "static".to_owned(),
+                    "static",
                     Applicability::MaybeIncorrect,
                 )
                 .emit();
@@ -1555,7 +1555,7 @@ impl<'a> Parser<'a> {
                 err.span_suggestion_short(
                     self.prev_token.span,
                     "field names and their types are separated with `:`",
-                    ":".to_string(),
+                    ":",
                     Applicability::MachineApplicable,
                 );
                 err.emit();
@@ -1582,7 +1582,7 @@ impl<'a> Parser<'a> {
                 .span_suggestion_verbose(
                     self.token.span,
                     "write a path separator here",
-                    "::".to_string(),
+                    "::",
                     Applicability::MaybeIncorrect,
                 )
                 .emit();
@@ -1595,7 +1595,7 @@ impl<'a> Parser<'a> {
                 .span_suggestion(
                     sp,
                     "remove this unsupported default value",
-                    String::new(),
+                    "",
                     Applicability::MachineApplicable,
                 )
                 .emit();
@@ -1691,7 +1691,7 @@ impl<'a> Parser<'a> {
                     .span_suggestion(
                         macro_rules_span,
                         "add a `!`",
-                        "macro_rules!".to_owned(),
+                        "macro_rules!",
                         Applicability::MachineApplicable,
                     )
                     .emit();
@@ -1720,12 +1720,7 @@ impl<'a> Parser<'a> {
             // Handle macro_rules! foo!
             let span = self.prev_token.span;
             self.struct_span_err(span, "macro names aren't followed by a `!`")
-                .span_suggestion(
-                    span,
-                    "remove the `!`",
-                    "".to_owned(),
-                    Applicability::MachineApplicable,
-                )
+                .span_suggestion(span, "remove the `!`", "", Applicability::MachineApplicable)
                 .emit();
         }
 
@@ -1751,7 +1746,7 @@ impl<'a> Parser<'a> {
                 .span_suggestion(
                     vis.span,
                     "try exporting the macro",
-                    "#[macro_export]".to_owned(),
+                    "#[macro_export]",
                     Applicability::MaybeIncorrect, // speculative
                 )
                 .emit();
@@ -1760,7 +1755,7 @@ impl<'a> Parser<'a> {
                 .span_suggestion(
                     vis.span,
                     "remove the visibility",
-                    String::new(),
+                    "",
                     Applicability::MachineApplicable,
                 )
                 .help(&format!("try adjusting the macro to put `{vstr}` inside the invocation"))
@@ -1794,14 +1789,14 @@ impl<'a> Parser<'a> {
             err.span_suggestion(
                 span,
                 "change the delimiters to curly braces",
-                " { /* items */ }".to_string(),
+                " { /* items */ }",
                 Applicability::HasPlaceholders,
             );
         }
         err.span_suggestion(
             span.shrink_to_hi(),
             "add a semicolon",
-            ';'.to_string(),
+            ';',
             Applicability::MaybeIncorrect,
         );
         err.emit();
@@ -1826,7 +1821,7 @@ impl<'a> Parser<'a> {
             .span_suggestion(
                 item.unwrap().span,
                 &format!("consider creating a new `{kw_str}` definition instead of nesting"),
-                String::new(),
+                "",
                 Applicability::MaybeIncorrect,
             )
             .emit();
@@ -2086,7 +2081,7 @@ impl<'a> Parser<'a> {
                         err.span_suggestion(
                             self.token.uninterpolated_span(),
                             &format!("`{original_kw}` already used earlier, remove this one"),
-                            "".to_string(),
+                            "",
                             Applicability::MachineApplicable,
                         )
                         .span_note(original_sp, &format!("`{original_kw}` first seen here"));
@@ -2134,7 +2129,7 @@ impl<'a> Parser<'a> {
                                 err.span_suggestion(
                                     current_vis.span,
                                     "there is already a visibility modifier, remove one",
-                                    "".to_string(),
+                                    "",
                                     Applicability::MachineApplicable,
                                 )
                                 .span_note(orig_vis.span, "explicit visibility first seen here");

@@ -993,7 +993,7 @@ fn lint_deprecated_attr(
             .span_suggestion_short(
                 attr.span,
                 suggestion.unwrap_or("remove this attribute"),
-                String::new(),
+                "",
                 Applicability::MachineApplicable,
             )
             .emit();
@@ -1182,7 +1182,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidNoMangleItems {
                                 .span_suggestion_short(
                                     no_mangle_attr.span,
                                     "remove this attribute",
-                                    String::new(),
+                                    "",
                                     // Use of `#[no_mangle]` suggests FFI intent; correct
                                     // fix may be to monomorphize source by hand
                                     Applicability::MaybeIncorrect,
@@ -1221,7 +1221,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidNoMangleItems {
                         err.span_suggestion(
                             const_span,
                             "try a static value",
-                            "pub static".to_owned(),
+                            "pub static",
                             Applicability::MachineApplicable,
                         );
                         err.emit();
@@ -1405,7 +1405,7 @@ impl UnreachablePub {
                 err.span_suggestion(
                     vis_span,
                     "consider restricting its visibility",
-                    "pub(crate)".to_owned(),
+                    "pub(crate)",
                     applicability,
                 );
                 if exportable {
@@ -1566,7 +1566,7 @@ impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
                 err.span_suggestion(
                     type_alias_generics.where_clause_span,
                     "the clause will not be checked when the type alias is used, and should be removed",
-                    String::new(),
+                    "",
                     Applicability::MachineApplicable,
                 );
                 if !suggested_changing_assoc_types {
@@ -1830,7 +1830,7 @@ impl EarlyLintPass for EllipsisInclusiveRangePatterns {
                     });
                 }
             } else {
-                let replace = "..=".to_owned();
+                let replace = "..=";
                 if join.edition() >= Edition::Edition2021 {
                     let mut err =
                         rustc_errors::struct_span_err!(cx.sess(), pat.span, E0783, "{}", msg,);
@@ -2113,7 +2113,6 @@ impl ExplicitOutlivesRequirements {
         tcx: TyCtxt<'tcx>,
         bounds: &hir::GenericBounds<'_>,
         inferred_outlives: &[ty::Region<'tcx>],
-        infer_static: bool,
     ) -> Vec<(usize, Span)> {
         use rustc_middle::middle::resolve_lifetime::Region;
 
@@ -2123,9 +2122,6 @@ impl ExplicitOutlivesRequirements {
             .filter_map(|(i, bound)| {
                 if let hir::GenericBound::Outlives(lifetime) = bound {
                     let is_inferred = match tcx.named_region(lifetime.hir_id) {
-                        Some(Region::Static) if infer_static => {
-                            inferred_outlives.iter().any(|r| matches!(**r, ty::ReStatic))
-                        }
                         Some(Region::EarlyBound(index, ..)) => inferred_outlives.iter().any(|r| {
                             if let ty::ReEarlyBound(ebr) = **r { ebr.index == index } else { false }
                         }),
@@ -2201,7 +2197,6 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
         use rustc_middle::middle::resolve_lifetime::Region;
 
-        let infer_static = cx.tcx.features().infer_static_outlives_requirements;
         let def_id = item.def_id;
         if let hir::ItemKind::Struct(_, ref hir_generics)
         | hir::ItemKind::Enum(_, ref hir_generics)
@@ -2262,12 +2257,8 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
                     continue;
                 }
 
-                let bound_spans = self.collect_outlives_bound_spans(
-                    cx.tcx,
-                    bounds,
-                    &relevant_lifetimes,
-                    infer_static,
-                );
+                let bound_spans =
+                    self.collect_outlives_bound_spans(cx.tcx, bounds, &relevant_lifetimes);
                 bound_count += bound_spans.len();
 
                 let drop_predicate = bound_spans.len() == bounds.len();

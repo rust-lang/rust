@@ -319,7 +319,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             err.span_suggestion(
                 start,
                 "consider separating array elements with a comma",
-                ",".to_string(),
+                ",",
                 Applicability::MaybeIncorrect,
             );
             return true;
@@ -406,7 +406,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         &format!(
                             "`{path}` is a unit variant, you need to write it without the parentheses",
                         ),
-                        String::new(),
+                        "",
                         Applicability::MachineApplicable,
                     );
                 }
@@ -426,7 +426,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             err.span_suggestion(
                                 callee_expr.span.shrink_to_hi(),
                                 "consider using a semicolon here",
-                                ";".to_owned(),
+                                ";",
                                 Applicability::MaybeIncorrect,
                             );
                         }

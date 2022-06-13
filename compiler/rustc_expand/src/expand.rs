@@ -945,7 +945,7 @@ pub fn ensure_complete_parse<'a>(
                 err.span_suggestion(
                     semi_span,
                     "you might be missing a semicolon here",
-                    ";".to_owned(),
+                    ";",
                     Applicability::MaybeIncorrect,
                 );
             }

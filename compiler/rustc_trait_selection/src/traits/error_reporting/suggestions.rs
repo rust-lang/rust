@@ -701,7 +701,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         err.span_suggestion_verbose(
                             span.shrink_to_lo(),
                             "consider dereferencing here",
-                            "*".to_string(),
+                            "*",
                             Applicability::MachineApplicable,
                         );
                         return true;
@@ -1002,7 +1002,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             &format!(
                 "consider borrowing the value, since `&{self_ty}` can be coerced into `{object_ty}`"
             ),
-            "&".to_string(),
+            "&",
             Applicability::MaybeIncorrect,
         );
     }
@@ -1059,12 +1059,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         format!("consider removing {} leading `&`-references", remove_refs)
                     };
 
-                    err.span_suggestion_short(
-                        sp,
-                        &msg,
-                        String::new(),
-                        Applicability::MachineApplicable,
-                    );
+                    err.span_suggestion_short(sp, &msg, "", Applicability::MachineApplicable);
                     suggested = true;
                     break;
                 }
@@ -1087,7 +1082,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     err.span_suggestion_verbose(
                         expr.span.shrink_to_hi().with_hi(span.hi()),
                         "remove the `.await`",
-                        String::new(),
+                        "",
                         Applicability::MachineApplicable,
                     );
                     // FIXME: account for associated `async fn`s.
@@ -1115,14 +1110,14 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                                 err.span_suggestion_verbose(
                                     span.shrink_to_lo(),
                                     &msg,
-                                    "async ".to_string(),
+                                    "async ",
                                     Applicability::MaybeIncorrect,
                                 );
                             } else {
                                 err.span_suggestion_verbose(
                                     vis_span.shrink_to_hi(),
                                     &msg,
-                                    " async".to_string(),
+                                    " async",
                                     Applicability::MaybeIncorrect,
                                 );
                             }
@@ -1190,7 +1185,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         err.span_suggestion_verbose(
                             sp,
                             "consider changing this borrow's mutability",
-                            "&mut ".to_string(),
+                            "&mut ",
                             Applicability::MachineApplicable,
                         );
                     } else {
@@ -1241,7 +1236,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             err.span_suggestion(
                 self.tcx.sess.source_map().end_point(stmt.span),
                 "remove this semicolon",
-                String::new(),
+                "",
                 Applicability::MachineApplicable
             );
             return true;
@@ -2275,7 +2270,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         err.span_suggestion_verbose(
                             span.shrink_to_lo(),
                             "consider borrowing here",
-                            "&".to_owned(),
+                            "&",
                             Applicability::MachineApplicable,
                         );
                         err.note("all local variables must have a statically known size");
@@ -2285,7 +2280,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             param.ty_span.shrink_to_lo(),
                             "function arguments must have a statically known size, borrowed types \
                             always have a known size",
-                            "&".to_owned(),
+                            "&",
                             Applicability::MachineApplicable,
                         );
                     }
@@ -2303,7 +2298,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         span.shrink_to_lo(),
                         "function arguments must have a statically known size, borrowed types \
                          always have a known size",
-                        "&".to_string(),
+                        "&",
                         Applicability::MachineApplicable,
                     );
                 } else {
@@ -2358,7 +2353,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 err.span_suggestion(
                     span.shrink_to_lo(),
                     "borrowed types always have a statically known size",
-                    "&".to_string(),
+                    "&",
                     Applicability::MachineApplicable,
                 );
                 err.multipart_suggestion(
@@ -2759,7 +2754,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     err.span_suggestion_verbose(
                         span.with_hi(span.hi() - BytePos(1)).shrink_to_hi(),
                         "consider `await`ing on the `Future`",
-                        ".await".to_string(),
+                        ".await",
                         Applicability::MaybeIncorrect,
                     );
                 }
@@ -2785,7 +2780,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 err.span_suggestion_verbose(
                     rhs_span.shrink_to_hi(),
                     "consider using a floating-point literal by writing it with `.0`",
-                    String::from(".0"),
+                    ".0",
                     Applicability::MaybeIncorrect,
                 );
             }
@@ -2965,7 +2960,7 @@ fn suggest_trait_object_return_type_alternatives(
         ret_ty,
         "use some type `T` that is `T: Sized` as the return type if all return paths have the \
             same type",
-        "T".to_string(),
+        "T",
         Applicability::MaybeIncorrect,
     );
     err.span_suggestion(

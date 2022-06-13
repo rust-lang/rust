@@ -27,7 +27,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         err.span_suggestion_short(
             span.shrink_to_hi(),
             "consider using a semicolon here",
-            ";".to_string(),
+            ";",
             Applicability::MachineApplicable,
         );
     }
@@ -444,7 +444,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         err.span_suggestion(
                             fn_name.span,
                             "use `Box::pin` to pin and box this expression",
-                            "Box::pin".to_string(),
+                            "Box::pin",
                             Applicability::MachineApplicable,
                         );
                         true
@@ -507,7 +507,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         err.span_suggestion(
                             expression.span.shrink_to_hi(),
                             "consider using a semicolon here",
-                            ";".to_string(),
+                            ";",
                             Applicability::MachineApplicable,
                         );
                     }

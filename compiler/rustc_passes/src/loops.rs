@@ -166,7 +166,7 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                                             break_expr.span,
                                             "alternatively, you might have meant to use the \
                                              available loop label",
-                                            label.ident.to_string(),
+                                            label.ident,
                                             Applicability::MaybeIncorrect,
                                         );
                                     }

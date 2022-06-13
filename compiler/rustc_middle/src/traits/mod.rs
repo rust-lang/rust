@@ -933,7 +933,7 @@ impl ObjectSafetyViolation {
                                  trait objects",
                                 name
                             ),
-                            sugg.to_string(),
+                            sugg,
                             Applicability::MaybeIncorrect,
                         );
                     }
@@ -957,7 +957,7 @@ impl ObjectSafetyViolation {
                         "consider changing method `{}`'s `self` parameter to be `&self`",
                         name
                     ),
-                    "&Self".to_string(),
+                    "&Self",
                     Applicability::MachineApplicable,
                 );
             }

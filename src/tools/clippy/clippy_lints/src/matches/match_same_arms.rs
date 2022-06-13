@@ -113,7 +113,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>]) {
                     diag.span_suggestion(
                         arm1.span,
                         "try removing the arm",
-                        String::new(),
+                        "",
                         Applicability::MaybeIncorrect,
                     )
                     .help("or try changing either arm body")
