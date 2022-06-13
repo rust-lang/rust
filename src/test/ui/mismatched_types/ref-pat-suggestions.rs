@@ -13,7 +13,7 @@ fn main() {
     let _: fn(&u32) = |&&_a| (); //~ ERROR mismatched types
     let _: fn(&mut u32) = |&mut &_a| (); //~ ERROR mismatched types
     let _: fn(&u32) = |&&mut _a| (); //~ ERROR mismatched types
-    let _: fn(&mut u32) = |&mut &mut _a| (); //~ ERROR mismatched types   
+    let _: fn(&mut u32) = |&mut &mut _a| (); //~ ERROR mismatched types
 
     let _ = |&_a: u32| (); //~ ERROR mismatched types
     let _ = |&mut _a: u32| (); //~ ERROR mismatched types

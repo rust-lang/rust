@@ -668,7 +668,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // so we don't suggest moving something to the type that does not exist
                 hir::Node::Param(hir::Param { ty_span, .. }) if binding.span != *ty_span => {
                     err.multipart_suggestion_verbose(
-                        format!("to take parameter `{binding}` by reference, move `&{mutability}` to the type"), 
+                        format!("to take parameter `{binding}` by reference, move `&{mutability}` to the type"),
                         vec![
                             (pat.span.until(inner.span), "".to_owned()),
                             (ty_span.shrink_to_lo(), format!("&{}", mutbl.prefix_str())),
