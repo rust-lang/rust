@@ -1,5 +1,6 @@
 //! Missing batteries for standard libraries.
 use std::iter;
+use std::process::Command;
 use std::{cmp::Ordering, ops, time::Instant};
 
 mod macros;
@@ -132,6 +133,7 @@ pub fn defer<F: FnOnce()>(f: F) -> impl Drop {
     D(Some(f))
 }
 
+/// A [`std::process::Child`] wrapper that will kill the child on drop.
 #[cfg_attr(not(target_arch = "wasm32"), repr(transparent))]
 #[derive(Debug)]
 pub struct JodChild(pub std::process::Child);
@@ -157,6 +159,16 @@ impl Drop for JodChild {
 }
 
 impl JodChild {
+    pub fn spawn(mut command: Command) -> std::io::Result<Self> {
+        command.spawn().map(Self)
+    }
+
+    pub fn wait(self) -> std::io::Result<std::process::ExitStatus> {
+        let mut inner = self.into_inner();
+        let _ = inner.kill();
+        inner.wait()
+    }
+
     pub fn into_inner(self) -> std::process::Child {
         if cfg!(target_arch = "wasm32") {
             panic!("no processes on wasm");

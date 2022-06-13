@@ -2,12 +2,16 @@
 //! another compatible command (f.x. clippy) in a background thread and provide
 //! LSP diagnostics based on the output of the command.
 
-use std::{fmt, io, process::Command, time::Duration};
+use std::{
+    fmt, io,
+    process::{ChildStderr, ChildStdout, Command, Stdio},
+    time::Duration,
+};
 
 use crossbeam_channel::{never, select, unbounded, Receiver, Sender};
 use paths::AbsPathBuf;
 use serde::Deserialize;
-use stdx::process::streaming_output;
+use stdx::{process::streaming_output, JodChild};
 
 pub use cargo_metadata::diagnostic::{
     Applicability, Diagnostic, DiagnosticCode, DiagnosticLevel, DiagnosticSpan,
@@ -117,7 +121,7 @@ struct FlycheckActor {
     sender: Box<dyn Fn(Message) + Send>,
     config: FlycheckConfig,
     workspace_root: AbsPathBuf,
-    /// WatchThread exists to wrap around the communication needed to be able to
+    /// CargoHandle exists to wrap around the communication needed to be able to
     /// run `cargo check` without blocking. Currently the Rust standard library
     /// doesn't provide a way to read sub-process output without blocking, so we
     /// have to wrap sub-processes output handling in a thread and pass messages
@@ -153,14 +157,24 @@ impl FlycheckActor {
         while let Some(event) = self.next_event(&inbox) {
             match event {
                 Event::Restart(Restart) => {
+                    // Drop and cancel the previously spawned process
+                    self.cargo_handle.take();
                     while let Ok(Restart) = inbox.recv_timeout(Duration::from_millis(50)) {}
 
                     self.cancel_check_process();
 
                     let command = self.check_command();
-                    tracing::info!("restart flycheck {:?}", command);
-                    self.cargo_handle = Some(CargoHandle::spawn(command));
-                    self.progress(Progress::DidStart);
+                    let command_f = format!("restart flycheck {command:?}");
+                    match CargoHandle::spawn(command) {
+                        Ok(cargo_handle) => {
+                            tracing::info!("{}", command_f);
+                            self.cargo_handle = Some(cargo_handle);
+                            self.progress(Progress::DidStart);
+                        }
+                        Err(e) => {
+                            tracing::error!("{command_f} failed: {e:?}",);
+                        }
+                    }
                 }
                 Event::CheckEvent(None) => {
                     // Watcher finished, replace it with a never channel to
@@ -249,37 +263,58 @@ impl FlycheckActor {
     }
 }
 
+/// A handle to a cargo process used for fly-checking.
 struct CargoHandle {
-    thread: jod_thread::JoinHandle<io::Result<()>>,
+    /// The handle to the actual cargo process. As we cannot cancel directly from with
+    /// a read syscall dropping and therefor terminating the process is our best option.
+    child: JodChild,
+    thread: jod_thread::JoinHandle<io::Result<(bool, String)>>,
     receiver: Receiver<CargoMessage>,
 }
 
 impl CargoHandle {
-    fn spawn(command: Command) -> CargoHandle {
+    fn spawn(mut command: Command) -> std::io::Result<CargoHandle> {
+        command.stdout(Stdio::piped()).stderr(Stdio::piped()).stdin(Stdio::null());
+        let mut child = JodChild::spawn(command)?;
+
+        let stdout = child.stdout.take().unwrap();
+        let stderr = child.stderr.take().unwrap();
+
         let (sender, receiver) = unbounded();
-        let actor = CargoActor::new(sender);
+        let actor = CargoActor::new(sender, stdout, stderr);
         let thread = jod_thread::Builder::new()
             .name("CargoHandle".to_owned())
-            .spawn(move || actor.run(command))
+            .spawn(move || actor.run())
             .expect("failed to spawn thread");
-        CargoHandle { thread, receiver }
+        Ok(CargoHandle { child, thread, receiver })
     }
 
     fn join(self) -> io::Result<()> {
-        self.thread.join()
+        let exit_status = self.child.wait()?;
+        let (read_at_least_one_message, error) = self.thread.join()?;
+        if read_at_least_one_message || exit_status.success() {
+            Ok(())
+        } else {
+            Err(io::Error::new(io::ErrorKind::Other, format!(
+                "Cargo watcher failed, the command produced no valid metadata (exit code: {:?}):\n{}",
+                exit_status, error
+            )))
+        }
     }
 }
 
 struct CargoActor {
     sender: Sender<CargoMessage>,
+    stdout: ChildStdout,
+    stderr: ChildStderr,
 }
 
 impl CargoActor {
-    fn new(sender: Sender<CargoMessage>) -> CargoActor {
-        CargoActor { sender }
+    fn new(sender: Sender<CargoMessage>, stdout: ChildStdout, stderr: ChildStderr) -> CargoActor {
+        CargoActor { sender, stdout, stderr }
     }
 
-    fn run(self, command: Command) -> io::Result<()> {
+    fn run(self) -> io::Result<(bool, String)> {
         // We manually read a line at a time, instead of using serde's
         // stream deserializers, because the deserializer cannot recover
         // from an error, resulting in it getting stuck, because we try to
@@ -292,7 +327,8 @@ impl CargoActor {
         let mut error = String::new();
         let mut read_at_least_one_message = false;
         let output = streaming_output(
-            command,
+            self.stdout,
+            self.stderr,
             &mut |line| {
                 read_at_least_one_message = true;
 
@@ -325,14 +361,7 @@ impl CargoActor {
             },
         );
         match output {
-            Ok(_) if read_at_least_one_message => Ok(()),
-            Ok(output) if output.status.success() => Ok(()),
-            Ok(output)  => {
-                Err(io::Error::new(io::ErrorKind::Other, format!(
-                    "Cargo watcher failed, the command produced no valid metadata (exit code: {:?}):\n{}",
-                    output.status, error
-                )))
-            }
+            Ok(_) => Ok((read_at_least_one_message, error)),
             Err(e) => Err(io::Error::new(e.kind(), format!("{:?}: {}", e, error))),
         }
     }
