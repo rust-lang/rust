@@ -41,6 +41,11 @@ pub fn opts(os: &'static str) -> TargetOptions {
         // The historical default for macOS targets is to run `dsymutil` which
         // generates a packed version of debuginfo split from the main file.
         split_debuginfo: SplitDebuginfo::Packed,
+        supported_split_debuginfo: Cow::Borrowed(&[
+            SplitDebuginfo::Packed,
+            SplitDebuginfo::Unpacked,
+            SplitDebuginfo::Off,
+        ]),
 
         // This environment variable is pretty magical but is intended for
         // producing deterministic builds. This was first discovered to be used

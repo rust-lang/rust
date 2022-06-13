@@ -1441,6 +1441,8 @@ pub struct TargetOptions {
     /// How to handle split debug information, if at all. Specifying `None` has
     /// target-specific meaning.
     pub split_debuginfo: SplitDebuginfo,
+    /// Which kinds of split debuginfo are supported by the target?
+    pub supported_split_debuginfo: StaticCow<[SplitDebuginfo]>,
 
     /// The sanitizers supported by this target
     ///
@@ -1599,6 +1601,8 @@ impl Default for TargetOptions {
             eh_frame_header: true,
             has_thumb_interworking: false,
             split_debuginfo: SplitDebuginfo::Off,
+            // `Off` is supported by default, but targets can remove this manually, e.g. Windows.
+            supported_split_debuginfo: Cow::Borrowed(&[SplitDebuginfo::Off]),
             supported_sanitizers: SanitizerSet::empty(),
             default_adjusted_cabi: None,
             c_enum_min_bits: 32,
@@ -1907,6 +1911,25 @@ impl Target {
                     }
                 }
             } );
+            ($key_name:ident, falliable_list) => ( {
+                let name = (stringify!($key_name)).replace("_", "-");
+                obj.remove(&name).and_then(|j| {
+                    if let Some(v) = j.as_array() {
+                        match v.iter().map(|a| FromStr::from_str(a.as_str().unwrap())).collect() {
+                            Ok(l) => { base.$key_name = l },
+                            // FIXME: `falliable_list` can't re-use the `key!` macro for list
+                            // elements and the error messages from that macro, so it has a bad
+                            // generic message instead
+                            Err(_) => return Some(Err(
+                                format!("`{:?}` is not a valid value for `{}`", j, name)
+                            )),
+                        }
+                    } else {
+                        incorrect_type.push(name)
+                    }
+                    Some(Ok(()))
+                }).unwrap_or(Ok(()))
+            } );
             ($key_name:ident, optional) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
                 if let Some(o) = obj.remove(&name) {
@@ -2194,6 +2217,7 @@ impl Target {
         key!(eh_frame_header, bool);
         key!(has_thumb_interworking, bool);
         key!(split_debuginfo, SplitDebuginfo)?;
+        key!(supported_split_debuginfo, falliable_list)?;
         key!(supported_sanitizers, SanitizerSet)?;
         key!(default_adjusted_cabi, Option<Abi>)?;
         key!(c_enum_min_bits, u64);
@@ -2438,6 +2462,7 @@ impl ToJson for Target {
         target_option_val!(eh_frame_header);
         target_option_val!(has_thumb_interworking);
         target_option_val!(split_debuginfo);
+        target_option_val!(supported_split_debuginfo);
         target_option_val!(supported_sanitizers);
         target_option_val!(c_enum_min_bits);
         target_option_val!(generate_arange_section);
