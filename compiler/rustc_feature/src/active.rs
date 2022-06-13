@@ -521,7 +521,7 @@ declare_features! (
     (active, type_ascription, "1.6.0", Some(23416), None),
     /// Allows creation of instances of a struct by moving fields that have
     /// not changed from prior instances of the same struct (RFC #2528)
-    (incomplete, type_changing_struct_update, "1.58.0", Some(86555), None),
+    (active, type_changing_struct_update, "1.58.0", Some(86555), None),
     /// Allows unsized fn parameters.
     (active, unsized_fn_params, "1.49.0", Some(48055), None),
     /// Allows unsized rvalues at arguments and parameters.
