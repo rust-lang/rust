@@ -6,6 +6,7 @@
 #![feature(array_windows)]
 #![feature(box_patterns)]
 #![feature(decl_macro)]
+#![feature(if_let_guard)]
 #![feature(is_sorted)]
 #![feature(let_chains)]
 #![feature(let_else)]
