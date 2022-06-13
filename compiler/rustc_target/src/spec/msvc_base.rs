@@ -1,4 +1,5 @@
 use crate::spec::{LinkerFlavor, LldFlavor, SplitDebuginfo, TargetOptions};
+use std::borrow::Cow;
 
 pub fn opts() -> TargetOptions {
     // Suppress the verbose logo and authorship debugging output, which would needlessly
@@ -18,6 +19,7 @@ pub fn opts() -> TargetOptions {
         // Currently this is the only supported method of debuginfo on MSVC
         // where `*.pdb` files show up next to the final artifact.
         split_debuginfo: SplitDebuginfo::Packed,
+        supported_split_debuginfo: Cow::Borrowed(&[SplitDebuginfo::Packed]),
 
         ..Default::default()
     }
