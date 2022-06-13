@@ -56,12 +56,12 @@
           _4 = &_5;                        // scope 2 at $DIR/derefer_terminator_test.rs:5:15: 5:22
 -         switchInt((*(*(*(*_4))))) -> [false: bb3, otherwise: bb4]; // scope 2 at $DIR/derefer_terminator_test.rs:5:5: 5:22
 +         StorageLive(_10);                // scope 2 at $DIR/derefer_terminator_test.rs:5:5: 5:22
-+         _10 = move (*_4);                // scope 2 at $DIR/derefer_terminator_test.rs:5:5: 5:22
++         _10 = deref_copy (*_4);          // scope 2 at $DIR/derefer_terminator_test.rs:5:5: 5:22
 +         StorageLive(_11);                // scope 2 at $DIR/derefer_terminator_test.rs:5:5: 5:22
-+         _11 = move (*_10);               // scope 2 at $DIR/derefer_terminator_test.rs:5:5: 5:22
++         _11 = deref_copy (*_10);         // scope 2 at $DIR/derefer_terminator_test.rs:5:5: 5:22
 +         StorageDead(_10);                // scope 2 at $DIR/derefer_terminator_test.rs:5:5: 5:22
 +         StorageLive(_12);                // scope 2 at $DIR/derefer_terminator_test.rs:5:5: 5:22
-+         _12 = move (*_11);               // scope 2 at $DIR/derefer_terminator_test.rs:5:5: 5:22
++         _12 = deref_copy (*_11);         // scope 2 at $DIR/derefer_terminator_test.rs:5:5: 5:22
 +         StorageDead(_11);                // scope 2 at $DIR/derefer_terminator_test.rs:5:5: 5:22
 +         switchInt((*_12)) -> [false: bb3, otherwise: bb4]; // scope 2 at $DIR/derefer_terminator_test.rs:5:5: 5:22
       }
@@ -94,10 +94,10 @@
           StorageDead(_2);                 // scope 1 at $DIR/derefer_terminator_test.rs:10:1: 10:2
           StorageDead(_1);                 // scope 0 at $DIR/derefer_terminator_test.rs:10:1: 10:2
           return;                          // scope 0 at $DIR/derefer_terminator_test.rs:10:2: 10:2
-      }
-  
-      bb6 (cleanup): {
-          resume;                          // scope 0 at $DIR/derefer_terminator_test.rs:2:1: 10:2
++     }
++ 
++     bb6 (cleanup): {
++         resume;                          // scope 0 at $DIR/derefer_terminator_test.rs:2:1: 10:2
       }
   }
   
