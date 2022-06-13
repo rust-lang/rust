@@ -1632,6 +1632,9 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 | PathSource::Struct
                 | PathSource::TupleStruct(..) => false,
             };
+            if !missing && !segment.has_generic_args {
+                continue;
+            }
 
             let elided_lifetime_span = if segment.has_generic_args {
                 // If there are brackets, but not generic arguments, then use the opening bracket
