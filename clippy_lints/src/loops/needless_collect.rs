@@ -1,5 +1,6 @@
 use super::NEEDLESS_COLLECT;
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_hir_and_then};
+use clippy_utils::higher;
 use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::is_type_diagnostic_item;
@@ -184,10 +185,23 @@ struct IterFunctionVisitor<'a, 'tcx> {
 impl<'tcx> Visitor<'tcx> for IterFunctionVisitor<'_, 'tcx> {
     fn visit_block(&mut self, block: &'tcx Block<'tcx>) {
         for (expr, hir_id) in block.stmts.iter().filter_map(get_expr_and_hir_id_from_stmt) {
+            if is_loop(expr) {
+                continue;
+            }
             self.visit_block_expr(expr, hir_id);
         }
         if let Some(expr) = block.expr {
-            self.visit_block_expr(expr, None);
+            if is_loop(expr) {
+                if let Some(higher::WhileLet { let_expr, .. }) = higher::WhileLet::hir(expr) {
+                    self.visit_block_expr(let_expr, None);
+                } else if let Some(higher::While { condition, .. }) = higher::While::hir(expr) {
+                    self.visit_block_expr(condition, None);
+                } else if let Some(higher::ForLoop { arg, .. }) = higher::ForLoop::hir(expr) {
+                    self.visit_block_expr(arg, None);
+                }
+            } else {
+                self.visit_block_expr(expr, None);
+            }
         }
     }
 
@@ -262,6 +276,23 @@ impl<'tcx> Visitor<'tcx> for IterFunctionVisitor<'_, 'tcx> {
             walk_expr(self, expr);
         }
     }
+}
+
+fn is_loop(expr: &Expr<'_>) -> bool {
+    if let Some(higher::WhileLet { .. }) = higher::WhileLet::hir(expr) {
+        return true;
+    }
+    if let Some(higher::While { .. }) = higher::While::hir(expr) {
+        return true;
+    }
+    if let Some(higher::ForLoop { .. }) = higher::ForLoop::hir(expr) {
+        return true;
+    }
+    if let ExprKind::Loop { .. } = expr.kind {
+        return true;
+    }
+
+    false
 }
 
 impl<'tcx> IterFunctionVisitor<'_, 'tcx> {
