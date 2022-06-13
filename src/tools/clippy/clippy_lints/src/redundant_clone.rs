@@ -255,7 +255,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
                         diag.span_suggestion(
                             sugg_span,
                             "remove this",
-                            String::new(),
+                            "",
                             app,
                         );
                         if clone_usage.cloned_used {

@@ -1350,7 +1350,7 @@ impl<'a> Parser<'a> {
                         .span_suggestion(
                             lit.span,
                             "specify the ABI with a string literal",
-                            "\"C\"".to_string(),
+                            "\"C\"",
                             Applicability::MaybeIncorrect,
                         )
                         .emit();

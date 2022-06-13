@@ -1023,7 +1023,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                      avoid moving into the `for` loop",
                                     ty,
                                 ),
-                                "&".to_string(),
+                                "&",
                                 Applicability::MaybeIncorrect,
                             );
                         }
@@ -1049,7 +1049,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                             .map(|n| format!("`{}`", n))
                                             .unwrap_or_else(|| "the mutable reference".to_string()),
                                     ),
-                                    "&mut *".to_string(),
+                                    "&mut *",
                                     Applicability::MachineApplicable,
                                 );
                             }
@@ -1067,7 +1067,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         err.span_suggestion_verbose(
                             fn_call_span.shrink_to_lo(),
                             "consider calling `.as_ref()` to borrow the type's contents",
-                            "as_ref().".to_string(),
+                            "as_ref().",
                             Applicability::MachineApplicable,
                         );
                     }

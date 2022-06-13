@@ -92,7 +92,7 @@ pub fn get_attr<'a>(
                                 diag.span_suggestion(
                                     attr_segments[1].ident.span,
                                     "consider using",
-                                    new_name.to_string(),
+                                    new_name,
                                     Applicability::MachineApplicable,
                                 );
                                 diag.emit();

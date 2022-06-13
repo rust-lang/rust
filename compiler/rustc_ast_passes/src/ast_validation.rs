@@ -488,7 +488,7 @@ impl<'a> AstValidator<'a> {
             .span_suggestion(
                 replace_span,
                 &format!("provide a definition for the {}", ctx),
-                sugg.to_string(),
+                sugg,
                 Applicability::HasPlaceholders,
             )
             .emit();
@@ -522,7 +522,7 @@ impl<'a> AstValidator<'a> {
                 .span_suggestion(
                     span,
                     &format!("remove the {}", remove_descr),
-                    String::new(),
+                    "",
                     Applicability::MaybeIncorrect,
                 )
                 .span_label(self.current_extern_span(), "`extern` block begins here")
@@ -570,7 +570,7 @@ impl<'a> AstValidator<'a> {
             .span_suggestion(
                 body.span,
                 "remove the invalid body",
-                ";".to_string(),
+                ";",
                 Applicability::MaybeIncorrect,
             )
             .help(
@@ -599,7 +599,7 @@ impl<'a> AstValidator<'a> {
                 .span_suggestion_verbose(
                     span.until(ident.span.shrink_to_lo()),
                     "remove the qualifiers",
-                    "fn ".to_string(),
+                    "fn ",
                     Applicability::MaybeIncorrect,
                 )
                 .emit();
@@ -703,7 +703,7 @@ impl<'a> AstValidator<'a> {
             .span_suggestion(
                 generics.span,
                 "remove the parameters",
-                String::new(),
+                "",
                 Applicability::MachineApplicable,
             )
             .emit();
@@ -721,7 +721,7 @@ impl<'a> AstValidator<'a> {
         .span_suggestion(
             span,
             "remove the super traits or lifetime bounds",
-            String::new(),
+            "",
             Applicability::MachineApplicable,
         )
         .emit();
@@ -753,7 +753,7 @@ impl<'a> AstValidator<'a> {
             .span_suggestion(
                 total_span,
                 "remove these associated items",
-                String::new(),
+                "",
                 Applicability::MachineApplicable,
             )
             .span_label(ident_span, "auto trait cannot have associated items")
@@ -993,7 +993,7 @@ fn validate_generic_param_order(
             err.span_suggestion(
                 span,
                 "reorder the parameters: lifetimes, then consts and types",
-                ordered_params.clone(),
+                &ordered_params,
                 Applicability::MachineApplicable,
             );
             err.emit();

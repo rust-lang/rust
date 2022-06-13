@@ -107,7 +107,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         diag.span_suggestion(
             new_ty_span,
             &format!("add explicit lifetime `{}` to {}", named, span_label_var),
-            new_ty.to_string(),
+            new_ty,
             Applicability::Unspecified,
         );
 

@@ -295,7 +295,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                             err.span_suggestion_verbose(
                                 source_info.span.with_hi(source_info.span.lo() + BytePos(5)),
                                 "try removing `&mut` here",
-                                String::new(),
+                                "",
                                 Applicability::MachineApplicable,
                             );
                         } else {
@@ -316,7 +316,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     err.span_suggestion_verbose(
                         decl.source_info.span.shrink_to_lo(),
                         "consider making the binding mutable",
-                        "mut ".to_string(),
+                        "mut ",
                         Applicability::MachineApplicable,
                     );
                 }
@@ -402,7 +402,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 err.span_suggestion(
                     span,
                     "try removing `&mut` here",
-                    String::new(),
+                    "",
                     Applicability::MaybeIncorrect,
                 );
             }

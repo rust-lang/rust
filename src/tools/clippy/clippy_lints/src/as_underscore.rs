@@ -63,7 +63,7 @@ impl<'tcx> LateLintPass<'tcx> for AsUnderscore {
                     diag.span_suggestion(
                         ty.span,
                         "consider giving the type explicitly",
-                        format!("{}", ty_resolved),
+                        ty_resolved,
                         Applicability::MachineApplicable,
                     );
             }
