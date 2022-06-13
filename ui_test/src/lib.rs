@@ -147,10 +147,7 @@ pub fn run_tests(config: Config) {
             eprintln!();
             eprintln!("command: {:?}", miri);
             eprintln!();
-            // `None` means never dump, as we already dumped it for an `OutputDiffers`
-            // `Some(false)` means there's no reason to dump, as all errors are independent of the stderr
-            // `Some(true)` means that there was a pattern in the .rs file that was not found in the output.
-            let mut dump_stderr = Some(false);
+            let mut dump_stderr = true;
             for error in errors {
                 match error {
                     Error::ExitStatus(mode, exit_status) => eprintln!("{mode:?} got {exit_status}"),
@@ -160,7 +157,6 @@ pub fn run_tests(config: Config) {
                             "expected because of pattern here: {}:{definition_line}",
                             path.display().to_string().bold()
                         );
-                        dump_stderr = dump_stderr.map(|_| true);
                     }
                     Error::NoPatternsFound => {
                         eprintln!("{}", "no error patterns found in failure test".red());
@@ -169,7 +165,7 @@ pub fn run_tests(config: Config) {
                         eprintln!("{}", "error pattern found in success test".red()),
                     Error::OutputDiffers { path, actual, expected } => {
                         if path.extension().unwrap() == "stderr" {
-                            dump_stderr = None;
+                            dump_stderr = false;
                         }
                         eprintln!("actual output differed from expected {}", path.display());
                         eprintln!("{}", pretty_assertions::StrComparison::new(expected, actual));
@@ -203,7 +199,8 @@ pub fn run_tests(config: Config) {
                 }
                 eprintln!();
             }
-            if let Some(true) = dump_stderr {
+            // Unless we already dumped the stderr via an OutputDiffers diff, let's dump it here.
+            if dump_stderr {
                 eprintln!("actual stderr:");
                 eprintln!("{}", stderr);
                 eprintln!();
