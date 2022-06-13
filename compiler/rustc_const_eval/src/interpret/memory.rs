@@ -945,7 +945,7 @@ impl<'tcx, 'a, Tag: Provenance, Extra> AllocRef<'a, 'tcx, Tag, Extra> {
 
     /// Returns whether the allocation has relocations for the entire range of the `AllocRef`.
     pub(crate) fn has_relocations(&self) -> bool {
-        !self.alloc.get_relocations(&self.tcx, self.range).is_empty()
+        self.alloc.has_relocations(&self.tcx, self.range)
     }
 }
 

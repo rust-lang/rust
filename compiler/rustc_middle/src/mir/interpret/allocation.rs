@@ -537,21 +537,26 @@ impl<Tag: Provenance, Extra> Allocation<Tag, Extra> {
 /// Relocations.
 impl<Tag: Copy, Extra> Allocation<Tag, Extra> {
     /// Returns all relocations overlapping with the given pointer-offset pair.
-    pub fn get_relocations(&self, cx: &impl HasDataLayout, range: AllocRange) -> &[(Size, Tag)] {
+    fn get_relocations(&self, cx: &impl HasDataLayout, range: AllocRange) -> &[(Size, Tag)] {
         // We have to go back `pointer_size - 1` bytes, as that one would still overlap with
         // the beginning of this range.
         let start = range.start.bytes().saturating_sub(cx.data_layout().pointer_size.bytes() - 1);
         self.relocations.range(Size::from_bytes(start)..range.end())
     }
 
+    /// Returns whether this allocation has relocations overlapping with the given range.
+    ///
+    /// Note: this function exists to allow `get_relocations` to be private, in order to somewhat
+    /// limit access to relocations outside of the `Allocation` abstraction.
+    ///
+    pub fn has_relocations(&self, cx: &impl HasDataLayout, range: AllocRange) -> bool {
+        !self.get_relocations(cx, range).is_empty()
+    }
+
     /// Checks that there are no relocations overlapping with the given range.
     #[inline(always)]
     fn check_relocations(&self, cx: &impl HasDataLayout, range: AllocRange) -> AllocResult {
-        if self.get_relocations(cx, range).is_empty() {
-            Ok(())
-        } else {
-            Err(AllocError::ReadPointerAsBytes)
-        }
+        if self.has_relocations(cx, range) { Err(AllocError::ReadPointerAsBytes) } else { Ok(()) }
     }
 
     /// Removes all relocations inside the given range.
