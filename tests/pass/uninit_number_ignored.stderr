@@ -1,0 +1,1 @@
+WARNING: `-Zmiri-allow-uninit-numbers` is deprecated and planned to be removed. Please let us know at <https://github.com/rust-lang/miri/issues/2187> if you rely on this flag.
