@@ -38,7 +38,7 @@ fn run_tests(mode: Mode, path: &str, target: Option<String>) {
         flags.push(target.clone());
     }
 
-    let skip_ui_checks = in_rustc_test_suite || env::var_os("MIRI_SKIP_UI_CHECKS").is_some();
+    let skip_ui_checks = env::var_os("MIRI_SKIP_UI_CHECKS").is_some();
 
     let output_conflict_handling = match (env::var_os("MIRI_BLESS").is_some(), skip_ui_checks) {
         (false, false) => OutputConflictHandling::Error,
