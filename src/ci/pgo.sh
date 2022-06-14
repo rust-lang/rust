@@ -14,12 +14,25 @@ DOWNLOADED_LLVM=/rustroot
 # The main directory where the build occurs, which can be different between linux and windows
 BUILD_ROOT=$CHECKOUT/obj
 
+if isWindows; then
+    CHECKOUT=$(pwd)
+    DOWNLOADED_LLVM=$CHECKOUT/citools/clang-rust
+    BUILD_ROOT=$CHECKOUT
+fi
+
 # The various build artifacts used in other commands: to launch rustc builds, build the perf
 # collector, and run benchmarks to gather profiling data
 BUILD_ARTIFACTS=$BUILD_ROOT/build/$PGO_HOST
 RUSTC_STAGE_0=$BUILD_ARTIFACTS/stage0/bin/rustc
 CARGO_STAGE_0=$BUILD_ARTIFACTS/stage0/bin/cargo
 RUSTC_STAGE_2=$BUILD_ARTIFACTS/stage2/bin/rustc
+
+# Windows needs these to have the .exe extension
+if isWindows; then
+    RUSTC_STAGE_0="${RUSTC_STAGE_0}.exe"
+    CARGO_STAGE_0="${CARGO_STAGE_0}.exe"
+    RUSTC_STAGE_2="${RUSTC_STAGE_2}.exe"
+fi
 
 # Make sure we have a temporary PGO work folder
 PGO_TMP=/tmp/tmp-pgo
@@ -80,13 +93,26 @@ LLVM_PROFILE_DIR=${LLVM_PROFILE_DIRECTORY_ROOT}/prof-%p python3 $CHECKOUT/x.py b
     --stage 2 library/std \
     --llvm-profile-generate
 
-# Compile rustc perf
-cp -r /tmp/rustc-perf $RUSTC_PERF
-chown -R $(whoami): $RUSTC_PERF
+# Compile rustc-perf:
+# - get the expected commit source code: on linux, the Dockerfile downloads a source archive before
+# running this script. On Windows, we do that here.
+if isLinux; then
+    cp -r /tmp/rustc-perf $RUSTC_PERF
+    chown -R $(whoami): $RUSTC_PERF
+else
+    # rustc-perf version from 2022-05-18
+    PERF_COMMIT=f66cc8f3e04392b0e2fd811f21fd1ece6ebaded3
+    retry curl -LS -o $PGO_TMP/perf.zip \
+        https://github.com/rust-lang/rustc-perf/archive/$PERF_COMMIT.zip && \
+        cd $PGO_TMP && unzip -q perf.zip && \
+        mv rustc-perf-$PERF_COMMIT $RUSTC_PERF && \
+        rm perf.zip
+fi
+
+# - build rustc-perf's collector ahead of time, which is needed to make sure the rustc-fake binary
+# used by the collector is present.
 cd $RUSTC_PERF
 
-# Build rustc-perf's collector ahead of time, which is needed to make sure the rustc-fake
-# binary used by the collector is present.
 RUSTC=$RUSTC_STAGE_0 \
 RUSTC_BOOTSTRAP=1 \
 $CARGO_STAGE_0 build -p collector
@@ -128,13 +154,21 @@ python3 $CHECKOUT/x.py build --target=$PGO_HOST --host=$PGO_HOST \
 
 # Here we're profiling the `rustc` frontend, so we also include `Check`.
 # The benchmark set includes various stress tests that put the frontend under pressure.
-# The profile data is written into a single filepath that is being repeatedly merged when each
-# rustc invocation ends. Empirically, this can result in some profiling data being lost.
-# That's why we override the profile path to include the PID. This will produce many more profiling
-# files, but the resulting profile will produce a slightly faster rustc binary.
-LLVM_PROFILE_FILE=${RUSTC_PROFILE_DIRECTORY_ROOT}/default_%m_%p.profraw gather_profiles \
-    "Check,Debug,Opt" "All" \
-    "externs,ctfe-stress-5,cargo-0.60.0,token-stream-stress,match-stress,tuple-stress,diesel-1.4.8,bitmaps-3.1.0"
+if isLinux; then
+    # The profile data is written into a single filepath that is being repeatedly merged when each
+    # rustc invocation ends. Empirically, this can result in some profiling data being lost. That's
+    # why we override the profile path to include the PID. This will produce many more profiling
+    # files, but the resulting profile will produce a slightly faster rustc binary.
+    LLVM_PROFILE_FILE=${RUSTC_PROFILE_DIRECTORY_ROOT}/default_%m_%p.profraw gather_profiles \
+        "Check,Debug,Opt" "All" \
+        "externs,ctfe-stress-5,cargo-0.60.0,token-stream-stress,match-stress,tuple-stress,diesel-1.4.8,bitmaps-3.1.0"
+else
+    # On windows, we don't do that yet (because it generates a lot of data, hitting disk space
+    # limits on the builder), and use the default profraw merging behavior.
+    gather_profiles \
+        "Check,Debug,Opt" "All" \
+        "externs,ctfe-stress-5,cargo-0.60.0,token-stream-stress,match-stress,tuple-stress,diesel-1.4.8,bitmaps-3.1.0"
+fi
 
 RUSTC_PROFILE_MERGED_FILE=$PGO_TMP/rustc-pgo.profdata
 
