@@ -6,7 +6,6 @@ use rustc_ast as ast;
 use rustc_ast::ptr::P;
 use rustc_ast::token;
 use rustc_ast::tokenstream::TokenStream;
-use rustc_data_structures::sync::Lrc;
 use rustc_errors::ErrorGuaranteed;
 use rustc_parse::parser::ForceCollect;
 use rustc_session::config::ProcMacroExecutionStrategy;
@@ -126,7 +125,7 @@ impl MultiItemModifier for DeriveProcMacro {
                 Annotatable::Stmt(stmt) => token::NtStmt(stmt),
                 _ => unreachable!(),
             };
-            TokenStream::token_alone(token::Interpolated(Lrc::new(nt)), DUMMY_SP)
+            TokenStream::token_alone(token::Interpolated(Box::leak(Box::new(nt))), DUMMY_SP)
         } else {
             item.to_tokens()
         };

@@ -756,7 +756,10 @@ pub fn visit_token<T: MutVisitor>(t: &mut Token, vis: &mut T) {
             return; // Avoid visiting the span for the second time.
         }
         token::Interpolated(nt) => {
-            visit_nonterminal(Lrc::make_mut(nt), vis);
+            let mut nt2 = nt.clone();
+            visit_nonterminal(&mut nt2, vis);
+            // njn: skip this step if nt == nt2?
+            *nt = Box::leak(Box::new(nt2));
         }
         _ => {}
     }

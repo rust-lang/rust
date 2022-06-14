@@ -228,7 +228,11 @@ pub(super) fn transcribe<'a>(
                             // `Delimiter::Invisible` to maintain parsing priorities.
                             // `Interpolated` is currently used for such groups in rustc parser.
                             marker.visit_span(&mut sp);
-                            let token = TokenTree::token_alone(token::Interpolated(nt.clone()), sp);
+                            let token = TokenTree::token_alone(
+                                // njn: nt.clone()?
+                                token::Interpolated(Box::leak(Box::new(nt.clone()))),
+                                sp,
+                            );
                             result.push(token);
                         }
                         MatchedSeq(..) => {

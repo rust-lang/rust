@@ -8,8 +8,8 @@ use crate::ptr::P;
 use crate::util::case::Case;
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_data_structures::sync::Lrc;
 use rustc_macros::HashStable_Generic;
+use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_span::symbol::{kw, sym};
 #[allow(hidden_glob_reexports)]
 use rustc_span::symbol::{Ident, Symbol};
@@ -226,7 +226,23 @@ fn ident_can_begin_type(name: Symbol, span: Span, is_raw: bool) -> bool {
             .contains(&name)
 }
 
-#[derive(Clone, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
+// njn: comment
+// rustc_index::newtype_index! {
+//     pub struct NtIndex {
+//         ENCODABLE = custom
+//         DEBUG_FORMAT = "NtIndex({})"
+//     }
+// }
+
+// njn: comment
+// njn: name?
+//#[derive(Clone, Copy)]
+//pub struct Nt(NtIndex);
+
+//impl Nt {
+//}
+
+#[derive(Clone, Copy, PartialEq, Debug, HashStable_Generic)]
 pub enum TokenKind {
     /* Expression-operator symbols. */
     Eq,
@@ -280,6 +296,7 @@ pub enum TokenKind {
     /// treat regular and interpolated lifetime identifiers in the same way.
     Lifetime(Symbol),
 
+    // njn: update comment
     /// An embedded AST node, as produced by a macro. This only exists for
     /// historical reasons. We'd like to get rid of it, for multiple reasons.
     /// - It's conceptually very strange. Saying a token can contain an AST
@@ -289,7 +306,8 @@ pub enum TokenKind {
     /// - It prevents `Token` from implementing `Copy`.
     /// It adds complexity and likely slows things down. Please don't add new
     /// occurrences of this token kind!
-    Interpolated(Lrc<Nonterminal>),
+    //Interpolated(Nt),
+    Interpolated(&'static Nonterminal),
 
     /// A doc comment token.
     /// `Symbol` is the doc comment's data excluding its "quotes" (`///`, `/**`, etc)
@@ -299,7 +317,128 @@ pub enum TokenKind {
     Eof,
 }
 
-#[derive(Clone, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
+// njn: necessary?
+impl<S: Encoder> Encodable<S> for TokenKind {
+    fn encode(&self, s: &mut S) {
+        match self {
+            Eq => s.emit_usize(0),
+            Lt => s.emit_usize(1),
+            Le => s.emit_usize(2),
+            EqEq => s.emit_usize(3),
+            Ne => s.emit_usize(4),
+            Ge => s.emit_usize(5),
+            Gt => s.emit_usize(6),
+            AndAnd => s.emit_usize(7),
+            OrOr => s.emit_usize(8),
+            Not => s.emit_usize(9),
+            Tilde => s.emit_usize(10),
+            BinOp(tok) => {
+                s.emit_usize(11);
+                tok.encode(s)
+            }
+            BinOpEq(tok) => {
+                s.emit_usize(12);
+                tok.encode(s)
+            }
+            At => s.emit_usize(13),
+            Dot => s.emit_usize(14),
+            DotDot => s.emit_usize(15),
+            DotDotDot => s.emit_usize(16),
+            DotDotEq => s.emit_usize(17),
+            Comma => s.emit_usize(18),
+            Semi => s.emit_usize(19),
+            Colon => s.emit_usize(20),
+            ModSep => s.emit_usize(21),
+            RArrow => s.emit_usize(22),
+            LArrow => s.emit_usize(23),
+            FatArrow => s.emit_usize(24),
+            Pound => s.emit_usize(25),
+            Dollar => s.emit_usize(26),
+            Question => s.emit_usize(27),
+            SingleQuote => s.emit_usize(28),
+            OpenDelim(delim) => {
+                s.emit_usize(29);
+                delim.encode(s)
+            }
+            CloseDelim(delim) => {
+                s.emit_usize(30);
+                delim.encode(s)
+            }
+            Literal(lit) => {
+                s.emit_usize(31);
+                lit.encode(s)
+            }
+            Ident(name, is_raw) => {
+                s.emit_usize(32);
+                name.encode(s);
+                is_raw.encode(s)
+            }
+            Lifetime(name) => {
+                s.emit_usize(33);
+                name.encode(s)
+            }
+            Interpolated(_nt) => {
+                s.emit_usize(34);
+                panic!("njn: impossible?");
+            }
+            DocComment(kind, style, sym) => {
+                s.emit_usize(35);
+                kind.encode(s);
+                style.encode(s);
+                sym.encode(s)
+            }
+            Eof => s.emit_usize(36),
+        }
+    }
+}
+
+// njn: necessary?
+impl<D: Decoder> Decodable<D> for TokenKind {
+    fn decode(d: &mut D) -> TokenKind {
+        match d.read_usize() {
+            0 => Eq,
+            1 => Lt,
+            2 => Le,
+            3 => EqEq,
+            4 => Ne,
+            5 => Ge,
+            6 => Gt,
+            7 => AndAnd,
+            8 => OrOr,
+            9 => Not,
+            10 => Tilde,
+            11 => BinOp(Decodable::decode(d)),
+            12 => BinOpEq(Decodable::decode(d)),
+            13 => At,
+            14 => Dot,
+            15 => DotDot,
+            16 => DotDotDot,
+            17 => DotDotEq,
+            18 => Comma,
+            19 => Semi,
+            20 => Colon,
+            21 => ModSep,
+            22 => RArrow,
+            23 => LArrow,
+            24 => FatArrow,
+            25 => Pound,
+            26 => Dollar,
+            27 => Question,
+            28 => SingleQuote,
+            29 => OpenDelim(Decodable::decode(d)),
+            30 => CloseDelim(Decodable::decode(d)),
+            31 => Literal(Decodable::decode(d)),
+            32 => Ident(Decodable::decode(d), Decodable::decode(d)),
+            33 => Lifetime(Decodable::decode(d)),
+            34 => panic!("njn: unreachable?"),
+            35 => DocComment(Decodable::decode(d), Decodable::decode(d), Decodable::decode(d)),
+            36 => Eof,
+            _ => panic!("njn: bad"),
+        }
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
 pub struct Token {
     pub kind: TokenKind,
     pub span: Span,
