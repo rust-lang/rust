@@ -55,7 +55,7 @@ where
                                     assert!(matches!(ty.kind(), ty::Param(_)))
                                 }
                                 ty::subst::GenericArgKind::Const(ct) => {
-                                    assert!(matches!(ct.val(), ty::ConstKind::Param(_)))
+                                    assert!(matches!(ct.kind(), ty::ConstKind::Param(_)))
                                 }
                                 ty::subst::GenericArgKind::Lifetime(..) => (),
                             },
@@ -69,7 +69,7 @@ where
         }
 
         fn visit_const(&mut self, c: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
-            match c.val() {
+            match c.kind() {
                 ty::ConstKind::Param(..) => ControlFlow::Break(FoundParam),
                 _ => c.super_visit_with(self),
             }

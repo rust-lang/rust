@@ -614,7 +614,7 @@ impl<'tcx> Inliner<'tcx> {
                 caller_body.required_consts.extend(
                     callee_body.required_consts.iter().copied().filter(|&ct| {
                         match ct.literal.const_for_ty() {
-                            Some(ct) => matches!(ct.val(), ConstKind::Unevaluated(_)),
+                            Some(ct) => matches!(ct.kind(), ConstKind::Unevaluated(_)),
                             None => true,
                         }
                     }),

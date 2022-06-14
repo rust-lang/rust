@@ -141,7 +141,7 @@ impl<'tcx> TypeVisitor<'tcx> for MaxEscapingBoundVarVisitor {
     }
 
     fn visit_const(&mut self, ct: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
-        match ct.val() {
+        match ct.kind() {
             ty::ConstKind::Bound(debruijn, _) if debruijn >= self.outer_index => {
                 self.escaping =
                     self.escaping.max(debruijn.as_usize() - self.outer_index.as_usize());
@@ -337,7 +337,7 @@ impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
         Ok(match constant {
             mir::ConstantKind::Ty(c) => {
                 let const_folded = c.try_fold_with(self)?;
-                match const_folded.val() {
+                match const_folded.kind() {
                     ty::ConstKind::Value(cv) => {
                         // FIXME With Valtrees we need to convert `cv: ValTree`
                         // to a `ConstValue` here.

@@ -247,7 +247,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 }
             }
             GenericArgKind::Const(ct) => {
-                if let ty::ConstKind::Infer(InferConst::Var(vid)) = ct.val() {
+                if let ty::ConstKind::Infer(InferConst::Var(vid)) = ct.kind() {
                     let origin =
                         self.inner.borrow_mut().const_unification_table().probe_value(vid).origin;
                     if let ConstVariableOriginKind::ConstParameterDefinition(name, def_id) =
@@ -673,7 +673,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
             }
             (GenericArgKind::Const(inner_ct), GenericArgKind::Const(target_ct)) => {
                 use ty::InferConst::*;
-                match (inner_ct.val(), target_ct.val()) {
+                match (inner_ct.kind(), target_ct.kind()) {
                     (ty::ConstKind::Infer(Var(a_vid)), ty::ConstKind::Infer(Var(b_vid))) => self
                         .infcx
                         .inner
@@ -713,7 +713,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                     }
                 }
                 GenericArgKind::Const(ct) => {
-                    if matches!(ct.val(), ty::ConstKind::Unevaluated(..)) {
+                    if matches!(ct.kind(), ty::ConstKind::Unevaluated(..)) {
                         // You can't write the generic arguments for
                         // unevaluated constants.
                         walker.skip_current_subtree();

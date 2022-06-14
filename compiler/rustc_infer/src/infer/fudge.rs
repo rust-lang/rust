@@ -229,7 +229,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for InferenceFudger<'a, 'tcx> {
     }
 
     fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
-        if let ty::ConstKind::Infer(ty::InferConst::Var(vid)) = ct.val() {
+        if let ty::ConstKind::Infer(ty::InferConst::Var(vid)) = ct.kind() {
             if self.const_vars.0.contains(&vid) {
                 // This variable was created during the fudging.
                 // Recreate it with a fresh variable here.

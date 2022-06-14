@@ -29,7 +29,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::ConstantKind::Ty(ct) => ct,
             mir::ConstantKind::Val(val, _) => return Ok(val),
         };
-        match ct.val() {
+        match ct.kind() {
             ty::ConstKind::Unevaluated(ct) => self
                 .cx
                 .tcx()
@@ -65,7 +65,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     .fields
                     .iter()
                     .map(|field| {
-                        if let Some(prim) = field.val().try_to_scalar() {
+                        if let Some(prim) = field.kind().try_to_scalar() {
                             let layout = bx.layout_of(field_ty);
                             let Abi::Scalar(scalar) = layout.abi else {
                                 bug!("from_const: invalid ByVal layout: {:#?}", layout);

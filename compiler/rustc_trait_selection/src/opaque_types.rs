@@ -209,7 +209,7 @@ fn check_opaque_type_parameter_valid(
             GenericArgKind::Lifetime(lt) => {
                 matches!(*lt, ty::ReEarlyBound(_) | ty::ReFree(_))
             }
-            GenericArgKind::Const(ct) => matches!(ct.val(), ty::ConstKind::Param(_)),
+            GenericArgKind::Const(ct) => matches!(ct.kind(), ty::ConstKind::Param(_)),
         };
 
         if arg_is_param {
@@ -452,7 +452,7 @@ impl<'tcx> TypeFolder<'tcx> for ReverseMapper<'tcx> {
     fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
         trace!("checking const {:?}", ct);
         // Find a const parameter
-        match ct.val() {
+        match ct.kind() {
             ty::ConstKind::Param(..) => {
                 // Look it up in the substitution list.
                 match self.map.get(&ct.into()).map(|k| k.unpack()) {

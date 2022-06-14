@@ -23,7 +23,7 @@
 |
 fn main() -> () {
     let mut _0: ();                      // return place in scope 0 at $DIR/region-subtyping-basic.rs:16:11: 16:11
-    let mut _1: [usize; Const { ty: usize, val: Value(Scalar(0x00000003)) }]; // in scope 0 at $DIR/region-subtyping-basic.rs:17:9: 17:14
+    let mut _1: [usize; Const { ty: usize, kind: Value(Scalar(0x00000003)) }]; // in scope 0 at $DIR/region-subtyping-basic.rs:17:9: 17:14
     let _3: usize;                       // in scope 0 at $DIR/region-subtyping-basic.rs:18:16: 18:17
     let mut _4: usize;                   // in scope 0 at $DIR/region-subtyping-basic.rs:18:14: 18:18
     let mut _5: bool;                    // in scope 0 at $DIR/region-subtyping-basic.rs:18:14: 18:18

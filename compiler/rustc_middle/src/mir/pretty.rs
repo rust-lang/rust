@@ -454,8 +454,8 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
                 ConstValue::ByRef { .. } => format!("ByRef(..)"),
             };
 
-            let val = match literal {
-                ConstantKind::Ty(ct) => match ct.val() {
+            let kind = match literal {
+                ConstantKind::Ty(ct) => match ct.kind() {
                     ty::ConstKind::Param(p) => format!("Param({})", p),
                     ty::ConstKind::Unevaluated(uv) => format!(
                         "Unevaluated({}, {:?}, {:?})",
@@ -476,7 +476,10 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
                 ConstantKind::Val(val, _) => format!("Value({})", fmt_val(&val)),
             };
 
-            self.push(&format!("+ literal: Const {{ ty: {}, val: {} }}", literal.ty(), val));
+            // This reflects what `Const` looked liked before `val` was renamed
+            // as `kind`. We print it like this to avoid having to update
+            // expected output in a lot of tests.
+            self.push(&format!("+ literal: Const {{ ty: {}, val: {} }}", literal.ty(), kind));
         }
     }
 
@@ -679,7 +682,7 @@ pub fn write_allocations<'tcx>(
 
     impl<'tcx> Visitor<'tcx> for CollectAllocIds {
         fn visit_const(&mut self, c: ty::Const<'tcx>, _loc: Location) {
-            if let ty::ConstKind::Value(val) = c.val() {
+            if let ty::ConstKind::Value(val) = c.kind() {
                 self.0.extend(alloc_ids_from_const(val));
             }
         }

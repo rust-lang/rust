@@ -622,10 +622,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// "universe" (param_env).
     pub fn const_to_op(
         &self,
-        val: ty::Const<'tcx>,
+        c: ty::Const<'tcx>,
         layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
-        match val.val() {
+        match c.kind() {
             ty::ConstKind::Param(_) | ty::ConstKind::Bound(..) => throw_inval!(TooGeneric),
             ty::ConstKind::Error(DelaySpanBugEmitted { reported, .. }) => {
                 throw_inval!(AlreadyReported(reported))
@@ -635,9 +635,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 Ok(self.eval_to_allocation(GlobalId { instance, promoted: uv.promoted })?.into())
             }
             ty::ConstKind::Infer(..) | ty::ConstKind::Placeholder(..) => {
-                span_bug!(self.cur_span(), "const_to_op: Unexpected ConstKind {:?}", val)
+                span_bug!(self.cur_span(), "const_to_op: Unexpected ConstKind {:?}", c)
             }
-            ty::ConstKind::Value(val_val) => self.const_val_to_op(val_val, val.ty(), layout),
+            ty::ConstKind::Value(val) => self.const_val_to_op(val, c.ty(), layout),
         }
     }
 

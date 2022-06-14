@@ -474,7 +474,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 let err = ConstEvalErr::new(&self.ecx, error, Some(c.span));
                 if let Some(lint_root) = self.lint_root(source_info) {
                     let lint_only = match c.literal {
-                        ConstantKind::Ty(ct) => match ct.val() {
+                        ConstantKind::Ty(ct) => match ct.kind() {
                             // Promoteds must lint and not error as the user didn't ask for them
                             ConstKind::Unevaluated(ty::Unevaluated {
                                 def: _,

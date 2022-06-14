@@ -197,7 +197,7 @@ pub(crate) fn deref_const<'tcx>(
         },
     };
 
-    tcx.mk_const(ty::ConstS { val: ty::ConstKind::Value(op_to_const(&ecx, &mplace.into())), ty })
+    tcx.mk_const(ty::ConstS { kind: ty::ConstKind::Value(op_to_const(&ecx, &mplace.into())), ty })
 }
 
 #[instrument(skip(tcx), level = "debug")]

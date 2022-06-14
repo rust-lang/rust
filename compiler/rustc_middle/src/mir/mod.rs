@@ -2956,7 +2956,7 @@ impl<'tcx> Constant<'tcx> {
 impl<'tcx> From<ty::Const<'tcx>> for ConstantKind<'tcx> {
     #[inline]
     fn from(ct: ty::Const<'tcx>) -> Self {
-        match ct.val() {
+        match ct.kind() {
             ty::ConstKind::Value(cv) => {
                 // FIXME Once valtrees are introduced we need to convert those
                 // into `ConstValue` instances here
@@ -2985,7 +2985,7 @@ impl<'tcx> ConstantKind<'tcx> {
 
     pub fn try_val(&self) -> Option<ConstValue<'tcx>> {
         match self {
-            ConstantKind::Ty(c) => match c.val() {
+            ConstantKind::Ty(c) => match c.kind() {
                 ty::ConstKind::Value(v) => Some(v),
                 _ => None,
             },
@@ -2996,7 +2996,7 @@ impl<'tcx> ConstantKind<'tcx> {
     #[inline]
     pub fn try_to_value(self) -> Option<interpret::ConstValue<'tcx>> {
         match self {
-            ConstantKind::Ty(c) => c.val().try_to_value(),
+            ConstantKind::Ty(c) => c.kind().try_to_value(),
             ConstantKind::Val(val, _) => Some(val),
         }
     }
@@ -3027,7 +3027,7 @@ impl<'tcx> ConstantKind<'tcx> {
             Self::Ty(c) => {
                 // FIXME Need to use a different evaluation function that directly returns a `ConstValue`
                 // if evaluation succeeds and does not create a ValTree first
-                if let Some(val) = c.val().try_eval(tcx, param_env) {
+                if let Some(val) = c.kind().try_eval(tcx, param_env) {
                     match val {
                         Ok(val) => Self::Val(val, c.ty()),
                         Err(_) => Self::Ty(tcx.const_error(self.ty())),
@@ -3161,7 +3161,7 @@ impl<'tcx> ConstantKind<'tcx> {
             ty::InlineConstSubsts::new(tcx, ty::InlineConstSubstsParts { parent_substs, ty })
                 .substs;
         let uneval_const = tcx.mk_const(ty::ConstS {
-            val: ty::ConstKind::Unevaluated(ty::Unevaluated {
+            kind: ty::ConstKind::Unevaluated(ty::Unevaluated {
                 def: ty::WithOptConstParam::unknown(def_id).to_global(),
                 substs,
                 promoted: None,
@@ -3221,7 +3221,7 @@ impl<'tcx> ConstantKind<'tcx> {
                 let index = generics.param_def_id_to_index[&def_id];
                 let name = tcx.hir().name(hir_id);
                 let ty_const = tcx.mk_const(ty::ConstS {
-                    val: ty::ConstKind::Param(ty::ParamConst::new(index, name)),
+                    kind: ty::ConstKind::Param(ty::ParamConst::new(index, name)),
                     ty,
                 });
 
@@ -3258,7 +3258,7 @@ impl<'tcx> ConstantKind<'tcx> {
                 // Error was handled in `const_eval_resolve`. Here we just create a
                 // new unevaluated const and error hard later in codegen
                 let ty_const = tcx.mk_const(ty::ConstS {
-                    val: ty::ConstKind::Unevaluated(ty::Unevaluated {
+                    kind: ty::ConstKind::Unevaluated(ty::Unevaluated {
                         def: def.to_global(),
                         substs: InternalSubsts::identity_for_item(tcx, def.did.to_def_id()),
                         promoted: None,

@@ -29,7 +29,7 @@ impl<'tcx> fmt::Debug for Const<'tcx> {
         // This reflects what `Const` looked liked before `Interned` was
         // introduced. We print it like this to avoid having to update expected
         // output in a lot of tests.
-        write!(f, "Const {{ ty: {:?}, val: {:?} }}", self.ty(), self.val())
+        write!(f, "Const {{ ty: {:?}, kind: {:?} }}", self.ty(), self.kind())
     }
 }
 
@@ -37,7 +37,7 @@ impl<'tcx> fmt::Debug for Const<'tcx> {
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash, HashStable, TyEncodable, TyDecodable)]
 pub struct ConstS<'tcx> {
     pub ty: Ty<'tcx>,
-    pub val: ConstKind<'tcx>,
+    pub kind: ConstKind<'tcx>,
 }
 
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
@@ -50,8 +50,8 @@ impl<'tcx> Const<'tcx> {
     }
 
     #[inline]
-    pub fn val(self) -> ConstKind<'tcx> {
-        self.0.val
+    pub fn kind(self) -> ConstKind<'tcx> {
+        self.0.kind
     }
 
     /// Literals and const generic parameters are eagerly converted to a constant, everything else
@@ -83,7 +83,7 @@ impl<'tcx> Const<'tcx> {
         match Self::try_eval_lit_or_param(tcx, ty, expr) {
             Some(v) => v,
             None => tcx.mk_const(ty::ConstS {
-                val: ty::ConstKind::Unevaluated(ty::Unevaluated {
+                kind: ty::ConstKind::Unevaluated(ty::Unevaluated {
                     def: def.to_global(),
                     substs: InternalSubsts::identity_for_item(tcx, def.did.to_def_id()),
                     promoted: None,
@@ -145,7 +145,7 @@ impl<'tcx> Const<'tcx> {
                 let index = generics.param_def_id_to_index[&def_id];
                 let name = tcx.hir().name(hir_id);
                 Some(tcx.mk_const(ty::ConstS {
-                    val: ty::ConstKind::Param(ty::ParamConst::new(index, name)),
+                    kind: ty::ConstKind::Param(ty::ParamConst::new(index, name)),
                     ty,
                 }))
             }
@@ -180,7 +180,7 @@ impl<'tcx> Const<'tcx> {
                     InlineConstSubsts::new(tcx, InlineConstSubstsParts { parent_substs, ty })
                         .substs;
                 tcx.mk_const(ty::ConstS {
-                    val: ty::ConstKind::Unevaluated(ty::Unevaluated {
+                    kind: ty::ConstKind::Unevaluated(ty::Unevaluated {
                         def: ty::WithOptConstParam::unknown(def_id).to_global(),
                         substs,
                         promoted: None,
@@ -196,7 +196,7 @@ impl<'tcx> Const<'tcx> {
     /// Interns the given value as a constant.
     #[inline]
     pub fn from_value(tcx: TyCtxt<'tcx>, val: ConstValue<'tcx>, ty: Ty<'tcx>) -> Self {
-        tcx.mk_const(ConstS { val: ConstKind::Value(val), ty })
+        tcx.mk_const(ConstS { kind: ConstKind::Value(val), ty })
     }
 
     #[inline]
@@ -246,24 +246,24 @@ impl<'tcx> Const<'tcx> {
         assert_eq!(self.ty(), ty);
         let size = tcx.layout_of(param_env.with_reveal_all_normalized(tcx).and(ty)).ok()?.size;
         // if `ty` does not depend on generic parameters, use an empty param_env
-        self.val().eval(tcx, param_env).try_to_bits(size)
+        self.kind().eval(tcx, param_env).try_to_bits(size)
     }
 
     #[inline]
     pub fn try_eval_bool(self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> Option<bool> {
-        self.val().eval(tcx, param_env).try_to_bool()
+        self.kind().eval(tcx, param_env).try_to_bool()
     }
 
     #[inline]
     pub fn try_eval_usize(self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> Option<u64> {
-        self.val().eval(tcx, param_env).try_to_machine_usize(tcx)
+        self.kind().eval(tcx, param_env).try_to_machine_usize(tcx)
     }
 
     #[inline]
     /// Tries to evaluate the constant if it is `Unevaluated`. If that doesn't succeed, return the
     /// unevaluated constant.
     pub fn eval(self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> Const<'tcx> {
-        if let Some(val) = self.val().try_eval(tcx, param_env) {
+        if let Some(val) = self.kind().try_eval(tcx, param_env) {
             match val {
                 Ok(val) => Const::from_value(tcx, val, self.ty()),
                 Err(ErrorGuaranteed { .. }) => tcx.const_error(self.ty()),

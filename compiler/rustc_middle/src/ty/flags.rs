@@ -288,7 +288,7 @@ impl FlagComputation {
 
     fn add_const(&mut self, c: ty::Const<'_>) {
         self.add_ty(c.ty());
-        match c.val() {
+        match c.kind() {
             ty::ConstKind::Unevaluated(unevaluated) => self.add_unevaluated_const(unevaluated),
             ty::ConstKind::Infer(infer) => {
                 self.add_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
