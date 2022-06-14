@@ -1622,6 +1622,40 @@ declare_lint! {
 }
 
 declare_lint! {
+    /// The `named_static_lifetimes` lint detects lifetime parameters that are
+    /// defined as outliving the static lifetime.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #[deny(named_static_lifetimes)]
+    ///
+    /// pub fn foo<'a>(_s: &'a str) where 'a: 'static {}
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// By definition, the static lifetime (`'static`) outlives every other
+    /// lifetime. If another lifetime `'a` lives at least as long as `'static`,
+    /// then it is identical to `'static`. In that case, there is no need for
+    /// the name `'a`, and it likely only makes the code harder to read.
+    ///
+    /// To fix this, consider using `'static` instead of the named lifetime.
+    /// Here is the result of doing that in the example above:
+    ///
+    /// ```rust
+    /// #[deny(named_static_lifetimes)]
+    ///
+    /// pub fn foo(_s: &'static str) {}
+    /// ```
+    pub NAMED_STATIC_LIFETIMES,
+    Warn,
+    "detects lifetime parameters that are identical to `'static`"
+}
+
+declare_lint! {
     /// The `tyvar_behind_raw_pointer` lint detects raw pointer to an
     /// inference variable.
     ///
@@ -3174,6 +3208,7 @@ declare_lint_pass! {
         UNCONDITIONAL_RECURSION,
         SINGLE_USE_LIFETIMES,
         UNUSED_LIFETIMES,
+        NAMED_STATIC_LIFETIMES,
         UNUSED_LABELS,
         TYVAR_BEHIND_RAW_POINTER,
         ELIDED_LIFETIMES_IN_PATHS,
