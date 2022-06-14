@@ -102,20 +102,22 @@ macro_rules! compat_fn {
             }
 
             #[allow(dead_code)]
+            #[inline(always)]
             pub fn option() -> Option<F> {
-                unsafe { PTR }
+                unsafe {
+                    if cfg!(miri) {
+                        // Miri does not run `init`, so we just call `get_f` each time.
+                        get_f()
+                    } else {
+                        PTR
+                    }
+                }
             }
 
             #[allow(dead_code)]
             pub unsafe fn call($($argname: $argtype),*) -> $rettype {
-                if let Some(ptr) = PTR {
+                if let Some(ptr) = option() {
                     return ptr($($argname),*);
-                }
-                if cfg!(miri) {
-                    // Miri does not run `init`, so we just call `get_f` each time.
-                    if let Some(ptr) = get_f() {
-                        return ptr($($argname),*);
-                    }
                 }
                 $fallback_body
             }
