@@ -10,7 +10,9 @@ use crate::imports::{Import, ImportKind};
 use crate::macros::{MacroRulesBinding, MacroRulesScope, MacroRulesScopeRef};
 use crate::Namespace::{self, MacroNS, TypeNS, ValueNS};
 use crate::{Determinacy, ExternPreludeEntry, Finalize, Module, ModuleKind, ModuleOrUniformRoot};
-use crate::{NameBinding, NameBindingKind, ParentScope, PathResult, PerNS, ResolutionError};
+use crate::{
+    MacroData, NameBinding, NameBindingKind, ParentScope, PathResult, PerNS, ResolutionError,
+};
 use crate::{Resolver, ResolverArenas, Segment, ToNameBinding, VisResolutionError};
 
 use rustc_ast::visit::{self, AssocCtxt, Visitor};
@@ -20,7 +22,6 @@ use rustc_ast_lowering::ResolverAstLowering;
 use rustc_attr as attr;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{struct_span_err, Applicability};
-use rustc_expand::base::SyntaxExtension;
 use rustc_expand::expand::AstFragment;
 use rustc_hir::def::{self, *};
 use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
@@ -180,26 +181,32 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    pub(crate) fn get_macro(&mut self, res: Res) -> Option<Lrc<SyntaxExtension>> {
+    pub(crate) fn get_macro(&mut self, res: Res) -> Option<MacroData> {
         match res {
             Res::Def(DefKind::Macro(..), def_id) => Some(self.get_macro_by_def_id(def_id)),
-            Res::NonMacroAttr(_) => Some(self.non_macro_attr.clone()),
+            Res::NonMacroAttr(_) => {
+                Some(MacroData { ext: self.non_macro_attr.clone(), macro_rules: false })
+            }
             _ => None,
         }
     }
 
-    pub(crate) fn get_macro_by_def_id(&mut self, def_id: DefId) -> Lrc<SyntaxExtension> {
-        if let Some(ext) = self.macro_map.get(&def_id) {
-            return ext.clone();
+    pub(crate) fn get_macro_by_def_id(&mut self, def_id: DefId) -> MacroData {
+        if let Some(macro_data) = self.macro_map.get(&def_id) {
+            return macro_data.clone();
         }
 
-        let ext = Lrc::new(match self.cstore().load_macro_untracked(def_id, &self.session) {
-            LoadedMacro::MacroDef(item, edition) => self.compile_macro(&item, edition).0,
-            LoadedMacro::ProcMacro(ext) => ext,
-        });
+        let (ext, macro_rules) = match self.cstore().load_macro_untracked(def_id, &self.session) {
+            LoadedMacro::MacroDef(item, edition) => (
+                Lrc::new(self.compile_macro(&item, edition).0),
+                matches!(item.kind, ItemKind::MacroDef(def) if def.macro_rules),
+            ),
+            LoadedMacro::ProcMacro(extz) => (Lrc::new(extz), false),
+        };
 
-        self.macro_map.insert(def_id, ext.clone());
-        ext
+        let macro_data = MacroData { ext, macro_rules };
+        self.macro_map.insert(def_id, macro_data.clone());
+        macro_data
     }
 
     pub(crate) fn build_reduced_graph(
@@ -1251,7 +1258,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         };
 
         let res = Res::Def(DefKind::Macro(ext.macro_kind()), def_id.to_def_id());
-        self.r.macro_map.insert(def_id.to_def_id(), ext);
+        self.r.macro_map.insert(def_id.to_def_id(), MacroData { ext, macro_rules });
         self.r.local_macro_def_scopes.insert(def_id, parent_scope.module);
 
         if macro_rules {
