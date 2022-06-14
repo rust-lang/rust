@@ -1,6 +1,5 @@
 use crate::ich;
 use rustc_ast as ast;
-use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::stable_hasher::{HashStable, HashingControls, StableHasher};
 use rustc_data_structures::sync::Lrc;
@@ -12,11 +11,6 @@ use rustc_session::Session;
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::Symbol;
 use rustc_span::{BytePos, CachingSourceMapView, SourceFile, Span, SpanData};
-
-fn compute_ignored_attr_names() -> FxHashSet<Symbol> {
-    debug_assert!(!ich::IGNORED_ATTRIBUTES.is_empty());
-    ich::IGNORED_ATTRIBUTES.iter().copied().collect()
-}
 
 /// This is the context state available during incr. comp. hashing. It contains
 /// enough information to transform `DefId`s and `HirId`s into stable `DefPath`s (i.e.,
@@ -161,10 +155,7 @@ impl<'a> StableHashingContext<'a> {
 
     #[inline]
     pub fn is_ignored_attr(&self, name: Symbol) -> bool {
-        thread_local! {
-            static IGNORED_ATTRIBUTES: FxHashSet<Symbol> = compute_ignored_attr_names();
-        }
-        IGNORED_ATTRIBUTES.with(|attrs| attrs.contains(&name))
+        ich::IGNORED_ATTRIBUTES.contains(&name)
     }
 
     #[inline]
