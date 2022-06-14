@@ -866,6 +866,12 @@ struct DeriveData {
     has_derive_copy: bool,
 }
 
+#[derive(Clone)]
+struct MacroData {
+    ext: Lrc<SyntaxExtension>,
+    macro_rules: bool,
+}
+
 /// The main resolver class.
 ///
 /// This is the visitor that walks the whole crate.
@@ -965,7 +971,7 @@ pub struct Resolver<'a> {
     registered_attrs: FxHashSet<Ident>,
     registered_tools: RegisteredTools,
     macro_use_prelude: FxHashMap<Symbol, &'a NameBinding<'a>>,
-    macro_map: FxHashMap<DefId, Lrc<SyntaxExtension>>,
+    macro_map: FxHashMap<DefId, MacroData>,
     dummy_ext_bang: Lrc<SyntaxExtension>,
     dummy_ext_derive: Lrc<SyntaxExtension>,
     non_macro_attr: Lrc<SyntaxExtension>,
@@ -1522,7 +1528,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn is_builtin_macro(&mut self, res: Res) -> bool {
-        self.get_macro(res).map_or(false, |ext| ext.builtin_name.is_some())
+        self.get_macro(res).map_or(false, |macro_data| macro_data.ext.builtin_name.is_some())
     }
 
     fn macro_def(&self, mut ctxt: SyntaxContext) -> DefId {

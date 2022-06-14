@@ -925,16 +925,9 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                     let mut err =
                         struct_span_err!(self.r.session, import.span, E0364, "{error_msg}");
                     match binding.kind {
-                        NameBindingKind::Res(Res::Def(DefKind::Macro(_), _def_id), _)
+                        NameBindingKind::Res(Res::Def(DefKind::Macro(_), def_id), _)
                             // exclude decl_macro
-                            if !self.r.session.features_untracked().decl_macro
-                                || !self
-                                    .r
-                                    .session
-                                    .source_map()
-                                    .span_to_snippet(binding.span)
-                                    .map(|snippet| snippet.starts_with("macro "))
-                                    .unwrap_or(true) =>
+                            if self.r.get_macro_by_def_id(def_id).macro_rules =>
                         {
                             err.span_help(
                                 binding.span,
