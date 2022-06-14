@@ -169,6 +169,7 @@ impl<N: ItemTreeNode> Clone for AssocItemLoc<N> {
 }
 
 impl<N: ItemTreeNode> Copy for AssocItemLoc<N> {}
+
 impl<N: ItemTreeNode> PartialEq for AssocItemLoc<N> {
     fn eq(&self, other: &Self) -> bool {
         self.container == other.container && self.id == other.id
