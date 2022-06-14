@@ -1410,20 +1410,27 @@ impl<'a> Builder<'a> {
             // cargo would implicitly add it, it was discover that sometimes bootstrap only use
             // `rustflags` without `cargo` making it required.
             rustflags.arg("-Zunstable-options");
+            // First pass: find all the names without values and put them into one argument
+            let names = EXTRA_CHECK_CFGS
+                .iter()
+                .filter(|(restricted_mode, ..)| {
+                    restricted_mode.is_none() || *restricted_mode == Some(mode)
+                })
+                .filter(|(_, _, values)| values.is_none())
+                .map(|(_, name, _)| *name)
+                .collect::<Vec<_>>();
+            if !names.is_empty() {
+                rustflags.arg(&format!("--check-cfg=names({})", names.join(",")));
+            }
+            // Second pass: find all the names that have a list of possible values
             for (restricted_mode, name, values) in EXTRA_CHECK_CFGS {
-                if *restricted_mode == None || *restricted_mode == Some(mode) {
-                    // Creating a string of the values by concatenating each value:
-                    // ',"tvos","watchos"' or '' (nothing) when there are no values
-                    let values = match values {
-                        Some(values) => values
-                            .iter()
-                            .map(|val| [",", "\"", val, "\""])
-                            .flatten()
-                            .collect::<String>(),
-                        None => String::new(),
-                    };
-                    rustflags.arg(&format!("--check-cfg=values({name}{values})"));
+                if !(restricted_mode.is_none() || *restricted_mode == Some(mode)) {
+                    continue;
                 }
+                let values = if let Some(values) = values { values } else { continue };
+                let values =
+                    values.iter().map(|val| [",", "\"", val, "\""]).flatten().collect::<String>();
+                rustflags.arg(&format!("--check-cfg=values({name}{values})"));
             }
         }
 
