@@ -1,7 +1,8 @@
 macro_rules! x {
     ($($c:tt)*) => {
-        $($c)ö* {} //~ ERROR missing condition for `if` expression
-    };             //~| ERROR mismatched types
+        $($c)ö* {}
+        //~^ ERROR missing condition for `if` expression
+    };
 }
 
 fn main() {

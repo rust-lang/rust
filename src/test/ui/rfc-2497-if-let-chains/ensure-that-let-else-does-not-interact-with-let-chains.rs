@@ -21,15 +21,15 @@ fn main() {
     };
 
     if let Some(n) = opt else {
-    //~^ ERROR missing condition for `if` expression
+    //~^ ERROR this `if` expression is missing a block after the condition
         return;
     };
     if let Some(n) = opt && n == 1 else {
-    //~^ ERROR missing condition for `if` expression
+    //~^ ERROR this `if` expression is missing a block after the condition
         return;
     };
     if let Some(n) = opt && let another = n else {
-    //~^ ERROR missing condition for `if` expression
+    //~^ ERROR this `if` expression is missing a block after the condition
         return;
     };
 
