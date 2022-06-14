@@ -283,7 +283,7 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
             return ControlFlow::CONTINUE;
         }
 
-        match c.val() {
+        match c.kind() {
             ty::ConstKind::Param(param) => {
                 debug!(?param);
                 self.unused_parameters.clear(param.index);
@@ -353,7 +353,7 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for HasUsedGenericParams<'a> {
             return ControlFlow::CONTINUE;
         }
 
-        match c.val() {
+        match c.kind() {
             ty::ConstKind::Param(param) => {
                 if self.unused_parameters.contains(param.index).unwrap_or(false) {
                     ControlFlow::CONTINUE

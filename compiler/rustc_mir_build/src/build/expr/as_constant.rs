@@ -15,7 +15,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let create_uneval_from_def_id =
             |tcx: TyCtxt<'tcx>, def_id: DefId, ty: Ty<'tcx>, substs: SubstsRef<'tcx>| {
                 let uneval = ty::Unevaluated::new(ty::WithOptConstParam::unknown(def_id), substs);
-                tcx.mk_const(ty::ConstS { val: ty::ConstKind::Unevaluated(uneval), ty })
+                tcx.mk_const(ty::ConstS { kind: ty::ConstKind::Unevaluated(uneval), ty })
             };
 
         let this = self;
@@ -64,7 +64,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
             ExprKind::ConstParam { param, def_id: _ } => {
                 let const_param =
-                    tcx.mk_const(ty::ConstS { val: ty::ConstKind::Param(param), ty: expr.ty });
+                    tcx.mk_const(ty::ConstS { kind: ty::ConstKind::Param(param), ty: expr.ty });
                 let literal = ConstantKind::Ty(const_param);
 
                 Constant { user_ty: None, span, literal }

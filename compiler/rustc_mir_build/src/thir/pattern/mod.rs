@@ -553,7 +553,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
         match value {
             mir::ConstantKind::Ty(c) => {
-                match c.val() {
+                match c.kind() {
                     ConstKind::Param(_) => {
                         self.errors.push(PatternError::ConstParamInPattern(span));
                         return PatKind::Wild;

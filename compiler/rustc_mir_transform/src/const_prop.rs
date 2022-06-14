@@ -699,7 +699,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     ) {
         if let Rvalue::Use(Operand::Constant(c)) = rval {
             match c.literal {
-                ConstantKind::Ty(c) if matches!(c.val(), ConstKind::Unevaluated(..)) => {}
+                ConstantKind::Ty(c) if matches!(c.kind(), ConstKind::Unevaluated(..)) => {}
                 _ => {
                     trace!("skipping replace of Rvalue::Use({:?} because it is already a const", c);
                     return;
@@ -773,7 +773,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                                         .tcx
                                         .mk_const(ty::ConstS {
                                             ty,
-                                            val: ty::ConstKind::Value(ConstValue::ByRef {
+                                            kind: ty::ConstKind::Value(ConstValue::ByRef {
                                                 alloc,
                                                 offset: Size::ZERO,
                                             }),

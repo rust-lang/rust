@@ -180,7 +180,7 @@ fn push_debuginfo_type_name<'tcx>(
             if cpp_like_debuginfo {
                 output.push_str("array$<");
                 push_debuginfo_type_name(tcx, inner_type, true, output, visited);
-                match len.val() {
+                match len.kind() {
                     ty::ConstKind::Param(param) => write!(output, ",{}>", param.name).unwrap(),
                     _ => write!(output, ",{}>", len.eval_usize(tcx, ty::ParamEnv::reveal_all()))
                         .unwrap(),
@@ -188,7 +188,7 @@ fn push_debuginfo_type_name<'tcx>(
             } else {
                 output.push('[');
                 push_debuginfo_type_name(tcx, inner_type, true, output, visited);
-                match len.val() {
+                match len.kind() {
                     ty::ConstKind::Param(param) => write!(output, "; {}]", param.name).unwrap(),
                     _ => write!(output, "; {}]", len.eval_usize(tcx, ty::ParamEnv::reveal_all()))
                         .unwrap(),
@@ -679,7 +679,7 @@ fn push_generic_params_internal<'tcx>(
 }
 
 fn push_const_param<'tcx>(tcx: TyCtxt<'tcx>, ct: ty::Const<'tcx>, output: &mut String) {
-    match ct.val() {
+    match ct.kind() {
         ty::ConstKind::Param(param) => {
             write!(output, "{}", param.name)
         }
@@ -703,7 +703,7 @@ fn push_const_param<'tcx>(tcx: TyCtxt<'tcx>, ct: ty::Const<'tcx>, output: &mut S
                 // but we get a deterministic, virtually unique value for the constant.
                 let hcx = &mut tcx.create_stable_hashing_context();
                 let mut hasher = StableHasher::new();
-                hcx.while_hashing_spans(false, |hcx| ct.val().hash_stable(hcx, &mut hasher));
+                hcx.while_hashing_spans(false, |hcx| ct.kind().hash_stable(hcx, &mut hasher));
                 // Let's only emit 64 bits of the hash value. That should be plenty for
                 // avoiding collisions and will make the emitted type names shorter.
                 let hash: u64 = hasher.finish();

@@ -578,7 +578,7 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                         //
                         // Let's just see where this breaks :shrug:
                         if let (ty::ConstKind::Unevaluated(a), ty::ConstKind::Unevaluated(b)) =
-                            (c1.val(), c2.val())
+                            (c1.kind(), c2.kind())
                         {
                             if infcx.try_unify_abstract_consts(
                                 a.shrink(),
@@ -593,7 +593,7 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                     let stalled_on = &mut pending_obligation.stalled_on;
 
                     let mut evaluate = |c: Const<'tcx>| {
-                        if let ty::ConstKind::Unevaluated(unevaluated) = c.val() {
+                        if let ty::ConstKind::Unevaluated(unevaluated) = c.kind() {
                             match self.selcx.infcx().const_eval_resolve(
                                 obligation.param_env,
                                 unevaluated,

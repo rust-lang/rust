@@ -571,7 +571,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for SubstFolder<'a, 'tcx> {
     }
 
     fn fold_const(&mut self, c: ty::Const<'tcx>) -> ty::Const<'tcx> {
-        if let ty::ConstKind::Param(p) = c.val() {
+        if let ty::ConstKind::Param(p) = c.kind() {
             self.const_for_param(p, c)
         } else {
             c.super_fold_with(self)

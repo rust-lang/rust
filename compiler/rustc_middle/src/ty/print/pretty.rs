@@ -748,14 +748,14 @@ pub trait PrettyPrinter<'tcx>:
                 p!("[", print(ty), "; ");
                 if self.tcx().sess.verbose() {
                     p!(write("{:?}", sz));
-                } else if let ty::ConstKind::Unevaluated(..) = sz.val() {
+                } else if let ty::ConstKind::Unevaluated(..) = sz.kind() {
                     // Do not try to evaluate unevaluated constants. If we are const evaluating an
                     // array length anon const, rustc will (with debug assertions) print the
                     // constant's path. Which will end up here again.
                     p!("_");
-                } else if let Some(n) = sz.val().try_to_bits(self.tcx().data_layout.pointer_size) {
+                } else if let Some(n) = sz.kind().try_to_bits(self.tcx().data_layout.pointer_size) {
                     p!(write("{}", n));
-                } else if let ty::ConstKind::Param(param) = sz.val() {
+                } else if let ty::ConstKind::Param(param) = sz.kind() {
                     p!(print(param));
                 } else {
                     p!("_");
@@ -1165,7 +1165,7 @@ pub trait PrettyPrinter<'tcx>:
         define_scoped_cx!(self);
 
         if self.tcx().sess.verbose() {
-            p!(write("Const({:?}: {:?})", ct.val(), ct.ty()));
+            p!(write("Const({:?}: {:?})", ct.kind(), ct.ty()));
             return Ok(self);
         }
 
@@ -1186,7 +1186,7 @@ pub trait PrettyPrinter<'tcx>:
             }};
         }
 
-        match ct.val() {
+        match ct.kind() {
             ty::ConstKind::Unevaluated(ty::Unevaluated {
                 def,
                 substs,
@@ -1262,7 +1262,7 @@ pub trait PrettyPrinter<'tcx>:
             ty::Ref(_, inner, _) => {
                 if let ty::Array(elem, len) = inner.kind() {
                     if let ty::Uint(ty::UintTy::U8) = elem.kind() {
-                        if let ty::ConstKind::Value(ConstValue::Scalar(int)) = len.val() {
+                        if let ty::ConstKind::Value(ConstValue::Scalar(int)) = len.kind() {
                             match self.tcx().get_global_alloc(alloc_id) {
                                 Some(GlobalAlloc::Memory(alloc)) => {
                                     let len = int.assert_bits(self.tcx().data_layout.pointer_size);
@@ -1452,7 +1452,7 @@ pub trait PrettyPrinter<'tcx>:
                 }
             }
             (ConstValue::ByRef { alloc, offset }, ty::Array(t, n)) if *t == u8_type => {
-                let n = n.val().try_to_bits(self.tcx().data_layout.pointer_size).unwrap();
+                let n = n.kind().try_to_bits(self.tcx().data_layout.pointer_size).unwrap();
                 // cast is ok because we already checked for pointer size (32 or 64 bit) above
                 let range = AllocRange { start: offset, size: Size::from_bytes(n) };
 
@@ -1475,7 +1475,7 @@ pub trait PrettyPrinter<'tcx>:
             (_, ty::Array(..) | ty::Tuple(..) | ty::Adt(..)) if !ty.has_param_types_or_consts() => {
                 let Some(contents) = self.tcx().try_destructure_const(
                     ty::ParamEnv::reveal_all()
-                        .and(self.tcx().mk_const(ty::ConstS { val: ty::ConstKind::Value(ct), ty })),
+                        .and(self.tcx().mk_const(ty::ConstS { kind: ty::ConstKind::Value(ct), ty })),
                 ) else {
                     // Fall back to debug pretty printing for invalid constants.
                     p!(write("{:?}", ct));

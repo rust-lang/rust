@@ -742,7 +742,7 @@ impl<'tcx> TypeFolder<'tcx> for BoundVarReplacer<'_, 'tcx> {
     }
 
     fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
-        match ct.val() {
+        match ct.kind() {
             ty::ConstKind::Bound(debruijn, _)
                 if debruijn.as_usize() + 1
                     > self.current_index.as_usize() + self.universe_indices.len() =>
@@ -758,7 +758,7 @@ impl<'tcx> TypeFolder<'tcx> for BoundVarReplacer<'_, 'tcx> {
                 self.mapped_consts.insert(p, bound_const);
                 self.infcx
                     .tcx
-                    .mk_const(ty::ConstS { val: ty::ConstKind::Placeholder(p), ty: ct.ty() })
+                    .mk_const(ty::ConstS { kind: ty::ConstKind::Placeholder(p), ty: ct.ty() })
             }
             _ if ct.has_vars_bound_at_or_above(self.current_index) => ct.super_fold_with(self),
             _ => ct,
@@ -878,7 +878,7 @@ impl<'tcx> TypeFolder<'tcx> for PlaceholderReplacer<'_, 'tcx> {
     }
 
     fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
-        if let ty::ConstKind::Placeholder(p) = ct.val() {
+        if let ty::ConstKind::Placeholder(p) = ct.kind() {
             let replace_var = self.mapped_consts.get(&p);
             match replace_var {
                 Some(replace_var) => {
@@ -891,7 +891,7 @@ impl<'tcx> TypeFolder<'tcx> for PlaceholderReplacer<'_, 'tcx> {
                         self.universe_indices.len() - index + self.current_index.as_usize() - 1,
                     );
                     self.tcx().mk_const(ty::ConstS {
-                        val: ty::ConstKind::Bound(db, *replace_var),
+                        kind: ty::ConstKind::Bound(db, *replace_var),
                         ty: ct.ty(),
                     })
                 }
@@ -2018,8 +2018,8 @@ fn confirm_impl_candidate<'cx, 'tcx>(
         let identity_substs =
             crate::traits::InternalSubsts::identity_for_item(tcx, assoc_ty.item.def_id);
         let did = ty::WithOptConstParam::unknown(assoc_ty.item.def_id);
-        let val = ty::ConstKind::Unevaluated(ty::Unevaluated::new(did, identity_substs));
-        tcx.mk_const(ty::ConstS { ty, val }).into()
+        let kind = ty::ConstKind::Unevaluated(ty::Unevaluated::new(did, identity_substs));
+        tcx.mk_const(ty::ConstS { ty, kind }).into()
     } else {
         ty.into()
     };

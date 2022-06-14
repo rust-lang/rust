@@ -582,7 +582,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
     fn print_const(mut self, ct: ty::Const<'tcx>) -> Result<Self::Const, Self::Error> {
         // We only mangle a typed value if the const can be evaluated.
         let ct = ct.eval(self.tcx, ty::ParamEnv::reveal_all());
-        match ct.val() {
+        match ct.kind() {
             ty::ConstKind::Value(_) => {}
 
             // Placeholders (should be demangled as `_`).
@@ -630,7 +630,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
             // handle `&str` and include both `&` ("R") and `str` ("e") prefixes.
             ty::Ref(_, ty, hir::Mutability::Not) if *ty == self.tcx.types.str_ => {
                 self.push("R");
-                match ct.val() {
+                match ct.kind() {
                     ty::ConstKind::Value(ConstValue::Slice { data, start, end }) => {
                         // NOTE(eddyb) the following comment was kept from `ty::print::pretty`:
                         // The `inspect` here is okay since we checked the bounds, and there are no

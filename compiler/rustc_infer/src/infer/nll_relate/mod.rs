@@ -659,7 +659,7 @@ where
             b = self.infcx.shallow_resolve(b);
         }
 
-        match b.val() {
+        match b.kind() {
             ty::ConstKind::Infer(InferConst::Var(_)) if D::forbid_inference_vars() => {
                 // Forbid inference variables in the RHS.
                 bug!("unexpected inference var {:?}", b)
@@ -1034,7 +1034,7 @@ where
         a: ty::Const<'tcx>,
         _: ty::Const<'tcx>,
     ) -> RelateResult<'tcx, ty::Const<'tcx>> {
-        match a.val() {
+        match a.kind() {
             ty::ConstKind::Infer(InferConst::Var(_)) if D::forbid_inference_vars() => {
                 bug!("unexpected inference variable encountered in NLL generalization: {:?}", a);
             }

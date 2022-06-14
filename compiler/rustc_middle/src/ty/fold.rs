@@ -718,7 +718,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for BoundVarReplacer<'a, 'tcx> {
     }
 
     fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
-        match ct.val() {
+        match ct.kind() {
             ty::ConstKind::Bound(debruijn, bound_const) if debruijn == self.current_index => {
                 let ct = (self.fld_c)(bound_const, ct.ty());
                 ty::fold::shift_vars(self.tcx, ct, self.current_index.as_u32())
@@ -865,7 +865,7 @@ impl<'tcx> TyCtxt<'tcx> {
             },
             |c, ty| {
                 self.mk_const(ty::ConstS {
-                    val: ty::ConstKind::Bound(
+                    kind: ty::ConstKind::Bound(
                         ty::INNERMOST,
                         ty::BoundVar::from_usize(c.as_usize() + bound_vars),
                     ),
@@ -1118,13 +1118,13 @@ impl<'tcx> TypeFolder<'tcx> for Shifter<'tcx> {
     }
 
     fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
-        if let ty::ConstKind::Bound(debruijn, bound_ct) = ct.val() {
+        if let ty::ConstKind::Bound(debruijn, bound_ct) = ct.kind() {
             if self.amount == 0 || debruijn < self.current_index {
                 ct
             } else {
                 let debruijn = debruijn.shifted_in(self.amount);
                 self.tcx.mk_const(ty::ConstS {
-                    val: ty::ConstKind::Bound(debruijn, bound_ct),
+                    kind: ty::ConstKind::Bound(debruijn, bound_ct),
                     ty: ct.ty(),
                 })
             }
@@ -1234,7 +1234,7 @@ impl<'tcx> TypeVisitor<'tcx> for HasEscapingVarsVisitor {
         // otherwise we do want to remember to visit the rest of the
         // const, as it has types/regions embedded in a lot of other
         // places.
-        match ct.val() {
+        match ct.kind() {
             ty::ConstKind::Bound(debruijn, _) if debruijn >= self.outer_index => {
                 ControlFlow::Break(FoundEscapingVars)
             }
@@ -1389,7 +1389,7 @@ impl<'tcx> TypeVisitor<'tcx> for LateBoundRegionsCollector {
         // ignore the inputs of an unevaluated const, as they may not appear
         // in the normalized form
         if self.just_constrained {
-            if let ty::ConstKind::Unevaluated(..) = c.val() {
+            if let ty::ConstKind::Unevaluated(..) = c.kind() {
                 return ControlFlow::CONTINUE;
             }
         }
@@ -1434,7 +1434,7 @@ impl<'tcx> TypeVisitor<'tcx> for MaxUniverse {
     }
 
     fn visit_const(&mut self, c: ty::consts::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
-        if let ty::ConstKind::Placeholder(placeholder) = c.val() {
+        if let ty::ConstKind::Placeholder(placeholder) = c.kind() {
             self.max_universe = ty::UniverseIndex::from_u32(
                 self.max_universe.as_u32().max(placeholder.universe.as_u32()),
             );

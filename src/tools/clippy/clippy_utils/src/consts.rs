@@ -582,7 +582,7 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
 
 pub fn miri_to_const(result: ty::Const<'_>) -> Option<Constant> {
     use rustc_middle::mir::interpret::ConstValue;
-    match result.val() {
+    match result.kind() {
         ty::ConstKind::Value(ConstValue::Scalar(Scalar::Int(int))) => {
             match result.ty().kind() {
                 ty::Bool => Some(Constant::Bool(int == ScalarInt::TRUE)),
