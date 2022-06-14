@@ -1329,23 +1329,28 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, sp: Span, adt: ty::AdtD
         let layout = tcx.layout_of(param_env.and(ty));
         // We are currently checking the type this field came from, so it must be local
         let span = tcx.hir().span_if_local(field.did).unwrap();
-        let array_len = match ty.kind() {
-            Array(_, len) => len.try_eval_usize(tcx, param_env),
-            _ => None,
+        let zero_sized_array = match ty.kind() {
+            Array(_, len) => len.try_eval_usize(tcx, param_env) == Some(0),
+            _ => false,
         };
-        let zst = array_len == Some(0) || layout.map_or(false, |layout| layout.is_zst());
+        let zst = layout.map_or(false, |layout| layout.is_zst());
         let align = layout.ok().map(|layout| layout.align.abi.bytes());
-        (span, zst, align)
+        (span, zst, zero_sized_array, align)
     });
 
     let non_zst_fields =
-        field_infos.clone().filter_map(|(span, zst, _align)| if !zst { Some(span) } else { None });
+        field_infos.clone().filter_map(
+            |(span, zst, zero_sized_array, _align)| {
+                if !zst && !zero_sized_array { Some(span) } else { None }
+            },
+        );
     let non_zst_count = non_zst_fields.clone().count();
     if non_zst_count >= 2 {
         bad_non_zero_sized_fields(tcx, adt, non_zst_count, non_zst_fields, sp);
     }
-    for (span, zst, align) in field_infos {
-        if zst && align != Some(1) {
+
+    for (span, zst, zero_sized_array, align) in field_infos {
+        if (zst || zero_sized_array) && align != Some(1) {
             let mut err = struct_span_err!(
                 tcx.sess,
                 span,
