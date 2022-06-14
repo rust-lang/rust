@@ -3,6 +3,7 @@
 use std::borrow::Cow;
 use std::convert::{TryFrom, TryInto};
 use std::fmt;
+use std::hash;
 use std::iter;
 use std::ops::{Deref, Range};
 use std::ptr;
@@ -25,7 +26,7 @@ use crate::ty;
 /// Its public API is rather low-level, working directly with allocation offsets and a custom error
 /// type to account for the lack of an AllocId on this level. The Miri/CTFE core engine `memory`
 /// module provides higher-level access.
-#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, TyEncodable, TyDecodable)]
+#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable)]
 #[derive(HashStable)]
 pub struct Allocation<Tag = AllocId, Extra = ()> {
     /// The actual bytes of the allocation.
@@ -47,6 +48,46 @@ pub struct Allocation<Tag = AllocId, Extra = ()> {
     pub mutability: Mutability,
     /// Extra state for the machine.
     pub extra: Extra,
+}
+
+/// This is the maximum size we will hash at a time from these two structures, when interning. Note,
+/// we hash that amount of bytes twice: at the start, and at the end of a buffer. Used when an
+/// `Allocation` and its `InitMask` are large: we only partially hash the larger fields in that
+/// situation. See the comment at the top of their respective `Hash` impl for more details.
+const MAX_BYTES_TO_HASH: usize = 64;
+
+/// This is the maximum size (in bytes) for which a buffer will be fully hashed when interning.
+/// Otherwise, it will be partially hashed in 2 slices, requiring at least 2 `MAX_BYTES_TO_HASH`
+/// bytes.
+const MAX_HASHED_BUFFER_LEN: usize = 2 * MAX_BYTES_TO_HASH;
+
+// Const allocations are only hashed for interning. However, they can be large, making the hashing
+// expensive especially since it uses `FxHash`: it's better suited to short keys, not potentially
+// big buffers like the actual bytes of allocation. We can partially hash some fields when they're
+// large.
+impl hash::Hash for Allocation {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) {
+        // Partially hash the `bytes` buffer when it is large. To limit collisions with common
+        // prefixes and suffixes, we hash the length and some slices of the buffer.
+        let byte_count = self.bytes.len();
+        if byte_count > MAX_HASHED_BUFFER_LEN {
+            // Hash the buffer's length.
+            byte_count.hash(state);
+
+            // And its head and tail.
+            self.bytes[..MAX_BYTES_TO_HASH].hash(state);
+            self.bytes[byte_count - MAX_BYTES_TO_HASH..].hash(state);
+        } else {
+            self.bytes.hash(state);
+        }
+
+        // Hash the other fields as usual.
+        self.relocations.hash(state);
+        self.init_mask.hash(state);
+        self.align.hash(state);
+        self.mutability.hash(state);
+        self.extra.hash(state);
+    }
 }
 
 /// Interned types generally have an `Outer` type and an `Inner` type, where
@@ -640,11 +681,39 @@ type Block = u64;
 
 /// A bitmask where each bit refers to the byte with the same index. If the bit is `true`, the byte
 /// is initialized. If it is `false` the byte is uninitialized.
-#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, TyEncodable, TyDecodable)]
+#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable)]
 #[derive(HashStable)]
 pub struct InitMask {
     blocks: Vec<Block>,
     len: Size,
+}
+
+// Const allocations are only hashed for interning. However, they can be large, making the hashing
+// expensive especially since it uses `FxHash`: it's better suited to short keys, not potentially
+// big buffers like the allocation's init mask. We can partially hash some fields when they're
+// large.
+impl hash::Hash for InitMask {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) {
+        const MAX_BLOCKS_TO_HASH: usize = MAX_BYTES_TO_HASH / std::mem::size_of::<Block>();
+        const MAX_BLOCKS_LEN: usize = MAX_HASHED_BUFFER_LEN / std::mem::size_of::<Block>();
+
+        // Partially hash the `blocks` buffer when it is large. To limit collisions with common
+        // prefixes and suffixes, we hash the length and some slices of the buffer.
+        let block_count = self.blocks.len();
+        if block_count > MAX_BLOCKS_LEN {
+            // Hash the buffer's length.
+            block_count.hash(state);
+
+            // And its head and tail.
+            self.blocks[..MAX_BLOCKS_TO_HASH].hash(state);
+            self.blocks[block_count - MAX_BLOCKS_TO_HASH..].hash(state);
+        } else {
+            self.blocks.hash(state);
+        }
+
+        // Hash the other fields as usual.
+        self.len.hash(state);
+    }
 }
 
 impl InitMask {
