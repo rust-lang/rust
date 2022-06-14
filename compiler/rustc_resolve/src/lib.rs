@@ -165,6 +165,7 @@ enum ImplTraitContext {
     Existential,
     Universal(LocalDefId),
     UniversalInDyn(LocalDefId),
+    ReturnOpaquePositionTy,
 }
 
 #[derive(Eq)]

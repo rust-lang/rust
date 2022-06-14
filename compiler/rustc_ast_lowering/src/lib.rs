@@ -888,7 +888,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             }
             AssocConstraintKind::Bound { ref bounds } => {
                 // Piggy-back on the `impl Trait` context to figure out the correct behavior.
-                let (_desugar_to_impl_trait, itctx) = match itctx {
+                let (desugar_to_impl_trait, itctx) = match itctx {
                     // We are in the return position:
                     //
                     //     fn foo() -> impl Iterator<Item: Debug>
@@ -932,7 +932,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 if self.resolver.opt_local_def_id(constraint.impl_trait_id).is_some() {
                     // Desugar `AssocTy: Bounds` into `AssocTy = impl Bounds`. We do this by
                     // constructing the HIR for `impl bounds...` and then lowering that.
-
+                    debug!("desug111: {:?}, {:?}", desugar_to_impl_trait, itctx);
                     //let parent_def_id = self.current_hir_id_owner;
                     let impl_trait_node_id = constraint.impl_trait_id;
 
@@ -943,9 +943,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         ExpnId::root(),
                         constraint.span,
                     );*/
+                    
                     self.with_dyn_type_scope(false, |this| {
                         let node_id = this.resolver.next_node_id();
-                        // impl_trait_node_id gets lowered in lower_ty_direct here:
                         let ty = this.lower_ty(
                             &Ty {
                                 id: node_id,
@@ -962,6 +962,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     // Desugar `AssocTy: Bounds` into a type binding where the
                     // later desugars into a trait predicate.
                     let bounds = self.lower_param_bounds(bounds, itctx);
+                    debug!("desug1111 NO!!!!: {:?}, {:?}", desugar_to_impl_trait, itctx);
 
                     hir::TypeBindingKind::Constraint { bounds }
                 }
@@ -1216,7 +1217,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     ImplTraitContext::Universal => {
                         // Add a definition for the in-band `Param`.
                         let def_id = self.resolver.local_def_id(def_node_id);
-
+                          
                         let hir_bounds =
                             self.lower_param_bounds(bounds, ImplTraitContext::Universal);
                         // Set the name to `impl Bound1 + Bound2`.
