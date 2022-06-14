@@ -12,21 +12,36 @@ use crate::{Diagnostic, DiagnosticsContext, Severity};
 pub(crate) fn unresolved_proc_macro(
     ctx: &DiagnosticsContext<'_>,
     d: &hir::UnresolvedProcMacro,
-    attr_proc_macros_enabled: bool,
+    proc_macros_enabled: bool,
+    proc_attr_macros_enabled: bool,
 ) -> Diagnostic {
     // Use more accurate position if available.
     let display_range = d
         .precise_location
         .unwrap_or_else(|| ctx.sema.diagnostics_display_range(d.node.clone()).range);
+
+    let config_enabled = match d.kind {
+        hir::MacroKind::Attr => proc_macros_enabled && proc_attr_macros_enabled,
+        _ => proc_macros_enabled,
+    };
+
     let message = match &d.macro_name {
         Some(name) => format!("proc macro `{}` not expanded", name),
         None => "proc macro not expanded".to_string(),
     };
-    let message = format!(
-        "{message}{}",
-        if attr_proc_macros_enabled { "" } else { " (attribute macro expansion is disabled)" }
-    );
+    let (message, severity) = if config_enabled {
+        (message, Severity::Error)
+    } else {
+        let message = match d.kind {
+            hir::MacroKind::Attr if proc_macros_enabled => {
+                format!("{message}{}", " (attribute macro expansion is disabled)")
+            }
+            _ => {
+                format!("{message}{}", " (proc-macro expansion is disabled)")
+            }
+        };
+        (message, Severity::WeakWarning)
+    };
 
-    Diagnostic::new("unresolved-proc-macro", message, display_range)
-        .severity(if attr_proc_macros_enabled { Severity::Error } else { Severity::WeakWarning })
+    Diagnostic::new("unresolved-proc-macro", message, display_range).severity(severity)
 }

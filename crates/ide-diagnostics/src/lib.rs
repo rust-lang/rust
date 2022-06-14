@@ -139,7 +139,8 @@ impl Default for ExprFillDefaultMode {
 
 #[derive(Default, Debug, Clone)]
 pub struct DiagnosticsConfig {
-    pub attr_proc_macros_enabled: bool,
+    pub proc_macros_enabled: bool,
+    pub proc_attr_macros_enabled: bool,
     pub disable_experimental: bool,
     pub disabled: FxHashSet<String>,
     pub expr_fill_default: ExprFillDefaultMode,
@@ -205,7 +206,7 @@ pub fn diagnostics(
             AnyDiagnostic::UnresolvedImport(d) => handlers::unresolved_import::unresolved_import(&ctx, &d),
             AnyDiagnostic::UnresolvedMacroCall(d) => handlers::unresolved_macro_call::unresolved_macro_call(&ctx, &d),
             AnyDiagnostic::UnresolvedModule(d) => handlers::unresolved_module::unresolved_module(&ctx, &d),
-            AnyDiagnostic::UnresolvedProcMacro(d) => handlers::unresolved_proc_macro::unresolved_proc_macro(&ctx, &d, config.attr_proc_macros_enabled),
+            AnyDiagnostic::UnresolvedProcMacro(d) => handlers::unresolved_proc_macro::unresolved_proc_macro(&ctx, &d, config.proc_macros_enabled, config.proc_attr_macros_enabled),
             AnyDiagnostic::InvalidDeriveTarget(d) => handlers::invalid_derive_target::invalid_derive_target(&ctx, &d),
 
             AnyDiagnostic::InactiveCode(d) => match handlers::inactive_code::inactive_code(&ctx, &d) {
