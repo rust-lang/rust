@@ -1054,7 +1054,7 @@ impl clean::Impl {
                 (self.kind.is_tuple_variadic() || self.kind.is_auto()) {
                 // Hardcoded anchor library/core/src/primitive_docs.rs
                 // Link should match `# Trait implementations`
-                primitive_link_fragment(f, PrimitiveType::Tuple, &format!("({name}, ...)"), "#trait-implementations-1", cx)?;
+                primitive_link_fragment(f, PrimitiveType::Tuple, &format!("({name}₁, {name}₂, …, {name}ₙ)"), "#trait-implementations-1", cx)?;
             } else if let Some(ty) = self.kind.as_blanket_ty() {
                 fmt_type(ty, f, use_absolute, cx)?;
             } else {
