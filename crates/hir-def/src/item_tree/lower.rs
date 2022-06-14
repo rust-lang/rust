@@ -21,7 +21,6 @@ pub(super) struct Ctx<'a> {
     tree: ItemTree,
     source_ast_id_map: Arc<AstIdMap>,
     body_ctx: crate::body::LowerCtx<'a>,
-    forced_visibility: Option<RawVisibilityId>,
 }
 
 impl<'a> Ctx<'a> {
@@ -31,7 +30,6 @@ impl<'a> Ctx<'a> {
             tree: ItemTree::default(),
             source_ast_id_map: db.ast_id_map(file),
             body_ctx: crate::body::LowerCtx::new(db, file),
-            forced_visibility: None,
         }
     }
 
@@ -225,11 +223,10 @@ impl<'a> Ctx<'a> {
         let visibility = self.lower_visibility(enum_);
         let name = enum_.name()?.as_name();
         let generic_params = self.lower_generic_params(GenericsOwner::Enum, enum_);
-        let variants =
-            self.with_inherited_visibility(visibility, |this| match &enum_.variant_list() {
-                Some(variant_list) => this.lower_variants(variant_list),
-                None => IdxRange::new(this.next_variant_idx()..this.next_variant_idx()),
-            });
+        let variants = match &enum_.variant_list() {
+            Some(variant_list) => self.lower_variants(variant_list),
+            None => IdxRange::new(self.next_variant_idx()..self.next_variant_idx()),
+        };
         let ast_id = self.source_ast_id_map.ast_id(enum_);
         let res = Enum { name, visibility, generic_params, variants, ast_id };
         Some(id(self.data().enums.alloc(res)))
@@ -440,18 +437,15 @@ impl<'a> Ctx<'a> {
         let is_auto = trait_def.auto_token().is_some();
         let is_unsafe = trait_def.unsafe_token().is_some();
         let items = trait_def.assoc_item_list().map(|list| {
-            let db = self.db;
-            self.with_inherited_visibility(visibility, |this| {
-                list.assoc_items()
-                    .filter_map(|item| {
-                        let attrs = RawAttrs::new(db, &item, this.hygiene());
-                        this.lower_assoc_item(&item).map(|item| {
-                            this.add_attrs(ModItem::from(item).into(), attrs);
-                            item
-                        })
+            list.assoc_items()
+                .filter_map(|item| {
+                    let attrs = RawAttrs::new(self.db, &item, self.hygiene());
+                    self.lower_assoc_item(&item).map(|item| {
+                        self.add_attrs(ModItem::from(item).into(), attrs);
+                        item
                     })
-                    .collect()
-            })
+                })
+                .collect()
         });
         let ast_id = self.source_ast_id_map.ast_id(trait_def);
         let res = Trait {
@@ -622,13 +616,7 @@ impl<'a> Ctx<'a> {
     }
 
     fn lower_visibility(&mut self, item: &dyn ast::HasVisibility) -> RawVisibilityId {
-        let vis = match self.forced_visibility {
-            Some(vis) => return vis,
-            None => {
-                RawVisibility::from_ast_with_hygiene(self.db, item.visibility(), self.hygiene())
-            }
-        };
-
+        let vis = RawVisibility::from_ast_with_hygiene(self.db, item.visibility(), self.hygiene());
         self.data().vis.alloc(vis)
     }
 
@@ -647,18 +635,6 @@ impl<'a> Ctx<'a> {
             Some(it) => it,
             None => Interned::new(TypeRef::Error),
         }
-    }
-
-    /// Forces the visibility `vis` to be used for all items lowered during execution of `f`.
-    fn with_inherited_visibility<R>(
-        &mut self,
-        vis: RawVisibilityId,
-        f: impl FnOnce(&mut Self) -> R,
-    ) -> R {
-        let old = mem::replace(&mut self.forced_visibility, Some(vis));
-        let res = f(self);
-        self.forced_visibility = old;
-        res
     }
 
     fn next_field_idx(&self) -> Idx<Field> {
