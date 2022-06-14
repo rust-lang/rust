@@ -662,6 +662,19 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         ecx: &MiriEvalContext<'mir, 'tcx>,
         ptr: Pointer<AllocId>,
     ) -> Pointer<Tag> {
+        if cfg!(debug_assertions) {
+            // The machine promises to never call us on thread-local or extern statics.
+            let alloc_id = ptr.provenance;
+            match ecx.tcx.get_global_alloc(alloc_id) {
+                Some(GlobalAlloc::Static(def_id)) if ecx.tcx.is_thread_local_static(def_id) => {
+                    panic!("tag_alloc_base_pointer called on thread-local static")
+                }
+                Some(GlobalAlloc::Static(def_id)) if ecx.tcx.is_foreign_item(def_id) => {
+                    panic!("tag_alloc_base_pointer called on extern static")
+                }
+                _ => {}
+            }
+        }
         let absolute_addr = intptrcast::GlobalStateInner::rel_ptr_to_addr(ecx, ptr);
         let sb_tag = if let Some(stacked_borrows) = &ecx.machine.stacked_borrows {
             stacked_borrows.borrow_mut().base_tag(ptr.provenance)
