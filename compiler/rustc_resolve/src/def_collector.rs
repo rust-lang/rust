@@ -165,8 +165,8 @@ impl<'a, 'b> visit::Visitor<'a> for DefCollector<'a, 'b> {
                         self.visit_param(param);
                     }
                     self.with_impl_trait(ImplTraitContext::ReturnOpaquePositionTy, |this| {
-                        this.visit_fn_ret_ty(&sig.decl.output) 
-                    }); 
+                        this.visit_fn_ret_ty(&sig.decl.output)
+                    });
                     walk_list!(self, visit_block, body);
                     return;
                 }
@@ -302,7 +302,7 @@ impl<'a, 'b> visit::Visitor<'a> for DefCollector<'a, 'b> {
             TyKind::ImplTrait(node_id, _) => {
                 let parent_def = match self.impl_trait_context {
                     ImplTraitContext::Universal(item_def)
-                    | ImplTraitContext::UniversalInDyn(item_def) => { 
+                    | ImplTraitContext::UniversalInDyn(item_def) => {
                         let def_id = self.resolver.create_def(
                             item_def,
                             node_id,
@@ -327,10 +327,10 @@ impl<'a, 'b> visit::Visitor<'a> for DefCollector<'a, 'b> {
                         self.resolver
                             .impl_trait_context
                             .insert(def_id, self.impl_trait_context);
-                        def_id 
+                        def_id
                     }
                 };
-                
+
                 self.with_parent(parent_def, |this| visit::walk_ty(this, ty))
             }
             TyKind::TraitObject(..) => {
@@ -418,7 +418,7 @@ impl<'a, 'b> visit::Visitor<'a> for DefCollector<'a, 'b> {
                     DefPathData::ImplTrait,
                     constraint.span,
                 );
-                self.resolver 
+                self.resolver
                     .impl_trait_context
                     .insert(def_id, self.impl_trait_context);
             }

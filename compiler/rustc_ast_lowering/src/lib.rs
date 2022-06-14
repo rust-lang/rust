@@ -943,7 +943,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         ExpnId::root(),
                         constraint.span,
                     );*/
-                    
+ 
                     self.with_dyn_type_scope(false, |this| {
                         let node_id = this.resolver.next_node_id();
                         let ty = this.lower_ty(
@@ -1217,7 +1217,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     ImplTraitContext::Universal => {
                         // Add a definition for the in-band `Param`.
                         let def_id = self.resolver.local_def_id(def_node_id);
-                          
+
                         let hir_bounds =
                             self.lower_param_bounds(bounds, ImplTraitContext::Universal);
                         // Set the name to `impl Bound1 + Bound2`.
