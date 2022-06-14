@@ -2629,7 +2629,7 @@ impl<T> [T] {
     /// unstable (i.e. any number of equal elements may end up at position `index`), in-place
     /// (i.e. does not allocate), and *O*(*n*) worst-case. This function is also/ known as "kth
     /// element" in other libraries. It returns a triplet of the following values: all elements less
-    /// than or equal to the one at the given index, the value at the given index, and all elements 
+    /// than or equal to the one at the given index, the value at the given index, and all elements
     /// greater than or equal the one at the given index.
     ///
     /// # Current implementation
