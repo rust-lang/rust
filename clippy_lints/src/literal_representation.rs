@@ -51,6 +51,7 @@ declare_clippy_lint! {
     /// - Does not match on `_127` since that is a valid grouping for decimal and octal numbers
     ///
     /// ### Example
+    /// ```ignore
     /// `2_32` => `2_i32`
     /// `250_8 => `250_u8`
     /// ```
