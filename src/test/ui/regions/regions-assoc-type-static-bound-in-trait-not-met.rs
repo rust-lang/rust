@@ -8,7 +8,7 @@ trait Foo {
 
 impl<'a> Foo for &'a i32 {
     type Value = &'a i32;
-    //~^ ERROR the type `&'a i32` does not fulfill the required lifetime
+    //~^ ERROR lifetime bound not satisfied
 }
 
 impl<'a> Foo for i32 {

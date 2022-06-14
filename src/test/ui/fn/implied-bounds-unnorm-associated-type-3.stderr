@@ -5,7 +5,7 @@ LL |     fn zero_copy_from<'b>(cart: &'b [T]) -> &'b [T] {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: consider adding an explicit lifetime bound `T: 'static`...
-   = note: ...so that the type `[T]` will meet its required lifetime bounds
+   = note: ...so that the type `T` will meet its required lifetime bounds
 
 error: aborting due to previous error
 

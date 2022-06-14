@@ -20,7 +20,7 @@ trait Swapchain {
 
 impl<'s> Surface for &'s Texture {
     type TextureIter<'a> = std::option::IntoIter<&'a Texture>;
-    //~^ ERROR the type
+    //~^ ERROR lifetime bound not satisfied
 
     fn get_texture(&self) -> Self::TextureIter<'_> {
         let option: Option<&Texture> = Some(self);

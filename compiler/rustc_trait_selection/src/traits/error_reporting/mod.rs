@@ -2162,10 +2162,24 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                 }
             }
 
+            ty::PredicateKind::TypeOutlives(outlives) => {
+                if self.tcx.sess.has_errors().is_some() || self.is_tainted_by_errors() {
+                    return;
+                }
+                self.emit_inference_failure_err(
+                    body_id,
+                    span,
+                    outlives.0.into(),
+                    vec![],
+                    ErrorCode::E0284,
+                )
+            }
+
             _ => {
                 if self.tcx.sess.has_errors().is_some() || self.is_tainted_by_errors() {
                     return;
                 }
+
                 let mut err = struct_span_err!(
                     self.tcx.sess,
                     span,

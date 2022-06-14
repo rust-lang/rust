@@ -1,10 +1,15 @@
-error[E0477]: the type `<() as Yay<&'a ()>>::InnerStream<'s>` does not fulfill the required lifetime
+error[E0478]: lifetime bound not satisfied
   --> $DIR/issue-86218.rs:23:28
    |
 LL |     type InnerStream<'s> = impl Stream<Item = i32> + 's;
    |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: type must outlive the lifetime `'s` as defined here as required by this binding
+note: lifetime parameter instantiated with the lifetime `'a` as defined here
+  --> $DIR/issue-86218.rs:22:6
+   |
+LL | impl<'a> Yay<&'a ()> for () {
+   |      ^^
+note: but lifetime parameter must outlive the lifetime `'s` as defined here
   --> $DIR/issue-86218.rs:23:22
    |
 LL |     type InnerStream<'s> = impl Stream<Item = i32> + 's;
@@ -20,4 +25,4 @@ LL |     type InnerStream<'s> = impl Stream<Item = i32> + 's;
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0477`.
+For more information about this error, try `rustc --explain E0478`.

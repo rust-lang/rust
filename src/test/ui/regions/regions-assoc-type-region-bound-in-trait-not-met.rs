@@ -13,12 +13,12 @@ impl<'a> Foo<'a> for &'a i16 {
 
 impl<'a> Foo<'static> for &'a i32 {
     type Value = &'a i32;
-    //~^ ERROR the type `&'a i32` does not fulfill the required lifetime
+    //~^ ERROR lifetime bound not satisfied
 }
 
 impl<'a, 'b> Foo<'b> for &'a i64 {
     type Value = &'a i32;
-    //~^ ERROR the type `&'a i32` does not fulfill the required lifetime
+    //~^ ERROR lifetime bound not satisfied
 }
 
 fn main() {}

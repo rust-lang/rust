@@ -12,7 +12,7 @@ trait MakeFut {
 
 impl MakeFut for &'_ mut () {
     type Fut<'a> = impl Future<Output = ()>;
-    //~^ ERROR: the type `&mut ()` does not fulfill the required lifetime
+    //~^ ERROR: lifetime bound not satisfied
 
     fn make_fut<'a>(&'a self) -> Self::Fut<'a> {
         async { () }
