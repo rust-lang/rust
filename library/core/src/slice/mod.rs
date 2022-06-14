@@ -2628,9 +2628,10 @@ impl<T> [T] {
     /// less than or equal to any value at a position `j > index`. Additionally, this reordering is
     /// unstable (i.e. any number of equal elements may end up at position `index`), in-place
     /// (i.e. does not allocate), and *O*(*n*) worst-case. This function is also/ known as "kth
-    /// element" in other libraries. It returns a triplet of the following values: all elements less
-    /// than the one at the given index, the value at the given index, and all elements greater than
-    /// the one at the given index.
+    /// element" in other libraries. It returns a triplet of the following from the reordered slice:
+    /// the subslice prior to `index`, the element at `index`, and the subslice after `index`;
+    /// accordingly, the values in those two subslices will respectively all be less-than-or-equal-to
+    /// and greater-than-or-equal-to the value of the element at `index`.
     ///
     /// # Current implementation
     ///
@@ -2675,10 +2676,11 @@ impl<T> [T] {
     /// less than or equal to any value at a position `j > index` using the comparator function.
     /// Additionally, this reordering is unstable (i.e. any number of equal elements may end up at
     /// position `index`), in-place (i.e. does not allocate), and *O*(*n*) worst-case. This function
-    /// is also known as "kth element" in other libraries. It returns a triplet of the following
-    /// values: all elements less than the one at the given index, the value at the given index,
-    /// and all elements greater than the one at the given index, using the provided comparator
-    /// function.
+    /// is also known as "kth element" in other libraries. It returns a triplet of the following from
+    /// the slice reordered according to the provided comparator function: the subslice prior to
+    /// `index`, the element at `index`, and the subslice after `index`; accordingly, the values in
+    /// those two subslices will respectively all be less-than-or-equal-to and greater-than-or-equal-to
+    /// the value of the element at `index`.
     ///
     /// # Current implementation
     ///
@@ -2727,10 +2729,11 @@ impl<T> [T] {
     /// less than or equal to any value at a position `j > index` using the key extraction function.
     /// Additionally, this reordering is unstable (i.e. any number of equal elements may end up at
     /// position `index`), in-place (i.e. does not allocate), and *O*(*n*) worst-case. This function
-    /// is also known as "kth element" in other libraries. It returns a triplet of the following
-    /// values: all elements less than the one at the given index, the value at the given index, and
-    /// all elements greater than the one at the given index, using the provided key extraction
-    /// function.
+    /// is also known as "kth element" in other libraries. It returns a triplet of the following from
+    /// the slice reordered according to the provided key extraction function: the subslice prior to
+    /// `index`, the element at `index`, and the subslice after `index`; accordingly, the values in
+    /// those two subslices will respectively all be less-than-or-equal-to and greater-than-or-equal-to
+    /// the value of the element at `index`.
     ///
     /// # Current implementation
     ///
