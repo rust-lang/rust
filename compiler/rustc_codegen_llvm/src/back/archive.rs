@@ -20,9 +20,7 @@ use rustc_session::Session;
 pub struct LlvmArchiveBuilder<'a> {
     sess: &'a Session,
     dst: PathBuf,
-    src: Option<PathBuf>,
     additions: Vec<Addition>,
-    src_archive: Option<Option<ArchiveRO>>,
 }
 
 enum Addition {
@@ -59,14 +57,8 @@ fn llvm_machine_type(cpu: &str) -> LLVMMachineType {
 impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
     /// Creates a new static archive, ready for modifying the archive specified
     /// by `config`.
-    fn new(sess: &'a Session, output: &Path, input: Option<&Path>) -> LlvmArchiveBuilder<'a> {
-        LlvmArchiveBuilder {
-            sess,
-            dst: output.to_path_buf(),
-            src: input.map(|p| p.to_path_buf()),
-            additions: Vec::new(),
-            src_archive: None,
-        }
+    fn new(sess: &'a Session, output: &Path) -> LlvmArchiveBuilder<'a> {
+        LlvmArchiveBuilder { sess, dst: output.to_path_buf(), additions: Vec::new() }
     }
 
     fn add_archive<F>(&mut self, archive: &Path, skip: F) -> io::Result<()>
@@ -257,15 +249,6 @@ impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
 }
 
 impl<'a> LlvmArchiveBuilder<'a> {
-    fn src_archive(&mut self) -> Option<&ArchiveRO> {
-        if let Some(ref a) = self.src_archive {
-            return a.as_ref();
-        }
-        let src = self.src.as_ref()?;
-        self.src_archive = Some(ArchiveRO::open(src).ok());
-        self.src_archive.as_ref().unwrap().as_ref()
-    }
-
     fn llvm_archive_kind(&self) -> Result<ArchiveKind, &str> {
         let kind = &*self.sess.target.archive_format;
         kind.parse().map_err(|_| kind)
@@ -279,20 +262,6 @@ impl<'a> LlvmArchiveBuilder<'a> {
         let dst = CString::new(self.dst.to_str().unwrap())?;
 
         unsafe {
-            if let Some(archive) = self.src_archive() {
-                for child in archive.iter() {
-                    let child = child.map_err(string_to_io_error)?;
-                    let Some(child_name) = child.name() else { continue };
-
-                    let name = CString::new(child_name)?;
-                    members.push(llvm::LLVMRustArchiveMemberNew(
-                        ptr::null(),
-                        name.as_ptr(),
-                        Some(child.raw),
-                    ));
-                    strings.push(name);
-                }
-            }
             for addition in &mut additions {
                 match addition {
                     Addition::File { path, name_in_archive } => {

@@ -30,25 +30,7 @@ pub(crate) struct ArArchiveBuilder<'a> {
 }
 
 impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
-    fn new(sess: &'a Session, output: &Path, input: Option<&Path>) -> Self {
-        let (src_archives, entries) = if let Some(input) = input {
-            let read_cache = ReadCache::new(File::open(input).unwrap());
-            let archive = ArchiveFile::parse(&read_cache).unwrap();
-            let mut entries = Vec::new();
-
-            for entry in archive.members() {
-                let entry = entry.unwrap();
-                entries.push((
-                    entry.name().to_vec(),
-                    ArchiveEntry::FromArchive { archive_index: 0, file_range: entry.file_range() },
-                ));
-            }
-
-            (vec![read_cache.into_inner()], entries)
-        } else {
-            (vec![], Vec::new())
-        };
-
+    fn new(sess: &'a Session, output: &Path) -> Self {
         ArArchiveBuilder {
             sess,
             dst: output.to_path_buf(),
@@ -56,8 +38,8 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
             // FIXME fix builtin ranlib on macOS
             no_builtin_ranlib: sess.target.is_like_osx,
 
-            src_archives,
-            entries,
+            src_archives: vec![],
+            entries: vec![],
         }
     }
 

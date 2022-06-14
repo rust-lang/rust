@@ -42,7 +42,7 @@ pub(super) fn find_library(
 }
 
 pub trait ArchiveBuilder<'a> {
-    fn new(sess: &'a Session, output: &Path, input: Option<&Path>) -> Self;
+    fn new(sess: &'a Session, output: &Path) -> Self;
 
     fn add_file(&mut self, path: &Path);
 

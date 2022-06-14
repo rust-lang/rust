@@ -270,7 +270,7 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(
 
     let lib_search_paths = archive_search_paths(sess);
 
-    let mut ab = <B as ArchiveBuilder>::new(sess, out_filename, None);
+    let mut ab = <B as ArchiveBuilder>::new(sess, out_filename);
 
     let trailing_metadata = match flavor {
         RlibFlavor::Normal => {
@@ -2472,7 +2472,7 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
             let is_builtins = sess.target.no_builtins
                 || !codegen_results.crate_info.is_no_builtins.contains(&cnum);
 
-            let mut archive = <B as ArchiveBuilder>::new(sess, &dst, None);
+            let mut archive = <B as ArchiveBuilder>::new(sess, &dst);
             if let Err(e) = archive.add_archive(cratepath, move |f| {
                 if f == METADATA_FILENAME {
                     return true;

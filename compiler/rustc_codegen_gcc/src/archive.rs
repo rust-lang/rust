@@ -32,7 +32,7 @@ pub struct ArArchiveBuilder<'a> {
 }
 
 impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
-    fn new(sess: &'a Session, output: &Path, input: Option<&Path>) -> Self {
+    fn new(sess: &'a Session, output: &Path) -> Self {
         let config = ArchiveConfig {
             sess,
             dst: output.to_path_buf(),
@@ -41,32 +41,10 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
             use_gnu_style_archive: sess.target.options.archive_format == "gnu",
         };
 
-        let (src_archives, entries) = if let Some(input) = input {
-            let mut archive = ar::Archive::new(File::open(input).unwrap());
-            let mut entries = Vec::new();
-
-            let mut i = 0;
-            while let Some(entry) = archive.next_entry() {
-                let entry = entry.unwrap();
-                entries.push((
-                    String::from_utf8(entry.header().identifier().to_vec()).unwrap(),
-                    ArchiveEntry::FromArchive {
-                        archive_index: 0,
-                        entry_index: i,
-                    },
-                ));
-                i += 1;
-            }
-
-            (vec![(input.to_owned(), archive)], entries)
-        } else {
-            (vec![], Vec::new())
-        };
-
         ArArchiveBuilder {
             config,
-            src_archives,
-            entries,
+            src_archives: vec![],
+            entries: vec![],
         }
     }
 
