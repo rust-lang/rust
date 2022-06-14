@@ -97,7 +97,7 @@ pub(crate) fn try_destructure_const<'tcx>(
     tcx: TyCtxt<'tcx>,
     const_: ty::Const<'tcx>,
 ) -> Option<ty::DestructuredConst<'tcx>> {
-    if let ty::ConstKind::Value(valtree) = const_.val() {
+    if let ty::ConstKind::Value(valtree) = const_.kind() {
         let branches = match valtree {
             ty::ValTree::Branch(b) => b,
             _ => return None,
@@ -216,7 +216,7 @@ pub(crate) fn deref_mir_constant<'tcx>(
     let mplace = ecx.deref_operand(&op).unwrap();
     if let Some(alloc_id) = mplace.ptr.provenance {
         assert_eq!(
-            tcx.get_global_alloc(alloc_id).unwrap().unwrap_memory().0 .0.mutability,
+            tcx.get_global_alloc(alloc_id).unwrap().unwrap_memory().0.0.mutability,
             Mutability::Not,
             "deref_mir_constant cannot be used with mutable allocations as \
             that could allow pattern matching to observe mutable statics",

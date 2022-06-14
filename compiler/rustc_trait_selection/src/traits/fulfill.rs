@@ -407,7 +407,7 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                     let pred =
                         ty::Binder::dummy(infcx.replace_bound_vars_with_placeholders(binder));
                     ProcessResult::Changed(mk_pending(vec![
-                        obligation.with(pred.to_predicate(self.selcx.tcx()))
+                        obligation.with(pred.to_predicate(self.selcx.tcx())),
                     ]))
                 }
                 ty::PredicateKind::TypeWellFormedFromEnv(..) => {

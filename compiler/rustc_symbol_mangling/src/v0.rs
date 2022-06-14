@@ -669,7 +669,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
                             .expect("tried to dereference on non-ptr type")
                             .ty;
                         let dereferenced_const =
-                            self.tcx.mk_const(ty::ConstS { val: ct.val(), ty: pointee_ty });
+                            self.tcx.mk_const(ty::ConstS { kind: ct.kind(), ty: pointee_ty });
                         self = dereferenced_const.print(self)?;
                     }
                 }

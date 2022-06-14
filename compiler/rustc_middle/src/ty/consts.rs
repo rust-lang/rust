@@ -201,7 +201,7 @@ impl<'tcx> Const<'tcx> {
 
     /// Panics if self.kind != ty::ConstKind::Value
     pub fn to_valtree(self) -> ty::ValTree<'tcx> {
-        match self.val() {
+        match self.kind() {
             ty::ConstKind::Value(valtree) => valtree,
             _ => bug!("expected ConstKind::Value"),
         }
@@ -286,7 +286,7 @@ impl<'tcx> Const<'tcx> {
     /// Tries to evaluate the constant if it is `Unevaluated` and creates a ConstValue if the
     /// evaluation succeeds. If it doesn't succeed, returns the unevaluated constant.
     pub fn eval_for_mir(self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> ConstantKind<'tcx> {
-        if let Some(val) = self.val().try_eval_for_mir(tcx, param_env) {
+        if let Some(val) = self.kind().try_eval_for_mir(tcx, param_env) {
             match val {
                 Ok(const_val) => ConstantKind::from_value(const_val, self.ty()),
                 Err(ErrorGuaranteed { .. }) => ConstantKind::Ty(tcx.const_error(self.ty())),

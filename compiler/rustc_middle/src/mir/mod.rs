@@ -1446,11 +1446,7 @@ impl<'tcx> BasicBlockData<'tcx> {
     }
 
     pub fn visitable(&self, index: usize) -> &dyn MirVisitable<'tcx> {
-        if index < self.statements.len() {
-            &self.statements[index]
-        } else {
-            &self.terminator
-        }
+        if index < self.statements.len() { &self.statements[index] } else { &self.terminator }
     }
 }
 
@@ -2471,11 +2467,7 @@ impl<'tcx> Operand<'tcx> {
     /// find as the `func` in a [`TerminatorKind::Call`].
     pub fn const_fn_def(&self) -> Option<(DefId, SubstsRef<'tcx>)> {
         let const_ty = self.constant()?.literal.ty();
-        if let ty::FnDef(def_id, substs) = *const_ty.kind() {
-            Some((def_id, substs))
-        } else {
-            None
-        }
+        if let ty::FnDef(def_id, substs) = *const_ty.kind() { Some((def_id, substs)) } else { None }
     }
 }
 
@@ -2995,7 +2987,7 @@ impl<'tcx> ConstantKind<'tcx> {
     #[inline]
     pub fn try_to_scalar(self) -> Option<Scalar> {
         match self {
-            ConstantKind::Ty(c) => match c.val() {
+            ConstantKind::Ty(c) => match c.kind() {
                 ty::ConstKind::Value(valtree) => match valtree {
                     ty::ValTree::Leaf(scalar_int) => Some(Scalar::Int(scalar_int)),
                     ty::ValTree::Branch(_) => None,
@@ -3291,7 +3283,7 @@ impl<'tcx> ConstantKind<'tcx> {
     }
 
     pub fn from_const(c: ty::Const<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
-        match c.val() {
+        match c.kind() {
             ty::ConstKind::Value(valtree) => {
                 let const_val = tcx.valtree_to_const_val((c.ty(), valtree));
                 Self::Val(const_val, c.ty())
@@ -3587,7 +3579,7 @@ fn pretty_print_const_value<'tcx>(
                 }
             }
             (ConstValue::ByRef { alloc, offset }, ty::Array(t, n)) if *t == u8_type => {
-                let n = n.val().try_to_bits(tcx.data_layout.pointer_size).unwrap();
+                let n = n.kind().try_to_bits(tcx.data_layout.pointer_size).unwrap();
                 // cast is ok because we already checked for pointer size (32 or 64 bit) above
                 let range = AllocRange { start: offset, size: Size::from_bytes(n) };
                 let byte_str = alloc.inner().get_bytes(&tcx, range).unwrap();

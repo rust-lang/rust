@@ -607,11 +607,7 @@ pub trait PrettyPrinter<'tcx>:
                         }
                     }
                 } else {
-                    if verbose {
-                        p!(write("{:?}", infer_ty))
-                    } else {
-                        p!(write("{}", infer_ty))
-                    }
+                    if verbose { p!(write("{:?}", infer_ty)) } else { p!(write("{}", infer_ty)) }
                 }
             }
             ty::Error(_) => p!("[type error]"),
@@ -1335,11 +1331,7 @@ pub trait PrettyPrinter<'tcx>:
             ty::Uint(_) | ty::Int(_) => {
                 let int =
                     ConstInt::new(int, matches!(ty.kind(), ty::Int(_)), ty.is_ptr_sized_integral());
-                if print_ty {
-                    p!(write("{:#?}", int))
-                } else {
-                    p!(write("{:?}", int))
-                }
+                if print_ty { p!(write("{:#?}", int)) } else { p!(write("{:?}", int)) }
             }
             // Char
             ty::Char if char::try_from(int).is_ok() => {
@@ -2294,7 +2286,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
             type BreakTy = ();
 
             fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
-                trace!("address: {:p}", r.0 .0);
+                trace!("address: {:p}", r.0.0);
                 if let ty::ReLateBound(_, ty::BoundRegion { kind: ty::BrNamed(_, name), .. }) = *r {
                     self.used_region_names.insert(name);
                 } else if let ty::RePlaceholder(ty::PlaceholderRegion {

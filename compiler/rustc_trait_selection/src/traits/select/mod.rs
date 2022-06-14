@@ -2578,11 +2578,7 @@ impl<'o, 'tcx> TraitObligationStackList<'o, 'tcx> {
     }
 
     fn depth(&self) -> usize {
-        if let Some(head) = self.head {
-            head.depth
-        } else {
-            0
-        }
+        if let Some(head) = self.head { head.depth } else { 0 }
     }
 }
 

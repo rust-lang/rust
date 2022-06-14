@@ -484,7 +484,7 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
             // This reflects what `Const` looked liked before `val` was renamed
             // as `kind`. We print it like this to avoid having to update
             // expected output in a lot of tests.
-            self.push(&format!("+ literal: Const {{ ty: {}, val: {} }}", literal.ty(), kind));
+            self.push(&format!("+ literal: Const {{ ty: {}, val: {} }}", literal.ty(), val));
         }
     }
 
