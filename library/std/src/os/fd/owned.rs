@@ -100,6 +100,7 @@ impl OwnedFd {
     }
 
     #[cfg(target_arch = "wasm32")]
+    #[stable(feature = "io_safety", since = "1.63.0")]
     pub fn try_clone(&self) -> crate::io::Result<Self> {
         Err(crate::io::const_io_error!(
             crate::io::ErrorKind::Unsupported,
