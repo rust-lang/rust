@@ -2,10 +2,18 @@
 
 use expect_test::{expect, Expect};
 
-use crate::tests::{check_edit, completion_list_no_kw};
+use crate::{
+    tests::{check_edit, completion_list_no_kw, completion_list_with_config, TEST_CONFIG},
+    CompletionConfig,
+};
 
 fn check(ra_fixture: &str, expect: Expect) {
     let actual = completion_list_no_kw(ra_fixture);
+    expect.assert_eq(&actual)
+}
+
+fn check_with_config(config: CompletionConfig, ra_fixture: &str, expect: Expect) {
+    let actual = completion_list_with_config(config, ra_fixture, true, None);
     expect.assert_eq(&actual)
 }
 
@@ -634,5 +642,106 @@ fn bar() -> Bar {
         expect![[r#"
                 fn foo() (as Foo) fn() -> Self
             "#]],
+    )
+}
+
+#[test]
+fn completes_fn_in_pub_trait_generated_by_macro() {
+    let mut config = TEST_CONFIG.clone();
+    config.enable_private_editable = false;
+
+    check_with_config(
+        config,
+        r#"
+mod other_mod {
+    macro_rules! make_method {
+        ($name:ident) => {
+            fn $name(&self) {}
+        };
+    }
+
+    pub trait MyTrait {
+        make_method! { by_macro }
+        fn not_by_macro(&self) {}
+    }
+
+    pub struct Foo {}
+
+    impl MyTrait for Foo {}
+}
+
+fn main() {
+    use other_mod::{Foo, MyTrait};
+    let f = Foo {};
+    f.$0
+}
+"#,
+        expect![[r#"
+            me by_macro() (as MyTrait) fn(&self)
+            me not_by_macro() (as MyTrait) fn(&self)
+            sn box                    Box::new(expr)
+            sn call                   function(expr)
+            sn dbg                    dbg!(expr)
+            sn dbgr                   dbg!(&expr)
+            sn let                    let
+            sn letm                   let mut
+            sn match                  match expr {}
+            sn ref                    &expr
+            sn refm                   &mut expr
+        "#]],
+    )
+}
+
+
+#[test]
+fn completes_fn_in_pub_trait_generated_by_recursive_macro() {
+    let mut config = TEST_CONFIG.clone();
+    config.enable_private_editable = false;
+
+    check_with_config(
+        config,
+        r#"
+mod other_mod {
+    macro_rules! make_method {
+        ($name:ident) => {
+            fn $name(&self) {}
+        };
+    }
+
+    macro_rules! make_trait {
+        () => {
+            pub trait MyTrait {
+                make_method! { by_macro }
+                fn not_by_macro(&self) {}
+            }
+        }
+    }
+
+    make_trait!();
+
+    pub struct Foo {}
+
+    impl MyTrait for Foo {}
+}
+
+fn main() {
+    use other_mod::{Foo, MyTrait};
+    let f = Foo {};
+    f.$0
+}
+"#,
+        expect![[r#"
+            me by_macro() (as MyTrait) fn(&self)
+            me not_by_macro() (as MyTrait) fn(&self)
+            sn box                    Box::new(expr)
+            sn call                   function(expr)
+            sn dbg                    dbg!(expr)
+            sn dbgr                   dbg!(&expr)
+            sn let                    let
+            sn letm                   let mut
+            sn match                  match expr {}
+            sn ref                    &expr
+            sn refm                   &mut expr
+        "#]],
     )
 }
