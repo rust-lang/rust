@@ -396,7 +396,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
 
         // Try to lookup name in more relaxed fashion for better error reporting.
         let ident = path.last().unwrap().ident;
-        let candidates = self
+        let mut candidates = self
             .r
             .lookup_import_candidates(ident, ns, &self.parent_scope, is_expected)
             .into_iter()
@@ -408,6 +408,18 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
             })
             .collect::<Vec<_>>();
         let crate_def_id = CRATE_DEF_ID.to_def_id();
+        // Try to filter out intrinsics candidates, as long as we have
+        // some other candidates to suggest.
+        let intrinsic_candidates: Vec<_> = candidates
+            .drain_filter(|sugg| {
+                let path = path_names_to_string(&sugg.path);
+                path.starts_with("core::intrinsics::") || path.starts_with("std::intrinsics::")
+            })
+            .collect();
+        if candidates.is_empty() {
+            // Put them back if we have no more candidates to suggest...
+            candidates.extend(intrinsic_candidates);
+        }
         if candidates.is_empty() && is_expected(Res::Def(DefKind::Enum, crate_def_id)) {
             let mut enum_candidates: Vec<_> = self
                 .r
