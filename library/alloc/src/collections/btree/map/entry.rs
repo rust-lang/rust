@@ -315,7 +315,7 @@ impl<'a, K: Ord, V> VacantEntry<'a, K, V> {
     pub fn insert(self, value: V) -> &'a mut V {
         let out_ptr = match self.handle {
             None => {
-                // SAFETY: We have consumed self.handle and the reference returned.
+                // SAFETY: There is no tree yet so no reference to it exists.
                 let map = unsafe { self.dormant_map.awaken() };
                 let mut root = NodeRef::new_leaf();
                 let val_ptr = root.borrow_mut().push(self.key, value) as *mut V;
@@ -325,16 +325,17 @@ impl<'a, K: Ord, V> VacantEntry<'a, K, V> {
             }
             Some(handle) => match handle.insert_recursing(self.key, value) {
                 (None, val_ptr) => {
-                    // SAFETY: We have consumed self.handle and the handle returned.
+                    // SAFETY: We have consumed self.handle.
                     let map = unsafe { self.dormant_map.awaken() };
                     map.length += 1;
                     val_ptr
                 }
                 (Some(ins), val_ptr) => {
                     drop(ins.left);
-                    // SAFETY: We have consumed self.handle and the reference returned.
+                    // SAFETY: We have consumed self.handle and dropped the
+                    // remaining reference to the tree, ins.left.
                     let map = unsafe { self.dormant_map.awaken() };
-                    let root = map.root.as_mut().unwrap();
+                    let root = map.root.as_mut().unwrap(); // same as ins.left
                     root.push_internal_level().push(ins.kv.0, ins.kv.1, ins.right);
                     map.length += 1;
                     val_ptr
