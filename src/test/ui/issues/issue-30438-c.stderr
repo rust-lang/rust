@@ -4,6 +4,7 @@ warning: unnecessary lifetime parameter `'z`
 LL | fn silly<'y, 'z>(_s: &'y Test<'z>) -> &'y <Test<'z> as Trait>::Out where 'z: 'static {
    |                                                                          ^^
    |
+   = note: `#[warn(named_static_lifetimes)]` on by default
    = help: you can use the `'static` lifetime directly, in place of `'z`
 
 error[E0515]: cannot return reference to local variable `x`
