@@ -13,7 +13,7 @@ fn check(ra_fixture: &str, expect: Expect) {
 }
 
 fn check_with_config(config: CompletionConfig, ra_fixture: &str, expect: Expect) {
-    let actual = completion_list_with_config(config, ra_fixture, true, None);
+    let actual = completion_list_with_config(config, ra_fixture, false, None);
     expect.assert_eq(&actual)
 }
 
@@ -679,19 +679,9 @@ fn main() {
         expect![[r#"
             me by_macro() (as MyTrait) fn(&self)
             me not_by_macro() (as MyTrait) fn(&self)
-            sn box                    Box::new(expr)
-            sn call                   function(expr)
-            sn dbg                    dbg!(expr)
-            sn dbgr                   dbg!(&expr)
-            sn let                    let
-            sn letm                   let mut
-            sn match                  match expr {}
-            sn ref                    &expr
-            sn refm                   &mut expr
         "#]],
     )
 }
-
 
 #[test]
 fn completes_fn_in_pub_trait_generated_by_recursive_macro() {
@@ -733,15 +723,42 @@ fn main() {
         expect![[r#"
             me by_macro() (as MyTrait) fn(&self)
             me not_by_macro() (as MyTrait) fn(&self)
-            sn box                    Box::new(expr)
-            sn call                   function(expr)
-            sn dbg                    dbg!(expr)
-            sn dbgr                   dbg!(&expr)
-            sn let                    let
-            sn letm                   let mut
-            sn match                  match expr {}
-            sn ref                    &expr
-            sn refm                   &mut expr
+        "#]],
+    )
+}
+
+#[test]
+fn completes_const_in_pub_trait_generated_by_macro() {
+    let mut config = TEST_CONFIG.clone();
+    config.enable_private_editable = false;
+
+    check_with_config(
+        config,
+        r#"
+mod other_mod {
+    macro_rules! make_const {
+        ($name:ident) => {
+            const $name: u8 = 1;
+        };
+    }
+
+    pub trait MyTrait {
+        make_const! { by_macro }
+    }
+
+    pub struct Foo {}
+
+    impl MyTrait for Foo {}
+}
+
+fn main() {
+    use other_mod::{Foo, MyTrait};
+    let f = Foo {};
+    Foo::$0
+}
+"#,
+        expect![[r#"
+            ct by_macro (as MyTrait) pub const by_macro: u8
         "#]],
     )
 }

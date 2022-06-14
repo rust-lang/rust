@@ -1,6 +1,6 @@
 //! AST -> `ItemTree` lowering code.
 
-use std::{collections::hash_map::Entry, mem, sync::Arc};
+use std::{collections::hash_map::Entry, sync::Arc};
 
 use hir_expand::{ast_id_map::AstIdMap, hygiene::Hygiene, HirFileId};
 use syntax::ast::{self, HasModuleItem};

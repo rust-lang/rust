@@ -1549,8 +1549,12 @@ impl ModCollector<'_, '_> {
                 }
                 ModItem::Function(id) => {
                     let it = &self.item_tree[id];
-                    let fn_id =
-                        FunctionLoc { container, id: ItemTreeId::new(self.tree_id, id) }.intern(db);
+                    let fn_id = FunctionLoc {
+                        container,
+                        id: ItemTreeId::new(self.tree_id, id),
+                        inherited_visibility: None,
+                    }
+                    .intern(db);
 
                     let vis = resolve_vis(def_map, &self.item_tree[it.visibility]);
                     if self.def_collector.is_proc_macro {
@@ -1613,8 +1617,12 @@ impl ModCollector<'_, '_> {
                 }
                 ModItem::Const(id) => {
                     let it = &self.item_tree[id];
-                    let const_id =
-                        ConstLoc { container, id: ItemTreeId::new(self.tree_id, id) }.intern(db);
+                    let const_id = ConstLoc {
+                        container,
+                        id: ItemTreeId::new(self.tree_id, id),
+                        inherited_visibility: None,
+                    }
+                    .intern(db);
 
                     match &it.name {
                         Some(name) => {
@@ -1635,9 +1643,13 @@ impl ModCollector<'_, '_> {
                     let vis = resolve_vis(def_map, &self.item_tree[it.visibility]);
                     update_def(
                         self.def_collector,
-                        StaticLoc { container, id: ItemTreeId::new(self.tree_id, id) }
-                            .intern(db)
-                            .into(),
+                        StaticLoc {
+                            container,
+                            id: ItemTreeId::new(self.tree_id, id),
+                            inherited_visibility: None,
+                        }
+                        .intern(db)
+                        .into(),
                         &it.name,
                         vis,
                         false,
@@ -1663,9 +1675,13 @@ impl ModCollector<'_, '_> {
                     let vis = resolve_vis(def_map, &self.item_tree[it.visibility]);
                     update_def(
                         self.def_collector,
-                        TypeAliasLoc { container, id: ItemTreeId::new(self.tree_id, id) }
-                            .intern(db)
-                            .into(),
+                        TypeAliasLoc {
+                            container,
+                            id: ItemTreeId::new(self.tree_id, id),
+                            inherited_visibility: None,
+                        }
+                        .intern(db)
+                        .into(),
                         &it.name,
                         vis,
                         false,
