@@ -2,9 +2,82 @@
 
 ## [Unreleased]
 
+## [1.5.0] 2022-06-13
+
+### Changed
+
+- Simplify the rustfmt help text by eliding the full path to the rustfmt binary path from the usage string when running `rustfmt --help` [#5214](https://github.com/rust-lang/rustfmt/issues/5214)
+
 ### Fixed
 
-- Fixes issue where wrapped strings would be incorrectly indented in macro defs when `format_strings` was enabled [#4036](https://github.com/rust-lang/rustfmt/issues/4036)
+- Remove duplicate imports when `imports_granularity` is set to `Item` [#4725](https://github.com/rust-lang/rustfmt/issues/4725)
+- Properly handle stdin input containing an inner skip attribute [#5368](https://github.com/rust-lang/rustfmt/issues/5368)
+- Maintain attributes on imports when `imports_granularity` is set to `Item` [#5030](https://github.com/rust-lang/rustfmt/issues/5030)
+- Format empty trait definitions as a single line when both `empty_item_single_line` is enabled and `brace_style` is set to `AlwaysNextLine` [#5047](https://github.com/rust-lang/rustfmt/issues/5047)
+- Don't change granularity of imports containing comments with `imports_granularity` if doing so could lose or misplace those comments [#5311](https://github.com/rust-lang/rustfmt/pull/5311)
+- Prevent rustfmt from removing trailing comments at the end of files annotated with inner `#![rustfmt::skip]` attributes [#5033](https://github.com/rust-lang/rustfmt/issues/5033)
+- Fixed various `error[internal]: left behind trailing whitespace"` issues:
+  - Remove trailing whitespace when formatting a where clause who's bounds have an empty right hand side [#5012](https://github.com/rust-lang/rustfmt/issues/5012) [#4850](https://github.com/rust-lang/rustfmt/issues/4850)
+  - Prevent rustfmt from adding an empty comment line when rewriting markdown lists at the start of doc comments. This issue was triggered when `wrap_comments=true` [#5088](https://github.com/rust-lang/rustfmt/issues/5088)
+- Prevent adding a block indented newline before a function parameter with a complex type that was formatted over multiple lines [#5125](https://github.com/rust-lang/rustfmt/issues/5125)
+- Fix various module resolution issues preventing rustfmt from finding modules that should be formatted:
+  - Handle external mods imported via external->inline load hierarchy [#5063](https://github.com/rust-lang/rustfmt/issues/5063)
+  - Resolve sub modules of integration tests [#5119](https://github.com/rust-lang/rustfmt/issues/5119)
+  - Module resolution will fallback to the current search directory if a relative directory search results in a `FileNotFound` error [#5198](https://github.com/rust-lang/rustfmt/issues/5198)
+- Give users a clearer error message when resolving a module who's file path is ambiguous (e.g `x.rs` and `x/mod.rs`). Before users were given a `File not found` error message which was confusing [#5167](https://github.com/rust-lang/rustfmt/issues/5167)
+- Fix various issues related to type aliases:
+  - Prevent rustfmt from adding `= impl` to associated types defined in macro bodies [#4823](https://github.com/rust-lang/rustfmt/issues/4823)
+  - Properly block indent type alias impl traits (TAITs) that wrap to the next line when `version=Two` is set. Before any trait bounds that wrapped to the next line would not be indented [#5027](https://github.com/rust-lang/rustfmt/issues/5027)
+  - Prevent rustfmt from adding an `impl Trait` definition into types [#5086](https://github.com/rust-lang/rustfmt/issues/5086)
+- Fix cases where `normalize_comments=true` would de-normalizes some comments by changing inline comments into block comments [#4909](https://github.com/rust-lang/rustfmt/issues/4909)
+- Prevent rustfmt from wrapping the content of markdown [reference-style links](https://www.markdownguide.org/basic-syntax/#reference-style-links) in doc comments [#5095](https://github.com/rust-lang/rustfmt/issues/5095) [#4933](https://github.com/rust-lang/rustfmt/issues/4933)
+- Don't format files annotated with inner `#![rustfmt::skip]` attribute [PR #5094](https://github.com/rust-lang/rustfmt/pull/5094)
+- Prevent duplicate comma when struct pattern ends with `..` and `trailing_comma=Always`. For example, `let Foo { a, .. } = b;` would become `let Foo { a,, .. } = b;` [#5066](https://github.com/rust-lang/rustfmt/issues/5066)
+- Fix the order of `static` and `async` keywords when rewriting static async closures. The correct order is `static` and then `async` (e.g `static async || {}`) [#5149](https://github.com/rust-lang/rustfmt/issues/5149)
+- Retain the fully qualified path segment when rewriting struct literals in expression position. Now `<Struct as Trait>::Type` is not rewritten as `Trait::Type` [#5151](https://github.com/rust-lang/rustfmt/issues/5151)
+- Do not remove match arm braces from a match arm with a single `ast::ExprKind::Block` that has leading attributes. Removing the braces could lead to code that does not compile. Now rustfmt will leave the outer `{}` in place when formatting `=> {#[allow(unsafe_code)]unsafe {}}` [#4109](https://github.com/rust-lang/rustfmt/issues/4109)
+- Backport json emitter and stdin changes [PR #5054](https://github.com/rust-lang/rustfmt/pull/5054)
+  - Make `--check` work when running rustfmt with input from stdin [PR #3896](https://github.com/rust-lang/rustfmt/pull/3896)
+  - Fix `--check` with the `--files-with-diff` flag [PR #3910](https://github.com/rust-lang/rustfmt/pull/3910)
+  - Produce valid JSON when using the JSON emitter [PR #3953](https://github.com/rust-lang/rustfmt/pull/3953)
+  - Fix newlines in JSON output [PR #4262](https://github.com/rust-lang/rustfmt/pull/4262)
+  - Use `<stdin>` when emitting stdin as filename [PR #4298](https://github.com/rust-lang/rustfmt/pull/4298)
+- Always generate some output when formatting `@generated` files via stdin even when `format_generated_files=false`. Not producing output caused rust-analyzer to delete the file content [rust-lang/rust-analyzer](https://github.com/rust-lang/rust-analyzer/issues/11285) [#5172](https://github.com/rust-lang/rustfmt/issues/5172)
+- Properly block indent multi-line comments in empty struct definitions. Previously, only the first comment line would be block indented. All other comment lines would be aligned with the struct definition [#4854](https://github.com/rust-lang/rustfmt/issues/4854)
+- Prevent rustfmt from wrapping a comment at a byte position inside a non-ascii character when `wrap_comments=true`. This prevents rustfmt from panicking when breaking on the invalid position [#5023](https://github.com/rust-lang/rustfmt/issues/5023)
+- Prevent rustfmt from removing commented out trailing separators (e.g commas) when rewriting lists. For example, remove the comma from a comment like this `// ...,` would lead to a scenario where the entire list could not be rewritten because the content of the comment changed [#5042](https://github.com/rust-lang/rustfmt/issues/5042)
+- Fix panic when `import_granularity` was set to `Module`, `One`, or `Crate` and the import use declaration contained an alias `use crate a::b as b1` [#5131](https://github.com/rust-lang/rustfmt/issues/5131)
+- Add a newline between generic parameters and their doc comments to prevent the generic parameters from being merged into their doc comments [#5122](https://github.com/rust-lang/rustfmt/issues/5122)
+- Fixes indentation issue where string literals manually broken with line continuation characters (`\`) would be incorrectly indented in macro definitions when setting `format_strings=true`[#4036](https://github.com/rust-lang/rustfmt/issues/4036)
+- Properly wrap and format long markdown block quotes when `wrap_comments=true` [#5157](https://github.com/rust-lang/rustfmt/issues/5157)
+- Prevent rustfmt from wrapping markdown headers even when `wrap_comments=true`. Wrapping the markdown headers would prevent them from being properly rendered with rustdoc [#5238](https://github.com/rust-lang/rustfmt/issues/5238)
+- Prevent rustfmt from removing commas between struct fields when those fields were also separated by an empty line [#4791](https://github.com/rust-lang/rustfmt/issues/4791) [#4928](https://github.com/rust-lang/rustfmt/issues/4928)
+- Fix compiler error caused when formatting imports with `imports_granularity=Module` and a path containing `self`. Given the following import `use crate::lexer::{self, tokens::TokenData};`, rustfmt would transform the `self` import into `use crate::lexer::self;`. Now rustfmt produces `use crate::lexer::{self};` [#4681](https://github.com/rust-lang/rustfmt/issues/4681)
+- Prevent rustfmt from breaking long type links in doc comments on namespace qualifiers (`::`) when `wrap_comments=true`. Breaking these long type links over multiple lines prevented them from being properly rendered in rustdoc [#5260](https://github.com/rust-lang/rustfmt/issues/5260)
+- Correctly find the start of struct bodies after any generic `const` parameters. Naively searching for an opening `{` lead to issues since generic `const` parameters are also defined with `{}` (e.g. `struct Example<const N: usize = { 1048576 }> {}`) [#5273](https://github.com/rust-lang/rustfmt/issues/5273)
+- Prevent rustfmt from merging derives when using inner or outer `rustfmt::skip::attributes` attributes. For example, `#[rustfmt::skip::attributes(derive)]` [#5270](https://github.com/rust-lang/rustfmt/issues/5270)
+- Retain trailing `;` when rewriting macro calls in extern blocks. For example, `extern "C" { x!(-); }`[#5281](https://github.com/rust-lang/rustfmt/issues/5281)
+- Add a newline when formatting struct fields preceded by both doc comments and inline comments to prevent the field from being merged into the inline comment. This was not an issue when a struct was preceded by just a doc comment or just an inline comment [#5215](https://github.com/rust-lang/rustfmt/issues/5215)
+
+### Added
+
+- Added `One` as a new [group_imports](https://rust-lang.github.io/rustfmt/?version=v1.4.38&search=#group_imports) option to create a single group for all imports [PR #4966](https://github.com/rust-lang/rustfmt/pull/4966)
+- Add [short_array_element_width_threshold](https://rust-lang.github.io/rustfmt/?version=v1.4.38&search=#short_array_element_width_threshold) config option to give users more control over when `Mixed` list formatting is used [PR #5228](https://github.com/rust-lang/rustfmt/pull/5228)
+
+### Removed
+
+- Removed unstable, nightly-only config option `report_todo` [#5101](https://github.com/rust-lang/rustfmt/issues/5101)
+- Removed unstable, nightly-only config option `report_fixme` [#5102](https://github.com/rust-lang/rustfmt/issues/5102)
+- Removed unstable, nightly-only config option `license_template_path` [#5103](https://github.com/rust-lang/rustfmt/issues/5103)
+
+### Misc
+
+- Improved performance when formatting large and deeply nested expression trees, often found in generated code, which have many expressions that exceed `max_width` [#5128](https://github.com/rust-lang/rustfmt/issues/5128), [#4867](https://github.com/rust-lang/rustfmt/issues/4867), [#4476](https://github.com/rust-lang/rustfmt/issues/4476), [#5139](https://github.com/rust-lang/rustfmt/pull/5139)
+
+### Install/Download Options
+- **rustup (nightly)** - *pending*
+- **GitHub Release Binaries** - [Release v1.5.0](https://github.com/rust-lang/rustfmt/releases/tag/v1.5.0)
+- **Build from source** - [Tag v1.5.0](https://github.com/rust-lang/rustfmt/tree/v1.5.0), see instructions for how to [install rustfmt from source][install-from-source]
 
 ## [1.4.38] 2021-10-20
 
