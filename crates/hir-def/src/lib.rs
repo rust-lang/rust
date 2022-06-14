@@ -70,7 +70,7 @@ use hir_expand::{
     AstId, ExpandError, ExpandTo, HirFileId, InFile, MacroCallId, MacroCallKind, MacroDefId,
     MacroDefKind, UnresolvedMacro,
 };
-use item_tree::{ExternBlock, RawVisibilityId, TreeId};
+use item_tree::ExternBlock;
 use la_arena::Idx;
 use nameres::DefMap;
 use stdx::impl_from;
@@ -156,25 +156,19 @@ impl<N: ItemTreeNode> Hash for ItemLoc<N> {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-pub struct InheritedVisibilityLoc {
-    pub raw_visibility_id: RawVisibilityId,
-    pub tree_id: TreeId,
-}
-
-impl InheritedVisibilityLoc {
-    pub fn new(visibility_id: RawVisibilityId, tree_id: TreeId) -> Self {
-        Self { raw_visibility_id: visibility_id, tree_id }
-    }
-}
-
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug)]
 pub struct AssocItemLoc<N: ItemTreeNode> {
     pub container: ItemContainerId,
     pub id: ItemTreeId<N>,
-    pub inherited_visibility: Option<InheritedVisibilityLoc>,
 }
 
+impl<N: ItemTreeNode> Clone for AssocItemLoc<N> {
+    fn clone(&self) -> Self {
+        Self { container: self.container, id: self.id }
+    }
+}
+
+impl<N: ItemTreeNode> Copy for AssocItemLoc<N> {}
 impl<N: ItemTreeNode> PartialEq for AssocItemLoc<N> {
     fn eq(&self, other: &Self) -> bool {
         self.container == other.container && self.id == other.id

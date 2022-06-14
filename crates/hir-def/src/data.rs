@@ -15,8 +15,8 @@ use crate::{
     type_ref::{TraitRef, TypeBound, TypeRef},
     visibility::RawVisibility,
     AssocItemId, AstIdWithPath, ConstId, ConstLoc, FunctionId, FunctionLoc, HasModule, ImplId,
-    InheritedVisibilityLoc, Intern, ItemContainerId, Lookup, Macro2Id, MacroRulesId, ModuleId,
-    ProcMacroId, StaticId, TraitId, TypeAliasId, TypeAliasLoc,
+    Intern, ItemContainerId, Lookup, Macro2Id, MacroRulesId, ModuleId, ProcMacroId, StaticId,
+    TraitId, TypeAliasId, TypeAliasLoc,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -40,9 +40,8 @@ impl FunctionData {
         let cfg_options = &crate_graph[krate].cfg_options;
         let item_tree = loc.id.item_tree(db);
         let func = &item_tree[loc.id.value];
-
-        let visibility = if let Some(inherited_vis) = loc.inherited_visibility {
-            inherited_vis.tree_id.item_tree(db)[inherited_vis.raw_visibility_id].clone()
+        let visibility = if let ItemContainerId::TraitId(trait_id) = loc.container {
+            db.trait_data(trait_id).visibility.clone()
         } else {
             item_tree[func.visibility].clone()
         };
@@ -177,8 +176,8 @@ impl TypeAliasData {
         let loc = typ.lookup(db);
         let item_tree = loc.id.item_tree(db);
         let typ = &item_tree[loc.id.value];
-        let visibility = if let Some(inherited_vis) = loc.inherited_visibility {
-            inherited_vis.tree_id.item_tree(db)[inherited_vis.raw_visibility_id].clone()
+        let visibility = if let ItemContainerId::TraitId(trait_id) = loc.container {
+            db.trait_data(trait_id).visibility.clone()
         } else {
             item_tree[typ.visibility].clone()
         };
@@ -232,7 +231,6 @@ impl TraitData {
             module_id,
             tr_loc.id.file_id(),
             ItemContainerId::TraitId(tr),
-            Some(InheritedVisibilityLoc::new(tr_def.visibility, tr_loc.id.tree_id())),
         );
         collector.collect(tr_loc.id.tree_id(), &tr_def.items);
 
@@ -300,7 +298,6 @@ impl ImplData {
             module_id,
             impl_loc.id.file_id(),
             ItemContainerId::ImplId(id),
-            None,
         );
         collector.collect(impl_loc.id.tree_id(), &impl_def.items);
 
@@ -398,8 +395,8 @@ impl ConstData {
         let loc = konst.lookup(db);
         let item_tree = loc.id.item_tree(db);
         let konst = &item_tree[loc.id.value];
-        let visibility = if let Some(inherited_vis) = loc.inherited_visibility {
-            inherited_vis.tree_id.item_tree(db)[inherited_vis.raw_visibility_id].clone()
+        let visibility = if let ItemContainerId::TraitId(trait_id) = loc.container {
+            db.trait_data(trait_id).visibility.clone()
         } else {
             item_tree[konst.visibility].clone()
         };
@@ -446,8 +443,6 @@ struct AssocItemCollector<'a> {
 
     items: Vec<(Name, AssocItemId)>,
     attr_calls: Vec<(AstId<ast::Item>, MacroCallId)>,
-
-    inherited_visibility: Option<InheritedVisibilityLoc>,
 }
 
 impl<'a> AssocItemCollector<'a> {
@@ -456,7 +451,6 @@ impl<'a> AssocItemCollector<'a> {
         module_id: ModuleId,
         file_id: HirFileId,
         container: ItemContainerId,
-        inherited_visibility: Option<InheritedVisibilityLoc>,
     ) -> Self {
         Self {
             db,
@@ -467,8 +461,6 @@ impl<'a> AssocItemCollector<'a> {
 
             items: Vec::new(),
             attr_calls: Vec::new(),
-
-            inherited_visibility,
         }
     }
 
@@ -511,12 +503,9 @@ impl<'a> AssocItemCollector<'a> {
             match item {
                 AssocItem::Function(id) => {
                     let item = &item_tree[id];
-                    let def = FunctionLoc {
-                        container: self.container,
-                        id: ItemTreeId::new(tree_id, id),
-                        inherited_visibility: self.inherited_visibility,
-                    }
-                    .intern(self.db);
+                    let def =
+                        FunctionLoc { container: self.container, id: ItemTreeId::new(tree_id, id) }
+                            .intern(self.db);
                     self.items.push((item.name.clone(), def.into()));
                 }
                 AssocItem::Const(id) => {
@@ -525,12 +514,9 @@ impl<'a> AssocItemCollector<'a> {
                         Some(name) => name,
                         None => continue,
                     };
-                    let def = ConstLoc {
-                        container: self.container,
-                        id: ItemTreeId::new(tree_id, id),
-                        inherited_visibility: self.inherited_visibility,
-                    }
-                    .intern(self.db);
+                    let def =
+                        ConstLoc { container: self.container, id: ItemTreeId::new(tree_id, id) }
+                            .intern(self.db);
                     self.items.push((name, def.into()));
                 }
                 AssocItem::TypeAlias(id) => {
@@ -538,7 +524,6 @@ impl<'a> AssocItemCollector<'a> {
                     let def = TypeAliasLoc {
                         container: self.container,
                         id: ItemTreeId::new(tree_id, id),
-                        inherited_visibility: self.inherited_visibility,
                     }
                     .intern(self.db);
                     self.items.push((item.name.clone(), def.into()));
