@@ -655,7 +655,7 @@ fn configure_cmake(
     // For distribution we want the LLVM tools to be *statically* linked to libstdc++.
     // We also do this if the user explicitly requested static libstdc++.
     if builder.config.llvm_static_stdcpp {
-        if !target.contains("msvc") && !target.contains("netbsd") {
+        if !target.contains("msvc") && !target.contains("netbsd") && !target.contains("solaris") {
             if target.contains("apple") || target.contains("windows") {
                 ldflags.push_all("-static-libstdc++");
             } else {
