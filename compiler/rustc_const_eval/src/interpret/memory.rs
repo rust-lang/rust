@@ -199,7 +199,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         kind: MemoryKind<M::MemoryKind>,
     ) -> InterpResult<'tcx, Pointer<M::PointerTag>> {
         let alloc = Allocation::uninit(size, align, M::PANIC_ON_ALLOC_FAIL)?;
-        Ok(self.allocate_raw_ptr(alloc, kind))
+        // We can `unwrap` since `alloc` contains no pointers.
+        Ok(self.allocate_raw_ptr(alloc, kind).unwrap())
     }
 
     pub fn allocate_bytes_ptr(
@@ -210,23 +211,25 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         mutability: Mutability,
     ) -> Pointer<M::PointerTag> {
         let alloc = Allocation::from_bytes(bytes, align, mutability);
-        self.allocate_raw_ptr(alloc, kind)
+        // We can `unwrap` since `alloc` contains no pointers.
+        self.allocate_raw_ptr(alloc, kind).unwrap()
     }
 
+    /// This can fail only of `alloc` contains relocations.
     pub fn allocate_raw_ptr(
         &mut self,
         alloc: Allocation,
         kind: MemoryKind<M::MemoryKind>,
-    ) -> Pointer<M::PointerTag> {
+    ) -> InterpResult<'tcx, Pointer<M::PointerTag>> {
         let id = self.tcx.reserve_alloc_id();
         debug_assert_ne!(
             Some(kind),
             M::GLOBAL_KIND.map(MemoryKind::Machine),
             "dynamically allocating global memory"
         );
-        let alloc = M::init_allocation_extra(self, id, Cow::Owned(alloc), Some(kind));
+        let alloc = M::init_allocation_extra(self, id, Cow::Owned(alloc), Some(kind))?;
         self.memory.alloc_map.insert(id, (kind, alloc.into_owned()));
-        M::tag_alloc_base_pointer(self, Pointer::from(id))
+        Ok(M::tag_alloc_base_pointer(self, Pointer::from(id)))
     }
 
     pub fn reallocate_ptr(
@@ -510,13 +513,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         };
         M::before_access_global(*self.tcx, &self.machine, id, alloc, def_id, is_write)?;
         // We got tcx memory. Let the machine initialize its "extra" stuff.
-        let alloc = M::init_allocation_extra(
+        M::init_allocation_extra(
             self,
             id, // always use the ID we got as input, not the "hidden" one.
             Cow::Borrowed(alloc.inner()),
             M::GLOBAL_KIND.map(MemoryKind::Machine),
-        );
-        Ok(alloc)
+        )
     }
 
     /// Gives raw access to the `Allocation`, without bounds or alignment checks.
