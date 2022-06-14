@@ -707,12 +707,15 @@ fn push_const_param<'tcx>(tcx: TyCtxt<'tcx>, ct: ty::Const<'tcx>, output: &mut S
                 hcx.while_hashing_spans(false, |hcx| ct.to_valtree().hash_stable(hcx, &mut hasher));
                 // Let's only emit 64 bits of the hash value. That should be plenty for
                 // avoiding collisions and will make the emitted type names shorter.
-                let hash: u64 = hasher.finish();
+                // Note: Don't use `StableHashResult` impl of `u64` here directly, since that
+                // would lead to endianness problems.
+                let hash: u128 = hasher.finish();
+                let hash_short = (hash.to_le() as u64).to_le();
 
                 if cpp_like_debuginfo(tcx) {
-                    write!(output, "CONST${:x}", hash)
+                    write!(output, "CONST${:x}", hash_short)
                 } else {
-                    write!(output, "{{CONST#{:x}}}", hash)
+                    write!(output, "{{CONST#{:x}}}", hash_short)
                 }
             }
         },
