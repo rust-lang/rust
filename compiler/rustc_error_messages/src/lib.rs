@@ -1,6 +1,7 @@
 #![feature(let_chains)]
 #![feature(once_cell)]
 #![feature(path_try_exists)]
+#![feature(rustc_attrs)]
 #![feature(type_alias_impl_trait)]
 
 use fluent_bundle::FluentResource;
@@ -241,6 +242,7 @@ type FluentId = Cow<'static, str>;
 /// message so messages of this type must be combined with a `DiagnosticMessage` (using
 /// `DiagnosticMessage::with_subdiagnostic_message`) before rendering. However, subdiagnostics from
 /// the `SessionSubdiagnostic` derive refer to Fluent identifiers directly.
+#[rustc_diagnostic_item = "SubdiagnosticMessage"]
 pub enum SubdiagnosticMessage {
     /// Non-translatable diagnostic message.
     // FIXME(davidtwco): can a `Cow<'static, str>` be used here?
@@ -281,6 +283,7 @@ impl<S: Into<String>> From<S> for SubdiagnosticMessage {
 ///
 /// Intended to be removed once diagnostics are entirely translatable.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Encodable, Decodable)]
+#[rustc_diagnostic_item = "DiagnosticMessage"]
 pub enum DiagnosticMessage {
     /// Non-translatable diagnostic message.
     // FIXME(davidtwco): can a `Cow<'static, str>` be used here?

@@ -118,6 +118,9 @@ impl CheckAttrVisitor<'_> {
                 sym::rustc_lint_query_instability => {
                     self.check_rustc_lint_query_instability(&attr, span, target)
                 }
+                sym::rustc_lint_diagnostics => {
+                    self.check_rustc_lint_diagnostics(&attr, span, target)
+                }
                 sym::rustc_clean
                 | sym::rustc_dirty
                 | sym::rustc_if_this_changed
@@ -1624,12 +1627,9 @@ impl CheckAttrVisitor<'_> {
         }
     }
 
-    fn check_rustc_lint_query_instability(
-        &self,
-        attr: &Attribute,
-        span: Span,
-        target: Target,
-    ) -> bool {
+    /// Helper function for checking that the provided attribute is only applied to a function or
+    /// method.
+    fn check_applied_to_fn_or_method(&self, attr: &Attribute, span: Span, target: Target) -> bool {
         let is_function = matches!(target, Target::Fn | Target::Method(..));
         if !is_function {
             self.tcx
@@ -1641,6 +1641,23 @@ impl CheckAttrVisitor<'_> {
         } else {
             true
         }
+    }
+
+    /// Checks that the `#[rustc_lint_query_instability]` attribute is only applied to a function
+    /// or method.
+    fn check_rustc_lint_query_instability(
+        &self,
+        attr: &Attribute,
+        span: Span,
+        target: Target,
+    ) -> bool {
+        self.check_applied_to_fn_or_method(attr, span, target)
+    }
+
+    /// Checks that the `#[rustc_lint_diagnostics]` attribute is only applied to a function or
+    /// method.
+    fn check_rustc_lint_diagnostics(&self, attr: &Attribute, span: Span, target: Target) -> bool {
+        self.check_applied_to_fn_or_method(attr, span, target)
     }
 
     /// Checks that the dep-graph debugging attributes are only present when the query-dep-graph

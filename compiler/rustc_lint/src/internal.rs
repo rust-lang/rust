@@ -5,12 +5,14 @@ use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext}
 use rustc_ast as ast;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
-use rustc_hir::{Expr, ExprKind, GenericArg, PatKind, Path, PathSegment, QPath};
-use rustc_hir::{HirId, Item, ItemKind, Node, Pat, Ty, TyKind};
+use rustc_hir::{def_id::DefId, Expr, ExprKind, GenericArg, PatKind, Path, PathSegment, QPath};
+use rustc_hir::{HirId, Impl, Item, ItemKind, Node, Pat, Ty, TyKind};
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_span::Span;
+use tracing::debug;
 
 declare_tool_lint! {
     pub rustc::DEFAULT_HASH_TYPES,
@@ -46,6 +48,41 @@ impl LateLintPass<'_> for DefaultHashTypes {
     }
 }
 
+/// Helper function for lints that check for expressions with calls and use typeck results to
+/// get the `DefId` and `SubstsRef` of the function.
+fn typeck_results_of_method_fn<'tcx>(
+    cx: &LateContext<'tcx>,
+    expr: &Expr<'_>,
+) -> Option<(Span, DefId, ty::subst::SubstsRef<'tcx>)> {
+    // FIXME(rustdoc): Lints which use this function use typecheck results which can cause
+    // `rustdoc` to error if there are resolution failures.
+    //
+    // As internal lints are currently always run if there are `unstable_options`, they are added
+    // to the lint store of rustdoc. Internal lints are also not used via the `lint_mod` query.
+    // Crate lints run outside of a query so rustdoc currently doesn't disable them.
+    //
+    // Instead of relying on this, either change crate lints to a query disabled by rustdoc, only
+    // run internal lints if the user is explicitly opting in or figure out a different way to
+    // avoid running lints for rustdoc.
+    if cx.tcx.sess.opts.actually_rustdoc {
+        return None;
+    }
+
+    match expr.kind {
+        ExprKind::MethodCall(segment, _, _)
+            if let Some(def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id) =>
+        {
+            Some((segment.ident.span, def_id, cx.typeck_results().node_substs(expr.hir_id)))
+        },
+        _ => {
+            match cx.typeck_results().node_type(expr.hir_id).kind() {
+                &ty::FnDef(def_id, substs) => Some((expr.span, def_id, substs)),
+                _ => None,
+            }
+        }
+    }
+}
+
 declare_tool_lint! {
     pub rustc::POTENTIAL_QUERY_INSTABILITY,
     Allow,
@@ -57,35 +94,7 @@ declare_lint_pass!(QueryStability => [POTENTIAL_QUERY_INSTABILITY]);
 
 impl LateLintPass<'_> for QueryStability {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
-        // FIXME(rustdoc): This lint uses typecheck results, causing rustdoc to
-        // error if there are resolution failures.
-        //
-        // As internal lints are currently always run if there are `unstable_options`,
-        // they are added to the lint store of rustdoc. Internal lints are also
-        // not used via the `lint_mod` query. Crate lints run outside of a query
-        // so rustdoc currently doesn't disable them.
-        //
-        // Instead of relying on this, either change crate lints to a query disabled by
-        // rustdoc, only run internal lints if the user is explicitly opting in
-        // or figure out a different way to avoid running lints for rustdoc.
-        if cx.tcx.sess.opts.actually_rustdoc {
-            return;
-        }
-
-        let (span, def_id, substs) = match expr.kind {
-            ExprKind::MethodCall(segment, _, _)
-                if let Some(def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id) =>
-            {
-                (segment.ident.span, def_id, cx.typeck_results().node_substs(expr.hir_id))
-            },
-            _ => {
-                let &ty::FnDef(def_id, substs) =
-                    cx.typeck_results()
-                        .node_type(expr.hir_id)
-                        .kind() else { return };
-                (expr.span, def_id, substs)
-            }
-        };
+        let Some((span, def_id, substs)) = typeck_results_of_method_fn(cx, expr) else { return };
         if let Ok(Some(instance)) = ty::Instance::resolve(cx.tcx, cx.param_env, def_id, substs) {
             let def_id = instance.def_id();
             if cx.tcx.has_attr(def_id, sym::rustc_lint_query_instability) {
@@ -373,6 +382,73 @@ impl<'tcx> LateLintPass<'tcx> for ExistingDocKeyword {
                     }
                 }
             }
+        }
+    }
+}
+
+declare_tool_lint! {
+    pub rustc::UNTRANSLATABLE_DIAGNOSTIC,
+    Allow,
+    "prevent creation of diagnostics which cannot be translated",
+    report_in_external_macro: true
+}
+
+declare_tool_lint! {
+    pub rustc::DIAGNOSTIC_OUTSIDE_OF_IMPL,
+    Allow,
+    "prevent creation of diagnostics outside of `SessionDiagnostic`/`AddSubdiagnostic` impls",
+    report_in_external_macro: true
+}
+
+declare_lint_pass!(Diagnostics => [ UNTRANSLATABLE_DIAGNOSTIC, DIAGNOSTIC_OUTSIDE_OF_IMPL ]);
+
+impl LateLintPass<'_> for Diagnostics {
+    fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
+        let Some((span, def_id, substs)) = typeck_results_of_method_fn(cx, expr) else { return };
+        debug!(?span, ?def_id, ?substs);
+        if let Ok(Some(instance)) = ty::Instance::resolve(cx.tcx, cx.param_env, def_id, substs) &&
+            !cx.tcx.has_attr(instance.def_id(), sym::rustc_lint_diagnostics)
+        {
+            return;
+        }
+
+        let mut found_impl = false;
+        for (_, parent) in cx.tcx.hir().parent_iter(expr.hir_id) {
+            debug!(?parent);
+            if let Node::Item(Item { kind: ItemKind::Impl(impl_), .. }) = parent &&
+                let Impl { of_trait: Some(of_trait), .. } = impl_ &&
+                let Some(def_id) = of_trait.trait_def_id() &&
+                let Some(name) = cx.tcx.get_diagnostic_name(def_id) &&
+                matches!(name, sym::SessionDiagnostic | sym::AddSubdiagnostic)
+            {
+                found_impl = true;
+                break;
+            }
+        }
+        debug!(?found_impl);
+        if !found_impl {
+            cx.struct_span_lint(DIAGNOSTIC_OUTSIDE_OF_IMPL, span, |lint| {
+                lint.build("diagnostics should only be created in `SessionDiagnostic`/`AddSubdiagnostic` impls")
+                    .emit();
+            })
+        }
+
+        let mut found_diagnostic_message = false;
+        for ty in substs.types() {
+            debug!(?ty);
+            if let Some(adt_def) = ty.ty_adt_def() &&
+                let Some(name) =  cx.tcx.get_diagnostic_name(adt_def.did()) &&
+                matches!(name, sym::DiagnosticMessage | sym::SubdiagnosticMessage)
+            {
+                found_diagnostic_message = true;
+                break;
+            }
+        }
+        debug!(?found_diagnostic_message);
+        if !found_diagnostic_message {
+            cx.struct_span_lint(UNTRANSLATABLE_DIAGNOSTIC, span, |lint| {
+                lint.build("diagnostics should be created using translatable messages").emit();
+            })
         }
     }
 }
