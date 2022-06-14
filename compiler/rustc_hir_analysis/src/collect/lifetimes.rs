@@ -18,6 +18,7 @@ use rustc_middle::bug;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::resolve_lifetime::*;
 use rustc_middle::ty::{self, DefIdTree, TyCtxt, TypeSuperVisitable, TypeVisitor};
+use rustc_session::lint;
 use rustc_span::def_id::DefId;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
@@ -921,20 +922,24 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                                     continue;
                                 }
                                 this.insert_lifetime(lt, Region::Static);
-                                this.tcx
-                                    .sess
-                                    .struct_span_warn(
-                                        lifetime.ident.span,
-                                        &format!(
+                                this.tcx.struct_span_lint_hir(
+                                    lint::builtin::NAMED_STATIC_LIFETIMES,
+                                    lifetime.hir_id,
+                                    lifetime.span,
+                                    |lint| {
+                                        let msg = &format!(
                                             "unnecessary lifetime parameter `{}`",
-                                            lifetime.ident,
-                                        ),
-                                    )
-                                    .help(&format!(
-                                        "you can use the `'static` lifetime directly, in place of `{}`",
-                                        lifetime.ident,
-                                    ))
-                                    .emit();
+                                            lifetime.name.ident(),
+                                        );
+                                        let help = &format!(
+                                            "you can use the `'static` lifetime directly, in place of `{}`",
+                                            lifetime.name.ident(),
+                                        );
+                                        lint.build(msg)
+                                            .help(help)
+                                            .emit();
+                                    },
+                                );
                             }
                         }
                     }
