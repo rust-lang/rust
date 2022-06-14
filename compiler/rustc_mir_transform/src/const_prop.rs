@@ -67,6 +67,7 @@ impl<'tcx> MirPass<'tcx> for ConstProp {
         true
     }
 
+    #[instrument(skip(self, tcx), level = "debug")]
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         // will be evaluated by miri and produce its errors there
         if body.source.promoted.is_some() {
@@ -687,7 +688,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         Operand::Constant(Box::new(Constant {
             span,
             user_ty: None,
-            literal: ty::Const::from_scalar(self.tcx, scalar, ty).into(),
+            literal: ConstantKind::from_scalar(self.tcx, scalar, ty),
         }))
     }
 
@@ -765,20 +766,12 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                             if let Some(Some(alloc)) = alloc {
                                 // Assign entire constant in a single statement.
                                 // We can't use aggregates, as we run after the aggregate-lowering `MirPhase`.
+                                let const_val = ConstValue::ByRef { alloc, offset: Size::ZERO };
+                                let literal = ConstantKind::Val(const_val, ty);
                                 *rval = Rvalue::Use(Operand::Constant(Box::new(Constant {
                                     span: source_info.span,
                                     user_ty: None,
-                                    literal: self
-                                        .ecx
-                                        .tcx
-                                        .mk_const(ty::ConstS {
-                                            ty,
-                                            kind: ty::ConstKind::Value(ConstValue::ByRef {
-                                                alloc,
-                                                offset: Size::ZERO,
-                                            }),
-                                        })
-                                        .into(),
+                                    literal,
                                 })));
                             }
                         }

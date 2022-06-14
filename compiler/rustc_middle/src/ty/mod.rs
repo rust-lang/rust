@@ -42,7 +42,7 @@ use rustc_query_system::ich::StableHashingContext;
 use rustc_session::cstore::CrateStoreDyn;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
-use rustc_target::abi::Align;
+use rustc_target::abi::{Align, VariantIdx};
 pub use subst::*;
 pub use vtable::*;
 
@@ -2161,22 +2161,28 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// Returns the possibly-auto-generated MIR of a `(DefId, Subst)` pair.
+    #[instrument(skip(self), level = "debug")]
     pub fn instance_mir(self, instance: ty::InstanceDef<'tcx>) -> &'tcx Body<'tcx> {
         match instance {
-            ty::InstanceDef::Item(def) => match self.def_kind(def.did) {
-                DefKind::Const
-                | DefKind::Static(..)
-                | DefKind::AssocConst
-                | DefKind::Ctor(..)
-                | DefKind::AnonConst
-                | DefKind::InlineConst => self.mir_for_ctfe_opt_const_arg(def),
-                // If the caller wants `mir_for_ctfe` of a function they should not be using
-                // `instance_mir`, so we'll assume const fn also wants the optimized version.
-                _ => {
-                    assert_eq!(def.const_param_did, None);
-                    self.optimized_mir(def.did)
+            ty::InstanceDef::Item(def) => {
+                debug!("calling def_kind on def: {:?}", def);
+                let def_kind = self.def_kind(def.did);
+                debug!("returned from def_kind: {:?}", def_kind);
+                match def_kind {
+                    DefKind::Const
+                    | DefKind::Static(..)
+                    | DefKind::AssocConst
+                    | DefKind::Ctor(..)
+                    | DefKind::AnonConst
+                    | DefKind::InlineConst => self.mir_for_ctfe_opt_const_arg(def),
+                    // If the caller wants `mir_for_ctfe` of a function they should not be using
+                    // `instance_mir`, so we'll assume const fn also wants the optimized version.
+                    _ => {
+                        assert_eq!(def.const_param_did, None);
+                        self.optimized_mir(def.did)
+                    }
                 }
-            },
+            }
             ty::InstanceDef::VtableShim(..)
             | ty::InstanceDef::ReifyShim(..)
             | ty::InstanceDef::Intrinsic(..)
@@ -2446,4 +2452,11 @@ pub struct FoundRelationships {
     /// This is true if we identified that this Ty (`?T`) is found in a `<_ as
     /// _>::AssocType = ?T`
     pub output: bool,
+}
+
+/// The constituent parts of a type level constant of kind ADT or array.
+#[derive(Copy, Clone, Debug, HashStable)]
+pub struct DestructuredConst<'tcx> {
+    pub variant: Option<VariantIdx>,
+    pub fields: &'tcx [ty::Const<'tcx>],
 }

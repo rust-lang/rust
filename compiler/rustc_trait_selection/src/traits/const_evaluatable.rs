@@ -13,9 +13,7 @@ use rustc_hir::def::DefKind;
 use rustc_index::vec::IndexVec;
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::mir;
-use rustc_middle::mir::interpret::{
-    ConstValue, ErrorHandled, LitToConstError, LitToConstInput, Scalar,
-};
+use rustc_middle::mir::interpret::{ErrorHandled, LitToConstError, LitToConstInput};
 use rustc_middle::thir;
 use rustc_middle::thir::abstract_const::{self, Node, NodeId, NotConstEvaluatable};
 use rustc_middle::ty::subst::{Subst, SubstsRef};
@@ -449,9 +447,8 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
                 self.nodes.push(Node::Leaf(constant))
             }
             &ExprKind::NonHirLiteral { lit , user_ty: _} => {
-                // FIXME Construct a Valtree from this ScalarInt when introducing Valtrees
-                let const_value = ConstValue::Scalar(Scalar::Int(lit));
-                self.nodes.push(Node::Leaf(ty::Const::from_value(self.tcx, const_value, node.ty)))
+                let val = ty::ValTree::from_scalar_int(lit);
+                self.nodes.push(Node::Leaf(ty::Const::from_value(self.tcx, val, node.ty)))
             }
             &ExprKind::NamedConst { def_id, substs, user_ty: _ } => {
                 let uneval = ty::Unevaluated::new(ty::WithOptConstParam::unknown(def_id), substs);

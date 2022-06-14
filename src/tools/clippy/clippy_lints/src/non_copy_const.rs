@@ -13,9 +13,10 @@ use rustc_hir::{
     BodyId, Expr, ExprKind, HirId, Impl, ImplItem, ImplItemKind, Item, ItemKind, Node, TraitItem, TraitItemKind, UnOp,
 };
 use rustc_lint::{LateContext, LateLintPass, Lint};
+use rustc_middle::mir;
 use rustc_middle::mir::interpret::{ConstValue, ErrorHandled};
 use rustc_middle::ty::adjustment::Adjust;
-use rustc_middle::ty::{self, Const, Ty};
+use rustc_middle::ty::{self, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::{InnerSpan, Span, DUMMY_SP};
 use rustc_typeck::hir_ty_to_ty;
@@ -136,19 +137,18 @@ fn is_value_unfrozen_raw<'tcx>(
     result: Result<ConstValue<'tcx>, ErrorHandled>,
     ty: Ty<'tcx>,
 ) -> bool {
-    fn inner<'tcx>(cx: &LateContext<'tcx>, val: Const<'tcx>) -> bool {
+    fn inner<'tcx>(cx: &LateContext<'tcx>, val: mir::ConstantKind<'tcx>) -> bool {
         match val.ty().kind() {
             // the fact that we have to dig into every structs to search enums
             // leads us to the point checking `UnsafeCell` directly is the only option.
             ty::Adt(ty_def, ..) if Some(ty_def.did()) == cx.tcx.lang_items().unsafe_cell_type() => true,
             ty::Array(..) | ty::Adt(..) | ty::Tuple(..) => {
-                let val = cx.tcx.destructure_const(cx.param_env.and(val));
+                let val = cx.tcx.destructure_mir_constant(cx.param_env, val);
                 val.fields.iter().any(|field| inner(cx, *field))
             },
             _ => false,
         }
     }
-
     result.map_or_else(
         |err| {
             // Consider `TooGeneric` cases as being unfrozen.
@@ -174,7 +174,7 @@ fn is_value_unfrozen_raw<'tcx>(
             // I chose this way because unfrozen enums as assoc consts are rare (or, hopefully, none).
             err == ErrorHandled::TooGeneric
         },
-        |val| inner(cx, Const::from_value(cx.tcx, val, ty)),
+        |val| inner(cx, mir::ConstantKind::from_value(val, ty)),
     )
 }
 

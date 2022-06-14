@@ -7,6 +7,7 @@ use rustc_data_structures::sync::Lrc;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{BinOp, BinOpKind, Block, Expr, ExprKind, HirId, Item, ItemKind, Node, QPath, UnOp};
 use rustc_lint::LateContext;
+use rustc_middle::mir;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::ty::subst::{Subst, SubstsRef};
 use rustc_middle::ty::{self, EarlyBinder, FloatTy, ScalarInt, Ty, TyCtxt};
@@ -429,8 +430,8 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
                         None,
                     )
                     .ok()
-                    .map(|val| rustc_middle::ty::Const::from_value(self.lcx.tcx, val, ty))?;
-                let result = miri_to_const(result);
+                    .map(|val| rustc_middle::mir::ConstantKind::from_value(val, ty))?;
+                let result = miri_to_const(self.lcx.tcx, result);
                 if result.is_some() {
                     self.needed_resolution = true;
                 }
@@ -580,10 +581,10 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
     }
 }
 
-pub fn miri_to_const(result: ty::Const<'_>) -> Option<Constant> {
+pub fn miri_to_const<'tcx>(tcx: TyCtxt<'tcx>, result: mir::ConstantKind<'tcx>) -> Option<Constant> {
     use rustc_middle::mir::interpret::ConstValue;
-    match result.kind() {
-        ty::ConstKind::Value(ConstValue::Scalar(Scalar::Int(int))) => {
+    match result {
+        mir::ConstantKind::Val(ConstValue::Scalar(Scalar::Int(int)), _) => {
             match result.ty().kind() {
                 ty::Bool => Some(Constant::Bool(int == ScalarInt::TRUE)),
                 ty::Uint(_) | ty::Int(_) => Some(Constant::Int(int.assert_bits(int.size()))),
@@ -603,7 +604,7 @@ pub fn miri_to_const(result: ty::Const<'_>) -> Option<Constant> {
                 _ => None,
             }
         },
-        ty::ConstKind::Value(ConstValue::Slice { data, start, end }) => match result.ty().kind() {
+        mir::ConstantKind::Val(ConstValue::Slice { data, start, end }, _) => match result.ty().kind() {
             ty::Ref(_, tam, _) => match tam.kind() {
                 ty::Str => String::from_utf8(
                     data.inner()
@@ -616,10 +617,10 @@ pub fn miri_to_const(result: ty::Const<'_>) -> Option<Constant> {
             },
             _ => None,
         },
-        ty::ConstKind::Value(ConstValue::ByRef { alloc, offset: _ }) => match result.ty().kind() {
+        mir::ConstantKind::Val(ConstValue::ByRef { alloc, offset: _ }, _) => match result.ty().kind() {
             ty::Array(sub_type, len) => match sub_type.kind() {
-                ty::Float(FloatTy::F32) => match miri_to_const(*len) {
-                    Some(Constant::Int(len)) => alloc
+                ty::Float(FloatTy::F32) => match len.to_valtree().try_to_machine_usize(tcx) {
+                    Some(len) => alloc
                         .inner()
                         .inspect_with_uninit_and_ptr_outside_interpreter(0..(4 * len as usize))
                         .to_owned()
@@ -633,8 +634,8 @@ pub fn miri_to_const(result: ty::Const<'_>) -> Option<Constant> {
                         .map(Constant::Vec),
                     _ => None,
                 },
-                ty::Float(FloatTy::F64) => match miri_to_const(*len) {
-                    Some(Constant::Int(len)) => alloc
+                ty::Float(FloatTy::F64) => match len.to_valtree().try_to_machine_usize(tcx) {
+                    Some(len) => alloc
                         .inner()
                         .inspect_with_uninit_and_ptr_outside_interpreter(0..(8 * len as usize))
                         .to_owned()

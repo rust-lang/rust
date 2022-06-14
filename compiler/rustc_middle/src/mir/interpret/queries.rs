@@ -1,4 +1,4 @@
-use super::{ErrorHandled, EvalToConstValueResult, GlobalId};
+use super::{ErrorHandled, EvalToConstValueResult, EvalToValTreeResult, GlobalId};
 
 use crate::mir;
 use crate::ty::fold::TypeFoldable;
@@ -11,6 +11,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Evaluates a constant without providing any substitutions. This is useful to evaluate consts
     /// that can't take any generic arguments like statics, const items or enum discriminants. If a
     /// generic parameter is used within the constant `ErrorHandled::ToGeneric` will be returned.
+    #[instrument(skip(self), level = "debug")]
     pub fn const_eval_poly(self, def_id: DefId) -> EvalToConstValueResult<'tcx> {
         // In some situations def_id will have substitutions within scope, but they aren't allowed
         // to be used. So we can't use `Instance::mono`, instead we feed unresolved substitutions
@@ -22,7 +23,6 @@ impl<'tcx> TyCtxt<'tcx> {
         let param_env = self.param_env(def_id).with_reveal_all_normalized(self);
         self.const_eval_global_id(param_env, cid, None)
     }
-
     /// Resolves and evaluates a constant.
     ///
     /// The constant can be located on a trait like `<A as B>::C`, in which case the given
@@ -59,6 +59,33 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
+    #[instrument(level = "debug", skip(self))]
+    pub fn const_eval_resolve_for_typeck(
+        self,
+        param_env: ty::ParamEnv<'tcx>,
+        ct: ty::Unevaluated<'tcx>,
+        span: Option<Span>,
+    ) -> EvalToValTreeResult<'tcx> {
+        // Cannot resolve `Unevaluated` constants that contain inference
+        // variables. We reject those here since `resolve_opt_const_arg`
+        // would fail otherwise.
+        //
+        // When trying to evaluate constants containing inference variables,
+        // use `Infcx::const_eval_resolve` instead.
+        if ct.substs.has_infer_types_or_consts() {
+            bug!("did not expect inference variables here");
+        }
+
+        match ty::Instance::resolve_opt_const_arg(self, param_env, ct.def, ct.substs) {
+            Ok(Some(instance)) => {
+                let cid = GlobalId { instance, promoted: ct.promoted };
+                self.const_eval_global_id_for_typeck(param_env, cid, span)
+            }
+            Ok(None) => Err(ErrorHandled::TooGeneric),
+            Err(error_reported) => Err(ErrorHandled::Reported(error_reported)),
+        }
+    }
+
     pub fn const_eval_instance(
         self,
         param_env: ty::ParamEnv<'tcx>,
@@ -68,7 +95,8 @@ impl<'tcx> TyCtxt<'tcx> {
         self.const_eval_global_id(param_env, GlobalId { instance, promoted: None }, span)
     }
 
-    /// Evaluate a constant.
+    /// Evaluate a constant to a `ConstValue`.
+    #[instrument(skip(self), level = "debug")]
     pub fn const_eval_global_id(
         self,
         param_env: ty::ParamEnv<'tcx>,
@@ -83,6 +111,27 @@ impl<'tcx> TyCtxt<'tcx> {
             self.at(span).eval_to_const_value_raw(inputs)
         } else {
             self.eval_to_const_value_raw(inputs)
+        }
+    }
+
+    /// Evaluate a constant to a type-level constant.
+    #[instrument(skip(self), level = "debug")]
+    pub fn const_eval_global_id_for_typeck(
+        self,
+        param_env: ty::ParamEnv<'tcx>,
+        cid: GlobalId<'tcx>,
+        span: Option<Span>,
+    ) -> EvalToValTreeResult<'tcx> {
+        let param_env = param_env.with_const();
+        debug!(?param_env);
+        // Const-eval shouldn't depend on lifetimes at all, so we can erase them, which should
+        // improve caching of queries.
+        let inputs = self.erase_regions(param_env.and(cid));
+        debug!(?inputs);
+        if let Some(span) = span {
+            self.at(span).eval_to_valtree(inputs)
+        } else {
+            self.eval_to_valtree(inputs)
         }
     }
 
@@ -125,11 +174,8 @@ impl<'tcx> TyCtxtAt<'tcx> {
 impl<'tcx> TyCtxt<'tcx> {
     /// Destructure a type-level constant ADT or array into its variant index and its field values.
     /// Panics if the destructuring fails, use `try_destructure_const` for fallible version.
-    pub fn destructure_const(
-        self,
-        param_env_and_val: ty::ParamEnvAnd<'tcx, ty::Const<'tcx>>,
-    ) -> mir::DestructuredConst<'tcx> {
-        self.try_destructure_const(param_env_and_val).unwrap()
+    pub fn destructure_const(self, const_: ty::Const<'tcx>) -> ty::DestructuredConst<'tcx> {
+        self.try_destructure_const(const_).unwrap()
     }
 
     /// Destructure a mir constant ADT or array into its variant index and its field values.

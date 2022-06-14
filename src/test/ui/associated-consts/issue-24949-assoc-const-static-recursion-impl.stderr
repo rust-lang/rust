@@ -1,16 +1,10 @@
 error[E0391]: cycle detected when elaborating drops for `<impl at $DIR/issue-24949-assoc-const-static-recursion-impl.rs:11:1: 13:2>::BAR`
-  --> $DIR/issue-24949-assoc-const-static-recursion-impl.rs:12:5
+  --> $DIR/issue-24949-assoc-const-static-recursion-impl.rs:12:22
    |
 LL |     const BAR: u32 = IMPL_REF_BAR;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                      ^^^^^^^^^^^^
    |
-   = note: ...which requires normalizing `IMPL_REF_BAR`...
-note: ...which requires simplifying constant for the type system `IMPL_REF_BAR`...
-  --> $DIR/issue-24949-assoc-const-static-recursion-impl.rs:7:1
-   |
-LL | const IMPL_REF_BAR: u32 = GlobalImplRef::BAR;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires simplifying constant for the type system `IMPL_REF_BAR`...
+note: ...which requires const-evaluating + checking `IMPL_REF_BAR`...
   --> $DIR/issue-24949-assoc-const-static-recursion-impl.rs:7:1
    |
 LL | const IMPL_REF_BAR: u32 = GlobalImplRef::BAR;
@@ -20,17 +14,6 @@ note: ...which requires const-evaluating + checking `IMPL_REF_BAR`...
    |
 LL | const IMPL_REF_BAR: u32 = GlobalImplRef::BAR;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: ...which requires normalizing `<impl at $DIR/issue-24949-assoc-const-static-recursion-impl.rs:11:1: 13:2>::BAR`...
-note: ...which requires simplifying constant for the type system `<impl at $DIR/issue-24949-assoc-const-static-recursion-impl.rs:11:1: 13:2>::BAR`...
-  --> $DIR/issue-24949-assoc-const-static-recursion-impl.rs:12:5
-   |
-LL |     const BAR: u32 = IMPL_REF_BAR;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires simplifying constant for the type system `<impl at $DIR/issue-24949-assoc-const-static-recursion-impl.rs:11:1: 13:2>::BAR`...
-  --> $DIR/issue-24949-assoc-const-static-recursion-impl.rs:12:5
-   |
-LL |     const BAR: u32 = IMPL_REF_BAR;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: ...which requires const-evaluating + checking `<impl at $DIR/issue-24949-assoc-const-static-recursion-impl.rs:11:1: 13:2>::BAR`...
   --> $DIR/issue-24949-assoc-const-static-recursion-impl.rs:12:5
    |

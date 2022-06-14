@@ -323,6 +323,7 @@ impl<'tcx> InliningMap<'tcx> {
     }
 }
 
+#[instrument(skip(tcx, mode), level = "debug")]
 pub fn collect_crate_mono_items(
     tcx: TyCtxt<'_>,
     mode: MonoItemCollectionMode,
@@ -362,6 +363,7 @@ pub fn collect_crate_mono_items(
 
 // Find all non-generic items by walking the HIR. These items serve as roots to
 // start monomorphizing from.
+#[instrument(skip(tcx, mode), level = "debug")]
 fn collect_roots(tcx: TyCtxt<'_>, mode: MonoItemCollectionMode) -> Vec<MonoItem<'_>> {
     debug!("collecting roots");
     let mut roots = MonoItems { compute_inlining: false, tcx, items: Vec::new() };
@@ -400,6 +402,7 @@ fn collect_roots(tcx: TyCtxt<'_>, mode: MonoItemCollectionMode) -> Vec<MonoItem<
 
 /// Collect all monomorphized items reachable from `starting_point`, and emit a note diagnostic if a
 /// post-monorphization error is encountered during a collection step.
+#[instrument(skip(tcx, visited, recursion_depths, recursion_limit, inlining_map), level = "debug")]
 fn collect_items_rec<'tcx>(
     tcx: TyCtxt<'tcx>,
     starting_point: Spanned<MonoItem<'tcx>>,
@@ -752,13 +755,15 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
     /// This does not walk the constant, as it has been handled entirely here and trying
     /// to walk it would attempt to evaluate the `ty::Const` inside, which doesn't necessarily
     /// work, as some constants cannot be represented in the type system.
+    #[instrument(skip(self), level = "debug")]
     fn visit_constant(&mut self, constant: &mir::Constant<'tcx>, location: Location) {
         let literal = self.monomorphize(constant.literal);
         let val = match literal {
             mir::ConstantKind::Val(val, _) => val,
             mir::ConstantKind::Ty(ct) => match ct.kind() {
-                ty::ConstKind::Value(val) => val,
+                ty::ConstKind::Value(val) => self.tcx.valtree_to_const_val((ct.ty(), val)),
                 ty::ConstKind::Unevaluated(ct) => {
+                    debug!(?ct);
                     let param_env = ty::ParamEnv::reveal_all();
                     match self.tcx.const_eval_resolve(param_env, ct, None) {
                         // The `monomorphize` call should have evaluated that constant already.
@@ -778,6 +783,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
         self.visit_ty(literal.ty(), TyContext::Location(location));
     }
 
+    #[instrument(skip(self), level = "debug")]
     fn visit_const(&mut self, constant: ty::Const<'tcx>, location: Location) {
         debug!("visiting const {:?} @ {:?}", constant, location);
 
@@ -785,7 +791,10 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
         let param_env = ty::ParamEnv::reveal_all();
 
         match substituted_constant.kind() {
-            ty::ConstKind::Value(val) => collect_const_value(self.tcx, val, self.output),
+            ty::ConstKind::Value(val) => {
+                let const_val = self.tcx.valtree_to_const_val((constant.ty(), val));
+                collect_const_value(self.tcx, const_val, self.output)
+            }
             ty::ConstKind::Unevaluated(unevaluated) => {
                 match self.tcx.const_eval_resolve(param_env, unevaluated, None) {
                     // The `monomorphize` call should have evaluated that constant already.
@@ -1120,6 +1129,7 @@ fn find_vtable_types_for_unsizing<'tcx>(
     }
 }
 
+#[instrument(skip(tcx), level = "debug")]
 fn create_fn_mono_item<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: Instance<'tcx>,
@@ -1133,7 +1143,10 @@ fn create_fn_mono_item<'tcx>(
         crate::util::dump_closure_profile(tcx, instance);
     }
 
-    respan(source, MonoItem::Fn(instance.polymorphize(tcx)))
+    let respanned = respan(source, MonoItem::Fn(instance.polymorphize(tcx)));
+    debug!(?respanned);
+
+    respanned
 }
 
 /// Creates a `MonoItem` for each method that is referenced by the vtable for
@@ -1275,6 +1288,7 @@ impl<'v> RootCollector<'_, 'v> {
 
     /// If `def_id` represents a root, pushes it onto the list of
     /// outputs. (Note that all roots must be monomorphic.)
+    #[instrument(skip(self), level = "debug")]
     fn push_if_root(&mut self, def_id: LocalDefId) {
         if self.is_root(def_id) {
             debug!("RootCollector::push_if_root: found root def_id={:?}", def_id);
@@ -1415,17 +1429,17 @@ fn collect_miri<'tcx>(tcx: TyCtxt<'tcx>, alloc_id: AllocId, output: &mut MonoIte
 }
 
 /// Scans the MIR in order to find function calls, closures, and drop-glue.
+#[instrument(skip(tcx, output), level = "debug")]
 fn collect_neighbours<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: Instance<'tcx>,
     output: &mut MonoItems<'tcx>,
 ) {
-    debug!("collect_neighbours: {:?}", instance.def_id());
     let body = tcx.instance_mir(instance.def);
-
     MirNeighborCollector { tcx, body: &body, output, instance }.visit_body(&body);
 }
 
+#[instrument(skip(tcx, output), level = "debug")]
 fn collect_const_value<'tcx>(
     tcx: TyCtxt<'tcx>,
     value: ConstValue<'tcx>,

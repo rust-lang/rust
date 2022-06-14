@@ -967,36 +967,26 @@ rustc_queries! {
     query eval_to_valtree(
         key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>
     ) -> EvalToValTreeResult<'tcx> {
-        desc { "evaluate type-level constant" }
-        remap_env_constness
+        desc { "evaluating type-level constant" }
     }
 
     /// Converts a type level constant value into `ConstValue`
     query valtree_to_const_val(key: (Ty<'tcx>, ty::ValTree<'tcx>)) -> ConstValue<'tcx> {
-        desc { "convert type-level constant value to mir constant value"}
+        desc { "converting type-level constant value to mir constant value"}
     }
 
     /// Destructure a constant ADT or array into its variant index and its
     /// field values or return `None` if constant is invalid.
     ///
     /// Use infallible `TyCtxt::destructure_const` when you know that constant is valid.
-    query try_destructure_const(key: ty::ParamEnvAnd<'tcx, ty::Const<'tcx>>) -> Option<mir::DestructuredConst<'tcx>> {
-        desc { "destructure type level constant"}
+    query try_destructure_const(key: ty::Const<'tcx>) -> Option<ty::DestructuredConst<'tcx>> {
+        desc { "destructuring type level constant"}
     }
 
     /// Tries to destructure an `mir::ConstantKind` ADT or array into its variant index
     /// and its field values.
     query try_destructure_mir_constant(key: ty::ParamEnvAnd<'tcx, mir::ConstantKind<'tcx>>) -> Option<mir::DestructuredMirConstant<'tcx>> {
-        desc { "destructure mir constant"}
-        remap_env_constness
-    }
-
-    /// Dereference a constant reference or raw pointer and turn the result into a constant
-    /// again.
-    query deref_const(
-        key: ty::ParamEnvAnd<'tcx, ty::Const<'tcx>>
-    ) -> ty::Const<'tcx> {
-        desc { "deref constant" }
+        desc { "destructuring mir constant"}
         remap_env_constness
     }
 
@@ -1005,7 +995,7 @@ rustc_queries! {
     query deref_mir_constant(
         key: ty::ParamEnvAnd<'tcx, mir::ConstantKind<'tcx>>
     ) -> mir::ConstantKind<'tcx> {
-        desc { "deref constant" }
+        desc { "dereferencing mir constant" }
         remap_env_constness
     }
 

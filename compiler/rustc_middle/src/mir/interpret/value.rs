@@ -111,6 +111,10 @@ impl<'tcx> ConstValue<'tcx> {
     pub fn from_machine_usize(i: u64, cx: &impl HasDataLayout) -> Self {
         ConstValue::Scalar(Scalar::from_machine_usize(i, cx))
     }
+
+    pub fn zst() -> Self {
+        Self::Scalar(Scalar::ZST)
+    }
 }
 
 /// A `Scalar` represents an immediate, primitive value existing outside of a

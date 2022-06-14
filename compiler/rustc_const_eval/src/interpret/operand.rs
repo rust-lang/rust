@@ -637,7 +637,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             ty::ConstKind::Infer(..) | ty::ConstKind::Placeholder(..) => {
                 span_bug!(self.cur_span(), "const_to_op: Unexpected ConstKind {:?}", c)
             }
-            ty::ConstKind::Value(val) => self.const_val_to_op(val, c.ty(), layout),
+            ty::ConstKind::Value(valtree) => {
+                let ty = c.ty();
+                let const_val = self.tcx.valtree_to_const_val((ty, valtree));
+                self.const_val_to_op(const_val, ty, layout)
+            }
         }
     }
 

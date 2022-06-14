@@ -20,7 +20,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::infer::canonical::{Canonical, CanonicalVarValues};
 use rustc_middle::infer::unify_key::{ConstVarValue, ConstVariableValue};
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind, ToType};
-use rustc_middle::mir::interpret::{ErrorHandled, EvalToConstValueResult};
+use rustc_middle::mir::interpret::{ErrorHandled, EvalToValTreeResult};
 use rustc_middle::traits::select;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
@@ -1616,6 +1616,28 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         u
     }
 
+    pub fn try_const_eval_resolve(
+        &self,
+        param_env: ty::ParamEnv<'tcx>,
+        unevaluated: ty::Unevaluated<'tcx>,
+        ty: Ty<'tcx>,
+        span: Option<Span>,
+    ) -> Result<ty::Const<'tcx>, ErrorHandled> {
+        match self.const_eval_resolve(param_env, unevaluated, span) {
+            Ok(Some(val)) => Ok(ty::Const::from_value(self.tcx, val, ty)),
+            Ok(None) => {
+                let tcx = self.tcx;
+                let def_id = unevaluated.def.did;
+                span_bug!(
+                    tcx.def_span(def_id),
+                    "unable to construct a constant value for the unevaluated constant {:?}",
+                    unevaluated
+                );
+            }
+            Err(err) => Err(err),
+        }
+    }
+
     /// Resolves and evaluates a constant.
     ///
     /// The constant can be located on a trait like `<A as B>::C`, in which case the given
@@ -1634,7 +1656,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         unevaluated: ty::Unevaluated<'tcx>,
         span: Option<Span>,
-    ) -> EvalToConstValueResult<'tcx> {
+    ) -> EvalToValTreeResult<'tcx> {
         let substs = self.resolve_vars_if_possible(unevaluated.substs);
         debug!(?substs);
 
@@ -1658,7 +1680,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         // The return value is the evaluated value which doesn't contain any reference to inference
         // variables, thus we don't need to substitute back the original values.
-        self.tcx.const_eval_resolve(param_env_erased, unevaluated, span)
+        self.tcx.const_eval_resolve_for_typeck(param_env_erased, unevaluated, span)
     }
 
     /// `ty_or_const_infer_var_changed` is equivalent to one of these two:

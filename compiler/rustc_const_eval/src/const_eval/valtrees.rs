@@ -5,12 +5,10 @@ use crate::interpret::{
     intern_const_alloc_recursive, ConstValue, ImmTy, Immediate, InternKind, MemPlaceMeta,
     MemoryKind, PlaceTy, Scalar, ScalarMaybeUninit,
 };
+use crate::interpret::{MPlaceTy, Value};
+use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt};
 use rustc_span::source_map::DUMMY_SP;
 use rustc_target::abi::{Align, VariantIdx};
-
-use crate::interpret::MPlaceTy;
-use crate::interpret::Value;
-use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt};
 
 #[instrument(skip(ecx), level = "debug")]
 fn branches<'tcx>(
@@ -76,12 +74,12 @@ pub(crate) fn const_to_valtree_inner<'tcx>(
     place: &MPlaceTy<'tcx>,
     num_nodes: &mut usize,
 ) -> ValTreeCreationResult<'tcx> {
+    let ty = place.layout.ty;
+    debug!("ty kind: {:?}", ty.kind());
+
     if *num_nodes >= VALTREE_MAX_NODES {
         return Err(ValTreeCreationError::NodesOverflow);
     }
-
-    let ty = place.layout.ty;
-    debug!("ty kind: {:?}", ty.kind());
 
     match ty.kind() {
         ty::FnDef(..) => {
@@ -234,19 +232,15 @@ fn create_pointee_place<'tcx>(
         // Get the size of the memory behind the DST
         let dst_size = unsized_inner_ty_size.checked_mul(num_elems as u64, &tcx).unwrap();
 
-        let ptr = ecx
-            .allocate_ptr(
-                size_of_sized_part.checked_add(dst_size, &tcx).unwrap(),
-                Align::from_bytes(1).unwrap(),
-                MemoryKind::Stack,
-            )
-            .unwrap();
+        let size = size_of_sized_part.checked_add(dst_size, &tcx).unwrap();
+        let align = Align::from_bytes(size.bytes().next_power_of_two()).unwrap();
+        let ptr = ecx.allocate_ptr(size, align, MemoryKind::Stack).unwrap();
         debug!(?ptr);
 
         let place = MPlaceTy::from_aligned_ptr_with_meta(
             ptr.into(),
             layout,
-            MemPlaceMeta::Meta(Scalar::from_u64(num_elems as u64)),
+            MemPlaceMeta::Meta(Scalar::from_machine_usize(num_elems as u64, &tcx)),
         );
         debug!(?place);
 
@@ -262,7 +256,7 @@ fn create_pointee_place<'tcx>(
 #[instrument(skip(tcx), level = "debug")]
 pub fn valtree_to_const_value<'tcx>(
     tcx: TyCtxt<'tcx>,
-    ty: Ty<'tcx>,
+    param_env_ty: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,
     valtree: ty::ValTree<'tcx>,
 ) -> ConstValue<'tcx> {
     // Basic idea: We directly construct `Scalar` values from trivial `ValTree`s
@@ -272,8 +266,8 @@ pub fn valtree_to_const_value<'tcx>(
     // create inner `MPlace`s which are filled recursively.
     // FIXME Does this need an example?
 
-    let mut ecx = mk_eval_cx(tcx, DUMMY_SP, ty::ParamEnv::empty(), false);
-    let param_env_ty = ty::ParamEnv::empty().and(ty);
+    let (param_env, ty) = param_env_ty.into_parts();
+    let mut ecx = mk_eval_cx(tcx, DUMMY_SP, param_env, false);
 
     match ty.kind() {
         ty::FnDef(..) => {
@@ -336,7 +330,6 @@ pub fn valtree_to_const_value<'tcx>(
     }
 }
 
-// FIXME Needs a better/correct name
 #[instrument(skip(ecx), level = "debug")]
 fn valtree_into_mplace<'tcx>(
     ecx: &mut CompileTimeEvalContext<'tcx, 'tcx>,
@@ -377,7 +370,8 @@ fn valtree_into_mplace<'tcx>(
             let imm = match inner_ty.kind() {
                 ty::Slice(_) | ty::Str => {
                     let len = valtree.unwrap_branch().len();
-                    let len_scalar = ScalarMaybeUninit::Scalar(Scalar::from_u64(len as u64));
+                    let len_scalar =
+                        ScalarMaybeUninit::Scalar(Scalar::from_machine_usize(len as u64, &tcx));
 
                     Immediate::ScalarPair(
                         ScalarMaybeUninit::from_maybe_pointer((*pointee_place).ptr, &tcx),
@@ -448,7 +442,10 @@ fn valtree_into_mplace<'tcx>(
                         place
                             .offset(
                                 offset,
-                                MemPlaceMeta::Meta(Scalar::from_u64(num_elems as u64)),
+                                MemPlaceMeta::Meta(Scalar::from_machine_usize(
+                                    num_elems as u64,
+                                    &tcx,
+                                )),
                                 inner_layout,
                                 &tcx,
                             )

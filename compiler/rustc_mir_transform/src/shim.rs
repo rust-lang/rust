@@ -430,7 +430,7 @@ impl<'tcx> CloneShimBuilder<'tcx> {
         let func = Operand::Constant(Box::new(Constant {
             span: self.span,
             user_ty: None,
-            literal: ty::Const::zero_sized(tcx, func_ty).into(),
+            literal: ConstantKind::zero_sized(func_ty),
         }));
 
         let ref_loc = self.make_place(
@@ -630,7 +630,7 @@ fn build_call_shim<'tcx>(
                 Operand::Constant(Box::new(Constant {
                     span,
                     user_ty: None,
-                    literal: ty::Const::zero_sized(tcx, ty).into(),
+                    literal: ConstantKind::zero_sized(ty),
                 })),
                 rcvr.into_iter().collect::<Vec<_>>(),
             )

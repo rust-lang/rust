@@ -454,7 +454,12 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
                 ConstValue::ByRef { .. } => format!("ByRef(..)"),
             };
 
-            let kind = match literal {
+            let fmt_valtree = |valtree: &ty::ValTree<'tcx>| match valtree {
+                ty::ValTree::Leaf(leaf) => format!("ValTree::Leaf({:?})", leaf),
+                ty::ValTree::Branch(_) => format!("ValTree::Branch(..)"),
+            };
+
+            let val = match literal {
                 ConstantKind::Ty(ct) => match ct.kind() {
                     ty::ConstKind::Param(p) => format!("Param({})", p),
                     ty::ConstKind::Unevaluated(uv) => format!(
@@ -463,7 +468,7 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
                         uv.substs,
                         uv.promoted,
                     ),
-                    ty::ConstKind::Value(val) => format!("Value({})", fmt_val(&val)),
+                    ty::ConstKind::Value(val) => format!("Value({})", fmt_valtree(&val)),
                     ty::ConstKind::Error(_) => "Error".to_string(),
                     // These variants shouldn't exist in the MIR.
                     ty::ConstKind::Placeholder(_)
@@ -479,7 +484,7 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
             // This reflects what `Const` looked liked before `val` was renamed
             // as `kind`. We print it like this to avoid having to update
             // expected output in a lot of tests.
-            self.push(&format!("+ literal: Const {{ ty: {}, val: {} }}", literal.ty(), kind));
+            self.push(&format!("+ literal: Const {{ ty: {}, val: {} }}", literal.ty(), val));
         }
     }
 
@@ -665,7 +670,8 @@ pub fn write_allocations<'tcx>(
     ) -> impl DoubleEndedIterator<Item = AllocId> + '_ {
         alloc.inner().relocations().values().map(|id| *id)
     }
-    fn alloc_ids_from_const(val: ConstValue<'_>) -> impl Iterator<Item = AllocId> + '_ {
+
+    fn alloc_ids_from_const_val(val: ConstValue<'_>) -> impl Iterator<Item = AllocId> + '_ {
         match val {
             ConstValue::Scalar(interpret::Scalar::Ptr(ptr, _)) => {
                 Either::Left(Either::Left(std::iter::once(ptr.provenance)))
@@ -681,17 +687,11 @@ pub fn write_allocations<'tcx>(
     struct CollectAllocIds(BTreeSet<AllocId>);
 
     impl<'tcx> Visitor<'tcx> for CollectAllocIds {
-        fn visit_const(&mut self, c: ty::Const<'tcx>, _loc: Location) {
-            if let ty::ConstKind::Value(val) = c.kind() {
-                self.0.extend(alloc_ids_from_const(val));
-            }
-        }
-
         fn visit_constant(&mut self, c: &Constant<'tcx>, loc: Location) {
             match c.literal {
                 ConstantKind::Ty(c) => self.visit_const(c, loc),
                 ConstantKind::Val(val, _) => {
-                    self.0.extend(alloc_ids_from_const(val));
+                    self.0.extend(alloc_ids_from_const_val(val));
                 }
             }
         }
