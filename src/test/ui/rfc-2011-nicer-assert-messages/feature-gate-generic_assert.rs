@@ -1,8 +1,7 @@
 // compile-flags: --test
+// ignore-tidy-linelength
 // run-pass
 
-// `generic_assert` is completely unimplemented and doesn't generate any logic, thus the
-// reason why this test currently passes
 #![feature(core_intrinsics, generic_assert, generic_assert_internals)]
 
 use std::fmt::{Debug, Formatter};
@@ -16,10 +15,11 @@ impl Debug for CopyDebug {
   }
 }
 
+#[should_panic(expected = "Assertion failed: copy_debug == CopyDebug(3)\nWith captures:\n  copy_debug = With great power comes great electricity bills\n")]
 #[test]
 fn test() {
-  let _copy_debug = CopyDebug(1);
-  assert!(_copy_debug == CopyDebug(3));
+  let copy_debug = CopyDebug(1);
+  assert!(copy_debug == CopyDebug(3));
 }
 
 fn main() {
