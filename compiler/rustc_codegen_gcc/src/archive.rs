@@ -70,19 +70,6 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
         }
     }
 
-    fn src_files(&mut self) -> Vec<String> {
-        self.entries.iter().map(|(name, _)| name.clone()).collect()
-    }
-
-    fn remove_file(&mut self, name: &str) {
-        let index = self
-            .entries
-            .iter()
-            .position(|(entry_name, _)| entry_name == name)
-            .expect("Tried to remove file not existing in src archive");
-        self.entries.remove(index);
-    }
-
     fn add_file(&mut self, file: &Path) {
         self.entries.push((
             file.file_name().unwrap().to_str().unwrap().to_string(),

@@ -21,7 +21,6 @@ pub struct LlvmArchiveBuilder<'a> {
     sess: &'a Session,
     dst: PathBuf,
     src: Option<PathBuf>,
-    removals: Vec<String>,
     additions: Vec<Addition>,
     src_archive: Option<Option<ArchiveRO>>,
 }
@@ -65,33 +64,9 @@ impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
             sess,
             dst: output.to_path_buf(),
             src: input.map(|p| p.to_path_buf()),
-            removals: Vec::new(),
             additions: Vec::new(),
             src_archive: None,
         }
-    }
-
-    /// Removes a file from this archive
-    fn remove_file(&mut self, file: &str) {
-        self.removals.push(file.to_string());
-    }
-
-    /// Lists all files in an archive
-    fn src_files(&mut self) -> Vec<String> {
-        if self.src_archive().is_none() {
-            return Vec::new();
-        }
-
-        let archive = self.src_archive.as_ref().unwrap().as_ref().unwrap();
-
-        archive
-            .iter()
-            .filter_map(|child| child.ok())
-            .filter(is_relevant_child)
-            .filter_map(|child| child.name())
-            .filter(|name| !self.removals.iter().any(|x| x == name))
-            .map(|name| name.to_owned())
-            .collect()
     }
 
     fn add_archive<F>(&mut self, archive: &Path, skip: F) -> io::Result<()>
@@ -296,7 +271,6 @@ impl<'a> LlvmArchiveBuilder<'a> {
     }
 
     fn build_with_llvm(&mut self, kind: ArchiveKind) -> io::Result<()> {
-        let removals = mem::take(&mut self.removals);
         let mut additions = mem::take(&mut self.additions);
         let mut strings = Vec::new();
         let mut members = Vec::new();
@@ -308,9 +282,6 @@ impl<'a> LlvmArchiveBuilder<'a> {
                 for child in archive.iter() {
                     let child = child.map_err(string_to_io_error)?;
                     let Some(child_name) = child.name() else { continue };
-                    if removals.iter().any(|r| r == child_name) {
-                        continue;
-                    }
 
                     let name = CString::new(child_name)?;
                     members.push(llvm::LLVMRustArchiveMemberNew(

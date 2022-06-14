@@ -45,8 +45,6 @@ pub trait ArchiveBuilder<'a> {
     fn new(sess: &'a Session, output: &Path, input: Option<&Path>) -> Self;
 
     fn add_file(&mut self, path: &Path);
-    fn remove_file(&mut self, name: &str);
-    fn src_files(&mut self) -> Vec<String>;
 
     fn add_archive<F>(&mut self, archive: &Path, skip: F) -> io::Result<()>
     where
