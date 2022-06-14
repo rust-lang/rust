@@ -918,10 +918,10 @@ mod prim_str {}
 // linked to as `#trait-implementations-1`
 /// # Trait implementations
 ///
-/// In this documentation the shorthand `(T, ...)` is used to represent tuples of varying length.
-/// When that is used, any trait bound expressed on `T` applies to each element of the tuple
-/// independently. Note that this is a convenience notation to avoid repetitive documentation,
-/// not valid Rust syntax.
+/// In this documentation the shorthand `(T₁, T₂, …, Tₙ)` is used to represent tuples of varying
+/// length. When that is used, any trait bound expressed on `T` applies to each element of the
+/// tuple independently. Note that this is a convenience notation to avoid repetitive
+/// documentation, not valid Rust syntax.
 ///
 /// Due to a temporary restriction in Rust’s type system, the following traits are only
 /// implemented on tuples of arity 12 or less. In the future, this may change:
