@@ -23,7 +23,7 @@ mod util;
 pub mod wf;
 
 use crate::infer::outlives::env::OutlivesEnvironment;
-use crate::infer::{InferCtxt, RegionckMode, TyCtxtInferExt};
+use crate::infer::{InferCtxt, TyCtxtInferExt};
 use crate::traits::error_reporting::InferCtxtExt as _;
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_errors::ErrorGuaranteed;
@@ -240,11 +240,7 @@ fn do_normalize_predicates<'tcx>(
         // cares about declarations like `'a: 'b`.
         let outlives_env = OutlivesEnvironment::new(elaborated_env);
 
-        infcx.resolve_regions_and_report_errors(
-            region_context,
-            &outlives_env,
-            RegionckMode::default(),
-        );
+        infcx.resolve_regions_and_report_errors(region_context, &outlives_env);
 
         let predicates = match infcx.fully_resolve(predicates) {
             Ok(predicates) => predicates,

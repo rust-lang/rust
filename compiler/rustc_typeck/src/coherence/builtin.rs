@@ -9,7 +9,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_hir::ItemKind;
 use rustc_infer::infer;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
-use rustc_infer::infer::{RegionckMode, TyCtxtInferExt};
+use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::ty::adjustment::CoerceUnsizedInfo;
 use rustc_middle::ty::{self, suggest_constraining_type_params, Ty, TyCtxt, TypeFoldable};
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt;
@@ -349,11 +349,7 @@ fn visit_implementation_of_dispatch_from_dyn<'tcx>(tcx: TyCtxt<'tcx>, impl_did: 
 
                     // Finally, resolve all regions.
                     let outlives_env = OutlivesEnvironment::new(param_env);
-                    infcx.resolve_regions_and_report_errors(
-                        impl_did.to_def_id(),
-                        &outlives_env,
-                        RegionckMode::default(),
-                    );
+                    infcx.resolve_regions_and_report_errors(impl_did.to_def_id(), &outlives_env);
                 }
             }
             _ => {
@@ -610,11 +606,7 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUn
 
         // Finally, resolve all regions.
         let outlives_env = OutlivesEnvironment::new(param_env);
-        infcx.resolve_regions_and_report_errors(
-            impl_did.to_def_id(),
-            &outlives_env,
-            RegionckMode::default(),
-        );
+        infcx.resolve_regions_and_report_errors(impl_did.to_def_id(), &outlives_env);
 
         CoerceUnsizedInfo { custom_kind: kind }
     })
