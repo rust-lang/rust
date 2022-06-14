@@ -326,6 +326,15 @@ pub unsafe fn create_module<'ll>(
         )
     }
 
+    if sess.opts.debugging_opts.virtual_function_elimination {
+        llvm::LLVMRustAddModuleFlag(
+            llmod,
+            llvm::LLVMModFlagBehavior::Error,
+            "Virtual Function Elim\0".as_ptr().cast(),
+            1,
+        );
+    }
+
     llmod
 }
 
@@ -656,6 +665,7 @@ impl<'ll> CodegenCx<'ll, '_> {
         let t_isize = self.type_isize();
         let t_f32 = self.type_f32();
         let t_f64 = self.type_f64();
+        let t_metadata = self.type_metadata();
 
         ifn!("llvm.wasm.trunc.unsigned.i32.f32", fn(t_f32) -> t_i32);
         ifn!("llvm.wasm.trunc.unsigned.i32.f64", fn(t_f64) -> t_i32);
@@ -881,11 +891,12 @@ impl<'ll> CodegenCx<'ll, '_> {
             ifn!("llvm.instrprof.increment", fn(i8p, t_i64, t_i32, t_i32) -> void);
         }
 
-        ifn!("llvm.type.test", fn(i8p, self.type_metadata()) -> i1);
+        ifn!("llvm.type.test", fn(i8p, t_metadata) -> i1);
+        ifn!("llvm.type.checked.load", fn(i8p, t_i32, t_metadata) -> mk_struct! {i8p, i1});
 
         if self.sess().opts.debuginfo != DebugInfo::None {
-            ifn!("llvm.dbg.declare", fn(self.type_metadata(), self.type_metadata()) -> void);
-            ifn!("llvm.dbg.value", fn(self.type_metadata(), t_i64, self.type_metadata()) -> void);
+            ifn!("llvm.dbg.declare", fn(t_metadata, t_metadata) -> void);
+            ifn!("llvm.dbg.value", fn(t_metadata, t_i64, t_metadata) -> void);
         }
         None
     }

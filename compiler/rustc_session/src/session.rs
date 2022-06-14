@@ -1433,13 +1433,13 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         );
     }
 
-    // LLVM CFI requires LTO.
-    if sess.is_sanitizer_cfi_enabled() {
-        if sess.opts.cg.lto == config::LtoCli::Unspecified
-            || sess.opts.cg.lto == config::LtoCli::No
-            || sess.opts.cg.lto == config::LtoCli::Thin
-        {
+    // LLVM CFI and VFE both require LTO.
+    if sess.lto() != config::Lto::Fat {
+        if sess.is_sanitizer_cfi_enabled() {
             sess.err("`-Zsanitizer=cfi` requires `-Clto`");
+        }
+        if sess.opts.debugging_opts.virtual_function_elimination {
+            sess.err("`-Zvirtual-function-elimination` requires `-Clto`");
         }
     }
 

@@ -356,6 +356,16 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
         self.context.new_rvalue_from_int(self.int_type, 0)
     }
 
+    fn type_checked_load(
+        &mut self,
+        _llvtable: Self::Value,
+        _vtable_byte_offset: u64,
+        _typeid: Self::Value,
+    ) -> Self::Value {
+        // Unsupported.
+        self.context.new_rvalue_from_int(self.int_type, 0)
+    }
+
     fn va_start(&mut self, _va_list: RValue<'gcc>) -> RValue<'gcc> {
         unimplemented!();
     }

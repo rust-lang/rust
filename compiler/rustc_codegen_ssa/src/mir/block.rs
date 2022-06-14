@@ -401,7 +401,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 args = &args[..1];
                 (
                     meth::VirtualIndex::from_index(ty::COMMON_VTABLE_ENTRIES_DROPINPLACE)
-                        .get_fn(&mut bx, vtable, &fn_abi),
+                        .get_fn(&mut bx, vtable, ty, &fn_abi),
                     fn_abi,
                 )
             }
@@ -819,9 +819,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     // the data pointer as the first argument
                     match op.val {
                         Pair(data_ptr, meta) => {
-                            llfn = Some(
-                                meth::VirtualIndex::from_index(idx).get_fn(&mut bx, meta, &fn_abi),
-                            );
+                            llfn = Some(meth::VirtualIndex::from_index(idx).get_fn(
+                                &mut bx,
+                                meta,
+                                op.layout.ty,
+                                &fn_abi,
+                            ));
                             llargs.push(data_ptr);
                             continue 'make_args;
                         }
@@ -829,7 +832,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }
                 } else if let Ref(data_ptr, Some(meta), _) = op.val {
                     // by-value dynamic dispatch
-                    llfn = Some(meth::VirtualIndex::from_index(idx).get_fn(&mut bx, meta, &fn_abi));
+                    llfn = Some(meth::VirtualIndex::from_index(idx).get_fn(
+                        &mut bx,
+                        meta,
+                        op.layout.ty,
+                        &fn_abi,
+                    ));
                     llargs.push(data_ptr);
                     continue;
                 } else {
