@@ -16,14 +16,17 @@ export class Config {
     readonly extensionId = "rust-lang.rust-analyzer";
 
     readonly rootSection = "rust-analyzer";
+    private readonly requiresWorkspaceReloadOpts = ["serverPath", "server"].map(
+        (opt) => `${this.rootSection}.${opt}`
+    );
     private readonly requiresReloadOpts = [
-        "serverPath",
-        "server",
         "cargo",
         "procMacro",
         "files",
         "lens", // works as lens.*
-    ].map((opt) => `${this.rootSection}.${opt}`);
+    ]
+        .map((opt) => `${this.rootSection}.${opt}`)
+        .concat(this.requiresWorkspaceReloadOpts);
 
     readonly package: {
         version: string;
@@ -60,16 +63,26 @@ export class Config {
 
         if (!requiresReloadOpt) return;
 
-        if (this.restartServerOnConfigChange) {
-            await vscode.commands.executeCommand("rust-analyzer.reload");
-        } else {
-            const userResponse = await vscode.window.showInformationMessage(
-                `Changing "${requiresReloadOpt}" requires a reload`,
-                "Reload now"
-            );
+        const requiresWorkspaceReloadOpt = this.requiresWorkspaceReloadOpts.find((opt) =>
+            event.affectsConfiguration(opt)
+        );
 
+        if (!requiresWorkspaceReloadOpt && this.restartServerOnConfigChange) {
+            await vscode.commands.executeCommand("rust-analyzer.reload");
+            return;
+        }
+
+        const message = requiresWorkspaceReloadOpt
+            ? `Changing "${requiresWorkspaceReloadOpt}" requires a window reload`
+            : `Changing "${requiresReloadOpt}" requires a reload`;
+        const userResponse = await vscode.window.showInformationMessage(message, "Reload now");
+
+        if (userResponse === "Reload now") {
+            const command = requiresWorkspaceReloadOpt
+                ? "workbench.action.reloadWindow"
+                : "rust-analyzer.reload";
             if (userResponse === "Reload now") {
-                await vscode.commands.executeCommand("rust-analyzer.reload");
+                await vscode.commands.executeCommand(command);
             }
         }
     }
