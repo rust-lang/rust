@@ -943,7 +943,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         ExpnId::root(),
                         constraint.span,
                     );*/
- 
+
                     self.with_dyn_type_scope(false, |this| {
                         let node_id = this.resolver.next_node_id();
                         let ty = this.lower_ty(
