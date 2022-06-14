@@ -1,29 +1,48 @@
-use rustc_middle::mir::interpret::{Allocation, ConstAllocation};
-use rustc_middle::mir::Mutability;
+use rustc_hir::lang_items::LangItem;
+use rustc_middle::mir::interpret::{AllocRange, Allocation, ConstAllocation, Scalar as MirScalar};
 use rustc_middle::ty::layout::LayoutCx;
 use rustc_middle::ty::{ParamEnv, ParamEnvAnd};
 use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_target::abi::{
-    Abi, Align, Endian, FieldsShape, HasDataLayout, Scalar, Size, WrappingRange,
+    Abi, FieldsShape, HasDataLayout, Integer, Primitive, Scalar, Size, TyAndLayout, WrappingRange,
 };
+
+#[derive(Debug, Clone, Copy)]
+enum InvariantSize {
+    U8,
+    U16,
+    U32,
+    U64,
+    U128,
+    Pointer,
+}
 
 #[derive(Debug, Clone, Copy)]
 struct Invariant {
     offset: Size,
-    size: Size,
-    start: u128,
-    end: u128,
+    size: InvariantSize,
+    valid_range_start: u128,
+    valid_range_end: u128,
 }
 
-// TODO: Don't add duplicate invariants (maybe use a HashMap?)
+// FIXME: Don't add duplicate invariants (maybe use a HashMap?)
 fn add_invariants<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, invs: &mut Vec<Invariant>, offset: Size) {
     let x = tcx.layout_of(ParamEnvAnd { param_env: ParamEnv::reveal_all(), value: ty });
 
     if let Ok(layout) = x {
         if let Abi::Scalar(Scalar::Initialized { value, valid_range }) = layout.layout.abi() {
-            let size = value.size(&tcx);
+            let size = match value {
+                Primitive::Int(Integer::I8, _) => InvariantSize::U8,
+                Primitive::Int(Integer::I16, _) => InvariantSize::U16,
+                Primitive::Int(Integer::I32, _) => InvariantSize::U32,
+                Primitive::Int(Integer::I64, _) => InvariantSize::U64,
+                Primitive::Int(Integer::I128, _) => InvariantSize::U128,
+                Primitive::F32 => InvariantSize::U32,
+                Primitive::F64 => InvariantSize::U64,
+                Primitive::Pointer => InvariantSize::Pointer,
+            };
             let WrappingRange { start, end } = valid_range;
-            invs.push(Invariant { offset, size, start, end })
+            invs.push(Invariant { offset, size, valid_range_start: start, valid_range_end: end })
         }
 
         let param_env = ParamEnv::reveal_all();
@@ -33,8 +52,8 @@ fn add_invariants<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, invs: &mut Vec<Invarian
             FieldsShape::Primitive => {}
             FieldsShape::Union(_) => {}
             FieldsShape::Array { stride, count } => {
-                // TODO: should we just bail if we're making a Too Large type?
-                // (Like [bool; 1_000_000])
+                // We may wish to bail out if we're generating too many invariants.
+                // That would lead to false negatives, though.
                 for idx in 0..*count {
                     let off = offset + *stride * idx;
                     let f = layout.field(&unwrap, idx as usize);
@@ -57,22 +76,13 @@ fn add_invariants<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, invs: &mut Vec<Invarian
     }
 }
 
-fn extend_encoded_int(to: &mut Vec<u8>, endian: Endian, ptr_size: PointerSize, value: Size) {
-    match (endian, ptr_size) {
-        (Endian::Little, PointerSize::Bits16) => to.extend((value.bytes() as u16).to_le_bytes()),
-        (Endian::Little, PointerSize::Bits32) => to.extend((value.bytes() as u32).to_le_bytes()),
-        (Endian::Little, PointerSize::Bits64) => to.extend((value.bytes()).to_le_bytes()),
-        (Endian::Big, PointerSize::Bits16) => to.extend((value.bytes() as u16).to_be_bytes()),
-        (Endian::Big, PointerSize::Bits32) => to.extend((value.bytes() as u32).to_be_bytes()),
-        (Endian::Big, PointerSize::Bits64) => to.extend((value.bytes()).to_be_bytes()),
-    }
-}
-
-#[derive(Clone, Copy)]
-enum PointerSize {
-    Bits16,
-    Bits32,
-    Bits64,
+fn get_layout_of_invariant<'tcx>(tcx: TyCtxt<'tcx>) -> TyAndLayout<'tcx, Ty<'tcx>> {
+    let item = tcx.require_lang_item(LangItem::ValidityInvariant, None);
+    let ty = tcx.type_of(item);
+    let layout = tcx
+        .layout_of(ParamEnv::reveal_all().and(ty))
+        .expect("invalid layout for ValidityInvariant lang item");
+    layout
 }
 
 /// Directly returns a `ConstAllocation` containing a list of validity invariants of the given type.
@@ -83,38 +93,54 @@ pub(crate) fn alloc_validity_invariants_of<'tcx>(
     let mut invs: Vec<Invariant> = Vec::new();
 
     let layout = tcx.data_layout();
-
-    let ptr_size = match layout.pointer_size.bits() {
-        16 => PointerSize::Bits16,
-        32 => PointerSize::Bits32,
-        64 => PointerSize::Bits64,
-        _ => {
-            // Not sure if this can happen, but just return an empty slice?
-            let alloc =
-                Allocation::from_bytes(Vec::new(), Align::from_bytes(8).unwrap(), Mutability::Not);
-            return tcx.intern_const_alloc(alloc);
-        }
-    };
+    let validity_invariant = get_layout_of_invariant(tcx);
 
     add_invariants(tcx, ty, &mut invs, Size::ZERO);
 
-    let encode_range = match layout.endian {
-        Endian::Little => |r: u128| r.to_le_bytes(),
-        Endian::Big => |r: u128| r.to_be_bytes(),
-    };
+    let allocation_size = validity_invariant.layout.size() * invs.len() as u64;
+    let mut alloc =
+        Allocation::uninit(allocation_size, validity_invariant.layout.align().abi, true).unwrap();
 
-    let mut encoded = Vec::new();
+    let offset_off = validity_invariant.layout.fields().offset(0);
+    let size_off = validity_invariant.layout.fields().offset(1);
+    let start_off = validity_invariant.layout.fields().offset(2);
+    let end_off = validity_invariant.layout.fields().offset(3);
 
-    // TODO: this needs to match the layout of `Invariant` in core/src/intrinsics.rs
-    // how do we ensure that?
-    for inv in invs {
-        extend_encoded_int(&mut encoded, layout.endian, ptr_size, inv.offset);
-        extend_encoded_int(&mut encoded, layout.endian, ptr_size, inv.size);
-        encoded.extend(encode_range(inv.start));
-        encoded.extend(encode_range(inv.end));
+    for (idx, invariant) in invs.iter().enumerate() {
+        let offset = idx as u64 * validity_invariant.layout.size();
+
+        let offset_range = AllocRange { start: offset + offset_off, size: layout.pointer_size };
+        alloc
+            .write_scalar(
+                &tcx,
+                offset_range,
+                MirScalar::from_machine_usize(invariant.offset.bytes(), &tcx).into(),
+            )
+            .unwrap();
+
+        let size_range = AllocRange { start: offset + size_off, size: Size::from_bytes(1) };
+        alloc
+            .write_scalar(&tcx, size_range, MirScalar::from_u8(invariant.size as u8).into())
+            .unwrap();
+
+        let offset_range = AllocRange { start: offset + start_off, size: Size::from_bytes(16) };
+        alloc
+            .write_scalar(
+                &tcx,
+                offset_range,
+                MirScalar::from_u128(invariant.valid_range_start).into(),
+            )
+            .unwrap();
+
+        let offset_range = AllocRange { start: offset + end_off, size: Size::from_bytes(16) };
+        alloc
+            .write_scalar(
+                &tcx,
+                offset_range,
+                MirScalar::from_u128(invariant.valid_range_end).into(),
+            )
+            .unwrap();
     }
 
-    // TODO: The alignment here should be calculated from the struct definition, I guess?
-    let alloc = Allocation::from_bytes(encoded, Align::from_bytes(8).unwrap(), Mutability::Not);
     tcx.intern_const_alloc(alloc)
 }

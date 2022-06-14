@@ -277,6 +277,7 @@ symbols! {
         TyKind,
         Unknown,
         UnsafeArg,
+        ValidityInvariant,
         Vec,
         VecDeque,
         Wrapper,

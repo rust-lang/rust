@@ -2138,18 +2138,42 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
     }
 }
 
-#[repr(C)]
 #[derive(Debug, Clone, Copy)]
-pub struct Invariant {
-    offset: u64,
-    size: u64,
-    start: u128,
-    end: u128,
+#[repr(u8)]
+enum InvariantSize {
+    U8 = 0,
+    U16 = 1,
+    U32 = 2,
+    U64 = 3,
+    U128 = 4,
+    Pointer = 5,
+}
+
+/// An Invariant is a field and its valid range. The valid range may be full, in which case it
+/// should still be branched on, to allow tools like memory sanitizer to verify the memory is not
+/// uninit.
+// Be sure to keep the fields in order (offset, size, start, end), validity_invariants_of.rs needs
+// that.
+#[cfg(not(bootstrap))]
+#[derive(Debug, Clone, Copy)]
+#[lang = "ValidityInvariant"]
+struct Invariant {
+    /// The offset in bytes from the start of the struct
+    offset: usize,
+    /// The size/type of the invariant.
+    size: InvariantSize,
+    /// The start point of the valid range of this field. Is allowed to be > valid_range_end, see
+    /// <https://doc.rust-lang.org/nightly/nightly-rustc/rustc_target/abi/struct.WrappingRange.html>
+    /// which this follows the semantics of.
+    valid_range_start: u128,
+
+    /// The end point of the range.
+    valid_range_end: u128,
 }
 
 #[cfg(not(bootstrap))]
 /// Returns a list of all validity invariants of the type.
-pub const fn validity_invariants_of<T>() -> &'static [Invariant] {
+const fn validity_invariants_of<T>() -> &'static [Invariant] {
     extern "rust-intrinsic" {
         #[rustc_const_unstable(feature = "validity_invariants_of", issue = "none")]
         pub fn validity_invariants_of<T>() -> &'static [u8];
@@ -2435,34 +2459,35 @@ pub(crate) unsafe fn assert_validity_of<T>(value: *const T) -> bool {
     struct Unaligned<T>(T);
 
     // SAFETY: The pointer dereferences here are valid if `value` is valid.
-    // though TODO: introduce a new size for "pointer", since reading a pointer as an int *is* UB.
     unsafe {
         let invariants = validity_invariants_of::<T>();
         for invariant in invariants {
             let off = invariant.offset as usize;
-            let start = invariant.start;
-            let end = invariant.end;
+            let start = invariant.valid_range_start;
+            let end = invariant.valid_range_end;
 
-            // TODO: Maybe replace this with an enum?
             let (value, max): (u128, u128) = match invariant.size {
-                1 => ((*(value.cast::<u8>().add(off))).into(), u8::MAX.into()),
-                2 => (
+                InvariantSize::U8 => ((*(value.cast::<u8>().add(off))).into(), u8::MAX.into()),
+                InvariantSize::U16 => (
                     (*value.cast::<u8>().add(off).cast::<Unaligned<u16>>()).0.into(),
                     u16::MAX.into(),
                 ),
-                4 => (
+                InvariantSize::U32 => (
                     (*value.cast::<u8>().add(off).cast::<Unaligned<u32>>()).0.into(),
                     u32::MAX.into(),
                 ),
-                8 => (
+                InvariantSize::U64 => (
                     (*value.cast::<u8>().add(off).cast::<Unaligned<u64>>()).0.into(),
                     u64::MAX.into(),
                 ),
-                16 => (
+                InvariantSize::U128 => (
                     (*value.cast::<u8>().add(off).cast::<Unaligned<u128>>()).0.into(),
                     u128::MAX.into(),
                 ),
-                s => panic!("unexpected size {s}"),
+                InvariantSize::Pointer => (
+                    (*value.cast::<u8>().add(off).cast::<Unaligned<*const ()>>()).0.addr() as u128,
+                    usize::MAX as u128,
+                ),
             };
 
             if start > end {

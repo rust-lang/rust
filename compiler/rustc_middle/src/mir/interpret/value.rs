@@ -259,6 +259,11 @@ impl<Tag> Scalar<Tag> {
     }
 
     #[inline]
+    pub fn from_u128(i: u128) -> Self {
+        Scalar::Int(i.into())
+    }
+
+    #[inline]
     pub fn from_machine_usize(i: u64, cx: &impl HasDataLayout) -> Self {
         Self::from_uint(i, cx.data_layout().pointer_size)
     }
