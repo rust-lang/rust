@@ -7,7 +7,6 @@ edition = "2021"
 doctest = false
 
 [dependencies]
-libc = "0.2"
 libloading = "0.7.1"
 tracing = "0.1"
 rustc-rayon-core = { version = "0.4.0", optional = true }
@@ -48,6 +47,9 @@ rustc_resolve = { path = "../rustc_resolve" }
 rustc_trait_selection = { path = "../rustc_trait_selection" }
 rustc_ty_utils = { path = "../rustc_ty_utils" }
 tempfile = "3.2"
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
 
 [target.'cfg(windows)'.dependencies]
 winapi = { version = "0.3", features = ["libloaderapi"] }
