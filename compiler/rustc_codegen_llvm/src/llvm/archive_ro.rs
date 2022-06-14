@@ -83,17 +83,6 @@ impl<'a> Child<'a> {
             }
         }
     }
-
-    pub fn data(&self) -> &'a [u8] {
-        unsafe {
-            let mut data_len = 0;
-            let data_ptr = super::LLVMRustArchiveChildData(self.raw, &mut data_len);
-            if data_ptr.is_null() {
-                panic!("failed to read data from archive child");
-            }
-            slice::from_raw_parts(data_ptr as *const u8, data_len as usize)
-        }
-    }
 }
 
 impl<'a> Drop for Child<'a> {
