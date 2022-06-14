@@ -36,10 +36,11 @@ pub struct HighlightRelatedConfig {
 // Feature: Highlight Related
 //
 // Highlights constructs related to the thing under the cursor:
-// - if on an identifier, highlights all references to that identifier in the current file
-// - if on an `async` or `await token, highlights all yield points for that async context
-// - if on a `return` or `fn` keyword, `?` character or `->` return type arrow, highlights all exit points for that context
-// - if on a `break`, `loop`, `while` or `for` token, highlights all break points for that loop or block context
+//
+// . if on an identifier, highlights all references to that identifier in the current file
+// . if on an `async` or `await token, highlights all yield points for that async context
+// . if on a `return` or `fn` keyword, `?` character or `->` return type arrow, highlights all exit points for that context
+// . if on a `break`, `loop`, `while` or `for` token, highlights all break points for that loop or block context
 //
 // Note: `?` and `->` do not currently trigger this behavior in the VSCode editor.
 pub(crate) fn highlight_related(

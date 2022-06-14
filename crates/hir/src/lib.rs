@@ -628,13 +628,14 @@ fn emit_def_diagnostic(db: &dyn HirDatabase, acc: &mut Vec<AnyDiagnostic>, diag:
         }
 
         DefDiagnosticKind::UnresolvedProcMacro { ast } => {
-            let (node, precise_location, macro_name) = match ast {
+            let (node, precise_location, macro_name, kind) = match ast {
                 MacroCallKind::FnLike { ast_id, .. } => {
                     let node = ast_id.to_node(db.upcast());
                     (
                         ast_id.with_value(SyntaxNodePtr::from(AstPtr::new(&node))),
                         node.path().map(|it| it.syntax().text_range()),
                         node.path().and_then(|it| it.segment()).map(|it| it.to_string()),
+                        MacroKind::ProcMacro,
                     )
                 }
                 MacroCallKind::Derive { ast_id, derive_attr_index, derive_index } => {
@@ -665,6 +666,7 @@ fn emit_def_diagnostic(db: &dyn HirDatabase, acc: &mut Vec<AnyDiagnostic>, diag:
                         ast_id.with_value(SyntaxNodePtr::from(AstPtr::new(&node))),
                         token.as_ref().map(|tok| tok.text_range()),
                         token.as_ref().map(ToString::to_string),
+                        MacroKind::Derive,
                     )
                 }
                 MacroCallKind::Attr { ast_id, invoc_attr_index, .. } => {
@@ -683,10 +685,11 @@ fn emit_def_diagnostic(db: &dyn HirDatabase, acc: &mut Vec<AnyDiagnostic>, diag:
                             .and_then(|seg| seg.name_ref())
                             .as_ref()
                             .map(ToString::to_string),
+                        MacroKind::Attr,
                     )
                 }
             };
-            acc.push(UnresolvedProcMacro { node, precise_location, macro_name }.into());
+            acc.push(UnresolvedProcMacro { node, precise_location, macro_name, kind }.into());
         }
 
         DefDiagnosticKind::UnresolvedMacroCall { ast, path } => {
@@ -1159,6 +1162,7 @@ impl DefWithBody {
                         node: node.clone().map(|it| it.into()),
                         precise_location: None,
                         macro_name: None,
+                        kind: MacroKind::ProcMacro,
                     }
                     .into(),
                 ),

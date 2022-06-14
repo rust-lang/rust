@@ -9,7 +9,7 @@ use hir_def::path::ModPath;
 use hir_expand::{name::Name, HirFileId, InFile};
 use syntax::{ast, AstPtr, SyntaxNodePtr, TextRange};
 
-use crate::Type;
+use crate::{MacroKind, Type};
 
 macro_rules! diagnostics {
     ($($diag:ident,)*) => {
@@ -86,6 +86,7 @@ pub struct UnresolvedProcMacro {
     /// to use instead.
     pub precise_location: Option<TextRange>,
     pub macro_name: Option<String>,
+    pub kind: MacroKind,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
