@@ -91,8 +91,8 @@ impl<K, V> Root<K, V> {
         }
     }
 
-    /// Stock up any underfull nodes on the right border of the tree.
-    /// The other nodes, those that are not the root nor a rightmost edge,
+    /// Stocks up any underfull nodes on the right border of the tree.
+    /// The other nodes, those that are neither the root nor a rightmost edge,
     /// must be prepared to have up to MIN_LEN elements stolen.
     pub fn fix_right_border_of_plentiful(&mut self) {
         let mut cur_node = self.borrow_mut();
