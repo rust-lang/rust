@@ -16,12 +16,12 @@ use rustc_hir::def_id::{DefIdMap, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{GenericArg, GenericParam, LifetimeName, Node};
 use rustc_hir::{GenericParamKind, HirIdMap};
-use rustc_lint_defs::builtin::NAMED_STATIC_LIFETIMES;
 use rustc_middle::hir::map::Map;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::resolve_lifetime::*;
 use rustc_middle::ty::{self, GenericParamDefKind, TyCtxt};
 use rustc_middle::{bug, span_bug};
+use rustc_session::lint;
 use rustc_span::def_id::DefId;
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Span;
@@ -1257,7 +1257,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                                 }
                                 this.insert_lifetime(lt, Region::Static);
                                 this.tcx.struct_span_lint_hir(
-                                    NAMED_STATIC_LIFETIMES,
+                                    lint::builtin::NAMED_STATIC_LIFETIMES,
                                     lifetime.hir_id,
                                     lifetime.span,
                                     |lint| {
