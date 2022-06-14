@@ -2425,7 +2425,8 @@ pub(crate) const unsafe fn assert_validity_of<T>(_: *const T) -> bool {
 }
 
 #[cfg(not(bootstrap))]
-/// Asserts that the value at `value` is valid at type T.
+/// Asserts that the value at `value` is a valid T.
+///
 /// Best effort, and is UB if the value is invalid.
 pub(crate) unsafe fn assert_validity_of<T>(value: *const T) -> bool {
     // We have to do this, since we call assert_validity_of inside MaybeUninit::assume_init
