@@ -1,4 +1,4 @@
-// edition:2018
+// edition:2021
 
 mod foo {
     macro_rules! bar {
