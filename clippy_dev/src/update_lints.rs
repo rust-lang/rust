@@ -413,7 +413,7 @@ fn remove_lint_declaration(name: &str, path: &Path, lints: &mut Vec<Lint>) -> io
                 .find("declare_lint_pass!")
                 .unwrap_or_else(|| panic!("failed to find `impl_lint_pass`"))
         });
-        let mut impl_lint_pass_end = (&content[impl_lint_pass_start..])
+        let mut impl_lint_pass_end = content[impl_lint_pass_start..]
             .find(']')
             .expect("failed to find `impl_lint_pass` terminator");
 

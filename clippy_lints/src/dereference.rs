@@ -911,7 +911,18 @@ fn param_auto_deref_stability(ty: Ty<'_>, precedence: i8) -> Position {
                 ty = ref_ty;
                 continue;
             },
-            ty::Bool
+            ty::Infer(_)
+            | ty::Error(_)
+            | ty::Param(_)
+            | ty::Bound(..)
+            | ty::Opaque(..)
+            | ty::Placeholder(_)
+            | ty::Dynamic(..) => Position::ReborrowStable(precedence),
+            ty::Adt(..) if ty.has_placeholders() || ty.has_param_types_or_consts() => {
+                Position::ReborrowStable(precedence)
+            },
+            ty::Adt(..)
+            | ty::Bool
             | ty::Char
             | ty::Int(_)
             | ty::Uint(_)
@@ -929,17 +940,6 @@ fn param_auto_deref_stability(ty: Ty<'_>, precedence: i8) -> Position {
             | ty::Never
             | ty::Tuple(_)
             | ty::Projection(_) => Position::DerefStable(precedence),
-            ty::Infer(_)
-            | ty::Error(_)
-            | ty::Param(_)
-            | ty::Bound(..)
-            | ty::Opaque(..)
-            | ty::Placeholder(_)
-            | ty::Dynamic(..) => Position::ReborrowStable(precedence),
-            ty::Adt(..) if ty.has_placeholders() || ty.has_param_types_or_consts() => {
-                Position::ReborrowStable(precedence)
-            },
-            ty::Adt(..) => Position::DerefStable(precedence),
         };
     }
 }
@@ -952,7 +952,7 @@ fn ty_contains_field(ty: Ty<'_>, name: Symbol) -> bool {
     }
 }
 
-#[expect(clippy::needless_pass_by_value)]
+#[expect(clippy::needless_pass_by_value, clippy::too_many_lines)]
 fn report<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, state: State, data: StateData) {
     match state {
         State::DerefMethod {
