@@ -116,13 +116,13 @@ fn get_args_to_check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> Ve
 
 fn check_arg<'tcx>(cx: &LateContext<'tcx>, arg: &'tcx Expr<'tcx>) -> Option<(Span, Option<Span>)> {
     if_chain! {
-        if let ExprKind::Closure(_, _fn_decl, body_id, span, _) = arg.kind;
+        if let ExprKind::Closure { body, fn_decl_span, .. } = arg.kind;
         if let ty::Closure(_def_id, substs) = &cx.typeck_results().node_type(arg.hir_id).kind();
         let ret_ty = substs.as_closure().sig().output();
         let ty = cx.tcx.erase_late_bound_regions(ret_ty);
         if ty.is_unit();
         then {
-            let body = cx.tcx.hir().body(body_id);
+            let body = cx.tcx.hir().body(body);
             if_chain! {
                 if let ExprKind::Block(block, _) = body.value.kind;
                 if block.expr.is_none();
@@ -131,9 +131,9 @@ fn check_arg<'tcx>(cx: &LateContext<'tcx>, arg: &'tcx Expr<'tcx>) -> Option<(Spa
                 then {
                     let data = stmt.span.data();
                     // Make a span out of the semicolon for the help message
-                    Some((span, Some(data.with_lo(data.hi-BytePos(1)))))
+                    Some((fn_decl_span, Some(data.with_lo(data.hi-BytePos(1)))))
                 } else {
-                    Some((span, None))
+                    Some((fn_decl_span, None))
                 }
             }
         } else {

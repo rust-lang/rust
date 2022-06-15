@@ -2357,7 +2357,7 @@ impl<'tcx> Visitor<'tcx> for CheckAttrVisitor<'tcx> {
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
         let target = match expr.kind {
-            hir::ExprKind::Closure(..) => Target::Closure,
+            hir::ExprKind::Closure { .. } => Target::Closure,
             _ => Target::Expression,
         };
 

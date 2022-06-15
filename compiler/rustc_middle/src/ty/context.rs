@@ -1550,7 +1550,7 @@ impl<'tcx> TyCtxt<'tcx> {
             Node::Item(&hir::Item { kind: ItemKind::Fn(..), .. }) => {}
             Node::TraitItem(&hir::TraitItem { kind: TraitItemKind::Fn(..), .. }) => {}
             Node::ImplItem(&hir::ImplItem { kind: ImplItemKind::Fn(..), .. }) => {}
-            Node::Expr(&hir::Expr { kind: ExprKind::Closure(..), .. }) => {}
+            Node::Expr(&hir::Expr { kind: ExprKind::Closure { .. }, .. }) => {}
             _ => return None,
         }
 

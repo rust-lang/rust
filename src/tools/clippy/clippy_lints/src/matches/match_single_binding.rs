@@ -177,7 +177,7 @@ fn sugg_with_curlies<'a>(
 
     let (mut cbrace_start, mut cbrace_end) = (String::new(), String::new());
     if let Some(parent_expr) = get_parent_expr(cx, match_expr) {
-        if let ExprKind::Closure(..) = parent_expr.kind {
+        if let ExprKind::Closure { .. } = parent_expr.kind {
             cbrace_end = format!("\n{}}}", indent);
             // Fix body indent due to the closure
             indent = " ".repeat(indent_of(cx, bind_names).unwrap_or(0));

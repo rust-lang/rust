@@ -22,7 +22,7 @@ fn fn_decl<'hir>(node: Node<'hir>) -> Option<&'hir FnDecl<'hir>> {
         Node::Item(Item { kind: ItemKind::Fn(sig, _, _), .. })
         | Node::TraitItem(TraitItem { kind: TraitItemKind::Fn(sig, _), .. })
         | Node::ImplItem(ImplItem { kind: ImplItemKind::Fn(sig, _), .. }) => Some(&sig.decl),
-        Node::Expr(Expr { kind: ExprKind::Closure(_, fn_decl, ..), .. })
+        Node::Expr(Expr { kind: ExprKind::Closure { fn_decl, .. }, .. })
         | Node::ForeignItem(ForeignItem { kind: ForeignItemKind::Fn(fn_decl, ..), .. }) => {
             Some(fn_decl)
         }
@@ -54,7 +54,7 @@ pub fn associated_body<'hir>(node: Node<'hir>) -> Option<BodyId> {
             kind: ImplItemKind::Const(_, body) | ImplItemKind::Fn(_, body),
             ..
         })
-        | Node::Expr(Expr { kind: ExprKind::Closure(.., body, _, _), .. }) => Some(*body),
+        | Node::Expr(Expr { kind: ExprKind::Closure { body, .. }, .. }) => Some(*body),
 
         Node::AnonConst(constant) => Some(constant.body),
 
@@ -285,8 +285,8 @@ impl<'hir> Map<'hir> {
             }
             Node::Field(_) => DefKind::Field,
             Node::Expr(expr) => match expr.kind {
-                ExprKind::Closure(.., None) => DefKind::Closure,
-                ExprKind::Closure(.., Some(_)) => DefKind::Generator,
+                ExprKind::Closure { movability: None, .. } => DefKind::Closure,
+                ExprKind::Closure { movability: Some(_), .. } => DefKind::Generator,
                 _ => bug!("def_kind: unsupported node: {}", self.node_to_string(hir_id)),
             },
             Node::GenericParam(param) => match param.kind {
@@ -758,7 +758,7 @@ impl<'hir> Map<'hir> {
                 Node::Item(_)
                 | Node::ForeignItem(_)
                 | Node::TraitItem(_)
-                | Node::Expr(Expr { kind: ExprKind::Closure(..), .. })
+                | Node::Expr(Expr { kind: ExprKind::Closure { .. }, .. })
                 | Node::ImplItem(_) => return Some(hir_id),
                 // Ignore `return`s on the first iteration
                 Node::Expr(Expr { kind: ExprKind::Loop(..) | ExprKind::Ret(..), .. })
