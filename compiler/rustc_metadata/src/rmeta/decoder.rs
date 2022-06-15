@@ -26,7 +26,8 @@ use rustc_middle::ty::codec::TyDecoder;
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::GeneratorDiagnosticData;
 use rustc_middle::ty::{self, ParameterizedOverTcx, Ty, TyCtxt, Visibility};
-use rustc_serialize::{opaque, Decodable, Decoder};
+use rustc_serialize::opaque::MemDecoder;
+use rustc_serialize::{Decodable, Decoder};
 use rustc_session::cstore::{
     CrateSource, ExternCrate, ForeignModule, LinkagePreference, NativeLib,
 };
@@ -154,7 +155,7 @@ struct ImportedSourceFile {
 }
 
 pub(super) struct DecodeContext<'a, 'tcx> {
-    opaque: opaque::Decoder<'a>,
+    opaque: MemDecoder<'a>,
     cdata: Option<CrateMetadataRef<'a>>,
     blob: &'a MetadataBlob,
     sess: Option<&'tcx Session>,
@@ -186,7 +187,7 @@ pub(super) trait Metadata<'a, 'tcx>: Copy {
     fn decoder(self, pos: usize) -> DecodeContext<'a, 'tcx> {
         let tcx = self.tcx();
         DecodeContext {
-            opaque: opaque::Decoder::new(self.blob(), pos),
+            opaque: MemDecoder::new(self.blob(), pos),
             cdata: self.cdata(),
             blob: self.blob(),
             sess: self.sess().or(tcx.map(|tcx| tcx.sess)),
@@ -418,7 +419,7 @@ impl<'a, 'tcx> TyDecoder for DecodeContext<'a, 'tcx> {
     where
         F: FnOnce(&mut Self) -> R,
     {
-        let new_opaque = opaque::Decoder::new(self.opaque.data, pos);
+        let new_opaque = MemDecoder::new(self.opaque.data, pos);
         let old_opaque = mem::replace(&mut self.opaque, new_opaque);
         let old_state = mem::replace(&mut self.lazy_state, LazyState::NoNode);
         let r = f(self);
