@@ -1138,7 +1138,19 @@ impl DefCollector<'_> {
 
                     let def = match resolver(path.clone()) {
                         Some(def) if def.is_attribute() => def,
-                        _ => return true,
+                        _ => {
+                            self.def_map.diagnostics.push(DefDiagnostic::unresolved_proc_macro(
+                                directive.module_id,
+                                MacroCallKind::Attr {
+                                    ast_id,
+                                    attr_args: Default::default(),
+                                    invoc_attr_index: attr.id.ast_index,
+                                    is_derive: false,
+                                },
+                                self.proc_macro_err.clone(),
+                            ));
+                            return true;
+                        }
                     };
                     if matches!(
                         def,
