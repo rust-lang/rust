@@ -29,6 +29,11 @@ error[E0214]: parenthesized type parameters may only be used with a `Fn` trait
    |
 LL |     0: u8(ţ
    |        ^^^^ only `Fn` traits may use parentheses
+   |
+help: use angle brackets instead
+   |
+LL |     0: u8<ţ>
+   |          ~ +
 
 error[E0109]: type arguments are not allowed on this type
   --> $DIR/issue-91268.rs:9:11
