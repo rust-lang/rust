@@ -45,6 +45,7 @@ use crate::{
 
 pub(crate) fn handle_workspace_reload(state: &mut GlobalState, _: ()) -> Result<()> {
     state.proc_macro_client = None;
+    state.proc_macro_changed = false;
     state.fetch_workspaces_queue.request_op("reload workspace request".to_string());
     state.fetch_build_data_queue.request_op("reload workspace request".to_string());
     Ok(())

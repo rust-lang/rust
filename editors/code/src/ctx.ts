@@ -77,10 +77,10 @@ export class Ctx {
     }
 
     setServerStatus(status: ServerStatusParams) {
-        this.statusBar.tooltip = status.message ?? "Ready";
         let icon = "";
         switch (status.health) {
             case "ok":
+                this.statusBar.tooltip = status.message ?? "Ready";
                 this.statusBar.command = undefined;
                 this.statusBar.color = undefined;
                 this.statusBar.backgroundColor = undefined;
@@ -105,7 +105,7 @@ export class Ctx {
                 break;
         }
         if (!status.quiescent) icon = "$(sync~spin) ";
-        this.statusBar.text = `${icon} rust-analyzer`;
+        this.statusBar.text = `${icon}rust-analyzer`;
     }
 
     pushCleanup(d: Disposable) {

@@ -162,7 +162,7 @@ impl GlobalState {
     }
 
     pub(crate) fn fetch_build_data(&mut self, cause: Cause) {
-        tracing::debug!(%cause, "will fetch build data");
+        tracing::info!(%cause, "will fetch build data");
         let workspaces = Arc::clone(&self.workspaces);
         let config = self.config.cargo();
         self.task_pool.handle.spawn_with_sender(move |sender| {
