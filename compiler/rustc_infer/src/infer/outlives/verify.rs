@@ -123,14 +123,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
     ) -> Vec<ty::OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>> {
         let projection_ty = GenericKind::Projection(projection_ty).to_ty(self.tcx);
         let erased_projection_ty = self.tcx.erase_regions(projection_ty);
-        self.declared_generic_bounds_from_env_with_compare_fn(|ty| {
-            if let ty::Projection(..) = ty.kind() {
-                let erased_ty = self.tcx.erase_regions(ty);
-                erased_ty == erased_projection_ty
-            } else {
-                false
-            }
-        })
+        self.declared_generic_bounds_from_env_for_erased_ty(erased_projection_ty)
     }
 
     /// Searches the where-clauses in scope for regions that
@@ -219,12 +212,23 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         param_ty: ty::ParamTy,
     ) -> Vec<ty::OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>> {
         let generic_ty = param_ty.to_ty(self.tcx);
-        self.declared_generic_bounds_from_env_with_compare_fn(|ty| ty == generic_ty)
+        self.declared_generic_bounds_from_env_for_erased_ty(generic_ty)
     }
 
-    fn declared_generic_bounds_from_env_with_compare_fn(
+    /// Searches the environment to find all bounds that apply to `erased_ty`.
+    /// Obviously these must be approximate -- they are in fact both *over* and
+    /// and *under* approximated:
+    ///
+    /// * Over-approximated because we erase regions, so
+    /// * Under-approximated because we look for syntactic equality and so for complex types
+    ///   like `<T as Foo<fn(&u32, &u32)>>::Item` or whatever we may fail to figure out
+    ///   all the subtleties.
+    ///
+    /// In some cases, such as when `erased_ty` represents a `ty::Param`, however,
+    /// the result is precise.
+    fn declared_generic_bounds_from_env_for_erased_ty(
         &self,
-        compare_ty: impl Fn(Ty<'tcx>) -> bool,
+        erased_ty: Ty<'tcx>,
     ) -> Vec<ty::OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>> {
         let tcx = self.tcx;
 
@@ -235,7 +239,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         // like `T` and `T::Item`. It may not work as well for things
         // like `<T as Foo<'a>>::Item`.
         let c_b = self.param_env.caller_bounds();
-        let param_bounds = self.collect_outlives_from_predicate_list(&compare_ty, c_b.into_iter());
+        let param_bounds = self.collect_outlives_from_predicate_list(erased_ty, c_b.into_iter());
 
         // Next, collect regions we scraped from the well-formedness
         // constraints in the fn signature. To do that, we walk the list
@@ -250,18 +254,19 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         // don't know that this holds from first principles.
         let from_region_bound_pairs = self.region_bound_pairs.iter().filter_map(|&(r, p)| {
             debug!(
-                "declared_generic_bounds_from_env_with_compare_fn: region_bound_pair = {:?}",
+                "declared_generic_bounds_from_env_for_erased_ty: region_bound_pair = {:?}",
                 (r, p)
             );
             let p_ty = p.to_ty(tcx);
-            compare_ty(p_ty).then_some(ty::OutlivesPredicate(p_ty, r))
+            let erased_p_ty = self.tcx.erase_regions(p_ty);
+            (erased_p_ty == erased_ty).then_some(ty::OutlivesPredicate(p.to_ty(tcx), r))
         });
 
         param_bounds
             .chain(from_region_bound_pairs)
             .inspect(|bound| {
                 debug!(
-                    "declared_generic_bounds_from_env_with_compare_fn: result predicate = {:?}",
+                    "declared_generic_bounds_from_env_for_erased_ty: result predicate = {:?}",
                     bound
                 )
             })
@@ -341,12 +346,13 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
     /// otherwise want a precise match.
     fn collect_outlives_from_predicate_list(
         &self,
-        compare_ty: impl Fn(Ty<'tcx>) -> bool,
+        erased_ty: Ty<'tcx>,
         predicates: impl Iterator<Item = ty::Predicate<'tcx>>,
     ) -> impl Iterator<Item = ty::OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>> {
+        let tcx = self.tcx;
         predicates
             .filter_map(|p| p.to_opt_type_outlives())
             .filter_map(|p| p.no_bound_vars())
-            .filter(move |p| compare_ty(p.0))
+            .filter(move |p| tcx.erase_regions(p.0) == erased_ty)
     }
 }
