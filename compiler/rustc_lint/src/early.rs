@@ -63,20 +63,12 @@ impl<'a, T: EarlyLintPass> EarlyContextAndPass<'a, T> {
         let push = self.context.builder.push(attrs, is_crate_node, None);
 
         self.check_id(id);
-        self.enter_attrs(attrs);
-        f(self);
-        self.exit_attrs(attrs);
-        self.context.builder.pop(push);
-    }
-
-    fn enter_attrs(&mut self, attrs: &'a [ast::Attribute]) {
         debug!("early context: enter_attrs({:?})", attrs);
         run_early_pass!(self, enter_lint_attrs, attrs);
-    }
-
-    fn exit_attrs(&mut self, attrs: &'a [ast::Attribute]) {
+        f(self);
         debug!("early context: exit_attrs({:?})", attrs);
         run_early_pass!(self, exit_lint_attrs, attrs);
+        self.context.builder.pop(push);
     }
 }
 
