@@ -318,8 +318,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ExprKind::Match(discrim, arms, match_src) => {
                 self.check_match(expr, &discrim, arms, expected, match_src)
             }
-            ExprKind::Closure(capture, decl, body_id, _, gen) => {
-                self.check_expr_closure(expr, capture, &decl, body_id, gen, expected)
+            ExprKind::Closure { capture_clause, fn_decl, body, movability, .. } => {
+                self.check_expr_closure(expr, capture_clause, &fn_decl, body, movability, expected)
             }
             ExprKind::Block(body, _) => self.check_block_with_expected(&body, expected),
             ExprKind::Call(callee, args) => self.check_call(expr, &callee, args, expected),

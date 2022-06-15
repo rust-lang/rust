@@ -489,11 +489,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // ==========================================================================
 
     ungated!(feature, CrateLevel, template!(List: "name1, name2, ..."), DuplicatesOk),
-    // FIXME(jhpratt) remove this eventually
-    ungated!(
-        rustc_deprecated, Normal,
-        template!(List: r#"since = "version", note = "...""#), ErrorFollowing
-    ),
     // DuplicatesOk since it has its own validation
     ungated!(
         stable, Normal, template!(List: r#"feature = "name", since = "version""#), DuplicatesOk,

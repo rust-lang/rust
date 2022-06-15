@@ -152,9 +152,7 @@ impl CheckAttrVisitor<'_> {
                 sym::link_name => self.check_link_name(hir_id, attr, span, target),
                 sym::link_section => self.check_link_section(hir_id, attr, span, target),
                 sym::no_mangle => self.check_no_mangle(hir_id, attr, span, target),
-                sym::deprecated | sym::rustc_deprecated => {
-                    self.check_deprecated(hir_id, attr, span, target)
-                }
+                sym::deprecated => self.check_deprecated(hir_id, attr, span, target),
                 sym::macro_use | sym::macro_escape => self.check_macro_use(hir_id, attr, target),
                 sym::path => self.check_generic_attr(hir_id, attr, target, &[Target::Mod]),
                 sym::plugin_registrar => self.check_plugin_registrar(hir_id, attr, target),
@@ -2357,7 +2355,7 @@ impl<'tcx> Visitor<'tcx> for CheckAttrVisitor<'tcx> {
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
         let target = match expr.kind {
-            hir::ExprKind::Closure(..) => Target::Closure,
+            hir::ExprKind::Closure { .. } => Target::Closure,
             _ => Target::Expression,
         };
 

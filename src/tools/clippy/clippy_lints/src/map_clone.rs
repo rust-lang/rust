@@ -67,9 +67,9 @@ impl<'tcx> LateLintPass<'tcx> for MapClone {
             if method.ident.name == sym::map;
             let ty = cx.typeck_results().expr_ty(&args[0]);
             if is_type_diagnostic_item(cx, ty, sym::Option) || is_trait_method(cx, e, sym::Iterator);
-            if let hir::ExprKind::Closure(_, _, body_id, _, _) = args[1].kind;
+            if let hir::ExprKind::Closure { body, .. } = args[1].kind;
             then {
-                let closure_body = cx.tcx.hir().body(body_id);
+                let closure_body = cx.tcx.hir().body(body);
                 let closure_expr = peel_blocks(&closure_body.value);
                 match closure_body.params[0].pat.kind {
                     hir::PatKind::Ref(inner, hir::Mutability::Not) => if let hir::PatKind::Binding(

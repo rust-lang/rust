@@ -68,8 +68,8 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
 
     // Figure out what primary body this item has.
     let (body_id, return_ty_span, span_with_body) = match tcx.hir().get(id) {
-        Node::Expr(hir::Expr { kind: hir::ExprKind::Closure(_, decl, body_id, _, _), .. }) => {
-            (*body_id, decl.output.span(), None)
+        Node::Expr(hir::Expr { kind: hir::ExprKind::Closure { fn_decl, body, .. }, .. }) => {
+            (*body, fn_decl.output.span(), None)
         }
         Node::Item(hir::Item {
             kind: hir::ItemKind::Fn(hir::FnSig { decl, .. }, _, body_id),

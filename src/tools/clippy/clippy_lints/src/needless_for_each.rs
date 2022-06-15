@@ -72,8 +72,8 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessForEach {
             if has_iter_method(cx, cx.typeck_results().expr_ty(iter_recv)).is_some();
             // Skip the lint if the body is not block because this is simpler than `for` loop.
             // e.g. `v.iter().for_each(f)` is simpler and clearer than using `for` loop.
-            if let ExprKind::Closure(_, _, body_id, ..) = for_each_arg.kind;
-            let body = cx.tcx.hir().body(body_id);
+            if let ExprKind::Closure { body, .. } = for_each_arg.kind;
+            let body = cx.tcx.hir().body(body);
             if let ExprKind::Block(..) = body.value.kind;
             then {
                 let mut ret_collector = RetCollector::default();

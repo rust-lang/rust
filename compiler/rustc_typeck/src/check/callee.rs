@@ -283,11 +283,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let hir_id = self.tcx.hir().get_parent_node(hir_id);
         let parent_node = self.tcx.hir().get(hir_id);
         if let (
-            hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Closure(_, _, _, sp, ..), .. }),
+            hir::Node::Expr(hir::Expr {
+                kind: hir::ExprKind::Closure { fn_decl_span, .. }, ..
+            }),
             hir::ExprKind::Block(..),
         ) = (parent_node, callee_node)
         {
-            let start = sp.shrink_to_lo();
+            let start = fn_decl_span.shrink_to_lo();
             let end = callee_span.shrink_to_hi();
             err.multipart_suggestion(
                 "if you meant to create this closure and immediately call it, surround the \

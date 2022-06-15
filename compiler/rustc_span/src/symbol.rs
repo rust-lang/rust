@@ -1188,7 +1188,6 @@ symbols! {
         rustc_const_unstable,
         rustc_conversion_suggestion,
         rustc_def_path,
-        rustc_deprecated,
         rustc_diagnostic_item,
         rustc_diagnostic_macros,
         rustc_dirty,

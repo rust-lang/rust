@@ -1,6 +1,6 @@
 //! Owned and borrowed OS handles.
 
-#![unstable(feature = "io_safety", issue = "87074")]
+#![stable(feature = "io_safety", since = "1.63.0")]
 
 use super::raw::{AsRawHandle, FromRawHandle, IntoRawHandle, RawHandle};
 use crate::fmt;
@@ -38,7 +38,7 @@ use crate::sys_common::{AsInner, FromInner, IntoInner};
 /// [the current process handle]: https://docs.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-getcurrentprocess#remarks
 #[derive(Copy, Clone)]
 #[repr(transparent)]
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 pub struct BorrowedHandle<'handle> {
     handle: RawHandle,
     _phantom: PhantomData<&'handle OwnedHandle>,
@@ -66,7 +66,7 @@ pub struct BorrowedHandle<'handle> {
 /// [here]: https://devblogs.microsoft.com/oldnewthing/20040302-00/?p=40443
 /// [the current process handle]: https://docs.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-getcurrentprocess#remarks
 #[repr(transparent)]
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 pub struct OwnedHandle {
     handle: RawHandle,
 }
@@ -89,7 +89,7 @@ pub struct OwnedHandle {
 ///
 /// [the current process handle]: https://docs.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-getcurrentprocess#remarks
 #[repr(transparent)]
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 #[derive(Debug)]
 pub struct HandleOrNull(OwnedHandle);
 
@@ -108,7 +108,7 @@ pub struct HandleOrNull(OwnedHandle);
 ///
 /// If holds a handle other than `INVALID_HANDLE_VALUE`, it will close the handle on drop.
 #[repr(transparent)]
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 #[derive(Debug)]
 pub struct HandleOrInvalid(OwnedHandle);
 
@@ -117,13 +117,21 @@ pub struct HandleOrInvalid(OwnedHandle);
 // `Send` or `Sync`).
 //
 // [`HANDLE`]: std::os::windows::raw::HANDLE
+#[stable(feature = "io_safety", since = "1.63.0")]
 unsafe impl Send for OwnedHandle {}
+#[stable(feature = "io_safety", since = "1.63.0")]
 unsafe impl Send for HandleOrNull {}
+#[stable(feature = "io_safety", since = "1.63.0")]
 unsafe impl Send for HandleOrInvalid {}
+#[stable(feature = "io_safety", since = "1.63.0")]
 unsafe impl Send for BorrowedHandle<'_> {}
+#[stable(feature = "io_safety", since = "1.63.0")]
 unsafe impl Sync for OwnedHandle {}
+#[stable(feature = "io_safety", since = "1.63.0")]
 unsafe impl Sync for HandleOrNull {}
+#[stable(feature = "io_safety", since = "1.63.0")]
 unsafe impl Sync for HandleOrInvalid {}
+#[stable(feature = "io_safety", since = "1.63.0")]
 unsafe impl Sync for BorrowedHandle<'_> {}
 
 impl BorrowedHandle<'_> {
@@ -142,12 +150,14 @@ impl BorrowedHandle<'_> {
     ///
     /// [here]: https://devblogs.microsoft.com/oldnewthing/20040302-00/?p=40443
     #[inline]
-    #[unstable(feature = "io_safety", issue = "87074")]
+    #[rustc_const_stable(feature = "io_safety", since = "1.63.0")]
+    #[stable(feature = "io_safety", since = "1.63.0")]
     pub const unsafe fn borrow_raw(handle: RawHandle) -> Self {
         Self { handle, _phantom: PhantomData }
     }
 }
 
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl TryFrom<HandleOrNull> for OwnedHandle {
     type Error = NullHandleError;
 
@@ -169,6 +179,7 @@ impl TryFrom<HandleOrNull> for OwnedHandle {
 impl OwnedHandle {
     /// Creates a new `OwnedHandle` instance that shares the same underlying file handle
     /// as the existing `OwnedHandle` instance.
+    #[stable(feature = "io_safety", since = "1.63.0")]
     pub fn try_clone(&self) -> crate::io::Result<Self> {
         self.duplicate(0, false, c::DUPLICATE_SAME_ACCESS)
     }
@@ -206,6 +217,7 @@ impl OwnedHandle {
     }
 }
 
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl TryFrom<HandleOrInvalid> for OwnedHandle {
     type Error = InvalidHandleError;
 
@@ -227,29 +239,29 @@ impl TryFrom<HandleOrInvalid> for OwnedHandle {
 /// This is the error type used by [`HandleOrNull`] when attempting to convert
 /// into a handle, to indicate that the value is null.
 // The empty field prevents constructing this, and allows extending it in the future.
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NullHandleError(());
 
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl fmt::Display for NullHandleError {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         "A HandleOrNull could not be converted to a handle because it was null".fmt(fmt)
     }
 }
 
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl crate::error::Error for NullHandleError {}
 
 /// This is the error type used by [`HandleOrInvalid`] when attempting to
 /// convert into a handle, to indicate that the value is
 /// `INVALID_HANDLE_VALUE`.
 // The empty field prevents constructing this, and allows extending it in the future.
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct InvalidHandleError(());
 
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl fmt::Display for InvalidHandleError {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         "A HandleOrInvalid could not be converted to a handle because it was INVALID_HANDLE_VALUE"
@@ -257,9 +269,10 @@ impl fmt::Display for InvalidHandleError {
     }
 }
 
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl crate::error::Error for InvalidHandleError {}
 
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl AsRawHandle for BorrowedHandle<'_> {
     #[inline]
     fn as_raw_handle(&self) -> RawHandle {
@@ -267,6 +280,7 @@ impl AsRawHandle for BorrowedHandle<'_> {
     }
 }
 
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl AsRawHandle for OwnedHandle {
     #[inline]
     fn as_raw_handle(&self) -> RawHandle {
@@ -274,6 +288,7 @@ impl AsRawHandle for OwnedHandle {
     }
 }
 
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl IntoRawHandle for OwnedHandle {
     #[inline]
     fn into_raw_handle(self) -> RawHandle {
@@ -283,6 +298,7 @@ impl IntoRawHandle for OwnedHandle {
     }
 }
 
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl FromRawHandle for OwnedHandle {
     #[inline]
     unsafe fn from_raw_handle(handle: RawHandle) -> Self {
@@ -305,6 +321,7 @@ impl HandleOrNull {
     /// Windows APIs use null for errors; see [here] for the full story.
     ///
     /// [here]: https://devblogs.microsoft.com/oldnewthing/20040302-00/?p=40443
+    #[stable(feature = "io_safety", since = "1.63.0")]
     #[inline]
     pub unsafe fn from_raw_handle(handle: RawHandle) -> Self {
         Self(OwnedHandle::from_raw_handle(handle))
@@ -327,12 +344,14 @@ impl HandleOrInvalid {
     /// `INVALID_HANDLE_VALUE` for errors; see [here] for the full story.
     ///
     /// [here]: https://devblogs.microsoft.com/oldnewthing/20040302-00/?p=40443
+    #[stable(feature = "io_safety", since = "1.63.0")]
     #[inline]
     pub unsafe fn from_raw_handle(handle: RawHandle) -> Self {
         Self(OwnedHandle::from_raw_handle(handle))
     }
 }
 
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl Drop for OwnedHandle {
     #[inline]
     fn drop(&mut self) {
@@ -342,12 +361,14 @@ impl Drop for OwnedHandle {
     }
 }
 
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl fmt::Debug for BorrowedHandle<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("BorrowedHandle").field("handle", &self.handle).finish()
     }
 }
 
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl fmt::Debug for OwnedHandle {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("OwnedHandle").field("handle", &self.handle).finish()
@@ -355,14 +376,13 @@ impl fmt::Debug for OwnedHandle {
 }
 
 /// A trait to borrow the handle from an underlying object.
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 pub trait AsHandle {
     /// Borrows the handle.
     ///
     /// # Example
     ///
     /// ```rust,no_run
-    /// # #![feature(io_safety)]
     /// use std::fs::File;
     /// # use std::io;
     /// use std::os::windows::io::{AsHandle, BorrowedHandle};
@@ -371,10 +391,11 @@ pub trait AsHandle {
     /// let borrowed_handle: BorrowedHandle<'_> = f.as_handle();
     /// # Ok::<(), io::Error>(())
     /// ```
+    #[stable(feature = "io_safety", since = "1.63.0")]
     fn as_handle(&self) -> BorrowedHandle<'_>;
 }
 
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl<T: AsHandle> AsHandle for &T {
     #[inline]
     fn as_handle(&self) -> BorrowedHandle<'_> {
@@ -382,7 +403,7 @@ impl<T: AsHandle> AsHandle for &T {
     }
 }
 
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl<T: AsHandle> AsHandle for &mut T {
     #[inline]
     fn as_handle(&self) -> BorrowedHandle<'_> {
@@ -390,6 +411,7 @@ impl<T: AsHandle> AsHandle for &mut T {
     }
 }
 
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl AsHandle for BorrowedHandle<'_> {
     #[inline]
     fn as_handle(&self) -> BorrowedHandle<'_> {
@@ -397,6 +419,7 @@ impl AsHandle for BorrowedHandle<'_> {
     }
 }
 
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl AsHandle for OwnedHandle {
     #[inline]
     fn as_handle(&self) -> BorrowedHandle<'_> {
@@ -407,6 +430,7 @@ impl AsHandle for OwnedHandle {
     }
 }
 
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl AsHandle for fs::File {
     #[inline]
     fn as_handle(&self) -> BorrowedHandle<'_> {
@@ -414,6 +438,7 @@ impl AsHandle for fs::File {
     }
 }
 
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl From<fs::File> for OwnedHandle {
     #[inline]
     fn from(file: fs::File) -> OwnedHandle {
@@ -421,6 +446,7 @@ impl From<fs::File> for OwnedHandle {
     }
 }
 
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl From<OwnedHandle> for fs::File {
     #[inline]
     fn from(owned: OwnedHandle) -> Self {
@@ -428,6 +454,7 @@ impl From<OwnedHandle> for fs::File {
     }
 }
 
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl AsHandle for crate::io::Stdin {
     #[inline]
     fn as_handle(&self) -> BorrowedHandle<'_> {
@@ -435,6 +462,7 @@ impl AsHandle for crate::io::Stdin {
     }
 }
 
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl<'a> AsHandle for crate::io::StdinLock<'a> {
     #[inline]
     fn as_handle(&self) -> BorrowedHandle<'_> {
@@ -442,6 +470,7 @@ impl<'a> AsHandle for crate::io::StdinLock<'a> {
     }
 }
 
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl AsHandle for crate::io::Stdout {
     #[inline]
     fn as_handle(&self) -> BorrowedHandle<'_> {
@@ -449,6 +478,7 @@ impl AsHandle for crate::io::Stdout {
     }
 }
 
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl<'a> AsHandle for crate::io::StdoutLock<'a> {
     #[inline]
     fn as_handle(&self) -> BorrowedHandle<'_> {
@@ -456,6 +486,7 @@ impl<'a> AsHandle for crate::io::StdoutLock<'a> {
     }
 }
 
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl AsHandle for crate::io::Stderr {
     #[inline]
     fn as_handle(&self) -> BorrowedHandle<'_> {
@@ -463,6 +494,7 @@ impl AsHandle for crate::io::Stderr {
     }
 }
 
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl<'a> AsHandle for crate::io::StderrLock<'a> {
     #[inline]
     fn as_handle(&self) -> BorrowedHandle<'_> {
@@ -470,6 +502,7 @@ impl<'a> AsHandle for crate::io::StderrLock<'a> {
     }
 }
 
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl AsHandle for crate::process::ChildStdin {
     #[inline]
     fn as_handle(&self) -> BorrowedHandle<'_> {
@@ -477,6 +510,7 @@ impl AsHandle for crate::process::ChildStdin {
     }
 }
 
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl From<crate::process::ChildStdin> for OwnedHandle {
     #[inline]
     fn from(child_stdin: crate::process::ChildStdin) -> OwnedHandle {
@@ -484,6 +518,7 @@ impl From<crate::process::ChildStdin> for OwnedHandle {
     }
 }
 
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl AsHandle for crate::process::ChildStdout {
     #[inline]
     fn as_handle(&self) -> BorrowedHandle<'_> {
@@ -491,6 +526,7 @@ impl AsHandle for crate::process::ChildStdout {
     }
 }
 
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl From<crate::process::ChildStdout> for OwnedHandle {
     #[inline]
     fn from(child_stdout: crate::process::ChildStdout) -> OwnedHandle {
@@ -498,6 +534,7 @@ impl From<crate::process::ChildStdout> for OwnedHandle {
     }
 }
 
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl AsHandle for crate::process::ChildStderr {
     #[inline]
     fn as_handle(&self) -> BorrowedHandle<'_> {
@@ -505,6 +542,7 @@ impl AsHandle for crate::process::ChildStderr {
     }
 }
 
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl From<crate::process::ChildStderr> for OwnedHandle {
     #[inline]
     fn from(child_stderr: crate::process::ChildStderr) -> OwnedHandle {
@@ -512,6 +550,7 @@ impl From<crate::process::ChildStderr> for OwnedHandle {
     }
 }
 
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl<T> AsHandle for crate::thread::JoinHandle<T> {
     #[inline]
     fn as_handle(&self) -> BorrowedHandle<'_> {
@@ -519,6 +558,7 @@ impl<T> AsHandle for crate::thread::JoinHandle<T> {
     }
 }
 
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl<T> From<crate::thread::JoinHandle<T>> for OwnedHandle {
     #[inline]
     fn from(join_handle: crate::thread::JoinHandle<T>) -> OwnedHandle {

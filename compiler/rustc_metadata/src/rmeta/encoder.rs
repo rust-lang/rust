@@ -2027,7 +2027,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     }
 
     fn encode_info_for_expr(&mut self, expr: &hir::Expr<'_>) {
-        if let hir::ExprKind::Closure(..) = expr.kind {
+        if let hir::ExprKind::Closure { .. } = expr.kind {
             self.encode_info_for_closure(expr.hir_id);
         }
     }

@@ -134,7 +134,7 @@ impl<'a> Sugg<'a> {
             | hir::ExprKind::Box(..)
             | hir::ExprKind::If(..)
             | hir::ExprKind::Let(..)
-            | hir::ExprKind::Closure(..)
+            | hir::ExprKind::Closure { .. }
             | hir::ExprKind::Unary(..)
             | hir::ExprKind::Match(..) => Sugg::MaybeParen(get_snippet(expr.span)),
             hir::ExprKind::Continue(..)
@@ -188,7 +188,7 @@ impl<'a> Sugg<'a> {
         match expr.kind {
             ast::ExprKind::AddrOf(..)
             | ast::ExprKind::Box(..)
-            | ast::ExprKind::Closure(..)
+            | ast::ExprKind::Closure { .. }
             | ast::ExprKind::If(..)
             | ast::ExprKind::Let(..)
             | ast::ExprKind::Unary(..)
@@ -790,8 +790,8 @@ pub struct DerefClosure {
 ///
 /// note: this only works on single line immutable closures with exactly one input parameter.
 pub fn deref_closure_args<'tcx>(cx: &LateContext<'_>, closure: &'tcx hir::Expr<'_>) -> Option<DerefClosure> {
-    if let hir::ExprKind::Closure(_, fn_decl, body_id, ..) = closure.kind {
-        let closure_body = cx.tcx.hir().body(body_id);
+    if let hir::ExprKind::Closure { fn_decl, body, .. } = closure.kind {
+        let closure_body = cx.tcx.hir().body(body);
         // is closure arg a type annotated double reference (i.e.: `|x: &&i32| ...`)
         // a type annotation is present if param `kind` is different from `TyKind::Infer`
         let closure_arg_is_type_annotated_double_ref = if let TyKind::Rptr(_, MutTy { ty, .. }) = fn_decl.inputs[0].kind

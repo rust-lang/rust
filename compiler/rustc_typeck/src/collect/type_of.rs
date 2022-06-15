@@ -405,7 +405,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
 
         Node::Field(field) => icx.to_ty(field.ty),
 
-        Node::Expr(&Expr { kind: ExprKind::Closure(..), .. }) => tcx.typeck(def_id).node_type(hir_id),
+        Node::Expr(&Expr { kind: ExprKind::Closure{..}, .. }) => tcx.typeck(def_id).node_type(hir_id),
 
         Node::AnonConst(_) if let Some(param) = tcx.opt_const_param_of(def_id) => {
             // We defer to `type_of` of the corresponding parameter
@@ -593,7 +593,7 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Ty<'_> {
             self.tcx.hir()
         }
         fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) {
-            if let hir::ExprKind::Closure(..) = ex.kind {
+            if let hir::ExprKind::Closure { .. } = ex.kind {
                 let def_id = self.tcx.hir().local_def_id(ex.hir_id);
                 self.check(def_id);
             }
