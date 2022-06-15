@@ -39,6 +39,7 @@ fn main() {
         TyKind::Bound(..) => (),            //~ ERROR usage of `ty::TyKind::<kind>`
         TyKind::Placeholder(..) => (),      //~ ERROR usage of `ty::TyKind::<kind>`
         TyKind::Infer(..) => (),            //~ ERROR usage of `ty::TyKind::<kind>`
+        TyKind::TyAlias(..) => (),          //~ ERROR usage of `ty::TyKind::<kind>`
         TyKind::Error(_) => (),             //~ ERROR usage of `ty::TyKind::<kind>`
     }
 
