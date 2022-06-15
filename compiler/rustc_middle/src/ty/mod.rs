@@ -160,7 +160,6 @@ pub struct ResolverOutputs {
     /// exist under `std`. For example, wrote `str::from_utf8` instead of `std::str::from_utf8`.
     pub confused_type_with_std_module: FxHashMap<Span, Span>,
     pub registered_tools: RegisteredTools,
-    pub item_generics_num_lifetimes: FxHashMap<LocalDefId, usize>,
 
     pub legacy_const_generic_args: FxHashMap<DefId, Option<Vec<usize>>>,
 
