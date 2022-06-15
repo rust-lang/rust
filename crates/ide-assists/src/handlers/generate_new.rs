@@ -9,7 +9,7 @@ use crate::{
 };
 
 // TODO: how to depupicate with `ide-diagnostics/mssing_fields`
-pub fn use_trivial_constructor(
+fn use_trivial_constructor(
     db: &ide_db::RootDatabase,
     path: ast::Path,
     ty: &hir::Type,
