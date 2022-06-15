@@ -10,7 +10,8 @@ use rustc_hir::def_id::{DefId, CRATE_DEF_ID};
 use rustc_hir::CRATE_HIR_ID;
 use rustc_index::vec::IndexVec;
 use rustc_infer::infer::canonical::QueryOutlivesConstraint;
-use rustc_infer::infer::region_constraints::{GenericKind, VarInfos, VerifyBound};
+use rustc_infer::infer::outlives::test_type_match;
+use rustc_infer::infer::region_constraints::{GenericKind, VarInfos, VerifyBound, VerifyIfEq};
 use rustc_infer::infer::{InferCtxt, NllRegionVariableOrigin, RegionVariableOrigin};
 use rustc_middle::mir::{
     Body, ClosureOutlivesRequirement, ClosureOutlivesSubject, ClosureRegionRequirements,
@@ -18,6 +19,7 @@ use rustc_middle::mir::{
 };
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::traits::ObligationCauseCode;
+use rustc_middle::ty::Region;
 use rustc_middle::ty::{self, subst::SubstsRef, RegionVid, Ty, TyCtxt, TypeFoldable};
 use rustc_span::Span;
 
@@ -46,6 +48,7 @@ pub mod values;
 
 pub struct RegionInferenceContext<'tcx> {
     pub var_infos: VarInfos,
+
     /// Contains the definition for every region variable. Region
     /// variables are identified by their index (`RegionVid`). The
     /// definition contains information about where the region came
@@ -559,6 +562,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     pub(super) fn solve(
         &mut self,
         infcx: &InferCtxt<'_, 'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
         body: &Body<'tcx>,
         polonius_output: Option<Rc<PoloniusOutput>>,
     ) -> (Option<ClosureRegionRequirements<'tcx>>, RegionErrors<'tcx>) {
@@ -574,7 +578,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // eagerly.
         let mut outlives_requirements = infcx.tcx.is_typeck_child(mir_def_id).then(Vec::new);
 
-        self.check_type_tests(infcx, body, outlives_requirements.as_mut(), &mut errors_buffer);
+        self.check_type_tests(
+            infcx,
+            param_env,
+            body,
+            outlives_requirements.as_mut(),
+            &mut errors_buffer,
+        );
 
         // In Polonius mode, the errors about missing universal region relations are in the output
         // and need to be emitted or propagated. Otherwise, we need to check whether the
@@ -823,6 +833,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     fn check_type_tests(
         &self,
         infcx: &InferCtxt<'_, 'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
         body: &Body<'tcx>,
         mut propagated_outlives_requirements: Option<&mut Vec<ClosureOutlivesRequirement<'tcx>>>,
         errors_buffer: &mut RegionErrors<'tcx>,
@@ -839,7 +850,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
             let generic_ty = type_test.generic_kind.to_ty(tcx);
             if self.eval_verify_bound(
-                tcx,
+                infcx,
+                param_env,
                 body,
                 generic_ty,
                 type_test.lower_bound,
@@ -851,6 +863,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             if let Some(propagated_outlives_requirements) = &mut propagated_outlives_requirements {
                 if self.try_promote_type_test(
                     infcx,
+                    param_env,
                     body,
                     type_test,
                     propagated_outlives_requirements,
@@ -907,6 +920,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     fn try_promote_type_test(
         &self,
         infcx: &InferCtxt<'_, 'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
         body: &Body<'tcx>,
         type_test: &TypeTest<'tcx>,
         propagated_outlives_requirements: &mut Vec<ClosureOutlivesRequirement<'tcx>>,
@@ -938,7 +952,14 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             // where `ur` is a local bound -- we are sometimes in a
             // position to prove things that our caller cannot.  See
             // #53570 for an example.
-            if self.eval_verify_bound(tcx, body, generic_ty, ur, &type_test.verify_bound) {
+            if self.eval_verify_bound(
+                infcx,
+                param_env,
+                body,
+                generic_ty,
+                ur,
+                &type_test.verify_bound,
+            ) {
                 continue;
             }
 
@@ -1161,7 +1182,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// `point`.
     fn eval_verify_bound(
         &self,
-        tcx: TyCtxt<'tcx>,
+        infcx: &InferCtxt<'_, 'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
         body: &Body<'tcx>,
         generic_ty: Ty<'tcx>,
         lower_bound: RegionVid,
@@ -1170,14 +1192,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         debug!("eval_verify_bound(lower_bound={:?}, verify_bound={:?})", lower_bound, verify_bound);
 
         match verify_bound {
-            VerifyBound::IfEq(test_ty, verify_bound1) => self.eval_if_eq(
-                tcx,
-                body,
-                generic_ty,
-                lower_bound,
-                *test_ty,
-                &VerifyBound::OutlivedBy(*verify_bound1),
-            ),
+            VerifyBound::IfEq(test_ty, verify_bound1) => {
+                self.eval_if_eq(infcx, generic_ty, lower_bound, *test_ty, *verify_bound1)
+            }
+
+            VerifyBound::IfEqBound(verify_if_eq_b) => {
+                self.eval_if_eq_bound(infcx, param_env, generic_ty, lower_bound, *verify_if_eq_b)
+            }
 
             VerifyBound::IsEmpty => {
                 let lower_bound_scc = self.constraint_sccs.scc(lower_bound);
@@ -1190,30 +1211,68 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             }
 
             VerifyBound::AnyBound(verify_bounds) => verify_bounds.iter().any(|verify_bound| {
-                self.eval_verify_bound(tcx, body, generic_ty, lower_bound, verify_bound)
+                self.eval_verify_bound(
+                    infcx,
+                    param_env,
+                    body,
+                    generic_ty,
+                    lower_bound,
+                    verify_bound,
+                )
             }),
 
             VerifyBound::AllBounds(verify_bounds) => verify_bounds.iter().all(|verify_bound| {
-                self.eval_verify_bound(tcx, body, generic_ty, lower_bound, verify_bound)
+                self.eval_verify_bound(
+                    infcx,
+                    param_env,
+                    body,
+                    generic_ty,
+                    lower_bound,
+                    verify_bound,
+                )
             }),
         }
     }
 
     fn eval_if_eq(
         &self,
-        tcx: TyCtxt<'tcx>,
-        body: &Body<'tcx>,
+        infcx: &InferCtxt<'_, 'tcx>,
         generic_ty: Ty<'tcx>,
         lower_bound: RegionVid,
         test_ty: Ty<'tcx>,
-        verify_bound: &VerifyBound<'tcx>,
+        verify_bound: Region<'tcx>,
     ) -> bool {
-        let generic_ty_normalized = self.normalize_to_scc_representatives(tcx, generic_ty);
-        let test_ty_normalized = self.normalize_to_scc_representatives(tcx, test_ty);
+        let generic_ty_normalized = self.normalize_to_scc_representatives(infcx.tcx, generic_ty);
+        let test_ty_normalized = self.normalize_to_scc_representatives(infcx.tcx, test_ty);
         if generic_ty_normalized == test_ty_normalized {
-            self.eval_verify_bound(tcx, body, generic_ty, lower_bound, verify_bound)
+            let verify_bound_vid = self.to_region_vid(verify_bound);
+            self.eval_outlives(verify_bound_vid, lower_bound)
         } else {
             false
+        }
+    }
+
+    fn eval_if_eq_bound(
+        &self,
+        infcx: &InferCtxt<'_, 'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        generic_ty: Ty<'tcx>,
+        lower_bound: RegionVid,
+        verify_if_eq_b: ty::Binder<'tcx, VerifyIfEq<'tcx>>,
+    ) -> bool {
+        let generic_ty = self.normalize_to_scc_representatives(infcx.tcx, generic_ty);
+        let verify_if_eq_b = self.normalize_to_scc_representatives(infcx.tcx, verify_if_eq_b);
+        match test_type_match::extract_verify_if_eq_bound(
+            infcx.tcx,
+            param_env,
+            &verify_if_eq_b,
+            generic_ty,
+        ) {
+            Some(r) => {
+                let r_vid = self.to_region_vid(r);
+                self.eval_outlives(r_vid, lower_bound)
+            }
+            None => false,
         }
     }
 

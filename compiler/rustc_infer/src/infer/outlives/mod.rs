@@ -3,6 +3,7 @@
 pub mod components;
 pub mod env;
 pub mod obligations;
+pub mod test_type_match;
 pub mod verify;
 
 use rustc_middle::traits::query::OutlivesBound;

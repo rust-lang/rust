@@ -226,6 +226,8 @@ pub enum VerifyBound<'tcx> {
     /// (after inference), and `'a: min`, then `G: min`.
     IfEq(Ty<'tcx>, Region<'tcx>),
 
+    IfEqBound(ty::Binder<'tcx, VerifyIfEq<'tcx>>),
+
     /// Given a region `R`, expands to the function:
     ///
     /// ```ignore (pseudo-rust)
@@ -265,6 +267,49 @@ pub enum VerifyBound<'tcx> {
     /// This is used when *some* bound in `B` is known to suffice, but
     /// we don't know which.
     AllBounds(Vec<VerifyBound<'tcx>>),
+}
+
+/// Given a kind K and a bound B, expands to a function like the
+/// following, where `G` is the generic for which this verify
+/// bound was created:
+///
+/// ```ignore (pseudo-rust)
+/// fn(min) -> bool {
+///     if G == K {
+///         B(min)
+///     } else {
+///         false
+///     }
+/// }
+/// ```
+///
+/// In other words, if the generic `G` that we are checking is
+/// equal to `K`, then check the associated verify bound
+/// (otherwise, false).
+///
+/// This is used when we have something in the environment that
+/// may or may not be relevant, depending on the region inference
+/// results. For example, we may have `where <T as
+/// Trait<'a>>::Item: 'b` in our where-clauses. If we are
+/// generating the verify-bound for `<T as Trait<'0>>::Item`, then
+/// this where-clause is only relevant if `'0` winds up inferred
+/// to `'a`.
+///
+/// So we would compile to a verify-bound like
+///
+/// ```ignore (illustrative)
+/// IfEq(<T as Trait<'a>>::Item, AnyRegion('a))
+/// ```
+///
+/// meaning, if the subject G is equal to `<T as Trait<'a>>::Item`
+/// (after inference), and `'a: min`, then `G: min`.
+#[derive(Debug, Copy, Clone, TypeFoldable)]
+pub struct VerifyIfEq<'tcx> {
+    /// Type which must match the generic `G`
+    pub ty: Ty<'tcx>,
+
+    /// Bound that applies if `ty` is equal.
+    pub bound: Region<'tcx>,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
@@ -761,6 +806,7 @@ impl<'tcx> VerifyBound<'tcx> {
     pub fn must_hold(&self) -> bool {
         match self {
             VerifyBound::IfEq(..) => false,
+            VerifyBound::IfEqBound(..) => false,
             VerifyBound::OutlivedBy(re) => re.is_static(),
             VerifyBound::IsEmpty => false,
             VerifyBound::AnyBound(bs) => bs.iter().any(|b| b.must_hold()),
@@ -771,6 +817,7 @@ impl<'tcx> VerifyBound<'tcx> {
     pub fn cannot_hold(&self) -> bool {
         match self {
             VerifyBound::IfEq(_, _) => false,
+            VerifyBound::IfEqBound(..) => false,
             VerifyBound::IsEmpty => false,
             VerifyBound::OutlivedBy(_) => false,
             VerifyBound::AnyBound(bs) => bs.iter().all(|b| b.cannot_hold()),
