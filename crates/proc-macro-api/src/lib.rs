@@ -118,16 +118,13 @@ impl ProcMacroServer {
         Ok(ProcMacroServer { process: Arc::new(Mutex::new(process)) })
     }
 
-    pub fn load_dylib(
-        &self,
-        dylib: MacroDylib,
-    ) -> Result<Result<Vec<ProcMacro>, String>, ServerError> {
+    pub fn load_dylib(&self, dylib: MacroDylib) -> Result<Vec<ProcMacro>, ServerError> {
         let _p = profile::span("ProcMacroClient::by_dylib_path");
         let macros =
             self.process.lock().unwrap_or_else(|e| e.into_inner()).find_proc_macros(&dylib.path)?;
 
-        let res = macros.map(|macros| {
-            macros
+        match macros {
+            Ok(macros) => Ok(macros
                 .into_iter()
                 .map(|(name, kind)| ProcMacro {
                     process: self.process.clone(),
@@ -135,10 +132,9 @@ impl ProcMacroServer {
                     kind,
                     dylib_path: dylib.path.clone(),
                 })
-                .collect()
-        });
-
-        Ok(res)
+                .collect()),
+            Err(message) => Err(ServerError { message, io: None }),
+        }
     }
 }
 

@@ -1,5 +1,6 @@
 //! Diagnostics emitted during DefMap construction.
 
+use base_db::CrateId;
 use cfg::{CfgExpr, CfgOptions};
 use hir_expand::MacroCallKind;
 use la_arena::Idx;
@@ -23,7 +24,7 @@ pub enum DefDiagnosticKind {
 
     UnconfiguredCode { ast: AstId<ast::Item>, cfg: CfgExpr, opts: CfgOptions },
 
-    UnresolvedProcMacro { ast: MacroCallKind },
+    UnresolvedProcMacro { ast: MacroCallKind, krate: Option<CrateId> },
 
     UnresolvedMacroCall { ast: MacroCallKind, path: ModPath },
 
@@ -81,8 +82,12 @@ impl DefDiagnostic {
         Self { in_module: container, kind: DefDiagnosticKind::UnconfiguredCode { ast, cfg, opts } }
     }
 
-    pub(super) fn unresolved_proc_macro(container: LocalModuleId, ast: MacroCallKind) -> Self {
-        Self { in_module: container, kind: DefDiagnosticKind::UnresolvedProcMacro { ast } }
+    pub(super) fn unresolved_proc_macro(
+        container: LocalModuleId,
+        ast: MacroCallKind,
+        krate: Option<CrateId>,
+    ) -> Self {
+        Self { in_module: container, kind: DefDiagnosticKind::UnresolvedProcMacro { ast, krate } }
     }
 
     pub(super) fn macro_error(

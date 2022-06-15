@@ -74,19 +74,26 @@ pub(super) fn collect_defs(db: &dyn DefDatabase, mut def_map: DefMap, tree_id: T
     }
 
     let cfg_options = &krate.cfg_options;
-    let proc_macros = krate
-        .proc_macro
-        .iter()
-        .enumerate()
-        .map(|(idx, it)| {
-            // FIXME: a hacky way to create a Name from string.
-            let name = tt::Ident { text: it.name.clone(), id: tt::TokenId::unspecified() };
-            (
-                name.as_name(),
-                ProcMacroExpander::new(def_map.krate, base_db::ProcMacroId(idx as u32)),
-            )
-        })
-        .collect();
+    let proc_macros = match &krate.proc_macro {
+        Ok(proc_macros) => {
+            proc_macros
+                .iter()
+                .enumerate()
+                .map(|(idx, it)| {
+                    // FIXME: a hacky way to create a Name from string.
+                    let name = tt::Ident { text: it.name.clone(), id: tt::TokenId::unspecified() };
+                    (
+                        name.as_name(),
+                        ProcMacroExpander::new(def_map.krate, base_db::ProcMacroId(idx as u32)),
+                    )
+                })
+                .collect()
+        }
+        Err(e) => {
+            def_map.proc_macro_loading_error = Some(e.clone().into_boxed_str());
+            Vec::new()
+        }
+    };
     let is_proc_macro = krate.is_proc_macro;
 
     let mut collector = DefCollector {
@@ -1128,7 +1135,19 @@ impl DefCollector<'_> {
 
                     let def = match resolver(path.clone()) {
                         Some(def) if def.is_attribute() => def,
-                        _ => return true,
+                        _ => {
+                            self.def_map.diagnostics.push(DefDiagnostic::unresolved_proc_macro(
+                                directive.module_id,
+                                MacroCallKind::Attr {
+                                    ast_id,
+                                    attr_args: Default::default(),
+                                    invoc_attr_index: attr.id.ast_index,
+                                    is_derive: false,
+                                },
+                                None,
+                            ));
+                            return true;
+                        }
                     };
                     if matches!(
                         def,
@@ -1232,6 +1251,7 @@ impl DefCollector<'_> {
                             self.def_map.diagnostics.push(DefDiagnostic::unresolved_proc_macro(
                                 directive.module_id,
                                 loc.kind,
+                                Some(loc.def.krate),
                             ));
 
                             return recollect_without(self);
@@ -1283,7 +1303,11 @@ impl DefCollector<'_> {
             let diag = match err {
                 hir_expand::ExpandError::UnresolvedProcMacro => {
                     // Missing proc macros are non-fatal, so they are handled specially.
-                    DefDiagnostic::unresolved_proc_macro(module_id, loc.kind.clone())
+                    DefDiagnostic::unresolved_proc_macro(
+                        module_id,
+                        loc.kind.clone(),
+                        Some(loc.def.krate),
+                    )
                 }
                 _ => DefDiagnostic::macro_error(module_id, loc.kind.clone(), err.to_string()),
             };

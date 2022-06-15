@@ -13,7 +13,7 @@ pub use crate::{
     input::{
         CrateData, CrateDisplayName, CrateGraph, CrateId, CrateName, CrateOrigin, Dependency,
         Edition, Env, LangCrateOrigin, ProcMacro, ProcMacroExpander, ProcMacroExpansionError,
-        ProcMacroId, ProcMacroKind, SourceRoot, SourceRootId,
+        ProcMacroId, ProcMacroKind, ProcMacroLoadResult, SourceRoot, SourceRootId,
     },
 };
 pub use salsa::{self, Cancelled};

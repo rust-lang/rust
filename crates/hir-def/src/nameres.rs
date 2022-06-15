@@ -103,6 +103,8 @@ pub struct DefMap {
     /// Side table for resolving derive helpers.
     exported_derives: FxHashMap<MacroDefId, Box<[Name]>>,
     fn_proc_macro_mapping: FxHashMap<FunctionId, ProcMacroId>,
+    /// The error that occurred when failing to load the proc-macro dll.
+    proc_macro_loading_error: Option<Box<str>>,
 
     /// Custom attributes registered with `#![register_attr]`.
     registered_attrs: Vec<SmolStr>,
@@ -273,6 +275,7 @@ impl DefMap {
             extern_prelude: FxHashMap::default(),
             exported_derives: FxHashMap::default(),
             fn_proc_macro_mapping: FxHashMap::default(),
+            proc_macro_loading_error: None,
             prelude: None,
             root,
             modules,
@@ -304,6 +307,9 @@ impl DefMap {
 
     pub fn fn_as_proc_macro(&self, id: FunctionId) -> Option<ProcMacroId> {
         self.fn_proc_macro_mapping.get(&id).copied()
+    }
+    pub fn proc_macro_loading_error(&self) -> Option<&str> {
+        self.proc_macro_loading_error.as_deref()
     }
 
     pub(crate) fn krate(&self) -> CrateId {
@@ -460,6 +466,7 @@ impl DefMap {
             registered_attrs,
             registered_tools,
             fn_proc_macro_mapping,
+            proc_macro_loading_error: _,
             block: _,
             edition: _,
             recursion_limit: _,

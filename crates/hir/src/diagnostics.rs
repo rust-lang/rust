@@ -3,6 +3,7 @@
 //!
 //! This probably isn't the best way to do this -- ideally, diagnistics should
 //! be expressed in terms of hir types themselves.
+use base_db::CrateId;
 use cfg::{CfgExpr, CfgOptions};
 use either::Either;
 use hir_def::path::ModPath;
@@ -87,6 +88,8 @@ pub struct UnresolvedProcMacro {
     pub precise_location: Option<TextRange>,
     pub macro_name: Option<String>,
     pub kind: MacroKind,
+    /// The crate id of the proc-macro this macro belongs to, or `None` if the proc-macro can't be found.
+    pub krate: Option<CrateId>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
