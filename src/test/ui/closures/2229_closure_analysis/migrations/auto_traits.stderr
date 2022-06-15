@@ -17,11 +17,10 @@ help: add a dummy let to cause `fptr` to be fully captured
    |
 LL ~     thread::spawn(move || { let _ = &fptr; unsafe {
 LL |
-LL |
-LL |
-LL |
-LL |         *fptr.0 = 20;
  ...
+LL |
+LL ~     } });
+   |
 
 error: changes to closure capture in Rust 2021 will affect which traits the closure implements
   --> $DIR/auto_traits.rs:42:19
@@ -40,11 +39,10 @@ help: add a dummy let to cause `fptr` to be fully captured
    |
 LL ~     thread::spawn(move || { let _ = &fptr; unsafe {
 LL |
-LL |
-LL |
-LL |
-LL |
  ...
+LL |
+LL ~     } });
+   |
 
 error: changes to closure capture in Rust 2021 will affect drop order and which traits the closure implements
   --> $DIR/auto_traits.rs:67:13
