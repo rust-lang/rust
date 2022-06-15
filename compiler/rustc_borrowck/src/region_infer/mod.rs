@@ -1170,9 +1170,14 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         debug!("eval_verify_bound(lower_bound={:?}, verify_bound={:?})", lower_bound, verify_bound);
 
         match verify_bound {
-            VerifyBound::IfEq(test_ty, verify_bound1) => {
-                self.eval_if_eq(tcx, body, generic_ty, lower_bound, *test_ty, verify_bound1)
-            }
+            VerifyBound::IfEq(test_ty, verify_bound1) => self.eval_if_eq(
+                tcx,
+                body,
+                generic_ty,
+                lower_bound,
+                *test_ty,
+                &VerifyBound::OutlivedBy(*verify_bound1),
+            ),
 
             VerifyBound::IsEmpty => {
                 let lower_bound_scc = self.constraint_sccs.scc(lower_bound);

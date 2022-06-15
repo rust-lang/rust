@@ -818,9 +818,9 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         min: ty::Region<'tcx>,
     ) -> bool {
         match bound {
-            VerifyBound::IfEq(k, b) => {
+            VerifyBound::IfEq(k, r) => {
                 (var_values.normalize(self.region_rels.tcx, *k) == generic_ty)
-                    && self.bound_is_met(b, var_values, generic_ty, min)
+                    && self.bound_is_met(&VerifyBound::OutlivedBy(*r), var_values, generic_ty, min)
             }
 
             VerifyBound::OutlivedBy(r) => {

@@ -160,14 +160,13 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
             .projection_approx_declared_bounds_from_env(projection_ty)
             .into_iter()
             .map(|ty::OutlivesPredicate(ty, r)| {
-                let vb = VerifyBound::OutlivedBy(r);
                 if ty == projection_ty_as_ty {
                     // Micro-optimize if this is an exact match (this
                     // occurs often when there are no region variables
                     // involved).
-                    vb
+                    VerifyBound::OutlivedBy(r)
                 } else {
-                    VerifyBound::IfEq(ty, Box::new(vb))
+                    VerifyBound::IfEq(ty, r)
                 }
             });
 

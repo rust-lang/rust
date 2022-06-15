@@ -224,7 +224,7 @@ pub enum VerifyBound<'tcx> {
     ///
     /// meaning, if the subject G is equal to `<T as Trait<'a>>::Item`
     /// (after inference), and `'a: min`, then `G: min`.
-    IfEq(Ty<'tcx>, Box<VerifyBound<'tcx>>),
+    IfEq(Ty<'tcx>, Region<'tcx>),
 
     /// Given a region `R`, expands to the function:
     ///
@@ -770,7 +770,7 @@ impl<'tcx> VerifyBound<'tcx> {
 
     pub fn cannot_hold(&self) -> bool {
         match self {
-            VerifyBound::IfEq(_, b) => b.cannot_hold(),
+            VerifyBound::IfEq(_, _) => false,
             VerifyBound::IsEmpty => false,
             VerifyBound::OutlivedBy(_) => false,
             VerifyBound::AnyBound(bs) => bs.iter().all(|b| b.cannot_hold()),
