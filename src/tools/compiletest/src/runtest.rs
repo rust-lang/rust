@@ -1882,6 +1882,8 @@ impl<'test> TestCx<'test> {
                 rustc.arg("-Ccodegen-units=1");
                 rustc.arg("-Zui-testing");
                 rustc.arg("-Zdeduplicate-diagnostics=no");
+                // FIXME: use this for other modes too, for perf?
+                rustc.arg("-Cstrip=debuginfo");
             }
             MirOpt => {
                 rustc.args(&[

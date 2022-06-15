@@ -1,6 +1,7 @@
 // Test for std::panic::set_backtrace_style.
 
 // compile-flags: -O
+// compile-flags:-Cstrip=none
 // run-fail
 // check-run-results
 // exec-env:RUST_BACKTRACE=0
