@@ -177,10 +177,19 @@ impl TryFrom<HandleOrNull> for OwnedHandle {
 }
 
 impl OwnedHandle {
-    /// Creates a new `OwnedHandle` instance that shares the same underlying file handle
-    /// as the existing `OwnedHandle` instance.
+    /// Creates a new `OwnedHandle` instance that shares the same underlying
+    /// object as the existing `OwnedHandle` instance.
     #[stable(feature = "io_safety", since = "1.63.0")]
     pub fn try_clone(&self) -> crate::io::Result<Self> {
+        self.as_handle().try_clone_to_owned()
+    }
+}
+
+impl BorrowedHandle<'_> {
+    /// Creates a new `OwnedHandle` instance that shares the same underlying
+    /// object as the existing `BorrowedHandle` instance.
+    #[stable(feature = "io_safety", since = "1.63.0")]
+    pub fn try_clone_to_owned(&self) -> crate::io::Result<OwnedHandle> {
         self.duplicate(0, false, c::DUPLICATE_SAME_ACCESS)
     }
 
@@ -189,7 +198,7 @@ impl OwnedHandle {
         access: c::DWORD,
         inherit: bool,
         options: c::DWORD,
-    ) -> io::Result<Self> {
+    ) -> io::Result<OwnedHandle> {
         let handle = self.as_raw_handle();
 
         // `Stdin`, `Stdout`, and `Stderr` can all hold null handles, such as
@@ -197,7 +206,7 @@ impl OwnedHandle {
         // if we passed it a null handle, but we can treat null as a valid
         // handle which doesn't do any I/O, and allow it to be duplicated.
         if handle.is_null() {
-            return unsafe { Ok(Self::from_raw_handle(handle)) };
+            return unsafe { Ok(OwnedHandle::from_raw_handle(handle)) };
         }
 
         let mut ret = ptr::null_mut();
@@ -213,7 +222,7 @@ impl OwnedHandle {
                 options,
             )
         })?;
-        unsafe { Ok(Self::from_raw_handle(ret)) }
+        unsafe { Ok(OwnedHandle::from_raw_handle(ret)) }
     }
 }
 

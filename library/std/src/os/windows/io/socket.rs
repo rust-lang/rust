@@ -82,10 +82,33 @@ impl BorrowedSocket<'_> {
 }
 
 impl OwnedSocket {
-    /// Creates a new `OwnedSocket` instance that shares the same underlying socket
-    /// as the existing `OwnedSocket` instance.
+    /// Creates a new `OwnedSocket` instance that shares the same underlying
+    /// object as the existing `OwnedSocket` instance.
     #[stable(feature = "io_safety", since = "1.63.0")]
     pub fn try_clone(&self) -> io::Result<Self> {
+        self.as_socket().try_clone_to_owned()
+    }
+
+    // FIXME(strict_provenance_magic): we defined RawSocket to be a u64 ;-;
+    #[cfg(not(target_vendor = "uwp"))]
+    pub(crate) fn set_no_inherit(&self) -> io::Result<()> {
+        cvt(unsafe {
+            c::SetHandleInformation(self.as_raw_socket() as c::HANDLE, c::HANDLE_FLAG_INHERIT, 0)
+        })
+        .map(drop)
+    }
+
+    #[cfg(target_vendor = "uwp")]
+    pub(crate) fn set_no_inherit(&self) -> io::Result<()> {
+        Err(io::const_io_error!(io::ErrorKind::Unsupported, "Unavailable on UWP"))
+    }
+}
+
+impl BorrowedSocket<'_> {
+    /// Creates a new `OwnedSocket` instance that shares the same underlying
+    /// object as the existing `BorrowedSocket` instance.
+    #[stable(feature = "io_safety", since = "1.63.0")]
+    pub fn try_clone_to_owned(&self) -> io::Result<OwnedSocket> {
         let mut info = unsafe { mem::zeroed::<c::WSAPROTOCOL_INFO>() };
         let result = unsafe {
             c::WSADuplicateSocketW(self.as_raw_socket(), c::GetCurrentProcessId(), &mut info)
@@ -132,20 +155,6 @@ impl OwnedSocket {
                 Ok(socket)
             }
         }
-    }
-
-    // FIXME(strict_provenance_magic): we defined RawSocket to be a u64 ;-;
-    #[cfg(not(target_vendor = "uwp"))]
-    pub(crate) fn set_no_inherit(&self) -> io::Result<()> {
-        cvt(unsafe {
-            c::SetHandleInformation(self.as_raw_socket() as c::HANDLE, c::HANDLE_FLAG_INHERIT, 0)
-        })
-        .map(drop)
-    }
-
-    #[cfg(target_vendor = "uwp")]
-    pub(crate) fn set_no_inherit(&self) -> io::Result<()> {
-        Err(io::const_io_error!(io::ErrorKind::Unsupported, "Unavailable on UWP"))
     }
 }
 
