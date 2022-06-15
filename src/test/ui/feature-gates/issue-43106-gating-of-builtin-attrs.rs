@@ -69,7 +69,6 @@
 #![link_section = "1800"]
 //~^ WARN attribute should be applied to a function or static
 //~^^ WARN this was previously accepted by the compiler
-// see issue-43106-gating-of-rustc_deprecated.rs
 #![must_use]
 //~^ WARN `#[must_use]` has no effect
 // see issue-43106-gating-of-stable.rs

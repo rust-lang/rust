@@ -406,8 +406,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
 
         // Emit errors for non-staged-api crates.
         if !self.features.staged_api {
-            if attr.has_name(sym::rustc_deprecated)
-                || attr.has_name(sym::unstable)
+            if attr.has_name(sym::unstable)
                 || attr.has_name(sym::stable)
                 || attr.has_name(sym::rustc_const_unstable)
                 || attr.has_name(sym::rustc_const_stable)
