@@ -337,7 +337,7 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
         hir_visit::walk_path(self, p);
     }
 
-    fn visit_attribute(&mut self, _hir_id: hir::HirId, attr: &'tcx ast::Attribute) {
+    fn visit_attribute(&mut self, attr: &'tcx ast::Attribute) {
         lint_callback!(self, check_attribute, attr);
     }
 }
@@ -400,7 +400,7 @@ fn late_lint_mod_pass<'tcx, T: LateLintPass<'tcx>>(
     // Visit the crate attributes
     if hir_id == hir::CRATE_HIR_ID {
         for attr in tcx.hir().attrs(hir::CRATE_HIR_ID).iter() {
-            cx.visit_attribute(hir_id, attr)
+            cx.visit_attribute(attr)
         }
     }
 }

@@ -466,7 +466,7 @@ pub trait Visitor<'v>: Sized {
     fn visit_assoc_type_binding(&mut self, type_binding: &'v TypeBinding<'v>) {
         walk_assoc_type_binding(self, type_binding)
     }
-    fn visit_attribute(&mut self, _id: HirId, _attr: &'v Attribute) {}
+    fn visit_attribute(&mut self, _attr: &'v Attribute) {}
     fn visit_associated_item_kind(&mut self, kind: &'v AssocItemKind) {
         walk_associated_item_kind(self, kind);
     }
