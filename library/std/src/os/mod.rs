@@ -148,6 +148,9 @@ pub mod vxworks;
 #[cfg(target_os = "watchos")]
 pub(crate) mod watchos;
 
+#[cfg(target_os = "uefi")]
+pub mod uefi;
+
 #[cfg(any(unix, target_os = "wasi", doc))]
 pub mod fd;
 

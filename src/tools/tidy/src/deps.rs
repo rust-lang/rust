@@ -24,6 +24,7 @@ const LICENSES: &[&str] = &[
     "MIT OR Zlib OR Apache-2.0",                // miniz_oxide
     "(MIT OR Apache-2.0) AND Unicode-DFS-2016", // unicode_ident
     "Unicode-DFS-2016",                         // tinystr and icu4x
+    "MIT OR Apache-2.0 OR LGPL-2.1-or-later",   // r-efi
 ];
 
 /// These are exceptions to Rust's permissive licensing policy, and
@@ -271,6 +272,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "zerofrom-derive",
     "zerovec",
     "zerovec-derive",
+    "r-efi",
 ];
 
 const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[

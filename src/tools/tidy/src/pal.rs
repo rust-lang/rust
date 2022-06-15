@@ -62,6 +62,8 @@ const EXCEPTION_PATHS: &[&str] = &[
     "library/std/src/panic.rs",   // fuchsia-specific panic backtrace handling
     "library/std/src/personality.rs",
     "library/std/src/personality/",
+    "library/std/src/thread/local.rs", // UEFI special thread_local implementation
+    "library/std/src/thread/mod.rs", // UEFI specific thread_local implementation
 ];
 
 pub fn check(path: &Path, bad: &mut bool) {

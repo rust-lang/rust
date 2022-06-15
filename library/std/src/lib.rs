@@ -272,6 +272,8 @@
 #![feature(thread_local)]
 #![feature(try_blocks)]
 #![feature(utf8_chunks)]
+#![feature(abi_efiapi)]
+#![feature(exclusive_range_pattern)]
 //
 // Library features (core):
 #![feature(array_error_internals)]

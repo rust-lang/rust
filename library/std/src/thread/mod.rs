@@ -228,7 +228,7 @@ pub use realstd::thread::__FastLocalKeyInner;
 pub use self::local::os::Key as __OsLocalKeyInner;
 
 #[unstable(feature = "libstd_thread_internals", issue = "none")]
-#[cfg(all(target_family = "wasm", not(target_feature = "atomics")))]
+#[cfg(any(all(target_family = "wasm", not(target_feature = "atomics")), target_os = "uefi"))]
 #[doc(hidden)]
 pub use self::local::statik::Key as __StaticLocalKeyInner;
 
