@@ -2248,36 +2248,59 @@ impl<'a> Parser<'a> {
         &mut self,
         attrs: AttrVec,
         lo: Span,
-        cond: P<Expr>,
+        mut cond: P<Expr>,
     ) -> PResult<'a, P<Expr>> {
-        let missing_then_block_binop_span = || {
-            match cond.kind {
-                ExprKind::Binary(Spanned { span: binop_span, .. }, _, ref right)
-                    if let ExprKind::Block(..) = right.kind => Some(binop_span),
-                _ => None
+        let cond_span = cond.span;
+        // Tries to interpret `cond` as either a missing expression if it's a block,
+        // or as an unfinished expression if it's a binop and the RHS is a block.
+        // We could probably add more recoveries here too...
+        let mut recover_block_from_condition = |this: &mut Self| {
+            let block = match &mut cond.kind {
+                ExprKind::Binary(Spanned { span: binop_span, .. }, _, right)
+                    if let ExprKind::Block(_, None) = right.kind => {
+                        this.error_missing_if_then_block(lo, cond_span.shrink_to_lo().to(*binop_span), true).emit();
+                        std::mem::replace(right, this.mk_expr_err(binop_span.shrink_to_hi()))
+                    },
+                ExprKind::Block(_, None) => {
+                    this.error_missing_if_cond(lo, cond_span).emit();
+                    std::mem::replace(&mut cond, this.mk_expr_err(cond_span.shrink_to_hi()))
+                }
+                _ => {
+                    return None;
+                }
+            };
+            if let ExprKind::Block(block, _) = &block.kind {
+                Some(block.clone())
+            } else {
+                unreachable!()
             }
         };
-        // Verify that the parsed `if` condition makes sense as a condition. If it is a block, then
-        // verify that the last statement is either an implicit return (no `;`) or an explicit
-        // return. This won't catch blocks with an explicit `return`, but that would be caught by
-        // the dead code lint.
-        let thn = if self.token.is_keyword(kw::Else) || !cond.returns() {
-            if let Some(binop_span) = missing_then_block_binop_span() {
-                self.error_missing_if_then_block(lo, None, Some(binop_span)).emit();
-                self.mk_block_err(cond.span)
+        // Parse then block
+        let thn = if self.token.is_keyword(kw::Else) {
+            if let Some(block) = recover_block_from_condition(self) {
+                block
             } else {
-                self.error_missing_if_cond(lo, cond.span)
+                self.error_missing_if_then_block(lo, cond_span, false).emit();
+                self.mk_block_err(cond_span.shrink_to_hi())
             }
         } else {
             let attrs = self.parse_outer_attributes()?.take_for_recovery(); // For recovery.
-            let not_block = self.token != token::OpenDelim(Delimiter::Brace);
-            let block = self.parse_block().map_err(|err| {
-                if not_block {
-                    self.error_missing_if_then_block(lo, Some(err), missing_then_block_binop_span())
+            let block = if self.check(&token::OpenDelim(Delimiter::Brace)) {
+                self.parse_block()?
+            } else {
+                if let Some(block) = recover_block_from_condition(self) {
+                    block
                 } else {
-                    err
+                    // Parse block, which will always fail, but we can add a nice note to the error
+                    self.parse_block().map_err(|mut err| {
+                        err.span_note(
+                            cond_span,
+                            "the `if` expression is missing a block after this condition",
+                        );
+                        err
+                    })?
                 }
-            })?;
+            };
             self.error_on_if_block_attrs(lo, false, block.span, &attrs);
             block
         };
@@ -2288,31 +2311,34 @@ impl<'a> Parser<'a> {
     fn error_missing_if_then_block(
         &self,
         if_span: Span,
-        err: Option<DiagnosticBuilder<'a, ErrorGuaranteed>>,
-        binop_span: Option<Span>,
+        cond_span: Span,
+        is_unfinished: bool,
     ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
-        let msg = "this `if` expression has a condition, but no block";
-
-        let mut err = if let Some(mut err) = err {
-            err.span_label(if_span, msg);
-            err
+        let mut err = self.struct_span_err(
+            if_span,
+            "this `if` expression is missing a block after the condition",
+        );
+        if is_unfinished {
+            err.span_help(cond_span, "this binary operation is possibly unfinished");
         } else {
-            self.struct_span_err(if_span, msg)
-        };
-
-        if let Some(binop_span) = binop_span {
-            err.span_help(binop_span, "maybe you forgot the right operand of the condition?");
+            err.span_help(cond_span.shrink_to_hi(), "add a block here");
         }
-
         err
     }
 
-    fn error_missing_if_cond(&self, lo: Span, span: Span) -> P<ast::Block> {
-        let sp = self.sess.source_map().next_point(lo);
-        self.struct_span_err(sp, "missing condition for `if` expression")
-            .span_label(sp, "expected if condition here")
-            .emit();
-        self.mk_block_err(span)
+    fn error_missing_if_cond(
+        &self,
+        lo: Span,
+        span: Span,
+    ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
+        let next_span = self.sess.source_map().next_point(lo);
+        let mut err = self.struct_span_err(next_span, "missing condition for `if` expression");
+        err.span_label(next_span, "expected condition here");
+        err.span_label(
+            self.sess.source_map().start_point(span),
+            "if this block is the condition of the `if` expression, then it must be followed by another block"
+        );
+        err
     }
 
     /// Parses the condition of a `if` or `while` expression.
