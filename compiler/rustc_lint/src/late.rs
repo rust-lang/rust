@@ -337,10 +337,8 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
         hir_visit::walk_path(self, p);
     }
 
-    fn visit_attribute(&mut self, hir_id: hir::HirId, attr: &'tcx ast::Attribute) {
-        self.with_lint_attrs(hir_id, |cx| {
-            lint_callback!(cx, check_attribute, attr);
-        })
+    fn visit_attribute(&mut self, _hir_id: hir::HirId, attr: &'tcx ast::Attribute) {
+        lint_callback!(self, check_attribute, attr);
     }
 }
 
