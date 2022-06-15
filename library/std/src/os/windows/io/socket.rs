@@ -107,6 +107,7 @@ impl OwnedSocket {
 impl BorrowedSocket<'_> {
     /// Creates a new `OwnedSocket` instance that shares the same underlying
     /// object as the existing `BorrowedSocket` instance.
+    #[stable(feature = "io_safety", since = "1.63.0")]
     pub fn try_clone_to_owned(&self) -> io::Result<OwnedSocket> {
         let mut info = unsafe { mem::zeroed::<c::WSAPROTOCOL_INFO>() };
         let result = unsafe {
