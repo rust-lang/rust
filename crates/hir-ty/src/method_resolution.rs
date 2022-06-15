@@ -8,8 +8,9 @@ use arrayvec::ArrayVec;
 use base_db::{CrateId, Edition};
 use chalk_ir::{cast::Cast, Mutability, UniverseIndex};
 use hir_def::{
-    item_scope::ItemScope, nameres::DefMap, AssocItemId, BlockId, ConstId, FunctionId,
-    GenericDefId, HasModule, ImplId, ItemContainerId, Lookup, ModuleDefId, ModuleId, TraitId,
+    data::ImplData, item_scope::ItemScope, nameres::DefMap, AssocItemId, BlockId, ConstId,
+    FunctionId, GenericDefId, HasModule, ImplId, ItemContainerId, Lookup, ModuleDefId, ModuleId,
+    TraitId,
 };
 use hir_expand::name::Name;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -247,7 +248,7 @@ impl TraitImpls {
         self.map
             .get(&trait_)
             .into_iter()
-            .flat_map(move |map| map.get(&None).into_iter().chain(map.get(&Some(self_ty))))
+            .flat_map(move |map| map.get(&Some(self_ty)).into_iter().chain(map.get(&None)))
             .flat_map(|v| v.iter().copied())
     }
 
@@ -575,6 +576,32 @@ pub(crate) fn iterate_method_candidates<T>(
     slot
 }
 
+pub fn lookup_trait_m_for_self_ty(
+    self_ty: &Ty,
+    db: &dyn HirDatabase,
+    env: Arc<TraitEnvironment>,
+    implied_trait: TraitId,
+    name: &Name,
+) -> Option<FunctionId> {
+    let self_ty_tp = TyFingerprint::for_trait_impl(self_ty)?;
+    let trait_impls = TraitImpls::trait_impls_in_deps_query(db, env.krate);
+    let impls = trait_impls.for_trait_and_self_ty(implied_trait, self_ty_tp);
+    let mut table = InferenceTable::new(db, env.clone());
+    if let Some(data) = Valid::valid_impl(impls, &mut table, &self_ty) {
+        for &impl_item in data.items.iter() {
+            if Valid::is_valid_item(&mut table, Some(name), None, impl_item, self_ty, None) {
+                match impl_item {
+                    AssocItemId::FunctionId(f) => {
+                        return Some(f);
+                    }
+                    _ => (),
+                }
+            }
+        }
+    }
+    None
+}
+
 pub fn iterate_path_candidates(
     ty: &Canonical<Ty>,
     db: &dyn HirDatabase,
@@ -850,7 +877,7 @@ fn iterate_trait_method_candidates(
         for &(_, item) in data.items.iter() {
             // Don't pass a `visible_from_module` down to `is_valid_candidate`,
             // since only inherent methods should be included into visibility checking.
-            if !is_valid_candidate(table, name, receiver_ty, item, self_ty, None) {
+            if !Valid::is_valid_item(table, name, receiver_ty, item, self_ty, None) {
                 continue;
             }
             if !known_implemented {
@@ -932,8 +959,14 @@ fn iterate_inherent_methods(
         let impls_for_self_ty = impls.for_self_ty(self_ty);
         for &impl_def in impls_for_self_ty {
             for &item in &db.impl_data(impl_def).items {
-                if !is_valid_candidate(table, name, receiver_ty, item, self_ty, visible_from_module)
-                {
+                if !Valid::is_valid_item(
+                    table,
+                    name,
+                    receiver_ty,
+                    item,
+                    self_ty,
+                    visible_from_module,
+                ) {
                     continue;
                 }
                 callback(receiver_adjustments.clone().unwrap_or_default(), item)?;
@@ -961,97 +994,125 @@ pub fn resolve_indexing_op(
     }
     None
 }
+struct Valid;
+impl Valid {
+    fn valid_impl(
+        impls: impl Iterator<Item = ImplId>,
+        table: &mut InferenceTable,
+        self_ty: &Ty,
+    ) -> Option<Arc<ImplData>> {
+        let db = table.db;
+        for impl_ in impls {
+            let impl_data = db.impl_data(impl_);
+            let substs =
+                TyBuilder::subst_for_def(db, impl_).fill_with_inference_vars(table).build();
+            let impl_ty =
+                substs.apply(db.impl_self_ty(impl_).into_value_and_skipped_binders().0, Interner);
 
-fn is_valid_candidate(
-    table: &mut InferenceTable,
-    name: Option<&Name>,
-    receiver_ty: Option<&Ty>,
-    item: AssocItemId,
-    self_ty: &Ty,
-    visible_from_module: Option<ModuleId>,
-) -> bool {
-    let db = table.db;
-    match item {
-        AssocItemId::FunctionId(m) => {
-            let data = db.function_data(m);
-            if let Some(name) = name {
-                if &data.name != name {
-                    return false;
-                }
+            if !table.unify(self_ty, &impl_ty) {
+                continue;
             }
-            table.run_in_snapshot(|table| {
-                let subst = TyBuilder::subst_for_def(db, m).fill_with_inference_vars(table).build();
-                let expected_self_ty = match m.lookup(db.upcast()).container {
-                    ItemContainerId::TraitId(_) => {
-                        subst.at(Interner, 0).assert_ty_ref(Interner).clone()
-                    }
-                    ItemContainerId::ImplId(impl_id) => {
-                        subst.apply(db.impl_self_ty(impl_id).skip_binders().clone(), Interner)
-                    }
-                    // We should only get called for associated items (impl/trait)
-                    ItemContainerId::ModuleId(_) | ItemContainerId::ExternBlockId(_) => {
-                        unreachable!()
-                    }
-                };
-                if !table.unify(&expected_self_ty, &self_ty) {
+
+            let wh_goals = crate::chalk_db::convert_where_clauses(db, impl_.into(), &substs)
+                .into_iter()
+                .map(|b| b.into_well_formed_goal(Interner).cast(Interner));
+
+            let goal = crate::Goal::all(Interner, wh_goals);
+
+            if table.try_obligation(goal).is_some() {
+                return Some(impl_data);
+            }
+        }
+        None
+    }
+
+    fn is_valid_item(
+        table: &mut InferenceTable,
+        name: Option<&Name>,
+        receiver_ty: Option<&Ty>,
+        item: AssocItemId,
+        self_ty: &Ty,
+        visible_from_module: Option<ModuleId>,
+    ) -> bool {
+        macro_rules! assert {
+            ($cond:expr) => {
+                if !$cond {
                     return false;
                 }
-                if let Some(receiver_ty) = receiver_ty {
-                    if !data.has_self_param() {
-                        return false;
-                    }
+            };
+        }
 
-                    let sig = db.callable_item_signature(m.into());
-                    let expected_receiver =
-                        sig.map(|s| s.params()[0].clone()).substitute(Interner, &subst);
-                    let receiver_matches = table.unify(&receiver_ty, &expected_receiver);
+        let db = table.db;
+        match item {
+            AssocItemId::FunctionId(m) => {
+                let data = db.function_data(m);
 
-                    if !receiver_matches {
-                        return false;
-                    }
-                }
-                if let Some(from_module) = visible_from_module {
-                    if !db.function_visibility(m).is_visible_from(db.upcast(), from_module) {
+                assert!(name.map_or(true, |n| n == &data.name));
+                assert!(visible_from_module.map_or(true, |from_module| {
+                    let v = db.function_visibility(m).is_visible_from(db.upcast(), from_module);
+                    if !v {
                         cov_mark::hit!(autoderef_candidate_not_visible);
+                    }
+                    v
+                }));
+
+                table.run_in_snapshot(|table| {
+                    let subst =
+                        TyBuilder::subst_for_def(db, m).fill_with_inference_vars(table).build();
+                    let expect_self_ty = match m.lookup(db.upcast()).container {
+                        ItemContainerId::TraitId(_) => {
+                            subst.at(Interner, 0).assert_ty_ref(Interner).clone()
+                        }
+                        ItemContainerId::ImplId(impl_id) => {
+                            subst.apply(db.impl_self_ty(impl_id).skip_binders().clone(), Interner)
+                        }
+                        // We should only get called for associated items (impl/trait)
+                        ItemContainerId::ModuleId(_) | ItemContainerId::ExternBlockId(_) => {
+                            unreachable!()
+                        }
+                    };
+                    assert!(table.unify(&expect_self_ty, self_ty));
+                    if let Some(receiver_ty) = receiver_ty {
+                        assert!(data.has_self_param());
+
+                        let sig = db.callable_item_signature(m.into());
+                        let expected_receiver =
+                            sig.map(|s| s.params()[0].clone()).substitute(Interner, &subst);
+
+                        assert!(table.unify(&receiver_ty, &expected_receiver));
+                    }
+                    true
+                })
+            }
+            AssocItemId::ConstId(c) => {
+                let data = db.const_data(c);
+                assert!(receiver_ty.is_none());
+
+                assert!(name.map_or(true, |n| data.name.as_ref() == Some(n)));
+                assert!(visible_from_module.map_or(true, |from_module| {
+                    let v = db.const_visibility(c).is_visible_from(db.upcast(), from_module);
+                    if !v {
+                        cov_mark::hit!(const_candidate_not_visible);
+                    }
+                    v
+                }));
+                if let ItemContainerId::ImplId(impl_id) = c.lookup(db.upcast()).container {
+                    let self_ty_matches = table.run_in_snapshot(|table| {
+                        let subst =
+                            TyBuilder::subst_for_def(db, c).fill_with_inference_vars(table).build();
+                        let expected_self_ty =
+                            subst.apply(db.impl_self_ty(impl_id).skip_binders().clone(), Interner);
+                        table.unify(&expected_self_ty, &self_ty)
+                    });
+                    if !self_ty_matches {
+                        cov_mark::hit!(const_candidate_self_type_mismatch);
                         return false;
                     }
                 }
-
                 true
-            })
+            }
+            _ => false,
         }
-        AssocItemId::ConstId(c) => {
-            let data = db.const_data(c);
-            if receiver_ty.is_some() {
-                return false;
-            }
-            if let Some(name) = name {
-                if data.name.as_ref() != Some(name) {
-                    return false;
-                }
-            }
-            if let Some(from_module) = visible_from_module {
-                if !db.const_visibility(c).is_visible_from(db.upcast(), from_module) {
-                    cov_mark::hit!(const_candidate_not_visible);
-                    return false;
-                }
-            }
-            if let ItemContainerId::ImplId(impl_id) = c.lookup(db.upcast()).container {
-                let self_ty_matches = table.run_in_snapshot(|table| {
-                    let subst =
-                        TyBuilder::subst_for_def(db, c).fill_with_inference_vars(table).build();
-                    let expected_self_ty =
-                        subst.apply(db.impl_self_ty(impl_id).skip_binders().clone(), Interner);
-                    table.unify(&expected_self_ty, &self_ty)
-                });
-                if !self_ty_matches {
-                    cov_mark::hit!(const_candidate_self_type_mismatch);
-                    return false;
-                }
-            }
-            true
-        }
-        _ => false,
     }
 }
 

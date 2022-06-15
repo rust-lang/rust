@@ -21,7 +21,8 @@ use hir_def::{
     path::{ModPath, Path, PathKind},
     resolver::{resolver_for_scope, Resolver, TypeNs, ValueNs},
     type_ref::Mutability,
-    AsMacroCall, DefWithBodyId, FieldId, FunctionId, LocalFieldId, Lookup, ModuleDefId, VariantId,
+    AsMacroCall, DefWithBodyId, FieldId, FunctionId, ItemContainerId, LocalFieldId, Lookup,
+    ModuleDefId, VariantId,
 };
 use hir_expand::{
     builtin_fn_macro::BuiltinFnLikeExpander, hygiene::Hygiene, name::AsName, HirFileId, InFile,
@@ -31,8 +32,8 @@ use hir_ty::{
         record_literal_missing_fields, record_pattern_missing_fields, unsafe_expressions,
         UnsafeExpr,
     },
-    Adjust, Adjustment, AutoBorrow, InferenceResult, Interner, Substitution, TyExt,
-    TyLoweringContext,
+    method_resolution, Adjust, Adjustment, AutoBorrow, InferenceResult, Interner, Substitution,
+    TyExt, TyKind, TyLoweringContext,
 };
 use smallvec::SmallVec;
 use syntax::{
@@ -245,6 +246,60 @@ impl SourceAnalyzer {
     ) -> Option<(FunctionId, Substitution)> {
         let expr_id = self.expr_id(db, &call.clone().into())?;
         self.infer.as_ref()?.method_resolution(expr_id)
+    }
+
+    pub(crate) fn resolve_impl_method(
+        &self,
+        db: &dyn HirDatabase,
+        call: &ast::Expr,
+    ) -> Option<FunctionId> {
+        let infered = self.infer.as_ref()?;
+        let expr_id = self.expr_id(db, call)?;
+
+        let mut fun_info = None;
+        match call {
+            &ast::Expr::MethodCallExpr(..) => {
+                let (func, subs) = infered.method_resolution(expr_id)?;
+                if subs.is_empty(Interner) {
+                    return None;
+                }
+                fun_info.replace((func, subs.at(Interner, 0).ty(Interner)?.clone()));
+            }
+            &ast::Expr::PathExpr(..) => {
+                let func_ty = infered.type_of_expr.get(expr_id)?;
+                if let TyKind::FnDef(fn_def, subs) = func_ty.kind(Interner) {
+                    if subs.is_empty(Interner) {
+                        return None;
+                    }
+                    if let hir_ty::CallableDefId::FunctionId(f_id) =
+                        db.lookup_intern_callable_def(fn_def.clone().into())
+                    {
+                        fun_info.replace((f_id, subs.at(Interner, 0).ty(Interner)?.clone()));
+                    }
+                }
+            }
+            _ => (),
+        };
+        let (func, self_ty) = fun_info?;
+        let implied_trait = match func.lookup(db.upcast()).container {
+            ItemContainerId::TraitId(trait_id) => trait_id,
+            _ => return None,
+        };
+
+        let krate = self.resolver.krate();
+        let trait_env = self.resolver.body_owner()?.as_generic_def_id().map_or_else(
+            || Arc::new(hir_ty::TraitEnvironment::empty(krate)),
+            |d| db.trait_environment(d),
+        );
+
+        let fun_data = db.function_data(func);
+        method_resolution::lookup_trait_m_for_self_ty(
+            &self_ty,
+            db,
+            trait_env,
+            implied_trait,
+            &fun_data.name,
+        )
     }
 
     pub(crate) fn resolve_field(
