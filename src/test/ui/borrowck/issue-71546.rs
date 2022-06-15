@@ -1,4 +1,8 @@
 // Regression test for #71546.
+//
+// Made to pass as part of fixing #98095.
+//
+// check-pass
 
 pub fn serialize_as_csv<V>(value: &V) -> Result<String, &str>
 where
@@ -6,15 +10,7 @@ where
     for<'a> &'a V: IntoIterator,
     for<'a> <&'a V as IntoIterator>::Item: ToString + 'static,
 {
-    let csv_str: String = value
-        //~^ ERROR higher-ranked lifetime error
-        //~| ERROR higher-ranked lifetime error
-        //~| ERROR higher-ranked lifetime error
-        .into_iter()
-        .map(|elem| elem.to_string())
-        //~^ ERROR higher-ranked lifetime error
-        .collect::<String>();
-        //~^ ERROR higher-ranked lifetime error
+    let csv_str: String = value.into_iter().map(|elem| elem.to_string()).collect::<String>();
     Ok(csv_str)
 }
 

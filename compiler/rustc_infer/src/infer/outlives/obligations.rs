@@ -359,13 +359,21 @@ where
         // #55756) in cases where you have e.g., `<T as Foo<'a>>::Item:
         // 'a` in the environment but `trait Foo<'b> { type Item: 'b
         // }` in the trait definition.
-        approx_env_bounds.retain(|bound| match *bound.0.kind() {
-            ty::Projection(projection_ty) => self
-                .verify_bound
-                .projection_declared_bounds_from_trait(projection_ty)
-                .all(|r| r != bound.1),
+        approx_env_bounds.retain(|bound_outlives| {
+            // OK to skip binder because we only manipulate and compare against other
+            // values from the same inder. e.g. if we have (e.g.) `for<'a> <T as Trait<'a>>::Item: 'a`
+            // in `bound`, the `'a` will be a `^1` (bound, debruijn index == innermost) region.
+            // If the declaration is `trait Trait<'b> { type Item: 'b; }`, then `projection_declared_bounds_from_trait`
+            // will be invoked with `['b => ^1]` and so we will get `^1` returned.
+            let bound = bound_outlives.skip_binder();
+            match *bound.0.kind() {
+                ty::Projection(projection_ty) => self
+                    .verify_bound
+                    .projection_declared_bounds_from_trait(projection_ty)
+                    .all(|r| r != bound.1),
 
-            _ => panic!("expected only projection types from env, not {:?}", bound.0),
+                _ => panic!("expected only projection types from env, not {:?}", bound.0),
+            }
         });
 
         // If declared bounds list is empty, the only applicable rule is
@@ -416,8 +424,16 @@ where
         if !trait_bounds.is_empty()
             && trait_bounds[1..]
                 .iter()
-                .chain(approx_env_bounds.iter().map(|b| &b.1))
-                .all(|b| *b == trait_bounds[0])
+                .map(|r| Some(*r))
+                .chain(
+                    // NB: The environment may contain `for<'a> T: 'a` style bounds.
+                    // In that case, we don't know if they are equal to the trait bound
+                    // or not (since we don't *know* whether the environment bound even applies),
+                    // so just map to `None` here if there are bound vars, ensuring that
+                    // the call to `all` will fail below.
+                    approx_env_bounds.iter().map(|b| b.map_bound(|b| b.1).no_bound_vars()),
+                )
+                .all(|b| b == Some(trait_bounds[0]))
         {
             let unique_bound = trait_bounds[0];
             debug!("projection_must_outlive: unique trait bound = {:?}", unique_bound);
@@ -433,7 +449,7 @@ where
         // even though a satisfactory solution exists.
         let generic = GenericKind::Projection(projection_ty);
         let verify_bound = self.verify_bound.generic_bound(generic);
-        debug!("projection_must_outlive: pushing verify_bound={:?}", verify_bound,);
+        debug!("projection_must_outlive: pushing {:?}", verify_bound);
         self.delegate.push_verify(origin, generic, region, verify_bound);
     }
 }

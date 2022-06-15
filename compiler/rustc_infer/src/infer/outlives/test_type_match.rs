@@ -34,6 +34,7 @@ use crate::infer::region_constraints::VerifyIfEq;
 /// like are used. This is a particular challenge since this function is invoked
 /// very late in inference and hence cannot make use of the normal inference
 /// machinery.
+#[tracing::instrument(level = "Debug", skip(tcx, param_env))]
 pub fn extract_verify_if_eq_bound<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
@@ -61,6 +62,25 @@ pub fn extract_verify_if_eq_bound<'tcx>(
     }
 }
 
+/// True if a (potentially higher-ranked) outlives
+#[tracing::instrument(level = "Debug", skip(tcx, param_env))]
+pub(super) fn can_match_erased_ty<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    outlives_predicate: ty::Binder<'tcx, ty::TypeOutlivesPredicate<'tcx>>,
+    erased_ty: Ty<'tcx>,
+) -> bool {
+    assert!(!outlives_predicate.has_escaping_bound_vars());
+    let erased_outlives_predicate = tcx.erase_regions(outlives_predicate);
+    let outlives_ty = erased_outlives_predicate.skip_binder().0;
+    if outlives_ty == erased_ty {
+        // pointless micro-optimization
+        true
+    } else {
+        Match::new(tcx, param_env).relate(outlives_ty, erased_ty).is_ok()
+    }
+}
+
 struct Match<'tcx> {
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
@@ -82,6 +102,7 @@ impl<'tcx> Match<'tcx> {
 
     /// Binds the pattern variable `br` to `value`; returns an `Err` if the pattern
     /// is already bound to a different value.
+    #[tracing::instrument(level = "Debug", skip(self))]
     fn bind(
         &mut self,
         br: ty::BoundRegion,
@@ -133,8 +154,9 @@ impl<'tcx> TypeRelation<'tcx> for Match<'tcx> {
         pattern: ty::Region<'tcx>,
         value: ty::Region<'tcx>,
     ) -> RelateResult<'tcx, ty::Region<'tcx>> {
+        debug!("self.pattern_depth = {:?}", self.pattern_depth);
         if let ty::RegionKind::ReLateBound(depth, br) = pattern.kind() && depth == self.pattern_depth {
-            self.bind(br, pattern)
+            self.bind(br, value)
         } else if pattern == value {
             Ok(pattern)
         } else {
@@ -142,6 +164,7 @@ impl<'tcx> TypeRelation<'tcx> for Match<'tcx> {
         }
     }
 
+    #[instrument(skip(self), level = "debug")]
     fn tys(&mut self, pattern: Ty<'tcx>, value: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
         if pattern == value {
             return Ok(pattern);
@@ -150,6 +173,7 @@ impl<'tcx> TypeRelation<'tcx> for Match<'tcx> {
         }
     }
 
+    #[instrument(skip(self), level = "debug")]
     fn consts(
         &mut self,
         pattern: ty::Const<'tcx>,
