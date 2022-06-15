@@ -5,7 +5,7 @@ use rustc_ast::{
     token,
     tokenstream::{DelimSpan, TokenStream, TokenTree},
     BorrowKind, Expr, ExprKind, ItemKind, MacArgs, MacCall, MacDelimiter, Mutability, Path,
-    PathSegment, Stmt, UseTree, UseTreeKind, DUMMY_NODE_ID,
+    PathSegment, Stmt, StructRest, UseTree, UseTreeKind, DUMMY_NODE_ID,
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
@@ -167,15 +167,103 @@ impl<'cx, 'a> Context<'cx, 'a> {
     /// See [Self::manage_initial_capture] and [Self::manage_try_capture]
     fn manage_cond_expr(&mut self, expr: &mut P<Expr>) {
         match (*expr).kind {
+            ExprKind::AddrOf(_, _, ref mut local_expr) => {
+                self.manage_cond_expr(local_expr);
+            }
+            ExprKind::Array(ref mut local_exprs) => {
+                for local_expr in local_exprs {
+                    self.manage_cond_expr(local_expr);
+                }
+            }
             ExprKind::Binary(_, ref mut lhs, ref mut rhs) => {
                 self.manage_cond_expr(lhs);
                 self.manage_cond_expr(rhs);
+            }
+            ExprKind::Call(_, ref mut local_exprs) => {
+                for local_expr in local_exprs {
+                    self.manage_cond_expr(local_expr);
+                }
+            }
+            ExprKind::Cast(ref mut local_expr, _) => {
+                self.manage_cond_expr(local_expr);
+            }
+            ExprKind::Index(ref mut prefix, ref mut suffix) => {
+                self.manage_cond_expr(prefix);
+                self.manage_cond_expr(suffix);
+            }
+            ExprKind::MethodCall(_, ref mut local_exprs, _) => {
+                for local_expr in local_exprs.iter_mut().skip(1) {
+                    self.manage_cond_expr(local_expr);
+                }
             }
             ExprKind::Path(_, Path { ref segments, .. }) if let &[ref path_segment] = &segments[..] => {
                 let path_ident = path_segment.ident;
                 self.manage_initial_capture(expr, path_ident);
             }
-            _ => {}
+            ExprKind::Paren(ref mut local_expr) => {
+                self.manage_cond_expr(local_expr);
+            }
+            ExprKind::Range(ref mut prefix, ref mut suffix, _) => {
+                if let Some(ref mut elem) = prefix {
+                    self.manage_cond_expr(elem);
+                }
+                if let Some(ref mut elem) = suffix {
+                    self.manage_cond_expr(elem);
+                }
+            }
+            ExprKind::Repeat(ref mut local_expr, ref mut elem) => {
+                self.manage_cond_expr(local_expr);
+                self.manage_cond_expr(&mut elem.value);
+            }
+            ExprKind::Struct(ref mut elem) => {
+                for field in &mut elem.fields {
+                    self.manage_cond_expr(&mut field.expr);
+                }
+                if let StructRest::Base(ref mut local_expr) = elem.rest {
+                    self.manage_cond_expr(local_expr);
+                }
+            }
+            ExprKind::Tup(ref mut local_exprs) => {
+                for local_expr in local_exprs {
+                    self.manage_cond_expr(local_expr);
+                }
+            }
+            ExprKind::Unary(_, ref mut local_expr) => {
+                self.manage_cond_expr(local_expr);
+            }
+            // Expressions that are not worth or can not be captured.
+            //
+            // Full list instead of `_` to catch possible future inclusions and to
+            // sync with the `rfc-2011-nicer-assert-messages/all-expr-kinds.rs` test.
+            ExprKind::Assign(_, _, _)
+            | ExprKind::AssignOp(_, _, _)
+            | ExprKind::Async(_, _, _)
+            | ExprKind::Await(_)
+            | ExprKind::Block(_, _)
+            | ExprKind::Box(_)
+            | ExprKind::Break(_, _)
+            | ExprKind::Closure(_, _, _, _, _, _)
+            | ExprKind::ConstBlock(_)
+            | ExprKind::Continue(_)
+            | ExprKind::Err
+            | ExprKind::Field(_, _)
+            | ExprKind::ForLoop(_, _, _, _)
+            | ExprKind::If(_, _, _)
+            | ExprKind::InlineAsm(_)
+            | ExprKind::Let(_, _, _)
+            | ExprKind::Lit(_)
+            | ExprKind::Loop(_, _)
+            | ExprKind::MacCall(_)
+            | ExprKind::Match(_, _)
+            | ExprKind::Path(_, _)
+            | ExprKind::Ret(_)
+            | ExprKind::Try(_)
+            | ExprKind::TryBlock(_)
+            | ExprKind::Type(_, _)
+            | ExprKind::Underscore
+            | ExprKind::While(_, _, _)
+            | ExprKind::Yeet(_)
+            | ExprKind::Yield(_) => {}
         }
     }
 
