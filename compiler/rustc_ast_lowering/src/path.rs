@@ -196,25 +196,32 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     ParenthesizedGenericArgs::Err => {
                         let mut err = struct_span_err!(self.sess, data.span, E0214, "{}", msg);
                         err.span_label(data.span, "only `Fn` traits may use parentheses");
-                        if let Ok(snippet) = self.sess.source_map().span_to_snippet(data.span) {
-                            // Do not suggest going from `Trait()` to `Trait<>`
-                            if !data.inputs.is_empty() {
-                                // Suggest replacing `(` and `)` with `<` and `>`
-                                // The snippet may be missing the closing `)`, skip that case
-                                if snippet.ends_with(')') {
-                                    if let Some(split) = snippet.find('(') {
-                                        let trait_name = &snippet[0..split];
-                                        let args = &snippet[split + 1..snippet.len() - 1];
-                                        err.span_suggestion(
-                                            data.span,
-                                            "use angle brackets instead",
-                                            format!("{}<{}>", trait_name, args),
-                                            Applicability::MaybeIncorrect,
-                                        );
-                                    }
-                                }
-                            }
-                        };
+                        // Suggest replacing parentheses with angle brackets `Trait(params...)` to `Trait<params...>`
+                        if !data.inputs.is_empty() {
+                            // Start of the span to the 1st character of 1st argument
+                            let open_param = data.inputs_span.shrink_to_lo().to(data
+                                .inputs
+                                .first()
+                                .unwrap()
+                                .span
+                                .shrink_to_lo());
+                            // Last character position of last argument to the end of the span
+                            let close_param = data
+                                .inputs
+                                .last()
+                                .unwrap()
+                                .span
+                                .shrink_to_hi()
+                                .to(data.inputs_span.shrink_to_hi());
+                            err.multipart_suggestion(
+                                &format!("use angle brackets instead",),
+                                vec![
+                                    (open_param, String::from("<")),
+                                    (close_param, String::from(">")),
+                                ],
+                                Applicability::MaybeIncorrect,
+                            );
+                        }
                         err.emit();
                         (
                             self.lower_angle_bracketed_parameter_data(
