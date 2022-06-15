@@ -126,16 +126,47 @@ pub fn futex<'tcx>(
                 Align::from_bytes(4).unwrap(),
                 CheckInAllocMsg::MemoryAccessTest,
             )?;
-            // This SeqCst fence is paired with the SeqCst fence in futex_wake.
-            // Together, they make sure that our read on addr observes the latest
-            // value in modification order.
+            // There may be a concurrent thread changing the value of addr
+            // and then invoking the FUTEX_WAKE syscall. It is critical that the
+            // effects of this and the other thread are correctly observed,
+            // otherwise we will deadlock.
             //
-            // If there is another thread which has changed the value of
-            // addr (to something other than expected) and called futex_wake
-            // before we get to run, then we must not block our thread
-            // because there'll be no one to wake us. We must see
-            // the value changed by the other thread and return without
-            // actually waiting.
+            // There are two scenarios to consider:
+            // 1. If we (FUTEX_WAIT) executes first, we'll push ourselves into
+            //    the waiters queue and go to sleep. They (addr write & FUTEX_WAKE)
+            //    will see us in the queue and wake us up.
+            // 2. If they (addr write & FUTEX_WAKE) executes first, we must observe
+            //    addr's new value. If we see an outdated value that happens to equal
+            //    the expected val, then we'll put ourselves to sleep with no one to wake us
+            //    up, so we end up with a deadlock. This is prevented by having a SeqCst
+            //    fence inside FUTEX_WAKE syscall, and another SeqCst fence
+            //    below, the atomic read on addr after the SeqCst fence is guaranteed
+            //    not to see any value older than the addr write immediately before
+            //    calling FUTEX_WAKE. We'll see futex_val != val and return without
+            //    sleeping.
+            //
+            //    Note that the fences do not create any happens-before relationship.
+            //    The read sees the write immediately before the fence not because
+            //    one happens after the other, but is instead due to a guarantee unique
+            //    to SeqCst fences that restricts what an atomic read placed AFTER the
+            //    fence can see. The read still has to be atomic, otherwise it's a data
+            //    race. This guarantee cannot be achieved with acquire-release fences
+            //    since they only talk about reads placed BEFORE a fence - and places
+            //    no restrictions on what the read itself can see, only that there is
+            //    a happens-before between the fences IF the read happens to see the
+            //    right value. This is useless to us, since we need the read itself
+            //    to see an up-to-date value.
+            //
+            // It is also critical that the fence, the atomic load, and the comparison
+            // altogether happen atomically. If the other thread's fence in FUTEX_WAKE
+            // gets interleaved after our fence, then we lose the guarantee on the
+            // atomic load being up-to-date; if the other thread's write on addr and FUTEX_WAKE
+            // call are interleaved after the load but before the comparison, then we get a TOCTOU
+            // race condition, and go to sleep thinking the other thread will wake us up,
+            // even though they have already finished.
+            //
+            // Thankfully, preemptions cannot happen inside a Miri shim, so we do not need to
+            // do anything special to guarantee fence-load-comparison atomicity.
             this.atomic_fence(&[], AtomicFenceOp::SeqCst)?;
             // Read an `i32` through the pointer, regardless of any wrapper types.
             // It's not uncommon for `addr` to be passed as another type than `*mut i32`, such as `*const AtomicI32`.
@@ -149,7 +180,7 @@ pub fn futex<'tcx>(
                 )?
                 .to_i32()?;
             if val == futex_val {
-                // The value still matches, so we block the trait make it wait for FUTEX_WAKE.
+                // The value still matches, so we block the thread make it wait for FUTEX_WAKE.
                 this.block_thread(thread);
                 this.futex_wait(addr_usize, thread, bitset);
                 // Succesfully waking up from FUTEX_WAIT always returns zero.
