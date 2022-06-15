@@ -51,7 +51,7 @@
 mod fd;
 mod raw;
 
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 pub use fd::*;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use raw::*;

@@ -1,6 +1,6 @@
 //! Owned and borrowed Unix-like file descriptors.
 
-#![unstable(feature = "io_safety", issue = "87074")]
+#![stable(feature = "io_safety", since = "1.63.0")]
 #![deny(unsafe_op_in_unsafe_fn)]
 
 // `RawFd`, `AsRawFd`, etc.

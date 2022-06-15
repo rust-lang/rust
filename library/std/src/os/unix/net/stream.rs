@@ -683,7 +683,7 @@ impl IntoRawFd for UnixStream {
     }
 }
 
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl AsFd for UnixStream {
     #[inline]
     fn as_fd(&self) -> BorrowedFd<'_> {
@@ -691,7 +691,7 @@ impl AsFd for UnixStream {
     }
 }
 
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl From<UnixStream> for OwnedFd {
     #[inline]
     fn from(unix_stream: UnixStream) -> OwnedFd {
@@ -699,7 +699,7 @@ impl From<UnixStream> for OwnedFd {
     }
 }
 
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl From<OwnedFd> for UnixStream {
     #[inline]
     fn from(owned: OwnedFd) -> Self {

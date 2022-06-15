@@ -962,7 +962,7 @@ impl IntoRawFd for UnixDatagram {
     }
 }
 
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl AsFd for UnixDatagram {
     #[inline]
     fn as_fd(&self) -> BorrowedFd<'_> {
@@ -970,7 +970,7 @@ impl AsFd for UnixDatagram {
     }
 }
 
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl From<UnixDatagram> for OwnedFd {
     #[inline]
     fn from(unix_datagram: UnixDatagram) -> OwnedFd {
@@ -978,7 +978,7 @@ impl From<UnixDatagram> for OwnedFd {
     }
 }
 
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl From<OwnedFd> for UnixDatagram {
     #[inline]
     fn from(owned: OwnedFd) -> Self {
