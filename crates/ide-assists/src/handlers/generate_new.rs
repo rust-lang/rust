@@ -29,12 +29,7 @@ pub fn use_trivial_constructor(
                         )),
                     );
 
-                    use hir::StructKind::*;
-                    let is_record = match variant.kind(db) {
-                        Record => true,
-                        Tuple => false,
-                        Unit => false,
-                    };
+                    let is_record = variant.kind(db) == hir::StructKind::Record;
 
                     return Some(if is_record {
                         ast::Expr::RecordExpr(syntax::ast::make::record_expr(
@@ -48,9 +43,7 @@ pub fn use_trivial_constructor(
             }
         }
         Some(hir::Adt::Struct(x)) => {
-            let fields = x.fields(db);
-
-            if fields.is_empty() {
+            if x.fields(db).is_empty() {
                 return Some(syntax::ast::make::expr_path(path));
             }
         }
