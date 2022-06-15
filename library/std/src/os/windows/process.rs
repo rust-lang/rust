@@ -22,7 +22,7 @@ impl FromRawHandle for process::Stdio {
     }
 }
 
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl From<OwnedHandle> for process::Stdio {
     fn from(handle: OwnedHandle) -> process::Stdio {
         let handle = sys::handle::Handle::from_inner(handle);
@@ -39,7 +39,7 @@ impl AsRawHandle for process::Child {
     }
 }
 
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl AsHandle for process::Child {
     #[inline]
     fn as_handle(&self) -> BorrowedHandle<'_> {
@@ -54,7 +54,7 @@ impl IntoRawHandle for process::Child {
     }
 }
 
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl From<process::Child> for OwnedHandle {
     fn from(child: process::Child) -> OwnedHandle {
         child.into_inner().into_handle().into_inner()
