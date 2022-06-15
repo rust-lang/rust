@@ -2363,6 +2363,7 @@ pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
 #[rustc_const_unstable(feature = "const_eval_select", issue = "none")]
 #[lang = "const_eval_select"]
 #[rustc_do_not_const_check]
+#[inline]
 pub const unsafe fn const_eval_select<ARG, F, G, RET>(
     arg: ARG,
     _called_in_const: F,
