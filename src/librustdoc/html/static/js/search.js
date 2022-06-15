@@ -1719,10 +1719,11 @@ function initSearch(rawSearchIndex) {
         }
 
         let crates = "";
-        if (window.ALL_CRATES.length > 1) {
+        const crates_list = Object.keys(rawSearchIndex);
+        if (crates_list.length > 1) {
             crates = " in <select id=\"crate-search\"><option value=\"All crates\">" +
                 "All crates</option>";
-            for (const c of window.ALL_CRATES) {
+            for (const c of crates_list) {
                 crates += `<option value="${c}" ${c === filterCrates && "selected"}>${c}</option>`;
             }
             crates += "</select>";
