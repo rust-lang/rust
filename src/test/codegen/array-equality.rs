@@ -29,6 +29,8 @@ pub fn array_eq_value_still_passed_by_pointer(a: [u16; 9], b: [u16; 9]) -> bool 
     // CHECK-NEXT: start:
     // CHECK: %[[CMP:.+]] = tail call i32 @{{bcmp|memcmp}}({{i8\*|ptr}} {{.*}} dereferenceable(18) %{{.+}}, {{i8\*|ptr}} {{.*}} dereferenceable(18) %{{.+}}, i64 18)
     // CHECK-NEXT: %[[EQ:.+]] = icmp eq i32 %[[CMP]], 0
+    // CHECK-NEXT: call void @llvm.lifetime.end
+    // CHECK-NEXT: call void @llvm.lifetime.end
     // CHECK-NEXT: ret i1 %[[EQ]]
     a == b
 }
@@ -58,6 +60,8 @@ pub fn array_eq_zero_mid(x: [u16; 8]) -> bool {
     // CHECK-NEXT: start:
     // CHECK: %[[LOAD:.+]] = load i128,
     // CHECK-NEXT: %[[EQ:.+]] = icmp eq i128 %[[LOAD]], 0
+    // CHECK-NEXT: bitcast
+    // CHECK-NEXT: call void @llvm.lifetime.end
     // CHECK-NEXT: ret i1 %[[EQ]]
     x == [0; 8]
 }
@@ -69,6 +73,7 @@ pub fn array_eq_zero_long(x: [u16; 1234]) -> bool {
     // CHECK-NOT: alloca
     // CHECK: %[[CMP:.+]] = tail call i32 @{{bcmp|memcmp}}(
     // CHECK-NEXT: %[[EQ:.+]] = icmp eq i32 %[[CMP]], 0
+    // CHECK-NEXT: call void @llvm.lifetime.end
     // CHECK-NEXT: ret i1 %[[EQ]]
     x == [0; 1234]
 }

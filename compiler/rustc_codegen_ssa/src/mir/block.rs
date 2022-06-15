@@ -295,6 +295,28 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     }
 
     fn codegen_return_terminator(&mut self, mut bx: Bx) {
+        // Mark storage dead for arguments passed indirectly.
+        for (arg_index, local) in self.mir.args_iter().enumerate() {
+            if Some(local) == self.mir.spread_arg {
+                // Bail out on spread args. This may result in reduced optimization in "rust-call" ABI functions.
+                // FIXME: handle spread args. This is subtle, see `mir::arg_local_refs`.
+                break;
+            }
+            if self.fn_abi.c_variadic && arg_index == self.fn_abi.args.len() {
+                // Ignore C variadic args (always the last argument, if present).
+                continue;
+            }
+            let abi = &self.fn_abi.args[arg_index];
+            if !abi.is_indirect() {
+                // Only indirect arguments need storage markers.
+                continue;
+            }
+            match self.locals[local] {
+                LocalRef::Place(place) => place.storage_dead(&mut bx),
+                LocalRef::UnsizedPlace(place) => place.storage_dead(&mut bx),
+                _ => bug!("Unexpected non-place argument local: {:?}", local),
+            }
+        }
         // Call `va_end` if this is the definition of a C-variadic function.
         if self.fn_abi.c_variadic {
             // The `VaList` "spoofed" argument is just after all the real arguments.
