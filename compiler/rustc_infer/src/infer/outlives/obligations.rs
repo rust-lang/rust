@@ -318,17 +318,13 @@ where
         self.delegate.push_verify(origin, generic, region, verify_bound);
     }
 
+    #[tracing::instrument(level = "Debug", skip(self))]
     fn projection_must_outlive(
         &mut self,
         origin: infer::SubregionOrigin<'tcx>,
         region: ty::Region<'tcx>,
         projection_ty: ty::ProjectionTy<'tcx>,
     ) {
-        debug!(
-            "projection_must_outlive(region={:?}, projection_ty={:?}, origin={:?})",
-            region, projection_ty, origin
-        );
-
         // This case is thorny for inference. The fundamental problem is
         // that there are many cases where we have choice, and inference
         // doesn't like choice (the current region inference in
@@ -437,6 +433,7 @@ where
         // even though a satisfactory solution exists.
         let generic = GenericKind::Projection(projection_ty);
         let verify_bound = self.verify_bound.generic_bound(generic);
+        debug!("projection_must_outlive: pushing verify_bound={:?}", verify_bound,);
         self.delegate.push_verify(origin, generic, region, verify_bound);
     }
 }
