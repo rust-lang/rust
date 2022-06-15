@@ -197,7 +197,7 @@ impl AllocHistory {
     /// Report a descriptive error when `new` could not be granted from `derived_from`.
     pub fn grant_error<'tcx>(
         &self,
-        derived_from: SbTag,
+        derived_from: Option<SbTag>,
         new: Item,
         alloc_id: AllocId,
         alloc_range: AllocRange,
@@ -214,7 +214,9 @@ impl AllocHistory {
         err_sb_ub(
             format!("{}{}", action, error_cause(stack, derived_from)),
             Some(operation_summary("a reborrow", alloc_id, alloc_range)),
-            self.get_logs_relevant_to(derived_from, alloc_range, error_offset, None),
+            derived_from.and_then(|derived_from| {
+                self.get_logs_relevant_to(derived_from, alloc_range, error_offset, None)
+            }),
         )
     }
 
@@ -222,7 +224,7 @@ impl AllocHistory {
     pub fn access_error<'tcx>(
         &self,
         access: AccessKind,
-        tag: SbTag,
+        tag: Option<SbTag>,
         alloc_id: AllocId,
         alloc_range: AllocRange,
         error_offset: Size,
@@ -238,7 +240,7 @@ impl AllocHistory {
         err_sb_ub(
             format!("{}{}", action, error_cause(stack, tag)),
             Some(operation_summary("an access", alloc_id, alloc_range)),
-            self.get_logs_relevant_to(tag, alloc_range, error_offset, None),
+            tag.and_then(|tag| self.get_logs_relevant_to(tag, alloc_range, error_offset, None)),
         )
     }
 }
@@ -251,10 +253,14 @@ fn operation_summary(
     format!("this error occurs as part of {} at {:?}{}", operation, alloc_id, HexRange(alloc_range))
 }
 
-fn error_cause(stack: &Stack, tag: SbTag) -> &'static str {
-    if stack.borrows.iter().any(|item| item.tag == tag && item.perm != Permission::Disabled) {
-        ", but that tag only grants SharedReadOnly permission for this location"
+fn error_cause(stack: &Stack, tag: Option<SbTag>) -> &'static str {
+    if let Some(tag) = tag {
+        if stack.borrows.iter().any(|item| item.tag == tag && item.perm != Permission::Disabled) {
+            ", but that tag only grants SharedReadOnly permission for this location"
+        } else {
+            ", but that tag does not exist in the borrow stack for this location"
+        }
     } else {
-        ", but that tag does not exist in the borrow stack for this location"
+        ", but no exposed tags are valid in the borrow stack for this location"
     }
 }

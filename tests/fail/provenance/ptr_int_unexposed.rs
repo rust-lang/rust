@@ -1,4 +1,4 @@
-// compile-flags: -Zmiri-permissive-provenance -Zmiri-disable-stacked-borrows
+// compile-flags: -Zmiri-permissive-provenance
 #![feature(strict_provenance)]
 
 fn main() {

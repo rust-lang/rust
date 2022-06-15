@@ -489,7 +489,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
     type AllocExtra = AllocExtra;
 
     type PointerTag = Tag;
-    type TagExtra = SbTag;
+    type TagExtra = Option<SbTag>;
 
     type MemoryMap =
         MonoHashMap<AllocId, (MemoryKind<MiriMemoryKind>, Allocation<Tag, Self::AllocExtra>)>;
@@ -708,8 +708,24 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         ptr: Pointer<Self::PointerTag>,
     ) -> InterpResult<'tcx> {
         match ptr.provenance {
-            Tag::Concrete(concrete) =>
-                intptrcast::GlobalStateInner::expose_addr(ecx, concrete.alloc_id),
+            Tag::Concrete(ConcreteTag { alloc_id, sb }) => {
+                intptrcast::GlobalStateInner::expose_addr(ecx, alloc_id);
+
+                let (size, _) =
+                    ecx.get_alloc_size_and_align(alloc_id, AllocCheck::MaybeDead).unwrap();
+
+                // Function pointers and dead objects don't have an alloc_extra so we ignore them.
+                if let Ok(alloc_extra) = ecx.get_alloc_extra(alloc_id) {
+                    if let Some(stacked_borrows) = &alloc_extra.stacked_borrows {
+                        stacked_borrows.ptr_exposed(
+                            alloc_id,
+                            sb,
+                            alloc_range(Size::from_bytes(0), size),
+                            ecx.machine.stacked_borrows.as_ref().unwrap(),
+                        )?;
+                    }
+                }
+            }
             Tag::Wildcard => {
                 // No need to do anything for wildcard pointers as
                 // their provenances have already been previously exposed.
@@ -728,8 +744,8 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
 
         rel.map(|(alloc_id, size)| {
             let sb = match ptr.provenance {
-                Tag::Concrete(ConcreteTag { sb, .. }) => sb,
-                Tag::Wildcard => SbTag::Untagged,
+                Tag::Concrete(ConcreteTag { sb, .. }) => Some(sb),
+                Tag::Wildcard => None,
             };
             (alloc_id, size, sb)
         })
