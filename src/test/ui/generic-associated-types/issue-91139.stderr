@@ -1,0 +1,50 @@
+error: `T` does not live long enough
+  --> $DIR/issue-91139.rs:16:12
+   |
+LL |     let _: for<'a> fn(<() as Foo<T>>::Type<'a>, &'a T) = |_, _| ();
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `T` does not live long enough
+  --> $DIR/issue-91139.rs:16:12
+   |
+LL |     let _: for<'a> fn(<() as Foo<T>>::Type<'a>, &'a T) = |_, _| ();
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `T` does not live long enough
+  --> $DIR/issue-91139.rs:16:12
+   |
+LL |     let _: for<'a> fn(<() as Foo<T>>::Type<'a>, &'a T) = |_, _| ();
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `T` does not live long enough
+  --> $DIR/issue-91139.rs:16:12
+   |
+LL |     let _: for<'a> fn(<() as Foo<T>>::Type<'a>, &'a T) = |_, _| ();
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `T` does not live long enough
+  --> $DIR/issue-91139.rs:16:58
+   |
+LL |     let _: for<'a> fn(<() as Foo<T>>::Type<'a>, &'a T) = |_, _| ();
+   |                                                          ^^^^^^^^^
+
+error: `T` does not live long enough
+  --> $DIR/issue-91139.rs:16:58
+   |
+LL |     let _: for<'a> fn(<() as Foo<T>>::Type<'a>, &'a T) = |_, _| ();
+   |                                                          ^^^^^^^^^
+
+error: `T` does not live long enough
+  --> $DIR/issue-91139.rs:16:58
+   |
+LL |     let _: for<'a> fn(<() as Foo<T>>::Type<'a>, &'a T) = |_, _| ();
+   |                                                          ^^^^^^^^^
+
+error: `T` does not live long enough
+  --> $DIR/issue-91139.rs:16:58
+   |
+LL |     let _: for<'a> fn(<() as Foo<T>>::Type<'a>, &'a T) = |_, _| ();
+   |                                                          ^^^^^^^^^
+
+error: aborting due to 8 previous errors
+
