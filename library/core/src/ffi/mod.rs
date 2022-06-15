@@ -143,7 +143,8 @@ mod c_char_definition {
                     target_arch = "powerpc"
                 )
             ),
-            all(target_os = "fuchsia", target_arch = "aarch64")
+            all(target_os = "fuchsia", target_arch = "aarch64"),
+            target_os = "horizon"
         ))] {
             pub type c_char = u8;
             pub type NonZero_c_char = crate::num::NonZeroU8;

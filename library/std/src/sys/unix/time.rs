@@ -18,6 +18,7 @@ pub(in crate::sys::unix) struct Timespec {
 }
 
 impl SystemTime {
+    #[cfg_attr(target_os = "horizon", allow(unused))]
     pub fn new(tv_sec: i64, tv_nsec: i64) -> SystemTime {
         SystemTime { t: Timespec::new(tv_sec, tv_nsec) }
     }
@@ -303,9 +304,9 @@ mod inner {
         }
     }
 
-    #[cfg(not(any(target_os = "dragonfly", target_os = "espidf")))]
+    #[cfg(not(any(target_os = "dragonfly", target_os = "espidf", target_os = "horizon")))]
     pub type clock_t = libc::c_int;
-    #[cfg(any(target_os = "dragonfly", target_os = "espidf"))]
+    #[cfg(any(target_os = "dragonfly", target_os = "espidf", target_os = "horizon"))]
     pub type clock_t = libc::c_ulong;
 
     impl Timespec {

@@ -51,6 +51,8 @@ mod platform {
     pub use crate::os::fuchsia::*;
     #[cfg(target_os = "haiku")]
     pub use crate::os::haiku::*;
+    #[cfg(target_os = "horizon")]
+    pub use crate::os::horizon::*;
     #[cfg(target_os = "illumos")]
     pub use crate::os::illumos::*;
     #[cfg(target_os = "ios")]

@@ -398,8 +398,20 @@ impl TcpListener {
         let (addrp, len) = addr.into_inner();
         cvt(unsafe { c::bind(sock.as_raw(), addrp, len as _) })?;
 
+        cfg_if::cfg_if! {
+            if #[cfg(target_os = "horizon")] {
+                // The 3DS doesn't support a big connection backlog. Sometimes
+                // it allows up to about 37, but other times it doesn't even
+                // accept 32. There may be a global limitation causing this.
+                let backlog = 20;
+            } else {
+                // The default for all other platforms
+                let backlog = 128;
+            }
+        }
+
         // Start listening
-        cvt(unsafe { c::listen(sock.as_raw(), 128) })?;
+        cvt(unsafe { c::listen(sock.as_raw(), backlog) })?;
         Ok(TcpListener { inner: sock })
     }
 

@@ -123,6 +123,8 @@ pub mod freebsd;
 pub mod fuchsia;
 #[cfg(target_os = "haiku")]
 pub mod haiku;
+#[cfg(target_os = "horizon")]
+pub mod horizon;
 #[cfg(target_os = "illumos")]
 pub mod illumos;
 #[cfg(target_os = "ios")]
