@@ -489,7 +489,7 @@ help: remove this `&`
    |
 LL -         let path = match get_file_path(&t) {
 LL +         let path = match get_file_path(t) {
-   | 
+   |
 
 error: unnecessary use of `to_vec`
   --> $DIR/unnecessary_to_owned.rs:221:14

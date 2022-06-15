@@ -12,7 +12,7 @@ help: to take parameter `_a` by reference, move `&` to the type
    |
 LL - fn _f0(&_a: u32) {}
 LL + fn _f0(_a: &u32) {}
-   | 
+   |
 
 error[E0308]: mismatched types
   --> $DIR/ref-pat-suggestions.rs:4:8
@@ -28,7 +28,7 @@ help: to take parameter `_a` by reference, move `&mut` to the type
    |
 LL - fn _f1(&mut _a: u32) {}
 LL + fn _f1(_a: &mut u32) {}
-   | 
+   |
 
 error[E0308]: mismatched types
   --> $DIR/ref-pat-suggestions.rs:5:9
@@ -44,7 +44,7 @@ help: consider removing `&` from the pattern
    |
 LL - fn _f2(&&_a: &u32) {}
 LL + fn _f2(&_a: &u32) {}
-   | 
+   |
 
 error[E0308]: mismatched types
   --> $DIR/ref-pat-suggestions.rs:6:13
@@ -60,7 +60,7 @@ help: consider removing `&` from the pattern
    |
 LL - fn _f3(&mut &_a: &mut u32) {}
 LL + fn _f3(&mut _a: &mut u32) {}
-   | 
+   |
 
 error[E0308]: mismatched types
   --> $DIR/ref-pat-suggestions.rs:7:9
@@ -76,7 +76,7 @@ help: consider removing `&mut` from the pattern
    |
 LL - fn _f4(&&mut _a: &u32) {}
 LL + fn _f4(&_a: &u32) {}
-   | 
+   |
 
 error[E0308]: mismatched types
   --> $DIR/ref-pat-suggestions.rs:8:13
@@ -92,7 +92,7 @@ help: consider removing `&mut` from the pattern
    |
 LL - fn _f5(&mut &mut _a: &mut u32) {}
 LL + fn _f5(&mut _a: &mut u32) {}
-   | 
+   |
 
 error[E0308]: mismatched types
   --> $DIR/ref-pat-suggestions.rs:11:23
@@ -109,7 +109,7 @@ help: consider removing `&` from the pattern
    |
 LL -     let _: fn(u32) = |&_a| ();
 LL +     let _: fn(u32) = |_a| ();
-   | 
+   |
 
 error[E0308]: mismatched types
   --> $DIR/ref-pat-suggestions.rs:12:23
@@ -126,7 +126,7 @@ help: consider removing `&mut` from the pattern
    |
 LL -     let _: fn(u32) = |&mut _a| ();
 LL +     let _: fn(u32) = |_a| ();
-   | 
+   |
 
 error[E0308]: mismatched types
   --> $DIR/ref-pat-suggestions.rs:13:25
@@ -143,7 +143,7 @@ help: consider removing `&` from the pattern
    |
 LL -     let _: fn(&u32) = |&&_a| ();
 LL +     let _: fn(&u32) = |&_a| ();
-   | 
+   |
 
 error[E0308]: mismatched types
   --> $DIR/ref-pat-suggestions.rs:14:33
@@ -160,7 +160,7 @@ help: consider removing `&` from the pattern
    |
 LL -     let _: fn(&mut u32) = |&mut &_a| ();
 LL +     let _: fn(&mut u32) = |&mut _a| ();
-   | 
+   |
 
 error[E0308]: mismatched types
   --> $DIR/ref-pat-suggestions.rs:15:25
@@ -177,7 +177,7 @@ help: consider removing `&mut` from the pattern
    |
 LL -     let _: fn(&u32) = |&&mut _a| ();
 LL +     let _: fn(&u32) = |&_a| ();
-   | 
+   |
 
 error[E0308]: mismatched types
   --> $DIR/ref-pat-suggestions.rs:16:33
@@ -194,7 +194,7 @@ help: consider removing `&mut` from the pattern
    |
 LL -     let _: fn(&mut u32) = |&mut &mut _a| ();
 LL +     let _: fn(&mut u32) = |&mut _a| ();
-   | 
+   |
 
 error[E0308]: mismatched types
   --> $DIR/ref-pat-suggestions.rs:18:14
@@ -210,7 +210,7 @@ help: to take parameter `_a` by reference, move `&` to the type
    |
 LL -     let _ = |&_a: u32| ();
 LL +     let _ = |_a: &u32| ();
-   | 
+   |
 
 error[E0308]: mismatched types
   --> $DIR/ref-pat-suggestions.rs:19:14
@@ -226,7 +226,7 @@ help: to take parameter `_a` by reference, move `&mut` to the type
    |
 LL -     let _ = |&mut _a: u32| ();
 LL +     let _ = |_a: &mut u32| ();
-   | 
+   |
 
 error[E0308]: mismatched types
   --> $DIR/ref-pat-suggestions.rs:20:15
@@ -242,7 +242,7 @@ help: consider removing `&` from the pattern
    |
 LL -     let _ = |&&_a: &u32| ();
 LL +     let _ = |&_a: &u32| ();
-   | 
+   |
 
 error[E0308]: mismatched types
   --> $DIR/ref-pat-suggestions.rs:21:19
@@ -258,7 +258,7 @@ help: consider removing `&` from the pattern
    |
 LL -     let _ = |&mut &_a: &mut u32| ();
 LL +     let _ = |&mut _a: &mut u32| ();
-   | 
+   |
 
 error[E0308]: mismatched types
   --> $DIR/ref-pat-suggestions.rs:22:15
@@ -274,7 +274,7 @@ help: consider removing `&mut` from the pattern
    |
 LL -     let _ = |&&mut _a: &u32| ();
 LL +     let _ = |&_a: &u32| ();
-   | 
+   |
 
 error[E0308]: mismatched types
   --> $DIR/ref-pat-suggestions.rs:23:19
@@ -290,7 +290,7 @@ help: consider removing `&mut` from the pattern
    |
 LL -     let _ = |&mut &mut _a: &mut u32| ();
 LL +     let _ = |&mut _a: &mut u32| ();
-   | 
+   |
 
 error: aborting due to 18 previous errors
 

@@ -30,7 +30,7 @@ help: consider removing `&` from the pattern
    |
 LL -     let &&x = &1isize as &dyn T;
 LL +     let &x = &1isize as &dyn T;
-   | 
+   |
 
 error[E0308]: mismatched types
   --> $DIR/destructure-trait-ref.rs:36:11
@@ -46,7 +46,7 @@ help: consider removing `&` from the pattern
    |
 LL -     let &&&x = &(&1isize as &dyn T);
 LL +     let &&x = &(&1isize as &dyn T);
-   | 
+   |
 
 error[E0308]: mismatched types
   --> $DIR/destructure-trait-ref.rs:40:13
