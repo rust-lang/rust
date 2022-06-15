@@ -8,7 +8,7 @@ use crate::{
     AssistContext, AssistId, AssistKind, Assists,
 };
 
-// TODO: how to depupicate with `ide-diagnostics/mssing_fields`
+// FIXME: how to depupicate with `ide-diagnostics/mssing_fields`
 fn use_trivial_constructor(
     db: &ide_db::RootDatabase,
     path: ast::Path,

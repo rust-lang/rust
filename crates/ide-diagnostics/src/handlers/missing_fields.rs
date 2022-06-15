@@ -17,7 +17,7 @@ use text_edit::TextEdit;
 
 use crate::{fix, Diagnostic, DiagnosticsContext};
 
-// TODO: how to depupicate with `ide-assists/generate_new`
+// FIXME: how to depupicate with `ide-assists/generate_new`
 fn use_trivial_constructor(
     db: &ide_db::RootDatabase,
     path: ast::Path,
