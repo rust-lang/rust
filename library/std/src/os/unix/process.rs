@@ -148,9 +148,34 @@ pub trait CommandExt: Sealed {
     where
         S: AsRef<OsStr>;
 
-    /// Sets the process group ID of the child process. Translates to a `setpgid` call in the child
-    /// process.
-    #[unstable(feature = "process_set_process_group", issue = "93857")]
+    /// Sets the process group ID of the child process. Equivalent to a
+    /// `setpgid` call in the child process, but may be more efficient.
+    ///
+    /// Process groups determine which processes receive signals.
+    ///
+    /// # Examples
+    ///
+    /// Pressing Ctrl-C in a terminal will send SIGINT to all processes in
+    /// the current foreground process group. By spawning the `sleep`
+    /// subprocess in a new process group, it will not receive SIGINT from the
+    /// terminal.
+    ///
+    /// The parent process could install a signal handler and manage the
+    /// subprocess on its own terms.
+    ///
+    /// ```no_run
+    /// use std::process::Command;
+    /// use std::os::unix::process::CommandExt;
+    ///
+    /// Command::new("sleep")
+    ///     .arg("10")
+    ///     .process_group(0)
+    ///     .spawn()?
+    ///     .wait()?;
+    /// #
+    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// ```
+    #[stable(feature = "process_set_process_group", since = "1.64.0")]
     fn process_group(&mut self, pgroup: i32) -> &mut process::Command;
 }
 
