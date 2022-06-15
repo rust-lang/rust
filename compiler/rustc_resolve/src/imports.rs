@@ -12,7 +12,7 @@ use rustc_ast::NodeId;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::intern::Interned;
 use rustc_errors::{pluralize, struct_span_err, Applicability, MultiSpan};
-use rustc_hir::def::{self, PartialRes};
+use rustc_hir::def::{self, DefKind, PartialRes};
 use rustc_middle::metadata::ModChild;
 use rustc_middle::span_bug;
 use rustc_middle::ty;
@@ -922,11 +922,28 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                         .note(&format!("consider declaring type or module `{}` with `pub`", ident))
                         .emit();
                 } else {
-                    let note_msg =
-                        format!("consider marking `{}` as `pub` in the imported module", ident);
-                    struct_span_err!(self.r.session, import.span, E0364, "{}", error_msg)
-                        .span_note(import.span, &note_msg)
-                        .emit();
+                    let mut err =
+                        struct_span_err!(self.r.session, import.span, E0364, "{error_msg}");
+                    match binding.kind {
+                        NameBindingKind::Res(Res::Def(DefKind::Macro(_), def_id), _)
+                            // exclude decl_macro
+                            if self.r.get_macro_by_def_id(def_id).macro_rules =>
+                        {
+                            err.span_help(
+                                binding.span,
+                                "consider adding a `#[macro_export]` to the macro in the imported module",
+                            );
+                        }
+                        _ => {
+                            err.span_note(
+                                import.span,
+                                &format!(
+                                    "consider marking `{ident}` as `pub` in the imported module"
+                                ),
+                            );
+                        }
+                    }
+                    err.emit();
                 }
             }
         }

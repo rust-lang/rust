@@ -14,7 +14,7 @@ use crate::UintTy;
 use self::TyKind::*;
 
 use rustc_data_structures::stable_hasher::HashStable;
-use rustc_serialize::{Decodable, Encodable};
+use rustc_serialize::{Decodable, Decoder, Encodable};
 
 /// Defines the kinds of types used by the type system.
 ///
@@ -833,56 +833,34 @@ where
     I::AllocId: Decodable<D>,
 {
     fn decode(d: &mut D) -> Self {
-        match rustc_serialize::Decoder::read_usize(d) {
+        match Decoder::read_usize(d) {
             0 => Bool,
             1 => Char,
-            2 => Int(rustc_serialize::Decodable::decode(d)),
-            3 => Uint(rustc_serialize::Decodable::decode(d)),
-            4 => Float(rustc_serialize::Decodable::decode(d)),
-            5 => Adt(rustc_serialize::Decodable::decode(d), rustc_serialize::Decodable::decode(d)),
-            6 => Foreign(rustc_serialize::Decodable::decode(d)),
+            2 => Int(Decodable::decode(d)),
+            3 => Uint(Decodable::decode(d)),
+            4 => Float(Decodable::decode(d)),
+            5 => Adt(Decodable::decode(d), Decodable::decode(d)),
+            6 => Foreign(Decodable::decode(d)),
             7 => Str,
-            8 => {
-                Array(rustc_serialize::Decodable::decode(d), rustc_serialize::Decodable::decode(d))
-            }
-            9 => Slice(rustc_serialize::Decodable::decode(d)),
-            10 => RawPtr(rustc_serialize::Decodable::decode(d)),
-            11 => Ref(
-                rustc_serialize::Decodable::decode(d),
-                rustc_serialize::Decodable::decode(d),
-                rustc_serialize::Decodable::decode(d),
-            ),
-            12 => {
-                FnDef(rustc_serialize::Decodable::decode(d), rustc_serialize::Decodable::decode(d))
-            }
-            13 => FnPtr(rustc_serialize::Decodable::decode(d)),
-            14 => Dynamic(
-                rustc_serialize::Decodable::decode(d),
-                rustc_serialize::Decodable::decode(d),
-            ),
-            15 => Closure(
-                rustc_serialize::Decodable::decode(d),
-                rustc_serialize::Decodable::decode(d),
-            ),
-            16 => Generator(
-                rustc_serialize::Decodable::decode(d),
-                rustc_serialize::Decodable::decode(d),
-                rustc_serialize::Decodable::decode(d),
-            ),
-            17 => GeneratorWitness(rustc_serialize::Decodable::decode(d)),
+            8 => Array(Decodable::decode(d), Decodable::decode(d)),
+            9 => Slice(Decodable::decode(d)),
+            10 => RawPtr(Decodable::decode(d)),
+            11 => Ref(Decodable::decode(d), Decodable::decode(d), Decodable::decode(d)),
+            12 => FnDef(Decodable::decode(d), Decodable::decode(d)),
+            13 => FnPtr(Decodable::decode(d)),
+            14 => Dynamic(Decodable::decode(d), Decodable::decode(d)),
+            15 => Closure(Decodable::decode(d), Decodable::decode(d)),
+            16 => Generator(Decodable::decode(d), Decodable::decode(d), Decodable::decode(d)),
+            17 => GeneratorWitness(Decodable::decode(d)),
             18 => Never,
-            19 => Tuple(rustc_serialize::Decodable::decode(d)),
-            20 => Projection(rustc_serialize::Decodable::decode(d)),
-            21 => {
-                Opaque(rustc_serialize::Decodable::decode(d), rustc_serialize::Decodable::decode(d))
-            }
-            22 => Param(rustc_serialize::Decodable::decode(d)),
-            23 => {
-                Bound(rustc_serialize::Decodable::decode(d), rustc_serialize::Decodable::decode(d))
-            }
-            24 => Placeholder(rustc_serialize::Decodable::decode(d)),
-            25 => Infer(rustc_serialize::Decodable::decode(d)),
-            26 => Error(rustc_serialize::Decodable::decode(d)),
+            19 => Tuple(Decodable::decode(d)),
+            20 => Projection(Decodable::decode(d)),
+            21 => Opaque(Decodable::decode(d), Decodable::decode(d)),
+            22 => Param(Decodable::decode(d)),
+            23 => Bound(Decodable::decode(d), Decodable::decode(d)),
+            24 => Placeholder(Decodable::decode(d)),
+            25 => Infer(Decodable::decode(d)),
+            26 => Error(Decodable::decode(d)),
             _ => panic!(
                 "{}",
                 format!(
