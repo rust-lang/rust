@@ -181,15 +181,44 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
         let name = item.name;
         let item_id = item.item_id;
         if let Some(mut new_item) = self.convert_item(item) {
-            if let types::ItemEnum::Trait(ref mut t) = new_item.inner {
-                t.implementations = self.get_trait_implementors(item_id.expect_def_id())
-            } else if let types::ItemEnum::Struct(ref mut s) = new_item.inner {
-                s.impls = self.get_impls(item_id.expect_def_id())
-            } else if let types::ItemEnum::Enum(ref mut e) = new_item.inner {
-                e.impls = self.get_impls(item_id.expect_def_id())
-            } else if let types::ItemEnum::Union(ref mut u) = new_item.inner {
-                u.impls = self.get_impls(item_id.expect_def_id())
-            }
+            let can_be_ignored = match new_item.inner {
+                types::ItemEnum::Trait(ref mut t) => {
+                    t.implementations = self.get_trait_implementors(item_id.expect_def_id());
+                    false
+                }
+                types::ItemEnum::Struct(ref mut s) => {
+                    s.impls = self.get_impls(item_id.expect_def_id());
+                    false
+                }
+                types::ItemEnum::Enum(ref mut e) => {
+                    e.impls = self.get_impls(item_id.expect_def_id());
+                    false
+                }
+                types::ItemEnum::Union(ref mut u) => {
+                    u.impls = self.get_impls(item_id.expect_def_id());
+                    false
+                }
+
+                types::ItemEnum::Method(_)
+                | types::ItemEnum::AssocConst { .. }
+                | types::ItemEnum::AssocType { .. } => true,
+                types::ItemEnum::Module(_)
+                | types::ItemEnum::ExternCrate { .. }
+                | types::ItemEnum::Import(_)
+                | types::ItemEnum::StructField(_)
+                | types::ItemEnum::Variant(_)
+                | types::ItemEnum::Function(_)
+                | types::ItemEnum::TraitAlias(_)
+                | types::ItemEnum::Impl(_)
+                | types::ItemEnum::Typedef(_)
+                | types::ItemEnum::OpaqueTy(_)
+                | types::ItemEnum::Constant(_)
+                | types::ItemEnum::Static(_)
+                | types::ItemEnum::ForeignType
+                | types::ItemEnum::Macro(_)
+                | types::ItemEnum::ProcMacro(_)
+                | types::ItemEnum::PrimitiveType(_) => false,
+            };
             let removed = self
                 .index
                 .borrow_mut()
@@ -199,7 +228,11 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
             // to make sure the items are unique. The main place this happens is when an item, is
             // reexported in more than one place. See `rustdoc-json/reexport/in_root_and_mod`
             if let Some(old_item) = removed {
-                assert_eq!(old_item, new_item);
+                // In case of generic implementations (like `impl<T> Trait for T {}`), all the
+                // inner items will be duplicated so we can ignore if they are slightly different.
+                if !can_be_ignored {
+                    assert_eq!(old_item, new_item);
+                }
             }
         }
 

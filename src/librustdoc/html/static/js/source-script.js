@@ -32,10 +32,10 @@ function createDirEntry(elem, parent, fullPath, currentFile, hasFoundFile) {
     fullPath += elem["name"] + "/";
 
     name.onclick = () => {
-        if (hasClass(this, "expand")) {
-            removeClass(this, "expand");
+        if (hasClass(name, "expand")) {
+            removeClass(name, "expand");
         } else {
-            addClass(this, "expand");
+            addClass(name, "expand");
         }
     };
     name.innerText = elem["name"];
