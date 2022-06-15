@@ -962,7 +962,7 @@ pub fn can_move_expr_to_closure<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'
                         self.captures.entry(l).and_modify(|e| *e |= cap).or_insert(cap);
                     }
                 },
-                ExprKind::Closure(..) => {
+                ExprKind::Closure { .. } => {
                     let closure_id = self.cx.tcx.hir().local_def_id(e.hir_id).to_def_id();
                     for capture in self.cx.typeck_results().closure_min_captures_flattened(closure_id) {
                         let local_id = match capture.place.base {
@@ -1200,7 +1200,7 @@ pub fn get_enclosing_loop_or_closure<'tcx>(tcx: TyCtxt<'tcx>, expr: &Expr<'_>) -
         match node {
             Node::Expr(
                 e @ Expr {
-                    kind: ExprKind::Loop(..) | ExprKind::Closure(..),
+                    kind: ExprKind::Loop(..) | ExprKind::Closure { .. },
                     ..
                 },
             ) => return Some(e),
@@ -1693,7 +1693,7 @@ pub fn get_async_fn_body<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'_>) -> Option<&'t
         _,
         &[
             Expr {
-                kind: ExprKind::Closure(_, _, body, _, _),
+                kind: ExprKind::Closure { body, .. },
                 ..
             },
         ],
@@ -1780,7 +1780,7 @@ pub fn is_expr_identity_function(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool 
     }
 
     match expr.kind {
-        ExprKind::Closure(_, _, body_id, _, _) => is_body_identity_function(cx, cx.tcx.hir().body(body_id)),
+        ExprKind::Closure { body, .. } => is_body_identity_function(cx, cx.tcx.hir().body(body)),
         _ => path_def_id(cx, expr).map_or(false, |id| match_def_path(cx, id, &paths::CONVERT_IDENTITY)),
     }
 }

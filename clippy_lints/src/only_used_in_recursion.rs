@@ -298,8 +298,8 @@ impl<'tcx> Visitor<'tcx> for SideEffectVisit<'tcx> {
             },
             ExprKind::Match(expr, arms, _) => self.visit_match(expr, arms),
             // since analysing the closure is not easy, just set all variables in it to side-effect
-            ExprKind::Closure(_, _, body_id, _, _) => {
-                let body = self.tcx.hir().body(body_id);
+            ExprKind::Closure { body, .. } => {
+                let body = self.tcx.hir().body(body);
                 self.visit_body(body);
                 let vars = std::mem::take(&mut self.ret_vars);
                 self.add_side_effect(vars);

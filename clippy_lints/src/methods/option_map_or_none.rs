@@ -71,27 +71,26 @@ pub(super) fn check<'tcx>(
     if is_option {
         let self_snippet = snippet(cx, recv.span, "..");
         if_chain! {
-        if let hir::ExprKind::Closure(_, _, id, span, _) = map_arg.kind;
-            let arg_snippet = snippet(cx, span, "..");
-            let body = cx.tcx.hir().body(id);
-                if let Some((func, [arg_char])) = reduce_unit_expression(&body.value);
-                if let Some(id) = path_def_id(cx, func).map(|ctor_id| cx.tcx.parent(ctor_id));
-                if Some(id) == cx.tcx.lang_items().option_some_variant();
-                then {
-                    let func_snippet = snippet(cx, arg_char.span, "..");
-                    let msg = "called `map_or(None, ..)` on an `Option` value. This can be done more directly by calling \
-                       `map(..)` instead";
-                    return span_lint_and_sugg(
-                        cx,
-                        OPTION_MAP_OR_NONE,
-                        expr.span,
-                        msg,
-                        "try using `map` instead",
-                        format!("{0}.map({1} {2})", self_snippet, arg_snippet,func_snippet),
-                        Applicability::MachineApplicable,
-                    );
-                }
-
+            if let hir::ExprKind::Closure { body, fn_decl_span, .. } = map_arg.kind;
+            let arg_snippet = snippet(cx, fn_decl_span, "..");
+            let body = cx.tcx.hir().body(body);
+            if let Some((func, [arg_char])) = reduce_unit_expression(&body.value);
+            if let Some(id) = path_def_id(cx, func).map(|ctor_id| cx.tcx.parent(ctor_id));
+            if Some(id) == cx.tcx.lang_items().option_some_variant();
+            then {
+                let func_snippet = snippet(cx, arg_char.span, "..");
+                let msg = "called `map_or(None, ..)` on an `Option` value. This can be done more directly by calling \
+                   `map(..)` instead";
+                return span_lint_and_sugg(
+                    cx,
+                    OPTION_MAP_OR_NONE,
+                    expr.span,
+                    msg,
+                    "try using `map` instead",
+                    format!("{0}.map({1} {2})", self_snippet, arg_snippet,func_snippet),
+                    Applicability::MachineApplicable,
+                );
+            }
         }
 
         let func_snippet = snippet(cx, map_arg.span, "..");
