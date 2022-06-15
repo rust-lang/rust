@@ -5,7 +5,7 @@
 #[derive(Copy, Clone)]
 struct Foo {}
 
-fn foo(&_a: Foo) {} //~ ERROR mismatched types
+fn foo(_a: &Foo) {} //~ ERROR mismatched types
 
 fn bar(_a: Foo) {}
 
@@ -13,6 +13,6 @@ fn qux(_a: &Foo) {}
 
 fn zar(&_a: &Foo) {}
 
-fn agh(&&_a: &u32) {} //~ ERROR mismatched types
+fn agh(&_a: &u32) {} //~ ERROR mismatched types
 
 fn main() {}
