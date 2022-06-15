@@ -1342,6 +1342,18 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let sub_region_scc = self.constraint_sccs.scc(sub_region);
         let sup_region_scc = self.constraint_sccs.scc(sup_region);
 
+        // If we are checking that `'sup: 'sub`, and `'sub` contains
+        // some placeholder that `'sup` cannot name, then this is only
+        // true if `'sup` outlives static.
+        if !self.universe_compatible(sub_region_scc, sup_region_scc) {
+            debug!(
+                "eval_outlives: sub universe `{sub_region_scc:?}` is not nameable \
+                by super `{sup_region_scc:?}`, promoting to static",
+            );
+
+            return self.eval_outlives(sup_region, self.universal_regions.fr_static);
+        }
+
         // Both the `sub_region` and `sup_region` consist of the union
         // of some number of universal regions (along with the union
         // of various points in the CFG; ignore those points for
@@ -1356,6 +1368,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             });
 
         if !universal_outlives {
+            debug!(
+                "eval_outlives: returning false because sub region contains a universal region not present in super"
+            );
             return false;
         }
 
@@ -1364,10 +1379,18 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         if self.universal_regions.is_universal_region(sup_region) {
             // Micro-opt: universal regions contain all points.
+            debug!(
+                "eval_outlives: returning true because super is universal and hence contains all points"
+            );
             return true;
         }
 
-        self.scc_values.contains_points(sup_region_scc, sub_region_scc)
+        let result = self.scc_values.contains_points(sup_region_scc, sub_region_scc);
+        debug!(
+            "eval_outlives: returning {} because of comparison between points in sup/sub",
+            result
+        );
+        result
     }
 
     /// Once regions have been propagated, this method is used to see
