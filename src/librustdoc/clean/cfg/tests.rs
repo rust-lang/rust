@@ -161,7 +161,7 @@ fn test_cfg_or() {
 
         x = word_cfg("test");
         x |= Cfg::True;
-        assert_eq!(x, Cfg::True);
+        assert_eq!(x, word_cfg("test"));
 
         x = word_cfg("test2");
         x |= Cfg::False;
