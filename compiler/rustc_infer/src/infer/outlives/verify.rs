@@ -83,10 +83,8 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
 
         // Start with anything like `T: 'a` we can scrape from the
         // environment
-        let param_bounds = self
-            .declared_generic_bounds_from_env(GenericKind::Param(param_ty))
-            .into_iter()
-            .map(|outlives| outlives.1);
+        let param_bounds =
+            self.declared_generic_bounds_from_env(param_ty).into_iter().map(|outlives| outlives.1);
 
         // Add in the default bound of fn body that applies to all in
         // scope type parameters:
@@ -218,9 +216,9 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
     /// bounds, but all the bounds it returns can be relied upon.
     fn declared_generic_bounds_from_env(
         &self,
-        generic: GenericKind<'tcx>,
+        param_ty: ty::ParamTy,
     ) -> Vec<ty::OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>> {
-        let generic_ty = generic.to_ty(self.tcx);
+        let generic_ty = param_ty.to_ty(self.tcx);
         self.declared_generic_bounds_from_env_with_compare_fn(|ty| ty == generic_ty)
     }
 
