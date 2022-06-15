@@ -871,7 +871,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     self.lower_angle_bracketed_parameter_data(data, ParamMode::Explicit, itctx).0
                 }
                 GenericArgs::Parenthesized(ref data) => {
-                    self.assoc_ty_contraint_param_error_emit(data);
+                    self.emit_bad_parenthesized_trait_in_assoc_ty(data);
                     self.lower_angle_bracketed_parameter_data(
                         &data.as_angle_bracketed_args(),
                         ParamMode::Explicit,
@@ -982,7 +982,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
     }
 
-    fn assoc_ty_contraint_param_error_emit(&self, data: &ParenthesizedArgs) -> () {
+    fn emit_bad_parenthesized_trait_in_assoc_ty(&self, data: &ParenthesizedArgs) {
         let mut err = self.sess.struct_span_err(
             data.span,
             "parenthesized generic arguments cannot be used in associated type constraints",
