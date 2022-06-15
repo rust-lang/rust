@@ -74,26 +74,25 @@ pub(super) fn collect_defs(db: &dyn DefDatabase, mut def_map: DefMap, tree_id: T
     }
 
     let cfg_options = &krate.cfg_options;
-    let (proc_macros, proc_macro_err) = match &krate.proc_macro {
+    let proc_macros = match &krate.proc_macro {
         Ok(proc_macros) => {
-            (
-                proc_macros
-                    .iter()
-                    .enumerate()
-                    .map(|(idx, it)| {
-                        // FIXME: a hacky way to create a Name from string.
-                        let name =
-                            tt::Ident { text: it.name.clone(), id: tt::TokenId::unspecified() };
-                        (
-                            name.as_name(),
-                            ProcMacroExpander::new(def_map.krate, base_db::ProcMacroId(idx as u32)),
-                        )
-                    })
-                    .collect(),
-                None,
-            )
+            proc_macros
+                .iter()
+                .enumerate()
+                .map(|(idx, it)| {
+                    // FIXME: a hacky way to create a Name from string.
+                    let name = tt::Ident { text: it.name.clone(), id: tt::TokenId::unspecified() };
+                    (
+                        name.as_name(),
+                        ProcMacroExpander::new(def_map.krate, base_db::ProcMacroId(idx as u32)),
+                    )
+                })
+                .collect()
         }
-        Err(e) => (Vec::new(), Some(e.clone())),
+        Err(e) => {
+            def_map.proc_macro_loading_error = Some(e.clone().into_boxed_str());
+            Vec::new()
+        }
     };
     let is_proc_macro = krate.is_proc_macro;
 
@@ -108,7 +107,6 @@ pub(super) fn collect_defs(db: &dyn DefDatabase, mut def_map: DefMap, tree_id: T
         mod_dirs: FxHashMap::default(),
         cfg_options,
         proc_macros,
-        proc_macro_err,
         from_glob_import: Default::default(),
         skip_attrs: Default::default(),
         derive_helpers_in_scope: Default::default(),
@@ -250,7 +248,6 @@ struct DefCollector<'a> {
     /// empty when proc. macro support is disabled (in which case we still do name resolution for
     /// them).
     proc_macros: Vec<(Name, ProcMacroExpander)>,
-    proc_macro_err: Option<String>,
     is_proc_macro: bool,
     from_glob_import: PerNsGlobImports,
     /// If we fail to resolve an attribute on a `ModItem`, we fall back to ignoring the attribute.
@@ -1147,7 +1144,7 @@ impl DefCollector<'_> {
                                     invoc_attr_index: attr.id.ast_index,
                                     is_derive: false,
                                 },
-                                self.proc_macro_err.clone(),
+                                None,
                             ));
                             return true;
                         }
@@ -1254,7 +1251,7 @@ impl DefCollector<'_> {
                             self.def_map.diagnostics.push(DefDiagnostic::unresolved_proc_macro(
                                 directive.module_id,
                                 loc.kind,
-                                self.proc_macro_err.clone(),
+                                Some(loc.def.krate),
                             ));
 
                             return recollect_without(self);
@@ -1309,7 +1306,7 @@ impl DefCollector<'_> {
                     DefDiagnostic::unresolved_proc_macro(
                         module_id,
                         loc.kind.clone(),
-                        self.proc_macro_err.clone(),
+                        Some(loc.def.krate),
                     )
                 }
                 _ => DefDiagnostic::macro_error(module_id, loc.kind.clone(), err.to_string()),
@@ -2124,7 +2121,6 @@ mod tests {
             mod_dirs: FxHashMap::default(),
             cfg_options: &CfgOptions::default(),
             proc_macros: Default::default(),
-            proc_macro_err: None,
             from_glob_import: Default::default(),
             skip_attrs: Default::default(),
             derive_helpers_in_scope: Default::default(),

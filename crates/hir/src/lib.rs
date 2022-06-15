@@ -627,7 +627,7 @@ fn emit_def_diagnostic(db: &dyn HirDatabase, acc: &mut Vec<AnyDiagnostic>, diag:
             );
         }
 
-        DefDiagnosticKind::UnresolvedProcMacro { ast, proc_macro_err } => {
+        DefDiagnosticKind::UnresolvedProcMacro { ast, krate } => {
             let (node, precise_location, macro_name, kind) = match ast {
                 MacroCallKind::FnLike { ast_id, .. } => {
                     let node = ast_id.to_node(db.upcast());
@@ -690,14 +690,8 @@ fn emit_def_diagnostic(db: &dyn HirDatabase, acc: &mut Vec<AnyDiagnostic>, diag:
                 }
             };
             acc.push(
-                UnresolvedProcMacro {
-                    node,
-                    precise_location,
-                    macro_name,
-                    kind,
-                    proc_macro_err: proc_macro_err.clone(),
-                }
-                .into(),
+                UnresolvedProcMacro { node, precise_location, macro_name, kind, krate: *krate }
+                    .into(),
             );
         }
 
@@ -1172,7 +1166,7 @@ impl DefWithBody {
                         precise_location: None,
                         macro_name: None,
                         kind: MacroKind::ProcMacro,
-                        proc_macro_err: None,
+                        krate: None,
                     }
                     .into(),
                 ),
