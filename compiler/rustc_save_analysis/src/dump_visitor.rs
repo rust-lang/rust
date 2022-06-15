@@ -1360,15 +1360,15 @@ impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
                     }
                 }
             }
-            hir::ExprKind::Closure(_, ref decl, body, _fn_decl_span, _) => {
+            hir::ExprKind::Closure { ref fn_decl, body, .. } => {
                 let id = format!("${}", ex.hir_id);
 
                 // walk arg and return types
-                for ty in decl.inputs {
+                for ty in fn_decl.inputs {
                     self.visit_ty(ty);
                 }
 
-                if let hir::FnRetTy::Return(ref ret_ty) = decl.output {
+                if let hir::FnRetTy::Return(ref ret_ty) = fn_decl.output {
                     self.visit_ty(ret_ty);
                 }
 

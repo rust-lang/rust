@@ -262,7 +262,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
         self.fix_index_builtin_expr(e);
 
         match e.kind {
-            hir::ExprKind::Closure(_, _, body, _, _) => {
+            hir::ExprKind::Closure { body, .. } => {
                 let body = self.fcx.tcx.hir().body(body);
                 for param in body.params {
                     self.visit_node_id(e.span, param.hir_id);

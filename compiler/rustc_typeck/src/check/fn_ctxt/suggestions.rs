@@ -121,7 +121,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .join(", ");
                 }
                 Some(Node::Expr(hir::Expr {
-                    kind: ExprKind::Closure(_, _, body_id, _, _),
+                    kind: ExprKind::Closure { body: body_id, .. },
                     span: full_closure_span,
                     ..
                 })) => {

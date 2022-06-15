@@ -311,8 +311,9 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                         // Can't have BrEnv in functions, constants or generators.
                         bug!("BrEnv outside of closure.");
                     };
-                    let hir::ExprKind::Closure(_, _, _, args_span, _) =
-                        tcx.hir().expect_expr(self.mir_hir_id()).kind else {
+                    let hir::ExprKind::Closure { fn_decl_span, .. }
+                        = tcx.hir().expect_expr(self.mir_hir_id()).kind
+                    else {
                         bug!("Closure is not defined by a closure expr");
                     };
                     let region_name = self.synthesize_region_name();
@@ -336,7 +337,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                     Some(RegionName {
                         name: region_name,
                         source: RegionNameSource::SynthesizedFreeEnvRegion(
-                            args_span,
+                            fn_decl_span,
                             note.to_string(),
                         ),
                     })
@@ -683,16 +684,16 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
 
         let (return_span, mir_description, hir_ty) = match hir.get(mir_hir_id) {
             hir::Node::Expr(hir::Expr {
-                kind: hir::ExprKind::Closure(_, return_ty, body_id, span, _),
+                kind: hir::ExprKind::Closure { fn_decl, body, fn_decl_span, .. },
                 ..
             }) => {
-                let (mut span, mut hir_ty) = match return_ty.output {
+                let (mut span, mut hir_ty) = match fn_decl.output {
                     hir::FnRetTy::DefaultReturn(_) => {
-                        (tcx.sess.source_map().end_point(*span), None)
+                        (tcx.sess.source_map().end_point(*fn_decl_span), None)
                     }
-                    hir::FnRetTy::Return(hir_ty) => (return_ty.output.span(), Some(hir_ty)),
+                    hir::FnRetTy::Return(hir_ty) => (fn_decl.output.span(), Some(hir_ty)),
                 };
-                let mir_description = match hir.body(*body_id).generator_kind {
+                let mir_description = match hir.body(*body).generator_kind {
                     Some(hir::GeneratorKind::Async(gen)) => match gen {
                         hir::AsyncGeneratorKind::Block => " of async block",
                         hir::AsyncGeneratorKind::Closure => " of async closure",
@@ -822,8 +823,9 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
 
         let yield_span = match tcx.hir().get(self.mir_hir_id()) {
             hir::Node::Expr(hir::Expr {
-                kind: hir::ExprKind::Closure(_, _, _, span, _), ..
-            }) => (tcx.sess.source_map().end_point(*span)),
+                kind: hir::ExprKind::Closure { fn_decl_span, .. },
+                ..
+            }) => (tcx.sess.source_map().end_point(*fn_decl_span)),
             _ => self.body.span,
         };
 

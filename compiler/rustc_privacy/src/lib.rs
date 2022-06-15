@@ -1981,7 +1981,7 @@ fn visibility(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Visibility {
             match tcx.hir().get(hir_id) {
                 // Unique types created for closures participate in type privacy checking.
                 // They have visibilities inherited from the module they are defined in.
-                Node::Expr(hir::Expr { kind: hir::ExprKind::Closure(..), .. })
+                Node::Expr(hir::Expr { kind: hir::ExprKind::Closure{..}, .. })
                 // - AST lowering creates dummy `use` items which don't
                 //   get their entries in the resolver's visibility table.
                 // - AST lowering also creates opaque type items with inherited visibilities.

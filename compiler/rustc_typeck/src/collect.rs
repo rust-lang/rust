@@ -295,7 +295,7 @@ impl<'tcx> Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
     }
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
-        if let hir::ExprKind::Closure(..) = expr.kind {
+        if let hir::ExprKind::Closure { .. } = expr.kind {
             let def_id = self.tcx.hir().local_def_id(expr.hir_id);
             self.tcx.ensure().generics_of(def_id);
             // We do not call `type_of` for closures here as that
@@ -1566,7 +1566,7 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
                 }
             }
         }
-        Node::Expr(&hir::Expr { kind: hir::ExprKind::Closure(..), .. }) => {
+        Node::Expr(&hir::Expr { kind: hir::ExprKind::Closure { .. }, .. }) => {
             Some(tcx.typeck_root_def_id(def_id))
         }
         Node::Item(item) => match item.kind {
@@ -1717,7 +1717,9 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
     // provide junk type parameter defs - the only place that
     // cares about anything but the length is instantiation,
     // and we don't do that for closures.
-    if let Node::Expr(&hir::Expr { kind: hir::ExprKind::Closure(.., gen), .. }) = node {
+    if let Node::Expr(&hir::Expr { kind: hir::ExprKind::Closure { movability: gen, .. }, .. }) =
+        node
+    {
         let dummy_args = if gen.is_some() {
             &["<resume_ty>", "<yield_ty>", "<return_ty>", "<witness>", "<upvars>"][..]
         } else {
@@ -1880,7 +1882,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
             ))
         }
 
-        Expr(&hir::Expr { kind: hir::ExprKind::Closure(..), .. }) => {
+        Expr(&hir::Expr { kind: hir::ExprKind::Closure { .. }, .. }) => {
             // Closure signatures are not like other function
             // signatures and cannot be accessed through `fn_sig`. For
             // example, a closure signature excludes the `self`
@@ -2566,9 +2568,9 @@ fn is_foreign_item(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
 fn generator_kind(tcx: TyCtxt<'_>, def_id: DefId) -> Option<hir::GeneratorKind> {
     match tcx.hir().get_if_local(def_id) {
         Some(Node::Expr(&rustc_hir::Expr {
-            kind: rustc_hir::ExprKind::Closure(_, _, body_id, _, _),
+            kind: rustc_hir::ExprKind::Closure { body, .. },
             ..
-        })) => tcx.hir().body(body_id).generator_kind(),
+        })) => tcx.hir().body(body).generator_kind(),
         Some(_) => None,
         _ => bug!("generator_kind applied to non-local def-id {:?}", def_id),
     }

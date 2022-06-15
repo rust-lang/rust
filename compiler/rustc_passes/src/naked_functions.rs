@@ -212,7 +212,7 @@ impl<'tcx> CheckInlineAssembly<'tcx> {
             | ExprKind::Loop(..)
             | ExprKind::Match(..)
             | ExprKind::If(..)
-            | ExprKind::Closure(..)
+            | ExprKind::Closure { .. }
             | ExprKind::Assign(..)
             | ExprKind::AssignOp(..)
             | ExprKind::Field(..)

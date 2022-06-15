@@ -55,7 +55,7 @@ pub fn find_param_with_region<'tcx>(
 
     // Don't perform this on closures
     match hir.get(hir_id) {
-        hir::Node::Expr(&hir::Expr { kind: hir::ExprKind::Closure(..), .. }) => {
+        hir::Node::Expr(&hir::Expr { kind: hir::ExprKind::Closure { .. }, .. }) => {
             return None;
         }
         _ => {}
