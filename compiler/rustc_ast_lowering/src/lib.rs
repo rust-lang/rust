@@ -496,13 +496,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     fn next_node_id(&mut self) -> NodeId {
-        let next = self
-            .next_node_id
-            .as_usize()
-            .checked_add(1)
-            .expect("input too large; ran out of NodeIds");
-        self.next_node_id = NodeId::from_usize(next);
-        self.next_node_id
+        let start = self.next_node_id;
+        let next = start.as_u32().checked_add(1).expect("input too large; ran out of NodeIds");
+        self.next_node_id = ast::NodeId::from_u32(next);
+        start
     }
 
     fn opt_local_def_id(&self, node: NodeId) -> Option<LocalDefId> {
