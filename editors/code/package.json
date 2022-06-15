@@ -1430,7 +1430,7 @@
             },
             {
                 "id": "public",
-                "description": "Style tems that are from the current crate and are `pub`"
+                "description": "Style for items that are from the current crate and are `pub`"
             },
             {
                 "id": "reference",
