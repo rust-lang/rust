@@ -215,10 +215,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let cause_matched_place = FakeReadCause::ForMatchedPlace(None);
         let source_info = self.source_info(scrutinee_span);
 
-        if let Ok(scrutinee_builder) =
-            scrutinee_place_builder.clone().try_upvars_resolved(self.tcx, self.typeck_results)
-        {
-            let scrutinee_place = scrutinee_builder.into_place(self.tcx, self.typeck_results);
+        if let Ok(scrutinee_builder) = scrutinee_place_builder.clone().try_upvars_resolved(
+            self.tcx,
+            self.typeck_results,
+            &self.thir.local_vars,
+        ) {
+            let scrutinee_place =
+                scrutinee_builder.into_place(self.tcx, self.typeck_results, &self.thir.local_vars);
             self.cfg.push_fake_read(block, source_info, cause_matched_place, scrutinee_place);
         }
 
@@ -345,10 +348,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     let scrutinee_place: Place<'tcx>;
                     if let Ok(scrutinee_builder) = scrutinee_place_builder
                         .clone()
-                        .try_upvars_resolved(this.tcx, this.typeck_results)
+                        .try_upvars_resolved(this.tcx, this.typeck_results, &this.thir.local_vars)
                     {
-                        scrutinee_place =
-                            scrutinee_builder.into_place(this.tcx, this.typeck_results);
+                        scrutinee_place = scrutinee_builder.into_place(
+                            this.tcx,
+                            this.typeck_results,
+                            &this.thir.local_vars,
+                        );
                         opt_scrutinee_place = Some((Some(&scrutinee_place), scrutinee_span));
                     }
                     let scope = this.declare_bindings(
@@ -617,10 +623,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     //    let (v1, v2) = foo;
                     // };
                     // ```
-                    if let Ok(match_pair_resolved) =
-                        initializer.clone().try_upvars_resolved(self.tcx, self.typeck_results)
-                    {
-                        let place = match_pair_resolved.into_place(self.tcx, self.typeck_results);
+                    if let Ok(match_pair_resolved) = initializer.clone().try_upvars_resolved(
+                        self.tcx,
+                        self.typeck_results,
+                        &self.thir.local_vars,
+                    ) {
+                        let place = match_pair_resolved.into_place(
+                            self.tcx,
+                            self.typeck_results,
+                            &self.thir.local_vars,
+                        );
                         *match_place = Some(place);
                     }
                 }
@@ -712,6 +724,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         for_guard: ForGuard,
     ) {
         let local_id = self.var_local_id(var, for_guard);
+        // @dingxiangfei2009: We need HirId here to schedule a drop
         if let Some(region_scope) = self.region_scope_tree.var_scope(var.0.local_id) {
             self.schedule_drop(span, region_scope, local_id, DropKind::Value);
         }
@@ -1600,9 +1613,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         // Insert a Shallow borrow of any places that is switched on.
         if let Some(fb) = fake_borrows && let Ok(match_place_resolved) =
-            match_place.clone().try_upvars_resolved(self.tcx, self.typeck_results)
+            match_place.clone().try_upvars_resolved(self.tcx, self.typeck_results, &self.thir.local_vars)
         {
-            let resolved_place = match_place_resolved.into_place(self.tcx, self.typeck_results);
+            let resolved_place = match_place_resolved.into_place(self.tcx, self.typeck_results, &self.thir.local_vars);
             fb.insert(resolved_place);
         }
 
@@ -1788,10 +1801,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         );
         let mut opt_expr_place: Option<(Option<&Place<'tcx>>, Span)> = None;
         let expr_place: Place<'tcx>;
-        if let Ok(expr_builder) =
-            expr_place_builder.try_upvars_resolved(self.tcx, self.typeck_results)
-        {
-            expr_place = expr_builder.into_place(self.tcx, self.typeck_results);
+        if let Ok(expr_builder) = expr_place_builder.try_upvars_resolved(
+            self.tcx,
+            self.typeck_results,
+            &self.thir.local_vars,
+        ) {
+            expr_place =
+                expr_builder.into_place(self.tcx, self.typeck_results, &self.thir.local_vars);
             opt_expr_place = Some((Some(&expr_place), expr_span));
         }
         let otherwise_post_guard_block = otherwise_candidate.pre_binding_block.unwrap();

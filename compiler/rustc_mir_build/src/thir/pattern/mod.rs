@@ -14,12 +14,14 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::pat_util::EnumerateAndAdjustIterator;
 use rustc_hir::RangeEnd;
-use rustc_index::vec::Idx;
+use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::mir::interpret::{get_slice_bytes, ConstValue};
 use rustc_middle::mir::interpret::{ErrorHandled, LitToConstError, LitToConstInput};
 use rustc_middle::mir::{self, UserTypeProjection};
 use rustc_middle::mir::{BorrowKind, Field, Mutability};
-use rustc_middle::thir::{Ascription, BindingMode, FieldPat, LocalVarId, Pat, PatKind, PatRange};
+use rustc_middle::thir::{
+    Ascription, BindingMode, FieldPat, LocalVarId, LocalVarInfo, Pat, PatKind, PatRange,
+};
 use rustc_middle::ty::subst::{GenericArg, SubstsRef};
 use rustc_middle::ty::CanonicalUserTypeAnnotation;
 use rustc_middle::ty::{self, AdtDef, ConstKind, DefIdTree, Region, Ty, TyCtxt, UserType};
@@ -40,6 +42,7 @@ pub(crate) struct PatCtxt<'a, 'tcx> {
     pub(crate) param_env: ty::ParamEnv<'tcx>,
     pub(crate) typeck_results: &'a ty::TypeckResults<'tcx>,
     pub(crate) errors: Vec<PatternError>,
+    pub(crate) local_var_defs: &'a mut IndexVec<LocalVarId, LocalVarInfo>,
     include_lint_checks: bool,
 }
 
@@ -47,9 +50,10 @@ pub(crate) fn pat_from_hir<'a, 'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     typeck_results: &'a ty::TypeckResults<'tcx>,
+    local_var_defs: &'a mut IndexVec<LocalVarId, LocalVarInfo>,
     pat: &'tcx hir::Pat<'tcx>,
 ) -> Pat<'tcx> {
-    let mut pcx = PatCtxt::new(tcx, param_env, typeck_results);
+    let mut pcx = PatCtxt::new(tcx, param_env, typeck_results, local_var_defs);
     let result = pcx.lower_pattern(pat);
     if !pcx.errors.is_empty() {
         let msg = format!("encountered errors lowering pattern: {:?}", pcx.errors);
@@ -64,8 +68,16 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         typeck_results: &'a ty::TypeckResults<'tcx>,
+        local_var_defs: &'a mut IndexVec<LocalVarId, LocalVarInfo>,
     ) -> Self {
-        PatCtxt { tcx, param_env, typeck_results, errors: vec![], include_lint_checks: false }
+        PatCtxt {
+            tcx,
+            param_env,
+            typeck_results,
+            local_var_defs,
+            errors: vec![],
+            include_lint_checks: false,
+        }
     }
 
     pub(crate) fn include_lint_checks(&mut self) -> &mut Self {
@@ -288,7 +300,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     mutability,
                     mode,
                     name: ident.name,
-                    var: LocalVarId(id),
+                    var: self.local_var_defs.push(LocalVarInfo::Hir(id)), // assigning a new LocalVarId here
                     ty: var_ty,
                     subpattern: self.lower_opt_pattern(sub),
                     is_primary: id == pat.hir_id,

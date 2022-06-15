@@ -903,12 +903,15 @@ impl<'tcx> Cx<'tcx> {
         );
 
         if is_upvar {
-            ExprKind::UpvarRef {
-                closure_def_id: self.body_owner,
-                var_hir_id: LocalVarId(var_hir_id),
-            }
+            let var_hir_id = todo!(
+                "look up the correct LocalVarId from the given HirId, subject to HirId rewriting by THIR mirroring, especially for let-else"
+            );
+            ExprKind::UpvarRef { closure_def_id: self.body_owner, var_hir_id }
         } else {
-            ExprKind::VarRef { id: LocalVarId(var_hir_id) }
+            let id = todo!(
+                "look up the correct LocalVarId from the given HirId, subject to HirId rewriting by THIR mirroring, especially for let-else"
+            );
+            ExprKind::VarRef { id }
         }
     }
 

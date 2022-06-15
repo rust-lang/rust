@@ -155,9 +155,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ) {
         let place: Place<'tcx>;
         if let Ok(test_place_builder) =
-            place_builder.try_upvars_resolved(self.tcx, self.typeck_results)
+            place_builder.try_upvars_resolved(self.tcx, self.typeck_results, &self.thir.local_vars)
         {
-            place = test_place_builder.into_place(self.tcx, self.typeck_results);
+            place =
+                test_place_builder.into_place(self.tcx, self.typeck_results, &self.thir.local_vars);
         } else {
             return;
         }

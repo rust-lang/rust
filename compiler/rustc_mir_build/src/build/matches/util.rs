@@ -32,10 +32,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ) {
         let tcx = self.tcx;
         let (min_length, exact_size) = if let Ok(place_resolved) =
-            place.clone().try_upvars_resolved(tcx, self.typeck_results)
+            place.clone().try_upvars_resolved(tcx, self.typeck_results, &self.thir.local_vars)
         {
             match place_resolved
-                .into_place(tcx, self.typeck_results)
+                .into_place(tcx, self.typeck_results, &self.thir.local_vars)
                 .ty(&self.local_decls, tcx)
                 .ty
                 .kind()

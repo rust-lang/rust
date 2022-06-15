@@ -17,7 +17,9 @@ use rustc_middle::middle::region;
 use rustc_middle::mir::interpret::Allocation;
 use rustc_middle::mir::interpret::{ConstValue, LitToConstError, LitToConstInput, Scalar};
 use rustc_middle::mir::*;
-use rustc_middle::thir::{BindingMode, Expr, ExprId, LintLevel, LocalVarId, PatKind, Thir};
+use rustc_middle::thir::{
+    BindingMode, Expr, ExprId, LintLevel, LocalVarId, LocalVarInfo, PatKind, Thir,
+};
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeckResults};
 use rustc_span::symbol::sym;
@@ -447,6 +449,8 @@ struct Builder<'a, 'tcx> {
     /// Maps `HirId`s of variable bindings to the `Local`s created for them.
     /// (A match binding can have two locals; the 2nd is for the arm's guard.)
     var_indices: FxHashMap<LocalVarId, LocalsForNode>,
+    // @dingxiangfei2009: Since we are mirroring defs from function arguments while building MIR, we need to track the fresh LocalVarId as well (?)
+    local_var_defs: IndexVec<LocalVarId, LocalVarInfo>,
     local_decls: IndexVec<Local, LocalDecl<'tcx>>,
     canonical_user_type_annotations: ty::CanonicalUserTypeAnnotations<'tcx>,
     upvar_mutbls: Vec<Mutability>,

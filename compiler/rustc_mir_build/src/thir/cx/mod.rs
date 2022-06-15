@@ -104,7 +104,7 @@ impl<'tcx> Cx<'tcx> {
             Node::Pat(p) | Node::Binding(p) => p,
             node => bug!("pattern became {:?}", node),
         };
-        pat_from_hir(self.tcx, self.param_env, self.typeck_results(), p)
+        pat_from_hir(self.tcx, self.param_env, self.typeck_results, &mut self.thir.local_vars, p)
     }
 }
 

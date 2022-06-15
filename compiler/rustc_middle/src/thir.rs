@@ -8,6 +8,7 @@
 //!
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/thir.html
 
+use hir::HirId;
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_hir as hir;
 use rustc_hir::def::CtorKind;
@@ -90,10 +91,16 @@ macro_rules! thir_with_elements {
     }
 }
 
+#[derive(HashStable, Debug, Clone)]
+pub enum LocalVarInfo {
+    Hir(HirId),
+}
+
 thir_with_elements! {
     arms: ArmId => Arm<'tcx>,
     exprs: ExprId => Expr<'tcx>,
     stmts: StmtId => Stmt<'tcx>,
+    local_vars: LocalVarId => LocalVarInfo,
 }
 
 #[derive(Copy, Clone, Debug, HashStable)]
@@ -191,19 +198,15 @@ pub enum StmtKind<'tcx> {
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 rustc_data_structures::static_assert_size!(Expr<'_>, 104);
 
-#[derive(
-    Clone,
-    Debug,
-    Copy,
-    PartialEq,
-    Eq,
-    Hash,
-    HashStable,
-    TyEncodable,
-    TyDecodable,
-    TypeFoldable
-)]
-pub struct LocalVarId(pub hir::HirId);
+newtype_index! {
+    /// A THIR-specific index into a registry of variables,
+    /// either directly derived from HIR IDs of local variables or
+    /// variables generated while building THIR
+    #[derive(HashStable)]
+    pub struct LocalVarId {
+        DEBUG_FORMAT = "LocalVarId({})"
+    }
+}
 
 /// A THIR expression.
 #[derive(Clone, Debug, HashStable)]

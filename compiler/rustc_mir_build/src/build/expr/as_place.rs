@@ -4,6 +4,7 @@ use crate::build::expr::category::Category;
 use crate::build::ForGuard::{OutsideGuard, RefWithinGuard};
 use crate::build::{BlockAnd, BlockAndExtension, Builder};
 use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::HirId;
 use rustc_middle::hir::place::Projection as HirProjection;
 use rustc_middle::hir::place::ProjectionKind as HirProjectionKind;
 use rustc_middle::middle::region;
@@ -15,7 +16,7 @@ use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty, TyCtxt, Variance};
 use rustc_span::Span;
 use rustc_target::abi::VariantIdx;
 
-use rustc_index::vec::Idx;
+use rustc_index::vec::{Idx, IndexVec};
 
 use std::iter;
 
@@ -150,12 +151,12 @@ fn is_ancestor_or_same_capture(
 /// `ty::MinCaptureList` of the root variable `var_hir_id`.
 fn compute_capture_idx<'tcx>(
     closure_min_captures: &ty::RootVariableMinCaptureList<'tcx>,
-    var_hir_id: LocalVarId,
+    var_hir_id: HirId,
     root_var_idx: usize,
 ) -> usize {
     let mut res = 0;
     for (var_id, capture_list) in closure_min_captures {
-        if *var_id == var_hir_id.0 {
+        if *var_id == var_hir_id {
             res += root_var_idx;
             break;
         } else {
@@ -175,12 +176,12 @@ fn compute_capture_idx<'tcx>(
 /// Returns None, when the ancestor is not found.
 fn find_capture_matching_projections<'a, 'tcx>(
     typeck_results: &'a ty::TypeckResults<'tcx>,
-    var_hir_id: LocalVarId,
+    var_hir_id: HirId,
     closure_def_id: DefId,
     projections: &[PlaceElem<'tcx>],
 ) -> Option<(usize, &'a ty::CapturedPlace<'tcx>)> {
     let closure_min_captures = typeck_results.closure_min_captures.get(&closure_def_id)?;
-    let root_variable_min_captures = closure_min_captures.get(&var_hir_id.0)?;
+    let root_variable_min_captures = closure_min_captures.get(&var_hir_id)?;
 
     let hir_projections = convert_to_hir_projections_and_truncate_for_capture(projections);
 
@@ -205,6 +206,7 @@ fn to_upvars_resolved_place_builder<'a, 'tcx>(
     from_builder: PlaceBuilder<'tcx>,
     tcx: TyCtxt<'tcx>,
     typeck_results: &'a ty::TypeckResults<'tcx>,
+    local_var_defs: &IndexVec<LocalVarId, LocalVarInfo>,
 ) -> Result<PlaceBuilder<'tcx>, PlaceBuilder<'tcx>> {
     match from_builder.base {
         PlaceBase::Local(_) => Ok(from_builder),
@@ -216,6 +218,9 @@ fn to_upvars_resolved_place_builder<'a, 'tcx>(
                 }
                 ty::ClosureKind::FnOnce => {}
             }
+            let var_hir_id = match &local_var_defs[var_hir_id] {
+                LocalVarInfo::Hir(id) => *id,
+            };
 
             let Some((capture_index, capture)) =
                 find_capture_matching_projections(
@@ -319,11 +324,16 @@ impl<'tcx> PlaceBuilder<'tcx> {
         self,
         tcx: TyCtxt<'tcx>,
         typeck_results: &'a ty::TypeckResults<'tcx>,
+        local_var_defs: &IndexVec<LocalVarId, LocalVarInfo>,
     ) -> Place<'tcx> {
         if let PlaceBase::Local(local) = self.base {
             Place { local, projection: tcx.intern_place_elems(&self.projection) }
         } else {
-            self.expect_upvars_resolved(tcx, typeck_results).into_place(tcx, typeck_results)
+            self.expect_upvars_resolved(tcx, typeck_results, local_var_defs).into_place(
+                tcx,
+                typeck_results,
+                local_var_defs,
+            )
         }
     }
 
@@ -331,8 +341,9 @@ impl<'tcx> PlaceBuilder<'tcx> {
         self,
         tcx: TyCtxt<'tcx>,
         typeck_results: &'a ty::TypeckResults<'tcx>,
+        local_var_defs: &IndexVec<LocalVarId, LocalVarInfo>,
     ) -> PlaceBuilder<'tcx> {
-        to_upvars_resolved_place_builder(self, tcx, typeck_results).unwrap()
+        to_upvars_resolved_place_builder(self, tcx, typeck_results, local_var_defs).unwrap()
     }
 
     /// Attempts to resolve the `PlaceBuilder`.
@@ -350,8 +361,9 @@ impl<'tcx> PlaceBuilder<'tcx> {
         self,
         tcx: TyCtxt<'tcx>,
         typeck_results: &'a ty::TypeckResults<'tcx>,
+        local_var_defs: &IndexVec<LocalVarId, LocalVarInfo>,
     ) -> Result<PlaceBuilder<'tcx>, PlaceBuilder<'tcx>> {
-        to_upvars_resolved_place_builder(self, tcx, typeck_results)
+        to_upvars_resolved_place_builder(self, tcx, typeck_results, local_var_defs)
     }
 
     pub(crate) fn base(&self) -> PlaceBase {
@@ -411,7 +423,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         expr: &Expr<'tcx>,
     ) -> BlockAnd<Place<'tcx>> {
         let place_builder = unpack!(block = self.as_place_builder(block, expr));
-        block.and(place_builder.into_place(self.tcx, self.typeck_results))
+        block.and(place_builder.into_place(self.tcx, self.typeck_results, &self.thir.local_vars))
     }
 
     /// This is used when constructing a compound `Place`, so that we can avoid creating
@@ -435,7 +447,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         expr: &Expr<'tcx>,
     ) -> BlockAnd<Place<'tcx>> {
         let place_builder = unpack!(block = self.as_read_only_place_builder(block, expr));
-        block.and(place_builder.into_place(self.tcx, self.typeck_results))
+        block.and(place_builder.into_place(self.tcx, self.typeck_results, &self.thir.local_vars))
     }
 
     /// This is used when constructing a compound `Place`, so that we can avoid creating
@@ -530,7 +542,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             inferred_ty: expr.ty,
                         });
 
-                    let place = place_builder.clone().into_place(this.tcx, this.typeck_results);
+                    let place = place_builder.clone().into_place(
+                        this.tcx,
+                        this.typeck_results,
+                        &this.thir.local_vars,
+                    );
                     this.cfg.push(
                         block,
                         Statement {
@@ -681,7 +697,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         if is_outermost_index {
             self.read_fake_borrows(block, fake_borrow_temps, source_info)
         } else {
-            base_place = base_place.expect_upvars_resolved(self.tcx, self.typeck_results);
+            base_place = base_place.expect_upvars_resolved(
+                self.tcx,
+                self.typeck_results,
+                &self.thir.local_vars,
+            );
             self.add_fake_borrows_of_base(
                 &base_place,
                 block,
@@ -713,7 +733,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             block,
             source_info,
             len,
-            Rvalue::Len(slice.into_place(self.tcx, self.typeck_results)),
+            Rvalue::Len(slice.into_place(self.tcx, self.typeck_results, &self.thir.local_vars)),
         );
         // lt = idx < len
         self.cfg.push_assign(

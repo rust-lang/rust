@@ -155,12 +155,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 ascription: thir::Ascription { ref annotation, variance },
             } => {
                 // Apply the type ascription to the value at `match_pair.place`, which is the
-                if let Ok(place_resolved) =
-                    match_pair.place.clone().try_upvars_resolved(self.tcx, self.typeck_results)
-                {
+                if let Ok(place_resolved) = match_pair.place.clone().try_upvars_resolved(
+                    self.tcx,
+                    self.typeck_results,
+                    &self.thir.local_vars,
+                ) {
                     candidate.ascriptions.push(Ascription {
                         annotation: annotation.clone(),
-                        source: place_resolved.into_place(self.tcx, self.typeck_results),
+                        source: place_resolved.into_place(
+                            self.tcx,
+                            self.typeck_results,
+                            &self.thir.local_vars,
+                        ),
                         variance,
                     });
                 }
@@ -184,12 +190,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 ref subpattern,
                 is_primary: _,
             } => {
-                if let Ok(place_resolved) =
-                    match_pair.place.clone().try_upvars_resolved(self.tcx, self.typeck_results)
-                {
+                if let Ok(place_resolved) = match_pair.place.clone().try_upvars_resolved(
+                    self.tcx,
+                    self.typeck_results,
+                    &self.thir.local_vars,
+                ) {
                     candidate.bindings.push(Binding {
                         span: match_pair.pattern.span,
-                        source: place_resolved.into_place(self.tcx, self.typeck_results),
+                        source: place_resolved.into_place(
+                            self.tcx,
+                            self.typeck_results,
+                            &self.thir.local_vars,
+                        ),
                         var_id: var,
                         binding_mode: mode,
                     });
