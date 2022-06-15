@@ -538,7 +538,7 @@ struct LateResolutionVisitor<'a, 'b, 'ast> {
     current_trait_ref: Option<(Module<'a>, TraitRef)>,
 
     /// Fields used to add information to diagnostic errors.
-    diagnostic_metadata: DiagnosticMetadata<'ast>,
+    diagnostic_metadata: Box<DiagnosticMetadata<'ast>>,
 
     /// State used to know whether to ignore resolution errors for function bodies.
     ///
@@ -1017,7 +1017,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             label_ribs: Vec::new(),
             lifetime_ribs: Vec::new(),
             current_trait_ref: None,
-            diagnostic_metadata: DiagnosticMetadata::default(),
+            diagnostic_metadata: Box::new(DiagnosticMetadata::default()),
             // errors at module scope should always be reported
             in_func_body: false,
             lifetime_uses: Default::default(),
