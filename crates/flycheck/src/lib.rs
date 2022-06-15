@@ -157,22 +157,25 @@ impl FlycheckActor {
         while let Some(event) = self.next_event(&inbox) {
             match event {
                 Event::Restart(Restart) => {
-                    // Drop and cancel the previously spawned process
-                    self.cargo_handle.take();
+                    if let Some(cargo_handle) = self.cargo_handle.take() {
+                        // Cancel the previously spawned process
+                        cargo_handle.cancel();
+                    }
                     while let Ok(Restart) = inbox.recv_timeout(Duration::from_millis(50)) {}
 
                     self.cancel_check_process();
 
                     let command = self.check_command();
-                    let command_f = format!("restart flycheck {command:?}");
+                    let command_f = format!("{command:?}");
+                    tracing::debug!(?command, "will restart flycheck");
                     match CargoHandle::spawn(command) {
                         Ok(cargo_handle) => {
-                            tracing::info!("{}", command_f);
+                            tracing::debug!(%command_f, "did  restart flycheck");
                             self.cargo_handle = Some(cargo_handle);
                             self.progress(Progress::DidStart);
                         }
-                        Err(e) => {
-                            tracing::error!("{command_f} failed: {e:?}",);
+                        Err(error) => {
+                            tracing::error!(%command_f, %error, "failed to restart flycheck");
                         }
                     }
                 }
@@ -289,7 +292,13 @@ impl CargoHandle {
         Ok(CargoHandle { child, thread, receiver })
     }
 
-    fn join(self) -> io::Result<()> {
+    fn cancel(mut self) {
+        let _ = self.child.kill();
+        let _ = self.child.wait();
+    }
+
+    fn join(mut self) -> io::Result<()> {
+        let _ = self.child.kill();
         let exit_status = self.child.wait()?;
         let (read_at_least_one_message, error) = self.thread.join()?;
         if read_at_least_one_message || exit_status.success() {

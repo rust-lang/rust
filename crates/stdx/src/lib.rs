@@ -1,7 +1,7 @@
 //! Missing batteries for standard libraries.
-use std::iter;
 use std::process::Command;
 use std::{cmp::Ordering, ops, time::Instant};
+use std::{io as sio, iter};
 
 mod macros;
 pub mod process;
@@ -159,14 +159,8 @@ impl Drop for JodChild {
 }
 
 impl JodChild {
-    pub fn spawn(mut command: Command) -> std::io::Result<Self> {
+    pub fn spawn(mut command: Command) -> sio::Result<Self> {
         command.spawn().map(Self)
-    }
-
-    pub fn wait(self) -> std::io::Result<std::process::ExitStatus> {
-        let mut inner = self.into_inner();
-        let _ = inner.kill();
-        inner.wait()
     }
 
     pub fn into_inner(self) -> std::process::Child {
