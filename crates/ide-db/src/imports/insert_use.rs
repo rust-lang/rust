@@ -403,7 +403,8 @@ fn insert_use_(
         .take_while(|child| match child {
             NodeOrToken::Node(node) => is_inner_attribute(node.clone()),
             NodeOrToken::Token(token) => {
-                [SyntaxKind::WHITESPACE, SyntaxKind::COMMENT].contains(&token.kind())
+                [SyntaxKind::WHITESPACE, SyntaxKind::COMMENT, SyntaxKind::SHEBANG]
+                    .contains(&token.kind())
             }
         })
         .filter(|child| child.as_token().map_or(true, |t| t.kind() != SyntaxKind::WHITESPACE))
