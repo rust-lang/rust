@@ -455,6 +455,17 @@ use foo::bar::Baz;"#,
 }
 
 #[test]
+fn inserts_after_shebang() {
+    check_none(
+        "foo::bar::Baz",
+        "#!/usr/bin/env rust",
+        r#"#!/usr/bin/env rust
+
+use foo::bar::Baz;"#,
+    );
+}
+
+#[test]
 fn inserts_after_multiple_single_line_comments() {
     check_none(
         "foo::bar::Baz",
