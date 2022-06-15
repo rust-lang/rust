@@ -88,7 +88,7 @@ fn rooted_project_json(data: ProjectJsonData) -> ProjectJson {
 }
 
 fn to_crate_graph(project_workspace: ProjectWorkspace) -> CrateGraph {
-    project_workspace.to_crate_graph(&mut |_, _| Vec::new(), &mut {
+    project_workspace.to_crate_graph(&mut |_, _| Ok(Vec::new()), &mut {
         let mut counter = 0;
         move |_path| {
             counter += 1;

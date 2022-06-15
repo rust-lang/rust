@@ -233,7 +233,7 @@ impl Analysis {
             cfg_options.clone(),
             cfg_options,
             Env::default(),
-            Default::default(),
+            Ok(Vec::new()),
             false,
             CrateOrigin::CratesIo { repo: None },
         );

@@ -87,6 +87,7 @@ pub struct UnresolvedProcMacro {
     pub precise_location: Option<TextRange>,
     pub macro_name: Option<String>,
     pub kind: MacroKind,
+    pub proc_macro_err: Option<String>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]

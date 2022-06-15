@@ -29,19 +29,23 @@ pub(crate) fn unresolved_proc_macro(
         Some(name) => format!("proc macro `{}` not expanded", name),
         None => "proc macro not expanded".to_string(),
     };
-    let (message, severity) = if config_enabled {
-        (message, Severity::Error)
-    } else {
-        let message = match d.kind {
-            hir::MacroKind::Attr if proc_macros_enabled => {
-                format!("{message}{}", " (attribute macro expansion is disabled)")
+    let severity = if config_enabled { Severity::Error } else { Severity::WeakWarning };
+    let message = format!(
+        "{message}: {}",
+        if config_enabled {
+            match &d.proc_macro_err {
+                Some(e) => e,
+                None => "proc macro not found",
             }
-            _ => {
-                format!("{message}{}", " (proc-macro expansion is disabled)")
+        } else {
+            match d.kind {
+                hir::MacroKind::Attr if proc_macros_enabled => {
+                    "attribute macro expansion is disabled"
+                }
+                _ => "proc-macro expansion is disabled",
             }
-        };
-        (message, Severity::WeakWarning)
-    };
+        },
+    );
 
     Diagnostic::new("unresolved-proc-macro", message, display_range).severity(severity)
 }

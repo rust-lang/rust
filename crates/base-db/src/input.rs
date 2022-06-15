@@ -231,6 +231,8 @@ pub enum ProcMacroExpansionError {
     System(String),
 }
 
+pub type ProcMacroLoadResult = Result<Vec<ProcMacro>, String>;
+
 #[derive(Debug, Clone)]
 pub struct ProcMacro {
     pub name: SmolStr,
@@ -254,7 +256,7 @@ pub struct CrateData {
     pub potential_cfg_options: CfgOptions,
     pub env: Env,
     pub dependencies: Vec<Dependency>,
-    pub proc_macro: Vec<ProcMacro>,
+    pub proc_macro: ProcMacroLoadResult,
     pub origin: CrateOrigin,
     pub is_proc_macro: bool,
 }
@@ -300,19 +302,19 @@ impl Dependency {
 impl CrateGraph {
     pub fn add_crate_root(
         &mut self,
-        file_id: FileId,
+        root_file_id: FileId,
         edition: Edition,
         display_name: Option<CrateDisplayName>,
         version: Option<String>,
         cfg_options: CfgOptions,
         potential_cfg_options: CfgOptions,
         env: Env,
-        proc_macro: Vec<ProcMacro>,
+        proc_macro: ProcMacroLoadResult,
         is_proc_macro: bool,
         origin: CrateOrigin,
     ) -> CrateId {
         let data = CrateData {
-            root_file_id: file_id,
+            root_file_id,
             edition,
             version,
             display_name,
@@ -628,7 +630,7 @@ mod tests {
             CfgOptions::default(),
             CfgOptions::default(),
             Env::default(),
-            Default::default(),
+            Ok(Vec::new()),
             false,
             CrateOrigin::CratesIo { repo: None },
         );
@@ -640,7 +642,7 @@ mod tests {
             CfgOptions::default(),
             CfgOptions::default(),
             Env::default(),
-            Default::default(),
+            Ok(Vec::new()),
             false,
             CrateOrigin::CratesIo { repo: None },
         );
@@ -652,7 +654,7 @@ mod tests {
             CfgOptions::default(),
             CfgOptions::default(),
             Env::default(),
-            Default::default(),
+            Ok(Vec::new()),
             false,
             CrateOrigin::CratesIo { repo: None },
         );
@@ -678,7 +680,7 @@ mod tests {
             CfgOptions::default(),
             CfgOptions::default(),
             Env::default(),
-            Default::default(),
+            Ok(Vec::new()),
             false,
             CrateOrigin::CratesIo { repo: None },
         );
@@ -690,7 +692,7 @@ mod tests {
             CfgOptions::default(),
             CfgOptions::default(),
             Env::default(),
-            Default::default(),
+            Ok(Vec::new()),
             false,
             CrateOrigin::CratesIo { repo: None },
         );
@@ -713,7 +715,7 @@ mod tests {
             CfgOptions::default(),
             CfgOptions::default(),
             Env::default(),
-            Default::default(),
+            Ok(Vec::new()),
             false,
             CrateOrigin::CratesIo { repo: None },
         );
@@ -725,7 +727,7 @@ mod tests {
             CfgOptions::default(),
             CfgOptions::default(),
             Env::default(),
-            Default::default(),
+            Ok(Vec::new()),
             false,
             CrateOrigin::CratesIo { repo: None },
         );
@@ -737,7 +739,7 @@ mod tests {
             CfgOptions::default(),
             CfgOptions::default(),
             Env::default(),
-            Default::default(),
+            Ok(Vec::new()),
             false,
             CrateOrigin::CratesIo { repo: None },
         );
@@ -760,7 +762,7 @@ mod tests {
             CfgOptions::default(),
             CfgOptions::default(),
             Env::default(),
-            Default::default(),
+            Ok(Vec::new()),
             false,
             CrateOrigin::CratesIo { repo: None },
         );
@@ -772,7 +774,7 @@ mod tests {
             CfgOptions::default(),
             CfgOptions::default(),
             Env::default(),
-            Default::default(),
+            Ok(Vec::new()),
             false,
             CrateOrigin::CratesIo { repo: None },
         );

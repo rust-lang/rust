@@ -19,7 +19,7 @@ use hir::db::DefDatabase;
 use ide::Change;
 use ide_db::base_db::{
     CrateGraph, Env, ProcMacro, ProcMacroExpander, ProcMacroExpansionError, ProcMacroKind,
-    SourceRoot, VfsPath,
+    ProcMacroLoadResult, SourceRoot, VfsPath,
 };
 use proc_macro_api::{MacroDylib, ProcMacroServer};
 use project_model::{ProjectWorkspace, WorkspaceBuildScripts};
@@ -536,44 +536,36 @@ impl SourceRootConfig {
 /// Load the proc-macros for the given lib path, replacing all expanders whose names are in `dummy_replace`
 /// with an identity dummy expander.
 pub(crate) fn load_proc_macro(
-    client: Option<&ProcMacroServer>,
+    server: Option<&ProcMacroServer>,
     path: &AbsPath,
     dummy_replace: &[Box<str>],
-) -> Vec<ProcMacro> {
-    let dylib = match MacroDylib::new(path.to_path_buf()) {
-        Ok(it) => it,
-        Err(err) => {
-            // FIXME: that's not really right -- we store this error in a
-            // persistent status.
-            tracing::warn!("failed to load proc macro: {}", err);
-            return Vec::new();
+) -> ProcMacroLoadResult {
+    let res: Result<_, String> = (|| {
+        let dylib = MacroDylib::new(path.to_path_buf())
+            .map_err(|io| format!("Proc-macro dylib loading failed: {io}"))?;
+        Ok(if let Some(it) = server {
+            let vec = it.load_dylib(dylib).map_err(|e| format!("{e}"))?;
+            vec.into_iter()
+                .map(|expander| expander_to_proc_macro(expander, dummy_replace))
+                .collect()
+        } else {
+            Vec::new()
+        })
+    })();
+    return match res {
+        Ok(proc_macros) => {
+            tracing::info!(
+                "Loaded proc-macros for {}: {:?}",
+                path.display(),
+                proc_macros.iter().map(|it| it.name.clone()).collect::<Vec<_>>()
+            );
+            Ok(proc_macros)
+        }
+        Err(e) => {
+            tracing::warn!("proc-macro loading for {} failed: {e}", path.display());
+            Err(e)
         }
     };
-
-    let proc_macros: Vec<_> = client
-        .map(|it| it.load_dylib(dylib))
-        .into_iter()
-        .flat_map(|it| match it {
-            Ok(Ok(macros)) => macros,
-            Err(err) => {
-                tracing::error!("proc macro server crashed: {}", err);
-                Vec::new()
-            }
-            Ok(Err(err)) => {
-                // FIXME: that's not really right -- we store this error in a
-                // persistent status.
-                tracing::warn!("failed to load proc macro: {}", err);
-                Vec::new()
-            }
-        })
-        .map(|expander| expander_to_proc_macro(expander, dummy_replace))
-        .collect();
-    tracing::info!(
-        "Loaded proc-macros for {}: {:?}",
-        path.display(),
-        proc_macros.iter().map(|it| it.name.clone()).collect::<Vec<_>>()
-    );
-    return proc_macros;
 
     fn expander_to_proc_macro(
         expander: proc_macro_api::ProcMacro,

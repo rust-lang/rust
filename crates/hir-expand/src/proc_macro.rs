@@ -34,7 +34,15 @@ impl ProcMacroExpander {
         match self.proc_macro_id {
             Some(id) => {
                 let krate_graph = db.crate_graph();
-                let proc_macro = match krate_graph[self.krate].proc_macro.get(id.0 as usize) {
+                let proc_macros = match &krate_graph[self.krate].proc_macro {
+                    Ok(proc_macros) => proc_macros,
+                    Err(e) => {
+                        return ExpandResult::only_err(ExpandError::Other(
+                            e.clone().into_boxed_str(),
+                        ))
+                    }
+                };
+                let proc_macro = match proc_macros.get(id.0 as usize) {
                     Some(proc_macro) => proc_macro,
                     None => {
                         return ExpandResult::only_err(ExpandError::Other(
