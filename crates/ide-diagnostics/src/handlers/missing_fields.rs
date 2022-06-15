@@ -3,7 +3,10 @@ use hir::{
     db::{AstDatabase, HirDatabase},
     known, AssocItem, HirDisplay, InFile, Type,
 };
-use ide_db::{assists::Assist, famous_defs::FamousDefs, source_change::SourceChange, FxHashMap};
+use ide_db::{
+    assists::Assist, famous_defs::FamousDefs, imports::import_assets::item_for_path_search,
+    source_change::SourceChange, FxHashMap,
+};
 use stdx::format_to;
 use syntax::{
     algo,
@@ -13,6 +16,58 @@ use syntax::{
 use text_edit::TextEdit;
 
 use crate::{fix, Diagnostic, DiagnosticsContext};
+
+// TODO: how to depupicate with `ide-assists/generate_new`
+pub fn use_trivial_constructor(
+    db: &ide_db::RootDatabase,
+    path: ast::Path,
+    ty: &hir::Type,
+) -> Option<ast::Expr> {
+    match ty.as_adt() {
+        Some(hir::Adt::Enum(x)) => {
+            let variants = x.variants(db);
+
+            if variants.len() == 1 {
+                let variant = variants[0];
+
+                if variant.fields(db).is_empty() {
+                    let path = ast::make::path_qualified(
+                        path,
+                        syntax::ast::make::path_segment(ast::make::name_ref(
+                            &variant.name(db).to_smol_str(),
+                        )),
+                    );
+
+                    use hir::StructKind::*;
+                    let is_record = match variant.kind(db) {
+                        Record => true,
+                        Tuple => false,
+                        Unit => false,
+                    };
+
+                    return Some(if is_record {
+                        ast::Expr::RecordExpr(syntax::ast::make::record_expr(
+                            path,
+                            ast::make::record_expr_field_list(std::iter::empty()),
+                        ))
+                    } else {
+                        syntax::ast::make::expr_path(path)
+                    });
+                }
+            }
+        }
+        Some(hir::Adt::Struct(x)) => {
+            let fields = x.fields(db);
+
+            if fields.is_empty() {
+                return Some(syntax::ast::make::expr_path(path));
+            }
+        }
+        _ => {}
+    }
+
+    None
+}
 
 // Diagnostic: missing-fields
 //
@@ -54,6 +109,11 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Option<Vec<Ass
     }
 
     let root = ctx.sema.db.parse_or_expand(d.file)?;
+
+    let current_module = match &d.field_list_parent {
+        Either::Left(ptr) => ctx.sema.scope(ptr.to_node(&root).syntax()).unwrap().module(),
+        Either::Right(ptr) => ctx.sema.scope(ptr.to_node(&root).syntax()).unwrap().module(),
+    };
 
     let build_text_edit = |parent_syntax, new_syntax: &SyntaxNode, old_syntax| {
         let edit = {
@@ -110,7 +170,26 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Option<Vec<Ass
                         Some(generate_fill_expr(ty))
                     }
                 } else {
-                    Some(generate_fill_expr(ty))
+                    let expr = (|| -> Option<ast::Expr> {
+                        let item_in_ns = hir::ItemInNs::from(hir::ModuleDef::from(ty.as_adt()?));
+
+                        let type_path = current_module.find_use_path(
+                            ctx.sema.db,
+                            item_for_path_search(ctx.sema.db, item_in_ns)?,
+                        )?;
+
+                        use_trivial_constructor(
+                            &ctx.sema.db,
+                            ide_db::helpers::mod_path_to_ast(&type_path),
+                            &ty,
+                        )
+                    })();
+
+                    if expr.is_some() {
+                        expr
+                    } else {
+                        Some(generate_fill_expr(ty))
+                    }
                 };
                 let field = make::record_expr_field(
                     make::name_ref(&f.name(ctx.sema.db).to_smol_str()),

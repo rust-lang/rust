@@ -1,3 +1,4 @@
+use ide_db::imports::import_assets::item_for_path_search;
 use itertools::Itertools;
 use stdx::format_to;
 use syntax::ast::{self, AstNode, HasName, HasVisibility, StructKind};
@@ -6,6 +7,58 @@ use crate::{
     utils::{find_impl_block_start, find_struct_impl, generate_impl_text},
     AssistContext, AssistId, AssistKind, Assists,
 };
+
+// TODO: how to depupicate with `ide-diagnostics/mssing_fields`
+pub fn use_trivial_constructor(
+    db: &ide_db::RootDatabase,
+    path: ast::Path,
+    ty: &hir::Type,
+) -> Option<ast::Expr> {
+    match ty.as_adt() {
+        Some(hir::Adt::Enum(x)) => {
+            let variants = x.variants(db);
+
+            if variants.len() == 1 {
+                let variant = variants[0];
+
+                if variant.fields(db).is_empty() {
+                    let path = ast::make::path_qualified(
+                        path,
+                        syntax::ast::make::path_segment(ast::make::name_ref(
+                            &variant.name(db).to_smol_str(),
+                        )),
+                    );
+
+                    use hir::StructKind::*;
+                    let is_record = match variant.kind(db) {
+                        Record => true,
+                        Tuple => false,
+                        Unit => false,
+                    };
+
+                    return Some(if is_record {
+                        ast::Expr::RecordExpr(syntax::ast::make::record_expr(
+                            path,
+                            ast::make::record_expr_field_list(std::iter::empty()),
+                        ))
+                    } else {
+                        syntax::ast::make::expr_path(path)
+                    });
+                }
+            }
+        }
+        Some(hir::Adt::Struct(x)) => {
+            let fields = x.fields(db);
+
+            if fields.is_empty() {
+                return Some(syntax::ast::make::expr_path(path));
+            }
+        }
+        _ => {}
+    }
+
+    None
+}
 
 // Assist: generate_new
 //
@@ -48,11 +101,54 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
 
         let vis = strukt.visibility().map_or(String::new(), |v| format!("{} ", v));
 
+        let current_module = ctx.sema.scope(strukt.syntax()).unwrap().module();
+
+        let trivial_constructors = field_list
+            .fields()
+            .map(|f| {
+                let ty = ctx.sema.resolve_type(&f.ty()?)?;
+
+                let item_in_ns = hir::ItemInNs::from(hir::ModuleDef::from(ty.as_adt()?));
+
+                let type_path = current_module
+                    .find_use_path(ctx.sema.db, item_for_path_search(ctx.sema.db, item_in_ns)?)?;
+
+                let expr = use_trivial_constructor(
+                    &ctx.sema.db,
+                    ide_db::helpers::mod_path_to_ast(&type_path),
+                    &ty,
+                )?;
+
+                Some(format!("{}: {}", f.name()?.syntax(), expr))
+            })
+            .collect::<Vec<_>>();
+
+        dbg!(&trivial_constructors);
+
         let params = field_list
             .fields()
-            .filter_map(|f| Some(format!("{}: {}", f.name()?.syntax(), f.ty()?.syntax())))
+            .enumerate()
+            .filter_map(|(i, f)| {
+                if trivial_constructors[i].is_none() {
+                    Some(format!("{}: {}", f.name()?.syntax(), f.ty()?.syntax()))
+                } else {
+                    None
+                }
+            })
             .format(", ");
-        let fields = field_list.fields().filter_map(|f| f.name()).format(", ");
+
+        let fields = field_list
+            .fields()
+            .enumerate()
+            .filter_map(|(i, f)| {
+                let contructor = trivial_constructors[i].clone();
+                if contructor.is_some() {
+                    contructor
+                } else {
+                    Some(f.name()?.to_string())
+                }
+            })
+            .format(", ");
 
         format_to!(buf, "    {}fn new({}) -> Self {{ Self {{ {} }} }}", vis, params, fields);
 
