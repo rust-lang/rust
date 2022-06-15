@@ -1143,7 +1143,7 @@ impl<K, V> BTreeMap<K, V> {
     ///
     /// assert_eq!(count["a"], 3);
     /// assert_eq!(count["b"], 2);
-    /// assert_eq!(count["1"], 1);
+    /// assert_eq!(count["c"], 1);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn entry(&mut self, key: K) -> Entry<'_, K, V>
