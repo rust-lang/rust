@@ -172,7 +172,9 @@ fn cargo_hello_world_project_model_with_wildcard_overrides() {
                                 prelude: true,
                             },
                         ],
-                        proc_macro: [],
+                        proc_macro: Ok(
+                            [],
+                        ),
                         origin: CratesIo {
                             repo: None,
                         },
@@ -245,7 +247,9 @@ fn cargo_hello_world_project_model_with_wildcard_overrides() {
                                 prelude: true,
                             },
                         ],
-                        proc_macro: [],
+                        proc_macro: Ok(
+                            [],
+                        ),
                         origin: CratesIo {
                             repo: None,
                         },
@@ -308,7 +312,9 @@ fn cargo_hello_world_project_model_with_wildcard_overrides() {
                             },
                         },
                         dependencies: [],
-                        proc_macro: [],
+                        proc_macro: Ok(
+                            [],
+                        ),
                         origin: CratesIo {
                             repo: Some(
                                 "https://github.com/rust-lang/libc",
@@ -383,7 +389,9 @@ fn cargo_hello_world_project_model_with_wildcard_overrides() {
                                 prelude: true,
                             },
                         ],
-                        proc_macro: [],
+                        proc_macro: Ok(
+                            [],
+                        ),
                         origin: CratesIo {
                             repo: None,
                         },
@@ -456,7 +464,9 @@ fn cargo_hello_world_project_model_with_wildcard_overrides() {
                                 prelude: true,
                             },
                         ],
-                        proc_macro: [],
+                        proc_macro: Ok(
+                            [],
+                        ),
                         origin: CratesIo {
                             repo: None,
                         },
@@ -544,7 +554,9 @@ fn cargo_hello_world_project_model_with_selective_overrides() {
                                 prelude: true,
                             },
                         ],
-                        proc_macro: [],
+                        proc_macro: Ok(
+                            [],
+                        ),
                         origin: CratesIo {
                             repo: None,
                         },
@@ -619,7 +631,9 @@ fn cargo_hello_world_project_model_with_selective_overrides() {
                                 prelude: true,
                             },
                         ],
-                        proc_macro: [],
+                        proc_macro: Ok(
+                            [],
+                        ),
                         origin: CratesIo {
                             repo: None,
                         },
@@ -682,7 +696,9 @@ fn cargo_hello_world_project_model_with_selective_overrides() {
                             },
                         },
                         dependencies: [],
-                        proc_macro: [],
+                        proc_macro: Ok(
+                            [],
+                        ),
                         origin: CratesIo {
                             repo: Some(
                                 "https://github.com/rust-lang/libc",
@@ -759,7 +775,9 @@ fn cargo_hello_world_project_model_with_selective_overrides() {
                                 prelude: true,
                             },
                         ],
-                        proc_macro: [],
+                        proc_macro: Ok(
+                            [],
+                        ),
                         origin: CratesIo {
                             repo: None,
                         },
@@ -834,7 +852,9 @@ fn cargo_hello_world_project_model_with_selective_overrides() {
                                 prelude: true,
                             },
                         ],
-                        proc_macro: [],
+                        proc_macro: Ok(
+                            [],
+                        ),
                         origin: CratesIo {
                             repo: None,
                         },
@@ -913,7 +933,9 @@ fn cargo_hello_world_project_model() {
                                 prelude: true,
                             },
                         ],
-                        proc_macro: [],
+                        proc_macro: Ok(
+                            [],
+                        ),
                         origin: CratesIo {
                             repo: None,
                         },
@@ -988,7 +1010,9 @@ fn cargo_hello_world_project_model() {
                                 prelude: true,
                             },
                         ],
-                        proc_macro: [],
+                        proc_macro: Ok(
+                            [],
+                        ),
                         origin: CratesIo {
                             repo: None,
                         },
@@ -1053,7 +1077,9 @@ fn cargo_hello_world_project_model() {
                             },
                         },
                         dependencies: [],
-                        proc_macro: [],
+                        proc_macro: Ok(
+                            [],
+                        ),
                         origin: CratesIo {
                             repo: Some(
                                 "https://github.com/rust-lang/libc",
@@ -1130,7 +1156,9 @@ fn cargo_hello_world_project_model() {
                                 prelude: true,
                             },
                         ],
-                        proc_macro: [],
+                        proc_macro: Ok(
+                            [],
+                        ),
                         origin: CratesIo {
                             repo: None,
                         },
@@ -1205,7 +1233,9 @@ fn cargo_hello_world_project_model() {
                                 prelude: true,
                             },
                         ],
-                        proc_macro: [],
+                        proc_macro: Ok(
+                            [],
+                        ),
                         origin: CratesIo {
                             repo: None,
                         },
@@ -1260,7 +1290,9 @@ fn rust_project_hello_world_project_model() {
                                 prelude: true,
                             },
                         ],
-                        proc_macro: [],
+                        proc_macro: Ok(
+                            [],
+                        ),
                         origin: Lang(
                             Alloc,
                         ),
@@ -1292,7 +1324,9 @@ fn rust_project_hello_world_project_model() {
                             entries: {},
                         },
                         dependencies: [],
-                        proc_macro: [],
+                        proc_macro: Ok(
+                            [],
+                        ),
                         origin: Lang(
                             Other,
                         ),
@@ -1324,7 +1358,9 @@ fn rust_project_hello_world_project_model() {
                             entries: {},
                         },
                         dependencies: [],
-                        proc_macro: [],
+                        proc_macro: Ok(
+                            [],
+                        ),
                         origin: Lang(
                             Other,
                         ),
@@ -1366,7 +1402,9 @@ fn rust_project_hello_world_project_model() {
                                 prelude: true,
                             },
                         ],
-                        proc_macro: [],
+                        proc_macro: Ok(
+                            [],
+                        ),
                         origin: Lang(
                             Other,
                         ),
@@ -1398,7 +1436,9 @@ fn rust_project_hello_world_project_model() {
                             entries: {},
                         },
                         dependencies: [],
-                        proc_macro: [],
+                        proc_macro: Ok(
+                            [],
+                        ),
                         origin: Lang(
                             Core,
                         ),
@@ -1467,7 +1507,9 @@ fn rust_project_hello_world_project_model() {
                                 prelude: false,
                             },
                         ],
-                        proc_macro: [],
+                        proc_macro: Ok(
+                            [],
+                        ),
                         origin: CratesIo {
                             repo: None,
                         },
@@ -1499,7 +1541,9 @@ fn rust_project_hello_world_project_model() {
                             entries: {},
                         },
                         dependencies: [],
-                        proc_macro: [],
+                        proc_macro: Ok(
+                            [],
+                        ),
                         origin: Lang(
                             Other,
                         ),
@@ -1531,7 +1575,9 @@ fn rust_project_hello_world_project_model() {
                             entries: {},
                         },
                         dependencies: [],
-                        proc_macro: [],
+                        proc_macro: Ok(
+                            [],
+                        ),
                         origin: Lang(
                             Other,
                         ),
@@ -1563,7 +1609,9 @@ fn rust_project_hello_world_project_model() {
                             entries: {},
                         },
                         dependencies: [],
-                        proc_macro: [],
+                        proc_macro: Ok(
+                            [],
+                        ),
                         origin: Lang(
                             Other,
                         ),
@@ -1595,7 +1643,9 @@ fn rust_project_hello_world_project_model() {
                             entries: {},
                         },
                         dependencies: [],
-                        proc_macro: [],
+                        proc_macro: Ok(
+                            [],
+                        ),
                         origin: Lang(
                             Test,
                         ),
@@ -1709,7 +1759,9 @@ fn rust_project_hello_world_project_model() {
                                 prelude: true,
                             },
                         ],
-                        proc_macro: [],
+                        proc_macro: Ok(
+                            [],
+                        ),
                         origin: Lang(
                             Std,
                         ),
@@ -1741,7 +1793,9 @@ fn rust_project_hello_world_project_model() {
                             entries: {},
                         },
                         dependencies: [],
-                        proc_macro: [],
+                        proc_macro: Ok(
+                            [],
+                        ),
                         origin: Lang(
                             Other,
                         ),
