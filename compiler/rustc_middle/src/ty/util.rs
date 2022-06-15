@@ -376,7 +376,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let (did, constness) = self.find_map_relevant_impl(drop_trait, ty, |impl_did| {
             if let Some(item_id) = self.associated_item_def_ids(impl_did).first() {
                 if validate(self, impl_did).is_ok() {
-                    return Some((*item_id, self.impl_constness(impl_did)));
+                    return Some((*item_id, self.constness(impl_did)));
                 }
             }
             None

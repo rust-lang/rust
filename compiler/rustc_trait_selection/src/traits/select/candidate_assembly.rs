@@ -970,7 +970,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
                 if let Some(impl_def_id) = relevant_impl {
                     // Check that `impl Drop` is actually const, if there is a custom impl
-                    if self.tcx().impl_constness(impl_def_id) == hir::Constness::Const {
+                    if self.tcx().constness(impl_def_id) == hir::Constness::Const {
                         candidates.vec.push(ConstDestructCandidate(Some(impl_def_id)));
                     }
                 } else {

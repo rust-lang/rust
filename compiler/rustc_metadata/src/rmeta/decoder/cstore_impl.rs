@@ -214,7 +214,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     impl_parent => { table }
     impl_polarity => { table_direct }
     impl_defaultness => { table_direct }
-    impl_constness => { table_direct }
+    constness => { table_direct }
     coerce_unsized_info => { table }
     mir_const_qualif => { table }
     rendered_const => { table }
