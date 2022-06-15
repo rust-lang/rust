@@ -116,8 +116,6 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
             })
             .collect::<Vec<_>>();
 
-        dbg!(&trivial_constructors);
-
         let params = field_list
             .fields()
             .enumerate()
