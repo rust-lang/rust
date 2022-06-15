@@ -1340,7 +1340,7 @@ fn check_where_clauses<'tcx, 'fcx>(
     // First we build the defaulted substitution.
     let substs = InternalSubsts::for_item(tcx, def_id.to_def_id(), |param, _| {
         match param.kind {
-            GenericParamDefKind::Constness | GenericParamDefKind::Lifetime => {
+            GenericParamDefKind::Lifetime => {
                 // All regions are identity.
                 tcx.mk_param_from_def(param)
             }
@@ -1371,6 +1371,8 @@ fn check_where_clauses<'tcx, 'fcx>(
 
                 tcx.mk_param_from_def(param)
             }
+
+            GenericParamDefKind::Constness => fcx.constness().into(),
         }
     });
 
@@ -1828,8 +1830,23 @@ fn check_false_global_bounds(fcx: &FnCtxt<'_, '_>, mut span: Span, id: hir::HirI
         let pred = obligation.predicate;
         // Match the existing behavior.
         if pred.is_global() && !pred.has_late_bound_regions() {
-            let pred = fcx.normalize_associated_types_in(span, pred);
+            let /* mut */ pred = fcx.normalize_associated_types_in(span, pred);
             let hir_node = fcx.tcx.hir().find(id);
+
+            if fcx.constness() == ty::ConstnessArg::Not {
+                struct NotConstFolder<'tcx>(TyCtxt<'tcx>); // TODO justify this hack
+
+                impl<'tcx> ty::TypeFolder<'tcx> for NotConstFolder<'tcx> {
+                    fn tcx<'a>(&'a self) -> TyCtxt<'tcx> {
+                        self.0
+                    }
+                    fn fold_constness(&mut self, _: ty::ConstnessArg) -> ty::ConstnessArg {
+                        ty::ConstnessArg::Not
+                    }
+                }
+
+                pred = pred.fold_with(&mut NotConstFolder(fcx.tcx))
+            }
 
             // only use the span of the predicate clause (#90869)
 

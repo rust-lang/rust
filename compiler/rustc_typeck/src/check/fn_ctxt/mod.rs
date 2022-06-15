@@ -127,7 +127,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         body_id: hir::HirId,
     ) -> FnCtxt<'a, 'tcx> {
-        FnCtxt {
+        let fcx = FnCtxt {
             body_id,
             param_env,
             err_count_on_creation: inh.tcx.sess.err_count(),
@@ -159,7 +159,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ty::ConstnessArg::Not
                 }
             },
-        }
+        };
+        let constness = fcx.constness;
+        trace!(?constness);
+        fcx
     }
 
     pub fn cause(&self, span: Span, code: ObligationCauseCode<'tcx>) -> ObligationCause<'tcx> {

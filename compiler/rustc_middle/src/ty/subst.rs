@@ -612,13 +612,16 @@ impl<'a, 'tcx> TypeFolder<'tcx> for SubstFolder<'a, 'tcx> {
 
     fn fold_constness(&mut self, c: ty::ConstnessArg) -> ty::ConstnessArg {
         if let ty::ConstnessArg::Const | ty::ConstnessArg::Infer = c {
-            self.substs
+            let ret = self
+                .substs
                 .iter()
                 .find_map(|param| match param.unpack() {
                     GenericArgKind::Constness(c) => Some(c),
                     _ => None,
                 })
-                .unwrap_or(c)
+                .unwrap_or(ty::ConstnessArg::Not); // <- since there is no constness in subst, it must be non-const
+            trace!(?c, ?ret);
+            ret
         } else {
             c.super_fold_with(self)
         }
