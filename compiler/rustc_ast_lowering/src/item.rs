@@ -15,7 +15,7 @@ use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID};
 use rustc_hir::definitions::Definitions;
 use rustc_hir::PredicateOrigin;
 use rustc_index::vec::{Idx, IndexVec};
-use rustc_middle::ty::ResolverOutputs;
+use rustc_middle::ty::{ResolverAstLowering, ResolverOutputs};
 use rustc_session::cstore::CrateStoreDyn;
 use rustc_session::Session;
 use rustc_span::source_map::DesugaringKind;
@@ -30,7 +30,8 @@ pub(super) struct ItemLowerer<'a, 'hir> {
     pub(super) sess: &'a Session,
     pub(super) definitions: &'a mut Definitions,
     pub(super) cstore: &'a CrateStoreDyn,
-    pub(super) resolver: &'a mut ResolverOutputs,
+    pub(super) resolutions: &'a ResolverOutputs,
+    pub(super) resolver: &'a mut ResolverAstLowering,
     pub(super) arena: &'hir Arena<'hir>,
     pub(super) ast_index: &'a IndexVec<LocalDefId, AstOwner<'a>>,
     pub(super) owners: &'a mut IndexVec<LocalDefId, hir::MaybeOwner<&'hir hir::OwnerInfo<'hir>>>,
@@ -62,12 +63,12 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
         owner: NodeId,
         f: impl FnOnce(&mut LoweringContext<'_, 'hir>) -> hir::OwnerNode<'hir>,
     ) {
-        let next_node_id = self.resolver.next_node_id;
         let mut lctx = LoweringContext {
             // Pseudo-globals.
             sess: &self.sess,
             definitions: self.definitions,
             cstore: self.cstore,
+            resolutions: self.resolutions,
             resolver: self.resolver,
             arena: self.arena,
 
@@ -80,8 +81,6 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
             node_id_to_local_id: Default::default(),
             local_id_to_def_id: SortedMap::new(),
             trait_map: Default::default(),
-            local_node_id_to_def_id: FxHashMap::default(),
-            next_node_id,
 
             // Lowering state.
             catch_scope: None,

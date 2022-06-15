@@ -56,7 +56,7 @@ use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID};
 use rustc_hir::definitions::{DefPathData, Definitions};
 use rustc_hir::{ConstArg, GenericArg, ItemLocalId, ParamName, TraitCandidate};
 use rustc_index::vec::{Idx, IndexVec};
-use rustc_middle::ty::ResolverOutputs;
+use rustc_middle::ty::{ResolverAstLowering, ResolverOutputs};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::cstore::CrateStoreDyn;
 use rustc_session::parse::feature_err;
@@ -91,7 +91,8 @@ struct LoweringContext<'a, 'hir: 'a> {
 
     definitions: &'a mut Definitions,
     cstore: &'a CrateStoreDyn,
-    resolver: &'a mut ResolverOutputs,
+    resolutions: &'a ResolverOutputs,
+    resolver: &'a mut ResolverAstLowering,
 
     /// Used to allocate HIR nodes.
     arena: &'hir Arena<'hir>,
@@ -133,10 +134,6 @@ struct LoweringContext<'a, 'hir: 'a> {
     /// NodeIds that are lowered inside the current HIR owner.
     node_id_to_local_id: FxHashMap<NodeId, hir::ItemLocalId>,
 
-    // The next_node_id is reset for each item.
-    next_node_id: ast::NodeId,
-    local_node_id_to_def_id: FxHashMap<ast::NodeId, LocalDefId>,
-
     allow_try_trait: Option<Lrc<[Symbol]>>,
     allow_gen_future: Option<Lrc<[Symbol]>>,
     allow_into_future: Option<Lrc<[Symbol]>>,
@@ -174,7 +171,7 @@ trait ResolverAstLoweringExt {
     fn decl_macro_kind(&self, def_id: LocalDefId) -> MacroKind;
 }
 
-impl ResolverAstLoweringExt for ResolverOutputs {
+impl ResolverAstLoweringExt for ResolverAstLowering {
     fn legacy_const_generic_args(&self, expr: &Expr) -> Option<Vec<usize>> {
         if let ExprKind::Path(None, path) = &expr.kind {
             // Don't perform legacy const generics rewriting if the path already
@@ -415,7 +412,8 @@ pub fn lower_crate<'hir>(
     krate: &Crate,
     definitions: &mut Definitions,
     cstore: &CrateStoreDyn,
-    resolver: &mut ResolverOutputs,
+    resolutions: &ResolverOutputs,
+    mut resolver: ResolverAstLowering,
     arena: &'hir Arena<'hir>,
 ) -> &'hir hir::Crate<'hir> {
     let _prof_timer = sess.prof.verbose_generic_activity("hir_lowering");
@@ -430,7 +428,8 @@ pub fn lower_crate<'hir>(
             sess,
             definitions,
             cstore,
-            resolver,
+            resolutions,
+            resolver: &mut resolver,
             arena,
             ast_index: &ast_index,
             owners: &mut owners,
@@ -438,7 +437,7 @@ pub fn lower_crate<'hir>(
         .lower_node(def_id);
     }
 
-    let hir_hash = compute_hir_hash(sess, definitions, cstore, resolver, &owners);
+    let hir_hash = compute_hir_hash(sess, definitions, cstore, resolutions, &owners);
     let krate = hir::Crate { owners, hir_hash };
     arena.alloc(krate)
 }
@@ -464,7 +463,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             self.sess,
             self.definitions,
             self.cstore,
-            &self.resolver.source_span,
+            &self.resolutions.source_span,
         )
     }
 
@@ -489,25 +488,21 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // we don't need a mapping from `NodeId` to `LocalDefId`.
         if node_id != ast::DUMMY_NODE_ID {
             debug!("create_def: def_id_to_node_id[{:?}] <-> {:?}", def_id, node_id);
-            self.local_node_id_to_def_id.insert(node_id, def_id);
+            self.resolver.node_id_to_def_id.insert(node_id, def_id);
         }
 
         def_id
     }
 
     fn next_node_id(&mut self) -> NodeId {
-        let start = self.next_node_id;
+        let start = self.resolver.next_node_id;
         let next = start.as_u32().checked_add(1).expect("input too large; ran out of NodeIds");
-        self.next_node_id = ast::NodeId::from_u32(next);
+        self.resolver.next_node_id = ast::NodeId::from_u32(next);
         start
     }
 
     fn opt_local_def_id(&self, node: NodeId) -> Option<LocalDefId> {
-        if node <= self.resolver.next_node_id {
-            self.resolver.node_id_to_def_id.get(&node).copied()
-        } else {
-            self.local_node_id_to_def_id.get(&node).copied()
-        }
+        self.resolver.node_id_to_def_id.get(&node).copied()
     }
 
     fn local_def_id(&self, node: NodeId) -> LocalDefId {

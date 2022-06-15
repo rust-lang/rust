@@ -1392,7 +1392,9 @@ impl<'a> Resolver<'a> {
         Default::default()
     }
 
-    pub fn into_outputs(self) -> (Definitions, Box<CrateStoreDyn>, ResolverOutputs) {
+    pub fn into_outputs(
+        self,
+    ) -> (Definitions, Box<CrateStoreDyn>, ResolverOutputs, ty::ResolverAstLowering) {
         let proc_macros = self.proc_macros.iter().map(|id| self.local_def_id(*id)).collect();
         let definitions = self.definitions;
         let cstore = Box::new(self.crate_loader.into_cstore());
@@ -1429,6 +1431,8 @@ impl<'a> Resolver<'a> {
             proc_macros,
             confused_type_with_std_module,
             registered_tools: self.registered_tools,
+        };
+        let resolutions_lowering = ty::ResolverAstLowering {
             legacy_const_generic_args: self.legacy_const_generic_args,
             partial_res_map: self.partial_res_map,
             import_res_map: self.import_res_map,
@@ -1441,10 +1445,12 @@ impl<'a> Resolver<'a> {
             trait_map: self.trait_map,
             builtin_macro_kinds: self.builtin_macro_kinds,
         };
-        (definitions, cstore, resolutions)
+        (definitions, cstore, resolutions, resolutions_lowering)
     }
 
-    pub fn clone_outputs(&self) -> (Definitions, Box<CrateStoreDyn>, ResolverOutputs) {
+    pub fn clone_outputs(
+        &self,
+    ) -> (Definitions, Box<CrateStoreDyn>, ResolverOutputs, ty::ResolverAstLowering) {
         let proc_macros = self.proc_macros.iter().map(|id| self.local_def_id(*id)).collect();
         let definitions = self.definitions.clone();
         let cstore = Box::new(self.cstore().clone());
@@ -1469,6 +1475,8 @@ impl<'a> Resolver<'a> {
             confused_type_with_std_module: self.confused_type_with_std_module.clone(),
             registered_tools: self.registered_tools.clone(),
             access_levels: self.access_levels.clone(),
+        };
+        let resolutions_lowering = ty::ResolverAstLowering {
             legacy_const_generic_args: self.legacy_const_generic_args.clone(),
             partial_res_map: self.partial_res_map.clone(),
             import_res_map: self.import_res_map.clone(),
@@ -1481,7 +1489,7 @@ impl<'a> Resolver<'a> {
             trait_map: self.trait_map.clone(),
             builtin_macro_kinds: self.builtin_macro_kinds.clone(),
         };
-        (definitions, cstore, resolutions)
+        (definitions, cstore, resolutions, resolutions_lowering)
     }
 
     fn create_stable_hashing_context(&self) -> StableHashingContext<'_> {

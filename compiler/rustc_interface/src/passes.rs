@@ -21,7 +21,7 @@ use rustc_metadata::{encode_metadata, EncodedMetadata};
 use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::DepGraph;
 use rustc_middle::ty::query::{ExternProviders, Providers};
-use rustc_middle::ty::{self, GlobalCtxt, RegisteredTools, ResolverOutputs, TyCtxt};
+use rustc_middle::ty::{self, GlobalCtxt, RegisteredTools, TyCtxt};
 use rustc_mir_build as mir_build;
 use rustc_parse::{parse_crate_from_file, parse_crate_from_source_str, validate_attr};
 use rustc_passes::{self, hir_stats, layout_test};
@@ -139,7 +139,8 @@ mod boxed_resolver {
 
         pub fn to_resolver_outputs(
             resolver: Rc<RefCell<BoxedResolver>>,
-        ) -> (Definitions, Box<CrateStoreDyn>, ResolverOutputs) {
+        ) -> (Definitions, Box<CrateStoreDyn>, ty::ResolverOutputs, ty::ResolverAstLowering)
+        {
             match Rc::try_unwrap(resolver) {
                 Ok(resolver) => {
                     let mut resolver = resolver.into_inner();
@@ -485,13 +486,21 @@ fn lower_to_hir<'tcx>(
     sess: &Session,
     definitions: &mut Definitions,
     cstore: &CrateStoreDyn,
-    resolver: &mut ResolverOutputs,
+    resolutions: &ty::ResolverOutputs,
+    resolver: ty::ResolverAstLowering,
     krate: Rc<ast::Crate>,
     arena: &'tcx rustc_ast_lowering::Arena<'tcx>,
 ) -> &'tcx Crate<'tcx> {
     // Lower AST to HIR.
-    let hir_crate =
-        rustc_ast_lowering::lower_crate(sess, &krate, definitions, cstore, resolver, arena);
+    let hir_crate = rustc_ast_lowering::lower_crate(
+        sess,
+        &krate,
+        definitions,
+        cstore,
+        resolutions,
+        resolver,
+        arena,
+    );
 
     // Drop AST to free memory
     sess.time("drop_ast", || std::mem::drop(krate));
@@ -829,14 +838,21 @@ pub fn create_global_ctxt<'tcx>(
     // incr. comp. yet.
     dep_graph.assert_ignored();
 
-    let (mut definitions, cstore, mut resolver_outputs) =
+    let (mut definitions, cstore, resolver_outputs, resolver_for_lowering) =
         BoxedResolver::to_resolver_outputs(resolver);
 
     let sess = &compiler.session();
 
     // Lower AST to HIR.
-    let krate =
-        lower_to_hir(sess, &mut definitions, &*cstore, &mut resolver_outputs, krate, hir_arena);
+    let krate = lower_to_hir(
+        sess,
+        &mut definitions,
+        &*cstore,
+        &resolver_outputs,
+        resolver_for_lowering,
+        krate,
+        hir_arena,
+    );
 
     let query_result_on_disk_cache = rustc_incremental::load_query_result_cache(sess);
 

@@ -160,7 +160,12 @@ pub struct ResolverOutputs {
     /// exist under `std`. For example, wrote `str::from_utf8` instead of `std::str::from_utf8`.
     pub confused_type_with_std_module: FxHashMap<Span, Span>,
     pub registered_tools: RegisteredTools,
+}
 
+/// Resolutions that should only be used for lowering.
+/// This struct is meant to be consumed by lowering.
+#[derive(Debug)]
+pub struct ResolverAstLowering {
     pub legacy_const_generic_args: FxHashMap<DefId, Option<Vec<usize>>>,
 
     /// Resolutions for nodes that have a single resolution.
