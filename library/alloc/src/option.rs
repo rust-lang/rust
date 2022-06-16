@@ -522,8 +522,10 @@ impl<T: ?Sized> Option<&T> {
     /// # Examples
     ///
     /// ```
+    /// #![feature(option_owned)]
+    ///
     /// let s = "string";
-    /// let opt_s: Option<&str> = Some(x);
+    /// let opt_s: Option<&str> = Some(s);
     /// assert_eq!(opt_s, Some("string"));
     /// let owned: Option<String> = opt_s.owned();
     /// assert_eq!(owned, Some(String::from("string")));
@@ -556,8 +558,10 @@ impl<T: ?Sized> Option<&mut T> {
     /// # Examples
     ///
     /// ```
+    /// #![feature(option_owned)]
+    ///
     /// let s = "string";
-    /// let opt_s: Option<&str> = Some(x);
+    /// let opt_s: Option<&str> = Some(s);
     /// assert_eq!(opt_s, Some("string"));
     /// let owned: Option<String> = opt_s.owned();
     /// assert_eq!(owned, Some(String::from("string")));
