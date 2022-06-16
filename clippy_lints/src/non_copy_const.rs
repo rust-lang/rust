@@ -6,6 +6,7 @@ use std::ptr;
 
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::in_constant;
+use clippy_utils::macros::macro_backtrace;
 use if_chain::if_chain;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -17,7 +18,7 @@ use rustc_middle::mir::interpret::{ConstValue, ErrorHandled};
 use rustc_middle::ty::adjustment::Adjust;
 use rustc_middle::ty::{self, Const, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::{InnerSpan, Span, DUMMY_SP};
+use rustc_span::{sym, InnerSpan, Span, DUMMY_SP};
 use rustc_typeck::hir_ty_to_ty;
 
 // FIXME: this is a correctness problem but there's no suitable
@@ -250,8 +251,14 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst {
     fn check_item(&mut self, cx: &LateContext<'tcx>, it: &'tcx Item<'_>) {
         if let ItemKind::Const(hir_ty, body_id) = it.kind {
             let ty = hir_ty_to_ty(cx.tcx, hir_ty);
-
-            if is_unfrozen(cx, ty) && is_value_unfrozen_poly(cx, body_id, ty) {
+            if !macro_backtrace(it.span).last().map_or(false, |macro_call| {
+                matches!(
+                    cx.tcx.get_diagnostic_name(macro_call.def_id),
+                    Some(sym::thread_local_macro)
+                )
+            }) && is_unfrozen(cx, ty)
+                && is_value_unfrozen_poly(cx, body_id, ty)
+            {
                 lint(cx, Source::Item { item: it.span });
             }
         }
