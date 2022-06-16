@@ -1162,7 +1162,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is [`mem::needs_drop`](crate::mem::needs_drop).
     #[rustc_const_stable(feature = "const_needs_drop", since = "1.40.0")]
-    pub fn needs_drop<T>() -> bool;
+    pub fn needs_drop<T: ?Sized>() -> bool;
 
     /// Calculates the offset from a pointer.
     ///
