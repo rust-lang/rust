@@ -636,3 +636,109 @@ fn bar() -> Bar {
             "#]],
     )
 }
+
+#[test]
+fn completes_fn_in_pub_trait_generated_by_macro() {
+    check(
+        r#"
+mod other_mod {
+    macro_rules! make_method {
+        ($name:ident) => {
+            fn $name(&self) {}
+        };
+    }
+
+    pub trait MyTrait {
+        make_method! { by_macro }
+        fn not_by_macro(&self) {}
+    }
+
+    pub struct Foo {}
+
+    impl MyTrait for Foo {}
+}
+
+fn main() {
+    use other_mod::{Foo, MyTrait};
+    let f = Foo {};
+    f.$0
+}
+"#,
+        expect![[r#"
+            me by_macro() (as MyTrait) fn(&self)
+            me not_by_macro() (as MyTrait) fn(&self)
+        "#]],
+    )
+}
+
+#[test]
+fn completes_fn_in_pub_trait_generated_by_recursive_macro() {
+    check(
+        r#"
+mod other_mod {
+    macro_rules! make_method {
+        ($name:ident) => {
+            fn $name(&self) {}
+        };
+    }
+
+    macro_rules! make_trait {
+        () => {
+            pub trait MyTrait {
+                make_method! { by_macro }
+                fn not_by_macro(&self) {}
+            }
+        }
+    }
+
+    make_trait!();
+
+    pub struct Foo {}
+
+    impl MyTrait for Foo {}
+}
+
+fn main() {
+    use other_mod::{Foo, MyTrait};
+    let f = Foo {};
+    f.$0
+}
+"#,
+        expect![[r#"
+            me by_macro() (as MyTrait) fn(&self)
+            me not_by_macro() (as MyTrait) fn(&self)
+        "#]],
+    )
+}
+
+#[test]
+fn completes_const_in_pub_trait_generated_by_macro() {
+    check(
+        r#"
+mod other_mod {
+    macro_rules! make_const {
+        ($name:ident) => {
+            const $name: u8 = 1;
+        };
+    }
+
+    pub trait MyTrait {
+        make_const! { by_macro }
+    }
+
+    pub struct Foo {}
+
+    impl MyTrait for Foo {}
+}
+
+fn main() {
+    use other_mod::{Foo, MyTrait};
+    let f = Foo {};
+    Foo::$0
+}
+"#,
+        expect![[r#"
+            ct by_macro (as MyTrait) pub const by_macro: u8
+        "#]],
+    )
+}

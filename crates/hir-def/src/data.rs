@@ -40,6 +40,11 @@ impl FunctionData {
         let cfg_options = &crate_graph[krate].cfg_options;
         let item_tree = loc.id.item_tree(db);
         let func = &item_tree[loc.id.value];
+        let visibility = if let ItemContainerId::TraitId(trait_id) = loc.container {
+            db.trait_data(trait_id).visibility.clone()
+        } else {
+            item_tree[func.visibility].clone()
+        };
 
         let enabled_params = func
             .params
@@ -93,7 +98,7 @@ impl FunctionData {
             ret_type: func.ret_type.clone(),
             async_ret_type: func.async_ret_type.clone(),
             attrs: item_tree.attrs(db, krate, ModItem::from(loc.id.value).into()),
-            visibility: item_tree[func.visibility].clone(),
+            visibility,
             abi: func.abi.clone(),
             legacy_const_generics_indices,
             flags,
@@ -171,11 +176,16 @@ impl TypeAliasData {
         let loc = typ.lookup(db);
         let item_tree = loc.id.item_tree(db);
         let typ = &item_tree[loc.id.value];
+        let visibility = if let ItemContainerId::TraitId(trait_id) = loc.container {
+            db.trait_data(trait_id).visibility.clone()
+        } else {
+            item_tree[typ.visibility].clone()
+        };
 
         Arc::new(TypeAliasData {
             name: typ.name.clone(),
             type_ref: typ.type_ref.clone(),
-            visibility: item_tree[typ.visibility].clone(),
+            visibility,
             is_extern: matches!(loc.container, ItemContainerId::ExternBlockId(_)),
             bounds: typ.bounds.to_vec(),
         })
@@ -385,11 +395,16 @@ impl ConstData {
         let loc = konst.lookup(db);
         let item_tree = loc.id.item_tree(db);
         let konst = &item_tree[loc.id.value];
+        let visibility = if let ItemContainerId::TraitId(trait_id) = loc.container {
+            db.trait_data(trait_id).visibility.clone()
+        } else {
+            item_tree[konst.visibility].clone()
+        };
 
         Arc::new(ConstData {
             name: konst.name.clone(),
             type_ref: konst.type_ref.clone(),
-            visibility: item_tree[konst.visibility].clone(),
+            visibility,
         })
     }
 }

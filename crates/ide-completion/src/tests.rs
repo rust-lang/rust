@@ -65,7 +65,7 @@ pub(crate) const TEST_CONFIG: CompletionConfig = CompletionConfig {
     enable_postfix_completions: true,
     enable_imports_on_the_fly: true,
     enable_self_on_the_fly: true,
-    enable_private_editable: true,
+    enable_private_editable: false,
     callable: Some(CallableSnippets::FillArguments),
     snippet_cap: SnippetCap::new(true),
     insert_use: InsertUseConfig {
@@ -84,6 +84,12 @@ pub(crate) fn completion_list(ra_fixture: &str) -> String {
 
 pub(crate) fn completion_list_no_kw(ra_fixture: &str) -> String {
     completion_list_with_config(TEST_CONFIG, ra_fixture, false, None)
+}
+
+pub(crate) fn completion_list_no_kw_with_private_editable(ra_fixture: &str) -> String {
+    let mut config = TEST_CONFIG.clone();
+    config.enable_private_editable = true;
+    completion_list_with_config(config, ra_fixture, false, None)
 }
 
 pub(crate) fn completion_list_with_trigger_character(

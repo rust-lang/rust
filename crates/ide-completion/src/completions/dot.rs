@@ -117,10 +117,17 @@ fn complete_methods(
 mod tests {
     use expect_test::{expect, Expect};
 
-    use crate::tests::{check_edit, completion_list_no_kw};
+    use crate::tests::{
+        check_edit, completion_list_no_kw, completion_list_no_kw_with_private_editable,
+    };
 
     fn check(ra_fixture: &str, expect: Expect) {
         let actual = completion_list_no_kw(ra_fixture);
+        expect.assert_eq(&actual);
+    }
+
+    fn check_with_private_editable(ra_fixture: &str, expect: Expect) {
+        let actual = completion_list_no_kw_with_private_editable(ra_fixture);
         expect.assert_eq(&actual);
     }
 
@@ -202,10 +209,7 @@ pub mod m {
 fn foo(a: lib::m::A) { a.$0 }
 "#,
             expect![[r#"
-                fd crate_field   u32
-                fd private_field u32
-                fd pub_field     u32
-                fd super_field   u32
+                fd pub_field u32
             "#]],
         );
 
@@ -260,12 +264,110 @@ mod m {
 fn foo(a: lib::A) { a.$0 }
 "#,
             expect![[r#"
+                me pub_method() fn(&self)
+            "#]],
+        );
+        check(
+            r#"
+//- /lib.rs crate:lib new_source_root:library
+pub struct A {}
+mod m {
+    impl super::A {
+        fn private_method(&self) {}
+        pub(crate) fn crate_method(&self) {}
+        pub fn pub_method(&self) {}
+    }
+}
+//- /main.rs crate:main deps:lib new_source_root:local
+fn foo(a: lib::A) { a.$0 }
+"#,
+            expect![[r#"
+                me pub_method() fn(&self)
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_visibility_filtering_with_private_editable_enabled() {
+        check_with_private_editable(
+            r#"
+//- /lib.rs crate:lib new_source_root:local
+pub mod m {
+    pub struct A {
+        private_field: u32,
+        pub pub_field: u32,
+        pub(crate) crate_field: u32,
+        pub(super) super_field: u32,
+    }
+}
+//- /main.rs crate:main deps:lib new_source_root:local
+fn foo(a: lib::m::A) { a.$0 }
+"#,
+            expect![[r#"
+                fd crate_field   u32
+                fd private_field u32
+                fd pub_field     u32
+                fd super_field   u32
+            "#]],
+        );
+
+        check_with_private_editable(
+            r#"
+//- /lib.rs crate:lib new_source_root:library
+pub mod m {
+    pub struct A {
+        private_field: u32,
+        pub pub_field: u32,
+        pub(crate) crate_field: u32,
+        pub(super) super_field: u32,
+    }
+}
+//- /main.rs crate:main deps:lib new_source_root:local
+fn foo(a: lib::m::A) { a.$0 }
+"#,
+            expect![[r#"
+                fd pub_field u32
+            "#]],
+        );
+
+        check_with_private_editable(
+            r#"
+//- /lib.rs crate:lib new_source_root:library
+pub mod m {
+    pub struct A(
+        i32,
+        pub f64,
+    );
+}
+//- /main.rs crate:main deps:lib new_source_root:local
+fn foo(a: lib::m::A) { a.$0 }
+"#,
+            expect![[r#"
+                fd 1 f64
+            "#]],
+        );
+
+        check_with_private_editable(
+            r#"
+//- /lib.rs crate:lib new_source_root:local
+pub struct A {}
+mod m {
+    impl super::A {
+        fn private_method(&self) {}
+        pub(crate) fn crate_method(&self) {}
+        pub fn pub_method(&self) {}
+    }
+}
+//- /main.rs crate:main deps:lib new_source_root:local
+fn foo(a: lib::A) { a.$0 }
+"#,
+            expect![[r#"
                 me crate_method()   fn(&self)
                 me private_method() fn(&self)
                 me pub_method()     fn(&self)
             "#]],
         );
-        check(
+        check_with_private_editable(
             r#"
 //- /lib.rs crate:lib new_source_root:library
 pub struct A {}
