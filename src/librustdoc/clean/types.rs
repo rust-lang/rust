@@ -1841,7 +1841,7 @@ impl PrimitiveType {
                 Reference => [RefSimplifiedType(Mutability::Not), RefSimplifiedType(Mutability::Mut)].into_iter().collect(),
                 // FIXME: This will be wrong if we ever add inherent impls
                 // for function pointers.
-                Fn => ArrayVec::new(),
+                Fn => single(FunctionSimplifiedType(1)),
                 Never => single(NeverSimplifiedType),
             }
         })

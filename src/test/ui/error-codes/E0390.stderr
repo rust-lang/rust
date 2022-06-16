@@ -6,6 +6,14 @@ LL | impl *mut Foo {}
    |
    = help: consider using an extension trait instead
 
-error: aborting due to previous error
+error[E0390]: cannot define inherent `impl` for primitive types
+  --> $DIR/E0390.rs:7:6
+   |
+LL | impl fn(Foo) {}
+   |      ^^^^^^^
+   |
+   = help: consider using an extension trait instead
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0390`.

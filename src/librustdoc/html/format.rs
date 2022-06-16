@@ -1165,18 +1165,38 @@ impl clean::Impl {
 
             if let clean::Type::Tuple(types) = &self.for_ &&
                 let [clean::Type::Generic(name)] = &types[..] &&
-                (self.kind.is_fake_variadic() || self.kind.is_auto()) {
+                (self.kind.is_fake_variadic() || self.kind.is_auto())
+            {
                 // Hardcoded anchor library/core/src/primitive_docs.rs
                 // Link should match `# Trait implementations`
                 primitive_link_fragment(f, PrimitiveType::Tuple, &format!("({name}₁, {name}₂, …, {name}ₙ)"), "#trait-implementations-1", cx)?;
-            } else if let clean::Type::BareFunction(bare_fn) = &self.for_ &&
+            } else if let clean::BareFunction(bare_fn) = &self.for_ &&
                 let [clean::Argument { type_: clean::Type::Generic(name), .. }] = &bare_fn.decl.inputs.values[..] &&
-                (self.kind.is_fake_variadic() || self.kind.is_auto()) {
+                (self.kind.is_fake_variadic() || self.kind.is_auto())
+            {
                 // Hardcoded anchor library/core/src/primitive_docs.rs
                 // Link should match `# Trait implementations`
-                primitive_link_fragment(f, PrimitiveType::Tuple, &format!("fn ({name}₁, {name}₂, …, {name}ₙ)"), "#trait-implementations-1", cx)?;
-                // Not implemented.
-                assert!(!bare_fn.decl.c_variadic);
+
+                let hrtb = bare_fn.print_hrtb_with_space(cx);
+                let unsafety = bare_fn.unsafety.print_with_space();
+                let abi = print_abi_with_space(bare_fn.abi);
+                if f.alternate() {
+                    write!(
+                        f,
+                        "{hrtb:#}{unsafety}{abi:#}",
+                    )?;
+                } else {
+                    write!(
+                        f,
+                        "{hrtb}{unsafety}{abi}",
+                    )?;
+                }
+                let ellipsis = if bare_fn.decl.c_variadic {
+                    ", ..."
+                } else {
+                    ""
+                };
+                primitive_link_fragment(f, PrimitiveType::Tuple, &format!("fn ({name}₁, {name}₂, …, {name}ₙ{ellipsis})"), "#trait-implementations-1", cx)?;
                 // Write output.
                 if let clean::FnRetTy::Return(ty) = &bare_fn.decl.output {
                     write!(f, " -> ")?;
