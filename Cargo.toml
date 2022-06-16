@@ -65,3 +65,7 @@ rustfmt-config_proc_macro = { version = "0.2", path = "config_proc_macro" }
 rustc-workspace-hack = "1.0.0"
 
 # Rustc dependencies are loaded from the sysroot, Cargo doesn't know about them.
+
+[package.metadata.rust-analyzer]
+# This package uses #[feature(rustc_private)]
+rustc_private = true
