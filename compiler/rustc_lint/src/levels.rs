@@ -117,7 +117,9 @@ impl<'s> LintLevelsBuilder<'s> {
             };
             for id in ids {
                 // ForceWarn and Forbid cannot be overridden
-                if let Some((Level::ForceWarn | Level::Forbid, _)) = self.current_specs().get(&id) {
+                if let Some((Level::ForceWarn(_) | Level::Forbid, _)) =
+                    self.current_specs().get(&id)
+                {
                     continue;
                 }
 
@@ -226,11 +228,18 @@ impl<'s> LintLevelsBuilder<'s> {
             return;
         }
 
-        if let Level::ForceWarn = old_level {
-            self.current_specs_mut().insert(id, (old_level, old_src));
-        } else {
-            self.current_specs_mut().insert(id, (level, src));
-        }
+        match (old_level, level) {
+            // If the new level is an expectation store it in `ForceWarn`
+            (Level::ForceWarn(_), Level::Expect(expectation_id)) => self
+                .current_specs_mut()
+                .insert(id, (Level::ForceWarn(Some(expectation_id)), old_src)),
+            // Keep `ForceWarn` level but drop the expectation
+            (Level::ForceWarn(_), _) => {
+                self.current_specs_mut().insert(id, (Level::ForceWarn(None), old_src))
+            }
+            // Set the lint level as normal
+            _ => self.current_specs_mut().insert(id, (level, src)),
+        };
     }
 
     /// Pushes a list of AST lint attributes onto this context.
@@ -269,6 +278,7 @@ impl<'s> LintLevelsBuilder<'s> {
 
             let level = match Level::from_attr(attr) {
                 None => continue,
+                // This is the only lint level with a `LintExpectationId` that can be created from an attribute
                 Some(Level::Expect(unstable_id)) if let Some(hir_id) = source_hir_id => {
                     let stable_id = self.create_stable_id(unstable_id, hir_id, attr_index);
 

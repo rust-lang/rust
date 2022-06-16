@@ -324,7 +324,7 @@ impl LintStore {
         registered_tools: &RegisteredTools,
     ) {
         let (tool_name, lint_name_only) = parse_lint_and_tool_name(lint_name);
-        if lint_name_only == crate::WARNINGS.name_lower() && level == Level::ForceWarn {
+        if lint_name_only == crate::WARNINGS.name_lower() && matches!(level, Level::ForceWarn(_)) {
             struct_span_err!(
                 sess,
                 DUMMY_SP,
@@ -375,7 +375,7 @@ impl LintStore {
                 match level {
                     Level::Allow => "-A",
                     Level::Warn => "-W",
-                    Level::ForceWarn => "--force-warn",
+                    Level::ForceWarn(_) => "--force-warn",
                     Level::Deny => "-D",
                     Level::Forbid => "-F",
                     Level::Expect(_) => {

@@ -115,7 +115,7 @@ impl LintLevelSets {
 
         // Ensure that we never exceed the `--cap-lints` argument
         // unless the source is a --force-warn
-        level = if let LintLevelSource::CommandLine(_, Level::ForceWarn) = src {
+        level = if let LintLevelSource::CommandLine(_, Level::ForceWarn(_)) = src {
             level
         } else {
             cmp::min(level, self.lint_cap)
@@ -266,7 +266,7 @@ pub fn explain_lint_level_source(
                 Level::Deny => "-D",
                 Level::Forbid => "-F",
                 Level::Allow => "-A",
-                Level::ForceWarn => "--force-warn",
+                Level::ForceWarn(_) => "--force-warn",
                 Level::Expect(_) => {
                     unreachable!("the expect level does not have a commandline flag")
                 }
@@ -352,8 +352,14 @@ pub fn struct_lint_level<'s, 'd>(
                 // create a `DiagnosticBuilder` and continue as we would for warnings.
                 sess.struct_expect("", expect_id)
             }
-            (Level::Warn | Level::ForceWarn, Some(span)) => sess.struct_span_warn(span, ""),
-            (Level::Warn | Level::ForceWarn, None) => sess.struct_warn(""),
+            (Level::ForceWarn(Some(expect_id)), Some(span)) => {
+                sess.struct_span_warn_with_expectation(span, "", expect_id)
+            }
+            (Level::ForceWarn(Some(expect_id)), None) => {
+                sess.struct_warn_with_expectation("", expect_id)
+            }
+            (Level::Warn | Level::ForceWarn(None), Some(span)) => sess.struct_span_warn(span, ""),
+            (Level::Warn | Level::ForceWarn(None), None) => sess.struct_warn(""),
             (Level::Deny | Level::Forbid, Some(span)) => {
                 let mut builder = sess.diagnostic().struct_err_lint("");
                 builder.set_span(span);
@@ -398,7 +404,7 @@ pub fn struct_lint_level<'s, 'd>(
         explain_lint_level_source(lint, level, src, &mut err);
 
         let name = lint.name_lower();
-        let is_force_warn = matches!(level, Level::ForceWarn);
+        let is_force_warn = matches!(level, Level::ForceWarn(_));
         err.code(DiagnosticId::Lint { name, has_future_breakage, is_force_warn });
 
         if let Some(future_incompatible) = future_incompatible {
