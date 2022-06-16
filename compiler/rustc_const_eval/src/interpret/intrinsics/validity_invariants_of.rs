@@ -1,3 +1,4 @@
+use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::mir::interpret::{AllocRange, Allocation, ConstAllocation, Scalar as MirScalar};
 use rustc_middle::ty::layout::LayoutCx;
@@ -7,7 +8,7 @@ use rustc_target::abi::{
     Abi, FieldsShape, HasDataLayout, Integer, Primitive, Scalar, Size, TyAndLayout, WrappingRange,
 };
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 enum InvariantSize {
     U8,
     U16,
@@ -17,16 +18,14 @@ enum InvariantSize {
     Pointer,
 }
 
-#[derive(Debug, Clone, Copy)]
-struct Invariant {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+struct InvariantKey {
     offset: Size,
     size: InvariantSize,
-    valid_range_start: u128,
-    valid_range_end: u128,
 }
 
 // FIXME: Don't add duplicate invariants (maybe use a HashMap?)
-fn add_invariants<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, invs: &mut Vec<Invariant>, offset: Size) {
+fn add_invariants<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, invs: &mut FxHashMap<InvariantKey, WrappingRange>, offset: Size) {
     let x = tcx.layout_of(ParamEnvAnd { param_env: ParamEnv::reveal_all(), value: ty });
 
     if let Ok(layout) = x {
@@ -41,8 +40,10 @@ fn add_invariants<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, invs: &mut Vec<Invarian
                 Primitive::F64 => InvariantSize::U64,
                 Primitive::Pointer => InvariantSize::Pointer,
             };
-            let WrappingRange { start, end } = valid_range;
-            invs.push(Invariant { offset, size, valid_range_start: start, valid_range_end: end })
+
+            // Pick the first scalar we see, this means NonZeroU8(u8) ends up with only one
+            // invariant, the stricter one.
+            let _: Result<_, _> = invs.try_insert(InvariantKey { offset, size }, valid_range);
         }
 
         let param_env = ParamEnv::reveal_all();
@@ -90,7 +91,7 @@ pub(crate) fn alloc_validity_invariants_of<'tcx>(
     tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
 ) -> ConstAllocation<'tcx> {
-    let mut invs: Vec<Invariant> = Vec::new();
+    let mut invs = FxHashMap::default();
 
     let layout = tcx.data_layout();
     let validity_invariant = get_layout_of_invariant(tcx);
@@ -114,13 +115,13 @@ pub(crate) fn alloc_validity_invariants_of<'tcx>(
             .write_scalar(
                 &tcx,
                 offset_range,
-                MirScalar::from_machine_usize(invariant.offset.bytes(), &tcx).into(),
+                MirScalar::from_machine_usize(invariant.0.offset.bytes(), &tcx).into(),
             )
             .unwrap();
 
         let size_range = AllocRange { start: offset + size_off, size: Size::from_bytes(1) };
         alloc
-            .write_scalar(&tcx, size_range, MirScalar::from_u8(invariant.size as u8).into())
+            .write_scalar(&tcx, size_range, MirScalar::from_u8(invariant.0.size as u8).into())
             .unwrap();
 
         let offset_range = AllocRange { start: offset + start_off, size: Size::from_bytes(16) };
@@ -128,7 +129,7 @@ pub(crate) fn alloc_validity_invariants_of<'tcx>(
             .write_scalar(
                 &tcx,
                 offset_range,
-                MirScalar::from_u128(invariant.valid_range_start).into(),
+                MirScalar::from_u128(invariant.1.start).into(),
             )
             .unwrap();
 
@@ -137,7 +138,7 @@ pub(crate) fn alloc_validity_invariants_of<'tcx>(
             .write_scalar(
                 &tcx,
                 offset_range,
-                MirScalar::from_u128(invariant.valid_range_end).into(),
+                MirScalar::from_u128(invariant.1.end).into(),
             )
             .unwrap();
     }

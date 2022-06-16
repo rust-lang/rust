@@ -2140,6 +2140,7 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
 
 #[derive(Debug, Clone, Copy)]
 #[repr(u8)]
+#[allow(dead_code)] // https://github.com/rust-lang/rust/issues/85677
 enum InvariantSize {
     U8 = 0,
     U16 = 1,
