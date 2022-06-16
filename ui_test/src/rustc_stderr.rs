@@ -16,6 +16,7 @@ struct RustcMessage {
 
 #[derive(Copy, Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
 pub(crate) enum Level {
+    Ice = 5,
     Error = 4,
     Warn = 3,
     Help = 2,
@@ -52,6 +53,7 @@ impl std::str::FromStr for Level {
             "HELP" | "help" => Ok(Self::Help),
             "NOTE" | "note" => Ok(Self::Note),
             "failure-note" => Ok(Self::FailureNote),
+            "error: internal compiler error" => Ok(Self::Ice),
             _ => Err(format!("unknown level `{s}`")),
         }
     }
