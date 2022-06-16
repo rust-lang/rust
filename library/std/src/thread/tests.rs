@@ -316,3 +316,16 @@ fn test_scoped_threads_drop_result_before_join() {
     });
     assert!(actually_finished.load(Ordering::Relaxed));
 }
+
+#[test]
+fn test_scoped_threads_nll() {
+    // this is mostly a *compilation test* for this exact function:
+    fn foo(x: &u8) {
+        thread::scope(|s| {
+            s.spawn(|| drop(x));
+        });
+    }
+    // let's also run it for good measure
+    let x = 42_u8;
+    foo(&x);
+}
