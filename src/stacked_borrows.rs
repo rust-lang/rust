@@ -485,8 +485,7 @@ impl<'tcx> Stack {
             }
         } else {
             self.borrows.clear();
-            // TODO
-            // self.borrows.push(ItemOrUnknown::Unknown(global.next_ptr_id));
+            self.unknown_bottom = Some(global.next_ptr_id);
         }
 
         // Done.
@@ -541,6 +540,20 @@ impl<'tcx> Stack {
         let access =
             if new.perm.grants(AccessKind::Write) { AccessKind::Write } else { AccessKind::Read };
 
+        // Now we figure out which item grants our parent (`derived_from`) this kind of access.
+        // We use that to determine where to put the new item.
+        let granting_idx =
+        self.find_granting(access, derived_from, exposed_tags).map_err(|_| {
+            alloc_history.grant_error(
+                derived_from,
+                new,
+                alloc_id,
+                alloc_range,
+                offset,
+                self,
+            )
+        })?;
+
         // Compute where to put the new item.
         // Either way, we ensure that we insert the new item in a way such that between
         // `derived_from` and the new one, there are only items *compatible with* `derived_from`.
@@ -550,25 +563,17 @@ impl<'tcx> Stack {
                 "this case only makes sense for stack-like accesses"
             );
 
-            // Now we figure out which item grants our parent (`derived_from`) this kind of access.
-            // We use that to determine where to put the new item.
-            let granting_idx =
-                self.find_granting(access, derived_from, exposed_tags).map_err(|_| {
-                    alloc_history.grant_error(
-                        derived_from,
-                        new,
-                        alloc_id,
-                        alloc_range,
-                        offset,
-                        self,
-                    )
-                })?;
-
-            // SharedReadWrite can coexist with "existing loans", meaning they don't act like a write
-            // access.  Instead of popping the stack, we insert the item at the place the stack would
-            // be popped to (i.e., we insert it above all the write-compatible items).
-            // This ensures F2b by adding the new item below any potentially existing `SharedReadOnly`.
-            self.find_first_write_incompatible(granting_idx)
+            if derived_from.is_some() {
+                // SharedReadWrite can coexist with "existing loans", meaning they don't act like a write
+                // access.  Instead of popping the stack, we insert the item at the place the stack would
+                // be popped to (i.e., we insert it above all the write-compatible items).
+                // This ensures F2b by adding the new item below any potentially existing `SharedReadOnly`.
+                self.find_first_write_incompatible(granting_idx)
+            } else {
+                // TODO: is this correct
+                self.borrows.clear();
+                0
+            }
         } else {
             // A "safe" reborrow for a pointer that actually expects some aliasing guarantees.
             // Here, creating a reference actually counts as an access.
@@ -590,7 +595,7 @@ impl<'tcx> Stack {
             self.borrows.len()
         };
         // Put the new item there. As an optimization, deduplicate if it is equal to one of its new neighbors.
-        if self.borrows[new_idx - 1] == new || self.borrows.get(new_idx) == Some(&new) {
+        if self.borrows.get(new_idx) == Some(&new) || new_idx > 0 && self.borrows.get(new_idx - 1) == Some(&new) {
             // Optimization applies, done.
             trace!("reborrow: avoiding adding redundant item {:?}", new);
         } else {

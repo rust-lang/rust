@@ -4,6 +4,8 @@ use rustc_middle::mir::interpret::{AllocId, AllocRange};
 use rustc_span::{Span, SpanData};
 use rustc_target::abi::Size;
 
+use core::fmt::Debug;
+
 use crate::helpers::{CurrentSpan, HexRange};
 use crate::stacked_borrows::{err_sb_ub, AccessKind, Permission};
 use crate::Item;
@@ -204,9 +206,16 @@ impl AllocHistory {
         error_offset: Size,
         stack: &Stack,
     ) -> InterpError<'tcx> {
+        // TODO: Fix this properly
+        let z = &derived_from;
+        let f = if let Some(ref t) = z {
+            t as &dyn Debug
+        } else {
+            &"<wildcard>" as &dyn Debug
+        };
         let action = format!(
             "trying to reborrow {:?} for {:?} permission at {}[{:#x}]",
-            derived_from,
+            f,
             new.perm,
             alloc_id,
             error_offset.bytes(),
@@ -230,10 +239,16 @@ impl AllocHistory {
         error_offset: Size,
         stack: &Stack,
     ) -> InterpError<'tcx> {
+        let z = &tag;
+        let f = if let Some(ref t) = z {
+            t as &dyn Debug
+        } else {
+            &"<wildcard>" as &dyn Debug
+        };
         let action = format!(
             "attempting a {} using {:?} at {}[{:#x}]",
             access,
-            tag,
+            f,
             alloc_id,
             error_offset.bytes(),
         );
