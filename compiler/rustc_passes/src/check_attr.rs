@@ -706,14 +706,20 @@ impl CheckAttrVisitor<'_> {
         true
     }
 
-    fn check_doc_tuple_variadic(&self, meta: &NestedMetaItem, hir_id: HirId) -> bool {
+    fn check_doc_fake_variadic(&self, meta: &NestedMetaItem, hir_id: HirId) -> bool {
         match self.tcx.hir().find(hir_id).and_then(|node| match node {
             hir::Node::Item(item) => Some(&item.kind),
             _ => None,
         }) {
             Some(ItemKind::Impl(ref i)) => {
-                if !matches!(&i.self_ty.kind, hir::TyKind::Tup([_])) {
-                    self.tcx.sess.emit_err(errors::DocTupleVariadicNotFirst { span: meta.span() });
+                let is_valid = matches!(&i.self_ty.kind, hir::TyKind::Tup([_]))
+                    || if let hir::TyKind::BareFn(bare_fn_ty) = &i.self_ty.kind {
+                        bare_fn_ty.decl.inputs.len() == 1
+                    } else {
+                        false
+                    };
+                if !is_valid {
+                    self.tcx.sess.emit_err(errors::DocFakeVariadicNotValid { span: meta.span() });
                     return false;
                 }
             }
@@ -887,9 +893,9 @@ impl CheckAttrVisitor<'_> {
                             is_valid = false
                         }
 
-                        sym::tuple_variadic
-                            if !self.check_attr_not_crate_level(meta, hir_id, "tuple_variadic")
-                                || !self.check_doc_tuple_variadic(meta, hir_id) =>
+                        sym::fake_variadic
+                            if !self.check_attr_not_crate_level(meta, hir_id, "fake_variadic")
+                                || !self.check_doc_fake_variadic(meta, hir_id) =>
                         {
                             is_valid = false
                         }
@@ -939,7 +945,7 @@ impl CheckAttrVisitor<'_> {
                         | sym::notable_trait
                         | sym::passes
                         | sym::plugins
-                        | sym::tuple_variadic => {}
+                        | sym::fake_variadic => {}
 
                         sym::test => {
                             if !self.check_test_attr(meta, hir_id) {

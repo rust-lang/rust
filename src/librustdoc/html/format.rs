@@ -1165,10 +1165,23 @@ impl clean::Impl {
 
             if let clean::Type::Tuple(types) = &self.for_ &&
                 let [clean::Type::Generic(name)] = &types[..] &&
-                (self.kind.is_tuple_variadic() || self.kind.is_auto()) {
+                (self.kind.is_fake_variadic() || self.kind.is_auto()) {
                 // Hardcoded anchor library/core/src/primitive_docs.rs
                 // Link should match `# Trait implementations`
                 primitive_link_fragment(f, PrimitiveType::Tuple, &format!("({name}₁, {name}₂, …, {name}ₙ)"), "#trait-implementations-1", cx)?;
+            } else if let clean::Type::BareFunction(bare_fn) = &self.for_ &&
+                let [clean::Argument { type_: clean::Type::Generic(name), .. }] = &bare_fn.decl.inputs.values[..] &&
+                (self.kind.is_fake_variadic() || self.kind.is_auto()) {
+                // Hardcoded anchor library/core/src/primitive_docs.rs
+                // Link should match `# Trait implementations`
+                primitive_link_fragment(f, PrimitiveType::Tuple, &format!("fn ({name}₁, {name}₂, …, {name}ₙ)"), "#trait-implementations-1", cx)?;
+                // Not implemented.
+                assert!(!bare_fn.decl.c_variadic);
+                // Write output.
+                if let clean::FnRetTy::Return(ty) = &bare_fn.decl.output {
+                    write!(f, " -> ")?;
+                    fmt_type(ty, f, use_absolute, cx)?;
+                }
             } else if let Some(ty) = self.kind.as_blanket_ty() {
                 fmt_type(ty, f, use_absolute, cx)?;
             } else {

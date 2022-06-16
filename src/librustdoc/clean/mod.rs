@@ -2005,8 +2005,8 @@ fn clean_impl<'tcx>(
             for_,
             items,
             polarity: tcx.impl_polarity(def_id),
-            kind: if utils::has_doc_flag(tcx, def_id.to_def_id(), sym::tuple_variadic) {
-                ImplKind::TupleVaradic
+            kind: if utils::has_doc_flag(tcx, def_id.to_def_id(), sym::fake_variadic) {
+                ImplKind::FakeVaradic
             } else {
                 ImplKind::Normal
             },

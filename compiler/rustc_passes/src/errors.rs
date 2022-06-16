@@ -212,8 +212,8 @@ pub struct DocKeywordInvalidIdent {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(passes::doc_tuple_variadic_not_first)]
-pub struct DocTupleVariadicNotFirst {
+#[error(passes::doc_fake_variadic_not_valid)]
+pub struct DocFakeVariadicNotValid {
     #[primary_span]
     pub span: Span,
 }

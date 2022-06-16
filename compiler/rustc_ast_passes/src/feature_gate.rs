@@ -402,8 +402,8 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                     gate_feature_post!(self, rustdoc_internals, attr.span, msg);
                 }
 
-                if nested_meta.has_name(sym::tuple_variadic) {
-                    let msg = "`#[doc(tuple_variadic)]` is meant for internal use only";
+                if nested_meta.has_name(sym::fake_variadic) {
+                    let msg = "`#[doc(fake_variadic)]` is meant for internal use only";
                     gate_feature_post!(self, rustdoc_internals, attr.span, msg);
                 }
             }

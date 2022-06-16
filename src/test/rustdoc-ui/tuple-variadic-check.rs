@@ -3,13 +3,13 @@
 trait Mine {}
 
 // This one is fine
-#[doc(tuple_variadic)]
+#[doc(fake_variadic)]
 impl<T> Mine for (T,) {}
 
 trait Mine2 {}
 
 // This one is not
-#[doc(tuple_variadic)] //~ ERROR
+#[doc(fake_variadic)] //~ ERROR
 impl<T, U> Mine for (T,U) {}
 
 fn main() {}

@@ -506,8 +506,8 @@ pub(crate) fn build_impl(
             for_,
             items: trait_items,
             polarity,
-            kind: if utils::has_doc_flag(tcx, did, sym::tuple_variadic) {
-                ImplKind::TupleVaradic
+            kind: if utils::has_doc_flag(tcx, did, sym::fake_variadic) {
+                ImplKind::FakeVaradic
             } else {
                 ImplKind::Normal
             },

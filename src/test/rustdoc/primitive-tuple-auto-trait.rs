@@ -16,7 +16,7 @@
 // @has - '//h2[@id="trait-implementations-1"]' 'Trait implementations'
 /// # Trait implementations
 ///
-/// This header is hard-coded in the HTML format linking for `#[doc(tuple_variadics)]`.
+/// This header is hard-coded in the HTML format linking for `#[doc(fake_variadics)]`.
 /// To make sure it gets linked correctly, we need to make sure the hardcoded anchor
 /// in the code matches what rustdoc generates for the header.
 mod tuple_prim {}
