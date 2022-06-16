@@ -140,8 +140,6 @@ declare_clippy_lint! {
     /// from a memory access perspective but will cause bugs at runtime if they
     /// are held in such a way.
     ///
-    /// ### Known problems
-    ///
     /// ### Example
     ///
     /// ```toml

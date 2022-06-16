@@ -10,7 +10,7 @@ note: the lint level is defined here
    |
 LL | #![deny(clippy::if_same_then_else, clippy::branches_sharing_code)]
    |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: consider moving the start statements out like this
+help: consider moving these statements before the if
    |
 LL ~     println!("Hello World!");
 LL +     if true {
@@ -25,8 +25,8 @@ LL | |         println!("The value y was set to: `{}`", y);
 LL | |         let _z = y;
    | |___________________^
    |
-   = warning: Some moved values might need to be renamed to avoid wrong references
-help: consider moving the start statements out like this
+   = warning: some moved values might need to be renamed to avoid wrong references
+help: consider moving these statements before the if
    |
 LL ~     let y = 9;
 LL +     println!("The value y was set to: `{}`", y);
@@ -41,7 +41,7 @@ LL | /     let _ = if x == 7 {
 LL | |         let y = 16;
    | |___________________^
    |
-help: consider moving the start statements out like this
+help: consider moving these statements before the if
    |
 LL ~     let y = 16;
 LL +     let _ = if x == 7 {
@@ -55,8 +55,8 @@ LL | |         let used_value_name = "Different type";
 LL | |         println!("Str: {}", used_value_name);
    | |_____________________________________________^
    |
-   = warning: Some moved values might need to be renamed to avoid wrong references
-help: consider moving the start statements out like this
+   = warning: some moved values might need to be renamed to avoid wrong references
+help: consider moving these statements before the if
    |
 LL ~     let used_value_name = "Different type";
 LL +     println!("Str: {}", used_value_name);
@@ -71,8 +71,8 @@ LL | |         let can_be_overridden = "Move me";
 LL | |         println!("I'm also moveable");
    | |______________________________________^
    |
-   = warning: Some moved values might need to be renamed to avoid wrong references
-help: consider moving the start statements out like this
+   = warning: some moved values might need to be renamed to avoid wrong references
+help: consider moving these statements before the if
    |
 LL ~     let can_be_overridden = "Move me";
 LL +     println!("I'm also moveable");
@@ -87,7 +87,7 @@ LL | |         println!("This should trigger the `SHARED_CODE_IN_IF_BLOCKS` lint
 LL | |         println!("Because `IF_SAME_THEN_ELSE` is allowed here");
    | |________________________________________________________________^
    |
-help: consider moving the start statements out like this
+help: consider moving these statements before the if
    |
 LL ~     println!("This should trigger the `SHARED_CODE_IN_IF_BLOCKS` lint.");
 LL +     println!("Because `IF_SAME_THEN_ELSE` is allowed here");

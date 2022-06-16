@@ -27,16 +27,17 @@ declare_clippy_lint! {
     /// ```
     ///
     /// ### Example
-    /// Bad:
     /// ```rust
     /// let mut v = Vec::<String>::new();
-    /// let _ = v.iter_mut().filter(|&ref a| a.is_empty());
+    /// # #[allow(unused)]
+    /// v.iter_mut().filter(|&ref a| a.is_empty());
     /// ```
     ///
-    /// Good:
+    /// Use instead:
     /// ```rust
     /// let mut v = Vec::<String>::new();
-    /// let _ = v.iter_mut().filter(|a| a.is_empty());
+    /// # #[allow(unused)]
+    /// v.iter_mut().filter(|a| a.is_empty());
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub NEEDLESS_BORROWED_REFERENCE,

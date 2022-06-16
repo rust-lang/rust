@@ -143,6 +143,25 @@ jobs:
       env:
         OS: ${{ runner.os }}
 
+  metadata_collection:
+    needs: base
+    runs-on: ubuntu-latest
+
+    steps:
+     # Setup
+    - uses: rust-lang/simpleinfra/github-actions/cancel-outdated-builds@master
+      with:
+        github_token: "${{ secrets.github_token }}"
+
+    - name: Checkout
+      uses: actions/checkout@v3.0.2
+
+    - name: Install toolchain
+      run: rustup show active-toolchain
+
+    - name: Test metadata collection
+      run: cargo collect-metadata
+
   integration_build:
     needs: changelog
     runs-on: ubuntu-latest

@@ -18,15 +18,16 @@ declare_clippy_lint! {
     /// Checks for literal calls to `Default::default()`.
     ///
     /// ### Why is this bad?
-    /// It's more clear to the reader to use the name of the type whose default is
-    /// being gotten than the generic `Default`.
+    /// It's easier for the reader if the name of the type is used, rather than the
+    /// generic `Default`.
     ///
     /// ### Example
     /// ```rust
-    /// // Bad
     /// let s: String = Default::default();
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
     /// let s = String::default();
     /// ```
     #[clippy::version = "pre 1.29.0"]
@@ -47,13 +48,13 @@ declare_clippy_lint! {
     /// Assignments to patterns that are of tuple type are not linted.
     ///
     /// ### Example
-    /// Bad:
     /// ```
     /// # #[derive(Default)]
     /// # struct A { i: i32 }
     /// let mut a: A = Default::default();
     /// a.i = 42;
     /// ```
+    ///
     /// Use instead:
     /// ```
     /// # #[derive(Default)]

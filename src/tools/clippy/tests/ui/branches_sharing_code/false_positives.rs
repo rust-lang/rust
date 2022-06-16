@@ -25,4 +25,17 @@ impl FooBar {
     fn baz(&mut self) {}
 }
 
-fn main() {}
+fn foo(x: u32, y: u32) -> u32 {
+    x / y
+}
+
+fn main() {
+    let x = (1, 2);
+    let _ = if true {
+        let (x, y) = x;
+        foo(x, y)
+    } else {
+        let (y, x) = x;
+        foo(x, y)
+    };
+}

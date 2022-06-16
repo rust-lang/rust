@@ -1,7 +1,7 @@
-use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::diagnostics::span_lint_hir_and_then;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{Impl, ItemKind, Node, Path, QPath, TraitRef, TyKind};
+use rustc_hir::{HirId, Impl, ItemKind, Node, Path, QPath, TraitRef, TyKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::AssocKind;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -42,11 +42,12 @@ declare_clippy_lint! {
 declare_lint_pass!(SameNameMethod => [SAME_NAME_METHOD]);
 
 struct ExistingName {
-    impl_methods: BTreeMap<Symbol, Span>,
+    impl_methods: BTreeMap<Symbol, (Span, HirId)>,
     trait_methods: BTreeMap<Symbol, Vec<Span>>,
 }
 
 impl<'tcx> LateLintPass<'tcx> for SameNameMethod {
+    #[expect(clippy::too_many_lines)]
     fn check_crate_post(&mut self, cx: &LateContext<'tcx>) {
         let mut map = FxHashMap::<Res, ExistingName>::default();
 
@@ -97,10 +98,11 @@ impl<'tcx> LateLintPass<'tcx> for SameNameMethod {
                         };
 
                         let mut check_trait_method = |method_name: Symbol, trait_method_span: Span| {
-                            if let Some(impl_span) = existing_name.impl_methods.get(&method_name) {
-                                span_lint_and_then(
+                            if let Some((impl_span, hir_id)) = existing_name.impl_methods.get(&method_name) {
+                                span_lint_hir_and_then(
                                     cx,
                                     SAME_NAME_METHOD,
+                                    *hir_id,
                                     *impl_span,
                                     "method's name is the same as an existing method in a trait",
                                     |diag| {
@@ -136,10 +138,12 @@ impl<'tcx> LateLintPass<'tcx> for SameNameMethod {
                         }) {
                             let method_name = impl_item_ref.ident.name;
                             let impl_span = impl_item_ref.span;
+                            let hir_id = impl_item_ref.id.hir_id();
                             if let Some(trait_spans) = existing_name.trait_methods.get(&method_name) {
-                                span_lint_and_then(
+                                span_lint_hir_and_then(
                                     cx,
                                     SAME_NAME_METHOD,
+                                    hir_id,
                                     impl_span,
                                     "method's name is the same as an existing method in a trait",
                                     |diag| {
@@ -152,7 +156,7 @@ impl<'tcx> LateLintPass<'tcx> for SameNameMethod {
                                     },
                                 );
                             }
-                            existing_name.impl_methods.insert(method_name, impl_span);
+                            existing_name.impl_methods.insert(method_name, (impl_span, hir_id));
                         }
                     },
                 }
