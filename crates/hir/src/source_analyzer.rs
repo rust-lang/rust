@@ -600,13 +600,11 @@ fn scope_for_offset(
             .filter(|it| it.value.kind() == SyntaxKind::MACRO_CALL)?;
             Some((source.value.text_range(), scope))
         })
-        // find containing scope
-        .min_by_key(|(expr_range, _scope)| {
-            (
-                !(expr_range.start() <= offset.value && offset.value <= expr_range.end()),
-                expr_range.len(),
-            )
+        .filter(|(expr_range, _scope)| {
+            expr_range.start() <= offset.value && offset.value <= expr_range.end()
         })
+        // find containing scope
+        .min_by_key(|(expr_range, _scope)| expr_range.len())
         .map(|(expr_range, scope)| {
             adjust(db, scopes, source_map, expr_range, offset).unwrap_or(*scope)
         })

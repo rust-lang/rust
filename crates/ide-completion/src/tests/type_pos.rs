@@ -90,6 +90,32 @@ fn x<'lt, T, const C: usize>() -> $0
 }
 
 #[test]
+fn fn_return_type2() {
+    check(
+        r#"
+fn foo() -> B$0 {
+    struct Bar;
+}
+"#,
+        expect![[r#"
+        en Enum
+        ma makro!(…) macro_rules! makro
+        md module
+        st Record
+        st Tuple
+        st Unit
+        tt Trait
+        un Union
+        bt u32
+        it ()
+        kw crate::
+        kw self::
+        kw super::
+    "#]],
+    )
+}
+
+#[test]
 fn inferred_type_const() {
     check(
         r#"

@@ -513,7 +513,6 @@ fn quux(x: i32) {
 ",
         expect![[r#"
             fn quux(…)   fn(i32)
-            lc x         i32
             ma m!(…)     macro_rules! m
             bt u32
             kw crate::
