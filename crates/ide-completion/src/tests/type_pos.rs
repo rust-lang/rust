@@ -90,6 +90,37 @@ fn x<'lt, T, const C: usize>() -> $0
 }
 
 #[test]
+fn fn_return_type_no_local_items() {
+    check(
+        r#"
+fn foo() -> B$0 {
+    struct Bar;
+    enum Baz {}
+    union Bax {
+        i: i32,
+        f: f32
+    }
+}
+"#,
+        expect![[r#"
+        en Enum
+        ma makro!(…) macro_rules! makro
+        md module
+        st Record
+        st Tuple
+        st Unit
+        tt Trait
+        un Union
+        bt u32
+        it ()
+        kw crate::
+        kw self::
+        kw super::
+    "#]],
+    )
+}
+
+#[test]
 fn inferred_type_const() {
     check(
         r#"

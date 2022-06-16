@@ -67,7 +67,10 @@ impl SourceAnalyzer {
         let scopes = db.expr_scopes(def);
         let scope = match offset {
             None => scope_for(&scopes, &source_map, node),
-            Some(offset) => scope_for_offset(db, &scopes, &source_map, node.with_value(offset)),
+            Some(offset) => {
+                let file_id = node.file_id.original_file(db.upcast());
+                scope_for_offset(db, &scopes, &source_map, InFile::new(file_id.into(), offset))
+            }
         };
         let resolver = resolver_for_scope(db.upcast(), def, scope);
         SourceAnalyzer {
@@ -88,7 +91,10 @@ impl SourceAnalyzer {
         let scopes = db.expr_scopes(def);
         let scope = match offset {
             None => scope_for(&scopes, &source_map, node),
-            Some(offset) => scope_for_offset(db, &scopes, &source_map, node.with_value(offset)),
+            Some(offset) => {
+                let file_id = node.file_id.original_file(db.upcast());
+                scope_for_offset(db, &scopes, &source_map, InFile::new(file_id.into(), offset))
+            }
         };
         let resolver = resolver_for_scope(db.upcast(), def, scope);
         SourceAnalyzer { resolver, def: Some((def, body, source_map)), infer: None, file_id }
@@ -600,13 +606,11 @@ fn scope_for_offset(
             .filter(|it| it.value.kind() == SyntaxKind::MACRO_CALL)?;
             Some((source.value.text_range(), scope))
         })
-        // find containing scope
-        .min_by_key(|(expr_range, _scope)| {
-            (
-                !(expr_range.start() <= offset.value && offset.value <= expr_range.end()),
-                expr_range.len(),
-            )
+        .filter(|(expr_range, _scope)| {
+            expr_range.start() <= offset.value && offset.value <= expr_range.end()
         })
+        // find containing scope
+        .min_by_key(|(expr_range, _scope)| expr_range.len())
         .map(|(expr_range, scope)| {
             adjust(db, scopes, source_map, expr_range, offset).unwrap_or(*scope)
         })
