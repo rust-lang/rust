@@ -1775,30 +1775,34 @@ impl<'a> Parser<'a> {
             span,
             "macros that expand to items must be delimited with braces or followed by a semicolon",
         );
-        if self.unclosed_delims.is_empty() {
-            let DelimSpan { open, close } = match args {
-                MacArgs::Empty | MacArgs::Eq(..) => unreachable!(),
-                MacArgs::Delimited(dspan, ..) => *dspan,
-            };
-            err.multipart_suggestion(
-                "change the delimiters to curly braces",
-                vec![(open, "{".to_string()), (close, '}'.to_string())],
+        // FIXME: This will make us not emit the help even for declarative
+        // macros within the same crate (that we can fix), which is sad.
+        if !span.from_expansion() {
+            if self.unclosed_delims.is_empty() {
+                let DelimSpan { open, close } = match args {
+                    MacArgs::Empty | MacArgs::Eq(..) => unreachable!(),
+                    MacArgs::Delimited(dspan, ..) => *dspan,
+                };
+                err.multipart_suggestion(
+                    "change the delimiters to curly braces",
+                    vec![(open, "{".to_string()), (close, '}'.to_string())],
+                    Applicability::MaybeIncorrect,
+                );
+            } else {
+                err.span_suggestion(
+                    span,
+                    "change the delimiters to curly braces",
+                    " { /* items */ }",
+                    Applicability::HasPlaceholders,
+                );
+            }
+            err.span_suggestion(
+                span.shrink_to_hi(),
+                "add a semicolon",
+                ';',
                 Applicability::MaybeIncorrect,
             );
-        } else {
-            err.span_suggestion(
-                span,
-                "change the delimiters to curly braces",
-                " { /* items */ }",
-                Applicability::HasPlaceholders,
-            );
         }
-        err.span_suggestion(
-            span.shrink_to_hi(),
-            "add a semicolon",
-            ';',
-            Applicability::MaybeIncorrect,
-        );
         err.emit();
     }
 
