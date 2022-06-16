@@ -902,6 +902,47 @@ where
             .0
     }
 
+    /// Gets the given value's corresponding entry in the set for in-place manipulation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashSet;
+    /// use hashbrown::hash_set::Entry::*;
+    ///
+    /// let mut singles = HashSet::new();
+    /// let mut dupes = HashSet::new();
+    ///
+    /// for ch in "a short treatise on fungi".chars() {
+    ///     if let Vacant(dupe_entry) = dupes.entry(ch) {
+    ///         // We haven't already seen a duplicate, so
+    ///         // check if we've at least seen it once.
+    ///         match singles.entry(ch) {
+    ///             Vacant(single_entry) => {
+    ///                 // We found a new character for the first time.
+    ///                 single_entry.insert()
+    ///             }
+    ///             Occupied(single_entry) => {
+    ///                 // We've already seen this once, "move" it to dupes.
+    ///                 single_entry.remove();
+    ///                 dupe_entry.insert();
+    ///             }
+    ///         }
+    ///     }
+    /// }
+    ///
+    /// assert!(!singles.contains(&'t') && dupes.contains(&'t'));
+    /// assert!(singles.contains(&'u') && !dupes.contains(&'u'));
+    /// assert!(!singles.contains(&'v') && !dupes.contains(&'v'));
+    /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub fn entry(&mut self, value: T) -> Entry<'_, T, S, A> {
+        match self.map.entry(value) {
+            map::Entry::Occupied(entry) => Entry::Occupied(OccupiedEntry { inner: entry }),
+            map::Entry::Vacant(entry) => Entry::Vacant(VacantEntry { inner: entry }),
+        }
+    }
+
     /// Returns `true` if `self` has no elements in common with `other`.
     /// This is equivalent to checking for an empty intersection.
     ///
@@ -1843,6 +1884,406 @@ where
     #[cfg_attr(feature = "inline-more", inline)]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.iter.size_hint()
+    }
+}
+
+/// A view into a single entry in a set, which may either be vacant or occupied.
+///
+/// This `enum` is constructed from the [`entry`] method on [`HashSet`].
+///
+/// [`HashSet`]: struct.HashSet.html
+/// [`entry`]: struct.HashSet.html#method.entry
+///
+/// # Examples
+///
+/// ```
+/// use hashbrown::hash_set::{Entry, HashSet, OccupiedEntry};
+///
+/// let mut set = HashSet::new();
+/// set.extend(["a", "b", "c"]);
+/// assert_eq!(set.len(), 3);
+///
+/// // Existing value (insert)
+/// let entry: Entry<_, _> = set.entry("a");
+/// let _raw_o: OccupiedEntry<_, _> = entry.insert();
+/// assert_eq!(set.len(), 3);
+/// // Nonexistent value (insert)
+/// set.entry("d").insert();
+///
+/// // Existing value (or_insert)
+/// set.entry("b").or_insert();
+/// // Nonexistent value (or_insert)
+/// set.entry("e").or_insert();
+///
+/// println!("Our HashSet: {:?}", set);
+///
+/// let mut vec: Vec<_> = set.iter().copied().collect();
+/// // The `Iter` iterator produces items in arbitrary order, so the
+/// // items must be sorted to test them against a sorted array.
+/// vec.sort_unstable();
+/// assert_eq!(vec, ["a", "b", "c", "d", "e"]);
+/// ```
+pub enum Entry<'a, T, S, A = Global>
+where
+    A: Allocator + Clone,
+{
+    /// An occupied entry.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::hash_set::{Entry, HashSet};
+    /// let mut set: HashSet<_> = ["a", "b"].into();
+    ///
+    /// match set.entry("a") {
+    ///     Entry::Vacant(_) => unreachable!(),
+    ///     Entry::Occupied(_) => { }
+    /// }
+    /// ```
+    Occupied(OccupiedEntry<'a, T, S, A>),
+
+    /// A vacant entry.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::hash_set::{Entry, HashSet};
+    /// let mut set: HashSet<&str> = HashSet::new();
+    ///
+    /// match set.entry("a") {
+    ///     Entry::Occupied(_) => unreachable!(),
+    ///     Entry::Vacant(_) => { }
+    /// }
+    /// ```
+    Vacant(VacantEntry<'a, T, S, A>),
+}
+
+impl<T: fmt::Debug, S, A: Allocator + Clone> fmt::Debug for Entry<'_, T, S, A> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match *self {
+            Entry::Vacant(ref v) => f.debug_tuple("Entry").field(v).finish(),
+            Entry::Occupied(ref o) => f.debug_tuple("Entry").field(o).finish(),
+        }
+    }
+}
+
+/// A view into an occupied entry in a `HashSet`.
+/// It is part of the [`Entry`] enum.
+///
+/// [`Entry`]: enum.Entry.html
+///
+/// # Examples
+///
+/// ```
+/// use hashbrown::hash_set::{Entry, HashSet, OccupiedEntry};
+///
+/// let mut set = HashSet::new();
+/// set.extend(["a", "b", "c"]);
+///
+/// let _entry_o: OccupiedEntry<_, _> = set.entry("a").insert();
+/// assert_eq!(set.len(), 3);
+///
+/// // Existing key
+/// match set.entry("a") {
+///     Entry::Vacant(_) => unreachable!(),
+///     Entry::Occupied(view) => {
+///         assert_eq!(view.get(), &"a");
+///     }
+/// }
+///
+/// assert_eq!(set.len(), 3);
+///
+/// // Existing key (take)
+/// match set.entry("c") {
+///     Entry::Vacant(_) => unreachable!(),
+///     Entry::Occupied(view) => {
+///         assert_eq!(view.remove(), "c");
+///     }
+/// }
+/// assert_eq!(set.get(&"c"), None);
+/// assert_eq!(set.len(), 2);
+/// ```
+pub struct OccupiedEntry<'a, T, S, A: Allocator + Clone = Global> {
+    inner: map::OccupiedEntry<'a, T, (), S, A>,
+}
+
+impl<T: fmt::Debug, S, A: Allocator + Clone> fmt::Debug for OccupiedEntry<'_, T, S, A> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("OccupiedEntry")
+            .field("value", self.get())
+            .finish()
+    }
+}
+
+/// A view into a vacant entry in a `HashSet`.
+/// It is part of the [`Entry`] enum.
+///
+/// [`Entry`]: enum.Entry.html
+///
+/// # Examples
+///
+/// ```
+/// use hashbrown::hash_set::{Entry, HashSet, VacantEntry};
+///
+/// let mut set = HashSet::<&str>::new();
+///
+/// let entry_v: VacantEntry<_, _> = match set.entry("a") {
+///     Entry::Vacant(view) => view,
+///     Entry::Occupied(_) => unreachable!(),
+/// };
+/// entry_v.insert();
+/// assert!(set.contains("a") && set.len() == 1);
+///
+/// // Nonexistent key (insert)
+/// match set.entry("b") {
+///     Entry::Vacant(view) => view.insert(),
+///     Entry::Occupied(_) => unreachable!(),
+/// }
+/// assert!(set.contains("b") && set.len() == 2);
+/// ```
+pub struct VacantEntry<'a, T, S, A: Allocator + Clone = Global> {
+    inner: map::VacantEntry<'a, T, (), S, A>,
+}
+
+impl<T: fmt::Debug, S, A: Allocator + Clone> fmt::Debug for VacantEntry<'_, T, S, A> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("VacantEntry").field(self.get()).finish()
+    }
+}
+
+impl<'a, T, S, A: Allocator + Clone> Entry<'a, T, S, A> {
+    /// Sets the value of the entry, and returns an OccupiedEntry.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashSet;
+    ///
+    /// let mut set: HashSet<&str> = HashSet::new();
+    /// let entry = set.entry("horseyland").insert();
+    ///
+    /// assert_eq!(entry.get(), &"horseyland");
+    /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub fn insert(self) -> OccupiedEntry<'a, T, S, A>
+    where
+        T: Hash,
+        S: BuildHasher,
+    {
+        match self {
+            Entry::Occupied(entry) => entry,
+            Entry::Vacant(entry) => entry.insert_entry(),
+        }
+    }
+
+    /// Ensures a value is in the entry by inserting if it was vacant.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashSet;
+    ///
+    /// let mut set: HashSet<&str> = HashSet::new();
+    ///
+    /// // nonexistent key
+    /// set.entry("poneyland").or_insert();
+    /// assert!(set.contains("poneyland"));
+    ///
+    /// // existing key
+    /// set.entry("poneyland").or_insert();
+    /// assert!(set.contains("poneyland"));
+    /// assert_eq!(set.len(), 1);
+    /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub fn or_insert(self)
+    where
+        T: Hash,
+        S: BuildHasher,
+    {
+        if let Entry::Vacant(entry) = self {
+            entry.insert();
+        }
+    }
+
+    /// Returns a reference to this entry's value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashSet;
+    ///
+    /// let mut set: HashSet<&str> = HashSet::new();
+    /// set.entry("poneyland").or_insert();
+    /// // existing key
+    /// assert_eq!(set.entry("poneyland").get(), &"poneyland");
+    /// // nonexistent key
+    /// assert_eq!(set.entry("horseland").get(), &"horseland");
+    /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub fn get(&self) -> &T {
+        match *self {
+            Entry::Occupied(ref entry) => entry.get(),
+            Entry::Vacant(ref entry) => entry.get(),
+        }
+    }
+}
+
+impl<T, S, A: Allocator + Clone> OccupiedEntry<'_, T, S, A> {
+    /// Gets a reference to the value in the entry.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::hash_set::{Entry, HashSet};
+    ///
+    /// let mut set: HashSet<&str> = HashSet::new();
+    /// set.entry("poneyland").or_insert();
+    ///
+    /// match set.entry("poneyland") {
+    ///     Entry::Vacant(_) => panic!(),
+    ///     Entry::Occupied(entry) => assert_eq!(entry.get(), &"poneyland"),
+    /// }
+    /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub fn get(&self) -> &T {
+        self.inner.key()
+    }
+
+    /// Takes the value out of the entry, and returns it.
+    /// Keeps the allocated memory for reuse.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashSet;
+    /// use hashbrown::hash_set::Entry;
+    ///
+    /// let mut set: HashSet<&str> = HashSet::new();
+    /// // The set is empty
+    /// assert!(set.is_empty() && set.capacity() == 0);
+    ///
+    /// set.entry("poneyland").or_insert();
+    /// let capacity_before_remove = set.capacity();
+    ///
+    /// if let Entry::Occupied(o) = set.entry("poneyland") {
+    ///     assert_eq!(o.remove(), "poneyland");
+    /// }
+    ///
+    /// assert_eq!(set.contains("poneyland"), false);
+    /// // Now set hold none elements but capacity is equal to the old one
+    /// assert!(set.len() == 0 && set.capacity() == capacity_before_remove);
+    /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub fn remove(self) -> T {
+        self.inner.remove_entry().0
+    }
+
+    /// Replaces the entry, returning the old value. The new value in the hash map will be
+    /// the value used to create this entry.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if this OccupiedEntry was created through [`Entry::insert`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    ///  use hashbrown::hash_set::{Entry, HashSet};
+    ///  use std::rc::Rc;
+    ///
+    ///  let mut set: HashSet<Rc<String>> = HashSet::new();
+    ///  let key_one = Rc::new("Stringthing".to_string());
+    ///  let key_two = Rc::new("Stringthing".to_string());
+    ///
+    ///  set.insert(key_one.clone());
+    ///  assert!(Rc::strong_count(&key_one) == 2 && Rc::strong_count(&key_two) == 1);
+    ///
+    ///  match set.entry(key_two.clone()) {
+    ///      Entry::Occupied(entry) => {
+    ///          let old_key: Rc<String> = entry.replace();
+    ///          assert!(Rc::ptr_eq(&key_one, &old_key));
+    ///      }
+    ///      Entry::Vacant(_) => panic!(),
+    ///  }
+    ///
+    ///  assert!(Rc::strong_count(&key_one) == 1 && Rc::strong_count(&key_two) == 2);
+    ///  assert!(set.contains(&"Stringthing".to_owned()));
+    /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub fn replace(self) -> T {
+        self.inner.replace_key()
+    }
+}
+
+impl<'a, T, S, A: Allocator + Clone> VacantEntry<'a, T, S, A> {
+    /// Gets a reference to the value that would be used when inserting
+    /// through the `VacantEntry`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashSet;
+    ///
+    /// let mut set: HashSet<&str> = HashSet::new();
+    /// assert_eq!(set.entry("poneyland").get(), &"poneyland");
+    /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub fn get(&self) -> &T {
+        self.inner.key()
+    }
+
+    /// Take ownership of the value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::hash_set::{Entry, HashSet};
+    ///
+    /// let mut set: HashSet<&str> = HashSet::new();
+    ///
+    /// match set.entry("poneyland") {
+    ///     Entry::Occupied(_) => panic!(),
+    ///     Entry::Vacant(v) => assert_eq!(v.into_value(), "poneyland"),
+    /// }
+    /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub fn into_value(self) -> T {
+        self.inner.into_key()
+    }
+
+    /// Sets the value of the entry with the VacantEntry's value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashSet;
+    /// use hashbrown::hash_set::Entry;
+    ///
+    /// let mut set: HashSet<&str> = HashSet::new();
+    ///
+    /// if let Entry::Vacant(o) = set.entry("poneyland") {
+    ///     o.insert();
+    /// }
+    /// assert!(set.contains("poneyland"));
+    /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub fn insert(self)
+    where
+        T: Hash,
+        S: BuildHasher,
+    {
+        self.inner.insert(());
+    }
+
+    #[cfg_attr(feature = "inline-more", inline)]
+    fn insert_entry(self) -> OccupiedEntry<'a, T, S, A>
+    where
+        T: Hash,
+        S: BuildHasher,
+    {
+        OccupiedEntry {
+            inner: self.inner.insert_entry(()),
+        }
     }
 }
 

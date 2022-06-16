@@ -5573,7 +5573,7 @@ impl<'a, K, V, S, A: Allocator + Clone> VacantEntry<'a, K, V, S, A> {
     }
 
     #[cfg_attr(feature = "inline-more", inline)]
-    fn insert_entry(self, value: V) -> OccupiedEntry<'a, K, V, S, A>
+    pub(crate) fn insert_entry(self, value: V) -> OccupiedEntry<'a, K, V, S, A>
     where
         K: Hash,
         S: BuildHasher,
