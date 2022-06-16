@@ -1,10 +1,10 @@
 use std::cell::RefCell;
 use std::default::Default;
 use std::hash::Hash;
-use std::lazy::SyncOnceCell as OnceCell;
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::Arc;
+use std::sync::OnceLock as OnceCell;
 use std::{cmp, fmt, iter};
 
 use arrayvec::ArrayVec;
