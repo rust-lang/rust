@@ -20,7 +20,7 @@ use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sync::Lock;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder, IntEncodedWithFixedSize, MemDecoder};
-use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
+use rustc_serialize::{Decodable, Decoder, Encodable};
 use smallvec::SmallVec;
 use std::convert::TryInto;
 

@@ -211,7 +211,7 @@ impl CodegenResults {
         encoder.emit_raw_bytes(&RLINK_VERSION.to_be_bytes());
         encoder.emit_str(RUSTC_VERSION.unwrap());
         Encodable::encode(codegen_results, &mut encoder);
-        encoder.finish().unwrap()
+        encoder.finish()
     }
 
     pub fn deserialize_rlink(data: Vec<u8>) -> Result<Self, String> {

@@ -25,6 +25,7 @@ use rustc_span::hygiene::{
 use rustc_span::source_map::{SourceMap, StableSourceFileId};
 use rustc_span::CachingSourceMapView;
 use rustc_span::{BytePos, ExpnData, ExpnHash, Pos, SourceFile, Span};
+use std::io;
 use std::mem;
 
 const TAG_FILE_FOOTER: u128 = 0xC0FFEE_C0FFEE_C0FFEE_C0FFEE_C0FFEE;
@@ -807,21 +808,10 @@ impl_ref_decoder! {<'tcx>
 
 //- ENCODING -------------------------------------------------------------------
 
-pub trait OpaqueEncoder: Encoder {
-    fn position(&self) -> usize;
-}
-
-impl OpaqueEncoder for FileEncoder {
-    #[inline]
-    fn position(&self) -> usize {
-        FileEncoder::position(self)
-    }
-}
-
 /// An encoder that can write to the incremental compilation cache.
-pub struct CacheEncoder<'a, 'tcx, E: OpaqueEncoder> {
+pub struct CacheEncoder<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    encoder: E,
+    encoder: FileEncoder,
     type_shorthands: FxHashMap<Ty<'tcx>, usize>,
     predicate_shorthands: FxHashMap<ty::PredicateKind<'tcx>, usize>,
     interpret_allocs: FxIndexSet<interpret::AllocId>,
@@ -830,10 +820,7 @@ pub struct CacheEncoder<'a, 'tcx, E: OpaqueEncoder> {
     hygiene_context: &'a HygieneEncodeContext,
 }
 
-impl<'a, 'tcx, E> CacheEncoder<'a, 'tcx, E>
-where
-    E: OpaqueEncoder,
-{
+impl<'a, 'tcx> CacheEncoder<'a, 'tcx> {
     fn source_file_index(&mut self, source_file: Lrc<SourceFile>) -> SourceFileIndex {
         self.file_to_file_index[&(&*source_file as *const SourceFile)]
     }
@@ -852,32 +839,27 @@ where
         let end_pos = self.position();
         ((end_pos - start_pos) as u64).encode(self);
     }
+
+    fn finish(self) -> Result<usize, io::Error> {
+        self.encoder.finish()
+    }
 }
 
-impl<'a, 'tcx, E> Encodable<CacheEncoder<'a, 'tcx, E>> for SyntaxContext
-where
-    E: OpaqueEncoder,
-{
-    fn encode(&self, s: &mut CacheEncoder<'a, 'tcx, E>) {
+impl<'a, 'tcx> Encodable<CacheEncoder<'a, 'tcx>> for SyntaxContext {
+    fn encode(&self, s: &mut CacheEncoder<'a, 'tcx>) {
         rustc_span::hygiene::raw_encode_syntax_context(*self, s.hygiene_context, s);
     }
 }
 
-impl<'a, 'tcx, E> Encodable<CacheEncoder<'a, 'tcx, E>> for ExpnId
-where
-    E: OpaqueEncoder,
-{
-    fn encode(&self, s: &mut CacheEncoder<'a, 'tcx, E>) {
+impl<'a, 'tcx> Encodable<CacheEncoder<'a, 'tcx>> for ExpnId {
+    fn encode(&self, s: &mut CacheEncoder<'a, 'tcx>) {
         s.hygiene_context.schedule_expn_data_for_encoding(*self);
         self.expn_hash().encode(s);
     }
 }
 
-impl<'a, 'tcx, E> Encodable<CacheEncoder<'a, 'tcx, E>> for Span
-where
-    E: OpaqueEncoder,
-{
-    fn encode(&self, s: &mut CacheEncoder<'a, 'tcx, E>) {
+impl<'a, 'tcx> Encodable<CacheEncoder<'a, 'tcx>> for Span {
+    fn encode(&self, s: &mut CacheEncoder<'a, 'tcx>) {
         let span_data = self.data_untracked();
         span_data.ctxt.encode(s);
         span_data.parent.encode(s);
@@ -920,10 +902,7 @@ where
     }
 }
 
-impl<'a, 'tcx, E> TyEncoder for CacheEncoder<'a, 'tcx, E>
-where
-    E: OpaqueEncoder,
-{
+impl<'a, 'tcx> TyEncoder for CacheEncoder<'a, 'tcx> {
     type I = TyCtxt<'tcx>;
     const CLEAR_CROSS_CRATE: bool = false;
 
@@ -943,29 +922,20 @@ where
     }
 }
 
-impl<'a, 'tcx, E> Encodable<CacheEncoder<'a, 'tcx, E>> for CrateNum
-where
-    E: OpaqueEncoder,
-{
-    fn encode(&self, s: &mut CacheEncoder<'a, 'tcx, E>) {
+impl<'a, 'tcx> Encodable<CacheEncoder<'a, 'tcx>> for CrateNum {
+    fn encode(&self, s: &mut CacheEncoder<'a, 'tcx>) {
         s.tcx.stable_crate_id(*self).encode(s);
     }
 }
 
-impl<'a, 'tcx, E> Encodable<CacheEncoder<'a, 'tcx, E>> for DefId
-where
-    E: OpaqueEncoder,
-{
-    fn encode(&self, s: &mut CacheEncoder<'a, 'tcx, E>) {
+impl<'a, 'tcx> Encodable<CacheEncoder<'a, 'tcx>> for DefId {
+    fn encode(&self, s: &mut CacheEncoder<'a, 'tcx>) {
         s.tcx.def_path_hash(*self).encode(s);
     }
 }
 
-impl<'a, 'tcx, E> Encodable<CacheEncoder<'a, 'tcx, E>> for DefIndex
-where
-    E: OpaqueEncoder,
-{
-    fn encode(&self, _: &mut CacheEncoder<'a, 'tcx, E>) {
+impl<'a, 'tcx> Encodable<CacheEncoder<'a, 'tcx>> for DefIndex {
+    fn encode(&self, _: &mut CacheEncoder<'a, 'tcx>) {
         bug!("encoding `DefIndex` without context");
     }
 }
@@ -979,13 +949,7 @@ macro_rules! encoder_methods {
     }
 }
 
-impl<'a, 'tcx, E> Encoder for CacheEncoder<'a, 'tcx, E>
-where
-    E: OpaqueEncoder,
-{
-    type Ok = E::Ok;
-    type Err = E::Err;
-
+impl<'a, 'tcx> Encoder for CacheEncoder<'a, 'tcx> {
     encoder_methods! {
         emit_usize(usize);
         emit_u128(u128);
@@ -1008,30 +972,26 @@ where
         emit_str(&str);
         emit_raw_bytes(&[u8]);
     }
-
-    fn finish(self) -> Result<E::Ok, E::Err> {
-        self.encoder.finish()
-    }
 }
 
 // This ensures that the `Encodable<opaque::FileEncoder>::encode` specialization for byte slices
 // is used when a `CacheEncoder` having an `opaque::FileEncoder` is passed to `Encodable::encode`.
 // Unfortunately, we have to manually opt into specializations this way, given how `CacheEncoder`
 // and the encoding traits currently work.
-impl<'a, 'tcx> Encodable<CacheEncoder<'a, 'tcx, FileEncoder>> for [u8] {
-    fn encode(&self, e: &mut CacheEncoder<'a, 'tcx, FileEncoder>) {
+impl<'a, 'tcx> Encodable<CacheEncoder<'a, 'tcx>> for [u8] {
+    fn encode(&self, e: &mut CacheEncoder<'a, 'tcx>) {
         self.encode(&mut e.encoder);
     }
 }
 
 pub fn encode_query_results<'a, 'tcx, CTX, Q>(
     tcx: CTX,
-    encoder: &mut CacheEncoder<'a, 'tcx, FileEncoder>,
+    encoder: &mut CacheEncoder<'a, 'tcx>,
     query_result_index: &mut EncodedDepNodeIndex,
 ) where
     CTX: QueryContext + 'tcx,
     Q: super::QueryDescription<CTX>,
-    Q::Value: Encodable<CacheEncoder<'a, 'tcx, FileEncoder>>,
+    Q::Value: Encodable<CacheEncoder<'a, 'tcx>>,
 {
     let _timer = tcx
         .dep_context()
