@@ -1,4 +1,5 @@
 use clippy_utils::diagnostics::{span_lint_and_note, span_lint_and_then};
+use clippy_utils::macros::macro_backtrace;
 use clippy_utils::source::{first_line_of_span, indent_of, reindent_multiline, snippet, snippet_opt};
 use clippy_utils::{
     eq_expr_value, get_enclosing_block, hash_expr, hash_stmt, if_sequence, is_else_clause, is_lint_allowed,
@@ -7,13 +8,15 @@ use clippy_utils::{
 use core::iter;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit;
-use rustc_hir::{BinOpKind, Block, Expr, ExprKind, HirId, Stmt, StmtKind};
+use rustc_hir::{BinOpKind, Block, Expr, ExprKind, HirId, QPath, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::hygiene::walk_chain;
 use rustc_span::source_map::SourceMap;
-use rustc_span::{sym, BytePos, Span, Symbol};
+use rustc_span::{BytePos, Span, Symbol};
 use std::borrow::Cow;
+
+const ACCEPTABLE_MACRO: [&str; 2] = ["todo", "unimplemented"];
 
 declare_clippy_lint! {
     /// ### What it does
@@ -195,7 +198,12 @@ fn lint_if_same_then_else(cx: &LateContext<'_>, conds: &[&Expr<'_>], blocks: &[&
         .array_windows::<2>()
         .enumerate()
         .fold(true, |all_eq, (i, &[lhs, rhs])| {
-            if eq.eq_block(lhs, rhs) && !contains_let(conds[i]) && conds.get(i + 1).map_or(true, |e| !contains_let(e)) {
+            if eq.eq_block(lhs, rhs)
+                && !contains_acceptable_macro(cx, lhs)
+                && !contains_acceptable_macro(cx, rhs)
+                && !contains_let(conds[i])
+                && conds.get(i + 1).map_or(true, |e| !contains_let(e))
+            {
                 span_lint_and_note(
                     cx,
                     IF_SAME_THEN_ELSE,
@@ -365,19 +373,33 @@ fn eq_stmts(
         .all(|b| get_stmt(b).map_or(false, |s| eq.eq_stmt(s, stmt)))
 }
 
-fn block_contains_todo_macro(cx: &LateContext<'_>, block: &Block<'_>) -> bool {
-    dbg!(block);
-    if let Some(macro_def_id) = block.span.ctxt().outer_expn_data().macro_def_id {
-        dbg!(macro_def_id);
-        if let Some(diagnostic_name) = cx.tcx.get_diagnostic_name(macro_def_id) {
-            dbg!(diagnostic_name);
-            diagnostic_name == sym::todo_macro
-        } else {
-            false
+fn contains_acceptable_macro(cx: &LateContext<'_>, block: &Block<'_>) -> bool {
+    for stmt in block.stmts {
+        match stmt.kind {
+            StmtKind::Semi(semi_expr) if acceptable_macro(cx, semi_expr) => return true,
+            _ => {},
         }
-    } else {
-        false
     }
+
+    if let Some(block_expr) = block.expr
+        && acceptable_macro(cx, block_expr)
+    {
+        return true
+    }
+
+    false
+}
+
+fn acceptable_macro(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
+    if let ExprKind::Call(call_expr, _)  = expr.kind
+        && let ExprKind::Path(QPath::Resolved(None, path)) = call_expr.kind
+        && macro_backtrace(path.span).any(|macro_call| {
+            ACCEPTABLE_MACRO.contains(&cx.tcx.item_name(macro_call.def_id).as_str())
+    }) {
+        return true;
+    }
+
+    false
 }
 
 fn scan_block_for_eq(cx: &LateContext<'_>, _conds: &[&Expr<'_>], block: &Block<'_>, blocks: &[&Block<'_>]) -> BlockEq {
@@ -413,7 +435,6 @@ fn scan_block_for_eq(cx: &LateContext<'_>, _conds: &[&Expr<'_>], block: &Block<'
             moved_locals,
         };
     }
-
     let end_search_start = block.stmts[start_end_eq..]
         .iter()
         .rev()
