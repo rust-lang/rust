@@ -4090,8 +4090,16 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
       }
 
       // Create global variable locally if not externally visible
+      //  If a variable is constant, for forward mode it will also
+      //  only be read, so invert initializing is fine.
+      //  For reverse mode, any floats will be +='d into, but never
+      //  read, and any pointers will be used as expected. The never
+      //  read means even if two globals for floats, that's fine.
+      //  As long as the pointers point to equivalent places (which
+      //  they should from the same initialization), it is also ok.
       if (arg->hasInternalLinkage() || arg->hasPrivateLinkage() ||
-          (arg->hasExternalLinkage() && arg->hasInitializer())) {
+          (arg->hasExternalLinkage() && arg->hasInitializer()) ||
+          arg->isConstant()) {
         Type *elemTy = arg->getType()->getPointerElementType();
         Type *type = getShadowType(elemTy);
         IRBuilder<> B(inversionAllocs);
