@@ -209,7 +209,7 @@ impl Diagnostic {
             | Level::Error { .. }
             | Level::FailureNote => true,
 
-            Level::Warning
+            Level::Warning(_)
             | Level::Note
             | Level::OnceNote
             | Level::Help
@@ -222,7 +222,9 @@ impl Diagnostic {
         &mut self,
         unstable_to_stable: &FxHashMap<LintExpectationId, LintExpectationId>,
     ) {
-        if let Level::Expect(expectation_id) = &mut self.level {
+        if let Level::Expect(expectation_id) | Level::Warning(Some(expectation_id)) =
+            &mut self.level
+        {
             if expectation_id.is_stable() {
                 return;
             }
@@ -450,7 +452,7 @@ impl Diagnostic {
     /// Add a warning attached to this diagnostic.
     #[cfg_attr(not(bootstrap), rustc_lint_diagnostics)]
     pub fn warn(&mut self, msg: impl Into<SubdiagnosticMessage>) -> &mut Self {
-        self.sub(Level::Warning, msg, MultiSpan::new(), None);
+        self.sub(Level::Warning(None), msg, MultiSpan::new(), None);
         self
     }
 
@@ -462,7 +464,7 @@ impl Diagnostic {
         sp: S,
         msg: impl Into<SubdiagnosticMessage>,
     ) -> &mut Self {
-        self.sub(Level::Warning, msg, sp.into(), None);
+        self.sub(Level::Warning(None), msg, sp.into(), None);
         self
     }
 

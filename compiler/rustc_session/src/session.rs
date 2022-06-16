@@ -287,6 +287,14 @@ impl Session {
     ) -> DiagnosticBuilder<'_, ()> {
         self.diagnostic().struct_span_warn(sp, msg)
     }
+    pub fn struct_span_warn_with_expectation<S: Into<MultiSpan>>(
+        &self,
+        sp: S,
+        msg: impl Into<DiagnosticMessage>,
+        id: lint::LintExpectationId,
+    ) -> DiagnosticBuilder<'_, ()> {
+        self.diagnostic().struct_span_warn_with_expectation(sp, msg, id)
+    }
     pub fn struct_span_warn_with_code<S: Into<MultiSpan>>(
         &self,
         sp: S,
@@ -297,6 +305,13 @@ impl Session {
     }
     pub fn struct_warn(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, ()> {
         self.diagnostic().struct_warn(msg)
+    }
+    pub fn struct_warn_with_expectation(
+        &self,
+        msg: impl Into<DiagnosticMessage>,
+        id: lint::LintExpectationId,
+    ) -> DiagnosticBuilder<'_, ()> {
+        self.diagnostic().struct_warn_with_expectation(msg, id)
     }
     pub fn struct_span_allow<S: Into<MultiSpan>>(
         &self,

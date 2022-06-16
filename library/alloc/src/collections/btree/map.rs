@@ -161,6 +161,9 @@ pub(super) const MIN_LEN: usize = node::MIN_LEN_AFTER_SPLIT;
 /// // update a key, guarding against the key possibly not being set
 /// let stat = player_stats.entry("attack").or_insert(100);
 /// *stat += random_stat_buff();
+///
+/// // modify an entry before an insert with in-place mutation
+/// player_stats.entry("mana").and_modify(|mana| *mana += 200).or_insert(100);
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "BTreeMap")]
@@ -1211,10 +1214,12 @@ impl<K, V, A: Allocator> BTreeMap<K, V, A> {
     ///
     /// // count the number of occurrences of letters in the vec
     /// for x in ["a", "b", "a", "c", "a", "b"] {
-    ///     *count.entry(x).or_insert(0) += 1;
+    ///     count.entry(x).and_modify(|curr| *curr += 1).or_insert(1);
     /// }
     ///
     /// assert_eq!(count["a"], 3);
+    /// assert_eq!(count["b"], 2);
+    /// assert_eq!(count["c"], 1);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn entry(&mut self, key: K) -> Entry<'_, K, V, A>
