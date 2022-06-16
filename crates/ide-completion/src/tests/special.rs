@@ -2,18 +2,10 @@
 
 use expect_test::{expect, Expect};
 
-use crate::{
-    tests::{check_edit, completion_list_no_kw, completion_list_with_config, TEST_CONFIG},
-    CompletionConfig,
-};
+use crate::tests::{check_edit, completion_list_no_kw};
 
 fn check(ra_fixture: &str, expect: Expect) {
     let actual = completion_list_no_kw(ra_fixture);
-    expect.assert_eq(&actual)
-}
-
-fn check_with_config(config: CompletionConfig, ra_fixture: &str, expect: Expect) {
-    let actual = completion_list_with_config(config, ra_fixture, false, None);
     expect.assert_eq(&actual)
 }
 
@@ -647,11 +639,7 @@ fn bar() -> Bar {
 
 #[test]
 fn completes_fn_in_pub_trait_generated_by_macro() {
-    let mut config = TEST_CONFIG.clone();
-    config.enable_private_editable = false;
-
-    check_with_config(
-        config,
+    check(
         r#"
 mod other_mod {
     macro_rules! make_method {
@@ -685,11 +673,7 @@ fn main() {
 
 #[test]
 fn completes_fn_in_pub_trait_generated_by_recursive_macro() {
-    let mut config = TEST_CONFIG.clone();
-    config.enable_private_editable = false;
-
-    check_with_config(
-        config,
+    check(
         r#"
 mod other_mod {
     macro_rules! make_method {
@@ -729,11 +713,7 @@ fn main() {
 
 #[test]
 fn completes_const_in_pub_trait_generated_by_macro() {
-    let mut config = TEST_CONFIG.clone();
-    config.enable_private_editable = false;
-
-    check_with_config(
-        config,
+    check(
         r#"
 mod other_mod {
     macro_rules! make_const {
