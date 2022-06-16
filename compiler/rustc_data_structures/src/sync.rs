@@ -173,7 +173,7 @@ cfg_if! {
         pub use std::cell::RefMut as LockGuard;
         pub use std::cell::RefMut as MappedLockGuard;
 
-        pub use std::lazy::OnceCell;
+        pub use std::cell::OnceCell;
 
         use std::cell::RefCell as InnerRwLock;
         use std::cell::RefCell as InnerLock;

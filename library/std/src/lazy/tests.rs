@@ -1,5 +1,6 @@
 use crate::{
-    lazy::{Lazy, SyncLazy, SyncOnceCell},
+    cell::LazyCell,
+    lazy::{SyncLazy, SyncOnceCell},
     panic,
     sync::{
         atomic::{AtomicUsize, Ordering::SeqCst},
@@ -21,7 +22,7 @@ fn lazy_default() {
         }
     }
 
-    let lazy: Lazy<Mutex<Foo>> = <_>::default();
+    let lazy: LazyCell<Mutex<Foo>> = <_>::default();
 
     assert_eq!(CALLED.load(SeqCst), 0);
 
@@ -36,7 +37,7 @@ fn lazy_default() {
 
 #[test]
 fn lazy_poisoning() {
-    let x: Lazy<String> = Lazy::new(|| panic!("kaboom"));
+    let x: LazyCell<String> = LazyCell::new(|| panic!("kaboom"));
     for _ in 0..2 {
         let res = panic::catch_unwind(panic::AssertUnwindSafe(|| x.len()));
         assert!(res.is_err());
