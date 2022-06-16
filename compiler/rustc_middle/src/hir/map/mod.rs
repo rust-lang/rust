@@ -493,18 +493,7 @@ impl<'hir> Map<'hir> {
     /// crate. If you would prefer to iterate over the bodies
     /// themselves, you can do `self.hir().krate().body_ids.iter()`.
     pub fn body_owners(self) -> impl Iterator<Item = LocalDefId> + 'hir {
-        self.krate()
-            .owners
-            .iter_enumerated()
-            .flat_map(move |(owner, owner_info)| {
-                let bodies = &owner_info.as_owner()?.nodes.bodies;
-                Some(bodies.iter().map(move |&(local_id, _)| {
-                    let hir_id = HirId { owner, local_id };
-                    let body_id = BodyId { hir_id };
-                    self.body_owner_def_id(body_id)
-                }))
-            })
-            .flatten()
+        self.tcx.hir_crate_items(()).body_owners.iter().copied()
     }
 
     pub fn par_body_owners<F: Fn(LocalDefId) + Sync + Send>(self, f: F) {
@@ -1239,19 +1228,28 @@ pub(super) fn hir_module_items(tcx: TyCtxt<'_>, module_id: LocalDefId) -> Module
         trait_items: Vec::default(),
         impl_items: Vec::default(),
         foreign_items: Vec::default(),
+        body_owners: Vec::default(),
     };
 
     let (hir_mod, span, hir_id) = tcx.hir().get_module(module_id);
     collector.visit_mod(hir_mod, span, hir_id);
 
-    let ModuleCollector { submodules, items, trait_items, impl_items, foreign_items, .. } =
-        collector;
+    let ModuleCollector {
+        submodules,
+        items,
+        trait_items,
+        impl_items,
+        foreign_items,
+        body_owners,
+        ..
+    } = collector;
     return ModuleItems {
         submodules: submodules.into_boxed_slice(),
         items: items.into_boxed_slice(),
         trait_items: trait_items.into_boxed_slice(),
         impl_items: impl_items.into_boxed_slice(),
         foreign_items: foreign_items.into_boxed_slice(),
+        body_owners: body_owners.into_boxed_slice(),
     };
 
     struct ModuleCollector<'tcx> {
@@ -1261,6 +1259,7 @@ pub(super) fn hir_module_items(tcx: TyCtxt<'_>, module_id: LocalDefId) -> Module
         trait_items: Vec<TraitItemId>,
         impl_items: Vec<ImplItemId>,
         foreign_items: Vec<ForeignItemId>,
+        body_owners: Vec<LocalDefId>,
     }
 
     impl<'hir> Visitor<'hir> for ModuleCollector<'hir> {
@@ -1271,7 +1270,16 @@ pub(super) fn hir_module_items(tcx: TyCtxt<'_>, module_id: LocalDefId) -> Module
         }
 
         fn visit_item(&mut self, item: &'hir Item<'hir>) {
+            if associated_body(Node::Item(item)).is_some() {
+                self.body_owners.push(item.def_id);
+            }
+
             self.items.push(item.item_id());
+
+            if self.tcx.hir().is_body_owner(item.def_id) {
+                self.body_owners.push(item.def_id);
+            }
+
             if let ItemKind::Mod(..) = item.kind {
                 // If this declares another module, do not recurse inside it.
                 self.submodules.push(item.def_id);
@@ -1281,18 +1289,46 @@ pub(super) fn hir_module_items(tcx: TyCtxt<'_>, module_id: LocalDefId) -> Module
         }
 
         fn visit_trait_item(&mut self, item: &'hir TraitItem<'hir>) {
+            if associated_body(Node::TraitItem(item)).is_some() {
+                self.body_owners.push(item.def_id);
+            }
+
             self.trait_items.push(item.trait_item_id());
             intravisit::walk_trait_item(self, item)
         }
 
         fn visit_impl_item(&mut self, item: &'hir ImplItem<'hir>) {
+            if associated_body(Node::ImplItem(item)).is_some() {
+                self.body_owners.push(item.def_id);
+            }
+
             self.impl_items.push(item.impl_item_id());
             intravisit::walk_impl_item(self, item)
         }
 
         fn visit_foreign_item(&mut self, item: &'hir ForeignItem<'hir>) {
+            if associated_body(Node::ForeignItem(item)).is_some() {
+                self.body_owners.push(item.def_id);
+            }
+
             self.foreign_items.push(item.foreign_item_id());
             intravisit::walk_foreign_item(self, item)
+        }
+
+        fn visit_expr(&mut self, ex: &'hir Expr<'hir>) {
+            if matches!(ex.kind, ExprKind::Closure { .. })
+                && associated_body(Node::Expr(ex)).is_some()
+            {
+                self.body_owners.push(ex.hir_id.owner);
+            }
+            intravisit::walk_expr(self, ex)
+        }
+
+        fn visit_anon_const(&mut self, c: &'hir AnonConst) {
+            if associated_body(Node::AnonConst(c)).is_some() {
+                self.body_owners.push(c.hir_id.owner);
+            }
+            intravisit::walk_anon_const(self, c)
         }
     }
 }
@@ -1305,12 +1341,20 @@ pub(crate) fn hir_crate_items(tcx: TyCtxt<'_>, _: ()) -> ModuleItems {
         trait_items: Vec::default(),
         impl_items: Vec::default(),
         foreign_items: Vec::default(),
+        body_owners: Vec::default(),
     };
 
     tcx.hir().walk_toplevel_module(&mut collector);
 
-    let CrateCollector { submodules, items, trait_items, impl_items, foreign_items, .. } =
-        collector;
+    let CrateCollector {
+        submodules,
+        items,
+        trait_items,
+        impl_items,
+        foreign_items,
+        body_owners,
+        ..
+    } = collector;
 
     return ModuleItems {
         submodules: submodules.into_boxed_slice(),
@@ -1318,6 +1362,7 @@ pub(crate) fn hir_crate_items(tcx: TyCtxt<'_>, _: ()) -> ModuleItems {
         trait_items: trait_items.into_boxed_slice(),
         impl_items: impl_items.into_boxed_slice(),
         foreign_items: foreign_items.into_boxed_slice(),
+        body_owners: body_owners.into_boxed_slice(),
     };
 
     struct CrateCollector<'tcx> {
@@ -1327,6 +1372,7 @@ pub(crate) fn hir_crate_items(tcx: TyCtxt<'_>, _: ()) -> ModuleItems {
         trait_items: Vec<TraitItemId>,
         impl_items: Vec<ImplItemId>,
         foreign_items: Vec<ForeignItemId>,
+        body_owners: Vec<LocalDefId>,
     }
 
     impl<'hir> Visitor<'hir> for CrateCollector<'hir> {
@@ -1337,6 +1383,10 @@ pub(crate) fn hir_crate_items(tcx: TyCtxt<'_>, _: ()) -> ModuleItems {
         }
 
         fn visit_item(&mut self, item: &'hir Item<'hir>) {
+            if associated_body(Node::Item(item)).is_some() {
+                self.body_owners.push(item.def_id);
+            }
+
             self.items.push(item.item_id());
             intravisit::walk_item(self, item)
         }
@@ -1347,18 +1397,46 @@ pub(crate) fn hir_crate_items(tcx: TyCtxt<'_>, _: ()) -> ModuleItems {
         }
 
         fn visit_foreign_item(&mut self, item: &'hir ForeignItem<'hir>) {
+            if associated_body(Node::ForeignItem(item)).is_some() {
+                self.body_owners.push(item.def_id);
+            }
+
             self.foreign_items.push(item.foreign_item_id());
             intravisit::walk_foreign_item(self, item)
         }
 
         fn visit_trait_item(&mut self, item: &'hir TraitItem<'hir>) {
+            if associated_body(Node::TraitItem(item)).is_some() {
+                self.body_owners.push(item.def_id);
+            }
+
             self.trait_items.push(item.trait_item_id());
             intravisit::walk_trait_item(self, item)
         }
 
         fn visit_impl_item(&mut self, item: &'hir ImplItem<'hir>) {
+            if associated_body(Node::ImplItem(item)).is_some() {
+                self.body_owners.push(item.def_id);
+            }
+
             self.impl_items.push(item.impl_item_id());
             intravisit::walk_impl_item(self, item)
+        }
+
+        fn visit_expr(&mut self, ex: &'hir Expr<'hir>) {
+            if matches!(ex.kind, ExprKind::Closure { .. })
+                && associated_body(Node::Expr(ex)).is_some()
+            {
+                self.body_owners.push(ex.hir_id.owner);
+            }
+            intravisit::walk_expr(self, ex)
+        }
+
+        fn visit_anon_const(&mut self, c: &'hir AnonConst) {
+            if associated_body(Node::AnonConst(c)).is_some() {
+                self.body_owners.push(c.hir_id.owner);
+            }
+            intravisit::walk_anon_const(self, c)
         }
     }
 }
