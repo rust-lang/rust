@@ -37,6 +37,9 @@ pub enum ConstValue<'tcx> {
     /// Used only for `&[u8]` and `&str`
     Slice { data: ConstAllocation<'tcx>, start: usize, end: usize },
 
+    /// Like `Slice`, but for types that aren't 1 byte long.
+    CustomSlice { data: ConstAllocation<'tcx>, length: usize },
+
     /// A value not represented/representable by `Scalar` or `Slice`
     ByRef {
         /// The backing memory of the value, may contain more memory than needed for just the value
@@ -61,6 +64,9 @@ impl<'a, 'tcx> Lift<'tcx> for ConstValue<'a> {
             ConstValue::ByRef { alloc, offset } => {
                 ConstValue::ByRef { alloc: tcx.lift(alloc)?, offset }
             }
+            ConstValue::CustomSlice { data, length } => {
+                ConstValue::CustomSlice { data: tcx.lift(data)?, length }
+            }
         })
     }
 }
@@ -69,7 +75,9 @@ impl<'tcx> ConstValue<'tcx> {
     #[inline]
     pub fn try_to_scalar(&self) -> Option<Scalar<AllocId>> {
         match *self {
-            ConstValue::ByRef { .. } | ConstValue::Slice { .. } => None,
+            ConstValue::ByRef { .. }
+            | ConstValue::Slice { .. }
+            | ConstValue::CustomSlice { .. } => None,
             ConstValue::Scalar(val) => Some(val),
         }
     }

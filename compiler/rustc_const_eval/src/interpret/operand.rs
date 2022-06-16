@@ -692,6 +692,19 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     self,
                 ))
             }
+            ConstValue::CustomSlice { data, length } => {
+                // We rely on mutability being set correctly in `data` to prevent writes
+                // where none should happen.
+                let ptr = Pointer::new(
+                    self.tcx.create_memory_alloc(data),
+                    Size::ZERO, // offset: 0
+                );
+                Operand::Immediate(Immediate::new_slice(
+                    Scalar::from_pointer(self.global_base_pointer(ptr)?, &*self.tcx),
+                    u64::try_from(length).unwrap(),
+                    self,
+                ))
+            }
         };
         Ok(OpTy { op, layout })
     }

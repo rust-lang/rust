@@ -5,6 +5,7 @@
 use std::convert::TryFrom;
 
 use rustc_hir::def_id::DefId;
+use rustc_hir::lang_items::LangItem;
 use rustc_middle::mir::{
     self,
     interpret::{ConstValue, GlobalId, InterpResult, Scalar},
@@ -106,8 +107,8 @@ pub(crate) fn eval_nullary_intrinsic<'tcx>(
         },
         sym::validity_invariants_of => {
             ensure_monomorphic_enough(tcx, tp_ty)?;
-            let alloc = validity_invariants_of::alloc_validity_invariants_of(tcx, tp_ty);
-            ConstValue::Slice { data: alloc, start: 0, end: alloc.inner().len() }
+            let (data, length) = validity_invariants_of::alloc_validity_invariants_of(tcx, tp_ty);
+            ConstValue::CustomSlice { data, length }
         }
         other => bug!("`{}` is not a zero arg intrinsic", other),
     })
@@ -176,7 +177,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     sym::needs_drop => self.tcx.types.bool,
                     sym::type_id => self.tcx.types.u64,
                     sym::type_name => self.tcx.mk_static_str(),
-                    sym::validity_invariants_of => self.tcx.mk_static_bytes(),
+                    sym::validity_invariants_of => {
+                        let item = self.tcx.require_lang_item(LangItem::ValidityInvariant, None);
+                        let ty = self.tcx.type_of(item);
+                        self.tcx.mk_imm_ref(self.tcx.lifetimes.re_static, self.tcx.mk_slice(ty))
+                    }
                     _ => bug!(),
                 };
                 let val =

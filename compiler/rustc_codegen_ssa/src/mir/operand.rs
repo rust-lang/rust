@@ -100,6 +100,22 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                 let b_llval = bx.const_usize((end - start) as u64);
                 OperandValue::Pair(a_llval, b_llval)
             }
+            ConstValue::CustomSlice { data, length } => {
+                let Abi::ScalarPair(a_scalar, _) = layout.abi else {
+                    bug!("from_const: invalid ScalarPair layout: {:#?}", layout);
+                };
+                let a = Scalar::from_pointer(
+                    Pointer::new(bx.tcx().create_memory_alloc(data), Size::ZERO),
+                    &bx.tcx(),
+                );
+                let a_llval = bx.scalar_to_backend(
+                    a,
+                    a_scalar,
+                    bx.scalar_pair_element_backend_type(layout, 0, true),
+                );
+                let b_llval = bx.const_usize(length as u64);
+                OperandValue::Pair(a_llval, b_llval)
+            }
             ConstValue::ByRef { alloc, offset } => {
                 return bx.load_operand(bx.from_const_alloc(layout, alloc, offset));
             }

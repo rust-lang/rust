@@ -451,6 +451,7 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
             let fmt_val = |val: &ConstValue<'tcx>| match val {
                 ConstValue::Scalar(s) => format!("Scalar({:?})", s),
                 ConstValue::Slice { .. } => format!("Slice(..)"),
+                ConstValue::CustomSlice { .. } => format!("CustomSlice(..)"),
                 ConstValue::ByRef { .. } => format!("ByRef(..)"),
             };
 
@@ -679,7 +680,9 @@ pub fn write_allocations<'tcx>(
             ConstValue::Scalar(interpret::Scalar::Int { .. }) => {
                 Either::Left(Either::Right(std::iter::empty()))
             }
-            ConstValue::ByRef { alloc, .. } | ConstValue::Slice { data: alloc, .. } => {
+            ConstValue::ByRef { alloc, .. }
+            | ConstValue::Slice { data: alloc, .. }
+            | ConstValue::CustomSlice { data: alloc, .. } => {
                 Either::Right(alloc_ids_from_alloc(alloc))
             }
         }

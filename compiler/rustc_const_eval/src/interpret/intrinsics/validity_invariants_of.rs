@@ -1,11 +1,12 @@
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::mir::interpret::{AllocRange, Allocation, ConstAllocation, Scalar as MirScalar};
+use rustc_middle::mir::Mutability;
 use rustc_middle::ty::layout::LayoutCx;
 use rustc_middle::ty::{ParamEnv, ParamEnvAnd};
 use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_target::abi::{
-    Abi, FieldsShape, HasDataLayout, Integer, Primitive, Scalar, Size, TyAndLayout, WrappingRange,
+    Abi, FieldsShape, HasDataLayout, Integer, Primitive, Scalar, Size, TyAndLayout, WrappingRange, Variants,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -25,7 +26,12 @@ struct InvariantKey {
 }
 
 // FIXME: Don't add duplicate invariants (maybe use a HashMap?)
-fn add_invariants<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, invs: &mut FxHashMap<InvariantKey, WrappingRange>, offset: Size) {
+fn add_invariants<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    ty: Ty<'tcx>,
+    invs: &mut FxHashMap<InvariantKey, WrappingRange>,
+    offset: Size,
+) {
     let x = tcx.layout_of(ParamEnvAnd { param_env: ParamEnv::reveal_all(), value: ty });
 
     if let Ok(layout) = x {
@@ -46,8 +52,14 @@ fn add_invariants<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, invs: &mut FxHashMap<In
             let _: Result<_, _> = invs.try_insert(InvariantKey { offset, size }, valid_range);
         }
 
+        //dbg!(&ty, &layout);
+        if !matches!(layout.layout.variants(), Variants::Single { .. }) {
+            // We *don't* want to look for fields inside enums.
+            return;
+        }
+
         let param_env = ParamEnv::reveal_all();
-        let unwrap = LayoutCx { tcx, param_env };
+        let layout_cx = LayoutCx { tcx, param_env };
 
         match layout.layout.fields() {
             FieldsShape::Primitive => {}
@@ -57,13 +69,13 @@ fn add_invariants<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, invs: &mut FxHashMap<In
                 // That would lead to false negatives, though.
                 for idx in 0..*count {
                     let off = offset + *stride * idx;
-                    let f = layout.field(&unwrap, idx as usize);
+                    let f = layout.field(&layout_cx, idx as usize);
                     add_invariants(tcx, f.ty, invs, off);
                 }
             }
             FieldsShape::Arbitrary { offsets, .. } => {
                 for (idx, &field_offset) in offsets.iter().enumerate() {
-                    let f = layout.field(&unwrap, idx);
+                    let f = layout.field(&layout_cx, idx);
                     if f.ty == ty {
                         // Some types contain themselves as fields, such as
                         // &mut [T]
@@ -90,7 +102,7 @@ fn get_layout_of_invariant<'tcx>(tcx: TyCtxt<'tcx>) -> TyAndLayout<'tcx, Ty<'tcx
 pub(crate) fn alloc_validity_invariants_of<'tcx>(
     tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
-) -> ConstAllocation<'tcx> {
+) -> (ConstAllocation<'tcx>, usize) {
     let mut invs = FxHashMap::default();
 
     let layout = tcx.data_layout();
@@ -126,22 +138,17 @@ pub(crate) fn alloc_validity_invariants_of<'tcx>(
 
         let offset_range = AllocRange { start: offset + start_off, size: Size::from_bytes(16) };
         alloc
-            .write_scalar(
-                &tcx,
-                offset_range,
-                MirScalar::from_u128(invariant.1.start).into(),
-            )
+            .write_scalar(&tcx, offset_range, MirScalar::from_u128(invariant.1.start).into())
             .unwrap();
 
         let offset_range = AllocRange { start: offset + end_off, size: Size::from_bytes(16) };
         alloc
-            .write_scalar(
-                &tcx,
-                offset_range,
-                MirScalar::from_u128(invariant.1.end).into(),
-            )
+            .write_scalar(&tcx, offset_range, MirScalar::from_u128(invariant.1.end).into())
             .unwrap();
     }
 
-    tcx.intern_const_alloc(alloc)
+    // The allocation is not mutable, we just needed write_scalar.
+    alloc.mutability = Mutability::Not;
+
+    (tcx.intern_const_alloc(alloc), invs.len())
 }

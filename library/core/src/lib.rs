@@ -156,8 +156,6 @@
 #![feature(const_slice_from_ref)]
 #![feature(const_slice_index)]
 #![feature(const_is_char_boundary)]
-#![cfg_attr(not(bootstrap), feature(validity_invariants_of))]
-//
 // Language features:
 #![feature(abi_unadjusted)]
 #![feature(allow_internal_unsafe)]

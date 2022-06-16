@@ -1976,6 +1976,13 @@ extern "rust-intrinsic" {
     /// [`std::hint::black_box`]: crate::hint::black_box
     #[rustc_const_unstable(feature = "const_black_box", issue = "none")]
     pub fn black_box<T>(dummy: T) -> T;
+
+    /// Returns a list of invaraints that must be valid in order for T to be valid.
+    ///
+    /// This is used internally to allow for runtime assertions inside `MaybeUninit::assume_init`
+    #[cfg(not(bootstrap))]
+    #[rustc_const_unstable(feature = "const_intrinsic_validity_invariants_of", issue = "none")]
+    pub fn validity_invariants_of<T>() -> &'static [Invariant];
 }
 
 // Some functions are defined here because they accidentally got made
@@ -2138,10 +2145,10 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 #[repr(u8)]
 #[allow(dead_code)] // https://github.com/rust-lang/rust/issues/85677
-enum InvariantSize {
+pub enum InvariantSize {
     U8 = 0,
     U16 = 1,
     U32 = 2,
@@ -2156,35 +2163,20 @@ enum InvariantSize {
 // Be sure to keep the fields in order (offset, size, start, end), validity_invariants_of.rs needs
 // that.
 #[cfg(not(bootstrap))]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 #[lang = "ValidityInvariant"]
-struct Invariant {
+pub struct Invariant {
     /// The offset in bytes from the start of the struct
-    offset: usize,
+    pub offset: usize,
     /// The size/type of the invariant.
-    size: InvariantSize,
+    pub size: InvariantSize,
     /// The start point of the valid range of this field. Is allowed to be > valid_range_end, see
     /// <https://doc.rust-lang.org/nightly/nightly-rustc/rustc_target/abi/struct.WrappingRange.html>
     /// which this follows the semantics of.
-    valid_range_start: u128,
+    pub valid_range_start: u128,
 
     /// The end point of the range.
-    valid_range_end: u128,
-}
-
-#[cfg(not(bootstrap))]
-/// Returns a list of all validity invariants of the type.
-const fn validity_invariants_of<T>() -> &'static [Invariant] {
-    extern "rust-intrinsic" {
-        #[rustc_const_unstable(feature = "validity_invariants_of", issue = "none")]
-        pub fn validity_invariants_of<T>() -> &'static [u8];
-    }
-
-    let invariants: &'static [u8] = validity_invariants_of::<T>();
-    let sz = invariants.len() / core::mem::size_of::<Invariant>();
-
-    // SAFETY: we know this is valid because the intrinsic promises an aligned slice.
-    unsafe { core::slice::from_raw_parts(invariants.as_ptr().cast(), sz) }
+    pub valid_range_end: u128,
 }
 
 /// Copies `count * size_of::<T>()` bytes from `src` to `dst`. The source
@@ -2445,15 +2437,15 @@ where
 }
 
 #[cfg(bootstrap)]
-pub(crate) const unsafe fn assert_validity_of<T>(_: *const T) -> bool {
+pub const unsafe fn assert_validity_of<T>(_: *const T) -> bool {
     true
 }
 
 #[cfg(not(bootstrap))]
 /// Asserts that the value at `value` is a valid T.
 ///
-/// Best effort, and is UB if the value is invalid.
-pub(crate) unsafe fn assert_validity_of<T>(value: *const T) -> bool {
+/// Best effort, can miss some UB, and is UB if the value is invalid.
+pub unsafe fn assert_validity_of<T>(value: *const T) -> bool {
     // We have to do this, since we call assert_validity_of inside MaybeUninit::assume_init
     // and if we had used ptr::read_unaligned, that would be a recursive call.
     #[repr(packed)]
@@ -2493,11 +2485,11 @@ pub(crate) unsafe fn assert_validity_of<T>(value: *const T) -> bool {
 
             if start > end {
                 if !((start..=max).contains(&value) || (0..=end).contains(&value)) {
-                    return false;
+                    panic!("read value {value} which was not in range 0..={end} or {start}..={max} at offset {off} in type {}", core::any::type_name::<T>());
                 }
             } else {
                 if !(start..=end).contains(&value) {
-                    return false;
+                    panic!("read value {value} which was not in range {start}..={end} at offset {off} in type {}", core::any::type_name::<T>());
                 }
             }
         }

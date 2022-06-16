@@ -9,6 +9,7 @@ use crate::require_same_types;
 
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
+use rustc_hir::lang_items::LangItem;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{self, TyCtxt};
@@ -192,7 +193,12 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
             sym::needs_drop => (1, Vec::new(), tcx.types.bool),
 
             sym::type_name => (1, Vec::new(), tcx.mk_static_str()),
-            sym::validity_invariants_of => (1, Vec::new(), tcx.mk_static_bytes()),
+            sym::validity_invariants_of => {
+                let item = tcx.require_lang_item(LangItem::ValidityInvariant, None);
+                let ty = tcx.type_of(item);
+                let slice = tcx.mk_imm_ref(tcx.lifetimes.re_static, tcx.mk_slice(ty));
+                (1, Vec::new(), slice)
+            }
             sym::type_id => (1, Vec::new(), tcx.types.u64),
             sym::offset | sym::arith_offset => (
                 1,
