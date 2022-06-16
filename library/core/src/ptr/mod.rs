@@ -1938,7 +1938,7 @@ macro_rules! fnptr_impls_args {
 }
 
 fnptr_impls_args! {}
-fnptr_impls_args! { A }
+fnptr_impls_args! { T }
 fnptr_impls_args! { A, B }
 fnptr_impls_args! { A, B, C }
 fnptr_impls_args! { A, B, C, D }
