@@ -6,11 +6,11 @@ LL |     const VOID: ! = panic!();
    |
    = note: this error originates in the macro `$crate::panic::panic_2015` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: post-monomorphization error: encountered constants with type errors, stopping evaluation
+error: post-monomorphization error: referenced constant has errors
   --> $DIR/erroneous_const.rs:LL:CC
    |
 LL |         let _ = PrintName::<T>::VOID;
-   |                 ^^^^^^^^^^^^^^^^^^^^ encountered constants with type errors, stopping evaluation
+   |                 ^^^^^^^^^^^^^^^^^^^^ referenced constant has errors
    |
    = note: inside `no_codegen::<i32>` at $DIR/erroneous_const.rs:LL:CC
 note: inside `main` at $DIR/erroneous_const.rs:LL:CC

@@ -1,4 +1,5 @@
-// compile-flags: -Zmiri-disable-isolation
+// We want to control preemption here.
+// compile-flags: -Zmiri-disable-isolation -Zmiri-preemption-rate=0
 // ignore-windows: Concurrency on Windows is not supported yet.
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering, fence};

@@ -9,20 +9,23 @@ use std::thread;
 /// The test taken from the Rust documentation.
 fn simple_send() {
     let (tx, rx) = channel();
-    thread::spawn(move || {
+    let t = thread::spawn(move || {
         tx.send(10).unwrap();
     });
     assert_eq!(rx.recv().unwrap(), 10);
+    t.join().unwrap();
 }
 
 /// The test taken from the Rust documentation.
 fn multiple_send() {
     let (tx, rx) = channel();
+    let mut threads = vec![];
     for i in 0..10 {
         let tx = tx.clone();
-        thread::spawn(move || {
+        let t = thread::spawn(move || {
             tx.send(i).unwrap();
         });
+        threads.push(t);
     }
 
     let mut sum = 0;
@@ -32,6 +35,10 @@ fn multiple_send() {
         sum += j;
     }
     assert_eq!(sum, 45);
+
+    for t in threads {
+        t.join().unwrap();
+    }
 }
 
 /// The test taken from the Rust documentation.
@@ -41,13 +48,15 @@ fn send_on_sync() {
     // this returns immediately
     sender.send(1).unwrap();
 
-    thread::spawn(move || {
+    let t = thread::spawn(move || {
         // this will block until the previous message has been received
         sender.send(2).unwrap();
     });
 
     assert_eq!(receiver.recv().unwrap(), 1);
     assert_eq!(receiver.recv().unwrap(), 2);
+
+    t.join().unwrap();
 }
 
 fn main() {
