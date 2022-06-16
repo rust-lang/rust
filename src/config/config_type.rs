@@ -127,6 +127,7 @@ macro_rules! create_config {
                     | "array_width"
                     | "chain_width" => self.0.set_heuristics(),
                     "merge_imports" => self.0.set_merge_imports(),
+                    "fn_args_layout" => self.0.set_fn_args_layout(),
                     &_ => (),
                 }
             }
@@ -181,6 +182,7 @@ macro_rules! create_config {
                 self.set_heuristics();
                 self.set_ignore(dir);
                 self.set_merge_imports();
+                self.set_fn_args_layout();
                 self
             }
 
@@ -273,14 +275,21 @@ macro_rules! create_config {
                     | "array_width"
                     | "chain_width" => self.set_heuristics(),
                     "merge_imports" => self.set_merge_imports(),
+                    "fn_args_layout" => self.set_fn_args_layout(),
                     &_ => (),
                 }
             }
 
             #[allow(unreachable_pub)]
             pub fn is_hidden_option(name: &str) -> bool {
-                const HIDE_OPTIONS: [&str; 5] =
-                    ["verbose", "verbose_diff", "file_lines", "width_heuristics", "merge_imports"];
+                const HIDE_OPTIONS: [&str; 6] = [
+                    "verbose",
+                    "verbose_diff",
+                    "file_lines",
+                    "width_heuristics",
+                    "merge_imports",
+                    "fn_args_layout"
+                ];
                 HIDE_OPTIONS.contains(&name)
             }
 
@@ -426,6 +435,18 @@ macro_rules! create_config {
                         } else {
                             ImportGranularity::Preserve
                         };
+                    }
+                }
+            }
+
+            fn set_fn_args_layout(&mut self) {
+                if self.was_set().fn_args_layout() {
+                    eprintln!(
+                        "Warning: the `fn_args_layout` option is deprecated. \
+                        Use `fn_params_layout`. instead"
+                    );
+                    if !self.was_set().fn_params_layout() {
+                        self.fn_params_layout.2 = self.fn_args_layout();
                     }
                 }
             }

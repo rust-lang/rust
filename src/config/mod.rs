@@ -124,7 +124,9 @@ create_config! {
     force_multiline_blocks: bool, false, false,
         "Force multiline closure bodies and match arms to be wrapped in a block";
     fn_args_layout: Density, Density::Tall, true,
-        "Control the layout of arguments in a function";
+        "(deprecated: use fn_params_layout instead)";
+    fn_params_layout: Density, Density::Tall, true,
+        "Control the layout of parameters in function signatures.";
     brace_style: BraceStyle, BraceStyle::SameLineWhere, false, "Brace style for items";
     control_brace_style: ControlBraceStyle, ControlBraceStyle::AlwaysSameLine, false,
         "Brace style for control flow constructs";
@@ -196,6 +198,7 @@ impl PartialConfig {
         cloned.width_heuristics = None;
         cloned.print_misformatted_file_names = None;
         cloned.merge_imports = None;
+        cloned.fn_args_layout = None;
 
         ::toml::to_string(&cloned).map_err(ToTomlError)
     }
@@ -442,6 +445,12 @@ mod test {
                 "Merge imports";
             merge_imports: bool, false, false, "(deprecated: use imports_granularity instead)";
 
+            // fn_args_layout renamed to fn_params_layout
+            fn_args_layout: Density, Density::Tall, true,
+                "(deprecated: use fn_params_layout instead)";
+            fn_params_layout: Density, Density::Tall, true,
+                "Control the layout of parameters in a function signatures.";
+
             // Width Heuristics
             use_small_heuristics: Heuristics, Heuristics::Default, true,
                 "Whether to use different formatting for items and \
@@ -644,7 +653,7 @@ enum_discrim_align_threshold = 0
 match_arm_blocks = true
 match_arm_leading_pipes = "Never"
 force_multiline_blocks = false
-fn_args_layout = "Tall"
+fn_params_layout = "Tall"
 brace_style = "SameLineWhere"
 control_brace_style = "AlwaysSameLine"
 trailing_semicolon = true

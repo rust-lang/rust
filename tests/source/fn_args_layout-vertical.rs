@@ -1,4 +1,4 @@
-// rustfmt-fn_args_layout: Vertical
+// rustfmt-fn_params_layout: Vertical
 
 // Empty list should stay on one line.
 fn do_bar(

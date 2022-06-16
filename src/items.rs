@@ -2602,7 +2602,7 @@ fn rewrite_params(
         &param_items,
         context
             .config
-            .fn_args_layout()
+            .fn_params_layout()
             .to_list_tactic(param_items.len()),
         Separator::Comma,
         one_line_budget,

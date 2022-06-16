@@ -645,7 +645,8 @@ trailing whitespaces.
 
 ## `fn_args_layout`
 
-Control the layout of arguments in a function
+This option is deprecated and has been renamed to `fn_params_layout` to better communicate that
+it affects the layout of parameters in function signatures.
 
 - **Default value**: `"Tall"`
 - **Possible values**: `"Compressed"`, `"Tall"`, `"Vertical"`
@@ -753,6 +754,8 @@ trait Lorem {
 }
 ```
 
+See also [`fn_params_layout`](#fn_params_layout)
+
 ## `fn_call_width`
 
 Maximum width of the args of a function call before falling back to vertical formatting.
@@ -764,6 +767,117 @@ Maximum width of the args of a function call before falling back to vertical for
 By default this option is set as a percentage of [`max_width`](#max_width) provided by [`use_small_heuristics`](#use_small_heuristics), but a value set directly for `fn_call_width` will take precedence.
 
 See also [`max_width`](#max_width) and [`use_small_heuristics`](#use_small_heuristics)
+
+## `fn_params_layout`
+
+Control the layout of parameters in function signatures.
+
+- **Default value**: `"Tall"`
+- **Possible values**: `"Compressed"`, `"Tall"`, `"Vertical"`
+- **Stable**: Yes
+
+#### `"Tall"` (default):
+
+```rust
+trait Lorem {
+    fn lorem(ipsum: Ipsum, dolor: Dolor, sit: Sit, amet: Amet);
+
+    fn lorem(ipsum: Ipsum, dolor: Dolor, sit: Sit, amet: Amet) {
+        // body
+    }
+
+    fn lorem(
+        ipsum: Ipsum,
+        dolor: Dolor,
+        sit: Sit,
+        amet: Amet,
+        consectetur: Consectetur,
+        adipiscing: Adipiscing,
+        elit: Elit,
+    );
+
+    fn lorem(
+        ipsum: Ipsum,
+        dolor: Dolor,
+        sit: Sit,
+        amet: Amet,
+        consectetur: Consectetur,
+        adipiscing: Adipiscing,
+        elit: Elit,
+    ) {
+        // body
+    }
+}
+```
+
+#### `"Compressed"`:
+
+```rust
+trait Lorem {
+    fn lorem(ipsum: Ipsum, dolor: Dolor, sit: Sit, amet: Amet);
+
+    fn lorem(ipsum: Ipsum, dolor: Dolor, sit: Sit, amet: Amet) {
+        // body
+    }
+
+    fn lorem(
+        ipsum: Ipsum, dolor: Dolor, sit: Sit, amet: Amet, consectetur: Consectetur,
+        adipiscing: Adipiscing, elit: Elit,
+    );
+
+    fn lorem(
+        ipsum: Ipsum, dolor: Dolor, sit: Sit, amet: Amet, consectetur: Consectetur,
+        adipiscing: Adipiscing, elit: Elit,
+    ) {
+        // body
+    }
+}
+```
+
+#### `"Vertical"`:
+
+```rust
+trait Lorem {
+    fn lorem(
+        ipsum: Ipsum,
+        dolor: Dolor,
+        sit: Sit,
+        amet: Amet,
+    );
+
+    fn lorem(
+        ipsum: Ipsum,
+        dolor: Dolor,
+        sit: Sit,
+        amet: Amet,
+    ) {
+        // body
+    }
+
+    fn lorem(
+        ipsum: Ipsum,
+        dolor: Dolor,
+        sit: Sit,
+        amet: Amet,
+        consectetur: Consectetur,
+        adipiscing: Adipiscing,
+        elit: Elit,
+    );
+
+    fn lorem(
+        ipsum: Ipsum,
+        dolor: Dolor,
+        sit: Sit,
+        amet: Amet,
+        consectetur: Consectetur,
+        adipiscing: Adipiscing,
+        elit: Elit,
+    ) {
+        // body
+    }
+}
+```
+
 
 ## `fn_single_line`
 
