@@ -88,8 +88,8 @@
 //! [^extern_fn]: this remains true for any other ABI: `extern "abi" fn` (_e.g._, `extern "system" fn`)
 //!
 //! [`Box<U>`]: ../../std/boxed/struct.Box.html
-//! [`num::NonZero*`]: crate::num
-//! [`ptr::NonNull<U>`]: crate::ptr::NonNull
+//! [`num::NonZero*`]: core::num
+//! [`ptr::NonNull<U>`]: core::ptr::NonNull
 //!
 //! This is called the "null pointer optimization" or NPO.
 //!
@@ -97,6 +97,8 @@
 //! [`mem::transmute`] from all valid values of `T` to `Option<T>` and
 //! from `Some::<T>(_)` to `T` (but transmuting `None::<T>` to `T`
 //! is undefined behaviour).
+//!
+//! [`mem::transmute`]: core::mem::transmute
 //!
 //! # Method overview
 //!
@@ -126,13 +128,14 @@
 //!
 //! [&]: reference "shared reference"
 //! [&mut]: reference "mutable reference"
-//! [Target]: Deref::Target "ops::Deref::Target"
+//! [Target]: core::ops::Deref::Target "ops::Deref::Target"
 //! [`as_deref`]: Option::as_deref
 //! [`as_deref_mut`]: Option::as_deref_mut
 //! [`as_mut`]: Option::as_mut
 //! [`as_pin_mut`]: Option::as_pin_mut
 //! [`as_pin_ref`]: Option::as_pin_ref
 //! [`as_ref`]: Option::as_ref
+//! [Pin]: core::pin::Pin
 //!
 //! ## Extracting the contained value
 //!
@@ -314,8 +317,8 @@
 //! the [`Option`] is [`None`].
 //!
 //! [`Some(v)`]: Some
-//! [`empty()`]: crate::iter::empty
-//! [`once(v)`]: crate::iter::once
+//! [`empty()`]: core::iter::empty
+//! [`once(v)`]: core::iter::once
 //!
 //! Iterators over [`Option<T>`] come in three types:
 //!
@@ -366,8 +369,8 @@
 //! we can't return `impl Iterator` anymore because the concrete types of
 //! the return values differ.
 //!
-//! [`empty()`]: crate::iter::empty
-//! [`once()`]: crate::iter::once
+//! [`empty()`]: core::iter::empty
+//! [`once()`]: core::iter::once
 //!
 //! ```compile_fail,E0308
 //! # use std::iter::{empty, once};
