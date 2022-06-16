@@ -2,6 +2,8 @@
 #  set(LLVM_LINK_COMPONENTS Core Support)
 #endif()
 
+set(LLVM_LINK_COMPONENTS Demangle)
+
 file(GLOB ENZYME_SRC RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
     "*.cpp"
 )
