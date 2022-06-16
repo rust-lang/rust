@@ -102,6 +102,10 @@ unsafe impl<T: ?Sized + Send + Sync> Sync for RwLock<T> {}
 #[stable(feature = "rust1", since = "1.0.0")]
 #[clippy::has_significant_drop]
 pub struct RwLockReadGuard<'a, T: ?Sized + 'a> {
+    // NB: we use a pointer instead of `&'a T` to avoid `noalias` violations, because a
+    // `Ref` argument doesn't hold immutability for its whole scope, only until it drops.
+    // `NonNull` is also covariant over `T`, just like we would have with `&T`. `NonNull`
+    // is preferable over `const* T` to allow for niche optimization.
     data: NonNull<T>,
     inner_lock: &'a sys::MovableRwLock,
 }
