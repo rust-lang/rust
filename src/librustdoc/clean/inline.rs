@@ -500,7 +500,11 @@ pub(crate) fn build_impl(
             for_,
             items: trait_items,
             polarity,
-            kind: ImplKind::Normal,
+            kind: if utils::has_doc_flag(tcx, did, sym::tuple_variadic) {
+                ImplKind::TupleVaradic
+            } else {
+                ImplKind::Normal
+            },
         }),
         box merged_attrs,
         cx,

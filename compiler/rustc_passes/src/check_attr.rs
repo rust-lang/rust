@@ -805,6 +805,37 @@ impl CheckAttrVisitor<'_> {
         true
     }
 
+    fn check_doc_tuple_variadic(&self, meta: &NestedMetaItem, hir_id: HirId) -> bool {
+        match self.tcx.hir().find(hir_id).and_then(|node| match node {
+            hir::Node::Item(item) => Some(&item.kind),
+            _ => None,
+        }) {
+            Some(ItemKind::Impl(ref i)) => {
+                if !matches!(&i.self_ty.kind, hir::TyKind::Tup([_])) {
+                    self.tcx
+                        .sess
+                        .struct_span_err(
+                            meta.span(),
+                            "`#[doc(tuple_variadic)]` must be used on the first of a set of tuple trait impls with varying arity",
+                        )
+                        .emit();
+                    return false;
+                }
+            }
+            _ => {
+                self.tcx
+                    .sess
+                    .struct_span_err(
+                        meta.span(),
+                        "`#[doc(keyword = \"...\")]` can only be used on impl blocks",
+                    )
+                    .emit();
+                return false;
+            }
+        }
+        true
+    }
+
     /// Checks `#[doc(inline)]`/`#[doc(no_inline)]` attributes. Returns `true` if valid.
     ///
     /// A doc inlining attribute is invalid if it is applied to a non-`use` item, or
@@ -1065,6 +1096,13 @@ impl CheckAttrVisitor<'_> {
                             is_valid = false
                         }
 
+                        sym::tuple_variadic
+                            if !self.check_attr_not_crate_level(meta, hir_id, "tuple_variadic")
+                                || !self.check_doc_tuple_variadic(meta, hir_id) =>
+                        {
+                            is_valid = false
+                        }
+
                         sym::html_favicon_url
                         | sym::html_logo_url
                         | sym::html_playground_url
@@ -1118,7 +1156,8 @@ impl CheckAttrVisitor<'_> {
                         | sym::no_inline
                         | sym::notable_trait
                         | sym::passes
-                        | sym::plugins => {}
+                        | sym::plugins
+                        | sym::tuple_variadic => {}
 
                         sym::test => {
                             if !self.check_test_attr(meta, hir_id) {

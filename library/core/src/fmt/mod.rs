@@ -2313,21 +2313,38 @@ macro_rules! peel {
 macro_rules! tuple {
     () => ();
     ( $($name:ident,)+ ) => (
-        #[stable(feature = "rust1", since = "1.0.0")]
-        impl<$($name:Debug),+> Debug for ($($name,)+) where last_type!($($name,)+): ?Sized {
-            #[allow(non_snake_case, unused_assignments)]
-            fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-                let mut builder = f.debug_tuple("");
-                let ($(ref $name,)+) = *self;
-                $(
-                    builder.field(&$name);
-                )+
+        maybe_tuple_doc! {
+            $($name)+ @
+            #[stable(feature = "rust1", since = "1.0.0")]
+            impl<$($name:Debug),+> Debug for ($($name,)+) where last_type!($($name,)+): ?Sized {
+                #[allow(non_snake_case, unused_assignments)]
+                fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+                    let mut builder = f.debug_tuple("");
+                    let ($(ref $name,)+) = *self;
+                    $(
+                        builder.field(&$name);
+                    )+
 
-                builder.finish()
+                    builder.finish()
+                }
             }
         }
         peel! { $($name,)+ }
     )
+}
+
+macro_rules! maybe_tuple_doc {
+    ($a:ident @ #[$meta:meta] $item:item) => {
+        #[cfg_attr(not(bootstrap), doc(tuple_variadic))]
+        #[doc = "This trait is implemented for tuples up to twelve items long."]
+        #[$meta]
+        $item
+    };
+    ($a:ident $($rest_a:ident)+ @ #[$meta:meta] $item:item) => {
+        #[doc(hidden)]
+        #[$meta]
+        $item
+    };
 }
 
 macro_rules! last_type {
@@ -2335,7 +2352,7 @@ macro_rules! last_type {
     ($a:ident, $($rest_a:ident,)+) => { last_type!($($rest_a,)+) };
 }
 
-tuple! { T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, }
+tuple! { E, D, C, B, A, Z, Y, X, W, V, U, T, }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Debug> Debug for [T] {
