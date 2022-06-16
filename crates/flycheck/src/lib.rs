@@ -162,26 +162,31 @@ impl FlycheckActor {
                         cargo_handle.cancel();
                     }
                     while let Ok(Restart) = inbox.recv_timeout(Duration::from_millis(50)) {}
-
-                    self.cancel_check_process();
+                    self.progress(Progress::DidCancel);
 
                     let command = self.check_command();
-                    let command_f = format!("{command:?}");
                     tracing::debug!(?command, "will restart flycheck");
                     match CargoHandle::spawn(command) {
                         Ok(cargo_handle) => {
-                            tracing::debug!(%command_f, "did  restart flycheck");
+                            tracing::debug!(
+                                command = ?self.check_command(),
+                                "did  restart flycheck"
+                            );
                             self.cargo_handle = Some(cargo_handle);
                             self.progress(Progress::DidStart);
                         }
                         Err(error) => {
-                            tracing::error!(%command_f, %error, "failed to restart flycheck");
+                            tracing::error!(
+                                command = ?self.check_command(),
+                                %error, "failed to restart flycheck"
+                            );
                         }
                     }
                 }
                 Event::CheckEvent(None) => {
-                    // Watcher finished, replace it with a never channel to
-                    // avoid busy-waiting.
+                    tracing::debug!("flycheck finished");
+
+                    // Watcher finished
                     let cargo_handle = self.cargo_handle.take().unwrap();
                     let res = cargo_handle.join();
                     if res.is_err() {
@@ -209,8 +214,10 @@ impl FlycheckActor {
         // If we rerun the thread, we need to discard the previous check results first
         self.cancel_check_process();
     }
+
     fn cancel_check_process(&mut self) {
-        if self.cargo_handle.take().is_some() {
+        if let Some(cargo_handle) = self.cargo_handle.take() {
+            cargo_handle.cancel();
             self.progress(Progress::DidCancel);
         }
     }
