@@ -1,5 +1,3 @@
-// error-pattern:cargo-clippy
-
 #![feature(array_windows)]
 #![feature(binary_heap_into_iter_sorted)]
 #![feature(box_patterns)]
@@ -88,10 +86,11 @@ use rustc_session::Session;
 ///     ///
 ///     /// ### Example
 ///     /// ```rust
-///     /// // Bad
 ///     /// Insert a short example of code that triggers the lint
+///     /// ```
 ///     ///
-///     /// // Good
+///     /// Use instead:
+///     /// ```rust
 ///     /// Insert a short example of improved code that doesn't trigger the lint
 ///     /// ```
 ///     pub LINT_NAME,
@@ -315,6 +314,7 @@ mod needless_borrowed_ref;
 mod needless_continue;
 mod needless_for_each;
 mod needless_late_init;
+mod needless_parens_on_range_literals;
 mod needless_pass_by_value;
 mod needless_question_mark;
 mod needless_update;
@@ -348,6 +348,7 @@ mod pub_use;
 mod question_mark;
 mod ranges;
 mod rc_clone_in_vec_init;
+mod read_zero_byte_vec;
 mod redundant_clone;
 mod redundant_closure_call;
 mod redundant_else;
@@ -746,6 +747,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_early_pass(|| Box::new(collapsible_if::CollapsibleIf));
     store.register_early_pass(|| Box::new(items_after_statements::ItemsAfterStatements));
     store.register_early_pass(|| Box::new(precedence::Precedence));
+    store.register_late_pass(|| Box::new(needless_parens_on_range_literals::NeedlessParensOnRangeLiterals));
     store.register_early_pass(|| Box::new(needless_continue::NeedlessContinue));
     store.register_early_pass(|| Box::new(redundant_else::RedundantElse));
     store.register_late_pass(|| Box::new(create_dir::CreateDir));
@@ -907,6 +909,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(swap_ptr_to_ref::SwapPtrToRef));
     store.register_late_pass(|| Box::new(mismatching_type_param_order::TypeParamMismatch));
     store.register_late_pass(|| Box::new(as_underscore::AsUnderscore));
+    store.register_late_pass(|| Box::new(read_zero_byte_vec::ReadZeroByteVec));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 

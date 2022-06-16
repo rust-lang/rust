@@ -110,14 +110,9 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>]) {
                 arm1.span,
                 "this match arm has an identical body to the `_` wildcard arm",
                 |diag| {
-                    diag.span_suggestion(
-                        arm1.span,
-                        "try removing the arm",
-                        "",
-                        Applicability::MaybeIncorrect,
-                    )
-                    .help("or try changing either arm body")
-                    .span_note(arm2.span, "`_` wildcard arm here");
+                    diag.span_suggestion(arm1.span, "try removing the arm", "", Applicability::MaybeIncorrect)
+                        .help("or try changing either arm body")
+                        .span_note(arm2.span, "`_` wildcard arm here");
                 },
             );
         } else {

@@ -27,12 +27,13 @@ declare_clippy_lint! {
     /// ### Example
     /// ```rust
     /// # let x = vec![1];
-    /// x.iter().zip(0..x.len());
+    /// let _ = x.iter().zip(0..x.len());
     /// ```
-    /// Could be written as
+    ///
+    /// Use instead:
     /// ```rust
     /// # let x = vec![1];
-    /// x.iter().enumerate();
+    /// let _ = x.iter().enumerate();
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub RANGE_ZIP_WITH_LEN,
@@ -65,12 +66,21 @@ declare_clippy_lint! {
     /// ([#3307](https://github.com/rust-lang/rust-clippy/issues/3307)).
     ///
     /// ### Example
-    /// ```rust,ignore
-    /// for x..(y+1) { .. }
+    /// ```rust
+    /// # let x = 0;
+    /// # let y = 1;
+    /// for i in x..(y+1) {
+    ///     // ..
+    /// }
     /// ```
-    /// Could be written as
-    /// ```rust,ignore
-    /// for x..=y { .. }
+    ///
+    /// Use instead:
+    /// ```rust
+    /// # let x = 0;
+    /// # let y = 1;
+    /// for i in x..=y {
+    ///     // ..
+    /// }
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub RANGE_PLUS_ONE,
@@ -94,12 +104,21 @@ declare_clippy_lint! {
     /// ([#3307](https://github.com/rust-lang/rust-clippy/issues/3307)).
     ///
     /// ### Example
-    /// ```rust,ignore
-    /// for x..=(y-1) { .. }
+    /// ```rust
+    /// # let x = 0;
+    /// # let y = 1;
+    /// for i in x..=(y-1) {
+    ///     // ..
+    /// }
     /// ```
-    /// Could be written as
-    /// ```rust,ignore
-    /// for x..y { .. }
+    ///
+    /// Use instead:
+    /// ```rust
+    /// # let x = 0;
+    /// # let y = 1;
+    /// for i in x..y {
+    ///     // ..
+    /// }
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub RANGE_MINUS_ONE,

@@ -60,7 +60,7 @@ declare_clippy_lint! {
     /// let vec = vec![1, 2, 3];
     /// let slice = &*vec;
     /// ```
-    #[clippy::version = "1.60.0"]
+    #[clippy::version = "1.61.0"]
     pub DEREF_BY_SLICING,
     restriction,
     "slicing instead of dereferencing"
