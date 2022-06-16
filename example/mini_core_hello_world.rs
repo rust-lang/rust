@@ -55,6 +55,11 @@ struct NoisyDrop {
     inner: NoisyDropInner,
 }
 
+struct NoisyDropUnsized {
+    inner: NoisyDropInner,
+    text: str,
+}
+
 struct NoisyDropInner;
 
 impl Drop for NoisyDrop {
@@ -170,7 +175,9 @@ fn main() {
         assert_eq!(intrinsics::min_align_of_val(&a) as u8, intrinsics::min_align_of::<&str>() as u8);
 
         assert!(!intrinsics::needs_drop::<u8>());
+        assert!(!intrinsics::needs_drop::<[u8]>());
         assert!(intrinsics::needs_drop::<NoisyDrop>());
+        assert!(intrinsics::needs_drop::<NoisyDropUnsized>());
 
         Unique {
             pointer: NonNull(1 as *mut &str),
