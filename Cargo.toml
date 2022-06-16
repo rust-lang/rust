@@ -40,6 +40,7 @@ filetime = "0.2"
 rustc-workspace-hack = "1.0"
 
 # UI test dependencies
+clap = { version = "3.1", features = ["derive"] }
 clippy_utils = { path = "clippy_utils" }
 derive-new = "0.5"
 if_chain = "1.0"
@@ -58,7 +59,7 @@ rustc_tools_util = { version = "0.2", path = "rustc_tools_util" }
 [features]
 deny-warnings = ["clippy_lints/deny-warnings"]
 integration = ["tempfile"]
-internal = ["clippy_lints/internal"]
+internal = ["clippy_lints/internal", "tempfile"]
 
 [package.metadata.rust-analyzer]
 # This package uses #[feature(rustc_private)]

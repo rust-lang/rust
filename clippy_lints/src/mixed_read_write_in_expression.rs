@@ -25,14 +25,16 @@ declare_clippy_lint! {
     /// ```rust
     /// let mut x = 0;
     ///
-    /// // Bad
     /// let a = {
     ///     x = 1;
     ///     1
     /// } + x;
     /// // Unclear whether a is 1 or 2.
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
+    /// # let mut x = 0;
     /// let tmp = {
     ///     x = 1;
     ///     1

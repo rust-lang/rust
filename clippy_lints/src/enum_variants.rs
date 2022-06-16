@@ -60,7 +60,8 @@ declare_clippy_lint! {
     ///     struct BlackForestCake;
     /// }
     /// ```
-    /// Could be written as:
+    ///
+    /// Use instead:
     /// ```rust
     /// mod cake {
     ///     struct BlackForest;

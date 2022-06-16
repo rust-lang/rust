@@ -155,13 +155,7 @@ where
     });
 }
 
-pub fn span_lint_hir(
-    cx: &LateContext<'_>,
-    lint: &'static Lint,
-    hir_id: HirId,
-    sp: Span,
-    msg: &str,
-) {
+pub fn span_lint_hir(cx: &LateContext<'_>, lint: &'static Lint, hir_id: HirId, sp: Span, msg: &str) {
     cx.tcx.struct_span_lint_hir(lint, hir_id, sp, |diag| {
         let mut diag = diag.build(msg);
         docs_link(&mut diag, lint);
@@ -278,9 +272,7 @@ pub fn span_lint_and_sugg_for_edges(
         let sugg_lines_count = sugg.lines().count();
         if sugg_lines_count > MAX_SUGGESTION_HIGHLIGHT_LINES {
             let sm = cx.sess().source_map();
-            if let (Ok(line_upper), Ok(line_bottom)) =
-                (sm.lookup_line(sp.lo()), sm.lookup_line(sp.hi()))
-            {
+            if let (Ok(line_upper), Ok(line_bottom)) = (sm.lookup_line(sp.lo()), sm.lookup_line(sp.hi())) {
                 let split_idx = MAX_SUGGESTION_HIGHLIGHT_LINES / 2;
                 let span_upper = sm.span_until_char(
                     sp.with_hi(line_upper.sf.lines(|lines| lines[line_upper.line + split_idx])),

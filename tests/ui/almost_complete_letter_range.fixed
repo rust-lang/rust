@@ -6,6 +6,7 @@
 #![feature(stmt_expr_attributes)]
 #![warn(clippy::almost_complete_letter_range)]
 #![allow(ellipsis_inclusive_range_patterns)]
+#![allow(clippy::needless_parens_on_range_literals)]
 
 macro_rules! a {
     () => {

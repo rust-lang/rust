@@ -3605,6 +3605,7 @@ Released 2018-09-13
 [`needless_match`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_match
 [`needless_option_as_deref`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_option_as_deref
 [`needless_option_take`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_option_take
+[`needless_parens_on_range_literals`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_parens_on_range_literals
 [`needless_pass_by_value`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_pass_by_value
 [`needless_question_mark`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_question_mark
 [`needless_range_loop`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_range_loop
@@ -3677,6 +3678,7 @@ Released 2018-09-13
 [`rc_buffer`]: https://rust-lang.github.io/rust-clippy/master/index.html#rc_buffer
 [`rc_clone_in_vec_init`]: https://rust-lang.github.io/rust-clippy/master/index.html#rc_clone_in_vec_init
 [`rc_mutex`]: https://rust-lang.github.io/rust-clippy/master/index.html#rc_mutex
+[`read_zero_byte_vec`]: https://rust-lang.github.io/rust-clippy/master/index.html#read_zero_byte_vec
 [`recursive_format_impl`]: https://rust-lang.github.io/rust-clippy/master/index.html#recursive_format_impl
 [`redundant_allocation`]: https://rust-lang.github.io/rust-clippy/master/index.html#redundant_allocation
 [`redundant_clone`]: https://rust-lang.github.io/rust-clippy/master/index.html#redundant_clone

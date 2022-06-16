@@ -4,28 +4,28 @@
 #![warn(clippy::derive_partial_eq_without_eq)]
 
 // Don't warn on structs that aren't PartialEq
-struct NotPartialEq {
+pub struct NotPartialEq {
     foo: u32,
     bar: String,
 }
 
 // Eq can be derived but is missing
 #[derive(Debug, PartialEq)]
-struct MissingEq {
+pub struct MissingEq {
     foo: u32,
     bar: String,
 }
 
 // Eq is derived
 #[derive(PartialEq, Eq)]
-struct NotMissingEq {
+pub struct NotMissingEq {
     foo: u32,
     bar: String,
 }
 
 // Eq is manually implemented
 #[derive(PartialEq)]
-struct ManualEqImpl {
+pub struct ManualEqImpl {
     foo: u32,
     bar: String,
 }
@@ -34,13 +34,13 @@ impl Eq for ManualEqImpl {}
 
 // Cannot be Eq because f32 isn't Eq
 #[derive(PartialEq)]
-struct CannotBeEq {
+pub struct CannotBeEq {
     foo: u32,
     bar: f32,
 }
 
 // Don't warn if PartialEq is manually implemented
-struct ManualPartialEqImpl {
+pub struct ManualPartialEqImpl {
     foo: u32,
     bar: String,
 }
@@ -53,52 +53,74 @@ impl PartialEq for ManualPartialEqImpl {
 
 // Generic fields should be properly checked for Eq-ness
 #[derive(PartialEq)]
-struct GenericNotEq<T: Eq, U: PartialEq> {
+pub struct GenericNotEq<T: Eq, U: PartialEq> {
     foo: T,
     bar: U,
 }
 
 #[derive(PartialEq)]
-struct GenericEq<T: Eq, U: Eq> {
+pub struct GenericEq<T: Eq, U: Eq> {
     foo: T,
     bar: U,
 }
 
 #[derive(PartialEq)]
-struct TupleStruct(u32);
+pub struct TupleStruct(u32);
 
 #[derive(PartialEq)]
-struct GenericTupleStruct<T: Eq>(T);
+pub struct GenericTupleStruct<T: Eq>(T);
 
 #[derive(PartialEq)]
-struct TupleStructNotEq(f32);
+pub struct TupleStructNotEq(f32);
 
 #[derive(PartialEq)]
-enum Enum {
+pub enum Enum {
     Foo(u32),
     Bar { a: String, b: () },
 }
 
 #[derive(PartialEq)]
-enum GenericEnum<T: Eq, U: Eq, V: Eq> {
+pub enum GenericEnum<T: Eq, U: Eq, V: Eq> {
     Foo(T),
     Bar { a: U, b: V },
 }
 
 #[derive(PartialEq)]
-enum EnumNotEq {
+pub enum EnumNotEq {
     Foo(u32),
     Bar { a: String, b: f32 },
 }
 
 // Ensure that rustfix works properly when `PartialEq` has other derives on either side
 #[derive(Debug, PartialEq, Clone)]
-struct RustFixWithOtherDerives;
+pub struct RustFixWithOtherDerives;
 
 #[derive(PartialEq)]
-struct Generic<T>(T);
+pub struct Generic<T>(T);
 
 #[derive(PartialEq, Eq)]
-struct GenericPhantom<T>(core::marker::PhantomData<T>);
+pub struct GenericPhantom<T>(core::marker::PhantomData<T>);
+
+mod _hidden {
+    #[derive(PartialEq)]
+    pub struct Reexported;
+
+    #[derive(PartialEq)]
+    pub struct InPubFn;
+
+    #[derive(PartialEq)]
+    pub(crate) struct PubCrate;
+
+    #[derive(PartialEq)]
+    pub(super) struct PubSuper;
+}
+
+pub use _hidden::Reexported;
+pub fn _from_mod() -> _hidden::InPubFn {
+    _hidden::InPubFn
+}
+
+#[derive(PartialEq)]
+struct InternalTy;
 
 fn main() {}

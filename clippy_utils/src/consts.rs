@@ -622,7 +622,7 @@ pub fn miri_to_const<'tcx>(tcx: TyCtxt<'tcx>, result: mir::ConstantKind<'tcx>) -
                 ty::Float(FloatTy::F32) => match len.to_valtree().try_to_machine_usize(tcx) {
                     Some(len) => alloc
                         .inner()
-                        .inspect_with_uninit_and_ptr_outside_interpreter(0..(4 * len as usize))
+                        .inspect_with_uninit_and_ptr_outside_interpreter(0..(4 * usize::try_from(len).unwrap()))
                         .to_owned()
                         .chunks(4)
                         .map(|chunk| {
@@ -637,7 +637,7 @@ pub fn miri_to_const<'tcx>(tcx: TyCtxt<'tcx>, result: mir::ConstantKind<'tcx>) -
                 ty::Float(FloatTy::F64) => match len.to_valtree().try_to_machine_usize(tcx) {
                     Some(len) => alloc
                         .inner()
-                        .inspect_with_uninit_and_ptr_outside_interpreter(0..(8 * len as usize))
+                        .inspect_with_uninit_and_ptr_outside_interpreter(0..(8 * usize::try_from(len).unwrap()))
                         .to_owned()
                         .chunks(8)
                         .map(|chunk| {

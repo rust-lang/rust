@@ -15,12 +15,12 @@ declare_clippy_lint! {
     /// Sometimes `std::fs::create_dir` is mistakenly chosen over `std::fs::create_dir_all`.
     ///
     /// ### Example
-    ///
-    /// ```rust
+    /// ```rust,ignore
     /// std::fs::create_dir("foo");
     /// ```
+    ///
     /// Use instead:
-    /// ```rust
+    /// ```rust,ignore
     /// std::fs::create_dir_all("foo");
     /// ```
     #[clippy::version = "1.48.0"]

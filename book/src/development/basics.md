@@ -1,8 +1,8 @@
 # Basics for hacking on Clippy
 
 This document explains the basics for hacking on Clippy. Besides others, this
-includes how to build and test Clippy. For a more in depth description on
-the codebase take a look at [Adding Lints] or [Common Tools].
+includes how to build and test Clippy. For a more in depth description on the
+codebase take a look at [Adding Lints] or [Common Tools].
 
 [Adding Lints]: https://github.com/rust-lang/rust-clippy/blob/master/doc/adding_lints.md
 [Common Tools]: https://github.com/rust-lang/rust-clippy/blob/master/doc/common_tools_writing_lints.md
@@ -62,8 +62,8 @@ TESTNAME="test_" cargo uitest
 cargo test --test dogfood
 ```
 
-If the output of a [UI test] differs from the expected output, you can update the
-reference file with:
+If the output of a [UI test] differs from the expected output, you can update
+the reference file with:
 
 ```bash
 cargo dev bless
@@ -72,8 +72,8 @@ cargo dev bless
 For example, this is necessary, if you fix a typo in an error message of a lint
 or if you modify a test file to add a test case.
 
-_Note:_ This command may update more files than you intended. In that case only
-commit the files you wanted to update.
+> _Note:_ This command may update more files than you intended. In that case
+> only commit the files you wanted to update.
 
 [UI test]: https://rustc-dev-guide.rust-lang.org/tests/adding.html#guide-to-the-ui-tests
 
@@ -96,22 +96,26 @@ cargo dev setup git-hook
 # (experimental) Setup Clippy to work with IntelliJ-Rust
 cargo dev setup intellij
 ```
-More about intellij command usage and reasons [here](../CONTRIBUTING.md#intellij-rust)
+
+More about intellij command usage and reasons
+[here](../CONTRIBUTING.md#intellij-rust)
 
 ## lintcheck
-`cargo lintcheck` will build and run clippy on a fixed set of crates and generate a log of the results.  
-You can `git diff` the updated log against its previous version and
-see what impact your lint made on a small set of crates.  
-If you add a new lint, please audit the resulting warnings and make sure
-there are no false positives and that the suggestions are valid.
+
+`cargo lintcheck` will build and run clippy on a fixed set of crates and
+generate a log of the results.  You can `git diff` the updated log against its
+previous version and see what impact your lint made on a small set of crates.
+If you add a new lint, please audit the resulting warnings and make sure there
+are no false positives and that the suggestions are valid.
 
 Refer to the tools [README] for more details.
 
 [README]: https://github.com/rust-lang/rust-clippy/blob/master/lintcheck/README.md
+
 ## PR
 
-We follow a rustc no merge-commit policy.
-See <https://rustc-dev-guide.rust-lang.org/contributing.html#opening-a-pr>.
+We follow a rustc no merge-commit policy. See
+<https://rustc-dev-guide.rust-lang.org/contributing.html#opening-a-pr>.
 
 ## Common Abbreviations
 
@@ -126,27 +130,34 @@ See <https://rustc-dev-guide.rust-lang.org/contributing.html#opening-a-pr>.
 | HIR          | High-Level Intermediate Representation |
 | TCX          | Type context                           |
 
-This is a concise list of abbreviations that can come up during Clippy development. An extensive
-general list can be found in the [rustc-dev-guide glossary][glossary]. Always feel free to ask if
-an abbreviation or meaning is unclear to you.
+This is a concise list of abbreviations that can come up during Clippy
+development. An extensive general list can be found in the [rustc-dev-guide
+glossary][glossary]. Always feel free to ask if an abbreviation or meaning is
+unclear to you.
 
 ## Install from source
 
-If you are hacking on Clippy and want to install it from source, do the following:
+If you are hacking on Clippy and want to install it from source, do the
+following:
 
-First, take note of the toolchain [override](https://rust-lang.github.io/rustup/overrides.html) in `/rust-toolchain`.
-We will use this override to install Clippy into the right toolchain.
+First, take note of the toolchain
+[override](https://rust-lang.github.io/rustup/overrides.html) in
+`/rust-toolchain`. We will use this override to install Clippy into the right
+toolchain.
 
-> Tip: You can view the active toolchain for the current directory with `rustup show active-toolchain`.
+> Tip: You can view the active toolchain for the current directory with `rustup
+> show active-toolchain`.
 
-From the Clippy project root, run the following command to build the Clippy binaries and copy them into the
-toolchain directory. This will override the currently installed Clippy component.
+From the Clippy project root, run the following command to build the Clippy
+binaries and copy them into the toolchain directory. This will override the
+currently installed Clippy component.
 
 ```terminal
 cargo build --release --bin cargo-clippy --bin clippy-driver -Zunstable-options --out-dir "$(rustc --print=sysroot)/bin"
 ```
 
-Now you may run `cargo clippy` in any project, using the toolchain where you just installed Clippy.
+Now you may run `cargo clippy` in any project, using the toolchain where you
+just installed Clippy.
 
 ```terminal
 cd my-project
@@ -159,16 +170,19 @@ cargo +nightly-2021-07-01 clippy
 clippy-driver +nightly-2021-07-01 <filename>
 ```
 
-If you need to restore the default Clippy installation, run the following (from the Clippy project root).
+If you need to restore the default Clippy installation, run the following (from
+the Clippy project root).
 
 ```terminal
 rustup component remove clippy
 rustup component add clippy
 ```
 
-> **DO NOT** install using `cargo install --path . --force` since this will overwrite rustup
-> [proxies](https://rust-lang.github.io/rustup/concepts/proxies.html). That is, `~/.cargo/bin/cargo-clippy` and
-> `~/.cargo/bin/clippy-driver` should be hard or soft links to `~/.cargo/bin/rustup`. You can repair these by running
-> `rustup update`.
+> **DO NOT** install using `cargo install --path . --force` since this will
+> overwrite rustup
+> [proxies](https://rust-lang.github.io/rustup/concepts/proxies.html). That is,
+> `~/.cargo/bin/cargo-clippy` and `~/.cargo/bin/clippy-driver` should be hard or
+> soft links to `~/.cargo/bin/rustup`. You can repair these by running `rustup
+> update`.
 
 [glossary]: https://rustc-dev-guide.rust-lang.org/appendix/glossary.html

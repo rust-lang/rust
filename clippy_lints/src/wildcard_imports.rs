@@ -26,13 +26,18 @@ declare_clippy_lint! {
     /// still around.
     ///
     /// ### Example
-    /// ```rust,ignore
-    /// // Bad
+    /// ```rust
     /// use std::cmp::Ordering::*;
-    /// foo(Less);
     ///
-    /// // Good
+    /// # fn foo(_: std::cmp::Ordering) {}
+    /// foo(Less);
+    /// ```
+    ///
+    /// Use instead:
+    /// ```rust
     /// use std::cmp::Ordering;
+    ///
+    /// # fn foo(_: Ordering) {}
     /// foo(Ordering::Less)
     /// ```
     #[clippy::version = "pre 1.29.0"]
@@ -76,14 +81,13 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust,ignore
-    /// // Bad
     /// use crate1::*;
     ///
     /// foo();
     /// ```
     ///
+    /// Use instead:
     /// ```rust,ignore
-    /// // Good
     /// use crate1::foo;
     ///
     /// foo();

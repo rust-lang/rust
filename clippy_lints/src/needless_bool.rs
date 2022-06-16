@@ -30,16 +30,21 @@ declare_clippy_lint! {
     /// shorter code.
     ///
     /// ### Example
-    /// ```rust,ignore
+    /// ```rust
+    /// # let x = true;
     /// if x {
     ///     false
     /// } else {
     ///     true
     /// }
+    /// # ;
     /// ```
-    /// Could be written as
-    /// ```rust,ignore
+    ///
+    /// Use instead:
+    /// ```rust
+    /// # let x = true;
     /// !x
+    /// # ;
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub NEEDLESS_BOOL,

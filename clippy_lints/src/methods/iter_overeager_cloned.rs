@@ -1,70 +1,59 @@
-use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::source::snippet;
-use clippy_utils::ty::{get_iterator_item_ty, implements_trait, is_copy};
-use itertools::Itertools;
+use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::source::snippet_opt;
+use clippy_utils::ty::{get_associated_type, implements_trait, is_copy};
 use rustc_errors::Applicability;
-use rustc_hir as hir;
+use rustc_hir::Expr;
 use rustc_lint::LateContext;
 use rustc_middle::ty;
 use rustc_span::sym;
-use std::ops::Not;
 
 use super::ITER_OVEREAGER_CLONED;
 use crate::redundant_clone::REDUNDANT_CLONE;
 
-/// lint overeager use of `cloned()` for `Iterator`s
 pub(super) fn check<'tcx>(
     cx: &LateContext<'tcx>,
-    expr: &'tcx hir::Expr<'_>,
-    recv: &'tcx hir::Expr<'_>,
-    name: &str,
-    map_arg: &[hir::Expr<'_>],
+    expr: &'tcx Expr<'_>,
+    cloned_call: &'tcx Expr<'_>,
+    cloned_recv: &'tcx Expr<'_>,
+    is_count: bool,
+    needs_into_iter: bool,
 ) {
-    // Check if it's iterator and get type associated with `Item`.
-    let inner_ty = if_chain! {
-        if let Some(iterator_trait_id) = cx.tcx.get_diagnostic_item(sym::Iterator);
-        let recv_ty = cx.typeck_results().expr_ty(recv);
-        if implements_trait(cx, recv_ty, iterator_trait_id, &[]);
-        if let Some(inner_ty) = get_iterator_item_ty(cx, cx.typeck_results().expr_ty_adjusted(recv));
-        then {
-            inner_ty
-        } else {
+    let typeck = cx.typeck_results();
+    if let Some(iter_id) = cx.tcx.get_diagnostic_item(sym::Iterator)
+        && let Some(method_id) = typeck.type_dependent_def_id(expr.hir_id)
+        && cx.tcx.trait_of_item(method_id) == Some(iter_id)
+        && let Some(method_id) = typeck.type_dependent_def_id(cloned_call.hir_id)
+        && cx.tcx.trait_of_item(method_id) == Some(iter_id)
+        && let cloned_recv_ty = typeck.expr_ty_adjusted(cloned_recv)
+        && let Some(iter_assoc_ty) = get_associated_type(cx, cloned_recv_ty, iter_id, "Item")
+        && matches!(*iter_assoc_ty.kind(), ty::Ref(_, ty, _) if !is_copy(cx, ty))
+    {
+        if needs_into_iter
+            && let Some(into_iter_id) = cx.tcx.get_diagnostic_item(sym::IntoIterator)
+            && !implements_trait(cx, iter_assoc_ty, into_iter_id, &[])
+        {
             return;
         }
-    };
 
-    match inner_ty.kind() {
-        ty::Ref(_, ty, _) if !is_copy(cx, *ty) => {},
-        _ => return,
-    };
+        let (lint, msg, trailing_clone) = if is_count {
+            (REDUNDANT_CLONE, "unneeded cloning of iterator items", "")
+        } else {
+            (ITER_OVEREAGER_CLONED, "unnecessarily eager cloning of iterator items", ".cloned()")
+        };
 
-    let (lint, preserve_cloned) = match name {
-        "count" => (REDUNDANT_CLONE, false),
-        _ => (ITER_OVEREAGER_CLONED, true),
-    };
-    let wildcard_params = map_arg.is_empty().not().then(|| "...").unwrap_or_default();
-    let msg = format!(
-        "called `cloned().{}({})` on an `Iterator`. It may be more efficient to call `{}({}){}` instead",
-        name,
-        wildcard_params,
-        name,
-        wildcard_params,
-        preserve_cloned.then(|| ".cloned()").unwrap_or_default(),
-    );
-
-    span_lint_and_sugg(
-        cx,
-        lint,
-        expr.span,
-        &msg,
-        "try this",
-        format!(
-            "{}.{}({}){}",
-            snippet(cx, recv.span, ".."),
-            name,
-            map_arg.iter().map(|a| snippet(cx, a.span, "..")).join(", "),
-            preserve_cloned.then(|| ".cloned()").unwrap_or_default(),
-        ),
-        Applicability::MachineApplicable,
-    );
+        span_lint_and_then(
+            cx,
+            lint,
+            expr.span,
+            msg,
+            |diag| {
+                let method_span = expr.span.with_lo(cloned_call.span.hi());
+                if let Some(mut snip) = snippet_opt(cx, method_span) {
+                    snip.push_str(trailing_clone);
+                    let replace_span = expr.span.with_lo(cloned_recv.span.hi());
+                    diag.span_suggestion(replace_span, "try this", snip, Applicability::MachineApplicable);
+                }
+            }
+        );
+    }
 }
