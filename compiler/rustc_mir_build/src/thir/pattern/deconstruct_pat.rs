@@ -828,14 +828,8 @@ impl<'tcx> Constructor<'tcx> {
                 FloatRange(other_from, other_to, other_end),
             ) => {
                 match (
-                    compare_const_vals(pcx.cx.tcx, *self_to, *other_to, pcx.cx.param_env, pcx.ty),
-                    compare_const_vals(
-                        pcx.cx.tcx,
-                        *self_from,
-                        *other_from,
-                        pcx.cx.param_env,
-                        pcx.ty,
-                    ),
+                    compare_const_vals(pcx.cx.tcx, *self_to, *other_to, pcx.cx.param_env),
+                    compare_const_vals(pcx.cx.tcx, *self_from, *other_from, pcx.cx.param_env),
                 ) {
                     (Some(to), Some(from)) => {
                         (from == Ordering::Greater || from == Ordering::Equal)
@@ -848,16 +842,7 @@ impl<'tcx> Constructor<'tcx> {
             (Str(self_val), Str(other_val)) => {
                 // FIXME Once valtrees are available we can directly use the bytes
                 // in the `Str` variant of the valtree for the comparison here.
-                match compare_const_vals(
-                    pcx.cx.tcx,
-                    *self_val,
-                    *other_val,
-                    pcx.cx.param_env,
-                    pcx.ty,
-                ) {
-                    Some(comparison) => comparison == Ordering::Equal,
-                    None => false,
-                }
+                self_val == other_val
             }
             (Slice(self_slice), Slice(other_slice)) => self_slice.is_covered_by(*other_slice),
 

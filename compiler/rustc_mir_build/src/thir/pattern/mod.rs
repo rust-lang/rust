@@ -15,8 +15,9 @@ use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::pat_util::EnumerateAndAdjustIterator;
 use rustc_hir::RangeEnd;
 use rustc_index::vec::Idx;
-use rustc_middle::mir::interpret::{get_slice_bytes, ConstValue};
-use rustc_middle::mir::interpret::{ErrorHandled, LitToConstError, LitToConstInput};
+use rustc_middle::mir::interpret::{
+    ConstValue, ErrorHandled, LitToConstError, LitToConstInput, Scalar,
+};
 use rustc_middle::mir::{self, UserTypeProjection};
 use rustc_middle::mir::{BorrowKind, Field, Mutability};
 use rustc_middle::thir::{Ascription, BindingMode, FieldPat, LocalVarId, Pat, PatKind, PatRange};
@@ -129,7 +130,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
     ) -> PatKind<'tcx> {
         assert_eq!(lo.ty(), ty);
         assert_eq!(hi.ty(), ty);
-        let cmp = compare_const_vals(self.tcx, lo, hi, self.param_env, ty);
+        let cmp = compare_const_vals(self.tcx, lo, hi, self.param_env);
         match (end, cmp) {
             // `x..y` where `x < y`.
             // Non-empty because the range includes at least `x`.
@@ -753,57 +754,49 @@ pub(crate) fn compare_const_vals<'tcx>(
     a: mir::ConstantKind<'tcx>,
     b: mir::ConstantKind<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    ty: Ty<'tcx>,
 ) -> Option<Ordering> {
-    let from_bool = |v: bool| v.then_some(Ordering::Equal);
+    assert_eq!(a.ty(), b.ty());
 
-    let fallback = || from_bool(a == b);
+    let ty = a.ty();
 
-    // Use the fallback if any type differs
-    if a.ty() != b.ty() || a.ty() != ty {
-        return fallback();
+    // This code is hot when compiling matches with many ranges. So we
+    // special-case extraction of evaluated scalars for speed, for types where
+    // raw data comparisons are appropriate. E.g. `unicode-normalization` has
+    // many ranges such as '\u{037A}'..='\u{037F}', and chars can be compared
+    // in this way.
+    match ty.kind() {
+        ty::Float(_) | ty::Int(_) => {} // require special handling, see below
+        _ => match (a, b) {
+            (
+                mir::ConstantKind::Val(ConstValue::Scalar(Scalar::Int(a)), _a_ty),
+                mir::ConstantKind::Val(ConstValue::Scalar(Scalar::Int(b)), _b_ty),
+            ) => return Some(a.cmp(&b)),
+            _ => {}
+        },
     }
 
-    if a == b {
-        return from_bool(true);
+    let a = a.eval_bits(tcx, param_env, ty);
+    let b = b.eval_bits(tcx, param_env, ty);
+
+    use rustc_apfloat::Float;
+    match *ty.kind() {
+        ty::Float(ty::FloatTy::F32) => {
+            let a = rustc_apfloat::ieee::Single::from_bits(a);
+            let b = rustc_apfloat::ieee::Single::from_bits(b);
+            a.partial_cmp(&b)
+        }
+        ty::Float(ty::FloatTy::F64) => {
+            let a = rustc_apfloat::ieee::Double::from_bits(a);
+            let b = rustc_apfloat::ieee::Double::from_bits(b);
+            a.partial_cmp(&b)
+        }
+        ty::Int(ity) => {
+            use rustc_middle::ty::layout::IntegerExt;
+            let size = rustc_target::abi::Integer::from_int_ty(&tcx, ity).size();
+            let a = size.sign_extend(a);
+            let b = size.sign_extend(b);
+            Some((a as i128).cmp(&(b as i128)))
+        }
+        _ => Some(a.cmp(&b)),
     }
-
-    let a_bits = a.try_eval_bits(tcx, param_env, ty);
-    let b_bits = b.try_eval_bits(tcx, param_env, ty);
-
-    if let (Some(a), Some(b)) = (a_bits, b_bits) {
-        use rustc_apfloat::Float;
-        return match *ty.kind() {
-            ty::Float(ty::FloatTy::F32) => {
-                let l = rustc_apfloat::ieee::Single::from_bits(a);
-                let r = rustc_apfloat::ieee::Single::from_bits(b);
-                l.partial_cmp(&r)
-            }
-            ty::Float(ty::FloatTy::F64) => {
-                let l = rustc_apfloat::ieee::Double::from_bits(a);
-                let r = rustc_apfloat::ieee::Double::from_bits(b);
-                l.partial_cmp(&r)
-            }
-            ty::Int(ity) => {
-                use rustc_middle::ty::layout::IntegerExt;
-                let size = rustc_target::abi::Integer::from_int_ty(&tcx, ity).size();
-                let a = size.sign_extend(a);
-                let b = size.sign_extend(b);
-                Some((a as i128).cmp(&(b as i128)))
-            }
-            _ => Some(a.cmp(&b)),
-        };
-    }
-
-    if let ty::Str = ty.kind() && let (
-        Some(a_val @ ConstValue::Slice { .. }),
-        Some(b_val @ ConstValue::Slice { .. }),
-    ) = (a.try_to_value(tcx), b.try_to_value(tcx))
-    {
-        let a_bytes = get_slice_bytes(&tcx, a_val);
-        let b_bytes = get_slice_bytes(&tcx, b_val);
-        return from_bool(a_bytes == b_bytes);
-    }
-
-    fallback()
 }
