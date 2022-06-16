@@ -175,7 +175,7 @@ fn file_test_io_non_positional_read() {
 #[test]
 fn file_test_io_seek_and_tell_smoke_test() {
     let message = "ten-four";
-    let mut read_mem = [0; 4];
+    let mut read_mem = [0; MAX_UTF8_LEN];
     let set_cursor = 4 as u64;
     let tell_pos_pre_read;
     let tell_pos_post_read;

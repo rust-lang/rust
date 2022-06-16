@@ -1410,7 +1410,7 @@ impl<'a> Iterator for EncodeUtf16<'a> {
             return Some(tmp);
         }
 
-        let mut buf = [0; 2];
+        let mut buf = [0; char::MAX_UTF16_LEN];
         self.chars.next().map(|ch| {
             let n = ch.encode_utf16(&mut buf).len();
             if n == 2 {

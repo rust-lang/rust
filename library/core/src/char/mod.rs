@@ -97,6 +97,14 @@ pub const REPLACEMENT_CHARACTER: char = char::REPLACEMENT_CHARACTER;
 #[stable(feature = "unicode_version", since = "1.45.0")]
 pub const UNICODE_VERSION: (u8, u8, u8) = char::UNICODE_VERSION;
 
+/// Maximum length required to store a UTF8 byte. 
+#[stable(feature = "max_len", since = "1.63.0")]
+pub const MAX_UTF8_LEN: usize = 4;
+
+/// Maximum length required to store a UTF16 byte.
+#[stable(feature = "max_len", since = "1.63.0")]
+pub const MAX_UTF16_LEN: usize = 2;
+
 /// Creates an iterator over the UTF-16 encoded code points in `iter`, returning
 /// unpaired surrogates as `Err`s. Use [`char::decode_utf16`] instead.
 #[stable(feature = "decode_utf16", since = "1.9.0")]

@@ -258,7 +258,7 @@ fn test_escape_unicode() {
 #[test]
 fn test_encode_utf8() {
     fn check(input: char, expect: &[u8]) {
-        let mut buf = [0; 4];
+        let mut buf = [0; MAX_UTF8_LEN];
         let ptr = buf.as_ptr();
         let s = input.encode_utf8(&mut buf);
         assert_eq!(s.as_ptr() as usize, ptr as usize);
@@ -275,7 +275,7 @@ fn test_encode_utf8() {
 #[test]
 fn test_encode_utf16() {
     fn check(input: char, expect: &[u16]) {
-        let mut buf = [0; 2];
+        let mut buf = [0; MAX_UTF16_LEN];
         let ptr = buf.as_mut_ptr();
         let b = input.encode_utf16(&mut buf);
         assert_eq!(b.as_mut_ptr() as usize, ptr as usize);

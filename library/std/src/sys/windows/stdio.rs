@@ -1,6 +1,6 @@
 #![unstable(issue = "none", feature = "windows_stdio")]
 
-use crate::char::decode_utf16;
+use crate::char::decode_utf16, MAX_UTF8_LEN;
 use crate::cmp;
 use crate::io;
 use crate::os::windows::io::{FromRawHandle, IntoRawHandle};
@@ -27,7 +27,7 @@ pub struct Stderr {
 }
 
 struct IncompleteUtf8 {
-    bytes: [u8; 4],
+    bytes: [u8; MAX_UTF8_LEN],
     len: u8,
 }
 
@@ -377,7 +377,7 @@ fn utf16_to_utf8(utf16: &[u16], utf8: &mut [u8]) -> io::Result<usize> {
 
 impl IncompleteUtf8 {
     pub const fn new() -> IncompleteUtf8 {
-        IncompleteUtf8 { bytes: [0; 4], len: 0 }
+        IncompleteUtf8 { bytes: [0; MAX_UTF8_LEN], len: 0 }
     }
 }
 

@@ -43,7 +43,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 #[cfg(not(no_global_oom_handling))]
-use core::char::{decode_utf16, REPLACEMENT_CHARACTER};
+use core::char::{decode_utf16, REPLACEMENT_CHARACTER, MAX_UTF8_LEN};
 use core::fmt;
 use core::hash;
 #[cfg(not(no_global_oom_handling))]
@@ -1219,9 +1219,10 @@ impl String {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn push(&mut self, ch: char) {
+
         match ch.len_utf8() {
             1 => self.vec.push(ch as u8),
-            _ => self.vec.extend_from_slice(ch.encode_utf8(&mut [0; 4]).as_bytes()),
+            _ => self.vec.extend_from_slice(ch.encode_utf8(&mut [0; MAX_UTF8_LEN]).as_bytes()),
         }
     }
 
@@ -1528,7 +1529,7 @@ impl String {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn insert(&mut self, idx: usize, ch: char) {
         assert!(self.is_char_boundary(idx));
-        let mut bits = [0; 4];
+        let mut bits = [0; MAX_UTF8_LEN];
         let bits = ch.encode_utf8(&mut bits).as_bytes();
 
         unsafe {
@@ -2497,7 +2498,7 @@ impl<T: fmt::Display + ?Sized> ToString for T {
 impl ToString for char {
     #[inline]
     fn to_string(&self) -> String {
-        String::from(self.encode_utf8(&mut [0; 4]))
+        String::from(self.encode_utf8(&mut [0; MAX_UTF8_LEN]))
     }
 }
 
