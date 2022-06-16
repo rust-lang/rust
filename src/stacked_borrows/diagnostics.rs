@@ -208,11 +208,7 @@ impl AllocHistory {
     ) -> InterpError<'tcx> {
         // TODO: Fix this properly
         let z = &derived_from;
-        let f = if let Some(ref t) = z {
-            t as &dyn Debug
-        } else {
-            &"<wildcard>" as &dyn Debug
-        };
+        let f = if let Some(ref t) = z { t as &dyn Debug } else { &"<wildcard>" as &dyn Debug };
         let action = format!(
             "trying to reborrow {:?} for {:?} permission at {}[{:#x}]",
             f,
@@ -240,11 +236,7 @@ impl AllocHistory {
         stack: &Stack,
     ) -> InterpError<'tcx> {
         let z = &tag;
-        let f = if let Some(ref t) = z {
-            t as &dyn Debug
-        } else {
-            &"<wildcard>" as &dyn Debug
-        };
+        let f = if let Some(ref t) = z { t as &dyn Debug } else { &"<wildcard>" as &dyn Debug };
         let action = format!(
             "attempting a {} using {:?} at {}[{:#x}]",
             access,

@@ -543,16 +543,9 @@ impl<'tcx> Stack {
         // Now we figure out which item grants our parent (`derived_from`) this kind of access.
         // We use that to determine where to put the new item.
         let granting_idx =
-        self.find_granting(access, derived_from, exposed_tags).map_err(|_| {
-            alloc_history.grant_error(
-                derived_from,
-                new,
-                alloc_id,
-                alloc_range,
-                offset,
-                self,
-            )
-        })?;
+            self.find_granting(access, derived_from, exposed_tags).map_err(|_| {
+                alloc_history.grant_error(derived_from, new, alloc_id, alloc_range, offset, self)
+            })?;
 
         // Compute where to put the new item.
         // Either way, we ensure that we insert the new item in a way such that between
@@ -595,7 +588,9 @@ impl<'tcx> Stack {
             self.borrows.len()
         };
         // Put the new item there. As an optimization, deduplicate if it is equal to one of its new neighbors.
-        if self.borrows.get(new_idx) == Some(&new) || new_idx > 0 && self.borrows.get(new_idx - 1) == Some(&new) {
+        if self.borrows.get(new_idx) == Some(&new)
+            || new_idx > 0 && self.borrows.get(new_idx - 1) == Some(&new)
+        {
             // Optimization applies, done.
             trace!("reborrow: avoiding adding redundant item {:?}", new);
         } else {
