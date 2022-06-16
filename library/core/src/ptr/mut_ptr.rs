@@ -96,11 +96,13 @@ impl<T: ?Sized> *mut T {
     /// refactored.
     ///
     /// While not strictly required (`*mut T` coerces to `*const T`), this is provided for symmetry
-    /// with `as_mut()` on `*const T` and may have documentation value if used instead of implicit
+    /// with [`cast_mut`] on `*const T` and may have documentation value if used instead of implicit
     /// coercion.
+    ///
+    /// [`cast_mut`]: #method.cast_mut
     #[unstable(feature = "ptr_const_cast", issue = "92675")]
     #[rustc_const_unstable(feature = "ptr_const_cast", issue = "92675")]
-    pub const fn as_const(self) -> *const T {
+    pub const fn cast_const(self) -> *const T {
         self as _
     }
 
@@ -289,7 +291,7 @@ impl<T: ?Sized> *mut T {
     /// For the mutable counterpart see [`as_mut`].
     ///
     /// [`as_uninit_ref`]: #method.as_uninit_ref-1
-    /// [`as_mut`]: #method.as_mut-1
+    /// [`as_mut`]: #method.as_mut
     ///
     /// # Safety
     ///
