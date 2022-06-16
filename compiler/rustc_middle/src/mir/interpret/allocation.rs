@@ -26,6 +26,8 @@ use crate::ty;
 /// Its public API is rather low-level, working directly with allocation offsets and a custom error
 /// type to account for the lack of an AllocId on this level. The Miri/CTFE core engine `memory`
 /// module provides higher-level access.
+// Note: for performance reasons when interning, some of the `Allocation` fields can be partially
+// hashed. (see the `Hash` impl below for more details), so the impl is not derived.
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable)]
 #[derive(HashStable)]
 pub struct Allocation<Tag = AllocId, Extra = ()> {
@@ -50,13 +52,13 @@ pub struct Allocation<Tag = AllocId, Extra = ()> {
     pub extra: Extra,
 }
 
-/// This is the maximum size we will hash at a time from these two structures, when interning. Note,
-/// we hash that amount of bytes twice: at the start, and at the end of a buffer. Used when an
-/// `Allocation` and its `InitMask` are large: we only partially hash the larger fields in that
+/// This is the maximum size we will hash at a time, when interning an `Allocation` and its
+/// `InitMask`. Note, we hash that amount of bytes twice: at the start, and at the end of a buffer.
+/// Used when these two structures are large: we only partially hash the larger fields in that
 /// situation. See the comment at the top of their respective `Hash` impl for more details.
 const MAX_BYTES_TO_HASH: usize = 64;
 
-/// This is the maximum size (in bytes) for which a buffer will be fully hashed when interning.
+/// This is the maximum size (in bytes) for which a buffer will be fully hashed, when interning.
 /// Otherwise, it will be partially hashed in 2 slices, requiring at least 2 `MAX_BYTES_TO_HASH`
 /// bytes.
 const MAX_HASHED_BUFFER_LEN: usize = 2 * MAX_BYTES_TO_HASH;
@@ -681,6 +683,8 @@ type Block = u64;
 
 /// A bitmask where each bit refers to the byte with the same index. If the bit is `true`, the byte
 /// is initialized. If it is `false` the byte is uninitialized.
+// Note: for performance reasons when interning, some of the `InitMask` fields can be partially
+// hashed. (see the `Hash` impl below for more details), so the impl is not derived.
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable)]
 #[derive(HashStable)]
 pub struct InitMask {
