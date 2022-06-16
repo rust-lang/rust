@@ -20,10 +20,7 @@ pub struct Hash128 {
 }
 
 cfg_if! {
-    if #[cfg(target_feature = "avx2")] {
-        #[repr(align(32))]
-        struct Acc([u64; 8]);
-    } else if #[cfg(target_feature = "sse2")] {
+    if #[cfg(target_feature = "sse2")] {
         #[repr(align(16))]
         struct Acc([u64; 8]);
     } else {
@@ -198,10 +195,7 @@ impl Xxh3Hasher {
 }
 
 cfg_if! {
-    if #[cfg(target_feature = "avx2")] {
-        const XXH3_accumulate_512: XXH3_f_accumulate_512 = XXH3_accumulate_512_avx2;
-        const XXH3_scrambleAcc: XXH3_f_scrambleAcc = XXH3_scrambleAcc_avx2;
-    } else if #[cfg(target_feature = "sse2")] {
+    if #[cfg(target_feature = "sse2")] {
         const XXH3_accumulate_512: XXH3_f_accumulate_512 = XXH3_accumulate_512_sse2;
         const XXH3_scrambleAcc: XXH3_f_scrambleAcc = XXH3_scrambleAcc_sse2;
     } else {
@@ -591,46 +585,6 @@ fn XXH3_accumulate_512_sse2(acc: &mut Acc, input: Ptr<u8>, secret: Ptr<u8>) {
     }
 }
 
-#[cfg(target_feature = "avx2")]
-#[inline]
-fn XXH3_accumulate_512_avx2(acc: &mut Acc, input: Ptr<u8>, secret: Ptr<u8>) {
-    debug_assert!((acc as *mut _ as usize & 31) == 0);
-    unsafe {
-        #[cfg(target_arch = "x86")]
-        use core::arch::x86::*;
-        #[cfg(target_arch = "x86_64")]
-        use core::arch::x86_64::*;
-
-        let acc: PtrMut<_> = (&mut acc.0[..]).into();
-        let acc: PtrMut<__m256i> = acc.cast();
-
-        // Unaligned. This is mainly for pointer arithmetic, and because
-        // _mm256_loadu_si256 requires a const __m256i* pointer for some reason.
-        let input: Ptr<__m256i> = input.cast();
-        // Unaligned. This is mainly for pointer arithmetic, and because
-        // _mm256_loadu_si256 requires a const __m256i* pointer for some reason.
-        let secret: Ptr<__m256i> = secret.cast();
-
-        for i in 0..XXH_STRIPE_LEN / size_of::<__m256i>() {
-            // data_vec    = xinput[i];
-            let data_vec = _mm256_loadu_si256(input.offset(i).raw());
-            // key_vec     = xsecret[i];
-            let key_vec = _mm256_loadu_si256(secret.offset(i).raw());
-            // data_key    = data_vec ^ key_vec;
-            let data_key = _mm256_xor_si256(data_vec, key_vec);
-            // data_key_lo = data_key >> 32;
-            let data_key_lo = _mm256_shuffle_epi32(data_key, _mm_shuffle(0, 3, 0, 1));
-            // product     = (data_key & 0xffffffff) * (data_key_lo & 0xffffffff);
-            let product = _mm256_mul_epu32(data_key, data_key_lo);
-            // acc[i] += swap(data_vec);
-            let data_swap = _mm256_shuffle_epi32(data_vec, _mm_shuffle(1, 0, 3, 2));
-            let sum = _mm256_add_epi64(acc.offset(i).read(), data_swap);
-            // acc[i] += product;
-            acc.offset(i).write(_mm256_add_epi64(product, sum));
-        }
-    }
-}
-
 #[inline]
 fn XXH_readLE64(ptr: Ptr<u8>) -> u64 {
     #[cfg(debug_assertions)]
@@ -787,43 +741,6 @@ fn XXH3_scrambleAcc_sse2(acc: &mut Acc, secret: Ptr<u8>) {
             let prod_hi = _mm_mul_epu32(data_key_hi, prime32);
             acc.offset(i)
                 .write(_mm_add_epi64(prod_lo, _mm_slli_epi64(prod_hi, 32)));
-        }
-    }
-}
-
-#[cfg(target_feature = "avx2")]
-#[inline]
-fn XXH3_scrambleAcc_avx2(acc: &mut Acc, secret: Ptr<u8>) {
-    debug_assert!((acc as *mut _ as usize & 31) == 0);
-    unsafe {
-        #[cfg(target_arch = "x86")]
-        use core::arch::x86::*;
-        #[cfg(target_arch = "x86_64")]
-        use core::arch::x86_64::*;
-
-        let acc: PtrMut<_> = (&mut acc.0[..]).into();
-        let acc: PtrMut<__m256i> = acc.cast();
-
-        // Unaligned. This is mainly for pointer arithmetic, and because
-        // _mm256_loadu_si256 requires a const __m256i* pointer for some reason.
-        let xsecret: Ptr<__m256i> = secret.cast();
-        let prime32 = _mm256_set1_epi32(XXH_PRIME32_1 as i32);
-
-        for i in 0..XXH_STRIPE_LEN / size_of::<__m256i>() {
-            // acc[i] ^= (acc[i] >> 47)
-            let acc_vec = acc.offset(i).read();
-            let shifted = _mm256_srli_epi64(acc_vec, 47);
-            let data_vec = _mm256_xor_si256(acc_vec, shifted);
-            // acc[i] ^= xsecret[i];
-            let key_vec = _mm256_loadu_si256(xsecret.offset(i).raw());
-            let data_key = _mm256_xor_si256(data_vec, key_vec);
-
-            // acc[i] *= XXH_PRIME32_1;
-            let data_key_hi = _mm256_shuffle_epi32(data_key, _mm_shuffle(0, 3, 0, 1));
-            let prod_lo = _mm256_mul_epu32(data_key, prime32);
-            let prod_hi = _mm256_mul_epu32(data_key_hi, prime32);
-            acc.offset(i)
-                .write(_mm256_add_epi64(prod_lo, _mm256_slli_epi64(prod_hi, 32)));
         }
     }
 }
