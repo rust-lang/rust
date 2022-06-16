@@ -26,19 +26,20 @@ declare_clippy_lint! {
     /// if it was added on constructors for example.
     ///
     /// ### Example
-    /// Missing attribute
     /// ```rust
     /// pub struct Bar;
     /// impl Bar {
-    ///     // Bad
+    ///     // Missing attribute
     ///     pub fn bar(&self) -> Self {
     ///         Self
     ///     }
     /// }
     /// ```
     ///
-    /// It's better to have the `#[must_use]` attribute on the method like this:
+    /// Use instead:
     /// ```rust
+    /// # {
+    /// // It's better to have the `#[must_use]` attribute on the method like this:
     /// pub struct Bar;
     /// impl Bar {
     ///     #[must_use]
@@ -46,10 +47,10 @@ declare_clippy_lint! {
     ///         Self
     ///     }
     /// }
-    /// ```
+    /// # }
     ///
-    /// Or on the type definition like this:
-    /// ```rust
+    /// # {
+    /// // Or on the type definition like this:
     /// #[must_use]
     /// pub struct Bar;
     /// impl Bar {
@@ -57,6 +58,7 @@ declare_clippy_lint! {
     ///         Self
     ///     }
     /// }
+    /// # }
     /// ```
     #[clippy::version = "1.59.0"]
     pub RETURN_SELF_NOT_MUST_USE,

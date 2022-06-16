@@ -163,7 +163,7 @@ declare_clippy_lint! {
     ///     }
     /// }
     /// ```
-    #[clippy::version = "1.52.0"]
+    #[clippy::version = "1.51.0"]
     pub MISSING_PANICS_DOC,
     pedantic,
     "`pub fn` may panic without `# Panics` in doc comment"
@@ -178,7 +178,7 @@ declare_clippy_lint! {
     /// if the `fn main()` is left implicit.
     ///
     /// ### Examples
-    /// ``````rust
+    /// ```rust
     /// /// An example of a doctest with a `main()` function
     /// ///
     /// /// # Examples
@@ -191,7 +191,7 @@ declare_clippy_lint! {
     /// fn needless_main() {
     ///     unimplemented!();
     /// }
-    /// ``````
+    /// ```
     #[clippy::version = "1.40.0"]
     pub NEEDLESS_DOCTEST_MAIN,
     style,

@@ -28,12 +28,14 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// # fn foo(my_vec: &[u8]) {}
+    /// fn foo(_x: &[u8]) {}
     ///
-    /// // Bad
     /// foo(&vec![1, 2]);
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
+    /// # fn foo(_x: &[u8]) {}
     /// foo(&[1, 2]);
     /// ```
     #[clippy::version = "pre 1.29.0"]

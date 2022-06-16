@@ -21,8 +21,7 @@ declare_clippy_lint! {
     /// if x >= y + 1 {}
     /// ```
     ///
-    /// Could be written as:
-    ///
+    /// Use instead:
     /// ```rust
     /// # let x = 1;
     /// # let y = 1;

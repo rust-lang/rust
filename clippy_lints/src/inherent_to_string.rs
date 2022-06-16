@@ -14,12 +14,8 @@ declare_clippy_lint! {
     /// ### Why is this bad?
     /// This method is also implicitly defined if a type implements the `Display` trait. As the functionality of `Display` is much more versatile, it should be preferred.
     ///
-    /// ### Known problems
-    /// None
-    ///
     /// ### Example
     /// ```rust
-    /// // Bad
     /// pub struct A;
     ///
     /// impl A {
@@ -29,8 +25,8 @@ declare_clippy_lint! {
     /// }
     /// ```
     ///
+    /// Use instead:
     /// ```rust
-    /// // Good
     /// use std::fmt;
     ///
     /// pub struct A;
@@ -54,12 +50,8 @@ declare_clippy_lint! {
     /// ### Why is this bad?
     /// This method is also implicitly defined if a type implements the `Display` trait. The less versatile inherent method will then shadow the implementation introduced by `Display`.
     ///
-    /// ### Known problems
-    /// None
-    ///
     /// ### Example
     /// ```rust
-    /// // Bad
     /// use std::fmt;
     ///
     /// pub struct A;
@@ -77,8 +69,8 @@ declare_clippy_lint! {
     /// }
     /// ```
     ///
+    /// Use instead:
     /// ```rust
-    /// // Good
     /// use std::fmt;
     ///
     /// pub struct A;

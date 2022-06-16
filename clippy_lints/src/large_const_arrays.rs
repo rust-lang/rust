@@ -20,10 +20,11 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust,ignore
-    /// // Bad
     /// pub const a = [0u32; 1_000_000];
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust.ignore
     /// pub static a = [0u32; 1_000_000];
     /// ```
     #[clippy::version = "1.44.0"]

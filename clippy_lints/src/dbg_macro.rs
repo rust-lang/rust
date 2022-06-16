@@ -18,10 +18,11 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust,ignore
-    /// // Bad
     /// dbg!(true)
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust,ignore
     /// true
     /// ```
     #[clippy::version = "1.34.0"]

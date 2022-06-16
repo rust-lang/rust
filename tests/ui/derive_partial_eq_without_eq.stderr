@@ -7,6 +7,12 @@ LL | #[derive(Debug, PartialEq)]
    = note: `-D clippy::derive-partial-eq-without-eq` implied by `-D warnings`
 
 error: you are deriving `PartialEq` and can implement `Eq`
+  --> $DIR/derive_partial_eq_without_eq.rs:55:10
+   |
+LL | #[derive(PartialEq)]
+   |          ^^^^^^^^^ help: consider deriving `Eq` as well: `PartialEq, Eq`
+
+error: you are deriving `PartialEq` and can implement `Eq`
   --> $DIR/derive_partial_eq_without_eq.rs:61:10
    |
 LL | #[derive(PartialEq)]
@@ -42,5 +48,23 @@ error: you are deriving `PartialEq` and can implement `Eq`
 LL | #[derive(Debug, PartialEq, Clone)]
    |                 ^^^^^^^^^ help: consider deriving `Eq` as well: `PartialEq, Eq`
 
-error: aborting due to 7 previous errors
+error: you are deriving `PartialEq` and can implement `Eq`
+  --> $DIR/derive_partial_eq_without_eq.rs:98:10
+   |
+LL | #[derive(PartialEq)]
+   |          ^^^^^^^^^ help: consider deriving `Eq` as well: `PartialEq, Eq`
+
+error: you are deriving `PartialEq` and can implement `Eq`
+  --> $DIR/derive_partial_eq_without_eq.rs:105:14
+   |
+LL |     #[derive(PartialEq)]
+   |              ^^^^^^^^^ help: consider deriving `Eq` as well: `PartialEq, Eq`
+
+error: you are deriving `PartialEq` and can implement `Eq`
+  --> $DIR/derive_partial_eq_without_eq.rs:108:14
+   |
+LL |     #[derive(PartialEq)]
+   |              ^^^^^^^^^ help: consider deriving `Eq` as well: `PartialEq, Eq`
+
+error: aborting due to 11 previous errors
 

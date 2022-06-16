@@ -16,12 +16,17 @@ declare_clippy_lint! {
     /// the value. Also the code misleads about the intent of the call site.
     ///
     /// ### Example
-    /// ```ignore
-    /// // Bad
-    /// my_vec.push(&mut value)
+    /// ```rust
+    /// # let mut vec = Vec::new();
+    /// # let mut value = 5;
+    /// vec.push(&mut value);
+    /// ```
     ///
-    /// // Good
-    /// my_vec.push(&value)
+    /// Use instead:
+    /// ```rust
+    /// # let mut vec = Vec::new();
+    /// # let value = 5;
+    /// vec.push(&value);
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub UNNECESSARY_MUT_PASSED,

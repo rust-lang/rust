@@ -34,13 +34,21 @@ declare_clippy_lint! {
     /// # }
     /// let f = Foo { a: 0, b: 0, c: 0 };
     ///
-    /// // Bad
     /// match f {
     ///     Foo { a: _, b: 0, .. } => {},
     ///     Foo { a: _, b: _, c: _ } => {},
     /// }
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
+    /// # struct Foo {
+    /// #     a: i32,
+    /// #     b: i32,
+    /// #     c: i32,
+    /// # }
+    /// let f = Foo { a: 0, b: 0, c: 0 };
+    ///
     /// match f {
     ///     Foo { b: 0, .. } => {},
     ///     Foo { .. } => {},
@@ -62,10 +70,11 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// // Bad
     /// fn foo(a: i32, _a: i32) {}
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
     /// fn bar(a: i32, _b: i32) {}
     /// ```
     #[clippy::version = "pre 1.29.0"]
@@ -103,11 +112,16 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// // Bad
-    /// let y = 0x1a9BAcD;
+    /// # let _ =
+    /// 0x1a9BAcD
+    /// # ;
+    /// ```
     ///
-    /// // Good
-    /// let y = 0x1A9BACD;
+    /// Use instead:
+    /// ```rust
+    /// # let _ =
+    /// 0x1A9BACD
+    /// # ;
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub MIXED_CASE_HEX_LITERALS,
@@ -127,11 +141,16 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// // Bad
-    /// let y = 123832i32;
+    /// # let _ =
+    /// 123832i32
+    /// # ;
+    /// ```
     ///
-    /// // Good
-    /// let y = 123832_i32;
+    /// Use instead:
+    /// ```rust
+    /// # let _ =
+    /// 123832_i32
+    /// # ;
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub UNSEPARATED_LITERAL_SUFFIX,
@@ -150,11 +169,16 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// // Bad
-    /// let y = 123832_i32;
+    /// # let _ =
+    /// 123832_i32
+    /// # ;
+    /// ```
     ///
-    /// // Good
-    /// let y = 123832i32;
+    /// Use instead:
+    /// ```rust
+    /// # let _ =
+    /// 123832i32
+    /// # ;
     /// ```
     #[clippy::version = "1.58.0"]
     pub SEPARATED_LITERAL_SUFFIX,
@@ -234,14 +258,15 @@ declare_clippy_lint! {
     /// ### Example
     /// ```rust
     /// # let v = Some("abc");
-    ///
-    /// // Bad
     /// match v {
     ///     Some(x) => (),
     ///     y @ _ => (),
     /// }
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
+    /// # let v = Some("abc");
     /// match v {
     ///     Some(x) => (),
     ///     y => (),
@@ -262,6 +287,7 @@ declare_clippy_lint! {
     /// means there are 0 or more elements left. This can make a difference
     /// when refactoring, but shouldn't result in errors in the refactored code,
     /// since the wildcard pattern isn't used anyway.
+    ///
     /// ### Why is this bad?
     /// The wildcard pattern is unneeded as the rest pattern
     /// can match that element as well.
@@ -270,13 +296,16 @@ declare_clippy_lint! {
     /// ```rust
     /// # struct TupleStruct(u32, u32, u32);
     /// # let t = TupleStruct(1, 2, 3);
-    /// // Bad
     /// match t {
     ///     TupleStruct(0, .., _) => (),
     ///     _ => (),
     /// }
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
+    /// # struct TupleStruct(u32, u32, u32);
+    /// # let t = TupleStruct(1, 2, 3);
     /// match t {
     ///     TupleStruct(0, ..) => (),
     ///     _ => (),

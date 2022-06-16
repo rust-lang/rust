@@ -45,6 +45,9 @@ fn main() {
 
     // Should probably stay as it is.
     let _ = [0, 1, 2, 3, 4].iter().cloned().take(10);
+
+    // `&Range<_>` doesn't implement `IntoIterator`
+    let _ = [0..1, 2..5].iter().cloned().flatten();
 }
 
 // #8527

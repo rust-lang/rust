@@ -291,3 +291,15 @@ fn coerced_closure() {
     fn slice_fn(_: impl FnOnce() -> &'static [u8]) {}
     slice_fn(|| arr());
 }
+
+// https://github.com/rust-lang/rust-clippy/issues/7861
+fn box_dyn() {
+    fn f(_: impl Fn(usize) -> Box<dyn std::any::Any>) {}
+    f(|x| Box::new(x));
+}
+
+// https://github.com/rust-lang/rust-clippy/issues/5939
+fn not_general_enough() {
+    fn f(_: impl FnMut(&Path) -> std::io::Result<()>) {}
+    f(|path| std::fs::remove_file(path));
+}
