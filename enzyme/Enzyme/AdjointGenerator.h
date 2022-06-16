@@ -10494,6 +10494,43 @@ public:
         }
       }
     }
+#if LLVM_VERSION_MAJOR >= 11
+    if (auto assembly = dyn_cast<InlineAsm>(orig->getCalledOperand()))
+#else
+    if (auto assembly = dyn_cast<InlineAsm>(orig->getCalledValue()))
+#endif
+    {
+      if (assembly->getAsmString() == "maxpd $1, $0") {
+        if (Mode == DerivativeMode::ReverseModePrimal ||
+            gutils->isConstantInstruction(orig)) {
+
+          if (gutils->knownRecomputeHeuristic.find(orig) !=
+              gutils->knownRecomputeHeuristic.end()) {
+            if (!gutils->knownRecomputeHeuristic[orig]) {
+              gutils->cacheForReverse(BuilderZ, newCall,
+                                      getIndex(orig, CacheType::Self));
+            }
+          }
+          eraseIfUnused(*orig);
+          return;
+        }
+
+        SmallVector<Value *, 2> orig_ops(orig->getNumOperands());
+        for (unsigned i = 0; i < orig->getNumOperands(); ++i) {
+          orig_ops[i] = orig->getOperand(i);
+        }
+        handleAdjointForIntrinsic(Intrinsic::maxnum, *orig, orig_ops);
+        if (gutils->knownRecomputeHeuristic.find(orig) !=
+            gutils->knownRecomputeHeuristic.end()) {
+          if (!gutils->knownRecomputeHeuristic[orig]) {
+            gutils->cacheForReverse(BuilderZ, newCall,
+                                    getIndex(orig, CacheType::Self));
+          }
+        }
+        eraseIfUnused(*orig);
+        return;
+      }
+    }
 
     if (called && isAllocationFunction(*called, gutils->TLI)) {
 
