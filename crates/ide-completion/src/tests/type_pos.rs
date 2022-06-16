@@ -90,11 +90,16 @@ fn x<'lt, T, const C: usize>() -> $0
 }
 
 #[test]
-fn fn_return_type2() {
+fn fn_return_type_no_local_items() {
     check(
         r#"
 fn foo() -> B$0 {
     struct Bar;
+    enum Baz {}
+    union Bax {
+        i: i32,
+        f: f32
+    }
 }
 "#,
         expect![[r#"
