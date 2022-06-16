@@ -135,7 +135,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClosureCall {
             if_chain! {
                 if let hir::StmtKind::Local(local) = w[0].kind;
                 if let Option::Some(t) = local.init;
-                if let hir::ExprKind::Closure(..) = t.kind;
+                if let hir::ExprKind::Closure { .. } = t.kind;
                 if let hir::PatKind::Binding(_, _, ident, _) = local.pat.kind;
                 if let hir::StmtKind::Semi(second) = w[1].kind;
                 if let hir::ExprKind::Assign(_, call, _) = second.kind;

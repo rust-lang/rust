@@ -78,7 +78,7 @@ impl<'tcx> LateLintPass<'tcx> for EtaReduction {
             return;
         }
         let body = match expr.kind {
-            ExprKind::Closure(_, _, id, _, _) => cx.tcx.hir().body(id),
+            ExprKind::Closure { body, .. } => cx.tcx.hir().body(body),
             _ => return,
         };
         if body.value.span.from_expansion() {

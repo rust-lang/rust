@@ -954,9 +954,9 @@ fn resolve_applicability<'hir>(cx: &LateContext<'hir>, expr: &'hir hir::Expr<'hi
 }
 
 fn check_is_multi_part<'hir>(cx: &LateContext<'hir>, closure_expr: &'hir hir::Expr<'hir>) -> bool {
-    if let ExprKind::Closure(_, _, body_id, _, _) = closure_expr.kind {
+    if let ExprKind::Closure { body, .. } = closure_expr.kind {
         let mut scanner = IsMultiSpanScanner::new(cx);
-        intravisit::walk_body(&mut scanner, cx.tcx.hir().body(body_id));
+        intravisit::walk_body(&mut scanner, cx.tcx.hir().body(body));
         return scanner.is_multi_part();
     } else if let Some(local) = get_parent_local(cx, closure_expr) {
         if let Some(local_init) = local.init {

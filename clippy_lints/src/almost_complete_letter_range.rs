@@ -90,7 +90,7 @@ fn check_range(cx: &EarlyContext<'_>, span: Span, start: &Expr, end: &Expr, sugg
                     diag.span_suggestion(
                         span,
                         "use an inclusive range",
-                        sugg.to_owned(),
+                        sugg,
                         Applicability::MaybeIncorrect,
                     );
                 }

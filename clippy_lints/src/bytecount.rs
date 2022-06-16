@@ -51,8 +51,8 @@ impl<'tcx> LateLintPass<'tcx> for ByteCount {
             if count.ident.name == sym::count;
             if let ExprKind::MethodCall(filter, [filter_recv, filter_arg], _) = count_recv.kind;
             if filter.ident.name == sym!(filter);
-            if let ExprKind::Closure(_, _, body_id, _, _) = filter_arg.kind;
-            let body = cx.tcx.hir().body(body_id);
+            if let ExprKind::Closure { body, .. } = filter_arg.kind;
+            let body = cx.tcx.hir().body(body);
             if let [param] = body.params;
             if let PatKind::Binding(_, arg_id, _, _) = strip_pat_refs(param.pat).kind;
             if let ExprKind::Binary(ref op, l, r) = body.value.kind;

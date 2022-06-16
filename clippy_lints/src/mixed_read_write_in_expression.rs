@@ -114,7 +114,7 @@ struct DivergenceVisitor<'a, 'tcx> {
 impl<'a, 'tcx> DivergenceVisitor<'a, 'tcx> {
     fn maybe_walk_expr(&mut self, e: &'tcx Expr<'_>) {
         match e.kind {
-            ExprKind::Closure(..) => {},
+            ExprKind::Closure { .. } => {},
             ExprKind::Match(e, arms, _) => {
                 self.visit_expr(e);
                 for arm in arms {
@@ -245,7 +245,7 @@ fn check_expr<'a, 'tcx>(vis: &mut ReadVisitor<'a, 'tcx>, expr: &'tcx Expr<'_>) -
                 walk_expr(vis, expr);
             }
         },
-        ExprKind::Closure(_, _, _, _, _) => {
+        ExprKind::Closure { .. } => {
             // Either
             //
             // * `var` is defined in the closure body, in which case we've reached the top of the enclosing
@@ -317,7 +317,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ReadVisitor<'a, 'tcx> {
             // We're about to descend a closure. Since we don't know when (or
             // if) the closure will be evaluated, any reads in it might not
             // occur here (or ever). Like above, bail to avoid false positives.
-            ExprKind::Closure(_, _, _, _, _) |
+            ExprKind::Closure{..} |
 
             // We want to avoid a false positive when a variable name occurs
             // only to have its address taken, so we stop here. Technically,

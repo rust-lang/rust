@@ -622,10 +622,12 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 self.hash_expr(e);
                 self.hash_ty(ty);
             },
-            ExprKind::Closure(cap, _, eid, _, _) => {
-                std::mem::discriminant(&cap).hash(&mut self.s);
+            ExprKind::Closure {
+                capture_clause, body, ..
+            } => {
+                std::mem::discriminant(&capture_clause).hash(&mut self.s);
                 // closures inherit TypeckResults
-                self.hash_expr(&self.cx.tcx.hir().body(eid).value);
+                self.hash_expr(&self.cx.tcx.hir().body(body).value);
             },
             ExprKind::Field(e, ref f) => {
                 self.hash_expr(e);

@@ -281,7 +281,7 @@ fn check<'tcx>(
                     diag.tool_only_span_suggestion(
                         local_stmt.span,
                         "remove the local",
-                        String::new(),
+                        "",
                         Applicability::MachineApplicable,
                     );
 
@@ -318,7 +318,7 @@ fn check<'tcx>(
                         diag.span_suggestion(
                             usage.stmt.span.shrink_to_hi(),
                             "add a semicolon after the `if` expression",
-                            ";".to_string(),
+                            ";",
                             applicability,
                         );
                     }
@@ -353,7 +353,7 @@ fn check<'tcx>(
                         diag.span_suggestion(
                             usage.stmt.span.shrink_to_hi(),
                             "add a semicolon after the `match` expression",
-                            ";".to_string(),
+                            ";",
                             applicability,
                         );
                     }

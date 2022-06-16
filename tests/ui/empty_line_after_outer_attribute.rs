@@ -5,9 +5,6 @@
 #![rustfmt::skip]
 
 #[macro_use]
-extern crate clap;
-
-#[macro_use]
 extern crate proc_macro_attr;
 
 // This should produce a warning
@@ -113,10 +110,10 @@ pub trait Bazz {
     }
 }
 
-#[derive(clap::Parser)]
-#[clap(after_help = "This ia a help message.
+#[derive(Clone, Copy)]
+#[dummy(string = "first line
 
-You're welcome.
+second line
 ")]
 pub struct Args;
 

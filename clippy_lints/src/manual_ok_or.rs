@@ -88,8 +88,8 @@ fn is_ok_wrapping(cx: &LateContext<'_>, map_expr: &Expr<'_>) -> bool {
         }
     }
     if_chain! {
-        if let ExprKind::Closure(_, _, body_id, ..) = map_expr.kind;
-        let body = cx.tcx.hir().body(body_id);
+        if let ExprKind::Closure { body, .. } = map_expr.kind;
+        let body = cx.tcx.hir().body(body);
         if let PatKind::Binding(_, param_id, ..) = body.params[0].pat.kind;
         if let ExprKind::Call(Expr { kind: ExprKind::Path(ok_path), .. }, &[ref ok_arg]) = body.value.kind;
         if is_lang_ctor(cx, ok_path, ResultOk);
