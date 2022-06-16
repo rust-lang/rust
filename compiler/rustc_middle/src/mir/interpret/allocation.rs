@@ -709,9 +709,7 @@ impl InitMask {
                 self.blocks[blockb] |= u64::MAX >> (64 - bitb);
             }
             // Fill in all the other blocks (much faster than one bit at a time).
-            for block in (blocka + 1)..blockb {
-                self.blocks[block] = u64::MAX;
-            }
+            self.blocks[blocka + 1..blockb].fill(u64::MAX);
         } else {
             // Set `bita..64` to `0`.
             self.blocks[blocka] &= !(u64::MAX << bita);
@@ -720,9 +718,7 @@ impl InitMask {
                 self.blocks[blockb] &= !(u64::MAX >> (64 - bitb));
             }
             // Fill in all the other blocks (much faster than one bit at a time).
-            for block in (blocka + 1)..blockb {
-                self.blocks[block] = 0;
-            }
+            self.blocks[blocka + 1..blockb].fill(0);
         }
     }
 
