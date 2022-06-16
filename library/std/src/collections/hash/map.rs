@@ -164,6 +164,9 @@ use crate::sys;
 /// // update a key, guarding against the key possibly not being set
 /// let stat = player_stats.entry("attack").or_insert(100);
 /// *stat += random_stat_buff();
+///
+/// // modify an entry before an insert with in-place mutation
+/// player_stats.entry("mana").and_modify(|mana| *mana += 200).or_insert(100);
 /// ```
 ///
 /// The easiest way to use `HashMap` with a custom key type is to derive [`Eq`] and [`Hash`].
@@ -829,8 +832,7 @@ where
     /// let mut letters = HashMap::new();
     ///
     /// for ch in "a short treatise on fungi".chars() {
-    ///     let counter = letters.entry(ch).or_insert(0);
-    ///     *counter += 1;
+    ///     letters.entry(ch).and_modify(|counter| *counter += 1).or_insert(1);
     /// }
     ///
     /// assert_eq!(letters[&'s'], 2);
