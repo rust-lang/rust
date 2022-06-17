@@ -4,7 +4,7 @@ use super::*;
 use crate::ty;
 use rustc_data_structures::functor::IdFunctor;
 
-TrivialTypeFoldableAndLiftImpls! {
+TrivialTypeTraversalAndLiftImpls! {
     BlockTailInfo,
     MirPhase,
     SourceInfo,

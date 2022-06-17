@@ -762,7 +762,7 @@ pub enum ImplicitSelfKind {
     None,
 }
 
-TrivialTypeFoldableAndLiftImpls! { BindingForm<'tcx>, }
+TrivialTypeTraversalAndLiftImpls! { BindingForm<'tcx>, }
 
 mod binding_form_impl {
     use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -2641,7 +2641,7 @@ impl UserTypeProjection {
     }
 }
 
-TrivialTypeFoldableAndLiftImpls! { ProjectionKind, }
+TrivialTypeTraversalAndLiftImpls! { ProjectionKind, }
 
 impl<'tcx> TypeFoldable<'tcx> for UserTypeProjection {
     fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {

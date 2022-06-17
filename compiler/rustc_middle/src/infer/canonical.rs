@@ -293,7 +293,7 @@ impl<'tcx, V> Canonical<'tcx, V> {
 pub type QueryOutlivesConstraint<'tcx> =
     ty::Binder<'tcx, ty::OutlivesPredicate<GenericArg<'tcx>, Region<'tcx>>>;
 
-TrivialTypeFoldableAndLiftImpls! {
+TrivialTypeTraversalAndLiftImpls! {
     for <'tcx> {
         crate::infer::canonical::Certainty,
         crate::infer::canonical::CanonicalVarInfo<'tcx>,
@@ -301,7 +301,7 @@ TrivialTypeFoldableAndLiftImpls! {
     }
 }
 
-TrivialTypeFoldableImpls! {
+TrivialTypeTraversalImpls! {
     for <'tcx> {
         crate::infer::canonical::CanonicalVarInfos<'tcx>,
     }

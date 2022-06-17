@@ -183,7 +183,7 @@ impl<'tcx> fmt::Debug for ty::PredicateKind<'tcx> {
 // For things that don't carry any arena-allocated data (and are
 // copy...), just add them to this list.
 
-TrivialTypeFoldableAndLiftImpls! {
+TrivialTypeTraversalAndLiftImpls! {
     (),
     bool,
     usize,
@@ -692,18 +692,30 @@ impl<'tcx, A: TypeFoldable<'tcx>, B: TypeFoldable<'tcx>, C: TypeFoldable<'tcx>> 
     }
 }
 
-EnumTypeFoldableImpl! {
+EnumTypeTraversalImpl! {
     impl<'tcx, T> TypeFoldable<'tcx> for Option<T> {
         (Some)(a),
         (None),
     } where T: TypeFoldable<'tcx>
 }
+EnumTypeTraversalImpl! {
+    impl<'tcx, T> TypeVisitable<'tcx> for Option<T> {
+        (Some)(a),
+        (None),
+    } where T: TypeVisitable<'tcx>
+}
 
-EnumTypeFoldableImpl! {
+EnumTypeTraversalImpl! {
     impl<'tcx, T, E> TypeFoldable<'tcx> for Result<T, E> {
         (Ok)(a),
         (Err)(a),
     } where T: TypeFoldable<'tcx>, E: TypeFoldable<'tcx>,
+}
+EnumTypeTraversalImpl! {
+    impl<'tcx, T, E> TypeVisitable<'tcx> for Result<T, E> {
+        (Ok)(a),
+        (Err)(a),
+    } where T: TypeVisitable<'tcx>, E: TypeVisitable<'tcx>,
 }
 
 impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for Rc<T> {

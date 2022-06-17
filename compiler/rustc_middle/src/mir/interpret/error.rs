@@ -29,7 +29,7 @@ impl From<ErrorGuaranteed> for ErrorHandled {
     }
 }
 
-TrivialTypeFoldableAndLiftImpls! {
+TrivialTypeTraversalAndLiftImpls! {
     ErrorHandled,
 }
 

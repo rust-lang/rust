@@ -42,7 +42,7 @@ impl From<ErrorGuaranteed> for NotConstEvaluatable {
     }
 }
 
-TrivialTypeFoldableAndLiftImpls! {
+TrivialTypeTraversalAndLiftImpls! {
     NotConstEvaluatable,
 }
 

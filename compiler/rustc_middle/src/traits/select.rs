@@ -283,7 +283,7 @@ impl From<ErrorGuaranteed> for OverflowError {
     }
 }
 
-TrivialTypeFoldableAndLiftImpls! {
+TrivialTypeTraversalAndLiftImpls! {
     OverflowError,
 }
 

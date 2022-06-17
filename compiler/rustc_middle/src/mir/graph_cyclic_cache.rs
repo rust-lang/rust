@@ -58,6 +58,6 @@ impl<CTX> HashStable<CTX> for GraphIsCyclicCache {
     }
 }
 
-TrivialTypeFoldableAndLiftImpls! {
+TrivialTypeTraversalAndLiftImpls! {
     GraphIsCyclicCache,
 }

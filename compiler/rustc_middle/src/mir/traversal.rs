@@ -384,6 +384,6 @@ impl<CTX> HashStable<CTX> for PostorderCache {
     }
 }
 
-TrivialTypeFoldableAndLiftImpls! {
+TrivialTypeTraversalAndLiftImpls! {
     PostorderCache,
 }
