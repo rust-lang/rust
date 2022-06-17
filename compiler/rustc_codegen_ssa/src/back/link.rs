@@ -2031,7 +2031,7 @@ fn add_order_independent_options(
 
     add_link_script(cmd, sess, tmpdir, crate_type);
 
-    if sess.target.is_like_fuchsia && crate_type == CrateType::Executable {
+    if sess.target.os == "fuchsia" && crate_type == CrateType::Executable {
         let prefix = if sess.opts.debugging_opts.sanitizer.contains(SanitizerSet::ADDRESS) {
             "asan/"
         } else {
@@ -2051,7 +2051,7 @@ fn add_order_independent_options(
         cmd.no_crt_objects();
     }
 
-    if sess.target.is_like_emscripten {
+    if sess.target.os == "emscripten" {
         cmd.arg("-s");
         cmd.arg(if sess.panic_strategy() == PanicStrategy::Abort {
             "DISABLE_EXCEPTION_CATCHING=1"
