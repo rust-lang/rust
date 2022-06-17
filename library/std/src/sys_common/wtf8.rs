@@ -205,7 +205,7 @@ impl Wtf8Buf {
     /// Copied from String::push
     /// This does **not** include the WTF-8 concatenation check.
     fn push_code_point_unchecked(&mut self, code_point: CodePoint) {
-        let mut bytes = [0; MAX_UTF8_LEN];
+        let mut bytes = [0; char::MAX_UTF8_LEN];
         let bytes = char::encode_utf8_raw(code_point.value, &mut bytes);
         self.bytes.extend_from_slice(bytes)
     }
@@ -878,7 +878,7 @@ impl<'a> Iterator for EncodeWide<'a> {
             return Some(tmp);
         }
 
-        let mut buf = [0; MAX_UTF16_LEN];
+        let mut buf = [0; char::MAX_UTF16_LEN];
         self.code_points.next().map(|code_point| {
             let n = char::encode_utf16_raw(code_point.value, &mut buf).len();
             if n == 2 {

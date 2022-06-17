@@ -1217,7 +1217,7 @@ fn test_to_uppercase_rev_iterator() {
 #[test]
 #[cfg_attr(miri, ignore)] // Miri is too slow
 fn test_chars_decoding() {
-    let mut bytes = [0; std::char::MAX_UTF8];
+    let mut bytes = [0; std::char::MAX_UTF8_LEN];
     for c in (0..0x110000).filter_map(std::char::from_u32) {
         let s = c.encode_utf8(&mut bytes);
         if Some(c) != s.chars().next() {
