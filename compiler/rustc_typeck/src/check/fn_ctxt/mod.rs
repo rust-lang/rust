@@ -147,15 +147,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return_type_pre_known: true,
             return_type_has_opaque: false,
             constness: {
-                if body_id.is_owner() {
-                    let did = body_id.expect_owner();
-                    if inh.tcx.is_const_fn_raw(did.to_def_id()) || inh.tcx.is_const_default_method(did.to_def_id()) || inh.tcx.def_kind(did.to_def_id()) == hir::def::DefKind::Const {
+                fn get_constness(tcx: TyCtxt<'_>, did: DefId) -> ty::ConstnessArg {
+                    if tcx.is_const_fn_raw(did) || tcx.is_const_default_method(did) || tcx.def_kind(did) == hir::def::DefKind::Const {
+                        trace!("const");
                         ty::ConstnessArg::Const
                     } else {
+                        trace!("not const");
                         ty::ConstnessArg::Not
                     }
+                }
+                if body_id.is_owner() {
+                    let did = body_id.expect_owner();
+                    get_constness(inh.tcx, did.to_def_id())
+                } else if let Some(hir::Node::Expr(hir::Expr { kind, .. })) = inh.tcx.hir().find(body_id) {
+                    if let hir::ExprKind::Closure { .. } = kind {
+                        ty::ConstnessArg::Not
+                    } else {
+                        get_constness(inh.tcx, body_id.owner.to_def_id())
+                    }
                 } else {
-                    // TODO: check correctness
                     ty::ConstnessArg::Not
                 }
             },

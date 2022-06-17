@@ -390,7 +390,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 }
             }
         }
-        if !has_constness && has_self && let Some(constness) = constness {
+        if !has_constness && let Some(constness) = constness {
             if let ty::ConstnessArg::Const = constness {
                 substs.push(constness.into());
             }

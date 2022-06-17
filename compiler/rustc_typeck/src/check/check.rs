@@ -84,6 +84,7 @@ pub(super) fn check_fn<'a, 'tcx>(
     can_be_generator: Option<hir::Movability>,
     return_type_pre_known: bool,
 ) -> (FnCtxt<'a, 'tcx>, Option<GeneratorTypes<'tcx>>) {
+    debug!(?body.value.hir_id);
     // Create the function context. This is either derived from scratch or,
     // in the case of closures, based on the outer context.
     let mut fcx = FnCtxt::new(inherited, param_env, body.value.hir_id);

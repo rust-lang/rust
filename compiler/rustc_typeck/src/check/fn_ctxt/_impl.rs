@@ -845,6 +845,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expect_args
     }
 
+    #[tracing::instrument(level = "debug", skip(self))]
     pub(in super::super) fn resolve_lang_item_path(
         &self,
         lang_item: hir::LangItem,
