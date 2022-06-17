@@ -92,6 +92,8 @@ pub(super) enum PathKind {
         in_block_expr: bool,
         in_loop_body: bool,
         after_if_expr: bool,
+        /// Whether this expression is the direct condition of an if or while expression
+        in_condition: bool,
         ref_expr_parent: Option<ast::RefExpr>,
         is_func_update: Option<ast::RecordExpr>,
     },
@@ -121,6 +123,8 @@ pub(crate) enum TypeLocation {
     TypeAscription(TypeAscriptionTarget),
     GenericArgList(Option<ast::GenericArgList>),
     TypeBound,
+    ImplTarget,
+    ImplTrait,
     Other,
 }
 
