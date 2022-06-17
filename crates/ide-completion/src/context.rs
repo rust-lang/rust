@@ -1,6 +1,8 @@
 //! See `CompletionContext` structure.
 
 mod analysis;
+#[cfg(test)]
+mod tests;
 
 use base_db::SourceDatabaseExt;
 use hir::{
