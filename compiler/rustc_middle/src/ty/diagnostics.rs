@@ -3,8 +3,8 @@
 use std::ops::ControlFlow;
 
 use crate::ty::{
-    fold::TypeFoldable, Const, ConstKind, DefIdTree, ExistentialPredicate, InferTy,
-    PolyTraitPredicate, Ty, TyCtxt, TypeSuperFoldable, TypeVisitor,
+    fold::TypeFoldable, visit::TypeVisitable, Const, ConstKind, DefIdTree, ExistentialPredicate,
+    InferTy, PolyTraitPredicate, Ty, TyCtxt, TypeSuperFoldable, TypeVisitor,
 };
 
 use rustc_data_structures::fx::FxHashMap;
@@ -87,7 +87,7 @@ pub trait IsSuggestable<'tcx> {
 
 impl<'tcx, T> IsSuggestable<'tcx> for T
 where
-    T: TypeFoldable<'tcx>,
+    T: TypeVisitable<'tcx>,
 {
     fn is_suggestable(self, tcx: TyCtxt<'tcx>) -> bool {
         self.visit_with(&mut IsSuggestableVisitor { tcx }).is_continue()

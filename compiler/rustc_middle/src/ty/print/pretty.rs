@@ -2,7 +2,7 @@ use crate::mir::interpret::{AllocRange, GlobalAlloc, Pointer, Provenance, Scalar
 use crate::ty::subst::{GenericArg, GenericArgKind, Subst};
 use crate::ty::{
     self, ConstInt, DefIdTree, ParamConst, ScalarInt, Term, Ty, TyCtxt, TypeFoldable,
-    TypeSuperFoldable,
+    TypeSuperFoldable, TypeVisitable,
 };
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
@@ -2277,7 +2277,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
 
     fn prepare_late_bound_region_info<T>(&mut self, value: &ty::Binder<'tcx, T>)
     where
-        T: TypeFoldable<'tcx>,
+        T: TypeVisitable<'tcx>,
     {
         struct LateBoundRegionNameCollector<'a, 'tcx> {
             used_region_names: &'a mut FxHashSet<Symbol>,

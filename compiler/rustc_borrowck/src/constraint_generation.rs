@@ -7,6 +7,7 @@ use rustc_middle::mir::{
 };
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::SubstsRef;
+use rustc_middle::ty::visit::TypeVisitable;
 use rustc_middle::ty::{self, RegionVid, Ty};
 
 use crate::{
@@ -163,7 +164,7 @@ impl<'cx, 'cg, 'tcx> ConstraintGeneration<'cx, 'cg, 'tcx> {
     /// `location`.
     fn add_regular_live_constraint<T>(&mut self, live_ty: T, location: Location)
     where
-        T: TypeFoldable<'tcx>,
+        T: TypeVisitable<'tcx>,
     {
         debug!("add_regular_live_constraint(live_ty={:?}, location={:?})", live_ty, location);
 

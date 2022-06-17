@@ -1514,7 +1514,7 @@ impl<'tcx> ParamEnv<'tcx> {
     /// `where Box<u32>: Copy`, which are clearly never
     /// satisfiable. We generally want to behave as if they were true,
     /// although the surrounding function is never reachable.
-    pub fn and<T: TypeFoldable<'tcx>>(self, value: T) -> ParamEnvAnd<'tcx, T> {
+    pub fn and<T: TypeVisitable<'tcx>>(self, value: T) -> ParamEnvAnd<'tcx, T> {
         match self.reveal() {
             Reveal::UserFacing => ParamEnvAnd { param_env: self, value },
 

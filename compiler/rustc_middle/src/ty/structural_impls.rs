@@ -453,7 +453,7 @@ impl<'a, 'tcx> Lift<'tcx> for ty::PredicateKind<'a> {
 
 impl<'a, 'tcx, T: Lift<'tcx>> Lift<'tcx> for ty::Binder<'a, T>
 where
-    <T as Lift<'tcx>>::Lifted: TypeFoldable<'tcx>,
+    <T as Lift<'tcx>>::Lifted: TypeVisitable<'tcx>,
 {
     type Lifted = ty::Binder<'tcx, T::Lifted>;
     fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {

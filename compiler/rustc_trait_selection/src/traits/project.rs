@@ -31,6 +31,7 @@ use rustc_infer::infer::resolve::OpportunisticRegionResolver;
 use rustc_middle::traits::select::OverflowError;
 use rustc_middle::ty::fold::{MaxUniverse, TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::subst::Subst;
+use rustc_middle::ty::visit::TypeVisitable;
 use rustc_middle::ty::{self, EarlyBinder, Term, ToPredicate, Ty, TyCtxt};
 use rustc_span::symbol::sym;
 
@@ -359,7 +360,7 @@ where
     result
 }
 
-pub(crate) fn needs_normalization<'tcx, T: TypeFoldable<'tcx>>(value: &T, reveal: Reveal) -> bool {
+pub(crate) fn needs_normalization<'tcx, T: TypeVisitable<'tcx>>(value: &T, reveal: Reveal) -> bool {
     match reveal {
         Reveal::UserFacing => value
             .has_type_flags(ty::TypeFlags::HAS_TY_PROJECTION | ty::TypeFlags::HAS_CT_PROJECTION),

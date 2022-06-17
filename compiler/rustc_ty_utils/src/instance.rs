@@ -4,7 +4,7 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::traits::CodegenObligationError;
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{
-    self, Binder, Instance, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable, TypeVisitor,
+    self, Binder, Instance, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable, TypeVisitable, TypeVisitor,
 };
 use rustc_span::{sym, DUMMY_SP};
 use rustc_trait_selection::traits;
@@ -56,7 +56,7 @@ impl<'tcx> BoundVarsCollector<'tcx> {
 impl<'tcx> TypeVisitor<'tcx> for BoundVarsCollector<'tcx> {
     type BreakTy = ();
 
-    fn visit_binder<T: TypeFoldable<'tcx>>(
+    fn visit_binder<T: TypeVisitable<'tcx>>(
         &mut self,
         t: &Binder<'tcx, T>,
     ) -> ControlFlow<Self::BreakTy> {

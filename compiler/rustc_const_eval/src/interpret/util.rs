@@ -1,5 +1,7 @@
 use rustc_middle::mir::interpret::InterpResult;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable, TypeVisitor};
+use rustc_middle::ty::{
+    self, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable, TypeVisitable, TypeVisitor,
+};
 use std::convert::TryInto;
 use std::ops::ControlFlow;
 
@@ -10,7 +12,7 @@ use std::ops::ControlFlow;
 /// case these parameters are unused.
 pub(crate) fn ensure_monomorphic_enough<'tcx, T>(tcx: TyCtxt<'tcx>, ty: T) -> InterpResult<'tcx>
 where
-    T: TypeFoldable<'tcx>,
+    T: TypeVisitable<'tcx>,
 {
     debug!("ensure_monomorphic_enough: ty={:?}", ty);
     if !ty.needs_subst() {

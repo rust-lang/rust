@@ -15,7 +15,7 @@ use rustc_middle::mir::interpret::{ConstValue, Scalar};
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, Subst};
 use rustc_middle::ty::{
     self, AdtDef, Binder, BoundRegion, DefIdTree, FnSig, IntTy, ParamEnv, Predicate, PredicateKind, ProjectionTy,
-    Region, RegionKind, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable, TypeVisitor, UintTy, VariantDef, VariantDiscr,
+    Region, RegionKind, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor, UintTy, VariantDef, VariantDiscr,
 };
 use rustc_span::symbol::Ident;
 use rustc_span::{sym, Span, Symbol, DUMMY_SP};
@@ -765,7 +765,7 @@ pub fn for_each_top_level_late_bound_region<B>(
                 ControlFlow::Continue(())
             }
         }
-        fn visit_binder<T: TypeFoldable<'tcx>>(&mut self, t: &Binder<'tcx, T>) -> ControlFlow<Self::BreakTy> {
+        fn visit_binder<T: TypeVisitable<'tcx>>(&mut self, t: &Binder<'tcx, T>) -> ControlFlow<Self::BreakTy> {
             self.index += 1;
             let res = t.super_visit_with(self);
             self.index -= 1;

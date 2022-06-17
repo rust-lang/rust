@@ -9,7 +9,8 @@ use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::subst::{GenericArgKind, Subst};
 use rustc_middle::ty::{
-    self, OpaqueHiddenType, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable, TypeVisitor,
+    self, OpaqueHiddenType, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable,
+    TypeVisitable, TypeVisitor,
 };
 use rustc_span::Span;
 
@@ -461,7 +462,7 @@ impl<'tcx, OP> TypeVisitor<'tcx> for ConstrainOpaqueTypeRegionVisitor<OP>
 where
     OP: FnMut(ty::Region<'tcx>),
 {
-    fn visit_binder<T: TypeFoldable<'tcx>>(
+    fn visit_binder<T: TypeVisitable<'tcx>>(
         &mut self,
         t: &ty::Binder<'tcx, T>,
     ) -> ControlFlow<Self::BreakTy> {
