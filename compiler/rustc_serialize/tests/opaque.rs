@@ -2,7 +2,7 @@
 
 use rustc_macros::{Decodable, Encodable};
 use rustc_serialize::opaque::{MemDecoder, MemEncoder};
-use rustc_serialize::{Decodable, Encodable, Encoder as EncoderTrait};
+use rustc_serialize::{Decodable, Encodable};
 use std::fmt::Debug;
 
 #[derive(PartialEq, Clone, Debug, Encodable, Decodable)]
@@ -38,7 +38,7 @@ fn check_round_trip<
         Encodable::encode(value, &mut encoder);
     }
 
-    let data = encoder.finish().unwrap();
+    let data = encoder.finish();
     let mut decoder = MemDecoder::new(&data[..], 0);
 
     for value in values {
