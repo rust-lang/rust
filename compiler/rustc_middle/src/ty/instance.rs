@@ -25,7 +25,7 @@ pub struct Instance<'tcx> {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-#[derive(TyEncodable, TyDecodable, HashStable, TypeFoldable)]
+#[derive(TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
 pub enum InstanceDef<'tcx> {
     /// A user-defined callable item.
     ///

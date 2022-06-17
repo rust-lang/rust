@@ -165,7 +165,7 @@ pub struct Verify<'tcx> {
     pub bound: VerifyBound<'tcx>,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, TypeFoldable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, TypeFoldable, TypeVisitable)]
 pub enum GenericKind<'tcx> {
     Param(ty::ParamTy),
     Projection(ty::ProjectionTy<'tcx>),
@@ -272,7 +272,7 @@ pub enum VerifyBound<'tcx> {
 ///     }
 /// }
 /// ```
-#[derive(Debug, Copy, Clone, TypeFoldable)]
+#[derive(Debug, Copy, Clone, TypeFoldable, TypeVisitable)]
 pub struct VerifyIfEq<'tcx> {
     /// Type which must match the generic `G`
     pub ty: Ty<'tcx>,

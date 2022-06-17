@@ -722,7 +722,7 @@ impl<'a, 'tcx> SubstFolder<'a, 'tcx> {
 /// Stores the user-given substs to reach some fully qualified path
 /// (e.g., `<T>::Item` or `<T as Trait>::Item`).
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable, Lift)]
+#[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
 pub struct UserSubsts<'tcx> {
     /// The substitutions for the item as given by the user.
     pub substs: SubstsRef<'tcx>,
@@ -749,7 +749,7 @@ pub struct UserSubsts<'tcx> {
 /// the self type, giving `Foo<?A>`. Finally, we unify that with
 /// the self type here, which contains `?A` to be `&'static u32`
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable, Lift)]
+#[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
 pub struct UserSelfTy<'tcx> {
     pub impl_def_id: DefId,
     pub self_ty: Ty<'tcx>,

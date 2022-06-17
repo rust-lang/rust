@@ -161,7 +161,7 @@ rustc_index::newtype_index! {
 }
 
 /// The layout of generator state.
-#[derive(Clone, TyEncodable, TyDecodable, HashStable, TypeFoldable)]
+#[derive(Clone, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
 pub struct GeneratorLayout<'tcx> {
     /// The type of every local stored inside the generator.
     pub field_tys: IndexVec<GeneratorSavedLocal, Ty<'tcx>>,

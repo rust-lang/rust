@@ -11,11 +11,6 @@ pub fn type_foldable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::
     }
 
     s.add_bounds(synstructure::AddBounds::Generics);
-    let body_visit = s.each(|bind| {
-        quote! {
-            ::rustc_middle::ty::fold::TypeFoldable::visit_with(#bind, __folder)?;
-        }
-    });
     s.bind_with(|_| synstructure::BindStyle::Move);
     let body_fold = s.each_variant(|vi| {
         let bindings = vi.bindings();
@@ -35,14 +30,6 @@ pub fn type_foldable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::
                 __folder: &mut __F
             ) -> Result<Self, __F::Error> {
                 Ok(match self { #body_fold })
-            }
-
-            fn visit_with<__F: ::rustc_middle::ty::fold::TypeVisitor<'tcx>>(
-                &self,
-                __folder: &mut __F
-            ) -> ::std::ops::ControlFlow<__F::BreakTy> {
-                match *self { #body_visit }
-                ::std::ops::ControlFlow::CONTINUE
             }
         },
     )

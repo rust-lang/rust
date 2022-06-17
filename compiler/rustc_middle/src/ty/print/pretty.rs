@@ -2388,7 +2388,7 @@ macro_rules! define_print_and_forward_display {
 /// Wrapper type for `ty::TraitRef` which opts-in to pretty printing only
 /// the trait path. That is, it will print `Trait<U>` instead of
 /// `<T as Trait<U>>`.
-#[derive(Copy, Clone, TypeFoldable, Lift)]
+#[derive(Copy, Clone, TypeFoldable, TypeVisitable, Lift)]
 pub struct TraitRefPrintOnlyTraitPath<'tcx>(ty::TraitRef<'tcx>);
 
 impl<'tcx> fmt::Debug for TraitRefPrintOnlyTraitPath<'tcx> {
@@ -2400,7 +2400,7 @@ impl<'tcx> fmt::Debug for TraitRefPrintOnlyTraitPath<'tcx> {
 /// Wrapper type for `ty::TraitRef` which opts-in to pretty printing only
 /// the trait name. That is, it will print `Trait` instead of
 /// `<T as Trait<U>>`.
-#[derive(Copy, Clone, TypeFoldable, Lift)]
+#[derive(Copy, Clone, TypeFoldable, TypeVisitable, Lift)]
 pub struct TraitRefPrintOnlyTraitName<'tcx>(ty::TraitRef<'tcx>);
 
 impl<'tcx> fmt::Debug for TraitRefPrintOnlyTraitName<'tcx> {
@@ -2425,7 +2425,7 @@ impl<'tcx> ty::Binder<'tcx, ty::TraitRef<'tcx>> {
     }
 }
 
-#[derive(Copy, Clone, TypeFoldable, Lift)]
+#[derive(Copy, Clone, TypeFoldable, TypeVisitable, Lift)]
 pub struct TraitPredPrintModifiersAndPath<'tcx>(ty::TraitPredicate<'tcx>);
 
 impl<'tcx> fmt::Debug for TraitPredPrintModifiersAndPath<'tcx> {

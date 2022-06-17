@@ -206,7 +206,7 @@ impl MainDefinition {
 /// The "header" of an impl is everything outside the body: a Self type, a trait
 /// ref (in the case of a trait impl), and a set of predicates (from the
 /// bounds / where-clauses).
-#[derive(Clone, Debug, TypeFoldable)]
+#[derive(Clone, Debug, TypeFoldable, TypeVisitable)]
 pub struct ImplHeader<'tcx> {
     pub impl_def_id: DefId,
     pub self_ty: Ty<'tcx>,
@@ -214,24 +214,14 @@ pub struct ImplHeader<'tcx> {
     pub predicates: Vec<Predicate<'tcx>>,
 }
 
-#[derive(Copy, Clone, Debug, TypeFoldable)]
+#[derive(Copy, Clone, Debug, TypeFoldable, TypeVisitable)]
 pub enum ImplSubject<'tcx> {
     Trait(TraitRef<'tcx>),
     Inherent(Ty<'tcx>),
 }
 
-#[derive(
-    Copy,
-    Clone,
-    PartialEq,
-    Eq,
-    Hash,
-    TyEncodable,
-    TyDecodable,
-    HashStable,
-    Debug,
-    TypeFoldable
-)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable, HashStable, Debug)]
+#[derive(TypeFoldable, TypeVisitable)]
 pub enum ImplPolarity {
     /// `impl Trait for Type`
     Positive,
@@ -307,18 +297,8 @@ impl fmt::Display for BoundConstness {
     }
 }
 
-#[derive(
-    Clone,
-    Debug,
-    PartialEq,
-    Eq,
-    Copy,
-    Hash,
-    TyEncodable,
-    TyDecodable,
-    HashStable,
-    TypeFoldable
-)]
+#[derive(Clone, Debug, PartialEq, Eq, Copy, Hash, TyEncodable, TyDecodable, HashStable)]
+#[derive(TypeFoldable, TypeVisitable)]
 pub struct ClosureSizeProfileData<'tcx> {
     /// Tuple containing the types of closure captures before the feature `capture_disjoint_fields`
     pub before_feature_tys: Ty<'tcx>,
@@ -618,7 +598,7 @@ impl rustc_errors::IntoDiagnosticArg for Predicate<'_> {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable)]
+#[derive(HashStable, TypeFoldable, TypeVisitable)]
 pub enum PredicateKind<'tcx> {
     /// Corresponds to `where Foo: Bar<A, B, C>`. `Foo` here would be
     /// the `Self` type of the trait reference and `A`, `B`, and `C`
@@ -790,7 +770,7 @@ impl<'tcx> Predicate<'tcx> {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable)]
+#[derive(HashStable, TypeFoldable, TypeVisitable)]
 pub struct TraitPredicate<'tcx> {
     pub trait_ref: TraitRef<'tcx>,
 
@@ -869,7 +849,7 @@ impl<'tcx> PolyTraitPredicate<'tcx> {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable)]
+#[derive(HashStable, TypeFoldable, TypeVisitable)]
 pub struct OutlivesPredicate<A, B>(pub A, pub B); // `A: B`
 pub type RegionOutlivesPredicate<'tcx> = OutlivesPredicate<ty::Region<'tcx>, ty::Region<'tcx>>;
 pub type TypeOutlivesPredicate<'tcx> = OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>;
@@ -880,7 +860,7 @@ pub type PolyTypeOutlivesPredicate<'tcx> = ty::Binder<'tcx, TypeOutlivesPredicat
 /// whether the `a` type is the type that we should label as "expected" when
 /// presenting user diagnostics.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable)]
+#[derive(HashStable, TypeFoldable, TypeVisitable)]
 pub struct SubtypePredicate<'tcx> {
     pub a_is_expected: bool,
     pub a: Ty<'tcx>,
@@ -890,7 +870,7 @@ pub type PolySubtypePredicate<'tcx> = ty::Binder<'tcx, SubtypePredicate<'tcx>>;
 
 /// Encodes that we have to coerce *from* the `a` type to the `b` type.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable)]
+#[derive(HashStable, TypeFoldable, TypeVisitable)]
 pub struct CoercePredicate<'tcx> {
     pub a: Ty<'tcx>,
     pub b: Ty<'tcx>,
@@ -898,7 +878,7 @@ pub struct CoercePredicate<'tcx> {
 pub type PolyCoercePredicate<'tcx> = ty::Binder<'tcx, CoercePredicate<'tcx>>;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable)]
+#[derive(HashStable, TypeFoldable, TypeVisitable)]
 pub enum Term<'tcx> {
     Ty(Ty<'tcx>),
     Const(Const<'tcx>),
@@ -946,7 +926,7 @@ impl<'tcx> Term<'tcx> {
 /// Form #2 eventually yields one of these `ProjectionPredicate`
 /// instances to normalize the LHS.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable)]
+#[derive(HashStable, TypeFoldable, TypeVisitable)]
 pub struct ProjectionPredicate<'tcx> {
     pub projection_ty: ProjectionTy<'tcx>,
     pub term: Term<'tcx>,
@@ -1090,7 +1070,7 @@ impl<'tcx> Predicate<'tcx> {
 /// `[[], [U:Bar<T>]]`. Now if there were some particular reference
 /// like `Foo<isize,usize>`, then the `InstantiatedPredicates` would be `[[],
 /// [usize:Bar<isize>]]`.
-#[derive(Clone, Debug, TypeFoldable)]
+#[derive(Clone, Debug, TypeFoldable, TypeVisitable)]
 pub struct InstantiatedPredicates<'tcx> {
     pub predicates: Vec<Predicate<'tcx>>,
     pub spans: Vec<Span>,
@@ -1106,24 +1086,14 @@ impl<'tcx> InstantiatedPredicates<'tcx> {
     }
 }
 
-#[derive(
-    Copy,
-    Clone,
-    Debug,
-    PartialEq,
-    Eq,
-    HashStable,
-    TyEncodable,
-    TyDecodable,
-    TypeFoldable,
-    Lift
-)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, HashStable, TyEncodable, TyDecodable, Lift)]
+#[derive(TypeFoldable, TypeVisitable)]
 pub struct OpaqueTypeKey<'tcx> {
     pub def_id: DefId,
     pub substs: SubstsRef<'tcx>,
 }
 
-#[derive(Copy, Clone, Debug, TypeFoldable, HashStable, TyEncodable, TyDecodable)]
+#[derive(Copy, Clone, Debug, TypeFoldable, TypeVisitable, HashStable, TyEncodable, TyDecodable)]
 pub struct OpaqueHiddenType<'tcx> {
     /// The span of this particular definition of the opaque type. So
     /// for example:
@@ -1259,7 +1229,7 @@ pub type PlaceholderConst<'tcx> = Placeholder<BoundConst<'tcx>>;
 /// except that instead of a `Ty` we bundle the `DefId` of the const parameter.
 /// Meaning that we need to use `type_of(const_param_did)` if `const_param_did` is `Some`
 /// to get the type of `did`.
-#[derive(Copy, Clone, Debug, TypeFoldable, Lift, TyEncodable, TyDecodable)]
+#[derive(Copy, Clone, Debug, TypeFoldable, TypeVisitable, Lift, TyEncodable, TyDecodable)]
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
 #[derive(Hash, HashStable)]
 pub struct WithOptConstParam<T> {
@@ -1575,7 +1545,7 @@ impl<'tcx> PolyTraitRef<'tcx> {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TypeFoldable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TypeFoldable, TypeVisitable)]
 pub struct ParamEnvAnd<'tcx, T> {
     pub param_env: ParamEnv<'tcx>,
     pub value: T,

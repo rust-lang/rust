@@ -318,7 +318,7 @@ pub struct InferCtxt<'a, 'tcx> {
 }
 
 /// See the `error_reporting` module for more details.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, TypeFoldable)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, TypeFoldable, TypeVisitable)]
 pub enum ValuePairs<'tcx> {
     Regions(ExpectedFound<ty::Region<'tcx>>),
     Terms(ExpectedFound<ty::Term<'tcx>>),

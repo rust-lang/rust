@@ -77,7 +77,7 @@ pub enum PointerCast {
 ///    At some point, of course, `Box` should move out of the compiler, in which
 ///    case this is analogous to transforming a struct. E.g., `Box<[i32; 4]>` ->
 ///    `Box<[i32]>` is an `Adjust::Unsize` with the target `Box<[i32]>`.
-#[derive(Clone, TyEncodable, TyDecodable, HashStable, TypeFoldable)]
+#[derive(Clone, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
 pub struct Adjustment<'tcx> {
     pub kind: Adjust<'tcx>,
     pub target: Ty<'tcx>,
@@ -89,7 +89,7 @@ impl<'tcx> Adjustment<'tcx> {
     }
 }
 
-#[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable)]
+#[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
 pub enum Adjust<'tcx> {
     /// Go from ! to any type.
     NeverToAny,
@@ -107,7 +107,8 @@ pub enum Adjust<'tcx> {
 /// call, with the signature `&'a T -> &'a U` or `&'a mut T -> &'a mut U`.
 /// The target type is `U` in both cases, with the region and mutability
 /// being those shared by both the receiver and the returned reference.
-#[derive(Copy, Clone, PartialEq, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable)]
+#[derive(Copy, Clone, PartialEq, Debug, TyEncodable, TyDecodable, HashStable)]
+#[derive(TypeFoldable, TypeVisitable)]
 pub struct OverloadedDeref<'tcx> {
     pub region: ty::Region<'tcx>,
     pub mutbl: hir::Mutability,
@@ -165,7 +166,8 @@ impl From<AutoBorrowMutability> for hir::Mutability {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable)]
+#[derive(Copy, Clone, PartialEq, Debug, TyEncodable, TyDecodable, HashStable)]
+#[derive(TypeFoldable, TypeVisitable)]
 pub enum AutoBorrow<'tcx> {
     /// Converts from T to &T.
     Ref(ty::Region<'tcx>, AutoBorrowMutability),
