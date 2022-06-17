@@ -17,6 +17,7 @@ use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_target::abi::{Abi, Align, InitKind, Primitive, Size};
+use rustc_target::spec::SanitizerSet;
 
 use super::{
     util::ensure_monomorphic_enough, CheckInAllocMsg, ImmTy, InterpCx, Machine, OpTy, PlaceTy,
@@ -106,8 +107,20 @@ pub(crate) fn eval_nullary_intrinsic<'tcx>(
             | ty::Error(_) => ConstValue::from_machine_usize(0u64, &tcx),
         },
         sym::validity_invariants_of => {
+            let msan = tcx.sess.opts.debugging_opts.sanitizer.contains(SanitizerSet::MEMORY);
+            let disable = tcx.sess.opts.debugging_opts.no_validity_invariant_checks;
+
+            let strictness = if disable {
+                validity_invariants_of::InvariantStrictness::Disable
+            } else if msan {
+                validity_invariants_of::InvariantStrictness::All
+            } else {
+                validity_invariants_of::InvariantStrictness::Normal
+            };
+
             ensure_monomorphic_enough(tcx, tp_ty)?;
-            let (data, length) = validity_invariants_of::alloc_validity_invariants_of(tcx, tp_ty);
+            let (data, length) =
+                validity_invariants_of::alloc_validity_invariants_of(tcx, tp_ty, strictness);
             ConstValue::CustomSlice { data, length }
         }
         other => bug!("`{}` is not a zero arg intrinsic", other),

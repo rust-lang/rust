@@ -1380,6 +1380,8 @@ options! {
         "run LLVM in non-parallel mode (while keeping codegen-units and ThinLTO)"),
     no_unique_section_names: bool = (false, parse_bool, [TRACKED],
         "do not use unique names for text and data sections when -Z function-sections is used"),
+    no_validity_invariant_checks: bool = (false, parse_bool, [TRACKED],
+        "do not generate any validity invariants in the validity_invariants_of intrinsic"),
     no_profiler_runtime: bool = (false, parse_no_flag, [TRACKED],
         "prevent automatic injection of the profiler_builtins crate"),
     normalize_docs: bool = (false, parse_bool, [TRACKED],

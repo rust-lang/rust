@@ -1,7 +1,7 @@
 // needs-sanitizer-support
 // needs-sanitizer-memory
 //
-// compile-flags: -Z sanitizer=memory -Zsanitizer-memory-track-origins -O
+// compile-flags: -Z sanitizer=memory -Zno-validity-invariant-checks -Zsanitizer-memory-track-origins -O
 //
 // run-fail
 // error-pattern: MemorySanitizer: use-of-uninitialized-value
@@ -10,6 +10,8 @@
 //
 // This test case intentionally limits the usage of the std,
 // since it will be linked with an uninstrumented version of it.
+//
+// -Zno-validity-invariant-checks is needed in order to not fail inside the assume_init
 
 #![feature(core_intrinsics)]
 #![feature(start)]

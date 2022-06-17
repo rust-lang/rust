@@ -32,7 +32,12 @@ fn add_invariants<'tcx>(
     ty: Ty<'tcx>,
     invs: &mut FxHashMap<InvariantKey, WrappingRange>,
     offset: Size,
+    strictness: InvariantStrictness,
 ) {
+    if strictness == InvariantStrictness::Disable {
+        return;
+    }
+
     let x = tcx.layout_of(ParamEnvAnd { param_env: ParamEnv::reveal_all(), value: ty });
 
     if let Ok(layout) = x {
@@ -48,9 +53,12 @@ fn add_invariants<'tcx>(
                 Primitive::Pointer => InvariantSize::Pointer,
             };
 
-            // Pick the first scalar we see, this means NonZeroU8(u8) ends up with only one
-            // invariant, the stricter one.
-            let _: Result<_, _> = invs.try_insert(InvariantKey { offset, size }, valid_range);
+            if !valid_range.is_full_for(value.size(&tcx)) || strictness == InvariantStrictness::All
+            {
+                // Pick the first scalar we see, this means NonZeroU8(u8) ends up with only one
+                // invariant, the stricter one.
+                let _: Result<_, _> = invs.try_insert(InvariantKey { offset, size }, valid_range);
+            }
         }
 
         //dbg!(&ty, &layout);
@@ -71,7 +79,7 @@ fn add_invariants<'tcx>(
                 for idx in 0..*count {
                     let off = offset + *stride * idx;
                     let f = layout.field(&layout_cx, idx as usize);
-                    add_invariants(tcx, f.ty, invs, off);
+                    add_invariants(tcx, f.ty, invs, off, strictness);
                 }
             }
             FieldsShape::Arbitrary { offsets, .. } => {
@@ -82,7 +90,7 @@ fn add_invariants<'tcx>(
                         // &mut [T]
                         // Easy solution is to just not recurse then.
                     } else {
-                        add_invariants(tcx, f.ty, invs, offset + field_offset);
+                        add_invariants(tcx, f.ty, invs, offset + field_offset, strictness);
                     }
                 }
             }
@@ -99,17 +107,25 @@ fn get_layout_of_invariant<'tcx>(tcx: TyCtxt<'tcx>) -> TyAndLayout<'tcx, Ty<'tcx
     layout
 }
 
+#[derive(PartialEq, Clone, Copy, Eq)]
+pub(crate) enum InvariantStrictness {
+    Disable,
+    Normal,
+    All,
+}
+
 /// Directly returns a `ConstAllocation` containing a list of validity invariants of the given type.
 pub(crate) fn alloc_validity_invariants_of<'tcx>(
     tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
+    strictness: InvariantStrictness,
 ) -> (ConstAllocation<'tcx>, usize) {
     let mut invs = FxHashMap::default();
 
     let layout = tcx.data_layout();
     let validity_invariant = get_layout_of_invariant(tcx);
 
-    add_invariants(tcx, ty, &mut invs, Size::ZERO);
+    add_invariants(tcx, ty, &mut invs, Size::ZERO, strictness);
 
     let allocation_size = validity_invariant.layout.size() * invs.len() as u64;
     let mut alloc =
