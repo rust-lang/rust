@@ -27,8 +27,8 @@ use rustc_middle::mir::AssertKind;
 use rustc_middle::mir::*;
 use rustc_middle::ty::adjustment::PointerCast;
 use rustc_middle::ty::cast::CastTy;
-use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::{GenericArgKind, SubstsRef, UserSubsts};
+use rustc_middle::ty::visit::TypeVisitable;
 use rustc_middle::ty::{
     self, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, OpaqueHiddenType,
     OpaqueTypeKey, RegionVid, ToPredicate, Ty, TyCtxt, UserType, UserTypeAnnotationIndex,

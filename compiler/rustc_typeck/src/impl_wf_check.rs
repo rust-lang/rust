@@ -16,7 +16,7 @@ use rustc_errors::struct_span_err;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::{self, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, TyCtxt, TypeVisitable};
 use rustc_span::Span;
 
 use std::collections::hash_map::Entry::{Occupied, Vacant};

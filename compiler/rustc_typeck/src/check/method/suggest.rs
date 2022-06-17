@@ -17,7 +17,7 @@ use rustc_middle::traits::util::supertraits;
 use rustc_middle::ty::fast_reject::{simplify_type, TreatParams};
 use rustc_middle::ty::print::with_crate_prefix;
 use rustc_middle::ty::ToPolyTraitRef;
-use rustc_middle::ty::{self, DefIdTree, ToPredicate, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, DefIdTree, ToPredicate, Ty, TyCtxt, TypeVisitable};
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{lev_distance, source_map, ExpnKind, FileName, MacroKind, Span};
 use rustc_trait_selection::traits::error_reporting::on_unimplemented::InferCtxtExt as _;

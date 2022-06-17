@@ -11,7 +11,7 @@ use rustc_infer::infer;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::ty::adjustment::CoerceUnsizedInfo;
-use rustc_middle::ty::{self, suggest_constraining_type_params, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, suggest_constraining_type_params, Ty, TyCtxt, TypeVisitable};
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt;
 use rustc_trait_selection::traits::misc::{can_type_implement_copy, CopyImplementationError};
 use rustc_trait_selection::traits::predicate_for_trait_def;

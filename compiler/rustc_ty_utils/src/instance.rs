@@ -4,7 +4,7 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::traits::CodegenObligationError;
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{
-    self, Binder, Instance, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable, TypeVisitable, TypeVisitor,
+    self, Binder, Instance, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor,
 };
 use rustc_span::{sym, DUMMY_SP};
 use rustc_trait_selection::traits;

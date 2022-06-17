@@ -75,7 +75,7 @@ use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::specialization_graph::Node;
 use rustc_middle::ty::subst::{GenericArg, InternalSubsts, SubstsRef};
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
-use rustc_middle::ty::{self, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, TyCtxt, TypeVisitable};
 use rustc_span::Span;
 use rustc_trait_selection::traits::{self, translate_substs, wf};
 

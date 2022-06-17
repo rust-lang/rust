@@ -2,7 +2,9 @@ use rustc_data_structures::vec_map::VecMap;
 use rustc_hir::def_id::DefId;
 use rustc_hir::OpaqueTyOrigin;
 use rustc_infer::infer::InferCtxt;
-use rustc_middle::ty::{self, OpaqueHiddenType, OpaqueTypeKey, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{
+    self, OpaqueHiddenType, OpaqueTypeKey, TyCtxt, TypeFoldable, TypeVisitable,
+};
 use rustc_trait_selection::opaque_types::InferCtxtExt;
 
 use super::RegionInferenceContext;

@@ -3,7 +3,7 @@ use rustc_index::bit_set::HybridBitSet;
 use rustc_index::interval::IntervalSet;
 use rustc_infer::infer::canonical::QueryRegionConstraints;
 use rustc_middle::mir::{BasicBlock, Body, ConstraintCategory, Local, Location};
-use rustc_middle::ty::{Ty, TypeFoldable, TypeVisitable};
+use rustc_middle::ty::{Ty, TypeVisitable};
 use rustc_trait_selection::traits::query::dropck_outlives::DropckOutlivesResult;
 use rustc_trait_selection::traits::query::type_op::outlives::DropckOutlives;
 use rustc_trait_selection::traits::query::type_op::{TypeOp, TypeOpOutput};

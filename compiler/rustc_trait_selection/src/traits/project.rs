@@ -29,9 +29,9 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::resolve::OpportunisticRegionResolver;
 use rustc_middle::traits::select::OverflowError;
-use rustc_middle::ty::fold::{MaxUniverse, TypeFoldable, TypeFolder, TypeSuperFoldable};
+use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::subst::Subst;
-use rustc_middle::ty::visit::TypeVisitable;
+use rustc_middle::ty::visit::{MaxUniverse, TypeVisitable};
 use rustc_middle::ty::{self, EarlyBinder, Term, ToPredicate, Ty, TyCtxt};
 use rustc_span::symbol::sym;
 

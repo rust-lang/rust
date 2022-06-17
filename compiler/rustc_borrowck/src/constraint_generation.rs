@@ -5,7 +5,6 @@ use rustc_middle::mir::{
     BasicBlock, BasicBlockData, Body, Local, Location, Place, PlaceRef, ProjectionElem, Rvalue,
     SourceInfo, Statement, StatementKind, Terminator, TerminatorKind, UserTypeProjection,
 };
-use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::visit::TypeVisitable;
 use rustc_middle::ty::{self, RegionVid, Ty};

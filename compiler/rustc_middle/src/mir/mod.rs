@@ -8,10 +8,10 @@ use crate::mir::interpret::{
 use crate::mir::traversal::PostorderCache;
 use crate::mir::visit::MirVisitable;
 use crate::ty::codec::{TyDecoder, TyEncoder};
-use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeSuperFoldable, TypeVisitor};
+use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeSuperFoldable};
 use crate::ty::print::{FmtPrinter, Printer};
 use crate::ty::subst::{GenericArg, InternalSubsts, Subst, SubstsRef};
-use crate::ty::visit::TypeVisitable;
+use crate::ty::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor};
 use crate::ty::{self, List, Ty, TyCtxt};
 use crate::ty::{AdtDef, InstanceDef, ScalarInt, UserTypeAnnotationIndex};
 

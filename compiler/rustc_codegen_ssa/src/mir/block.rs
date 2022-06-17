@@ -17,7 +17,7 @@ use rustc_middle::mir::AssertKind;
 use rustc_middle::mir::{self, SwitchTargets};
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
-use rustc_middle::ty::{self, Instance, Ty, TypeFoldable};
+use rustc_middle::ty::{self, Instance, Ty, TypeVisitable};
 use rustc_span::source_map::Span;
 use rustc_span::{sym, Symbol};
 use rustc_symbol_mangling::typeid_for_fnabi;

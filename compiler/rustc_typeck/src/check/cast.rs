@@ -40,7 +40,7 @@ use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::cast::{CastKind, CastTy};
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::subst::SubstsRef;
-use rustc_middle::ty::{self, Ty, TypeAndMut, TypeFoldable};
+use rustc_middle::ty::{self, Ty, TypeAndMut, TypeVisitable};
 use rustc_session::lint;
 use rustc_session::Session;
 use rustc_span::symbol::sym;

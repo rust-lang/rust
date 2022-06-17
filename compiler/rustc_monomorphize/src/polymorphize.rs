@@ -13,9 +13,9 @@ use rustc_middle::mir::{
 };
 use rustc_middle::ty::{
     self,
-    fold::{TypeFoldable, TypeSuperFoldable, TypeVisitor},
     query::Providers,
     subst::SubstsRef,
+    visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor},
     Const, Ty, TyCtxt,
 };
 use rustc_span::symbol::sym;

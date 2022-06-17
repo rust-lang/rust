@@ -18,7 +18,7 @@ use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts, Subst};
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
 use rustc_middle::ty::{
     self, AdtKind, DefIdTree, EarlyBinder, GenericParamDefKind, ToPredicate, Ty, TyCtxt,
-    TypeFoldable, TypeVisitable, TypeVisitor,
+    TypeFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitor,
 };
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::{sym, Ident, Symbol};
@@ -1369,7 +1369,7 @@ fn check_where_clauses<'tcx, 'fcx>(
             struct CountParams {
                 params: FxHashSet<u32>,
             }
-            impl<'tcx> ty::fold::TypeVisitor<'tcx> for CountParams {
+            impl<'tcx> ty::visit::TypeVisitor<'tcx> for CountParams {
                 type BreakTy = ();
 
                 fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {

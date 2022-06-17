@@ -18,7 +18,7 @@ use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability,
 };
 use rustc_middle::ty::subst::{Subst, SubstsRef};
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitable};
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
 use rustc_target::spec::abi;

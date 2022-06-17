@@ -9,7 +9,7 @@ use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::print::{Print, Printer};
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, Subst};
 use rustc_middle::ty::{
-    self, EarlyBinder, FloatTy, Instance, IntTy, Ty, TyCtxt, TypeFoldable, TypeVisitable, UintTy,
+    self, EarlyBinder, FloatTy, Instance, IntTy, Ty, TyCtxt, TypeVisitable, UintTy,
 };
 use rustc_span::symbol::kw;
 use rustc_target::abi::call::FnAbi;

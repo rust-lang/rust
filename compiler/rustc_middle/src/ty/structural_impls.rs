@@ -4,9 +4,9 @@
 
 use crate::mir::interpret;
 use crate::mir::ProjectionKind;
-use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeSuperFoldable, TypeVisitor};
+use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeSuperFoldable};
 use crate::ty::print::{with_no_trimmed_paths, FmtPrinter, Printer};
-use crate::ty::visit::{TypeSuperVisitable, TypeVisitable};
+use crate::ty::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor};
 use crate::ty::{self, InferConst, Lift, Term, Ty, TyCtxt};
 use rustc_data_structures::functor::IdFunctor;
 use rustc_hir as hir;

@@ -13,7 +13,7 @@ use rustc_hir::{HirId, Pat, PatKind};
 use rustc_infer::infer;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_middle::middle::stability::EvalResult;
-use rustc_middle::ty::{self, Adt, BindingMode, Ty, TypeFoldable};
+use rustc_middle::ty::{self, Adt, BindingMode, Ty, TypeVisitable};
 use rustc_session::lint::builtin::NON_EXHAUSTIVE_OMITTED_PATTERNS;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::lev_distance::find_best_match_for_name;

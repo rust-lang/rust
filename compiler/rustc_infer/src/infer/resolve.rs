@@ -1,8 +1,9 @@
 use super::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use super::{FixupError, FixupResult, InferCtxt, Span};
 use rustc_middle::mir;
-use rustc_middle::ty::fold::{FallibleTypeFolder, TypeFolder, TypeSuperFoldable, TypeVisitor};
-use rustc_middle::ty::{self, Const, InferConst, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::fold::{FallibleTypeFolder, TypeFolder, TypeSuperFoldable};
+use rustc_middle::ty::visit::{TypeSuperVisitable, TypeVisitor};
+use rustc_middle::ty::{self, Const, InferConst, Ty, TyCtxt, TypeFoldable, TypeVisitable};
 
 use std::ops::ControlFlow;
 

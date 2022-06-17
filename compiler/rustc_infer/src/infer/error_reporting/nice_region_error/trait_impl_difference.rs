@@ -11,7 +11,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::print::RegionHighlightMode;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperFoldable, TypeVisitor};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitor};
 use rustc_span::{Span, Symbol};
 
 use std::ops::ControlFlow;
@@ -88,7 +88,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             }
         }
 
-        impl<'tcx> ty::fold::TypeVisitor<'tcx> for HighlightBuilder<'tcx> {
+        impl<'tcx> ty::visit::TypeVisitor<'tcx> for HighlightBuilder<'tcx> {
             fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
                 if !r.has_name() && self.counter <= 3 {
                     self.highlight.highlighting_region(r, self.counter);

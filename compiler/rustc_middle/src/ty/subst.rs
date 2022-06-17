@@ -2,11 +2,9 @@
 
 use crate::mir;
 use crate::ty::codec::{TyDecoder, TyEncoder};
-use crate::ty::fold::{
-    FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitor,
-};
+use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldable};
 use crate::ty::sty::{ClosureSubsts, GeneratorSubsts, InlineConstSubsts};
-use crate::ty::visit::TypeVisitable;
+use crate::ty::visit::{TypeVisitable, TypeVisitor};
 use crate::ty::{self, Lift, List, ParamConst, Ty, TyCtxt};
 
 use rustc_data_structures::intern::{Interned, WithStableHash};

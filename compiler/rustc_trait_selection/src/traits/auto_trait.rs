@@ -8,6 +8,7 @@ use crate::infer::InferCtxt;
 use crate::traits::project::ProjectAndUnifyResult;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::fold::{TypeFolder, TypeSuperFoldable};
+use rustc_middle::ty::visit::TypeVisitable;
 use rustc_middle::ty::{Region, RegionVid, Term};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};

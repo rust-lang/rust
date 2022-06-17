@@ -28,7 +28,7 @@ use rustc_middle::middle::stability::AllowUnstable;
 use rustc_middle::ty::subst::{self, GenericArgKind, InternalSubsts, Subst, SubstsRef};
 use rustc_middle::ty::GenericParamDefKind;
 use rustc_middle::ty::{
-    self, Const, DefIdTree, EarlyBinder, IsSuggestable, Ty, TyCtxt, TypeFoldable,
+    self, Const, DefIdTree, EarlyBinder, IsSuggestable, Ty, TyCtxt, TypeVisitable,
 };
 use rustc_session::lint::builtin::{AMBIGUOUS_ASSOCIATED_ITEMS, BARE_TRAIT_OBJECTS};
 use rustc_span::edition::Edition;

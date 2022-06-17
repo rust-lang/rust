@@ -17,7 +17,7 @@ use rustc_middle::mir::interpret::{ErrorHandled, LitToConstError, LitToConstInpu
 use rustc_middle::thir;
 use rustc_middle::thir::abstract_const::{self, Node, NodeId, NotConstEvaluatable};
 use rustc_middle::ty::subst::{Subst, SubstsRef};
-use rustc_middle::ty::{self, DelaySpanBugEmitted, EarlyBinder, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, DelaySpanBugEmitted, EarlyBinder, TyCtxt, TypeVisitable};
 use rustc_session::lint;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::Span;

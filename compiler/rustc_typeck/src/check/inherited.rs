@@ -8,6 +8,7 @@ use rustc_hir::HirIdMap;
 use rustc_infer::infer;
 use rustc_infer::infer::{InferCtxt, InferOk, TyCtxtInferExt};
 use rustc_middle::ty::fold::TypeFoldable;
+use rustc_middle::ty::visit::TypeVisitable;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::{self, Span};
 use rustc_trait_selection::infer::InferCtxtExt as _;

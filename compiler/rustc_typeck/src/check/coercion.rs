@@ -50,9 +50,9 @@ use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCast,
 };
 use rustc_middle::ty::error::TypeError;
-use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::relate::RelateResult;
 use rustc_middle::ty::subst::SubstsRef;
+use rustc_middle::ty::visit::TypeVisitable;
 use rustc_middle::ty::{self, ToPredicate, Ty, TypeAndMut};
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::sym;

@@ -21,7 +21,9 @@ use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::layout::{LayoutError, MAX_SIMD_LANES};
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::util::{Discr, IntTypeExt};
-use rustc_middle::ty::{self, ParamEnv, ToPredicate, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable};
+use rustc_middle::ty::{
+    self, ParamEnv, ToPredicate, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
+};
 use rustc_session::lint::builtin::{UNINHABITED_STATIC, UNSUPPORTED_CALLING_CONVENTIONS};
 use rustc_span::symbol::sym;
 use rustc_span::{self, Span};
@@ -522,7 +524,7 @@ pub(super) fn check_opaque_for_inheriting_lifetimes<'tcx>(
 
     struct FoundParentLifetime;
     struct FindParentLifetimeVisitor<'tcx>(&'tcx ty::Generics);
-    impl<'tcx> ty::fold::TypeVisitor<'tcx> for FindParentLifetimeVisitor<'tcx> {
+    impl<'tcx> ty::visit::TypeVisitor<'tcx> for FindParentLifetimeVisitor<'tcx> {
         type BreakTy = FoundParentLifetime;
 
         fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
@@ -556,7 +558,7 @@ pub(super) fn check_opaque_for_inheriting_lifetimes<'tcx>(
         selftys: Vec<(Span, Option<String>)>,
     }
 
-    impl<'tcx> ty::fold::TypeVisitor<'tcx> for ProhibitOpaqueVisitor<'tcx> {
+    impl<'tcx> ty::visit::TypeVisitor<'tcx> for ProhibitOpaqueVisitor<'tcx> {
         type BreakTy = Ty<'tcx>;
 
         fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
@@ -1595,7 +1597,7 @@ fn opaque_type_cycle_error(tcx: TyCtxt<'_>, def_id: LocalDefId, span: Span) -> E
                 .filter(|(_, ty)| !matches!(ty.kind(), ty::Never))
             {
                 struct OpaqueTypeCollector(Vec<DefId>);
-                impl<'tcx> ty::fold::TypeVisitor<'tcx> for OpaqueTypeCollector {
+                impl<'tcx> ty::visit::TypeVisitor<'tcx> for OpaqueTypeCollector {
                     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
                         match *t.kind() {
                             ty::Opaque(def, _) => {

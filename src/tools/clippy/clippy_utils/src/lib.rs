@@ -93,7 +93,7 @@ use rustc_middle::ty::fast_reject::SimplifiedTypeGen::{
     ArraySimplifiedType, BoolSimplifiedType, CharSimplifiedType, FloatSimplifiedType, IntSimplifiedType,
     PtrSimplifiedType, SliceSimplifiedType, StrSimplifiedType, UintSimplifiedType,
 };
-use rustc_middle::ty::{layout::IntegerExt, BorrowKind, DefIdTree, Ty, TyCtxt, TypeAndMut, TypeFoldable, UpvarCapture};
+use rustc_middle::ty::{layout::IntegerExt, BorrowKind, DefIdTree, Ty, TyCtxt, TypeAndMut, TypeVisitable, UpvarCapture};
 use rustc_middle::ty::{FloatTy, IntTy, UintTy};
 use rustc_semver::RustcVersion;
 use rustc_session::Session;

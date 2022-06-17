@@ -1,8 +1,8 @@
 use crate::traits;
 use crate::traits::project::Normalized;
 use rustc_middle::ty;
-use rustc_middle::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeVisitor};
-use rustc_middle::ty::visit::TypeVisitable;
+use rustc_middle::ty::fold::{FallibleTypeFolder, TypeFoldable};
+use rustc_middle::ty::visit::{TypeVisitable, TypeVisitor};
 
 use std::fmt;
 use std::ops::ControlFlow;

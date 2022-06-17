@@ -10,7 +10,7 @@ use rustc_middle::thir::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::ToPredicate;
-use rustc_middle::ty::{self, Binder, Const, Ty, TypeFoldable};
+use rustc_middle::ty::{self, Binder, Const, Ty, TypeVisitable};
 use std::marker::PhantomData;
 
 use super::const_evaluatable;

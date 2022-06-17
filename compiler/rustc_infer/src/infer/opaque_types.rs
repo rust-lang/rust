@@ -9,7 +9,7 @@ use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::subst::{GenericArgKind, Subst};
 use rustc_middle::ty::{
-    self, OpaqueHiddenType, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable,
+    self, OpaqueHiddenType, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable,
     TypeVisitable, TypeVisitor,
 };
 use rustc_span::Span;

@@ -35,8 +35,8 @@ use rustc_ast::ast;
 use rustc_middle::traits::{ChalkEnvironmentAndGoal, ChalkRustInterner as RustInterner};
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, SubstsRef};
 use rustc_middle::ty::{
-    self, Binder, Region, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitable,
-    TypeVisitor,
+    self, Binder, Region, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
+    TypeSuperVisitable, TypeVisitable, TypeVisitor,
 };
 use rustc_span::def_id::DefId;
 

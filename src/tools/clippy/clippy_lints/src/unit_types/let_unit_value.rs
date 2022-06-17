@@ -7,7 +7,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Expr, ExprKind, PatKind, Stmt, StmtKind};
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::lint::in_external_macro;
-use rustc_middle::ty::{self, Ty, TypeFoldable, TypeSuperFoldable, TypeVisitor};
+use rustc_middle::ty::{self, Ty, TypeVisitable, TypeSuperVisitable, TypeVisitor};
 
 use super::LET_UNIT_VALUE;
 
