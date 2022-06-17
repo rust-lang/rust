@@ -16,13 +16,17 @@ use crate::{
 };
 
 /// Completes lifetimes.
-pub(crate) fn complete_lifetime(acc: &mut Completions, ctx: &CompletionContext) {
-    let (lp, lifetime) = match ctx.lifetime_ctx() {
-        Some(LifetimeContext { kind: LifetimeKind::Lifetime, lifetime }) => (None, lifetime),
-        Some(LifetimeContext {
+pub(crate) fn complete_lifetime(
+    acc: &mut Completions,
+    ctx: &CompletionContext,
+    lifetime_ctx: &LifetimeContext,
+) {
+    let (lp, lifetime) = match lifetime_ctx {
+        LifetimeContext { kind: LifetimeKind::Lifetime, lifetime } => (None, lifetime),
+        LifetimeContext {
             kind: LifetimeKind::LifetimeParam { is_decl: false, param },
             lifetime,
-        }) => (Some(param), lifetime),
+        } => (Some(param), lifetime),
         _ => return,
     };
     let param_lifetime = match (lifetime, lp.and_then(|lp| lp.lifetime())) {
@@ -48,8 +52,12 @@ pub(crate) fn complete_lifetime(acc: &mut Completions, ctx: &CompletionContext) 
 }
 
 /// Completes labels.
-pub(crate) fn complete_label(acc: &mut Completions, ctx: &CompletionContext) {
-    if !matches!(ctx.lifetime_ctx(), Some(LifetimeContext { kind: LifetimeKind::LabelRef, .. })) {
+pub(crate) fn complete_label(
+    acc: &mut Completions,
+    ctx: &CompletionContext,
+    lifetime_ctx: &LifetimeContext,
+) {
+    if !matches!(lifetime_ctx, LifetimeContext { kind: LifetimeKind::LabelRef, .. }) {
         return;
     }
     ctx.process_all_names_raw(&mut |name, res| {

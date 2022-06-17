@@ -8,7 +8,11 @@ use crate::{
     CompletionContext, Completions,
 };
 
-pub(crate) fn complete_expr_path(acc: &mut Completions, ctx: &CompletionContext) {
+pub(crate) fn complete_expr_path(
+    acc: &mut Completions,
+    ctx: &CompletionContext,
+    name_ref_ctx: &NameRefContext,
+) {
     let _p = profile::span("complete_expr_path");
 
     let (
@@ -19,8 +23,8 @@ pub(crate) fn complete_expr_path(acc: &mut Completions, ctx: &CompletionContext)
         after_if_expr,
         wants_mut_token,
         in_condition,
-    ) = match ctx.nameref_ctx() {
-        Some(&NameRefContext {
+    ) = match name_ref_ctx {
+        &NameRefContext {
             kind:
                 Some(NameRefKind::Path(PathCompletionCtx {
                     kind:
@@ -36,7 +40,7 @@ pub(crate) fn complete_expr_path(acc: &mut Completions, ctx: &CompletionContext)
                     ..
                 })),
             ..
-        }) if ctx.qualifier_ctx.none() => (
+        } if ctx.qualifier_ctx.none() => (
             qualified,
             in_block_expr,
             in_loop_body,

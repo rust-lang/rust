@@ -5,22 +5,16 @@ use ide_db::FxHashSet;
 use syntax::ast::Pat;
 
 use crate::{
-    context::{PathCompletionCtx, PatternRefutability, Qualified},
+    context::{PathCompletionCtx, PathKind, PatternContext, PatternRefutability, Qualified},
     CompletionContext, Completions,
 };
 
 /// Completes constants and paths in unqualified patterns.
-pub(crate) fn complete_pattern(acc: &mut Completions, ctx: &CompletionContext) {
-    let patctx = match &ctx.pattern_ctx {
-        Some(ctx) => ctx,
-        _ => return,
-    };
-
-    if let Some(path_ctx) = ctx.path_context() {
-        pattern_path_completion(acc, ctx, path_ctx);
-        return;
-    }
-
+pub(crate) fn complete_pattern(
+    acc: &mut Completions,
+    ctx: &CompletionContext,
+    patctx: &PatternContext,
+) {
     match patctx.parent_pat.as_ref() {
         Some(Pat::RangePat(_) | Pat::BoxPat(_)) => (),
         Some(Pat::RefPat(r)) => {
@@ -108,11 +102,14 @@ pub(crate) fn complete_pattern(acc: &mut Completions, ctx: &CompletionContext) {
     });
 }
 
-fn pattern_path_completion(
+pub(crate) fn pattern_path_completion(
     acc: &mut Completions,
     ctx: &CompletionContext,
-    PathCompletionCtx { qualified, .. }: &PathCompletionCtx,
+    PathCompletionCtx { qualified, kind, .. }: &PathCompletionCtx,
 ) {
+    if !matches!(kind, PathKind::Pat) {
+        return;
+    }
     match qualified {
         Qualified::With { resolution: Some(resolution), is_super_chain, .. } => {
             if *is_super_chain {

@@ -10,11 +10,15 @@ use crate::{
     Completions,
 };
 
-pub(crate) fn complete_derive(acc: &mut Completions, ctx: &CompletionContext) {
-    let (qualified, existing_derives) = match ctx.path_context() {
-        Some(PathCompletionCtx {
-            kind: PathKind::Derive { existing_derives }, qualified, ..
-        }) => (qualified, existing_derives),
+pub(crate) fn complete_derive(
+    acc: &mut Completions,
+    ctx: &CompletionContext,
+    path_ctx: &PathCompletionCtx,
+) {
+    let (qualified, existing_derives) = match path_ctx {
+        PathCompletionCtx { kind: PathKind::Derive { existing_derives }, qualified, .. } => {
+            (qualified, existing_derives)
+        }
         _ => return,
     };
 

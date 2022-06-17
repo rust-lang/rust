@@ -18,7 +18,7 @@ use syntax::{
 
 use crate::{
     completions::module_or_attr,
-    context::{CompletionContext, IdentContext, PathCompletionCtx, PathKind, Qualified},
+    context::{CompletionContext, PathCompletionCtx, PathKind, Qualified},
     item::CompletionItem,
     Completions,
 };
@@ -34,11 +34,9 @@ pub(crate) use self::derive::complete_derive;
 pub(crate) fn complete_known_attribute_input(
     acc: &mut Completions,
     ctx: &CompletionContext,
+    fake_attribute_under_caret: &ast::Attr,
 ) -> Option<()> {
-    let attribute = match &ctx.ident_ctx {
-        IdentContext::UnexpandedAttrTT { fake_attribute_under_caret: Some(it) } => it,
-        _ => return None,
-    };
+    let attribute = fake_attribute_under_caret;
     let name_ref = match attribute.path() {
         Some(p) => Some(p.as_single_name_ref()?),
         None => None,
@@ -71,13 +69,17 @@ pub(crate) fn complete_known_attribute_input(
     Some(())
 }
 
-pub(crate) fn complete_attribute(acc: &mut Completions, ctx: &CompletionContext) {
-    let (qualified, is_inner, annotated_item_kind) = match ctx.path_context() {
-        Some(&PathCompletionCtx {
+pub(crate) fn complete_attribute(
+    acc: &mut Completions,
+    ctx: &CompletionContext,
+    path_ctx: &PathCompletionCtx,
+) {
+    let (qualified, is_inner, annotated_item_kind) = match path_ctx {
+        &PathCompletionCtx {
             kind: PathKind::Attr { kind, annotated_item_kind },
             ref qualified,
             ..
-        }) => (qualified, kind == AttrKind::Inner, annotated_item_kind),
+        } => (qualified, kind == AttrKind::Inner, annotated_item_kind),
         _ => return,
     };
 

@@ -4,7 +4,9 @@ use hir::{db::HirDatabase, Documentation, HasAttrs, StructKind};
 use ide_db::SymbolKind;
 
 use crate::{
-    context::{CompletionContext, PathCompletionCtx, PathKind},
+    context::{
+        CompletionContext, IdentContext, NameRefContext, NameRefKind, PathCompletionCtx, PathKind,
+    },
     item::{Builder, CompletionItem},
     render::{
         compute_ref_match, compute_type_match,
@@ -51,12 +53,19 @@ fn render(
 ) -> Option<Builder> {
     let db = completion.db;
     let mut kind = thing.kind(db);
-    let should_add_parens = match completion.path_context() {
-        Some(PathCompletionCtx { has_call_parens: true, .. }) => false,
-        Some(PathCompletionCtx { kind: PathKind::Use | PathKind::Type { .. }, .. }) => {
-            cov_mark::hit!(no_parens_in_use_item);
-            false
-        }
+    let should_add_parens = match &completion.ident_ctx {
+        IdentContext::NameRef(NameRefContext {
+            kind: Some(NameRefKind::Path(PathCompletionCtx { has_call_parens: true, .. })),
+            ..
+        }) => false,
+        IdentContext::NameRef(NameRefContext {
+            kind:
+                Some(NameRefKind::Path(PathCompletionCtx {
+                    kind: PathKind::Use | PathKind::Type { .. },
+                    ..
+                })),
+            ..
+        }) => false,
         _ => true,
     };
 

@@ -15,9 +15,13 @@ use crate::{
 };
 
 /// Complete mod declaration, i.e. `mod $0;`
-pub(crate) fn complete_mod(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
-    let mod_under_caret = match ctx.name_ctx() {
-        Some(NameContext { kind: NameKind::Module(mod_under_caret), .. }) => mod_under_caret,
+pub(crate) fn complete_mod(
+    acc: &mut Completions,
+    ctx: &CompletionContext,
+    name_ctx: &NameContext,
+) -> Option<()> {
+    let mod_under_caret = match name_ctx {
+        NameContext { kind: NameKind::Module(mod_under_caret), .. } => mod_under_caret,
         _ => return None,
     };
     if mod_under_caret.item_list().is_some() {

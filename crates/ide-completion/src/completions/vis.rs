@@ -7,9 +7,13 @@ use crate::{
     Completions,
 };
 
-pub(crate) fn complete_vis_path(acc: &mut Completions, ctx: &CompletionContext) {
-    let (qualified, &has_in_token) = match ctx.path_context() {
-        Some(PathCompletionCtx { kind: PathKind::Vis { has_in_token }, qualified, .. }) => {
+pub(crate) fn complete_vis_path(
+    acc: &mut Completions,
+    ctx: &CompletionContext,
+    path_ctx: &PathCompletionCtx,
+) {
+    let (qualified, &has_in_token) = match path_ctx {
+        PathCompletionCtx { kind: PathKind::Vis { has_in_token }, qualified, .. } => {
             (qualified, has_in_token)
         }
         _ => return,

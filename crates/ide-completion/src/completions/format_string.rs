@@ -2,28 +2,25 @@
 
 use ide_db::syntax_helpers::format_string::is_format_string;
 use itertools::Itertools;
-use syntax::{AstToken, TextRange, TextSize};
+use syntax::{ast, AstToken, TextRange, TextSize};
 
-use crate::{
-    context::{CompletionContext, IdentContext},
-    CompletionItem, CompletionItemKind, Completions,
-};
+use crate::{context::CompletionContext, CompletionItem, CompletionItemKind, Completions};
 
 /// Complete identifiers in format strings.
-pub(crate) fn format_string(acc: &mut Completions, ctx: &CompletionContext) {
-    let string = match &ctx.ident_ctx {
-        IdentContext::String { expanded: Some(expanded), original }
-            if is_format_string(&expanded) =>
-        {
-            original
-        }
-        _ => return,
-    };
+pub(crate) fn format_string(
+    acc: &mut Completions,
+    ctx: &CompletionContext,
+    original: &ast::String,
+    expanded: &ast::String,
+) {
+    if !is_format_string(&expanded) {
+        return;
+    }
     let cursor = ctx.position.offset;
     let lit_start = ctx.original_token.text_range().start();
     let cursor_in_lit = cursor - lit_start;
 
-    let prefix = &string.text()[..cursor_in_lit.into()];
+    let prefix = &original.text()[..cursor_in_lit.into()];
     let braces = prefix.char_indices().rev().skip_while(|&(_, c)| c.is_alphanumeric()).next_tuple();
     let brace_offset = match braces {
         // escaped brace

@@ -19,9 +19,13 @@ use crate::{
 /// `spam: &mut Spam` insert text/label will be suggested.
 ///
 /// Also complete parameters for closure or local functions from the surrounding defined locals.
-pub(crate) fn complete_fn_param(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
-    let (param_list, _, param_kind) = match &ctx.pattern_ctx {
-        Some(PatternContext { param_ctx: Some(kind), .. }) => kind,
+pub(crate) fn complete_fn_param(
+    acc: &mut Completions,
+    ctx: &CompletionContext,
+    pattern_ctx: &PatternContext,
+) -> Option<()> {
+    let (param_list, _, param_kind) = match pattern_ctx {
+        PatternContext { param_ctx: Some(kind), .. } => kind,
         _ => return None,
     };
 

@@ -12,9 +12,13 @@ use crate::{
     CompletionItem, CompletionItemKind, CompletionRelevance, Completions,
 };
 
-pub(crate) fn complete_use_tree(acc: &mut Completions, ctx: &CompletionContext) {
-    let (qualified, name_ref, use_tree_parent) = match ctx.nameref_ctx() {
-        Some(NameRefContext {
+pub(crate) fn complete_use_tree(
+    acc: &mut Completions,
+    ctx: &CompletionContext,
+    name_ref_ctx: &NameRefContext,
+) {
+    let (qualified, name_ref, use_tree_parent) = match name_ref_ctx {
+        NameRefContext {
             kind:
                 Some(NameRefKind::Path(PathCompletionCtx {
                     kind: PathKind::Use,
@@ -24,7 +28,7 @@ pub(crate) fn complete_use_tree(acc: &mut Completions, ctx: &CompletionContext) 
                 })),
             nameref,
             ..
-        }) => (qualified, nameref, use_tree_parent),
+        } => (qualified, nameref, use_tree_parent),
         _ => return,
     };
 

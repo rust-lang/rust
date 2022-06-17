@@ -44,8 +44,8 @@ use text_edit::TextEdit;
 
 use crate::{
     context::{
-        IdentContext, ItemListKind, NameContext, NameKind, NameRefContext, NameRefKind,
-        PathCompletionCtx, PathKind,
+        ItemListKind, NameContext, NameKind, NameRefContext, NameRefKind, PathCompletionCtx,
+        PathKind,
     },
     CompletionContext, CompletionItem, CompletionItemKind, CompletionRelevance, Completions,
 };
@@ -58,53 +58,41 @@ enum ImplCompletionKind {
     Const,
 }
 
-pub(crate) fn complete_trait_impl(acc: &mut Completions, ctx: &CompletionContext) {
-    if let Some((kind, replacement_range, impl_def)) = completion_match(ctx) {
-        if let Some(hir_impl) = ctx.sema.to_def(&impl_def) {
-            get_missing_assoc_items(&ctx.sema, &impl_def).into_iter().for_each(|item| {
-                use self::ImplCompletionKind::*;
-                match (item, kind) {
-                    (hir::AssocItem::Function(func), All | Fn) => {
-                        add_function_impl(acc, ctx, replacement_range, func, hir_impl)
-                    }
-                    (hir::AssocItem::TypeAlias(type_alias), All | TypeAlias) => {
-                        add_type_alias_impl(acc, ctx, replacement_range, type_alias)
-                    }
-                    (hir::AssocItem::Const(const_), All | Const) => {
-                        add_const_impl(acc, ctx, replacement_range, const_, hir_impl)
-                    }
-                    _ => {}
-                }
-            });
-        }
-    }
+pub(crate) fn complete_trait_impl_name(
+    acc: &mut Completions,
+    ctx: &CompletionContext,
+    NameContext { name, kind, .. }: &NameContext,
+) -> Option<()> {
+    let kind = match kind {
+        NameKind::Const => ImplCompletionKind::Const,
+        NameKind::Function => ImplCompletionKind::Fn,
+        NameKind::TypeAlias => ImplCompletionKind::TypeAlias,
+        _ => return None,
+    };
+    let token = ctx.token.clone();
+    let item = match name {
+        Some(name) => name.syntax().parent(),
+        None => if token.kind() == SyntaxKind::WHITESPACE { token.prev_token()? } else { token }
+            .parent(),
+    }?;
+    complete_trait_impl(
+        acc,
+        ctx,
+        kind,
+        replacement_range(ctx, &item),
+        // item -> ASSOC_ITEM_LIST -> IMPL
+        ast::Impl::cast(item.parent()?.parent()?)?,
+    );
+    Some(())
 }
 
-fn completion_match(ctx: &CompletionContext) -> Option<(ImplCompletionKind, TextRange, ast::Impl)> {
-    match &ctx.ident_ctx {
-        IdentContext::Name(NameContext { name, kind, .. }) => {
-            let kind = match kind {
-                NameKind::Const => ImplCompletionKind::Const,
-                NameKind::Function => ImplCompletionKind::Fn,
-                NameKind::TypeAlias => ImplCompletionKind::TypeAlias,
-                _ => return None,
-            };
-            let token = ctx.token.clone();
-            let item = match name {
-                Some(name) => name.syntax().parent(),
-                None => {
-                    if token.kind() == SyntaxKind::WHITESPACE { token.prev_token()? } else { token }
-                        .parent()
-                }
-            }?;
-            Some((
-                kind,
-                replacement_range(ctx, &item),
-                // item -> ASSOC_ITEM_LIST -> IMPL
-                ast::Impl::cast(item.parent()?.parent()?)?,
-            ))
-        }
-        IdentContext::NameRef(NameRefContext {
+pub(crate) fn complete_trait_impl_name_ref(
+    acc: &mut Completions,
+    ctx: &CompletionContext,
+    name_ref_ctx: &NameRefContext,
+) -> Option<()> {
+    match name_ref_ctx {
+        NameRefContext {
             nameref,
             kind:
                 Some(NameRefKind::Path(
@@ -113,15 +101,44 @@ fn completion_match(ctx: &CompletionContext) -> Option<(ImplCompletionKind, Text
                         ..
                     },
                 )),
-        }) if path_ctx.is_trivial_path() => Some((
+        } if path_ctx.is_trivial_path() => complete_trait_impl(
+            acc,
+            ctx,
             ImplCompletionKind::All,
             match nameref {
                 Some(name) => name.syntax().text_range(),
                 None => ctx.source_range(),
             },
             ctx.impl_def.clone()?,
-        )),
-        _ => None,
+        ),
+        _ => (),
+    }
+    Some(())
+}
+
+fn complete_trait_impl(
+    acc: &mut Completions,
+    ctx: &CompletionContext,
+    kind: ImplCompletionKind,
+    replacement_range: TextRange,
+    impl_def: ast::Impl,
+) {
+    if let Some(hir_impl) = ctx.sema.to_def(&impl_def) {
+        get_missing_assoc_items(&ctx.sema, &impl_def).into_iter().for_each(|item| {
+            use self::ImplCompletionKind::*;
+            match (item, kind) {
+                (hir::AssocItem::Function(func), All | Fn) => {
+                    add_function_impl(acc, ctx, replacement_range, func, hir_impl)
+                }
+                (hir::AssocItem::TypeAlias(type_alias), All | TypeAlias) => {
+                    add_type_alias_impl(acc, ctx, replacement_range, type_alias)
+                }
+                (hir::AssocItem::Const(const_), All | Const) => {
+                    add_const_impl(acc, ctx, replacement_range, const_, hir_impl)
+                }
+                _ => {}
+            }
+        });
     }
 }
 

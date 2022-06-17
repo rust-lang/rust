@@ -6,7 +6,9 @@ use itertools::Itertools;
 use syntax::SmolStr;
 
 use crate::{
-    context::{ParamKind, PathCompletionCtx, PatternContext},
+    context::{
+        IdentContext, NameRefContext, NameRefKind, ParamKind, PathCompletionCtx, PatternContext,
+    },
     render::{variant::visible_fields, RenderContext},
     CompletionItem, CompletionItemKind,
 };
@@ -78,8 +80,11 @@ fn render_pat(
     fields_omitted: bool,
 ) -> Option<String> {
     let has_call_parens = matches!(
-        ctx.completion.path_context(),
-        Some(PathCompletionCtx { has_call_parens: true, .. })
+        ctx.completion.ident_ctx,
+        IdentContext::NameRef(NameRefContext {
+            kind: Some(NameRefKind::Path(PathCompletionCtx { has_call_parens: true, .. })),
+            ..
+        })
     );
     let mut pat = match kind {
         StructKind::Tuple if !has_call_parens => {
