@@ -22,10 +22,7 @@ use syntax::{
 use text_edit::Indel;
 
 use crate::{
-    patterns::{
-        determine_location, is_in_loop_body, is_in_token_of_for_loop, previous_token,
-        ImmediateLocation,
-    },
+    patterns::{is_in_loop_body, is_in_token_of_for_loop, previous_token},
     CompletionConfig,
 };
 
@@ -102,10 +99,7 @@ pub(super) enum PathKind {
         is_func_update: Option<ast::RecordExpr>,
     },
     Type {
-        in_tuple_struct: bool,
-        /// Whether this type path is a type ascription or not
-        /// Original file ast node
-        ascription: Option<TypeAscriptionTarget>,
+        location: TypeLocation,
     },
     Attr {
         kind: AttrKind,
@@ -121,6 +115,16 @@ pub(super) enum PathKind {
         has_in_token: bool,
     },
     Use,
+}
+
+/// Original file ast nodes
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) enum TypeLocation {
+    TupleField,
+    TypeAscription(TypeAscriptionTarget),
+    GenericArgList(Option<ast::GenericArgList>),
+    TypeBound,
+    Other,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -222,6 +226,7 @@ pub(super) enum NameKind {
 pub(super) struct NameRefContext {
     /// NameRef syntax in the original file
     pub(super) nameref: Option<ast::NameRef>,
+    // FIXME: This shouldn't be an Option
     pub(super) kind: Option<NameRefKind>,
 }
 
@@ -311,9 +316,9 @@ pub(crate) struct CompletionContext<'a> {
     /// The parent impl of the cursor position if it exists.
     pub(super) impl_def: Option<ast::Impl>,
     /// Are we completing inside a let statement with a missing semicolon?
+    // FIXME: This should be part of PathKind::Expr
     pub(super) incomplete_let: bool,
 
-    pub(super) completion_location: Option<ImmediateLocation>,
     pub(super) previous_token: Option<SyntaxToken>,
 
     pub(super) ident_ctx: IdentContext,
@@ -384,11 +389,6 @@ impl<'a> CompletionContext<'a> {
 
     pub(crate) fn has_dot_receiver(&self) -> bool {
         self.dot_receiver().is_some()
-    }
-
-    // FIXME: This shouldn't exist
-    pub(crate) fn expects_generic_arg(&self) -> bool {
-        matches!(self.completion_location, Some(ImmediateLocation::GenericArgList(_)))
     }
 
     pub(crate) fn path_context(&self) -> Option<&PathCompletionCtx> {
@@ -542,7 +542,6 @@ impl<'a> CompletionContext<'a> {
             function_def: None,
             impl_def: None,
             incomplete_let: false,
-            completion_location: None,
             previous_token: None,
             // dummy value, will be overwritten
             ident_ctx: IdentContext::UnexpandedAttrTT { fake_attribute_under_caret: None },
@@ -935,8 +934,6 @@ impl<'a> CompletionContext<'a> {
                 return Some(());
             }
         };
-        self.completion_location =
-            determine_location(&self.sema, original_file, offset, &name_like);
         self.impl_def = self
             .sema
             .token_ancestors_with_macros(self.token.clone())
@@ -1094,7 +1091,7 @@ impl<'a> CompletionContext<'a> {
             match parent {
                 ast::PathSegment(segment) => segment,
                 ast::FieldExpr(field) => {
-                    let receiver = find_in_original_file(field.expr(), original_file);
+                    let receiver = find_opt_node_in_file(original_file, field.expr());
                     let receiver_is_ambiguous_float_literal = match &receiver {
                         Some(ast::Expr::Literal(l)) => matches! {
                             l.kind(),
@@ -1110,7 +1107,7 @@ impl<'a> CompletionContext<'a> {
                     return res;
                 },
                 ast::MethodCallExpr(method) => {
-                    let receiver = find_in_original_file(method.receiver(), original_file);
+                    let receiver = find_opt_node_in_file(original_file, method.receiver());
                     nameref_ctx.kind = Some(NameRefKind::DotAccess(DotAccess {
                         receiver_ty: receiver.as_ref().and_then(|it| sema.type_of_expr(it)),
                         kind: DotAccessKind::Method { has_parens: method.arg_list().map_or(false, |it| it.l_paren_token().is_some()) },
@@ -1189,14 +1186,14 @@ impl<'a> CompletionContext<'a> {
             None
         };
 
-        let fetch_ascription = |it: Option<SyntaxNode>| {
+        let type_location = |it: Option<SyntaxNode>| {
             let parent = it?;
-            match_ast! {
+            let res = match_ast! {
                 match parent {
                     ast::Const(it) => {
-                        let name = find_in_original_file(it.name(), original_file)?;
+                        let name = find_opt_node_in_file(original_file, it.name())?;
                         let original = ast::Const::cast(name.syntax().parent()?)?;
-                        Some(TypeAscriptionTarget::Const(original.body()))
+                        TypeLocation::TypeAscription(TypeAscriptionTarget::Const(original.body()))
                     },
                     ast::RetType(it) => {
                         if it.thin_arrow_token().is_none() {
@@ -1207,8 +1204,8 @@ impl<'a> CompletionContext<'a> {
                             None => ast::ClosureExpr::cast(parent.parent()?)?.param_list(),
                         };
 
-                        let parent = find_in_original_file(parent, original_file)?.syntax().parent()?;
-                        Some(TypeAscriptionTarget::RetType(match_ast! {
+                        let parent = find_opt_node_in_file(original_file, parent)?.syntax().parent()?;
+                        TypeLocation::TypeAscription(TypeAscriptionTarget::RetType(match_ast! {
                             match parent {
                                 ast::ClosureExpr(it) => {
                                     it.body()
@@ -1224,17 +1221,25 @@ impl<'a> CompletionContext<'a> {
                         if it.colon_token().is_none() {
                             return None;
                         }
-                        Some(TypeAscriptionTarget::FnParam(find_in_original_file(it.pat(), original_file)))
+                        TypeLocation::TypeAscription(TypeAscriptionTarget::FnParam(find_opt_node_in_file(original_file, it.pat())))
                     },
                     ast::LetStmt(it) => {
                         if it.colon_token().is_none() {
                             return None;
                         }
-                        Some(TypeAscriptionTarget::Let(find_in_original_file(it.pat(), original_file)))
+                        TypeLocation::TypeAscription(TypeAscriptionTarget::Let(find_opt_node_in_file(original_file, it.pat())))
                     },
-                    _ => None,
+                    ast::TypeBound(_) => TypeLocation::TypeBound,
+                    // is this case needed?
+                    ast::TypeBoundList(_) => TypeLocation::TypeBound,
+                    ast::GenericArg(it) => TypeLocation::GenericArgList(find_opt_node_in_file_compensated(original_file, it.syntax().parent().and_then(ast::GenericArgList::cast))),
+                    // is this case needed?
+                    ast::GenericArgList(it) => TypeLocation::GenericArgList(find_opt_node_in_file_compensated(original_file, Some(it))),
+                    ast::TupleField(_) => TypeLocation::TupleField,
+                    _ => return None,
                 }
-            }
+            };
+            Some(res)
         };
 
         // Infer the path kind
@@ -1242,10 +1247,9 @@ impl<'a> CompletionContext<'a> {
             match_ast! {
                 match it {
                     ast::PathType(it) => {
-                        let ascription = fetch_ascription(it.syntax().parent());
+                        let location = type_location(it.syntax().parent());
                         Some(PathKind::Type {
-                            in_tuple_struct: it.syntax().parent().map_or(false, |it| ast::TupleField::can_cast(it.kind())),
-                            ascription,
+                            location: location.unwrap_or(TypeLocation::Other),
                         })
                     },
                     ast::PathExpr(it) => {
@@ -1292,7 +1296,12 @@ impl<'a> CompletionContext<'a> {
                         let parent = it.syntax().parent();
                         match parent.as_ref().map(|it| it.kind()) {
                             Some(SyntaxKind::MACRO_PAT) => Some(PathKind::Pat),
-                            Some(SyntaxKind::MACRO_TYPE) => Some(PathKind::Type { in_tuple_struct: false, ascription: None }),
+                            Some(SyntaxKind::MACRO_TYPE) => {
+                                let location = type_location(parent.unwrap().parent());
+                                Some(PathKind::Type {
+                                    location: location.unwrap_or(TypeLocation::Other),
+                                })
+                            },
                             Some(SyntaxKind::ITEM_LIST) => Some(PathKind::Item { kind: ItemListKind::Module }),
                             Some(SyntaxKind::ASSOC_ITEM_LIST) => Some(PathKind::Item { kind: match parent.and_then(|it| it.parent()) {
                                 Some(it) => match_ast! {
@@ -1501,15 +1510,14 @@ fn pattern_context_for(original_file: &SyntaxNode, pat: ast::Pat) -> PatternCont
     }
 }
 
-fn find_in_original_file<N: AstNode>(x: Option<N>, original_file: &SyntaxNode) -> Option<N> {
-    fn find_node_with_range<N: AstNode>(syntax: &SyntaxNode, range: TextRange) -> Option<N> {
-        let range = syntax.text_range().intersect(range)?;
-        syntax.covering_element(range).ancestors().find_map(N::cast)
-    }
-    x.map(|e| e.syntax().text_range()).and_then(|r| find_node_with_range(original_file, r))
+/// Attempts to find `node` inside `syntax` via `node`'s text range.
+/// If the fake identifier has been inserted after this node or inside of this node use the `_compensated` version instead.
+fn find_opt_node_in_file<N: AstNode>(syntax: &SyntaxNode, node: Option<N>) -> Option<N> {
+    find_node_in_file(syntax, &node?)
 }
 
 /// Attempts to find `node` inside `syntax` via `node`'s text range.
+/// If the fake identifier has been inserted after this node or inside of this node use the `_compensated` version instead.
 fn find_node_in_file<N: AstNode>(syntax: &SyntaxNode, node: &N) -> Option<N> {
     let syntax_range = syntax.text_range();
     let range = node.syntax().text_range();
@@ -1528,9 +1536,19 @@ fn find_node_in_file_compensated<N: AstNode>(syntax: &SyntaxNode, node: &N) -> O
         return None;
     }
     let range = TextRange::new(range.start(), end);
-    // our inserted ident could cause `range` to be go outside of the original syntax, so cap it
+    // our inserted ident could cause `range` to go outside of the original syntax, so cap it
     let intersection = range.intersect(syntax_range)?;
     syntax.covering_element(intersection).ancestors().find_map(N::cast)
+}
+
+/// Attempts to find `node` inside `syntax` via `node`'s text range while compensating
+/// for the offset introduced by the fake ident..
+/// This is wrong if `node` comes before the insertion point! Use `find_node_in_file` instead.
+fn find_opt_node_in_file_compensated<N: AstNode>(
+    syntax: &SyntaxNode,
+    node: Option<N>,
+) -> Option<N> {
+    find_node_in_file_compensated(syntax, &node?)
 }
 
 fn path_or_use_tree_qualifier(path: &ast::Path) -> Option<(ast::Path, bool)> {

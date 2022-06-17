@@ -9,9 +9,9 @@ use syntax::{AstNode, SyntaxNode, T};
 
 use crate::{
     context::{
-        CompletionContext, NameRefContext, NameRefKind, PathCompletionCtx, PathKind, PatternContext,
+        CompletionContext, NameRefContext, NameRefKind, PathCompletionCtx, PathKind,
+        PatternContext, TypeLocation,
     },
-    patterns::ImmediateLocation,
     render::{render_resolution_with_import, RenderContext},
 };
 
@@ -112,7 +112,7 @@ pub(crate) fn import_on_the_fly(acc: &mut Completions, ctx: &CompletionContext) 
     if !ctx.config.enable_imports_on_the_fly {
         return None;
     }
-    let path_kind = match dbg!(ctx.nameref_ctx()) {
+    let path_kind = match ctx.nameref_ctx() {
         Some(NameRefContext {
             kind:
                 Some(NameRefKind::Path(PathCompletionCtx {
@@ -176,8 +176,8 @@ pub(crate) fn import_on_the_fly(acc: &mut Completions, ctx: &CompletionContext) 
             (PathKind::Pat, ItemInNs::Types(_)) => true,
             (PathKind::Pat, ItemInNs::Values(def)) => matches!(def, hir::ModuleDef::Const(_)),
 
-            (PathKind::Type { .. }, ItemInNs::Types(ty)) => {
-                if matches!(ctx.completion_location, Some(ImmediateLocation::TypeBound)) {
+            (PathKind::Type { location }, ItemInNs::Types(ty)) => {
+                if matches!(location, TypeLocation::TypeBound) {
                     matches!(ty, ModuleDef::Trait(_))
                 } else {
                     true
