@@ -4,7 +4,7 @@ use crate::spec::{LinkerFlavor, RelroLevel, Target, TargetOptions};
 pub fn target() -> Target {
     let mut base = super::linux_gnu_base::opts();
     base.cpu = "ppc64".into();
-    base.pre_link_args.entry(LinkerFlavor::Gcc).or_default().push("-m64".into());
+    base.add_pre_link_args(LinkerFlavor::Gcc, &["-m64"]);
     base.max_atomic_width = Some(64);
 
     // ld.so in at least RHEL6 on ppc64 has a bug related to BIND_NOW, so only enable partial RELRO

@@ -3,7 +3,7 @@ use crate::spec::{LinkerFlavor, Target, TargetOptions};
 
 pub fn target() -> Target {
     let mut base = super::netbsd_base::opts();
-    base.pre_link_args.entry(LinkerFlavor::Gcc).or_default().push("-m32".into());
+    base.add_pre_link_args(LinkerFlavor::Gcc, &["-m32"]);
     base.max_atomic_width = Some(32);
 
     Target {

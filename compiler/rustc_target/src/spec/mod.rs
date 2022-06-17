@@ -1459,6 +1459,44 @@ pub struct TargetOptions {
     pub supports_stack_protector: bool,
 }
 
+/// Add arguments for the given flavor and also for its "twin" flavors
+/// that have a compatible command line interface.
+fn add_link_args(link_args: &mut LinkArgs, flavor: LinkerFlavor, args: &[&'static str]) {
+    let mut insert = |flavor| {
+        link_args.entry(flavor).or_default().extend(args.iter().copied().map(Cow::Borrowed))
+    };
+    insert(flavor);
+    match flavor {
+        LinkerFlavor::Ld => insert(LinkerFlavor::Lld(LldFlavor::Ld)),
+        LinkerFlavor::Msvc => insert(LinkerFlavor::Lld(LldFlavor::Link)),
+        LinkerFlavor::Lld(LldFlavor::Wasm) => {}
+        LinkerFlavor::Lld(lld_flavor) => {
+            panic!("add_link_args: use non-LLD flavor for {:?}", lld_flavor)
+        }
+        LinkerFlavor::Gcc
+        | LinkerFlavor::Em
+        | LinkerFlavor::L4Bender
+        | LinkerFlavor::BpfLinker
+        | LinkerFlavor::PtxLinker => {}
+    }
+}
+
+impl TargetOptions {
+    fn link_args(flavor: LinkerFlavor, args: &[&'static str]) -> LinkArgs {
+        let mut link_args = LinkArgs::new();
+        add_link_args(&mut link_args, flavor, args);
+        link_args
+    }
+
+    fn add_pre_link_args(&mut self, flavor: LinkerFlavor, args: &[&'static str]) {
+        add_link_args(&mut self.pre_link_args, flavor, args);
+    }
+
+    fn add_post_link_args(&mut self, flavor: LinkerFlavor, args: &[&'static str]) {
+        add_link_args(&mut self.post_link_args, flavor, args);
+    }
+}
+
 impl Default for TargetOptions {
     /// Creates a set of "sane defaults" for any target. This is still
     /// incomplete, and if used for compilation, will certainly not work.

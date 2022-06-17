@@ -14,27 +14,25 @@ use crate::spec::{LinkerFlavor, LldFlavor, PanicStrategy, StackProbeType, Target
 pub fn opts() -> TargetOptions {
     let mut base = super::msvc_base::opts();
 
-    let pre_link_args_msvc = vec![
-        // Non-standard subsystems have no default entry-point in PE+ files. We have to define
-        // one. "efi_main" seems to be a common choice amongst other implementations and the
-        // spec.
-        "/entry:efi_main".into(),
-        // COFF images have a "Subsystem" field in their header, which defines what kind of
-        // program it is. UEFI has 3 fields reserved, which are EFI_APPLICATION,
-        // EFI_BOOT_SERVICE_DRIVER, and EFI_RUNTIME_DRIVER. We default to EFI_APPLICATION,
-        // which is very likely the most common option. Individual projects can override this
-        // with custom linker flags.
-        // The subsystem-type only has minor effects on the application. It defines the memory
-        // regions the application is loaded into (runtime-drivers need to be put into
-        // reserved areas), as well as whether a return from the entry-point is treated as
-        // exit (default for applications).
-        "/subsystem:efi_application".into(),
-    ];
-    base.pre_link_args.entry(LinkerFlavor::Msvc).or_default().extend(pre_link_args_msvc.clone());
-    base.pre_link_args
-        .entry(LinkerFlavor::Lld(LldFlavor::Link))
-        .or_default()
-        .extend(pre_link_args_msvc);
+    base.add_pre_link_args(
+        LinkerFlavor::Msvc,
+        &[
+            // Non-standard subsystems have no default entry-point in PE+ files. We have to define
+            // one. "efi_main" seems to be a common choice amongst other implementations and the
+            // spec.
+            "/entry:efi_main",
+            // COFF images have a "Subsystem" field in their header, which defines what kind of
+            // program it is. UEFI has 3 fields reserved, which are EFI_APPLICATION,
+            // EFI_BOOT_SERVICE_DRIVER, and EFI_RUNTIME_DRIVER. We default to EFI_APPLICATION,
+            // which is very likely the most common option. Individual projects can override this
+            // with custom linker flags.
+            // The subsystem-type only has minor effects on the application. It defines the memory
+            // regions the application is loaded into (runtime-drivers need to be put into
+            // reserved areas), as well as whether a return from the entry-point is treated as
+            // exit (default for applications).
+            "/subsystem:efi_application",
+        ],
+    );
 
     TargetOptions {
         os: "uefi".into(),

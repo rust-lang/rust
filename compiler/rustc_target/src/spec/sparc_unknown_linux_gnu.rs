@@ -6,7 +6,7 @@ pub fn target() -> Target {
     base.endian = Endian::Big;
     base.cpu = "v9".into();
     base.max_atomic_width = Some(64);
-    base.pre_link_args.entry(LinkerFlavor::Gcc).or_default().push("-mv8plus".into());
+    base.add_pre_link_args(LinkerFlavor::Gcc, &["-mv8plus"]);
 
     Target {
         llvm_target: "sparc-unknown-linux-gnu".into(),

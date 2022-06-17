@@ -1,23 +1,16 @@
 use super::{cvs, wasm_base};
-use super::{LinkArgs, LinkerFlavor, PanicStrategy, RelocModel, Target, TargetOptions};
+use super::{LinkerFlavor, PanicStrategy, RelocModel, Target, TargetOptions};
 
 pub fn target() -> Target {
     let mut options = wasm_base::options();
-
-    let clang_args = options.pre_link_args.entry(LinkerFlavor::Gcc).or_default();
 
     // Rust really needs a way for users to specify exports and imports in
     // the source code. --export-dynamic isn't the right tool for this job,
     // however it does have the side effect of automatically exporting a lot
     // of symbols, which approximates what people want when compiling for
     // wasm32-unknown-unknown expect, so use it for now.
-    clang_args.push("--export-dynamic".into());
-
-    let mut post_link_args = LinkArgs::new();
-    post_link_args.insert(
-        LinkerFlavor::Em,
-        vec!["-sABORTING_MALLOC=0".into(), "-Wl,--fatal-warnings".into()],
-    );
+    options.add_pre_link_args(LinkerFlavor::Gcc, &["--export-dynamic"]);
+    options.add_post_link_args(LinkerFlavor::Em, &["-sABORTING_MALLOC=0", "-Wl,--fatal-warnings"]);
 
     let opts = TargetOptions {
         os: "emscripten".into(),
@@ -29,7 +22,6 @@ pub fn target() -> Target {
         relocation_model: RelocModel::Pic,
         panic_strategy: PanicStrategy::Unwind,
         no_default_libraries: false,
-        post_link_args,
         families: cvs!["unix", "wasm"],
         ..options
     };

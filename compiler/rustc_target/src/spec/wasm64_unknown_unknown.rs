@@ -14,19 +14,20 @@ pub fn target() -> Target {
     let mut options = wasm_base::options();
     options.os = "unknown".into();
     options.linker_flavor = LinkerFlavor::Lld(LldFlavor::Wasm);
-    let clang_args = options.pre_link_args.get_mut(&LinkerFlavor::Gcc).unwrap();
 
-    // Make sure clang uses LLD as its linker and is configured appropriately
-    // otherwise
-    clang_args.push("--target=wasm64-unknown-unknown".into());
+    options.add_pre_link_args(
+        LinkerFlavor::Gcc,
+        &[
+            // Make sure clang uses LLD as its linker and is configured appropriately
+            // otherwise
+            "--target=wasm64-unknown-unknown",
+            // For now this target just never has an entry symbol no matter the output
+            // type, so unconditionally pass this.
+            "-Wl,--no-entry",
+        ],
+    );
 
-    // For now this target just never has an entry symbol no matter the output
-    // type, so unconditionally pass this.
-    clang_args.push("-Wl,--no-entry".into());
-
-    let lld_args = options.pre_link_args.get_mut(&LinkerFlavor::Lld(LldFlavor::Wasm)).unwrap();
-    lld_args.push("--no-entry".into());
-    lld_args.push("-mwasm64".into());
+    options.add_pre_link_args(LinkerFlavor::Lld(LldFlavor::Wasm), &["--no-entry", "-mwasm64"]);
 
     // Any engine that implements wasm64 will surely implement the rest of these
     // features since they were all merged into the official spec by the time

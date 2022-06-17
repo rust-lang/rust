@@ -6,8 +6,7 @@ pub fn target() -> Target {
     base.cpu = "core2".into();
     base.max_atomic_width = Some(128); // core2 support cmpxchg16b
     base.frame_pointer = FramePointer::Always;
-    base.pre_link_args
-        .insert(LinkerFlavor::Gcc, vec!["-m64".into(), "-arch".into(), "x86_64".into()]);
+    base.add_pre_link_args(LinkerFlavor::Gcc, &["-m64", "-arch", "x86_64"]);
     base.link_env_remove.to_mut().extend(super::apple_base::macos_link_env_remove());
     // don't use probe-stack=inline-asm until rust#83139 and rust#84667 are resolved
     base.stack_probes = StackProbeType::Call;
