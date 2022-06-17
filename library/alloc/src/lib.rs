@@ -233,6 +233,7 @@ pub mod fmt;
 pub mod option;
 #[cfg(not(no_rc))]
 pub mod rc;
+pub mod result;
 pub mod slice;
 pub mod str;
 pub mod string;

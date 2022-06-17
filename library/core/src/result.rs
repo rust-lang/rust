@@ -501,6 +501,7 @@ use crate::{convert, fmt, hint};
 #[must_use = "this `Result` may be an `Err` variant, which should be handled"]
 #[rustc_diagnostic_item = "Result"]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_has_incoherent_inherent_impls]
 pub enum Result<T, E> {
     /// Contains the success value
     #[lang = "Ok"]
