@@ -6,7 +6,7 @@ LL |     let n: Box<_> = Number { n: 42 }.into();
 LL |     let mut l: Box<_> = List { list: Vec::new() }.into();
 LL |     l.push(n);
    |            - value moved here
-LL | 
+LL |
 LL |     let x = n.to_string();
    |             ^^^^^^^^^^^^^ value borrowed here after move
 

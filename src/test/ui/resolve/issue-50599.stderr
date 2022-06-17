@@ -14,7 +14,7 @@ help: if you import `LOG10_2`, refer to it directly
    |
 LL -     const M: usize = (f64::from(N) * std::f64::LOG10_2) as usize;
 LL +     const M: usize = (f64::from(N) * LOG10_2) as usize;
-   | 
+   |
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/issue-50599.rs:4:29

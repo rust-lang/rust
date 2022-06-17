@@ -164,7 +164,7 @@ help: remove the assignments from the `match` arms
    |
 LL -         1 => f = "three",
 LL +         1 => "three",
-   | 
+   |
 
 error: unneeded late initialization
   --> $DIR/needless_late_init.rs:76:5
@@ -180,7 +180,7 @@ help: remove the assignments from the branches
    |
 LL -         g = 5;
 LL +         5
-   | 
+   |
 help: add a semicolon after the `if` expression
    |
 LL |     };

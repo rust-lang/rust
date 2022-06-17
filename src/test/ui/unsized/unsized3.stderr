@@ -17,7 +17,7 @@ help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - fn f1<X: ?Sized>(x: &X) {
 LL + fn f1<X>(x: &X) {
-   | 
+   |
 help: consider relaxing the implicit `Sized` restriction
    |
 LL | fn f2<X: ?Sized>(x: &X) {
@@ -42,7 +42,7 @@ help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - fn f3<X: ?Sized + T>(x: &X) {
 LL + fn f3<X: T>(x: &X) {
-   | 
+   |
 help: consider relaxing the implicit `Sized` restriction
    |
 LL | fn f4<X: T + ?Sized>(x: &X) {
@@ -72,7 +72,7 @@ help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - fn f8<X: ?Sized>(x1: &S<X>, x2: &S<X>) {
 LL + fn f8<X>(x1: &S<X>, x2: &S<X>) {
-   | 
+   |
 help: consider relaxing the implicit `Sized` restriction
    |
 LL | fn f5<Y: ?Sized>(x: &Y) {}
@@ -98,7 +98,7 @@ help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - fn f9<X: ?Sized>(x1: Box<S<X>>) {
 LL + fn f9<X>(x1: Box<S<X>>) {
-   | 
+   |
 
 error[E0277]: the size for values of type `X` cannot be known at compilation time
   --> $DIR/unsized3.rs:45:8
@@ -121,7 +121,7 @@ help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - fn f10<X: ?Sized>(x1: Box<S<X>>) {
 LL + fn f10<X>(x1: Box<S<X>>) {
-   | 
+   |
 
 error: aborting due to 5 previous errors
 

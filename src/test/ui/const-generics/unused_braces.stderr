@@ -13,7 +13,7 @@ help: remove these braces
    |
 LL -     let _: A<{ 7 }>;
 LL +     let _: A<7>;
-   | 
+   |
 
 warning: 1 warning emitted
 

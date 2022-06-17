@@ -5,7 +5,7 @@ LL |     v[0].push_str({
    |     -    -------- first borrow later used by call
    |     |
    |     first mutable borrow occurs here
-LL | 
+LL |
 LL |         v.push(format!("foo"));
    |         ^^^^^^^^^^^^^^^^^^^^^^ second mutable borrow occurs here
 

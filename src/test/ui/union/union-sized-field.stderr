@@ -12,7 +12,7 @@ help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - union Foo<T: ?Sized> {
 LL + union Foo<T> {
-   | 
+   |
 help: borrowed types always have a statically known size
    |
 LL |     value: &T,
@@ -36,7 +36,7 @@ help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - struct Foo2<T: ?Sized> {
 LL + struct Foo2<T> {
-   | 
+   |
 help: borrowed types always have a statically known size
    |
 LL |     value: &T,
@@ -60,7 +60,7 @@ help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - enum Foo3<T: ?Sized> {
 LL + enum Foo3<T> {
-   | 
+   |
 help: borrowed types always have a statically known size
    |
 LL |     Value(&T),

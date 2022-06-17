@@ -3,7 +3,7 @@ error[E0453]: allow(deprecated) incompatible with previous forbid
    |
 LL | #![forbid(deprecated)]
    |           ---------- `forbid` level set here
-LL | 
+LL |
 LL | #[allow(deprecated)]
    |         ^^^^^^^^^^ overruled by previous forbid
 
@@ -12,7 +12,7 @@ error[E0453]: allow(deprecated) incompatible with previous forbid
    |
 LL | #![forbid(deprecated)]
    |           ---------- `forbid` level set here
-LL | 
+LL |
 LL | #[allow(deprecated)]
    |         ^^^^^^^^^^ overruled by previous forbid
 

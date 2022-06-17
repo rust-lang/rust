@@ -5,7 +5,7 @@ LL | / trait Foo<T=Self> {
 LL | |     fn method(&self);
 LL | | }
    | |_- type parameter `T` must be specified for this
-LL | 
+LL |
 LL |   fn foo(x: &dyn Foo) { }
    |                  ^^^ help: set the type parameter to the desired type: `Foo<T>`
    |

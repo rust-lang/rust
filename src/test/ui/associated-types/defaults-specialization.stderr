@@ -30,7 +30,7 @@ error[E0053]: method `make` has an incompatible type for trait
    |
 LL |     default type Ty = bool;
    |     ----------------------- expected this associated type
-LL | 
+LL |
 LL |     fn make() -> bool { true }
    |                  ^^^^
    |                  |
@@ -50,7 +50,7 @@ error[E0308]: mismatched types
    |
 LL |     type Ty = u8;
    |     ------------- associated type defaults can't be assumed inside the trait defining them
-LL | 
+LL |
 LL |     fn make() -> Self::Ty {
    |                  -------- expected `<Self as Tr>::Ty` because of return type
 LL |         0u8
@@ -77,7 +77,7 @@ error[E0308]: mismatched types
    |
 LL |     default type Ty = bool;
    |     ----------------------- expected this associated type
-LL | 
+LL |
 LL |     fn make() -> Self::Ty { true }
    |                  --------   ^^^^ expected associated type, found `bool`
    |                  |

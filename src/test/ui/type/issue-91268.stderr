@@ -47,7 +47,7 @@ help: primitive type `u8` doesn't have generic parameters
    |
 LL -     0: u8(ţ
 LL +     0: u8
-   | 
+   |
 
 error[E0308]: mismatched types
   --> $DIR/issue-91268.rs:9:5

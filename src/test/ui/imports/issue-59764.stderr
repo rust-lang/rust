@@ -9,7 +9,7 @@ help: a macro with this name exists at the root of the crate
    |
 LL -     use issue_59764::foo::{baz, makro};
 LL +     use issue_59764::{makro, foo::{baz}};
-   | 
+   |
 
 error[E0432]: unresolved import `issue_59764::foo::makro`
   --> $DIR/issue-59764.rs:21:9
@@ -52,7 +52,7 @@ help: a macro with this name exists at the root of the crate
    |
 LL -     use issue_59764::foo::{baz, makro, foobar};
 LL +     use issue_59764::{makro, foo::{baz, foobar}};
-   | 
+   |
 
 error[E0432]: unresolved import `issue_59764::foo::makro`
   --> $DIR/issue-59764.rs:40:9
@@ -97,7 +97,7 @@ help: a macro with this name exists at the root of the crate
    |
 LL -     use issue_59764::{foobaz, foo::makro};
 LL +     use issue_59764::{makro, foobaz};
-   | 
+   |
 
 error[E0432]: unresolved import `issue_59764::foo::makro`
   --> $DIR/issue-59764.rs:59:42
@@ -110,7 +110,7 @@ help: a macro with this name exists at the root of the crate
    |
 LL -     use issue_59764::{foobaz, foo::{baz, makro}};
 LL +     use issue_59764::{makro, foobaz, foo::{baz}};
-   | 
+   |
 
 error[E0432]: unresolved import `issue_59764::foo::makro`
   --> $DIR/issue-59764.rs:68:13
@@ -155,7 +155,7 @@ help: a macro with this name exists at the root of the crate
    |
 LL -     use issue_59764::{foobaz, foo::{baz, makro, barbaz::{barfoo}}};
 LL +     use issue_59764::{makro, foobaz, foo::{baz, barbaz::{barfoo}}};
-   | 
+   |
 
 error[E0432]: unresolved import `issue_59764::foo::makro`
   --> $DIR/issue-59764.rs:93:13
@@ -196,7 +196,7 @@ help: a macro with this name exists at the root of the crate
    |
 LL -     use issue_59764::foo::{baz, makro as foobar};
 LL +     use issue_59764::{makro as foobar, foo::{baz}};
-   | 
+   |
 
 error[E0432]: unresolved import `issue_59764::foo::makro`
   --> $DIR/issue-59764.rs:120:17

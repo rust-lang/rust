@@ -5,7 +5,7 @@ LL | / /**
 LL | |  * My module
 LL | |  */
    | |___- previous doc comment
-LL | 
+LL |
 LL |   #![recursion_limit="100"]
    |   ^^^^^^^^^^^^^^^^^^^^^^^^^ not permitted following an outer attribute
 LL |
@@ -17,7 +17,7 @@ help: to annotate the function, change the attribute from inner to outer style
    |
 LL - #![recursion_limit="100"]
 LL + #[recursion_limit="100"]
-   | 
+   |
 
 error: aborting due to previous error
 

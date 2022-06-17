@@ -3,7 +3,7 @@ error[E0308]: mismatched types
    |
 LL | struct Foo(u32);
    | ---------------- fn(u32) -> Foo {Foo} defined here
-LL | 
+LL |
 LL | fn test() -> Foo { Foo }
    |              ---   ^^^ expected struct `Foo`, found fn item
    |              |

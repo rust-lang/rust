@@ -27,7 +27,7 @@ help: use `dyn`
    |
 LL -     eq::<dyn, Foo>
 LL +     eq::<dyn, dyn Foo>
-   | 
+   |
 
 error[E0107]: missing generics for trait `Foo`
   --> $DIR/issue-86756.rs:5:15

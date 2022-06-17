@@ -40,7 +40,7 @@ help: consider removing the `&&`
    |
 LL -     &&
 LL +     if let Some(y) = a { true } else { false }
-   | 
+   |
 help: parentheses are required to parse this as an expression
    |
 LL |     (if let Some(x) = a { true } else { false })

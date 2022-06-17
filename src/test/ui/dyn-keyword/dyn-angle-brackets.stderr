@@ -15,7 +15,7 @@ help: use `dyn`
    |
 LL -         <fmt::Debug>::fmt(self, f)
 LL +         <dyn fmt::Debug>::fmt(self, f)
-   | 
+   |
 
 error: aborting due to previous error
 

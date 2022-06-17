@@ -16,7 +16,7 @@ help: the `Self` type doesn't accept type parameters
    |
 LL -         let z = Self::<u8> {};
 LL +         let z = Self {};
-   | 
+   |
 
 error[E0071]: expected struct, variant or union type, found type parameter `Self`
   --> $DIR/struct-path-self.rs:7:17
@@ -50,7 +50,7 @@ help: the `Self` type doesn't accept type parameters
    |
 LL -         let z = Self::<u8> {};
 LL +         let z = Self {};
-   | 
+   |
 
 error[E0109]: type arguments are not allowed on self type
   --> $DIR/struct-path-self.rs:30:24
@@ -72,7 +72,7 @@ help: the `Self` type doesn't accept type parameters
    |
 LL -         let z = Self::<u8> {};
 LL +         let z = Self {};
-   | 
+   |
 
 error: aborting due to 6 previous errors
 

@@ -3,7 +3,7 @@ error[E0428]: the name `f` is defined multiple times
   |
 6 | pub fn f() {}
   | ---------- previous definition of the value `f` here
-7 | 
+7 |
 8 | pub fn f() {}
   | ^^^^^^^^^^ `f` redefined here
   |

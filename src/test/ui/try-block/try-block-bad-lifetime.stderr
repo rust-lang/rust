@@ -42,7 +42,7 @@ LL |         let k = &mut i;
 ...
 LL |         i = 40;
    |         ^^^^^^ assignment to borrowed `i` occurs here
-LL | 
+LL |
 LL |         let i_ptr = if let Err(i_ptr) = j { i_ptr } else { panic ! ("") };
    |                                         - borrow later used here
 

@@ -9,7 +9,7 @@ help: consider inserting whitespace here
    |
 LL -     demo3!(foo#bar);
 LL +     demo3!(foo #bar);
-   | 
+   |
 
 error: prefix `foo` is unknown
   --> $DIR/reserved-prefixes.rs:17:12
@@ -22,7 +22,7 @@ help: consider inserting whitespace here
    |
 LL -     demo2!(foo"bar");
 LL +     demo2!(foo "bar");
-   | 
+   |
 
 error: prefix `foo` is unknown
   --> $DIR/reserved-prefixes.rs:18:12
@@ -35,7 +35,7 @@ help: consider inserting whitespace here
    |
 LL -     demo2!(foo'b');
 LL +     demo2!(foo 'b');
-   | 
+   |
 
 error: prefix `foo` is unknown
   --> $DIR/reserved-prefixes.rs:20:12
@@ -48,7 +48,7 @@ help: consider inserting whitespace here
    |
 LL -     demo2!(foo'b);
 LL +     demo2!(foo 'b);
-   | 
+   |
 
 error: prefix `foo` is unknown
   --> $DIR/reserved-prefixes.rs:21:12
@@ -61,7 +61,7 @@ help: consider inserting whitespace here
    |
 LL -     demo3!(foo# bar);
 LL +     demo3!(foo # bar);
-   | 
+   |
 
 error: prefix `foo` is unknown
   --> $DIR/reserved-prefixes.rs:22:12
@@ -74,7 +74,7 @@ help: consider inserting whitespace here
    |
 LL -     demo4!(foo#! bar);
 LL +     demo4!(foo #! bar);
-   | 
+   |
 
 error: prefix `foo` is unknown
   --> $DIR/reserved-prefixes.rs:23:12
@@ -87,7 +87,7 @@ help: consider inserting whitespace here
    |
 LL -     demo4!(foo## bar);
 LL +     demo4!(foo ## bar);
-   | 
+   |
 
 error: prefix `foo` is unknown
   --> $DIR/reserved-prefixes.rs:25:12
@@ -100,7 +100,7 @@ help: consider inserting whitespace here
    |
 LL -     demo4!(foo#bar#);
 LL +     demo4!(foo #bar#);
-   | 
+   |
 
 error: prefix `bar` is unknown
   --> $DIR/reserved-prefixes.rs:25:16
@@ -113,7 +113,7 @@ help: consider inserting whitespace here
    |
 LL -     demo4!(foo#bar#);
 LL +     demo4!(foo#bar #);
-   | 
+   |
 
 error: aborting due to 9 previous errors
 

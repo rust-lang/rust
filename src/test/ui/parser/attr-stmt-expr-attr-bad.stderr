@@ -322,7 +322,7 @@ help: to annotate the item macro invocation, change the attribute from inner to 
    |
 LL - #[cfg(FALSE)] fn s() { #[attr] #![attr] foo!(); }
 LL + #[cfg(FALSE)] fn s() { #[attr] #[attr] foo!(); }
-   | 
+   |
 
 error: an inner attribute is not permitted following an outer attribute
   --> $DIR/attr-stmt-expr-attr-bad.rs:80:32
@@ -338,7 +338,7 @@ help: to annotate the item macro invocation, change the attribute from inner to 
    |
 LL - #[cfg(FALSE)] fn s() { #[attr] #![attr] foo![]; }
 LL + #[cfg(FALSE)] fn s() { #[attr] #[attr] foo![]; }
-   | 
+   |
 
 error: an inner attribute is not permitted following an outer attribute
   --> $DIR/attr-stmt-expr-attr-bad.rs:82:32
@@ -354,7 +354,7 @@ help: to annotate the item macro invocation, change the attribute from inner to 
    |
 LL - #[cfg(FALSE)] fn s() { #[attr] #![attr] foo!{}; }
 LL + #[cfg(FALSE)] fn s() { #[attr] #[attr] foo!{}; }
-   | 
+   |
 
 error[E0586]: inclusive range with no end
   --> $DIR/attr-stmt-expr-attr-bad.rs:88:35

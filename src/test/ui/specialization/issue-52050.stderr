@@ -17,7 +17,7 @@ LL | |     I: Iterator,
 LL | | {
 LL | | }
    | |_- first implementation here
-LL | 
+LL |
 LL |   impl IntoPyDictPointer for ()
    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `()`
    |

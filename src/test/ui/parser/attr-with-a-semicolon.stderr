@@ -8,7 +8,7 @@ help: consider removing this semicolon
    |
 LL - #[derive(Debug, Clone)];
 LL + #[derive(Debug, Clone)]
-   | 
+   |
 
 error: aborting due to previous error
 

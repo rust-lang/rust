@@ -12,7 +12,7 @@ help: consider removing `&mut` from the pattern
    |
 LL -     for ((_, _), (&mut c, _)) in &mut map {
 LL +     for ((_, _), (c, _)) in &mut map {
-   | 
+   |
 
 error[E0308]: mismatched types
   --> $DIR/for-loop-bad-item.rs:14:14

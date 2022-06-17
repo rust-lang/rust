@@ -3,7 +3,7 @@ warning: allow(unused_variables) incompatible with previous forbid
    |
 LL | #![forbid(unused)]
    |           ------ `forbid` level set here
-LL | 
+LL |
 LL | #[allow(unused_variables)]
    |         ^^^^^^^^^^^^^^^^ overruled by previous forbid
    |
@@ -16,7 +16,7 @@ warning: allow(unused_variables) incompatible with previous forbid
    |
 LL | #![forbid(unused)]
    |           ------ `forbid` level set here
-LL | 
+LL |
 LL | #[allow(unused_variables)]
    |         ^^^^^^^^^^^^^^^^ overruled by previous forbid
    |
@@ -28,7 +28,7 @@ warning: allow(unused_variables) incompatible with previous forbid
    |
 LL | #![forbid(unused)]
    |           ------ `forbid` level set here
-LL | 
+LL |
 LL | #[allow(unused_variables)]
    |         ^^^^^^^^^^^^^^^^ overruled by previous forbid
    |

@@ -68,7 +68,7 @@ help: to link to the macro, add an exclamation mark
    |
 LL - /// Link to [derive@m]
 LL + /// Link to [m!]
-   | 
+   |
 
 error: unresolved link to `m`
   --> $DIR/disambiguator-mismatch.rs:46:14
@@ -124,7 +124,7 @@ help: to link to the constant, prefix with `const@`
    |
 LL - /// Link to [c()]
 LL + /// Link to [const@c]
-   | 
+   |
 
 error: incompatible link kind for `f`
   --> $DIR/disambiguator-mismatch.rs:72:14
@@ -136,7 +136,7 @@ help: to link to the function, add parentheses
    |
 LL - /// Link to [const@f]
 LL + /// Link to [f()]
-   | 
+   |
 
 error: unresolved link to `std`
   --> $DIR/disambiguator-mismatch.rs:77:14

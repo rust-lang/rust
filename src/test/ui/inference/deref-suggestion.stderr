@@ -48,7 +48,7 @@ help: consider removing the borrow
    |
 LL -     foo(&"aaa".to_owned());
 LL +     foo("aaa".to_owned());
-   | 
+   |
 
 error[E0308]: mismatched types
   --> $DIR/deref-suggestion.rs:32:9
@@ -67,7 +67,7 @@ help: consider removing the borrow
    |
 LL -     foo(&mut "aaa".to_owned());
 LL +     foo("aaa".to_owned());
-   | 
+   |
 
 error[E0308]: mismatched types
   --> $DIR/deref-suggestion.rs:2:20
