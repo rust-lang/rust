@@ -2485,11 +2485,17 @@ pub unsafe fn assert_validity_of<T>(value: *const T) -> bool {
 
             if start > end {
                 if !((start..=max).contains(&value) || (0..=end).contains(&value)) {
-                    panic!("read value {value} which was not in range 0..={end} or {start}..={max} at offset {off} in type {}", core::any::type_name::<T>());
+                    panic!(
+                        "read value {value} which was not in range 0..={end} or {start}..={max} at offset {off} in type {}",
+                        core::any::type_name::<T>()
+                    );
                 }
             } else {
                 if !(start..=end).contains(&value) {
-                    panic!("read value {value} which was not in range {start}..={end} at offset {off} in type {}", core::any::type_name::<T>());
+                    panic!(
+                        "read value {value} which was not in range {start}..={end} at offset {off} in type {}",
+                        core::any::type_name::<T>()
+                    );
                 }
             }
         }

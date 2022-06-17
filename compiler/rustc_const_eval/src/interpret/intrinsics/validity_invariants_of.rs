@@ -6,7 +6,8 @@ use rustc_middle::ty::layout::LayoutCx;
 use rustc_middle::ty::{ParamEnv, ParamEnvAnd};
 use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_target::abi::{
-    Abi, FieldsShape, HasDataLayout, Integer, Primitive, Scalar, Size, TyAndLayout, WrappingRange, Variants,
+    Abi, FieldsShape, HasDataLayout, Integer, Primitive, Scalar, Size, TyAndLayout, Variants,
+    WrappingRange,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
