@@ -91,7 +91,6 @@
 #![feature(strict_provenance)]
 #![feature(trusted_random_access)]
 #![feature(unsize)]
-#![feature(unzip_option)]
 #![feature(const_array_from_ref)]
 #![feature(const_slice_from_ref)]
 #![feature(waker_getters)]

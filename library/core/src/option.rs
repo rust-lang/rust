@@ -1711,8 +1711,6 @@ impl<T, U> Option<(T, U)> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(unzip_option)]
-    ///
     /// let x = Some((1, "hi"));
     /// let y = None::<(u8, u32)>;
     ///
@@ -1720,8 +1718,13 @@ impl<T, U> Option<(T, U)> {
     /// assert_eq!(y.unzip(), (None, None));
     /// ```
     #[inline]
-    #[unstable(feature = "unzip_option", issue = "87800", reason = "recently added")]
-    pub const fn unzip(self) -> (Option<T>, Option<U>) {
+    #[stable(feature = "unzip_option", since = "1.63.0")]
+    #[rustc_const_unstable(feature = "const_option", issue = "67441")]
+    pub const fn unzip(self) -> (Option<T>, Option<U>)
+    where
+        T: ~const Destruct,
+        U: ~const Destruct,
+    {
         match self {
             Some((a, b)) => (Some(a), Some(b)),
             None => (None, None),
