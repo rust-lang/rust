@@ -9,9 +9,8 @@
 //!
 //! ["The `ty` module: representing types"]: https://rustc-dev-guide.rust-lang.org/ty.html
 
-pub use self::fold::{
-    FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitor,
-};
+pub use self::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldable};
+pub use self::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor};
 pub use self::AssocItemContainer::*;
 pub use self::BorrowKind::*;
 pub use self::IntVarValue::*;
@@ -110,6 +109,7 @@ pub mod relate;
 pub mod subst;
 pub mod trait_def;
 pub mod util;
+pub mod visit;
 pub mod vtable;
 pub mod walk;
 
