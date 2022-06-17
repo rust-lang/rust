@@ -730,6 +730,7 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
             && !target.contains("freebsd")
             && !target.contains("msvc")
             && !target.contains("apple")
+            && !target.contains("solaris")
         {
             let file = compiler_file(
                 builder,
