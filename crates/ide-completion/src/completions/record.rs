@@ -3,7 +3,7 @@ use ide_db::SymbolKind;
 use syntax::{ast::Expr, T};
 
 use crate::{
-    context::{NameRefContext, PatternContext},
+    context::{NameRefContext, NameRefKind, PathCompletionCtx, PathKind, PatternContext},
     CompletionContext, CompletionItem, CompletionItemKind, CompletionRelevance,
     CompletionRelevancePostfixMatch, Completions,
 };
@@ -13,8 +13,18 @@ pub(crate) fn complete_record(acc: &mut Completions, ctx: &CompletionContext) ->
         &ctx.pattern_ctx
     {
         ctx.sema.record_pattern_missing_fields(record_pat)
-    } else if let Some(NameRefContext { record_expr: Some((record_expr, _)), .. }) =
-        ctx.nameref_ctx()
+    } else if let Some(NameRefContext {
+        kind:
+            Some(
+                NameRefKind::RecordExpr(record_expr)
+                | NameRefKind::Path(PathCompletionCtx {
+                    kind: PathKind::Expr { is_func_update: Some(record_expr), .. },
+                    qualifier: None,
+                    ..
+                }),
+            ),
+        ..
+    }) = ctx.nameref_ctx()
     {
         let ty = ctx.sema.type_of_expr(&Expr::RecordExpr(record_expr.clone()));
 
@@ -39,7 +49,7 @@ pub(crate) fn complete_record(acc: &mut Completions, ctx: &CompletionContext) ->
                     ty.original.impls_trait(ctx.db, default_trait, &[])
                 });
 
-            if impl_default_trait && !missing_fields.is_empty() && ctx.path_qual().is_none() {
+            if impl_default_trait && !missing_fields.is_empty() {
                 let completion_text = "..Default::default()";
                 let mut item =
                     CompletionItem::new(SymbolKind::Field, ctx.source_range(), completion_text);

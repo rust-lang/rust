@@ -8,7 +8,8 @@ use syntax::SmolStr;
 
 use crate::{
     context::{
-        CompletionContext, DotAccess, DotAccessKind, NameRefContext, PathCompletionCtx, PathKind,
+        CompletionContext, DotAccess, DotAccessKind, NameRefContext, NameRefKind,
+        PathCompletionCtx, PathKind,
     },
     item::{Builder, CompletionItem, CompletionItemKind, CompletionRelevance},
     render::{compute_exact_name_match, compute_ref_match, compute_type_match, RenderContext},
@@ -212,7 +213,10 @@ fn should_add_parens(ctx: &CompletionContext) -> bool {
     if matches!(
         ctx.nameref_ctx(),
         Some(NameRefContext {
-            dot_access: Some(DotAccess { kind: DotAccessKind::Method { has_parens: true }, .. }),
+            kind: Some(NameRefKind::DotAccess(DotAccess {
+                kind: DotAccessKind::Method { has_parens: true },
+                ..
+            })),
             ..
         })
     ) {

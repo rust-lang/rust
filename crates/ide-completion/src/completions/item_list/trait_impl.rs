@@ -44,8 +44,8 @@ use text_edit::TextEdit;
 
 use crate::{
     context::{
-        IdentContext, ItemListKind, NameContext, NameKind, NameRefContext, PathCompletionCtx,
-        PathKind,
+        IdentContext, ItemListKind, NameContext, NameKind, NameRefContext, NameRefKind,
+        PathCompletionCtx, PathKind,
     },
     CompletionContext, CompletionItem, CompletionItemKind, CompletionRelevance, Completions,
 };
@@ -106,14 +106,13 @@ fn completion_match(ctx: &CompletionContext) -> Option<(ImplCompletionKind, Text
         }
         IdentContext::NameRef(NameRefContext {
             nameref,
-            path_ctx:
-                Some(
+            kind:
+                Some(NameRefKind::Path(
                     path_ctx @ PathCompletionCtx {
                         kind: PathKind::Item { kind: ItemListKind::TraitImpl },
                         ..
                     },
-                ),
-            ..
+                )),
         }) if path_ctx.is_trivial_path() => Some((
             ImplCompletionKind::All,
             match nameref {

@@ -4,7 +4,8 @@ use ide_db::FxHashSet;
 
 use crate::{
     context::{
-        CompletionContext, DotAccess, DotAccessKind, NameRefContext, PathCompletionCtx, PathKind,
+        CompletionContext, DotAccess, DotAccessKind, NameRefContext, NameRefKind,
+        PathCompletionCtx, PathKind,
     },
     CompletionItem, CompletionItemKind, Completions,
 };
@@ -13,7 +14,8 @@ use crate::{
 pub(crate) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) {
     let (dot_access, receiver_ty) = match ctx.nameref_ctx() {
         Some(NameRefContext {
-            dot_access: Some(access @ DotAccess { receiver_ty: Some(receiver_ty), .. }),
+            kind:
+                Some(NameRefKind::DotAccess(access @ DotAccess { receiver_ty: Some(receiver_ty), .. })),
             ..
         }) => (access, &receiver_ty.original),
         _ => return complete_undotted_self(acc, ctx),

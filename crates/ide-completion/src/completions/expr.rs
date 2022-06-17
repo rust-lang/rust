@@ -5,7 +5,7 @@ use ide_db::FxHashSet;
 use syntax::T;
 
 use crate::{
-    context::{NameRefContext, PathCompletionCtx, PathKind, PathQualifierCtx},
+    context::{NameRefContext, NameRefKind, PathCompletionCtx, PathKind, PathQualifierCtx},
     CompletionContext, Completions,
 };
 
@@ -21,24 +21,29 @@ pub(crate) fn complete_expr_path(acc: &mut Completions, ctx: &CompletionContext)
         after_if_expr,
         wants_mut_token,
     ) = match ctx.nameref_ctx() {
-        Some(NameRefContext {
-            path_ctx:
-                Some(PathCompletionCtx {
+        Some(&NameRefContext {
+            kind:
+                Some(NameRefKind::Path(PathCompletionCtx {
                     kind:
-                        PathKind::Expr { in_block_expr, in_loop_body, after_if_expr, ref_expr_parent },
+                        PathKind::Expr {
+                            in_block_expr,
+                            in_loop_body,
+                            after_if_expr,
+                            ref ref_expr_parent,
+                            ref is_func_update,
+                        },
                     is_absolute_path,
-                    qualifier,
+                    ref qualifier,
                     ..
-                }),
-            record_expr,
+                })),
             ..
         }) if ctx.qualifier_ctx.none() => (
-            *is_absolute_path,
+            is_absolute_path,
             qualifier,
-            *in_block_expr,
-            *in_loop_body,
-            record_expr.as_ref().map_or(false, |&(_, it)| it),
-            *after_if_expr,
+            in_block_expr,
+            in_loop_body,
+            is_func_update.is_some(),
+            after_if_expr,
             ref_expr_parent.as_ref().map(|it| it.mut_token().is_none()).unwrap_or(false),
         ),
         _ => return,
