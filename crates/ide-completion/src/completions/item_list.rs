@@ -2,7 +2,7 @@
 
 use crate::{
     completions::module_or_fn_macro,
-    context::{ItemListKind, PathCompletionCtx, PathKind, PathQualifierCtx, Qualified},
+    context::{ItemListKind, PathCompletionCtx, PathKind, Qualified},
     CompletionContext, Completions,
 };
 
@@ -44,7 +44,7 @@ pub(crate) fn complete_item_list(acc: &mut Completions, ctx: &CompletionContext)
     }
 
     match qualified {
-        Qualified::With(PathQualifierCtx { resolution, is_super_chain, .. }) => {
+        Qualified::With { resolution, is_super_chain, .. } => {
             if let Some(hir::PathResolution::Def(hir::ModuleDef::Module(module))) = resolution {
                 for (name, def) in module.scope(ctx.db, Some(ctx.module)) {
                     if let Some(def) = module_or_fn_macro(ctx.db, def) {

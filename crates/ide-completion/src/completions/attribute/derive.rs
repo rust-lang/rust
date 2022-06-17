@@ -5,7 +5,7 @@ use itertools::Itertools;
 use syntax::SmolStr;
 
 use crate::{
-    context::{CompletionContext, PathCompletionCtx, PathKind, PathQualifierCtx, Qualified},
+    context::{CompletionContext, PathCompletionCtx, PathKind, Qualified},
     item::CompletionItem,
     Completions,
 };
@@ -21,7 +21,7 @@ pub(crate) fn complete_derive(acc: &mut Completions, ctx: &CompletionContext) {
     let core = ctx.famous_defs().core();
 
     match qualified {
-        Qualified::With(PathQualifierCtx { resolution, is_super_chain, .. }) => {
+        Qualified::With { resolution, is_super_chain, .. } => {
             if *is_super_chain {
                 acc.add_keyword(ctx, "super::");
             }

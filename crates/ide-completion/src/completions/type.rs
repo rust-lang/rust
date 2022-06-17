@@ -5,10 +5,7 @@ use ide_db::FxHashSet;
 use syntax::{ast, AstNode};
 
 use crate::{
-    context::{
-        PathCompletionCtx, PathKind, PathQualifierCtx, Qualified, TypeAscriptionTarget,
-        TypeLocation,
-    },
+    context::{PathCompletionCtx, PathKind, Qualified, TypeAscriptionTarget, TypeLocation},
     render::render_type_inference,
     CompletionContext, Completions,
 };
@@ -61,7 +58,7 @@ pub(crate) fn complete_type_path(acc: &mut Completions, ctx: &CompletionContext)
             .into_iter()
             .flat_map(|it| hir::Trait::from(it).items(ctx.sema.db))
             .for_each(|item| add_assoc_item(acc, item)),
-        Qualified::With(PathQualifierCtx { resolution, .. }) => {
+        Qualified::With { resolution, .. } => {
             let resolution = match resolution {
                 Some(it) => it,
                 None => return,

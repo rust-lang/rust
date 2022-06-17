@@ -64,6 +64,8 @@ pub(crate) struct PathCompletionCtx {
     pub(super) kind: PathKind,
     /// Whether the path segment has type args or not.
     pub(super) has_type_args: bool,
+    /// Whether the qualifier comes from a use tree parent or not
+    pub(crate) use_tree_parent: bool,
 }
 
 impl PathCompletionCtx {
@@ -149,22 +151,16 @@ pub(super) enum ItemListKind {
 #[derive(Debug)]
 pub(super) enum Qualified {
     No,
-    With(PathQualifierCtx),
+    With {
+        path: ast::Path,
+        resolution: Option<PathResolution>,
+        /// Whether this path consists solely of `super` segments
+        is_super_chain: bool,
+    },
     /// <_>::
     Infer,
     /// Whether the path is an absolute path
     Absolute,
-}
-
-/// The path qualifier state of the path we are completing.
-#[derive(Debug)]
-pub(crate) struct PathQualifierCtx {
-    pub(crate) path: ast::Path,
-    pub(crate) resolution: Option<PathResolution>,
-    /// Whether this path consists solely of `super` segments
-    pub(crate) is_super_chain: bool,
-    /// Whether the qualifier comes from a use tree parent or not
-    pub(crate) use_tree_parent: bool,
 }
 
 /// The state of the pattern we are completing.
@@ -410,7 +406,7 @@ impl<'a> CompletionContext<'a> {
 
     pub(crate) fn path_qual(&self) -> Option<&ast::Path> {
         self.path_context().and_then(|it| match &it.qualified {
-            Qualified::With(it) => Some(&it.path),
+            Qualified::With { path, .. } => Some(path),
             _ => None,
         })
     }

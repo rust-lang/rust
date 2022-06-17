@@ -13,8 +13,8 @@ use syntax::{
 use crate::context::{
     CompletionContext, DotAccess, DotAccessKind, IdentContext, ItemListKind, LifetimeContext,
     LifetimeKind, NameContext, NameKind, NameRefContext, NameRefKind, ParamKind, PathCompletionCtx,
-    PathKind, PathQualifierCtx, PatternContext, PatternRefutability, Qualified, QualifierCtx,
-    TypeAscriptionTarget, TypeLocation, COMPLETION_MARKER,
+    PathKind, PatternContext, PatternRefutability, Qualified, QualifierCtx, TypeAscriptionTarget,
+    TypeLocation, COMPLETION_MARKER,
 };
 
 impl<'a> CompletionContext<'a> {
@@ -589,6 +589,7 @@ impl<'a> CompletionContext<'a> {
             parent: path.parent_path(),
             kind: PathKind::Item { kind: ItemListKind::SourceFile },
             has_type_args: false,
+            use_tree_parent: false,
         };
 
         let is_in_block = |it: &SyntaxNode| {
@@ -853,6 +854,7 @@ impl<'a> CompletionContext<'a> {
 
         // calculate the qualifier context
         if let Some((path, use_tree_parent)) = path_or_use_tree_qualifier(&path) {
+            path_ctx.use_tree_parent = use_tree_parent;
             if !use_tree_parent && segment.coloncolon_token().is_some() {
                 path_ctx.qualified = Qualified::Absolute;
             } else {
@@ -878,12 +880,7 @@ impl<'a> CompletionContext<'a> {
                         let is_super_chain =
                             iter::successors(Some(path.clone()), |p| p.qualifier())
                                 .all(|p| p.segment().and_then(|s| s.super_token()).is_some());
-                        Qualified::With(PathQualifierCtx {
-                            path,
-                            resolution: res,
-                            is_super_chain,
-                            use_tree_parent,
-                        })
+                        Qualified::With { path, resolution: res, is_super_chain }
                     }
                 };
             }

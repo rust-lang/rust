@@ -4,9 +4,7 @@ use hir::ScopeDef;
 use ide_db::FxHashSet;
 
 use crate::{
-    context::{
-        NameRefContext, NameRefKind, PathCompletionCtx, PathKind, PathQualifierCtx, Qualified,
-    },
+    context::{NameRefContext, NameRefKind, PathCompletionCtx, PathKind, Qualified},
     CompletionContext, Completions,
 };
 
@@ -67,7 +65,7 @@ pub(crate) fn complete_expr_path(acc: &mut Completions, ctx: &CompletionContext)
             .into_iter()
             .flat_map(|it| hir::Trait::from(it).items(ctx.sema.db))
             .for_each(|item| add_assoc_item(acc, ctx, item)),
-        Qualified::With(PathQualifierCtx { resolution, .. }) => {
+        Qualified::With { resolution, .. } => {
             let resolution = match resolution {
                 Some(it) => it,
                 None => return,
