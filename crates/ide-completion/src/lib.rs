@@ -4,7 +4,6 @@ mod completions;
 mod config;
 mod context;
 mod item;
-mod patterns;
 mod render;
 
 #[cfg(test)]
