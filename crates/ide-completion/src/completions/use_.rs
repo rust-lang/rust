@@ -6,31 +6,30 @@ use syntax::{ast, AstNode};
 
 use crate::{
     context::{
-        CompletionContext, NameRefContext, NameRefKind, PathCompletionCtx, PathKind,
-        PathQualifierCtx, Qualified,
+        CompletionContext, NameRefContext, NameRefKind, PathCompletionCtx, PathKind, Qualified,
     },
     item::Builder,
     CompletionItem, CompletionItemKind, CompletionRelevance, Completions,
 };
 
 pub(crate) fn complete_use_tree(acc: &mut Completions, ctx: &CompletionContext) {
-    let (qualified, name_ref) = match ctx.nameref_ctx() {
+    let (qualified, name_ref, use_tree_parent) = match ctx.nameref_ctx() {
         Some(NameRefContext {
-            kind: Some(NameRefKind::Path(PathCompletionCtx { kind: PathKind::Use, qualified, .. })),
+            kind:
+                Some(NameRefKind::Path(PathCompletionCtx {
+                    kind: PathKind::Use,
+                    qualified,
+                    use_tree_parent,
+                    ..
+                })),
             nameref,
             ..
-        }) => (qualified, nameref),
+        }) => (qualified, nameref, use_tree_parent),
         _ => return,
     };
 
     match qualified {
-        Qualified::With(PathQualifierCtx {
-            path,
-            resolution,
-            is_super_chain,
-            use_tree_parent,
-            ..
-        }) => {
+        Qualified::With { path, resolution, is_super_chain } => {
             if *is_super_chain {
                 acc.add_keyword(ctx, "super::");
             }
@@ -136,5 +135,6 @@ pub(crate) fn complete_use_tree(acc: &mut Completions, ctx: &CompletionContext) 
             });
             acc.add_nameref_keywords_with_colon(ctx);
         }
+        Qualified::Infer => {}
     }
 }

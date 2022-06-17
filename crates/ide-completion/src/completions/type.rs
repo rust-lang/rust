@@ -5,10 +5,7 @@ use ide_db::FxHashSet;
 use syntax::{ast, AstNode};
 
 use crate::{
-    context::{
-        PathCompletionCtx, PathKind, PathQualifierCtx, Qualified, TypeAscriptionTarget,
-        TypeLocation,
-    },
+    context::{PathCompletionCtx, PathKind, Qualified, TypeAscriptionTarget, TypeLocation},
     render::render_type_inference,
     CompletionContext, Completions,
 };
@@ -55,15 +52,13 @@ pub(crate) fn complete_type_path(acc: &mut Completions, ctx: &CompletionContext)
     };
 
     match qualified {
-        Qualified::With(PathQualifierCtx { is_infer_qualifier, resolution, .. }) => {
-            if *is_infer_qualifier {
-                ctx.traits_in_scope()
-                    .0
-                    .into_iter()
-                    .flat_map(|it| hir::Trait::from(it).items(ctx.sema.db))
-                    .for_each(|item| add_assoc_item(acc, item));
-                return;
-            }
+        Qualified::Infer => ctx
+            .traits_in_scope()
+            .0
+            .into_iter()
+            .flat_map(|it| hir::Trait::from(it).items(ctx.sema.db))
+            .for_each(|item| add_assoc_item(acc, item)),
+        Qualified::With { resolution, .. } => {
             let resolution = match resolution {
                 Some(it) => it,
                 None => return,

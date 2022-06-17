@@ -18,9 +18,7 @@ use syntax::{
 
 use crate::{
     completions::module_or_attr,
-    context::{
-        CompletionContext, IdentContext, PathCompletionCtx, PathKind, PathQualifierCtx, Qualified,
-    },
+    context::{CompletionContext, IdentContext, PathCompletionCtx, PathKind, Qualified},
     item::CompletionItem,
     Completions,
 };
@@ -84,7 +82,7 @@ pub(crate) fn complete_attribute(acc: &mut Completions, ctx: &CompletionContext)
     };
 
     match qualified {
-        Qualified::With(PathQualifierCtx { resolution, is_super_chain, .. }) => {
+        Qualified::With { resolution, is_super_chain, .. } => {
             if *is_super_chain {
                 acc.add_keyword(ctx, "super::");
             }
@@ -112,6 +110,7 @@ pub(crate) fn complete_attribute(acc: &mut Completions, ctx: &CompletionContext)
             });
             acc.add_nameref_keywords_with_colon(ctx);
         }
+        Qualified::Infer => {}
     }
 
     let attributes = annotated_item_kind.and_then(|kind| {

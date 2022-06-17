@@ -13,8 +13,8 @@ use syntax::{
 use crate::context::{
     CompletionContext, DotAccess, DotAccessKind, IdentContext, ItemListKind, LifetimeContext,
     LifetimeKind, NameContext, NameKind, NameRefContext, NameRefKind, ParamKind, PathCompletionCtx,
-    PathKind, PathQualifierCtx, PatternContext, PatternRefutability, Qualified, QualifierCtx,
-    TypeAscriptionTarget, TypeLocation, COMPLETION_MARKER,
+    PathKind, PatternContext, PatternRefutability, Qualified, QualifierCtx, TypeAscriptionTarget,
+    TypeLocation, COMPLETION_MARKER,
 };
 
 impl<'a> CompletionContext<'a> {
@@ -339,14 +339,6 @@ impl<'a> CompletionContext<'a> {
 
         // Overwrite the path kind for derives
         if let Some((original_file, file_with_fake_ident, offset, origin_attr)) = derive_ctx {
-            self.existing_derives = self
-                .sema
-                .resolve_derive_macro(&origin_attr)
-                .into_iter()
-                .flatten()
-                .flatten()
-                .collect();
-
             if let Some(ast::NameLike::NameRef(name_ref)) =
                 find_node_at_offset(&file_with_fake_ident, offset)
             {
@@ -354,7 +346,15 @@ impl<'a> CompletionContext<'a> {
                 let (mut nameref_ctx, _, _) =
                     Self::classify_name_ref(&self.sema, &original_file, name_ref, parent);
                 if let Some(NameRefKind::Path(path_ctx)) = &mut nameref_ctx.kind {
-                    path_ctx.kind = PathKind::Derive;
+                    path_ctx.kind = PathKind::Derive {
+                        existing_derives: self
+                            .sema
+                            .resolve_derive_macro(&origin_attr)
+                            .into_iter()
+                            .flatten()
+                            .flatten()
+                            .collect(),
+                    };
                 }
                 self.ident_ctx = IdentContext::NameRef(nameref_ctx);
                 return Some(());
@@ -589,6 +589,7 @@ impl<'a> CompletionContext<'a> {
             parent: path.parent_path(),
             kind: PathKind::Item { kind: ItemListKind::SourceFile },
             has_type_args: false,
+            use_tree_parent: false,
         };
 
         let is_in_block = |it: &SyntaxNode| {
@@ -853,6 +854,7 @@ impl<'a> CompletionContext<'a> {
 
         // calculate the qualifier context
         if let Some((path, use_tree_parent)) = path_or_use_tree_qualifier(&path) {
+            path_ctx.use_tree_parent = use_tree_parent;
             if !use_tree_parent && segment.coloncolon_token().is_some() {
                 path_ctx.qualified = Qualified::Absolute;
             } else {
@@ -861,10 +863,6 @@ impl<'a> CompletionContext<'a> {
                     .and_then(|it| find_node_in_file(original_file, &it))
                     .map(|it| it.parent_path());
                 if let Some(path) = path {
-                    let res = sema.resolve_path(&path);
-                    let is_super_chain = iter::successors(Some(path.clone()), |p| p.qualifier())
-                        .all(|p| p.segment().and_then(|s| s.super_token()).is_some());
-
                     // `<_>::$0`
                     let is_infer_qualifier = path.qualifier().is_none()
                         && matches!(
@@ -875,13 +873,15 @@ impl<'a> CompletionContext<'a> {
                             })
                         );
 
-                    path_ctx.qualified = Qualified::With(PathQualifierCtx {
-                        path,
-                        resolution: res,
-                        is_super_chain,
-                        use_tree_parent,
-                        is_infer_qualifier,
-                    })
+                    path_ctx.qualified = if is_infer_qualifier {
+                        Qualified::Infer
+                    } else {
+                        let res = sema.resolve_path(&path);
+                        let is_super_chain =
+                            iter::successors(Some(path.clone()), |p| p.qualifier())
+                                .all(|p| p.segment().and_then(|s| s.super_token()).is_some());
+                        Qualified::With { path, resolution: res, is_super_chain }
+                    }
                 };
             }
         } else if let Some(segment) = path.segment() {

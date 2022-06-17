@@ -120,7 +120,7 @@ pub(crate) fn import_on_the_fly(acc: &mut Completions, ctx: &CompletionContext) 
                         kind @ (PathKind::Expr { .. }
                         | PathKind::Type { .. }
                         | PathKind::Attr { .. }
-                        | PathKind::Derive
+                        | PathKind::Derive { .. }
                         | PathKind::Pat),
                     ..
                 })),
@@ -188,10 +188,10 @@ pub(crate) fn import_on_the_fly(acc: &mut Completions, ctx: &CompletionContext) 
             (PathKind::Attr { .. }, ItemInNs::Macros(mac)) => mac.is_attr(ctx.db),
             (PathKind::Attr { .. }, _) => false,
 
-            (PathKind::Derive, ItemInNs::Macros(mac)) => {
-                mac.is_derive(ctx.db) && !ctx.existing_derives.contains(&mac)
+            (PathKind::Derive { existing_derives }, ItemInNs::Macros(mac)) => {
+                mac.is_derive(ctx.db) && !existing_derives.contains(&mac)
             }
-            (PathKind::Derive, _) => false,
+            (PathKind::Derive { .. }, _) => false,
         }
     };
 

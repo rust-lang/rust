@@ -3,7 +3,7 @@
 use hir::ScopeDef;
 
 use crate::{
-    context::{CompletionContext, PathCompletionCtx, PathKind, PathQualifierCtx, Qualified},
+    context::{CompletionContext, PathCompletionCtx, PathKind, Qualified},
     Completions,
 };
 
@@ -16,7 +16,7 @@ pub(crate) fn complete_vis_path(acc: &mut Completions, ctx: &CompletionContext) 
     };
 
     match qualified {
-        Qualified::With(PathQualifierCtx { resolution, is_super_chain, .. }) => {
+        Qualified::With { resolution, is_super_chain, .. } => {
             // Try completing next child module of the path that is still a parent of the current module
             if let Some(hir::PathResolution::Def(hir::ModuleDef::Module(module))) = resolution {
                 let next_towards_current = ctx
@@ -37,7 +37,7 @@ pub(crate) fn complete_vis_path(acc: &mut Completions, ctx: &CompletionContext) 
                 acc.add_keyword(ctx, "super::");
             }
         }
-        Qualified::Absolute => {}
+        Qualified::Absolute | Qualified::Infer => {}
         Qualified::No => {
             if !has_in_token {
                 cov_mark::hit!(kw_completion_in);
