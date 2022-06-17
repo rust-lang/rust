@@ -391,12 +391,12 @@ fn contains_acceptable_macro(cx: &LateContext<'_>, block: &Block<'_>) -> bool {
 fn acceptable_macro(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     if let ExprKind::Call(call_expr, _)  = expr.kind
         && let ExprKind::Path(QPath::Resolved(None, path)) = call_expr.kind
-        && macro_backtrace(path.span).any(|macro_call| {
+        && macro_backtrace(path.span).last().map_or(false, |macro_call|
             matches!(
                 &cx.tcx.get_diagnostic_name(macro_call.def_id),
                 Some(sym::todo_macro | sym::unimplemented_macro)
             )
-    }) {
+    ) {
         return true;
     }
 
