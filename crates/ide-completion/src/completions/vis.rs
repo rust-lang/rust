@@ -37,7 +37,7 @@ pub(crate) fn complete_vis_path(acc: &mut Completions, ctx: &CompletionContext) 
                 acc.add_keyword(ctx, "super::");
             }
         }
-        Qualified::Absolute => {}
+        Qualified::Absolute | Qualified::Infer => {}
         Qualified::No => {
             if !has_in_token {
                 cov_mark::hit!(kw_completion_in);

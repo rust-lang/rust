@@ -150,6 +150,8 @@ pub(super) enum ItemListKind {
 pub(super) enum Qualified {
     No,
     With(PathQualifierCtx),
+    /// <_>::
+    Infer,
     /// Whether the path is an absolute path
     Absolute,
 }
@@ -163,8 +165,6 @@ pub(crate) struct PathQualifierCtx {
     pub(crate) is_super_chain: bool,
     /// Whether the qualifier comes from a use tree parent or not
     pub(crate) use_tree_parent: bool,
-    /// <_>
-    pub(crate) is_infer_qualifier: bool,
 }
 
 /// The state of the pattern we are completing.
@@ -320,13 +320,16 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) expected_type: Option<Type>,
 
     /// The parent function of the cursor position if it exists.
+    // FIXME: This probably doesn't belong here
     pub(super) function_def: Option<ast::Fn>,
     /// The parent impl of the cursor position if it exists.
+    // FIXME: This probably doesn't belong here
     pub(super) impl_def: Option<ast::Impl>,
     /// Are we completing inside a let statement with a missing semicolon?
     // FIXME: This should be part of PathKind::Expr
     pub(super) incomplete_let: bool,
 
+    // FIXME: This shouldn't exist
     pub(super) previous_token: Option<SyntaxToken>,
 
     pub(super) ident_ctx: IdentContext,
@@ -354,6 +357,7 @@ impl<'a> CompletionContext<'a> {
         }
     }
 
+    // FIXME: This shouldn't exist
     pub(crate) fn previous_token_is(&self, kind: SyntaxKind) -> bool {
         self.previous_token.as_ref().map_or(false, |tok| tok.kind() == kind)
     }

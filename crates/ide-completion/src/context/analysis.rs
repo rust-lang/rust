@@ -861,10 +861,6 @@ impl<'a> CompletionContext<'a> {
                     .and_then(|it| find_node_in_file(original_file, &it))
                     .map(|it| it.parent_path());
                 if let Some(path) = path {
-                    let res = sema.resolve_path(&path);
-                    let is_super_chain = iter::successors(Some(path.clone()), |p| p.qualifier())
-                        .all(|p| p.segment().and_then(|s| s.super_token()).is_some());
-
                     // `<_>::$0`
                     let is_infer_qualifier = path.qualifier().is_none()
                         && matches!(
@@ -875,13 +871,20 @@ impl<'a> CompletionContext<'a> {
                             })
                         );
 
-                    path_ctx.qualified = Qualified::With(PathQualifierCtx {
-                        path,
-                        resolution: res,
-                        is_super_chain,
-                        use_tree_parent,
-                        is_infer_qualifier,
-                    })
+                    path_ctx.qualified = if is_infer_qualifier {
+                        Qualified::Infer
+                    } else {
+                        let res = sema.resolve_path(&path);
+                        let is_super_chain =
+                            iter::successors(Some(path.clone()), |p| p.qualifier())
+                                .all(|p| p.segment().and_then(|s| s.super_token()).is_some());
+                        Qualified::With(PathQualifierCtx {
+                            path,
+                            resolution: res,
+                            is_super_chain,
+                            use_tree_parent,
+                        })
+                    }
                 };
             }
         } else if let Some(segment) = path.segment() {

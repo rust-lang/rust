@@ -101,6 +101,7 @@ pub(crate) fn complete_derive(acc: &mut Completions, ctx: &CompletionContext) {
             });
             acc.add_nameref_keywords_with_colon(ctx);
         }
+        Qualified::Infer => {}
     }
 }
 

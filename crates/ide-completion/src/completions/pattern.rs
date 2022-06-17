@@ -208,5 +208,6 @@ fn pattern_path_completion(
 
             acc.add_nameref_keywords_with_colon(ctx);
         }
+        Qualified::Infer => {}
     }
 }

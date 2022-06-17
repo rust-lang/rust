@@ -66,7 +66,7 @@ pub(crate) fn complete_item_list(acc: &mut Completions, ctx: &CompletionContext)
             });
             acc.add_nameref_keywords_with_colon(ctx);
         }
-        Qualified::No => {}
+        Qualified::Infer | Qualified::No => {}
     }
 }
 

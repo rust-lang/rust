@@ -24,13 +24,7 @@ pub(crate) fn complete_use_tree(acc: &mut Completions, ctx: &CompletionContext) 
     };
 
     match qualified {
-        Qualified::With(PathQualifierCtx {
-            path,
-            resolution,
-            is_super_chain,
-            use_tree_parent,
-            ..
-        }) => {
+        Qualified::With(PathQualifierCtx { path, resolution, is_super_chain, use_tree_parent }) => {
             if *is_super_chain {
                 acc.add_keyword(ctx, "super::");
             }
@@ -136,5 +130,6 @@ pub(crate) fn complete_use_tree(acc: &mut Completions, ctx: &CompletionContext) 
             });
             acc.add_nameref_keywords_with_colon(ctx);
         }
+        Qualified::Infer => {}
     }
 }

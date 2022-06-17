@@ -55,15 +55,13 @@ pub(crate) fn complete_type_path(acc: &mut Completions, ctx: &CompletionContext)
     };
 
     match qualified {
-        Qualified::With(PathQualifierCtx { is_infer_qualifier, resolution, .. }) => {
-            if *is_infer_qualifier {
-                ctx.traits_in_scope()
-                    .0
-                    .into_iter()
-                    .flat_map(|it| hir::Trait::from(it).items(ctx.sema.db))
-                    .for_each(|item| add_assoc_item(acc, item));
-                return;
-            }
+        Qualified::Infer => ctx
+            .traits_in_scope()
+            .0
+            .into_iter()
+            .flat_map(|it| hir::Trait::from(it).items(ctx.sema.db))
+            .for_each(|item| add_assoc_item(acc, item)),
+        Qualified::With(PathQualifierCtx { resolution, .. }) => {
             let resolution = match resolution {
                 Some(it) => it,
                 None => return,
