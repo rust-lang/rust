@@ -4,8 +4,8 @@ pub fn target() -> Target {
     let mut base = super::windows_uwp_gnu_base::opts();
     base.cpu = "x86-64".into();
     // Use high-entropy 64 bit address space for ASLR
+    base.add_pre_link_args(LinkerFlavor::Ld, &["-m", "i386pep", "--high-entropy-va"]);
     base.add_pre_link_args(LinkerFlavor::Gcc, &["-m64", "-Wl,--high-entropy-va"]);
-    base.add_pre_link_args(LinkerFlavor::Ld, &["-m", "i386pep"]);
     base.max_atomic_width = Some(64);
 
     Target {

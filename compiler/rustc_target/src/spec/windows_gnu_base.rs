@@ -2,15 +2,23 @@ use crate::spec::crt_objects::{self, CrtObjectsFallback};
 use crate::spec::{cvs, LinkerFlavor, TargetOptions};
 
 pub fn opts() -> TargetOptions {
-    let pre_link_args = TargetOptions::link_args(
+    let mut pre_link_args = TargetOptions::link_args(
+        LinkerFlavor::Ld,
+        &[
+            // Enable ASLR
+            "--dynamicbase",
+            // ASLR will rebase it anyway so leaving that option enabled only leads to confusion
+            "--disable-auto-image-base",
+        ],
+    );
+    super::add_link_args(
+        &mut pre_link_args,
         LinkerFlavor::Gcc,
         &[
             // Tell GCC to avoid linker plugins, because we are not bundling
             // them with Windows installer, and Rust does its own LTO anyways.
             "-fno-use-linker-plugin",
-            // Enable ASLR
             "-Wl,--dynamicbase",
-            // ASLR will rebase it anyway so leaving that option enabled only leads to confusion
             "-Wl,--disable-auto-image-base",
         ],
     );
