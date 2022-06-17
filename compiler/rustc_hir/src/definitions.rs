@@ -11,9 +11,7 @@ use crate::def_path_hash_map::DefPathHashMap;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_index::vec::IndexVec;
-use rustc_span::hygiene::ExpnId;
 use rustc_span::symbol::{kw, sym, Symbol};
-use rustc_span::Span;
 
 use std::fmt::{self, Write};
 use std::hash::Hash;
@@ -100,11 +98,6 @@ impl DefPathTable {
 pub struct Definitions {
     table: DefPathTable,
     next_disambiguator: FxHashMap<(LocalDefId, DefPathData), u32>,
-
-    /// Item with a given `LocalDefId` was defined during macro expansion with ID `ExpnId`.
-    expansions_that_defined: FxHashMap<LocalDefId, ExpnId>,
-
-    def_id_to_span: IndexVec<LocalDefId, Span>,
 
     /// The [StableCrateId] of the local crate.
     stable_crate_id: StableCrateId,
@@ -323,7 +316,7 @@ impl Definitions {
     }
 
     /// Adds a root definition (no parent) and a few other reserved definitions.
-    pub fn new(stable_crate_id: StableCrateId, crate_span: Span) -> Definitions {
+    pub fn new(stable_crate_id: StableCrateId) -> Definitions {
         let key = DefKey {
             parent: None,
             disambiguated_data: DisambiguatedDefPathData {
@@ -340,30 +333,12 @@ impl Definitions {
         let root = LocalDefId { local_def_index: table.allocate(key, def_path_hash) };
         assert_eq!(root.local_def_index, CRATE_DEF_INDEX);
 
-        let mut def_id_to_span = IndexVec::new();
-        // A relative span's parent must be an absolute span.
-        debug_assert_eq!(crate_span.data_untracked().parent, None);
-        let _root = def_id_to_span.push(crate_span);
-        debug_assert_eq!(_root, root);
-
-        Definitions {
-            table,
-            next_disambiguator: Default::default(),
-            expansions_that_defined: Default::default(),
-            def_id_to_span,
-            stable_crate_id,
-        }
+        Definitions { table, next_disambiguator: Default::default(), stable_crate_id }
     }
 
     /// Adds a definition with a parent definition.
-    pub fn create_def(
-        &mut self,
-        parent: LocalDefId,
-        data: DefPathData,
-        expn_id: ExpnId,
-        span: Span,
-    ) -> LocalDefId {
-        debug!("create_def(parent={:?}, data={:?}, expn_id={:?})", parent, data, expn_id);
+    pub fn create_def(&mut self, parent: LocalDefId, data: DefPathData) -> LocalDefId {
+        debug!("create_def(parent={:?}, data={:?})", parent, data);
 
         // The root node must be created with `create_root_def()`.
         assert!(data != DefPathData::CrateRoot);
@@ -386,28 +361,7 @@ impl Definitions {
         debug!("create_def: after disambiguation, key = {:?}", key);
 
         // Create the definition.
-        let def_id = LocalDefId { local_def_index: self.table.allocate(key, def_path_hash) };
-
-        if expn_id != ExpnId::root() {
-            self.expansions_that_defined.insert(def_id, expn_id);
-        }
-
-        // A relative span's parent must be an absolute span.
-        debug_assert_eq!(span.data_untracked().parent, None);
-        let _id = self.def_id_to_span.push(span);
-        debug_assert_eq!(_id, def_id);
-
-        def_id
-    }
-
-    pub fn expansion_that_defined(&self, id: LocalDefId) -> ExpnId {
-        self.expansions_that_defined.get(&id).copied().unwrap_or_else(ExpnId::root)
-    }
-
-    /// Retrieves the span of the given `DefId` if `DefId` is in the local crate.
-    #[inline]
-    pub fn def_span(&self, def_id: LocalDefId) -> Span {
-        self.def_id_to_span[def_id]
+        LocalDefId { local_def_index: self.table.allocate(key, def_path_hash) }
     }
 
     pub fn iter_local_def_id(&self) -> impl Iterator<Item = LocalDefId> + '_ {

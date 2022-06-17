@@ -6,6 +6,7 @@ use rustc_data_structures::sync::Lrc;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::definitions::{DefPathHash, Definitions};
+use rustc_index::vec::IndexVec;
 use rustc_session::cstore::CrateStore;
 use rustc_session::Session;
 use rustc_span::source_map::SourceMap;
@@ -20,6 +21,7 @@ use rustc_span::{BytePos, CachingSourceMapView, SourceFile, Span, SpanData};
 pub struct StableHashingContext<'a> {
     definitions: &'a Definitions,
     cstore: &'a dyn CrateStore,
+    source_span: &'a IndexVec<LocalDefId, Span>,
     // The value of `-Z incremental-ignore-spans`.
     // This field should only be used by `debug_opts_incremental_ignore_span`
     incremental_ignore_spans: bool,
@@ -50,6 +52,7 @@ impl<'a> StableHashingContext<'a> {
         sess: &'a Session,
         definitions: &'a Definitions,
         cstore: &'a dyn CrateStore,
+        source_span: &'a IndexVec<LocalDefId, Span>,
         always_ignore_spans: bool,
     ) -> Self {
         let hash_spans_initial =
@@ -59,6 +62,7 @@ impl<'a> StableHashingContext<'a> {
             body_resolver: BodyResolver::Forbidden,
             definitions,
             cstore,
+            source_span,
             incremental_ignore_spans: sess.opts.debugging_opts.incremental_ignore_spans,
             caching_source_map: None,
             raw_source_map: sess.source_map(),
@@ -71,11 +75,13 @@ impl<'a> StableHashingContext<'a> {
         sess: &'a Session,
         definitions: &'a Definitions,
         cstore: &'a dyn CrateStore,
+        source_span: &'a IndexVec<LocalDefId, Span>,
     ) -> Self {
         Self::new_with_or_without_spans(
             sess,
             definitions,
             cstore,
+            source_span,
             /*always_ignore_spans=*/ false,
         )
     }
@@ -85,9 +91,10 @@ impl<'a> StableHashingContext<'a> {
         sess: &'a Session,
         definitions: &'a Definitions,
         cstore: &'a dyn CrateStore,
+        source_span: &'a IndexVec<LocalDefId, Span>,
     ) -> Self {
         let always_ignore_spans = true;
-        Self::new_with_or_without_spans(sess, definitions, cstore, always_ignore_spans)
+        Self::new_with_or_without_spans(sess, definitions, cstore, source_span, always_ignore_spans)
     }
 
     /// Allow hashing
@@ -189,7 +196,7 @@ impl<'a> rustc_span::HashStableContext for StableHashingContext<'a> {
 
     #[inline]
     fn def_span(&self, def_id: LocalDefId) -> Span {
-        self.definitions.def_span(def_id)
+        self.source_span[def_id]
     }
 
     #[inline]

@@ -27,6 +27,7 @@ pub use adt::*;
 pub use assoc::*;
 pub use generics::*;
 use rustc_ast as ast;
+use rustc_ast::node_id::NodeMap;
 use rustc_attr as attr;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
@@ -34,14 +35,15 @@ use rustc_data_structures::intern::{Interned, WithStableHash};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::tagged_ptr::CopyTaggedPtr;
 use rustc_hir as hir;
-use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
+use rustc_hir::def::{CtorKind, CtorOf, DefKind, LifetimeRes, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LocalDefIdMap};
 use rustc_hir::Node;
+use rustc_index::vec::IndexVec;
 use rustc_macros::HashStable;
 use rustc_query_system::ich::StableHashingContext;
-use rustc_session::cstore::CrateStoreDyn;
+use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::Span;
+use rustc_span::{ExpnId, Span};
 use rustc_target::abi::{Align, VariantIdx};
 pub use subst::*;
 pub use vtable::*;
@@ -133,11 +135,13 @@ pub type RegisteredTools = FxHashSet<Ident>;
 
 #[derive(Debug)]
 pub struct ResolverOutputs {
-    pub definitions: rustc_hir::definitions::Definitions,
-    pub cstore: Box<CrateStoreDyn>,
     pub visibilities: FxHashMap<LocalDefId, Visibility>,
     /// This field is used to decide whether we should make `PRIVATE_IN_PUBLIC` a hard error.
     pub has_pub_restricted: bool,
+    /// Item with a given `LocalDefId` was defined during macro expansion with ID `ExpnId`.
+    pub expn_that_defined: FxHashMap<LocalDefId, ExpnId>,
+    /// Reference span for definitions.
+    pub source_span: IndexVec<LocalDefId, Span>,
     pub access_levels: AccessLevels,
     pub extern_crate_map: FxHashMap<LocalDefId, CrateNum>,
     pub maybe_unused_trait_imports: FxIndexSet<LocalDefId>,
@@ -156,6 +160,34 @@ pub struct ResolverOutputs {
     /// exist under `std`. For example, wrote `str::from_utf8` instead of `std::str::from_utf8`.
     pub confused_type_with_std_module: FxHashMap<Span, Span>,
     pub registered_tools: RegisteredTools,
+}
+
+/// Resolutions that should only be used for lowering.
+/// This struct is meant to be consumed by lowering.
+#[derive(Debug)]
+pub struct ResolverAstLowering {
+    pub legacy_const_generic_args: FxHashMap<DefId, Option<Vec<usize>>>,
+
+    /// Resolutions for nodes that have a single resolution.
+    pub partial_res_map: NodeMap<hir::def::PartialRes>,
+    /// Resolutions for import nodes, which have multiple resolutions in different namespaces.
+    pub import_res_map: NodeMap<hir::def::PerNS<Option<Res<ast::NodeId>>>>,
+    /// Resolutions for labels (node IDs of their corresponding blocks or loops).
+    pub label_res_map: NodeMap<ast::NodeId>,
+    /// Resolutions for lifetimes.
+    pub lifetimes_res_map: NodeMap<LifetimeRes>,
+    /// Lifetime parameters that lowering will have to introduce.
+    pub extra_lifetime_params_map: NodeMap<Vec<(Ident, ast::NodeId, LifetimeRes)>>,
+
+    pub next_node_id: ast::NodeId,
+
+    pub node_id_to_def_id: FxHashMap<ast::NodeId, LocalDefId>,
+    pub def_id_to_node_id: IndexVec<LocalDefId, ast::NodeId>,
+
+    pub trait_map: NodeMap<Vec<hir::TraitCandidate>>,
+    /// A small map keeping true kinds of built-in macros that appear to be fn-like on
+    /// the surface (`macro` items in libcore), but are actually attributes or derives.
+    pub builtin_macro_kinds: FxHashMap<LocalDefId, MacroKind>,
 }
 
 #[derive(Clone, Copy, Debug)]

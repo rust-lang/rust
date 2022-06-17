@@ -27,17 +27,16 @@ use rustc_arena::{DroplessArena, TypedArena};
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::{self as ast, NodeId, CRATE_NODE_ID};
 use rustc_ast::{AngleBracketedArg, Crate, Expr, ExprKind, GenericArg, GenericArgs, LitKind, Path};
-use rustc_ast_lowering::{LifetimeRes, ResolverAstLowering};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_expand::base::{DeriveResolutions, SyntaxExtension, SyntaxExtensionKind};
 use rustc_hir::def::Namespace::*;
-use rustc_hir::def::{self, CtorOf, DefKind, PartialRes};
-use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefPathHash, LocalDefId};
+use rustc_hir::def::{self, CtorOf, DefKind, LifetimeRes, PartialRes};
+use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId};
 use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE};
-use rustc_hir::definitions::{DefKey, DefPathData, Definitions};
+use rustc_hir::definitions::{DefPathData, Definitions};
 use rustc_hir::TraitCandidate;
 use rustc_index::vec::IndexVec;
 use rustc_metadata::creader::{CStore, CrateLoader};
@@ -47,7 +46,7 @@ use rustc_middle::span_bug;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, DefIdTree, MainDefinition, RegisteredTools, ResolverOutputs};
 use rustc_query_system::ich::StableHashingContext;
-use rustc_session::cstore::{CrateStore, MetadataLoaderDyn};
+use rustc_session::cstore::{CrateStore, CrateStoreDyn, MetadataLoaderDyn};
 use rustc_session::lint::LintBuffer;
 use rustc_session::Session;
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind, SyntaxContext, Transparency};
@@ -879,6 +878,10 @@ pub struct Resolver<'a> {
     session: &'a Session,
 
     definitions: Definitions,
+    /// Item with a given `LocalDefId` was defined during macro expansion with ID `ExpnId`.
+    expn_that_defined: FxHashMap<LocalDefId, ExpnId>,
+    /// Reference span for definitions.
+    source_span: IndexVec<LocalDefId, Span>,
 
     graph_root: Module<'a>,
 
@@ -1127,83 +1130,13 @@ impl<'a, 'b> DefIdTree for &'a Resolver<'b> {
     }
 }
 
-/// This interface is used through the AST→HIR step, to embed full paths into the HIR. After that
-/// the resolver is no longer needed as all the relevant information is inline.
-impl ResolverAstLowering for Resolver<'_> {
-    fn def_key(&self, id: DefId) -> DefKey {
-        if let Some(id) = id.as_local() {
-            self.definitions.def_key(id)
-        } else {
-            self.cstore().def_key(id)
-        }
-    }
-
-    #[inline]
-    fn def_span(&self, id: LocalDefId) -> Span {
-        self.definitions.def_span(id)
-    }
-
-    fn item_generics_num_lifetimes(&self, def_id: DefId) -> usize {
-        if let Some(def_id) = def_id.as_local() {
-            self.item_generics_num_lifetimes[&def_id]
-        } else {
-            self.cstore().item_generics_num_lifetimes(def_id, self.session)
-        }
-    }
-
-    fn legacy_const_generic_args(&mut self, expr: &Expr) -> Option<Vec<usize>> {
-        self.legacy_const_generic_args(expr)
-    }
-
-    fn get_partial_res(&self, id: NodeId) -> Option<PartialRes> {
-        self.partial_res_map.get(&id).cloned()
-    }
-
-    fn get_import_res(&self, id: NodeId) -> PerNS<Option<Res>> {
-        self.import_res_map.get(&id).cloned().unwrap_or_default()
-    }
-
-    fn get_label_res(&self, id: NodeId) -> Option<NodeId> {
-        self.label_res_map.get(&id).cloned()
-    }
-
-    fn get_lifetime_res(&self, id: NodeId) -> Option<LifetimeRes> {
-        self.lifetimes_res_map.get(&id).copied()
-    }
-
-    fn take_extra_lifetime_params(&mut self, id: NodeId) -> Vec<(Ident, NodeId, LifetimeRes)> {
-        self.extra_lifetime_params_map.remove(&id).unwrap_or_default()
-    }
-
-    fn create_stable_hashing_context(&self) -> StableHashingContext<'_> {
-        StableHashingContext::new(self.session, &self.definitions, self.crate_loader.cstore())
-    }
-
-    fn definitions(&self) -> &Definitions {
-        &self.definitions
-    }
-
-    fn next_node_id(&mut self) -> NodeId {
-        self.next_node_id()
-    }
-
-    fn take_trait_map(&mut self, node: NodeId) -> Option<Vec<TraitCandidate>> {
-        self.trait_map.remove(&node)
-    }
-
+impl Resolver<'_> {
     fn opt_local_def_id(&self, node: NodeId) -> Option<LocalDefId> {
         self.node_id_to_def_id.get(&node).copied()
     }
 
-    fn local_def_id(&self, node: NodeId) -> LocalDefId {
+    pub fn local_def_id(&self, node: NodeId) -> LocalDefId {
         self.opt_local_def_id(node).unwrap_or_else(|| panic!("no entry for node id: `{:?}`", node))
-    }
-
-    fn def_path_hash(&self, def_id: DefId) -> DefPathHash {
-        match def_id.as_local() {
-            Some(def_id) => self.definitions.def_path_hash(def_id),
-            None => self.cstore().def_path_hash(def_id),
-        }
     }
 
     /// Adds a definition with a parent definition.
@@ -1223,7 +1156,17 @@ impl ResolverAstLowering for Resolver<'_> {
             self.definitions.def_key(self.node_id_to_def_id[&node_id]),
         );
 
-        let def_id = self.definitions.create_def(parent, data, expn_id, span);
+        let def_id = self.definitions.create_def(parent, data);
+
+        // Create the definition.
+        if expn_id != ExpnId::root() {
+            self.expn_that_defined.insert(def_id, expn_id);
+        }
+
+        // A relative span's parent must be an absolute span.
+        debug_assert_eq!(span.data_untracked().parent, None);
+        let _id = self.source_span.push(span);
+        debug_assert_eq!(_id, def_id);
 
         // Some things for which we allocate `LocalDefId`s don't correspond to
         // anything in the AST, so they don't have a `NodeId`. For these cases
@@ -1237,8 +1180,12 @@ impl ResolverAstLowering for Resolver<'_> {
         def_id
     }
 
-    fn decl_macro_kind(&self, def_id: LocalDefId) -> MacroKind {
-        self.builtin_macro_kinds.get(&def_id).copied().unwrap_or(MacroKind::Bang)
+    fn item_generics_num_lifetimes(&self, def_id: DefId) -> usize {
+        if let Some(def_id) = def_id.as_local() {
+            self.item_generics_num_lifetimes[&def_id]
+        } else {
+            self.cstore().item_generics_num_lifetimes(def_id, self.session)
+        }
     }
 }
 
@@ -1269,7 +1216,7 @@ impl<'a> Resolver<'a> {
             &mut FxHashMap::default(),
         );
 
-        let definitions = Definitions::new(session.local_stable_crate_id(), krate.spans.inner_span);
+        let definitions = Definitions::new(session.local_stable_crate_id());
 
         let mut visibilities = FxHashMap::default();
         visibilities.insert(CRATE_DEF_ID, ty::Visibility::Public);
@@ -1281,6 +1228,10 @@ impl<'a> Resolver<'a> {
 
         let mut invocation_parents = FxHashMap::default();
         invocation_parents.insert(LocalExpnId::ROOT, (CRATE_DEF_ID, ImplTraitContext::Existential));
+
+        let mut source_span = IndexVec::default();
+        let _id = source_span.push(krate.spans.inner_span);
+        debug_assert_eq!(_id, CRATE_DEF_ID);
 
         let mut extern_prelude: FxHashMap<Ident, ExternPreludeEntry<'_>> = session
             .opts
@@ -1306,6 +1257,8 @@ impl<'a> Resolver<'a> {
             session,
 
             definitions,
+            expn_that_defined: Default::default(),
+            source_span,
 
             // The outermost module has def ID 0; this is not reflected in the
             // AST.
@@ -1445,9 +1398,14 @@ impl<'a> Resolver<'a> {
         Default::default()
     }
 
-    pub fn into_outputs(self) -> ResolverOutputs {
+    pub fn into_outputs(
+        self,
+    ) -> (Definitions, Box<CrateStoreDyn>, ResolverOutputs, ty::ResolverAstLowering) {
         let proc_macros = self.proc_macros.iter().map(|id| self.local_def_id(*id)).collect();
         let definitions = self.definitions;
+        let cstore = Box::new(self.crate_loader.into_cstore());
+        let source_span = self.source_span;
+        let expn_that_defined = self.expn_that_defined;
         let visibilities = self.visibilities;
         let has_pub_restricted = self.has_pub_restricted;
         let extern_crate_map = self.extern_crate_map;
@@ -1458,9 +1416,9 @@ impl<'a> Resolver<'a> {
         let main_def = self.main_def;
         let confused_type_with_std_module = self.confused_type_with_std_module;
         let access_levels = self.access_levels;
-        ResolverOutputs {
-            definitions,
-            cstore: Box::new(self.crate_loader.into_cstore()),
+        let resolutions = ResolverOutputs {
+            source_span,
+            expn_that_defined,
             visibilities,
             has_pub_restricted,
             access_levels,
@@ -1479,15 +1437,32 @@ impl<'a> Resolver<'a> {
             proc_macros,
             confused_type_with_std_module,
             registered_tools: self.registered_tools,
-        }
+        };
+        let resolutions_lowering = ty::ResolverAstLowering {
+            legacy_const_generic_args: self.legacy_const_generic_args,
+            partial_res_map: self.partial_res_map,
+            import_res_map: self.import_res_map,
+            label_res_map: self.label_res_map,
+            lifetimes_res_map: self.lifetimes_res_map,
+            extra_lifetime_params_map: self.extra_lifetime_params_map,
+            next_node_id: self.next_node_id,
+            node_id_to_def_id: self.node_id_to_def_id,
+            def_id_to_node_id: self.def_id_to_node_id,
+            trait_map: self.trait_map,
+            builtin_macro_kinds: self.builtin_macro_kinds,
+        };
+        (definitions, cstore, resolutions, resolutions_lowering)
     }
 
-    pub fn clone_outputs(&self) -> ResolverOutputs {
+    pub fn clone_outputs(
+        &self,
+    ) -> (Definitions, Box<CrateStoreDyn>, ResolverOutputs, ty::ResolverAstLowering) {
         let proc_macros = self.proc_macros.iter().map(|id| self.local_def_id(*id)).collect();
-        ResolverOutputs {
-            definitions: self.definitions.clone(),
-            access_levels: self.access_levels.clone(),
-            cstore: Box::new(self.cstore().clone()),
+        let definitions = self.definitions.clone();
+        let cstore = Box::new(self.cstore().clone());
+        let resolutions = ResolverOutputs {
+            source_span: self.source_span.clone(),
+            expn_that_defined: self.expn_that_defined.clone(),
             visibilities: self.visibilities.clone(),
             has_pub_restricted: self.has_pub_restricted,
             extern_crate_map: self.extern_crate_map.clone(),
@@ -1505,7 +1480,31 @@ impl<'a> Resolver<'a> {
             proc_macros,
             confused_type_with_std_module: self.confused_type_with_std_module.clone(),
             registered_tools: self.registered_tools.clone(),
-        }
+            access_levels: self.access_levels.clone(),
+        };
+        let resolutions_lowering = ty::ResolverAstLowering {
+            legacy_const_generic_args: self.legacy_const_generic_args.clone(),
+            partial_res_map: self.partial_res_map.clone(),
+            import_res_map: self.import_res_map.clone(),
+            label_res_map: self.label_res_map.clone(),
+            lifetimes_res_map: self.lifetimes_res_map.clone(),
+            extra_lifetime_params_map: self.extra_lifetime_params_map.clone(),
+            next_node_id: self.next_node_id.clone(),
+            node_id_to_def_id: self.node_id_to_def_id.clone(),
+            def_id_to_node_id: self.def_id_to_node_id.clone(),
+            trait_map: self.trait_map.clone(),
+            builtin_macro_kinds: self.builtin_macro_kinds.clone(),
+        };
+        (definitions, cstore, resolutions, resolutions_lowering)
+    }
+
+    fn create_stable_hashing_context(&self) -> StableHashingContext<'_> {
+        StableHashingContext::new(
+            self.session,
+            &self.definitions,
+            self.crate_loader.cstore(),
+            &self.source_span,
+        )
     }
 
     pub fn cstore(&self) -> &CStore {
@@ -1936,7 +1935,7 @@ impl<'a> Resolver<'a> {
     /// Retrieves the span of the given `DefId` if `DefId` is in the local crate.
     #[inline]
     pub fn opt_span(&self, def_id: DefId) -> Option<Span> {
-        def_id.as_local().map(|def_id| self.definitions.def_span(def_id))
+        def_id.as_local().map(|def_id| self.source_span[def_id])
     }
 
     /// Checks if an expression refers to a function marked with

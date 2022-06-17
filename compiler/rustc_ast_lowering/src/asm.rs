@@ -1,4 +1,4 @@
-use crate::{ImplTraitContext, ImplTraitPosition, ParamMode};
+use crate::{ImplTraitContext, ImplTraitPosition, ParamMode, ResolverAstLoweringExt};
 
 use super::LoweringContext;
 
@@ -11,7 +11,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::definitions::DefPathData;
 use rustc_session::parse::feature_err;
-use rustc_span::{sym, ExpnId, Span};
+use rustc_span::{sym, Span};
 use rustc_target::asm;
 use std::collections::hash_map::Entry;
 use std::fmt::Write;
@@ -242,14 +242,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
                             // Wrap the expression in an AnonConst.
                             let parent_def_id = self.current_hir_id_owner;
-                            let node_id = self.resolver.next_node_id();
-                            self.resolver.create_def(
-                                parent_def_id,
-                                node_id,
-                                DefPathData::AnonConst,
-                                ExpnId::root(),
-                                *op_sp,
-                            );
+                            let node_id = self.next_node_id();
+                            self.create_def(parent_def_id, node_id, DefPathData::AnonConst);
                             let anon_const = AnonConst { id: node_id, value: P(expr) };
                             hir::InlineAsmOperand::SymFn {
                                 anon_const: self.lower_anon_const(&anon_const),

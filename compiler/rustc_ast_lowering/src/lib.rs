@@ -51,15 +51,17 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{struct_span_err, Applicability};
 use rustc_hir as hir;
-use rustc_hir::def::{DefKind, Namespace, PartialRes, PerNS, Res};
-use rustc_hir::def_id::{DefId, DefPathHash, LocalDefId, CRATE_DEF_ID};
-use rustc_hir::definitions::{DefKey, DefPathData, Definitions};
+use rustc_hir::def::{DefKind, LifetimeRes, Namespace, PartialRes, PerNS, Res};
+use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID};
+use rustc_hir::definitions::{DefPathData, Definitions};
 use rustc_hir::{ConstArg, GenericArg, ItemLocalId, ParamName, TraitCandidate};
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_middle::ty::{ResolverAstLowering, ResolverOutputs};
 use rustc_query_system::ich::StableHashingContext;
+use rustc_session::cstore::CrateStoreDyn;
 use rustc_session::parse::feature_err;
 use rustc_session::Session;
-use rustc_span::hygiene::{ExpnId, MacroKind};
+use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::DesugaringKind;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
@@ -87,7 +89,10 @@ struct LoweringContext<'a, 'hir: 'a> {
     /// Used to assign IDs to HIR nodes that do not directly correspond to AST nodes.
     sess: &'a Session,
 
-    resolver: &'a mut dyn ResolverAstLowering,
+    definitions: &'a mut Definitions,
+    cstore: &'a CrateStoreDyn,
+    resolutions: &'a ResolverOutputs,
+    resolver: &'a mut ResolverAstLowering,
 
     /// Used to allocate HIR nodes.
     arena: &'hir Arena<'hir>,
@@ -134,46 +139,6 @@ struct LoweringContext<'a, 'hir: 'a> {
     allow_into_future: Option<Lrc<[Symbol]>>,
 }
 
-/// Resolution for a lifetime appearing in a type.
-#[derive(Copy, Clone, Debug)]
-pub enum LifetimeRes {
-    /// Successfully linked the lifetime to a generic parameter.
-    Param {
-        /// Id of the generic parameter that introduced it.
-        param: LocalDefId,
-        /// Id of the introducing place. That can be:
-        /// - an item's id, for the item's generic parameters;
-        /// - a TraitRef's ref_id, identifying the `for<...>` binder;
-        /// - a BareFn type's id;
-        /// - a Path's id when this path has parenthesized generic args.
-        ///
-        /// This information is used for impl-trait lifetime captures, to know when to or not to
-        /// capture any given lifetime.
-        binder: NodeId,
-    },
-    /// Created a generic parameter for an anonymous lifetime.
-    Fresh {
-        /// Id of the generic parameter that introduced it.
-        param: LocalDefId,
-        /// Id of the introducing place. See `Param`.
-        binder: NodeId,
-    },
-    /// This variant is used for anonymous lifetimes that we did not resolve during
-    /// late resolution.  Shifting the work to the HIR lifetime resolver.
-    Anonymous {
-        /// Id of the introducing place. See `Param`.
-        binder: NodeId,
-        /// Whether this lifetime was spelled or elided.
-        elided: bool,
-    },
-    /// Explicit `'static` lifetime.
-    Static,
-    /// Resolution failure.
-    Error,
-    /// HACK: This is used to recover the NodeId of an elided lifetime.
-    ElidedAnchor { start: NodeId, end: NodeId },
-}
-
 /// When we lower a lifetime, it is inserted in `captures`, and the resolution is modified so
 /// to point to the lifetime parameter impl-trait will generate.
 /// When traversing `for<...>` binders, they are inserted in `binders_to_ignore` so we know *not*
@@ -196,54 +161,75 @@ struct LifetimeCaptureContext {
     binders_to_ignore: FxHashSet<NodeId>,
 }
 
-pub trait ResolverAstLowering {
-    fn def_key(&self, id: DefId) -> DefKey;
+trait ResolverAstLoweringExt {
+    fn legacy_const_generic_args(&self, expr: &Expr) -> Option<Vec<usize>>;
+    fn get_partial_res(&self, id: NodeId) -> Option<PartialRes>;
+    fn get_import_res(&self, id: NodeId) -> PerNS<Option<Res<NodeId>>>;
+    fn get_label_res(&self, id: NodeId) -> Option<NodeId>;
+    fn get_lifetime_res(&self, id: NodeId) -> Option<LifetimeRes>;
+    fn take_extra_lifetime_params(&mut self, id: NodeId) -> Vec<(Ident, NodeId, LifetimeRes)>;
+    fn decl_macro_kind(&self, def_id: LocalDefId) -> MacroKind;
+}
 
-    fn def_span(&self, id: LocalDefId) -> Span;
+impl ResolverAstLoweringExt for ResolverAstLowering {
+    fn legacy_const_generic_args(&self, expr: &Expr) -> Option<Vec<usize>> {
+        if let ExprKind::Path(None, path) = &expr.kind {
+            // Don't perform legacy const generics rewriting if the path already
+            // has generic arguments.
+            if path.segments.last().unwrap().args.is_some() {
+                return None;
+            }
 
-    fn item_generics_num_lifetimes(&self, def: DefId) -> usize;
+            let partial_res = self.partial_res_map.get(&expr.id)?;
+            if partial_res.unresolved_segments() != 0 {
+                return None;
+            }
 
-    fn legacy_const_generic_args(&mut self, expr: &Expr) -> Option<Vec<usize>>;
+            if let Res::Def(DefKind::Fn, def_id) = partial_res.base_res() {
+                // We only support cross-crate argument rewriting. Uses
+                // within the same crate should be updated to use the new
+                // const generics style.
+                if def_id.is_local() {
+                    return None;
+                }
+
+                if let Some(v) = self.legacy_const_generic_args.get(&def_id) {
+                    return v.clone();
+                }
+            }
+        }
+
+        None
+    }
 
     /// Obtains resolution for a `NodeId` with a single resolution.
-    fn get_partial_res(&self, id: NodeId) -> Option<PartialRes>;
+    fn get_partial_res(&self, id: NodeId) -> Option<PartialRes> {
+        self.partial_res_map.get(&id).copied()
+    }
 
     /// Obtains per-namespace resolutions for `use` statement with the given `NodeId`.
-    fn get_import_res(&self, id: NodeId) -> PerNS<Option<Res<NodeId>>>;
+    fn get_import_res(&self, id: NodeId) -> PerNS<Option<Res<NodeId>>> {
+        self.import_res_map.get(&id).copied().unwrap_or_default()
+    }
 
     /// Obtains resolution for a label with the given `NodeId`.
-    fn get_label_res(&self, id: NodeId) -> Option<NodeId>;
+    fn get_label_res(&self, id: NodeId) -> Option<NodeId> {
+        self.label_res_map.get(&id).copied()
+    }
 
     /// Obtains resolution for a lifetime with the given `NodeId`.
-    fn get_lifetime_res(&self, id: NodeId) -> Option<LifetimeRes>;
+    fn get_lifetime_res(&self, id: NodeId) -> Option<LifetimeRes> {
+        self.lifetimes_res_map.get(&id).copied()
+    }
 
     /// Obtain the list of lifetimes parameters to add to an item.
-    fn take_extra_lifetime_params(&mut self, id: NodeId) -> Vec<(Ident, NodeId, LifetimeRes)>;
+    fn take_extra_lifetime_params(&mut self, id: NodeId) -> Vec<(Ident, NodeId, LifetimeRes)> {
+        self.extra_lifetime_params_map.remove(&id).unwrap_or_default()
+    }
 
-    fn create_stable_hashing_context(&self) -> StableHashingContext<'_>;
-
-    fn definitions(&self) -> &Definitions;
-
-    fn next_node_id(&mut self) -> NodeId;
-
-    fn take_trait_map(&mut self, node: NodeId) -> Option<Vec<hir::TraitCandidate>>;
-
-    fn opt_local_def_id(&self, node: NodeId) -> Option<LocalDefId>;
-
-    fn local_def_id(&self, node: NodeId) -> LocalDefId;
-
-    fn def_path_hash(&self, def_id: DefId) -> DefPathHash;
-
-    fn create_def(
-        &mut self,
-        parent: LocalDefId,
-        node_id: ast::NodeId,
-        data: DefPathData,
-        expn_id: ExpnId,
-        span: Span,
-    ) -> LocalDefId;
-
-    fn decl_macro_kind(&self, def_id: LocalDefId) -> MacroKind;
+    fn decl_macro_kind(&self, def_id: LocalDefId) -> MacroKind {
+        self.builtin_macro_kinds.get(&def_id).copied().unwrap_or(MacroKind::Bang)
+    }
 }
 
 /// Context of `impl Trait` in code, which determines whether it is allowed in an HIR subtree,
@@ -353,17 +339,17 @@ enum AstOwner<'a> {
 }
 
 fn index_crate<'a>(
-    resolver: &dyn ResolverAstLowering,
+    node_id_to_def_id: &FxHashMap<NodeId, LocalDefId>,
     krate: &'a Crate,
 ) -> IndexVec<LocalDefId, AstOwner<'a>> {
-    let mut indexer = Indexer { resolver, index: IndexVec::new() };
+    let mut indexer = Indexer { node_id_to_def_id, index: IndexVec::new() };
     indexer.index.ensure_contains_elem(CRATE_DEF_ID, || AstOwner::NonOwner);
     indexer.index[CRATE_DEF_ID] = AstOwner::Crate(krate);
     visit::walk_crate(&mut indexer, krate);
     return indexer.index;
 
     struct Indexer<'s, 'a> {
-        resolver: &'s dyn ResolverAstLowering,
+        node_id_to_def_id: &'s FxHashMap<NodeId, LocalDefId>,
         index: IndexVec<LocalDefId, AstOwner<'a>>,
     }
 
@@ -374,21 +360,21 @@ fn index_crate<'a>(
         }
 
         fn visit_item(&mut self, item: &'a ast::Item) {
-            let def_id = self.resolver.local_def_id(item.id);
+            let def_id = self.node_id_to_def_id[&item.id];
             self.index.ensure_contains_elem(def_id, || AstOwner::NonOwner);
             self.index[def_id] = AstOwner::Item(item);
             visit::walk_item(self, item)
         }
 
         fn visit_assoc_item(&mut self, item: &'a ast::AssocItem, ctxt: visit::AssocCtxt) {
-            let def_id = self.resolver.local_def_id(item.id);
+            let def_id = self.node_id_to_def_id[&item.id];
             self.index.ensure_contains_elem(def_id, || AstOwner::NonOwner);
             self.index[def_id] = AstOwner::AssocItem(item, ctxt);
             visit::walk_assoc_item(self, item, ctxt);
         }
 
         fn visit_foreign_item(&mut self, item: &'a ast::ForeignItem) {
-            let def_id = self.resolver.local_def_id(item.id);
+            let def_id = self.node_id_to_def_id[&item.id];
             self.index.ensure_contains_elem(def_id, || AstOwner::NonOwner);
             self.index[def_id] = AstOwner::ForeignItem(item);
             visit::walk_foreign_item(self, item);
@@ -399,44 +385,59 @@ fn index_crate<'a>(
 /// Compute the hash for the HIR of the full crate.
 /// This hash will then be part of the crate_hash which is stored in the metadata.
 fn compute_hir_hash(
-    resolver: &mut dyn ResolverAstLowering,
+    sess: &Session,
+    definitions: &Definitions,
+    cstore: &CrateStoreDyn,
+    resolver: &ResolverOutputs,
     owners: &IndexVec<LocalDefId, hir::MaybeOwner<&hir::OwnerInfo<'_>>>,
 ) -> Fingerprint {
     let mut hir_body_nodes: Vec<_> = owners
         .iter_enumerated()
         .filter_map(|(def_id, info)| {
             let info = info.as_owner()?;
-            let def_path_hash = resolver.definitions().def_path_hash(def_id);
+            let def_path_hash = definitions.def_path_hash(def_id);
             Some((def_path_hash, info))
         })
         .collect();
     hir_body_nodes.sort_unstable_by_key(|bn| bn.0);
 
     let mut stable_hasher = StableHasher::new();
-    let mut hcx = resolver.create_stable_hashing_context();
+    let mut hcx = StableHashingContext::new(sess, definitions, cstore, &resolver.source_span);
     hir_body_nodes.hash_stable(&mut hcx, &mut stable_hasher);
     stable_hasher.finish()
 }
 
-pub fn lower_crate<'a, 'hir>(
-    sess: &'a Session,
-    krate: &'a Crate,
-    resolver: &'a mut dyn ResolverAstLowering,
+pub fn lower_crate<'hir>(
+    sess: &Session,
+    krate: &Crate,
+    definitions: &mut Definitions,
+    cstore: &CrateStoreDyn,
+    resolutions: &ResolverOutputs,
+    mut resolver: ResolverAstLowering,
     arena: &'hir Arena<'hir>,
 ) -> &'hir hir::Crate<'hir> {
     let _prof_timer = sess.prof.verbose_generic_activity("hir_lowering");
 
-    let ast_index = index_crate(resolver, krate);
+    let ast_index = index_crate(&resolver.node_id_to_def_id, krate);
 
     let mut owners =
-        IndexVec::from_fn_n(|_| hir::MaybeOwner::Phantom, resolver.definitions().def_index_count());
+        IndexVec::from_fn_n(|_| hir::MaybeOwner::Phantom, definitions.def_index_count());
 
     for def_id in ast_index.indices() {
-        item::ItemLowerer { sess, resolver, arena, ast_index: &ast_index, owners: &mut owners }
-            .lower_node(def_id);
+        item::ItemLowerer {
+            sess,
+            definitions,
+            cstore,
+            resolutions,
+            resolver: &mut resolver,
+            arena,
+            ast_index: &ast_index,
+            owners: &mut owners,
+        }
+        .lower_node(def_id);
     }
 
-    let hir_hash = compute_hir_hash(resolver, &owners);
+    let hir_hash = compute_hir_hash(sess, definitions, cstore, resolutions, &owners);
     let krate = hir::Crate { owners, hir_hash };
     arena.alloc(krate)
 }
@@ -457,13 +458,64 @@ enum ParenthesizedGenericArgs {
 }
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
+    fn create_stable_hashing_context(&self) -> StableHashingContext<'_> {
+        StableHashingContext::new(
+            self.sess,
+            self.definitions,
+            self.cstore,
+            &self.resolutions.source_span,
+        )
+    }
+
+    fn create_def(
+        &mut self,
+        parent: LocalDefId,
+        node_id: ast::NodeId,
+        data: DefPathData,
+    ) -> LocalDefId {
+        assert!(
+            self.opt_local_def_id(node_id).is_none(),
+            "adding a def'n for node-id {:?} and data {:?} but a previous def'n exists: {:?}",
+            node_id,
+            data,
+            self.definitions.def_key(self.local_def_id(node_id)),
+        );
+
+        let def_id = self.definitions.create_def(parent, data);
+
+        // Some things for which we allocate `LocalDefId`s don't correspond to
+        // anything in the AST, so they don't have a `NodeId`. For these cases
+        // we don't need a mapping from `NodeId` to `LocalDefId`.
+        if node_id != ast::DUMMY_NODE_ID {
+            debug!("create_def: def_id_to_node_id[{:?}] <-> {:?}", def_id, node_id);
+            self.resolver.node_id_to_def_id.insert(node_id, def_id);
+        }
+
+        def_id
+    }
+
+    fn next_node_id(&mut self) -> NodeId {
+        let start = self.resolver.next_node_id;
+        let next = start.as_u32().checked_add(1).expect("input too large; ran out of NodeIds");
+        self.resolver.next_node_id = ast::NodeId::from_u32(next);
+        start
+    }
+
+    fn opt_local_def_id(&self, node: NodeId) -> Option<LocalDefId> {
+        self.resolver.node_id_to_def_id.get(&node).copied()
+    }
+
+    fn local_def_id(&self, node: NodeId) -> LocalDefId {
+        self.opt_local_def_id(node).unwrap_or_else(|| panic!("no entry for node id: `{:?}`", node))
+    }
+
     #[instrument(level = "debug", skip(self, f))]
     fn with_hir_id_owner(
         &mut self,
         owner: NodeId,
         f: impl FnOnce(&mut Self) -> hir::OwnerNode<'hir>,
     ) {
-        let def_id = self.resolver.local_def_id(owner);
+        let def_id = self.local_def_id(owner);
 
         let current_attrs = std::mem::take(&mut self.attrs);
         let current_bodies = std::mem::take(&mut self.bodies);
@@ -475,6 +527,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             std::mem::replace(&mut self.item_local_id_counter, hir::ItemLocalId::new(1));
         let current_impl_trait_defs = std::mem::take(&mut self.impl_trait_defs);
         let current_impl_trait_bounds = std::mem::take(&mut self.impl_trait_bounds);
+        // Do not reset `next_node_id` and `node_id_to_def_id` as we want to refer to the
+        // subdefinitions' nodes.
 
         // Always allocate the first `HirId` for the owner itself.
         let _old = self.node_id_to_local_id.insert(owner, hir::ItemLocalId::new(0));
@@ -518,8 +572,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         bodies.sort_by_key(|(k, _)| *k);
         let bodies = SortedMap::from_presorted_elements(bodies);
         let (hash_including_bodies, hash_without_bodies) = self.hash_owner(node, &bodies);
-        let (nodes, parenting) =
-            index::index_hir(self.sess, self.resolver.definitions(), node, &bodies);
+        let (nodes, parenting) = index::index_hir(self.sess, self.definitions, node, &bodies);
         let nodes = hir::OwnerNodes {
             hash_including_bodies,
             hash_without_bodies,
@@ -528,7 +581,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             local_id_to_def_id,
         };
         let attrs = {
-            let mut hcx = self.resolver.create_stable_hashing_context();
+            let mut hcx = self.create_stable_hashing_context();
             let mut stable_hasher = StableHasher::new();
             attrs.hash_stable(&mut hcx, &mut stable_hasher);
             let hash = stable_hasher.finish();
@@ -545,7 +598,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         node: hir::OwnerNode<'hir>,
         bodies: &SortedMap<hir::ItemLocalId, &'hir hir::Body<'hir>>,
     ) -> (Fingerprint, Fingerprint) {
-        let mut hcx = self.resolver.create_stable_hashing_context();
+        let mut hcx = self.create_stable_hashing_context();
         let mut stable_hasher = StableHasher::new();
         hcx.with_hir_bodies(true, node.def_id(), bodies, |hcx| {
             node.hash_stable(hcx, &mut stable_hasher)
@@ -582,13 +635,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 self.item_local_id_counter.increment_by(1);
 
                 assert_ne!(local_id, hir::ItemLocalId::new(0));
-                if let Some(def_id) = self.resolver.opt_local_def_id(ast_node_id) {
+                if let Some(def_id) = self.opt_local_def_id(ast_node_id) {
                     // Do not override a `MaybeOwner::Owner` that may already here.
                     self.children.entry(def_id).or_insert(hir::MaybeOwner::NonOwner(hir_id));
                     self.local_id_to_def_id.insert(local_id, def_id);
                 }
 
-                if let Some(traits) = self.resolver.take_trait_map(ast_node_id) {
+                if let Some(traits) = self.resolver.trait_map.remove(&ast_node_id) {
                     self.trait_map.insert(hir_id.local_id, traits.into_boxed_slice());
                 }
 
@@ -598,7 +651,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     fn next_id(&mut self) -> hir::HirId {
-        let node_id = self.resolver.next_node_id();
+        let node_id = self.next_node_id();
         self.lower_node_id(node_id)
     }
 
@@ -648,7 +701,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             allow_internal_unstable,
             reason,
             self.sess.edition(),
-            self.resolver.create_stable_hashing_context(),
+            self.create_stable_hashing_context(),
         )
     }
 
@@ -940,17 +993,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     // constructing the HIR for `impl bounds...` and then lowering that.
 
                     let parent_def_id = self.current_hir_id_owner;
-                    let impl_trait_node_id = self.resolver.next_node_id();
-                    self.resolver.create_def(
-                        parent_def_id,
-                        impl_trait_node_id,
-                        DefPathData::ImplTrait,
-                        ExpnId::root(),
-                        constraint.span,
-                    );
+                    let impl_trait_node_id = self.next_node_id();
+                    self.create_def(parent_def_id, impl_trait_node_id, DefPathData::ImplTrait);
 
                     self.with_dyn_type_scope(false, |this| {
-                        let node_id = this.resolver.next_node_id();
+                        let node_id = this.next_node_id();
                         let ty = this.lower_ty(
                             &Ty {
                                 id: node_id,
@@ -1050,16 +1097,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                 // Construct an AnonConst where the expr is the "ty"'s path.
 
                                 let parent_def_id = self.current_hir_id_owner;
-                                let node_id = self.resolver.next_node_id();
+                                let node_id = self.next_node_id();
 
                                 // Add a definition for the in-band const def.
-                                self.resolver.create_def(
-                                    parent_def_id,
-                                    node_id,
-                                    DefPathData::AnonConst,
-                                    ExpnId::root(),
-                                    ty.span,
-                                );
+                                self.create_def(parent_def_id, node_id, DefPathData::AnonConst);
 
                                 let span = self.lower_span(ty.span);
                                 let path_expr = Expr {
@@ -1129,7 +1170,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         debug_assert_eq!(start.plus(1), end);
                         start
                     } else {
-                        self.resolver.next_node_id()
+                        self.next_node_id()
                     };
                     let span = self.sess.source_map().next_point(t.span.shrink_to_lo());
                     Lifetime { ident: Ident::new(kw::UnderscoreLifetime, span), id }
@@ -1272,7 +1313,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // frequently opened issues show.
         let opaque_ty_span = self.mark_span_with_reason(DesugaringKind::OpaqueTy, span, None);
 
-        let opaque_ty_def_id = self.resolver.local_def_id(opaque_ty_node_id);
+        let opaque_ty_def_id = self.local_def_id(opaque_ty_node_id);
 
         let mut collected_lifetimes = FxHashMap::default();
         self.with_hir_id_owner(opaque_ty_node_id, |lctx| {
@@ -1290,7 +1331,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             let lifetime_defs = lctx.arena.alloc_from_iter(collected_lifetimes.iter().map(
                 |(_, &(span, p_id, p_name, _))| {
                     let hir_id = lctx.lower_node_id(p_id);
-                    debug_assert_ne!(lctx.resolver.opt_local_def_id(p_id), None);
+                    debug_assert_ne!(lctx.opt_local_def_id(p_id), None);
 
                     let kind = if p_name.ident().name == kw::UnderscoreLifetime {
                         hir::LifetimeParamKind::Elided
@@ -1329,7 +1370,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         let lifetimes = self.arena.alloc_from_iter(collected_lifetimes.into_iter().map(
             |(_, (span, _, p_name, res))| {
-                let id = self.resolver.next_node_id();
+                let id = self.next_node_id();
                 let ident = Ident::new(p_name.ident().name, span);
                 let l = self.new_named_lifetime_with_res(id, span, ident, res);
                 hir::GenericArg::Lifetime(l)
@@ -1438,7 +1479,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 FnRetTy::Ty(ref ty) => {
                     let context = match fn_node_id {
                         Some(fn_node_id) if kind.impl_trait_return_allowed() => {
-                            let fn_def_id = self.resolver.local_def_id(fn_node_id);
+                            let fn_def_id = self.local_def_id(fn_node_id);
                             ImplTraitContext::ReturnPositionOpaqueTy {
                                 origin: hir::OpaqueTyOrigin::FnReturn(fn_def_id),
                             }
@@ -1512,8 +1553,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         let opaque_ty_span = self.mark_span_with_reason(DesugaringKind::Async, span, None);
 
-        let opaque_ty_def_id = self.resolver.local_def_id(opaque_ty_node_id);
-        let fn_def_id = self.resolver.local_def_id(fn_node_id);
+        let opaque_ty_def_id = self.local_def_id(opaque_ty_node_id);
+        let fn_def_id = self.local_def_id(fn_node_id);
 
         // When we create the opaque type for this async fn, it is going to have
         // to capture all the lifetimes involved in the signature (including in the
@@ -1563,17 +1604,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         debug!(?extra_lifetime_params);
         for (ident, outer_node_id, outer_res) in extra_lifetime_params {
             let Ident { name, span } = ident;
-            let outer_def_id = self.resolver.local_def_id(outer_node_id);
-            let inner_node_id = self.resolver.next_node_id();
+            let outer_def_id = self.local_def_id(outer_node_id);
+            let inner_node_id = self.next_node_id();
 
             // Add a definition for the in scope lifetime def.
-            self.resolver.create_def(
-                opaque_ty_def_id,
-                inner_node_id,
-                DefPathData::LifetimeNs(name),
-                ExpnId::root(),
-                span.with_parent(None),
-            );
+            self.create_def(opaque_ty_def_id, inner_node_id, DefPathData::LifetimeNs(name));
 
             let (p_name, inner_res) = match outer_res {
                 // Input lifetime like `'a`:
@@ -1614,7 +1649,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             let generic_params =
                 this.arena.alloc_from_iter(captures.iter().map(|(_, &(span, p_id, p_name, _))| {
                     let hir_id = this.lower_node_id(p_id);
-                    debug_assert_ne!(this.resolver.opt_local_def_id(p_id), None);
+                    debug_assert_ne!(this.opt_local_def_id(p_id), None);
 
                     let kind = if p_name.ident().name == kw::UnderscoreLifetime {
                         hir::LifetimeParamKind::Elided
@@ -1666,7 +1701,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // generate `'_`.
         let generic_args =
             self.arena.alloc_from_iter(captures.into_iter().map(|(_, (span, _, p_name, res))| {
-                let id = self.resolver.next_node_id();
+                let id = self.next_node_id();
                 let ident = Ident::new(p_name.ident().name, span);
                 let l = self.new_named_lifetime_with_res(id, span, ident, res);
                 hir::GenericArg::Lifetime(l)
@@ -1757,74 +1792,74 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             LifetimeRes::Param { mut param, binder } => {
                 debug_assert_ne!(ident.name, kw::UnderscoreLifetime);
                 let p_name = ParamName::Plain(ident);
-                if let Some(LifetimeCaptureContext { parent_def_id, captures, binders_to_ignore }) =
-                    &mut self.captured_lifetimes
-                    && !binders_to_ignore.contains(&binder)
-                {
-                    match captures.entry(param) {
-                        Entry::Occupied(o) => param = self.resolver.local_def_id(o.get().1),
-                        Entry::Vacant(v) => {
-                            let p_id = self.resolver.next_node_id();
-                            let p_def_id = self.resolver.create_def(
-                                *parent_def_id,
-                                p_id,
-                                DefPathData::LifetimeNs(p_name.ident().name),
-                                ExpnId::root(),
-                                span.with_parent(None),
-                            );
+                if let Some(mut captured_lifetimes) = self.captured_lifetimes.take() {
+                    if !captured_lifetimes.binders_to_ignore.contains(&binder) {
+                        match captured_lifetimes.captures.entry(param) {
+                            Entry::Occupied(o) => param = self.local_def_id(o.get().1),
+                            Entry::Vacant(v) => {
+                                let p_id = self.next_node_id();
+                                let p_def_id = self.create_def(
+                                    captured_lifetimes.parent_def_id,
+                                    p_id,
+                                    DefPathData::LifetimeNs(p_name.ident().name),
+                                );
 
-                            v.insert((span, p_id, p_name, res));
-                            param = p_def_id;
+                                v.insert((span, p_id, p_name, res));
+                                param = p_def_id;
+                            }
                         }
                     }
+
+                    self.captured_lifetimes = Some(captured_lifetimes);
                 }
                 hir::LifetimeName::Param(param, p_name)
             }
             LifetimeRes::Fresh { mut param, binder } => {
                 debug_assert_eq!(ident.name, kw::UnderscoreLifetime);
-                if let Some(LifetimeCaptureContext { parent_def_id, captures, binders_to_ignore }) =
-                    &mut self.captured_lifetimes
-                    && !binders_to_ignore.contains(&binder)
-                {
-                    match captures.entry(param) {
-                        Entry::Occupied(o) => param = self.resolver.local_def_id(o.get().1),
-                        Entry::Vacant(v) => {
-                            let p_id = self.resolver.next_node_id();
-                            let p_def_id = self.resolver.create_def(
-                                *parent_def_id,
-                                p_id,
-                                DefPathData::LifetimeNs(kw::UnderscoreLifetime),
-                                ExpnId::root(),
-                                span.with_parent(None),
-                            );
+                if let Some(mut captured_lifetimes) = self.captured_lifetimes.take() {
+                    if !captured_lifetimes.binders_to_ignore.contains(&binder) {
+                        match captured_lifetimes.captures.entry(param) {
+                            Entry::Occupied(o) => param = self.local_def_id(o.get().1),
+                            Entry::Vacant(v) => {
+                                let p_id = self.next_node_id();
+                                let p_def_id = self.create_def(
+                                    captured_lifetimes.parent_def_id,
+                                    p_id,
+                                    DefPathData::LifetimeNs(kw::UnderscoreLifetime),
+                                );
 
-                            v.insert((span, p_id, ParamName::Fresh, res));
-                            param = p_def_id;
+                                v.insert((span, p_id, ParamName::Fresh, res));
+                                param = p_def_id;
+                            }
                         }
                     }
+
+                    self.captured_lifetimes = Some(captured_lifetimes);
                 }
                 hir::LifetimeName::Param(param, ParamName::Fresh)
             }
             LifetimeRes::Anonymous { binder, elided } => {
-                if let Some(LifetimeCaptureContext { parent_def_id, captures, binders_to_ignore }) =
-                    &mut self.captured_lifetimes
-                    && !binders_to_ignore.contains(&binder)
-                {
-                    let p_id = self.resolver.next_node_id();
-                    let p_def_id = self.resolver.create_def(
-                        *parent_def_id,
-                        p_id,
-                        DefPathData::LifetimeNs(kw::UnderscoreLifetime),
-                        ExpnId::root(),
-                        span.with_parent(None),
-                    );
-                    captures.insert(p_def_id, (span, p_id, ParamName::Fresh, res));
-                    hir::LifetimeName::Param(p_def_id, ParamName::Fresh)
-                } else if elided {
+                let mut l_name = None;
+                if let Some(mut captured_lifetimes) = self.captured_lifetimes.take() {
+                    if !captured_lifetimes.binders_to_ignore.contains(&binder) {
+                        let p_id = self.next_node_id();
+                        let p_def_id = self.create_def(
+                            captured_lifetimes.parent_def_id,
+                            p_id,
+                            DefPathData::LifetimeNs(kw::UnderscoreLifetime),
+                        );
+                        captured_lifetimes
+                            .captures
+                            .insert(p_def_id, (span, p_id, ParamName::Fresh, res));
+                        l_name = Some(hir::LifetimeName::Param(p_def_id, ParamName::Fresh));
+                    }
+                    self.captured_lifetimes = Some(captured_lifetimes);
+                };
+                l_name.unwrap_or(if elided {
                     hir::LifetimeName::Implicit
                 } else {
                     hir::LifetimeName::Underscore
-                }
+                })
             }
             LifetimeRes::Static => hir::LifetimeName::Static,
             LifetimeRes::Error => hir::LifetimeName::Error,
@@ -1954,7 +1989,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         bounds: &[GenericBound],
     ) -> (hir::GenericParam<'hir>, Option<hir::WherePredicate<'hir>>, hir::TyKind<'hir>) {
         // Add a definition for the in-band `Param`.
-        let def_id = self.resolver.local_def_id(node_id);
+        let def_id = self.local_def_id(node_id);
 
         let hir_bounds = self.lower_param_bounds(bounds, ImplTraitContext::Universal);
         // Set the name to `impl Bound1 + Bound2`.

@@ -1,6 +1,6 @@
-use crate::{FnDeclKind, ImplTraitPosition};
-
+use super::ResolverAstLoweringExt;
 use super::{ImplTraitContext, LoweringContext, ParamMode, ParenthesizedGenericArgs};
+use crate::{FnDeclKind, ImplTraitPosition};
 
 use rustc_ast::attr;
 use rustc_ast::ptr::P as AstP;
@@ -11,7 +11,6 @@ use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::definitions::DefPathData;
-use rustc_span::hygiene::ExpnId;
 use rustc_span::source_map::{respan, DesugaringKind, Span, Spanned};
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::DUMMY_SP;
@@ -355,16 +354,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
         for (idx, arg) in args.into_iter().enumerate() {
             if legacy_args_idx.contains(&idx) {
                 let parent_def_id = self.current_hir_id_owner;
-                let node_id = self.resolver.next_node_id();
+                let node_id = self.next_node_id();
 
                 // Add a definition for the in-band const def.
-                self.resolver.create_def(
-                    parent_def_id,
-                    node_id,
-                    DefPathData::AnonConst,
-                    ExpnId::root(),
-                    arg.span,
-                );
+                self.create_def(parent_def_id, node_id, DefPathData::AnonConst);
 
                 let anon_const = AnonConst { id: node_id, value: arg };
                 generic_args.push(AngleBracketedArg::Arg(GenericArg::Const(anon_const)));
@@ -724,7 +717,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         };
 
         // `::std::task::Poll::Ready(result) => break result`
-        let loop_node_id = self.resolver.next_node_id();
+        let loop_node_id = self.next_node_id();
         let loop_hir_id = self.lower_node_id(loop_node_id);
         let ready_arm = {
             let x_ident = Ident::with_dummy_span(sym::result);

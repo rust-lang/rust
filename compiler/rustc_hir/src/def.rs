@@ -1,9 +1,9 @@
-use crate::def_id::DefId;
 use crate::hir;
 
 use rustc_ast as ast;
 use rustc_ast::NodeId;
 use rustc_macros::HashStable_Generic;
+use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::Symbol;
 
@@ -710,4 +710,44 @@ impl<Id> Res<Id> {
     pub fn expected_in_unit_struct_pat(&self) -> bool {
         matches!(self, Res::Def(DefKind::Ctor(_, CtorKind::Const), _) | Res::SelfCtor(..))
     }
+}
+
+/// Resolution for a lifetime appearing in a type.
+#[derive(Copy, Clone, Debug)]
+pub enum LifetimeRes {
+    /// Successfully linked the lifetime to a generic parameter.
+    Param {
+        /// Id of the generic parameter that introduced it.
+        param: LocalDefId,
+        /// Id of the introducing place. That can be:
+        /// - an item's id, for the item's generic parameters;
+        /// - a TraitRef's ref_id, identifying the `for<...>` binder;
+        /// - a BareFn type's id;
+        /// - a Path's id when this path has parenthesized generic args.
+        ///
+        /// This information is used for impl-trait lifetime captures, to know when to or not to
+        /// capture any given lifetime.
+        binder: NodeId,
+    },
+    /// Created a generic parameter for an anonymous lifetime.
+    Fresh {
+        /// Id of the generic parameter that introduced it.
+        param: LocalDefId,
+        /// Id of the introducing place. See `Param`.
+        binder: NodeId,
+    },
+    /// This variant is used for anonymous lifetimes that we did not resolve during
+    /// late resolution.  Shifting the work to the HIR lifetime resolver.
+    Anonymous {
+        /// Id of the introducing place. See `Param`.
+        binder: NodeId,
+        /// Whether this lifetime was spelled or elided.
+        elided: bool,
+    },
+    /// Explicit `'static` lifetime.
+    Static,
+    /// Resolution failure.
+    Error,
+    /// HACK: This is used to recover the NodeId of an elided lifetime.
+    ElidedAnchor { start: NodeId, end: NodeId },
 }
