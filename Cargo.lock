@@ -3385,7 +3385,7 @@ dependencies = [
 name = "rustbook"
 version = "0.1.0"
 dependencies = [
- "clap 2.34.0",
+ "clap 3.1.1",
  "env_logger 0.7.1",
  "mdbook",
 ]
