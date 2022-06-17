@@ -13,10 +13,8 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::hygiene::walk_chain;
 use rustc_span::source_map::SourceMap;
-use rustc_span::{BytePos, Span, Symbol};
+use rustc_span::{sym, BytePos, Span, Symbol};
 use std::borrow::Cow;
-
-const ACCEPTABLE_MACRO: [&str; 2] = ["todo", "unimplemented"];
 
 declare_clippy_lint! {
     /// ### What it does
@@ -394,7 +392,10 @@ fn acceptable_macro(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     if let ExprKind::Call(call_expr, _)  = expr.kind
         && let ExprKind::Path(QPath::Resolved(None, path)) = call_expr.kind
         && macro_backtrace(path.span).any(|macro_call| {
-            ACCEPTABLE_MACRO.contains(&cx.tcx.item_name(macro_call.def_id).as_str())
+            matches!(
+                &cx.tcx.get_diagnostic_name(macro_call.def_id),
+                Some(sym::todo_macro | sym::unimplemented_macro)
+            )
     }) {
         return true;
     }
