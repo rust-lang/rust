@@ -339,14 +339,6 @@ impl<'a> CompletionContext<'a> {
 
         // Overwrite the path kind for derives
         if let Some((original_file, file_with_fake_ident, offset, origin_attr)) = derive_ctx {
-            self.existing_derives = self
-                .sema
-                .resolve_derive_macro(&origin_attr)
-                .into_iter()
-                .flatten()
-                .flatten()
-                .collect();
-
             if let Some(ast::NameLike::NameRef(name_ref)) =
                 find_node_at_offset(&file_with_fake_ident, offset)
             {
@@ -354,7 +346,15 @@ impl<'a> CompletionContext<'a> {
                 let (mut nameref_ctx, _, _) =
                     Self::classify_name_ref(&self.sema, &original_file, name_ref, parent);
                 if let Some(NameRefKind::Path(path_ctx)) = &mut nameref_ctx.kind {
-                    path_ctx.kind = PathKind::Derive;
+                    path_ctx.kind = PathKind::Derive {
+                        existing_derives: self
+                            .sema
+                            .resolve_derive_macro(&origin_attr)
+                            .into_iter()
+                            .flatten()
+                            .flatten()
+                            .collect(),
+                    };
                 }
                 self.ident_ctx = IdentContext::NameRef(nameref_ctx);
                 return Some(());

@@ -101,7 +101,9 @@ pub(super) enum PathKind {
         kind: AttrKind,
         annotated_item_kind: Option<SyntaxKind>,
     },
-    Derive,
+    Derive {
+        existing_derives: FxHashSet<hir::Macro>,
+    },
     /// Path in item position, that is inside an (Assoc)ItemList
     Item {
         kind: ItemListKind,
@@ -332,8 +334,6 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) pattern_ctx: Option<PatternContext>,
     pub(super) qualifier_ctx: QualifierCtx,
 
-    pub(super) existing_derives: FxHashSet<hir::Macro>,
-
     pub(super) locals: FxHashMap<Name, Local>,
 }
 
@@ -556,7 +556,6 @@ impl<'a> CompletionContext<'a> {
             ident_ctx: IdentContext::UnexpandedAttrTT { fake_attribute_under_caret: None },
             pattern_ctx: None,
             qualifier_ctx: Default::default(),
-            existing_derives: Default::default(),
             locals,
         };
         ctx.expand_and_fill(
