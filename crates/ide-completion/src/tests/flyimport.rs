@@ -1,6 +1,9 @@
 use expect_test::{expect, Expect};
 
-use crate::tests::{check_edit, check_edit_with_config, TEST_CONFIG};
+use crate::{
+    context::NameRefKind,
+    tests::{check_edit, check_edit_with_config, TEST_CONFIG},
+};
 
 fn check(ra_fixture: &str, expect: Expect) {
     let config = TEST_CONFIG;
@@ -8,7 +11,20 @@ fn check(ra_fixture: &str, expect: Expect) {
     let ctx = crate::context::CompletionContext::new(&db, position, &config).unwrap();
 
     let mut acc = crate::completions::Completions::default();
-    crate::completions::flyimport::import_on_the_fly(&mut acc, &ctx);
+    if let Some(pattern_ctx) = &ctx.pattern_ctx {
+        crate::completions::flyimport::import_on_the_fly_pat(&mut acc, &ctx, pattern_ctx);
+    }
+    if let crate::context::IdentContext::NameRef(name_ref_ctx) = &ctx.ident_ctx {
+        match &name_ref_ctx.kind {
+            Some(NameRefKind::Path(path)) => {
+                crate::completions::flyimport::import_on_the_fly_path(&mut acc, &ctx, path);
+            }
+            Some(NameRefKind::DotAccess(dot_access)) => {
+                crate::completions::flyimport::import_on_the_fly_dot(&mut acc, &ctx, dot_access);
+            }
+            _ => (),
+        }
+    }
 
     expect.assert_eq(&super::render_completion_list(Vec::from(acc)));
 }

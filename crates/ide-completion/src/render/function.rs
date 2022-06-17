@@ -9,7 +9,7 @@ use syntax::SmolStr;
 use crate::{
     context::{
         CompletionContext, DotAccess, DotAccessKind, IdentContext, NameRefContext, NameRefKind,
-        PathCompletionCtx, PathKind,
+        PathCompletionCtx, PathKind, Qualified,
     },
     item::{Builder, CompletionItem, CompletionItemKind, CompletionRelevance},
     render::{compute_exact_name_match, compute_ref_match, compute_type_match, RenderContext},
@@ -80,7 +80,17 @@ fn render(
         // FIXME For now we don't properly calculate the edits for ref match
         // completions on methods or qualified paths, so we've disabled them.
         // See #8058.
-        if matches!(func_kind, FuncKind::Function) && ctx.completion.path_qual().is_none() {
+        let qualified_path = matches!(
+            ctx.completion.ident_ctx,
+            IdentContext::NameRef(NameRefContext {
+                kind: Some(NameRefKind::Path(PathCompletionCtx {
+                    qualified: Qualified::With { .. },
+                    ..
+                })),
+                ..
+            })
+        );
+        if matches!(func_kind, FuncKind::Function) && !qualified_path {
             item.ref_match(ref_match);
         }
     }

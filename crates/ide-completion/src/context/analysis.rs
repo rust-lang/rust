@@ -430,9 +430,12 @@ impl<'a> CompletionContext<'a> {
                 let (nameref_ctx, pat_ctx, qualifier_ctx) =
                     Self::classify_name_ref(&self.sema, &original_file, name_ref, parent.clone());
 
+                if !matches!(nameref_ctx.kind, Some(NameRefKind::Path(_))) {
+                    // FIXME: Pattern context should probably be part of ident_ctx
+                    self.pattern_ctx = pat_ctx;
+                }
                 self.qualifier_ctx = qualifier_ctx;
                 self.ident_ctx = IdentContext::NameRef(nameref_ctx);
-                self.pattern_ctx = pat_ctx;
             }
             ast::NameLike::Name(name) => {
                 let (name_ctx, pat_ctx) = Self::classify_name(&self.sema, original_file, name)?;
