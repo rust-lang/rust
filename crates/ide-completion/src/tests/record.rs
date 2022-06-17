@@ -105,7 +105,6 @@ fn foo(f: Struct) {
 #[test]
 fn functional_update() {
     // FIXME: This should filter out all completions that do not have the type `Foo`
-    // FIXME: Fields should not show up after `.`
     check(
         r#"
 //- minicore:default
@@ -192,8 +191,6 @@ fn main() {
 }
 "#,
         expect![[r#"
-            fd foo1                   u32
-            fd foo2                   u32
             fn default() (as Default) fn() -> Self
         "#]],
     );

@@ -50,6 +50,7 @@ pub(super) enum PathKind {
         in_loop_body: bool,
         after_if_expr: bool,
         ref_expr_parent: Option<ast::RefExpr>,
+        is_func_update: Option<ast::RecordExpr>,
     },
     Type {
         in_tuple_struct: bool,
@@ -199,13 +200,17 @@ pub(super) enum NameKind {
 pub(super) struct NameRefContext {
     /// NameRef syntax in the original file
     pub(super) nameref: Option<ast::NameRef>,
-    // FIXME: these fields are actually disjoint -> enum
-    pub(super) dot_access: Option<DotAccess>,
-    pub(super) path_ctx: Option<PathCompletionCtx>,
+    pub(super) kind: Option<NameRefKind>,
+}
+
+#[derive(Debug)]
+pub(super) enum NameRefKind {
+    Path(PathCompletionCtx),
+    DotAccess(DotAccess),
     /// Position where we are only interested in keyword completions
-    pub(super) keyword: Option<ast::Item>,
+    Keyword(ast::Item),
     /// The record expression this nameref is a field of
-    pub(super) record_expr: Option<(ast::RecordExpr, bool)>,
+    RecordExpr(ast::RecordExpr),
 }
 
 #[derive(Debug)]
@@ -341,9 +346,10 @@ impl<'a> CompletionContext<'a> {
 
     pub(crate) fn dot_receiver(&self) -> Option<&ast::Expr> {
         match self.nameref_ctx() {
-            Some(NameRefContext { dot_access: Some(DotAccess { receiver, .. }), .. }) => {
-                receiver.as_ref()
-            }
+            Some(NameRefContext {
+                kind: Some(NameRefKind::DotAccess(DotAccess { receiver, .. })),
+                ..
+            }) => receiver.as_ref(),
             _ => None,
         }
     }
@@ -358,7 +364,10 @@ impl<'a> CompletionContext<'a> {
     }
 
     pub(crate) fn path_context(&self) -> Option<&PathCompletionCtx> {
-        self.nameref_ctx().and_then(|ctx| ctx.path_ctx.as_ref())
+        self.nameref_ctx().and_then(|ctx| match &ctx.kind {
+            Some(NameRefKind::Path(path)) => Some(path),
+            _ => None,
+        })
     }
 
     pub(crate) fn path_qual(&self) -> Option<&ast::Path> {
@@ -857,7 +866,7 @@ impl<'a> CompletionContext<'a> {
                 let parent = name_ref.syntax().parent()?;
                 let (mut nameref_ctx, _, _) =
                     Self::classify_name_ref(&self.sema, &original_file, name_ref, parent);
-                if let Some(path_ctx) = &mut nameref_ctx.path_ctx {
+                if let Some(NameRefKind::Path(path_ctx)) = &mut nameref_ctx.kind {
                     path_ctx.kind = PathKind::Derive;
                 }
                 self.ident_ctx = IdentContext::NameRef(nameref_ctx);
@@ -1026,23 +1035,13 @@ impl<'a> CompletionContext<'a> {
     ) -> (NameRefContext, Option<PatternContext>, QualifierCtx) {
         let nameref = find_node_at_offset(&original_file, name_ref.syntax().text_range().start());
 
-        let mut res = (
-            NameRefContext {
-                dot_access: None,
-                path_ctx: None,
-                nameref,
-                record_expr: None,
-                keyword: None,
-            },
-            None,
-            QualifierCtx::default(),
-        );
+        let mut res = (NameRefContext { nameref, kind: None }, None, QualifierCtx::default());
         let (nameref_ctx, pattern_ctx, qualifier_ctx) = &mut res;
 
         if let Some(record_field) = ast::RecordExprField::for_field_name(&name_ref) {
-            nameref_ctx.record_expr =
+            nameref_ctx.kind =
                 find_node_in_file_compensated(original_file, &record_field.parent_record_lit())
-                    .zip(Some(false));
+                    .map(NameRefKind::RecordExpr);
             return res;
         }
         if let Some(record_field) = ast::RecordPatField::for_field_name_ref(&name_ref) {
@@ -1075,20 +1074,20 @@ impl<'a> CompletionContext<'a> {
                         },
                         _ => false,
                     };
-                    nameref_ctx.dot_access = Some(DotAccess {
+                    nameref_ctx.kind = Some(NameRefKind::DotAccess(DotAccess {
                         receiver_ty: receiver.as_ref().and_then(|it| sema.type_of_expr(it)),
                         kind: DotAccessKind::Field { receiver_is_ambiguous_float_literal },
                         receiver
-                    });
+                    }));
                     return res;
                 },
                 ast::MethodCallExpr(method) => {
                     let receiver = find_in_original_file(method.receiver(), original_file);
-                    nameref_ctx.dot_access = Some(DotAccess {
+                    nameref_ctx.kind = Some(NameRefKind::DotAccess(DotAccess {
                         receiver_ty: receiver.as_ref().and_then(|it| sema.type_of_expr(it)),
                         kind: DotAccessKind::Method { has_parens: method.arg_list().map_or(false, |it| it.l_paren_token().is_some()) },
                         receiver
-                    });
+                    }));
                     return res;
                 },
                 _ => return res,
@@ -1113,10 +1112,11 @@ impl<'a> CompletionContext<'a> {
                 })
                 .unwrap_or(false)
         };
-        let mut fill_record_expr = |syn: &SyntaxNode| {
+        let func_update_record = |syn: &SyntaxNode| {
             if let Some(record_expr) = syn.ancestors().nth(2).and_then(ast::RecordExpr::cast) {
-                nameref_ctx.record_expr =
-                    find_node_in_file_compensated(original_file, &record_expr).zip(Some(true));
+                find_node_in_file_compensated(original_file, &record_expr)
+            } else {
+                None
             }
         };
         let after_if_expr = |node: SyntaxNode| {
@@ -1172,22 +1172,21 @@ impl<'a> CompletionContext<'a> {
                         if let Some(p) = it.syntax().parent() {
                             if ast::ExprStmt::can_cast(p.kind()) {
                                 if let Some(kind) = inbetween_body_and_decl_check(p) {
-                                    nameref_ctx.keyword = Some(kind);
+                                    nameref_ctx.kind = Some(NameRefKind::Keyword(kind));
                                     return None;
                                 }
                             }
                         }
 
-                        fill_record_expr(it.syntax());
-
-                        path_ctx.has_call_parens = it.syntax().parent().map_or(false, |it| ast::CallExpr::can_cast(it.kind()));
+                                                path_ctx.has_call_parens = it.syntax().parent().map_or(false, |it| ast::CallExpr::can_cast(it.kind()));
                         let in_block_expr = is_in_block(it.syntax());
                         let in_loop_body = is_in_loop_body(it.syntax());
                         let after_if_expr = after_if_expr(it.syntax().clone());
                         let ref_expr_parent = path.as_single_name_ref()
                             .and_then(|_| it.syntax().parent()).and_then(ast::RefExpr::cast);
+                        let is_func_update = func_update_record(it.syntax());
 
-                        Some(PathKind::Expr { in_block_expr, in_loop_body, after_if_expr, ref_expr_parent })
+                        Some(PathKind::Expr { in_block_expr, in_loop_body, after_if_expr, ref_expr_parent, is_func_update })
                     },
                     ast::TupleStructPat(it) => {
                         path_ctx.has_call_parens = true;
@@ -1205,7 +1204,7 @@ impl<'a> CompletionContext<'a> {
                     },
                     ast::MacroCall(it) => {
                         if let Some(kind) = inbetween_body_and_decl_check(it.syntax().clone()) {
-                            nameref_ctx.keyword = Some(kind);
+                            nameref_ctx.kind = Some(NameRefKind::Keyword(kind));
                             return None;
                         }
 
@@ -1236,10 +1235,10 @@ impl<'a> CompletionContext<'a> {
                                     let in_loop_body = is_in_loop_body(it.syntax());
                                     let in_block_expr = is_in_block(it.syntax());
                                     let after_if_expr = after_if_expr(it.syntax().clone());
-                                    fill_record_expr(it.syntax());
                                     let ref_expr_parent = path.as_single_name_ref()
                                         .and_then(|_| it.syntax().parent()).and_then(ast::RefExpr::cast);
-                                    PathKind::Expr { in_block_expr, in_loop_body, after_if_expr, ref_expr_parent }
+                                    let is_func_update = func_update_record(it.syntax());
+                                    PathKind::Expr { in_block_expr, in_loop_body, after_if_expr, ref_expr_parent, is_func_update }
                                 });
                             },
                         }
@@ -1365,7 +1364,7 @@ impl<'a> CompletionContext<'a> {
                 }
             }
         }
-        nameref_ctx.path_ctx = Some(path_ctx);
+        nameref_ctx.kind = Some(NameRefKind::Path(path_ctx));
         res
     }
 }

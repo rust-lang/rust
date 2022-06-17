@@ -4,11 +4,14 @@
 
 use syntax::ast::Item;
 
-use crate::{context::NameRefContext, CompletionContext, Completions};
+use crate::{
+    context::{NameRefContext, NameRefKind},
+    CompletionContext, Completions,
+};
 
 pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionContext) {
     let item = match ctx.nameref_ctx() {
-        Some(NameRefContext { keyword: Some(item), record_expr: None, .. }) => item,
+        Some(NameRefContext { kind: Some(NameRefKind::Keyword(item)), .. }) => item,
         _ => return,
     };
 

@@ -8,7 +8,9 @@ use itertools::Itertools;
 use syntax::{AstNode, SyntaxNode, T};
 
 use crate::{
-    context::{CompletionContext, NameRefContext, PathCompletionCtx, PathKind, PatternContext},
+    context::{
+        CompletionContext, NameRefContext, NameRefKind, PathCompletionCtx, PathKind, PatternContext,
+    },
     patterns::ImmediateLocation,
     render::{render_resolution_with_import, RenderContext},
 };
@@ -110,20 +112,21 @@ pub(crate) fn import_on_the_fly(acc: &mut Completions, ctx: &CompletionContext) 
     if !ctx.config.enable_imports_on_the_fly {
         return None;
     }
-    let path_kind = match ctx.nameref_ctx() {
-        Some(NameRefContext { path_ctx: Some(PathCompletionCtx { kind, .. }), .. })
-            if matches!(
-                kind,
-                PathKind::Expr { .. }
-                    | PathKind::Type { .. }
-                    | PathKind::Attr { .. }
-                    | PathKind::Derive
-                    | PathKind::Pat
-            ) =>
-        {
-            Some(kind)
-        }
-        Some(NameRefContext { dot_access: Some(_), .. }) => None,
+    let path_kind = match dbg!(ctx.nameref_ctx()) {
+        Some(NameRefContext {
+            kind:
+                Some(NameRefKind::Path(PathCompletionCtx {
+                    kind:
+                        kind @ (PathKind::Expr { .. }
+                        | PathKind::Type { .. }
+                        | PathKind::Attr { .. }
+                        | PathKind::Derive
+                        | PathKind::Pat),
+                    ..
+                })),
+            ..
+        }) => Some(kind),
+        Some(NameRefContext { kind: Some(NameRefKind::DotAccess(_)), .. }) => None,
         None if matches!(ctx.pattern_ctx, Some(PatternContext { record_pat: None, .. })) => {
             Some(&PathKind::Pat)
         }
