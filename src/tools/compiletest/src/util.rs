@@ -121,6 +121,8 @@ pub const HWASAN_SUPPORTED_TARGETS: &[&str] =
 pub const MEMTAG_SUPPORTED_TARGETS: &[&str] =
     &["aarch64-linux-android", "aarch64-unknown-linux-gnu"];
 
+pub const SHADOWCALLSTACK_SUPPORTED_TARGETS: &[&str] = &["aarch64-linux-android"];
+
 const BIG_ENDIAN: &[&str] = &[
     "aarch64_be",
     "armebv7r",

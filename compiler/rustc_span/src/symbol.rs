@@ -1282,6 +1282,7 @@ symbols! {
         self_in_typedefs,
         self_struct_ctor,
         semitransparent,
+        shadow_call_stack,
         shl,
         shl_assign,
         should_panic,

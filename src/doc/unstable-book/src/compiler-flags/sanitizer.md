@@ -18,11 +18,13 @@ This feature allows for use of one of following sanitizers:
 * [MemorySanitizer][clang-msan] a detector of uninitialized reads.
 * [MemTagSanitizer][clang-memtag] fast memory error detector based on
   Armv8.5-A Memory Tagging Extension.
+* [ShadowCallStack][clang-scs] provides backward-edge control flow protection.
 * [ThreadSanitizer][clang-tsan] a fast data race detector.
 
 To enable a sanitizer compile with `-Zsanitizer=address`,`-Zsanitizer=cfi`,
 `-Zsanitizer=hwaddress`, `-Zsanitizer=leak`, `-Zsanitizer=memory`,
-`-Zsanitizer=memtag`, or `-Zsanitizer=thread`. You might also need the `--target` and `build-std` flags. Example:
+`-Zsanitizer=memtag`, `-Zsanitizer=shadow-call-stack`, or `-Zsanitizer=thread`.
+You might also need the `--target` and `build-std` flags. Example:
 ```shell
 $ RUSTFLAGS=-Zsanitizer=address cargo build -Zbuild-std --target x86_64-unknown-linux-gnu
 ```
@@ -513,6 +515,18 @@ To enable this target feature compile with `-C target-feature="+mte"`.
 
 More information can be found in the associated [LLVM documentation](https://llvm.org/docs/MemTagSanitizer.html).
 
+# ShadowCallStack
+
+ShadowCallStack provides backward edge control flow protection by storing a function's return address in a separately allocated 'shadow call stack' and loading the return address from that shadow call stack.
+
+ShadowCallStack requires a platform ABI which reserves `x18` as the instrumentation makes use of this register.
+
+ShadowCallStack can be enabled with `-Zsanitizer=shadow-call-stack` option and is supported on the following targets:
+
+* `aarch64-linux-android`
+
+A runtime must be provided by the application or operating system. See the [LLVM documentation][clang-scs] for further details.
+
 # ThreadSanitizer
 
 ThreadSanitizer is a data race detection tool. It is supported on the following
@@ -610,4 +624,5 @@ Sanitizers produce symbolized stacktraces when llvm-symbolizer binary is in `PAT
 [clang-hwasan]: https://clang.llvm.org/docs/HardwareAssistedAddressSanitizerDesign.html
 [clang-lsan]: https://clang.llvm.org/docs/LeakSanitizer.html
 [clang-msan]: https://clang.llvm.org/docs/MemorySanitizer.html
+[clang-scs]: https://clang.llvm.org/docs/ShadowCallStack.html
 [clang-tsan]: https://clang.llvm.org/docs/ThreadSanitizer.html
