@@ -14,7 +14,7 @@ use rustc_middle::mir::{
     visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor as _},
     Mutability,
 };
-use rustc_middle::ty::{self, fold::TypeVisitor, Ty};
+use rustc_middle::ty::{self, visit::TypeVisitor, Ty};
 use rustc_mir_dataflow::{Analysis, AnalysisDomain, CallReturnPlaces, GenKill, GenKillAnalysis, ResultsCursor};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::{BytePos, Span};

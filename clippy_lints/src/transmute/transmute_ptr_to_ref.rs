@@ -5,7 +5,7 @@ use clippy_utils::{meets_msrv, msrvs, sugg};
 use rustc_errors::Applicability;
 use rustc_hir::{self as hir, Expr, GenericArg, Mutability, Path, TyKind};
 use rustc_lint::LateContext;
-use rustc_middle::ty::{self, Ty, TypeFoldable};
+use rustc_middle::ty::{self, Ty, TypeVisitable};
 use rustc_semver::RustcVersion;
 
 /// Checks for `transmute_ptr_to_ref` lint.
