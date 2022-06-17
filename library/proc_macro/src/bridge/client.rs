@@ -427,11 +427,7 @@ impl Client<crate::TokenStream, crate::TokenStream> {
         Client {
             get_handle_counters: HandleCounters::get,
             run: super::selfless_reify::reify_to_extern_c_fn_hrt_bridge(move |bridge| {
-                run_client(bridge, |input| {
-                    f(crate::TokenStream(Some(input)))
-                        .0
-                        .unwrap_or_else(|| TokenStream::concat_streams(None, vec![]))
-                })
+                run_client(bridge, |input| f(crate::TokenStream(Some(input))).0)
             }),
             _marker: PhantomData,
         }
@@ -446,9 +442,7 @@ impl Client<(crate::TokenStream, crate::TokenStream), crate::TokenStream> {
             get_handle_counters: HandleCounters::get,
             run: super::selfless_reify::reify_to_extern_c_fn_hrt_bridge(move |bridge| {
                 run_client(bridge, |(input, input2)| {
-                    f(crate::TokenStream(Some(input)), crate::TokenStream(Some(input2)))
-                        .0
-                        .unwrap_or_else(|| TokenStream::concat_streams(None, vec![]))
+                    f(crate::TokenStream(Some(input)), crate::TokenStream(Some(input2))).0
                 })
             }),
             _marker: PhantomData,
