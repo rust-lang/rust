@@ -46,7 +46,7 @@ declare_lint! {
     /// calling `std::mem::drop` on the expression is clearer and helps convey
     /// intent.
     pub LET_UNDERSCORE_DROP,
-    Deny,
+    Allow,
     "non-binding let on a type that implements `Drop`"
 }
 
