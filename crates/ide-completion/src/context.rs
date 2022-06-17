@@ -43,44 +43,7 @@ pub(crate) enum Visible {
     No,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub(super) enum PathKind {
-    Expr {
-        in_block_expr: bool,
-        in_loop_body: bool,
-        after_if_expr: bool,
-        ref_expr_parent: Option<ast::RefExpr>,
-        is_func_update: Option<ast::RecordExpr>,
-    },
-    Type {
-        in_tuple_struct: bool,
-    },
-    Attr {
-        kind: AttrKind,
-        annotated_item_kind: Option<SyntaxKind>,
-    },
-    Derive,
-    /// Path in item position, that is inside an (Assoc)ItemList
-    Item {
-        kind: ItemListKind,
-    },
-    Pat,
-    Vis {
-        has_in_token: bool,
-    },
-    Use,
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub(super) enum ItemListKind {
-    SourceFile,
-    Module,
-    Impl,
-    TraitImpl,
-    Trait,
-    ExternBlock,
-}
-
+/// Existing qualifiers for the thing we are currently completing.
 #[derive(Debug, Default)]
 pub(super) struct QualifierCtx {
     pub(super) unsafe_tok: Option<SyntaxToken>,
@@ -93,6 +56,7 @@ impl QualifierCtx {
     }
 }
 
+/// The state of the path we are currently completing.
 #[derive(Debug)]
 pub(crate) struct PathCompletionCtx {
     /// If this is a call with () already there (or {} in case of record patterns)
@@ -127,6 +91,58 @@ impl PathCompletionCtx {
     }
 }
 
+/// The kind of path we are completing right now.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(super) enum PathKind {
+    Expr {
+        in_block_expr: bool,
+        in_loop_body: bool,
+        after_if_expr: bool,
+        ref_expr_parent: Option<ast::RefExpr>,
+        is_func_update: Option<ast::RecordExpr>,
+    },
+    Type {
+        in_tuple_struct: bool,
+        /// Whether this type path is a type ascription or not
+        /// Original file ast node
+        ascription: Option<TypeAscriptionTarget>,
+    },
+    Attr {
+        kind: AttrKind,
+        annotated_item_kind: Option<SyntaxKind>,
+    },
+    Derive,
+    /// Path in item position, that is inside an (Assoc)ItemList
+    Item {
+        kind: ItemListKind,
+    },
+    Pat,
+    Vis {
+        has_in_token: bool,
+    },
+    Use,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) enum TypeAscriptionTarget {
+    Let(Option<ast::Pat>),
+    FnParam(Option<ast::Pat>),
+    RetType(Option<ast::Expr>),
+    Const(Option<ast::Expr>),
+}
+
+/// The kind of item list a [`PathKind::Item`] belongs to.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub(super) enum ItemListKind {
+    SourceFile,
+    Module,
+    Impl,
+    TraitImpl,
+    Trait,
+    ExternBlock,
+}
+
+/// The path qualifier state of the path we are completing.
 #[derive(Debug)]
 pub(crate) struct PathQualifierCtx {
     pub(crate) path: ast::Path,
@@ -139,6 +155,7 @@ pub(crate) struct PathQualifierCtx {
     pub(crate) is_infer_qualifier: bool,
 }
 
+/// The state of the pattern we are completing.
 #[derive(Debug)]
 pub(super) struct PatternContext {
     pub(super) refutability: PatternRefutability,
@@ -151,12 +168,14 @@ pub(super) struct PatternContext {
     pub(super) record_pat: Option<ast::RecordPat>,
 }
 
+/// The state of the lifetime we are completing.
 #[derive(Debug)]
 pub(super) struct LifetimeContext {
     pub(super) lifetime: Option<ast::Lifetime>,
     pub(super) kind: LifetimeKind,
 }
 
+/// The kind of lifetime we are completing.
 #[derive(Debug)]
 pub(super) enum LifetimeKind {
     LifetimeParam { is_decl: bool, param: ast::LifetimeParam },
@@ -165,6 +184,7 @@ pub(super) enum LifetimeKind {
     LabelDef,
 }
 
+/// The state of the name we are completing.
 #[derive(Debug)]
 pub(super) struct NameContext {
     #[allow(dead_code)]
@@ -172,6 +192,7 @@ pub(super) struct NameContext {
     pub(super) kind: NameKind,
 }
 
+/// The kind of the name we are completing.
 #[derive(Debug)]
 #[allow(dead_code)]
 pub(super) enum NameKind {
@@ -196,6 +217,7 @@ pub(super) enum NameKind {
     Variant,
 }
 
+/// The state of the NameRef we are completing.
 #[derive(Debug)]
 pub(super) struct NameRefContext {
     /// NameRef syntax in the original file
@@ -203,6 +225,7 @@ pub(super) struct NameRefContext {
     pub(super) kind: Option<NameRefKind>,
 }
 
+/// The kind of the NameRef we are completing.
 #[derive(Debug)]
 pub(super) enum NameRefKind {
     Path(PathCompletionCtx),
@@ -213,21 +236,26 @@ pub(super) enum NameRefKind {
     RecordExpr(ast::RecordExpr),
 }
 
+/// The identifier we are currently completing.
 #[derive(Debug)]
 pub(super) enum IdentContext {
     Name(NameContext),
     NameRef(NameRefContext),
     Lifetime(LifetimeContext),
-    /// Original token, fake token
+    /// The string the cursor is currently inside
     String {
+        /// original token
         original: ast::String,
+        /// fake token
         expanded: Option<ast::String>,
     },
+    /// Set if we are currently completing in an unexpanded attribute, this usually implies a builtin attribute like `allow($0)`
     UnexpandedAttrTT {
         fake_attribute_under_caret: Option<ast::Attr>,
     },
 }
 
+/// Information about the field or method access we are completing.
 #[derive(Debug)]
 pub(super) struct DotAccess {
     pub(super) receiver: Option<ast::Expr>,
@@ -1161,13 +1189,65 @@ impl<'a> CompletionContext<'a> {
             None
         };
 
+        let fetch_ascription = |it: Option<SyntaxNode>| {
+            let parent = it?;
+            match_ast! {
+                match parent {
+                    ast::Const(it) => {
+                        let name = find_in_original_file(it.name(), original_file)?;
+                        let original = ast::Const::cast(name.syntax().parent()?)?;
+                        Some(TypeAscriptionTarget::Const(original.body()))
+                    },
+                    ast::RetType(it) => {
+                        if it.thin_arrow_token().is_none() {
+                            return None;
+                        }
+                        let parent = match ast::Fn::cast(parent.parent()?) {
+                            Some(x) => x.param_list(),
+                            None => ast::ClosureExpr::cast(parent.parent()?)?.param_list(),
+                        };
+
+                        let parent = find_in_original_file(parent, original_file)?.syntax().parent()?;
+                        Some(TypeAscriptionTarget::RetType(match_ast! {
+                            match parent {
+                                ast::ClosureExpr(it) => {
+                                    it.body()
+                                },
+                                ast::Fn(it) => {
+                                    it.body().map(ast::Expr::BlockExpr)
+                                },
+                                _ => return None,
+                            }
+                        }))
+                    },
+                    ast::Param(it) => {
+                        if it.colon_token().is_none() {
+                            return None;
+                        }
+                        Some(TypeAscriptionTarget::FnParam(find_in_original_file(it.pat(), original_file)))
+                    },
+                    ast::LetStmt(it) => {
+                        if it.colon_token().is_none() {
+                            return None;
+                        }
+                        Some(TypeAscriptionTarget::Let(find_in_original_file(it.pat(), original_file)))
+                    },
+                    _ => None,
+                }
+            }
+        };
+
         // Infer the path kind
         let kind = path.syntax().parent().and_then(|it| {
             match_ast! {
                 match it {
-                    ast::PathType(it) => Some(PathKind::Type {
-                        in_tuple_struct: it.syntax().parent().map_or(false, |it| ast::TupleField::can_cast(it.kind()))
-                    }),
+                    ast::PathType(it) => {
+                        let ascription = fetch_ascription(it.syntax().parent());
+                        Some(PathKind::Type {
+                            in_tuple_struct: it.syntax().parent().map_or(false, |it| ast::TupleField::can_cast(it.kind())),
+                            ascription,
+                        })
+                    },
                     ast::PathExpr(it) => {
                         if let Some(p) = it.syntax().parent() {
                             if ast::ExprStmt::can_cast(p.kind()) {
@@ -1178,7 +1258,7 @@ impl<'a> CompletionContext<'a> {
                             }
                         }
 
-                                                path_ctx.has_call_parens = it.syntax().parent().map_or(false, |it| ast::CallExpr::can_cast(it.kind()));
+                        path_ctx.has_call_parens = it.syntax().parent().map_or(false, |it| ast::CallExpr::can_cast(it.kind()));
                         let in_block_expr = is_in_block(it.syntax());
                         let in_loop_body = is_in_loop_body(it.syntax());
                         let after_if_expr = after_if_expr(it.syntax().clone());
@@ -1212,7 +1292,7 @@ impl<'a> CompletionContext<'a> {
                         let parent = it.syntax().parent();
                         match parent.as_ref().map(|it| it.kind()) {
                             Some(SyntaxKind::MACRO_PAT) => Some(PathKind::Pat),
-                            Some(SyntaxKind::MACRO_TYPE) => Some(PathKind::Type { in_tuple_struct: false }),
+                            Some(SyntaxKind::MACRO_TYPE) => Some(PathKind::Type { in_tuple_struct: false, ascription: None }),
                             Some(SyntaxKind::ITEM_LIST) => Some(PathKind::Item { kind: ItemListKind::Module }),
                             Some(SyntaxKind::ASSOC_ITEM_LIST) => Some(PathKind::Item { kind: match parent.and_then(|it| it.parent()) {
                                 Some(it) => match_ast! {

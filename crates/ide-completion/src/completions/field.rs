@@ -18,7 +18,7 @@ pub(crate) fn complete_field_list(acc: &mut Completions, ctx: &CompletionContext
                     is_absolute_path: false,
                     qualifier: None,
                     parent: None,
-                    kind: PathKind::Type { in_tuple_struct: true },
+                    kind: PathKind::Type { in_tuple_struct: true, ascription: None },
                     has_type_args: false,
                     ..
                 })),

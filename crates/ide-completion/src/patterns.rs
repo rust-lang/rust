@@ -7,22 +7,14 @@
 use hir::Semantics;
 use ide_db::RootDatabase;
 use syntax::{
-    ast::{self, HasLoopBody, HasName},
+    ast::{self, HasLoopBody},
     match_ast, AstNode, SyntaxElement,
     SyntaxKind::*,
-    SyntaxNode, SyntaxToken, TextRange, TextSize,
+    SyntaxNode, SyntaxToken, TextSize,
 };
 
 #[cfg(test)]
 use crate::tests::check_pattern_is_applicable;
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) enum TypeAnnotation {
-    Let(Option<ast::Pat>),
-    FnParam(Option<ast::Pat>),
-    RetType(Option<ast::Expr>),
-    Const(Option<ast::Expr>),
-}
 
 /// Direct parent "thing" of what we are currently completing.
 ///
@@ -31,8 +23,6 @@ pub(crate) enum TypeAnnotation {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum ImmediateLocation {
     TypeBound,
-    /// Original file ast node
-    TypeAnnotation(TypeAnnotation),
     // Only set from a type arg
     /// Original file ast node
     GenericArgList(ast::GenericArgList),
@@ -84,62 +74,9 @@ pub(crate) fn determine_location(
             ast::GenericArgList(_) => sema
                 .find_node_at_offset_with_macros(original_file, offset)
                 .map(ImmediateLocation::GenericArgList)?,
-            ast::Const(it) => {
-                if !it.ty().map_or(false, |x| x.syntax().text_range().contains(offset)) {
-                    return None;
-                }
-                let name = find_in_original_file(it.name(), original_file)?;
-                let original = ast::Const::cast(name.syntax().parent()?)?;
-                ImmediateLocation::TypeAnnotation(TypeAnnotation::Const(original.body()))
-            },
-            ast::RetType(it) => {
-                if it.thin_arrow_token().is_none() {
-                    return None;
-                }
-                if !it.ty().map_or(false, |x| x.syntax().text_range().contains(offset)) {
-                    return None;
-                }
-                let parent = match ast::Fn::cast(parent.parent()?) {
-                    Some(x) => x.param_list(),
-                    None => ast::ClosureExpr::cast(parent.parent()?)?.param_list(),
-                };
-                let parent = find_in_original_file(parent, original_file)?.syntax().parent()?;
-                ImmediateLocation::TypeAnnotation(TypeAnnotation::RetType(match_ast! {
-                    match parent {
-                        ast::ClosureExpr(it) => {
-                            it.body()
-                        },
-                        ast::Fn(it) => {
-                            it.body().map(ast::Expr::BlockExpr)
-                        },
-                        _ => return None,
-                    }
-                }))
-            },
-            ast::Param(it) => {
-                if it.colon_token().is_none() {
-                    return None;
-                }
-                if !it.ty().map_or(false, |x| x.syntax().text_range().contains(offset)) {
-                    return None;
-                }
-                ImmediateLocation::TypeAnnotation(TypeAnnotation::FnParam(find_in_original_file(it.pat(), original_file)))
-            },
-            ast::LetStmt(it) => {
-                if it.colon_token().is_none() {
-                    return None;
-                }
-                if !it.ty().map_or(false, |x| x.syntax().text_range().contains(offset)) {
-                    return None;
-                }
-                ImmediateLocation::TypeAnnotation(TypeAnnotation::Let(find_in_original_file(it.pat(), original_file)))
-            },
             _ => return None,
         }
     };
-    fn find_in_original_file<N: AstNode>(x: Option<N>, original_file: &SyntaxNode) -> Option<N> {
-        x.map(|e| e.syntax().text_range()).and_then(|r| find_node_with_range(original_file, r))
-    }
     Some(res)
 }
 
@@ -162,11 +99,6 @@ fn maximize_name_ref(name_ref: &ast::NameRef) -> SyntaxNode {
         }
     }
     name_ref.syntax().clone()
-}
-
-fn find_node_with_range<N: AstNode>(syntax: &SyntaxNode, range: TextRange) -> Option<N> {
-    let range = syntax.text_range().intersect(range)?;
-    syntax.covering_element(range).ancestors().find_map(N::cast)
 }
 
 pub(crate) fn previous_token(element: SyntaxElement) -> Option<SyntaxToken> {

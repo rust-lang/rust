@@ -5,8 +5,8 @@ use ide_db::FxHashSet;
 use syntax::{ast, AstNode};
 
 use crate::{
-    context::{PathCompletionCtx, PathKind, PathQualifierCtx},
-    patterns::{ImmediateLocation, TypeAnnotation},
+    context::{PathCompletionCtx, PathKind, PathQualifierCtx, TypeAscriptionTarget},
+    patterns::ImmediateLocation,
     render::render_type_inference,
     CompletionContext, Completions,
 };
@@ -189,14 +189,22 @@ pub(crate) fn complete_type_path(acc: &mut Completions, ctx: &CompletionContext)
 }
 
 pub(crate) fn complete_inferred_type(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
-    use TypeAnnotation::*;
-    let pat = match &ctx.completion_location {
-        Some(ImmediateLocation::TypeAnnotation(t)) => t,
+    let pat = match dbg!(ctx.path_context()) {
+        Some(
+            ctx @ PathCompletionCtx {
+                kind: PathKind::Type { ascription: Some(ascription), .. },
+                ..
+            },
+        ) if ctx.is_trivial_path() => ascription,
         _ => return None,
     };
     let x = match pat {
-        Let(pat) | FnParam(pat) => ctx.sema.type_of_pat(pat.as_ref()?),
-        Const(exp) | RetType(exp) => ctx.sema.type_of_expr(exp.as_ref()?),
+        TypeAscriptionTarget::Let(pat) | TypeAscriptionTarget::FnParam(pat) => {
+            ctx.sema.type_of_pat(pat.as_ref()?)
+        }
+        TypeAscriptionTarget::Const(exp) | TypeAscriptionTarget::RetType(exp) => {
+            ctx.sema.type_of_expr(exp.as_ref()?)
+        }
     }?
     .adjusted();
     let ty_string = x.display_source_code(ctx.db, ctx.module.into()).ok()?;
