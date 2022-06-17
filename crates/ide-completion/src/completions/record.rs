@@ -3,7 +3,9 @@ use ide_db::SymbolKind;
 use syntax::{ast::Expr, T};
 
 use crate::{
-    context::{NameRefContext, NameRefKind, PathCompletionCtx, PathKind, PatternContext},
+    context::{
+        NameRefContext, NameRefKind, PathCompletionCtx, PathKind, PatternContext, Qualified,
+    },
     CompletionContext, CompletionItem, CompletionItemKind, CompletionRelevance,
     CompletionRelevancePostfixMatch, Completions,
 };
@@ -19,7 +21,7 @@ pub(crate) fn complete_record(acc: &mut Completions, ctx: &CompletionContext) ->
                 NameRefKind::RecordExpr(record_expr)
                 | NameRefKind::Path(PathCompletionCtx {
                     kind: PathKind::Expr { is_func_update: Some(record_expr), .. },
-                    qualifier: None,
+                    qualified: Qualified::No,
                     ..
                 }),
             ),

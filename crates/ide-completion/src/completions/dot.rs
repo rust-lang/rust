@@ -5,7 +5,7 @@ use ide_db::FxHashSet;
 use crate::{
     context::{
         CompletionContext, DotAccess, DotAccessKind, NameRefContext, NameRefKind,
-        PathCompletionCtx, PathKind,
+        PathCompletionCtx, PathKind, Qualified,
     },
     CompletionItem, CompletionItemKind, Completions,
 };
@@ -50,8 +50,7 @@ fn complete_undotted_self(acc: &mut Completions, ctx: &CompletionContext) {
     match ctx.path_context() {
         Some(
             path_ctx @ PathCompletionCtx {
-                is_absolute_path: false,
-                qualifier: None,
+                qualified: Qualified::No,
                 kind: PathKind::Expr { .. },
                 ..
             },

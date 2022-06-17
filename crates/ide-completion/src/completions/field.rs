@@ -3,7 +3,7 @@
 use crate::{
     context::{
         IdentContext, NameContext, NameKind, NameRefContext, NameRefKind, PathCompletionCtx,
-        PathKind, TypeLocation,
+        PathKind, Qualified, TypeLocation,
     },
     CompletionContext, Completions,
 };
@@ -15,8 +15,7 @@ pub(crate) fn complete_field_list(acc: &mut Completions, ctx: &CompletionContext
             kind:
                 Some(NameRefKind::Path(PathCompletionCtx {
                     has_macro_bang: false,
-                    is_absolute_path: false,
-                    qualifier: None,
+                    qualified: Qualified::No,
                     parent: None,
                     kind: PathKind::Type { location: TypeLocation::TupleField },
                     has_type_args: false,

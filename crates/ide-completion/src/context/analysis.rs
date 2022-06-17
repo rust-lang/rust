@@ -13,7 +13,7 @@ use syntax::{
 use crate::context::{
     CompletionContext, DotAccess, DotAccessKind, IdentContext, ItemListKind, LifetimeContext,
     LifetimeKind, NameContext, NameKind, NameRefContext, NameRefKind, ParamKind, PathCompletionCtx,
-    PathKind, PathQualifierCtx, PatternContext, PatternRefutability, QualifierCtx,
+    PathKind, PathQualifierCtx, PatternContext, PatternRefutability, Qualified, QualifierCtx,
     TypeAscriptionTarget, TypeLocation, COMPLETION_MARKER,
 };
 
@@ -585,8 +585,7 @@ impl<'a> CompletionContext<'a> {
         let mut path_ctx = PathCompletionCtx {
             has_call_parens: false,
             has_macro_bang: false,
-            is_absolute_path: false,
-            qualifier: None,
+            qualified: Qualified::No,
             parent: path.parent_path(),
             kind: PathKind::Item { kind: ItemListKind::SourceFile },
             has_type_args: false,
@@ -854,41 +853,40 @@ impl<'a> CompletionContext<'a> {
 
         // calculate the qualifier context
         if let Some((path, use_tree_parent)) = path_or_use_tree_qualifier(&path) {
-            if !use_tree_parent {
-                path_ctx.is_absolute_path =
-                    path.top_path().segment().map_or(false, |it| it.coloncolon_token().is_some());
+            if !use_tree_parent && segment.coloncolon_token().is_some() {
+                path_ctx.qualified = Qualified::Absolute;
+            } else {
+                let path = path
+                    .segment()
+                    .and_then(|it| find_node_in_file(original_file, &it))
+                    .map(|it| it.parent_path());
+                if let Some(path) = path {
+                    let res = sema.resolve_path(&path);
+                    let is_super_chain = iter::successors(Some(path.clone()), |p| p.qualifier())
+                        .all(|p| p.segment().and_then(|s| s.super_token()).is_some());
+
+                    // `<_>::$0`
+                    let is_infer_qualifier = path.qualifier().is_none()
+                        && matches!(
+                            path.segment().and_then(|it| it.kind()),
+                            Some(ast::PathSegmentKind::Type {
+                                type_ref: Some(ast::Type::InferType(_)),
+                                trait_ref: None,
+                            })
+                        );
+
+                    path_ctx.qualified = Qualified::With(PathQualifierCtx {
+                        path,
+                        resolution: res,
+                        is_super_chain,
+                        use_tree_parent,
+                        is_infer_qualifier,
+                    })
+                };
             }
-
-            let path = path
-                .segment()
-                .and_then(|it| find_node_in_file(original_file, &it))
-                .map(|it| it.parent_path());
-            path_ctx.qualifier = path.map(|path| {
-                let res = sema.resolve_path(&path);
-                let is_super_chain = iter::successors(Some(path.clone()), |p| p.qualifier())
-                    .all(|p| p.segment().and_then(|s| s.super_token()).is_some());
-
-                // `<_>::$0`
-                let is_infer_qualifier = path.qualifier().is_none()
-                    && matches!(
-                        path.segment().and_then(|it| it.kind()),
-                        Some(ast::PathSegmentKind::Type {
-                            type_ref: Some(ast::Type::InferType(_)),
-                            trait_ref: None,
-                        })
-                    );
-
-                PathQualifierCtx {
-                    path,
-                    resolution: res,
-                    is_super_chain,
-                    use_tree_parent,
-                    is_infer_qualifier,
-                }
-            });
         } else if let Some(segment) = path.segment() {
             if segment.coloncolon_token().is_some() {
-                path_ctx.is_absolute_path = true;
+                path_ctx.qualified = Qualified::Absolute;
             }
         }
 

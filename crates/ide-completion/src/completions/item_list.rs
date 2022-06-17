@@ -2,7 +2,7 @@
 
 use crate::{
     completions::module_or_fn_macro,
-    context::{ItemListKind, PathCompletionCtx, PathKind, PathQualifierCtx},
+    context::{ItemListKind, PathCompletionCtx, PathKind, PathQualifierCtx, Qualified},
     CompletionContext, Completions,
 };
 
@@ -16,23 +16,17 @@ pub(crate) fn complete_item_list(acc: &mut Completions, ctx: &CompletionContext)
         return;
     }
 
-    let (&is_absolute_path, path_qualifier, kind, is_trivial_path) = match ctx.path_context() {
-        Some(
-            ctx @ PathCompletionCtx {
-                kind: PathKind::Item { kind },
-                is_absolute_path,
-                qualifier,
-                ..
-            },
-        ) => (is_absolute_path, qualifier, Some(kind), ctx.is_trivial_path()),
+    let (qualified, kind, is_trivial_path) = match ctx.path_context() {
+        Some(ctx @ PathCompletionCtx { kind: PathKind::Item { kind }, qualified, .. }) => {
+            (qualified, Some(kind), ctx.is_trivial_path())
+        }
         Some(
             ctx @ PathCompletionCtx {
                 kind: PathKind::Expr { in_block_expr: true, .. },
-                is_absolute_path,
-                qualifier,
+                qualified,
                 ..
             },
-        ) => (is_absolute_path, qualifier, None, ctx.is_trivial_path()),
+        ) => (qualified, None, ctx.is_trivial_path()),
         _ => return,
     };
 
@@ -49,8 +43,8 @@ pub(crate) fn complete_item_list(acc: &mut Completions, ctx: &CompletionContext)
         return;
     }
 
-    match path_qualifier {
-        Some(PathQualifierCtx { resolution, is_super_chain, .. }) => {
+    match qualified {
+        Qualified::With(PathQualifierCtx { resolution, is_super_chain, .. }) => {
             if let Some(hir::PathResolution::Def(hir::ModuleDef::Module(module))) = resolution {
                 for (name, def) in module.scope(ctx.db, Some(ctx.module)) {
                     if let Some(def) = module_or_fn_macro(ctx.db, def) {
@@ -63,8 +57,8 @@ pub(crate) fn complete_item_list(acc: &mut Completions, ctx: &CompletionContext)
                 acc.add_keyword(ctx, "super::");
             }
         }
-        None if is_absolute_path => acc.add_crate_roots(ctx),
-        None if ctx.qualifier_ctx.none() => {
+        Qualified::Absolute => acc.add_crate_roots(ctx),
+        Qualified::No if ctx.qualifier_ctx.none() => {
             ctx.process_all_names(&mut |name, def| {
                 if let Some(def) = module_or_fn_macro(ctx.db, def) {
                     acc.add_resolution(ctx, name, def);
@@ -72,7 +66,7 @@ pub(crate) fn complete_item_list(acc: &mut Completions, ctx: &CompletionContext)
             });
             acc.add_nameref_keywords_with_colon(ctx);
         }
-        None => {}
+        Qualified::No => {}
     }
 }
 

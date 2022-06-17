@@ -4,7 +4,9 @@ use hir::ScopeDef;
 use ide_db::FxHashSet;
 
 use crate::{
-    context::{NameRefContext, NameRefKind, PathCompletionCtx, PathKind, PathQualifierCtx},
+    context::{
+        NameRefContext, NameRefKind, PathCompletionCtx, PathKind, PathQualifierCtx, Qualified,
+    },
     CompletionContext, Completions,
 };
 
@@ -12,8 +14,7 @@ pub(crate) fn complete_expr_path(acc: &mut Completions, ctx: &CompletionContext)
     let _p = profile::span("complete_expr_path");
 
     let (
-        is_absolute_path,
-        qualifier,
+        qualified,
         in_block_expr,
         in_loop_body,
         is_func_update,
@@ -33,14 +34,12 @@ pub(crate) fn complete_expr_path(acc: &mut Completions, ctx: &CompletionContext)
                             ref ref_expr_parent,
                             ref is_func_update,
                         },
-                    is_absolute_path,
-                    ref qualifier,
+                    ref qualified,
                     ..
                 })),
             ..
         }) if ctx.qualifier_ctx.none() => (
-            is_absolute_path,
-            qualifier,
+            qualified,
             in_block_expr,
             in_loop_body,
             is_func_update.is_some(),
@@ -61,8 +60,8 @@ pub(crate) fn complete_expr_path(acc: &mut Completions, ctx: &CompletionContext)
         }
     };
 
-    match qualifier {
-        Some(PathQualifierCtx { is_infer_qualifier, resolution, .. }) => {
+    match qualified {
+        Qualified::With(PathQualifierCtx { is_infer_qualifier, resolution, .. }) => {
             if *is_infer_qualifier {
                 ctx.traits_in_scope()
                     .0
@@ -174,8 +173,8 @@ pub(crate) fn complete_expr_path(acc: &mut Completions, ctx: &CompletionContext)
                 _ => (),
             }
         }
-        None if is_absolute_path => acc.add_crate_roots(ctx),
-        None => {
+        Qualified::Absolute => acc.add_crate_roots(ctx),
+        Qualified::No => {
             acc.add_nameref_keywords_with_colon(ctx);
             if let Some(adt) =
                 ctx.expected_type.as_ref().and_then(|ty| ty.strip_references().as_adt())
@@ -237,7 +236,7 @@ pub(crate) fn complete_expr_path(acc: &mut Completions, ctx: &CompletionContext)
                 add_keyword("true", "true");
                 add_keyword("false", "false");
 
-                if (in_condition && !is_absolute_path) || in_block_expr {
+                if in_condition || in_block_expr {
                     add_keyword("let", "let");
                 }
 
