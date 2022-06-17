@@ -96,12 +96,12 @@ help: remove the `iter` usages
    |
 LL -     let l = iter.next().unwrap();
 LL +     
-   | 
+   |
 help: remove the `iter` usages
    |
 LL -     let r = iter.next().unwrap();
 LL +     
-   | 
+   |
 
 error: manual implementation of `split_once`
   --> $DIR/manual_split_once.rs:49:5
@@ -121,12 +121,12 @@ help: remove the `iter` usages
    |
 LL -     let l = iter.next()?;
 LL +     
-   | 
+   |
 help: remove the `iter` usages
    |
 LL -     let r = iter.next()?;
 LL +     
-   | 
+   |
 
 error: manual implementation of `rsplit_once`
   --> $DIR/manual_split_once.rs:53:5
@@ -146,12 +146,12 @@ help: remove the `iter` usages
    |
 LL -     let r = iter.next().unwrap();
 LL +     
-   | 
+   |
 help: remove the `iter` usages
    |
 LL -     let l = iter.next().unwrap();
 LL +     
-   | 
+   |
 
 error: manual implementation of `rsplit_once`
   --> $DIR/manual_split_once.rs:57:5
@@ -171,12 +171,12 @@ help: remove the `iter` usages
    |
 LL -     let r = iter.next()?;
 LL +     
-   | 
+   |
 help: remove the `iter` usages
    |
 LL -     let l = iter.next()?;
 LL +     
-   | 
+   |
 
 error: manual implementation of `split_once`
   --> $DIR/manual_split_once.rs:142:13
@@ -202,12 +202,12 @@ help: remove the `iter` usages
    |
 LL -     let a = iter.next().unwrap();
 LL +     
-   | 
+   |
 help: remove the `iter` usages
    |
 LL -     let b = iter.next().unwrap();
 LL +     
-   | 
+   |
 
 error: aborting due to 19 previous errors
 

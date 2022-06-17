@@ -9,7 +9,7 @@ help: use `writeln!()` instead
    |
 LL -     write!(v, "Hello/n");
 LL +     writeln!(v, "Hello");
-   | 
+   |
 
 error: using `write!()` with a format string that ends in a single newline
   --> $DIR/write_with_newline.rs:14:5
@@ -21,7 +21,7 @@ help: use `writeln!()` instead
    |
 LL -     write!(v, "Hello {}/n", "world");
 LL +     writeln!(v, "Hello {}", "world");
-   | 
+   |
 
 error: using `write!()` with a format string that ends in a single newline
   --> $DIR/write_with_newline.rs:15:5
@@ -33,7 +33,7 @@ help: use `writeln!()` instead
    |
 LL -     write!(v, "Hello {} {}/n", "world", "#2");
 LL +     writeln!(v, "Hello {} {}", "world", "#2");
-   | 
+   |
 
 error: using `write!()` with a format string that ends in a single newline
   --> $DIR/write_with_newline.rs:16:5
@@ -45,7 +45,7 @@ help: use `writeln!()` instead
    |
 LL -     write!(v, "{}/n", 1265);
 LL +     writeln!(v, "{}", 1265);
-   | 
+   |
 
 error: using `write!()` with a format string that ends in a single newline
   --> $DIR/write_with_newline.rs:17:5
@@ -57,7 +57,7 @@ help: use `writeln!()` instead
    |
 LL -     write!(v, "/n");
 LL +     writeln!(v);
-   | 
+   |
 
 error: using `write!()` with a format string that ends in a single newline
   --> $DIR/write_with_newline.rs:36:5
@@ -69,7 +69,7 @@ help: use `writeln!()` instead
    |
 LL -     write!(v, "//n"); // should fail
 LL +     writeln!(v, "/"); // should fail
-   | 
+   |
 
 error: using `write!()` with a format string that ends in a single newline
   --> $DIR/write_with_newline.rs:43:5
@@ -115,7 +115,7 @@ help: use `writeln!()` instead
    |
 LL -     write!(v, "/r/n"); //~ ERROR
 LL +     writeln!(v, "/r"); //~ ERROR
-   | 
+   |
 
 error: using `write!()` with a format string that ends in a single newline
   --> $DIR/write_with_newline.rs:58:5
@@ -127,7 +127,7 @@ help: use `writeln!()` instead
    |
 LL -     write!(v, "foo/rbar/n");
 LL +     writeln!(v, "foo/rbar");
-   | 
+   |
 
 error: aborting due to 10 previous errors
 

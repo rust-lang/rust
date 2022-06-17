@@ -9,7 +9,7 @@ help: try this
    |
 LL -     writeln!(v, "{}", "{hello}");
 LL +     writeln!(v, "{{hello}}");
-   | 
+   |
 
 error: literal with an empty format string
   --> $DIR/write_literal_2.rs:10:24
@@ -21,7 +21,7 @@ help: try this
    |
 LL -     writeln!(v, r"{}", r"{hello}");
 LL +     writeln!(v, r"{{hello}}");
-   | 
+   |
 
 error: literal with an empty format string
   --> $DIR/write_literal_2.rs:11:23
@@ -33,7 +33,7 @@ help: try this
    |
 LL -     writeln!(v, "{}", '/'');
 LL +     writeln!(v, "'");
-   | 
+   |
 
 error: literal with an empty format string
   --> $DIR/write_literal_2.rs:12:23
@@ -45,7 +45,7 @@ help: try this
    |
 LL -     writeln!(v, "{}", '"');
 LL +     writeln!(v, "/"");
-   | 
+   |
 
 error: literal with an empty format string
   --> $DIR/write_literal_2.rs:14:24
@@ -57,7 +57,7 @@ help: try this
    |
 LL -     writeln!(v, r"{}", '/'');
 LL +     writeln!(v, r"'");
-   | 
+   |
 
 error: literal with an empty format string
   --> $DIR/write_literal_2.rs:18:9
