@@ -8,8 +8,7 @@ help: you might have meant to write a `struct` literal
    |
 LL ~     pub fn new() -> Self { SomeStruct {
 LL |         input_cells: Vec::new()
-LL |
-LL |
+ ...
 LL |
 LL ~     }}
    |

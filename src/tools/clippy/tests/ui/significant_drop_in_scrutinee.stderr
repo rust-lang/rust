@@ -188,7 +188,9 @@ LL +         _ => mutex2.lock().unwrap(),
 LL +     }
 LL +     .s
 LL +     .len()
- ...
+LL +         > 1;
+LL ~     match value
+   |
 
 error: temporary with significant drop in match scrutinee
   --> $DIR/significant_drop_in_scrutinee.rs:397:11
@@ -211,7 +213,10 @@ LL +     } else {
 LL +         mutex2.lock().unwrap()
 LL +     }
 LL +     .s
- ...
+LL +     .len()
+LL +         > 1;
+LL ~     match value
+   |
 
 error: temporary with significant drop in match scrutinee
   --> $DIR/significant_drop_in_scrutinee.rs:451:11

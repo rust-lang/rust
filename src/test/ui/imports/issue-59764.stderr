@@ -209,8 +209,7 @@ help: a macro with this name exists at the root of the crate
    |
 LL ~         issue_59764::{makro as foobar, 
 LL | 
-LL |             foobaz,
-LL | 
+ ...
 LL | 
 LL ~             foo::{baz}
    |
