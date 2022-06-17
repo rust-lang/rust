@@ -6,6 +6,7 @@ use crate::ty::fold::{
     FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitor,
 };
 use crate::ty::sty::{ClosureSubsts, GeneratorSubsts, InlineConstSubsts};
+use crate::ty::visit::TypeVisitable;
 use crate::ty::{self, Lift, List, ParamConst, Ty, TyCtxt};
 
 use rustc_data_structures::intern::{Interned, WithStableHash};
@@ -205,7 +206,9 @@ impl<'tcx> TypeFoldable<'tcx> for GenericArg<'tcx> {
             GenericArgKind::Const(ct) => ct.try_fold_with(folder).map(Into::into),
         }
     }
+}
 
+impl<'tcx> TypeVisitable<'tcx> for GenericArg<'tcx> {
     fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         match self.unpack() {
             GenericArgKind::Lifetime(lt) => lt.visit_with(visitor),
@@ -449,7 +452,9 @@ impl<'tcx> TypeFoldable<'tcx> for SubstsRef<'tcx> {
             _ => ty::util::fold_list(self, folder, |tcx, v| tcx.intern_substs(v)),
         }
     }
+}
 
+impl<'tcx> TypeVisitable<'tcx> for SubstsRef<'tcx> {
     fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         self.iter().try_for_each(|t| t.visit_with(visitor))
     }
@@ -485,7 +490,9 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<Ty<'tcx>> {
             _ => ty::util::fold_list(self, folder, |tcx, v| tcx.intern_type_list(v)),
         }
     }
+}
 
+impl<'tcx> TypeVisitable<'tcx> for &'tcx ty::List<Ty<'tcx>> {
     fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         self.iter().try_for_each(|t| t.visit_with(visitor))
     }

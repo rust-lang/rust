@@ -11,6 +11,7 @@ use crate::ty::codec::{TyDecoder, TyEncoder};
 use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeSuperFoldable, TypeVisitor};
 use crate::ty::print::{FmtPrinter, Printer};
 use crate::ty::subst::{GenericArg, InternalSubsts, Subst, SubstsRef};
+use crate::ty::visit::TypeVisitable;
 use crate::ty::{self, List, Ty, TyCtxt};
 use crate::ty::{AdtDef, InstanceDef, ScalarInt, UserTypeAnnotationIndex};
 
@@ -68,6 +69,7 @@ pub use terminator::*;
 
 pub mod traversal;
 mod type_foldable;
+mod type_visitable;
 pub mod visit;
 
 pub use self::generic_graph::graphviz_safe_def_name;
@@ -2650,7 +2652,9 @@ impl<'tcx> TypeFoldable<'tcx> for UserTypeProjection {
             projs: self.projs.try_fold_with(folder)?,
         })
     }
+}
 
+impl<'tcx> TypeVisitable<'tcx> for UserTypeProjection {
     fn visit_with<Vs: TypeVisitor<'tcx>>(&self, visitor: &mut Vs) -> ControlFlow<Vs::BreakTy> {
         self.base.visit_with(visitor)
         // Note: there's nothing in `self.proj` to visit.
