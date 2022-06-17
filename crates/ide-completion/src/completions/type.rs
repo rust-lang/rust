@@ -5,7 +5,10 @@ use ide_db::FxHashSet;
 use syntax::{ast, AstNode};
 
 use crate::{
-    context::{PathCompletionCtx, PathKind, PathQualifierCtx, TypeAscriptionTarget, TypeLocation},
+    context::{
+        PathCompletionCtx, PathKind, PathQualifierCtx, Qualified, TypeAscriptionTarget,
+        TypeLocation,
+    },
     render::render_type_inference,
     CompletionContext, Completions,
 };
@@ -13,13 +16,10 @@ use crate::{
 pub(crate) fn complete_type_path(acc: &mut Completions, ctx: &CompletionContext) {
     let _p = profile::span("complete_type_path");
 
-    let (&is_absolute_path, location, qualifier) = match ctx.path_context() {
-        Some(PathCompletionCtx {
-            kind: PathKind::Type { location },
-            is_absolute_path,
-            qualifier,
-            ..
-        }) => (is_absolute_path, location, qualifier),
+    let (location, qualified) = match ctx.path_context() {
+        Some(PathCompletionCtx { kind: PathKind::Type { location }, qualified, .. }) => {
+            (location, qualified)
+        }
         _ => return,
     };
 
@@ -54,8 +54,8 @@ pub(crate) fn complete_type_path(acc: &mut Completions, ctx: &CompletionContext)
         hir::AssocItem::TypeAlias(ty) => acc.add_type_alias(ctx, ty),
     };
 
-    match qualifier {
-        Some(PathQualifierCtx { is_infer_qualifier, resolution, .. }) => {
+    match qualified {
+        Qualified::With(PathQualifierCtx { is_infer_qualifier, resolution, .. }) => {
             if *is_infer_qualifier {
                 ctx.traits_in_scope()
                     .0
@@ -151,8 +151,8 @@ pub(crate) fn complete_type_path(acc: &mut Completions, ctx: &CompletionContext)
                 _ => (),
             }
         }
-        None if is_absolute_path => acc.add_crate_roots(ctx),
-        None => {
+        Qualified::Absolute => acc.add_crate_roots(ctx),
+        Qualified::No => {
             acc.add_nameref_keywords_with_colon(ctx);
             if let TypeLocation::TypeBound = location {
                 ctx.process_all_names(&mut |name, res| {

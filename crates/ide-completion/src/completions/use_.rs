@@ -7,30 +7,30 @@ use syntax::{ast, AstNode};
 use crate::{
     context::{
         CompletionContext, NameRefContext, NameRefKind, PathCompletionCtx, PathKind,
-        PathQualifierCtx,
+        PathQualifierCtx, Qualified,
     },
     item::Builder,
     CompletionItem, CompletionItemKind, CompletionRelevance, Completions,
 };
 
 pub(crate) fn complete_use_tree(acc: &mut Completions, ctx: &CompletionContext) {
-    let (&is_absolute_path, qualifier, name_ref) = match ctx.nameref_ctx() {
+    let (qualified, name_ref) = match ctx.nameref_ctx() {
         Some(NameRefContext {
-            kind:
-                Some(NameRefKind::Path(PathCompletionCtx {
-                    kind: PathKind::Use,
-                    is_absolute_path,
-                    qualifier,
-                    ..
-                })),
+            kind: Some(NameRefKind::Path(PathCompletionCtx { kind: PathKind::Use, qualified, .. })),
             nameref,
             ..
-        }) => (is_absolute_path, qualifier, nameref),
+        }) => (qualified, nameref),
         _ => return,
     };
 
-    match qualifier {
-        Some(PathQualifierCtx { path, resolution, is_super_chain, use_tree_parent, .. }) => {
+    match qualified {
+        Qualified::With(PathQualifierCtx {
+            path,
+            resolution,
+            is_super_chain,
+            use_tree_parent,
+            ..
+        }) => {
             if *is_super_chain {
                 acc.add_keyword(ctx, "super::");
             }
@@ -105,12 +105,12 @@ pub(crate) fn complete_use_tree(acc: &mut Completions, ctx: &CompletionContext) 
             }
         }
         // fresh use tree with leading colon2, only show crate roots
-        None if is_absolute_path => {
+        Qualified::Absolute => {
             cov_mark::hit!(use_tree_crate_roots_only);
             acc.add_crate_roots(ctx);
         }
         // only show modules and non-std enum in a fresh UseTree
-        None => {
+        Qualified::No => {
             cov_mark::hit!(unqualified_path_selected_only);
             ctx.process_all_names(&mut |name, res| {
                 match res {

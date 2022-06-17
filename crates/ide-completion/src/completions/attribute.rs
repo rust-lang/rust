@@ -18,7 +18,9 @@ use syntax::{
 
 use crate::{
     completions::module_or_attr,
-    context::{CompletionContext, IdentContext, PathCompletionCtx, PathKind, PathQualifierCtx},
+    context::{
+        CompletionContext, IdentContext, PathCompletionCtx, PathKind, PathQualifierCtx, Qualified,
+    },
     item::CompletionItem,
     Completions,
 };
@@ -72,18 +74,17 @@ pub(crate) fn complete_known_attribute_input(
 }
 
 pub(crate) fn complete_attribute(acc: &mut Completions, ctx: &CompletionContext) {
-    let (is_absolute_path, qualifier, is_inner, annotated_item_kind) = match ctx.path_context() {
+    let (qualified, is_inner, annotated_item_kind) = match ctx.path_context() {
         Some(&PathCompletionCtx {
             kind: PathKind::Attr { kind, annotated_item_kind },
-            is_absolute_path,
-            ref qualifier,
+            ref qualified,
             ..
-        }) => (is_absolute_path, qualifier, kind == AttrKind::Inner, annotated_item_kind),
+        }) => (qualified, kind == AttrKind::Inner, annotated_item_kind),
         _ => return,
     };
 
-    match qualifier {
-        Some(PathQualifierCtx { resolution, is_super_chain, .. }) => {
+    match qualified {
+        Qualified::With(PathQualifierCtx { resolution, is_super_chain, .. }) => {
             if *is_super_chain {
                 acc.add_keyword(ctx, "super::");
             }
@@ -101,9 +102,9 @@ pub(crate) fn complete_attribute(acc: &mut Completions, ctx: &CompletionContext)
             return;
         }
         // fresh use tree with leading colon2, only show crate roots
-        None if is_absolute_path => acc.add_crate_roots(ctx),
+        Qualified::Absolute => acc.add_crate_roots(ctx),
         // only show modules in a fresh UseTree
-        None => {
+        Qualified::No => {
             ctx.process_all_names(&mut |name, def| {
                 if let Some(def) = module_or_attr(ctx.db, def) {
                     acc.add_resolution(ctx, name, def);

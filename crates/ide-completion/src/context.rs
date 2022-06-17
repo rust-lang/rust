@@ -57,10 +57,8 @@ pub(crate) struct PathCompletionCtx {
     pub(super) has_call_parens: bool,
     /// If this has a macro call bang !
     pub(super) has_macro_bang: bool,
-    /// Whether this path stars with a `::`.
-    pub(super) is_absolute_path: bool,
-    /// The qualifier of the current path if it exists.
-    pub(super) qualifier: Option<PathQualifierCtx>,
+    /// The qualifier of the current path.
+    pub(super) qualified: Qualified,
     /// The parent of the path we are completing.
     pub(super) parent: Option<ast::Path>,
     pub(super) kind: PathKind,
@@ -75,8 +73,7 @@ impl PathCompletionCtx {
             PathCompletionCtx {
                 has_call_parens: false,
                 has_macro_bang: false,
-                is_absolute_path: false,
-                qualifier: None,
+                qualified: Qualified::No,
                 parent: None,
                 has_type_args: false,
                 ..
@@ -145,6 +142,14 @@ pub(super) enum ItemListKind {
     TraitImpl,
     Trait,
     ExternBlock,
+}
+
+#[derive(Debug)]
+pub(super) enum Qualified {
+    No,
+    With(PathQualifierCtx),
+    /// Whether the path is an absolute path
+    Absolute,
 }
 
 /// The path qualifier state of the path we are completing.
@@ -400,7 +405,10 @@ impl<'a> CompletionContext<'a> {
     }
 
     pub(crate) fn path_qual(&self) -> Option<&ast::Path> {
-        self.path_context().and_then(|it| it.qualifier.as_ref().map(|it| &it.path))
+        self.path_context().and_then(|it| match &it.qualified {
+            Qualified::With(it) => Some(&it.path),
+            _ => None,
+        })
     }
 
     /// Checks if an item is visible and not `doc(hidden)` at the completion site.

@@ -5,7 +5,7 @@ use ide_db::FxHashSet;
 use syntax::ast::Pat;
 
 use crate::{
-    context::{PathCompletionCtx, PathQualifierCtx, PatternRefutability},
+    context::{PathCompletionCtx, PathQualifierCtx, PatternRefutability, Qualified},
     CompletionContext, Completions,
 };
 
@@ -111,10 +111,10 @@ pub(crate) fn complete_pattern(acc: &mut Completions, ctx: &CompletionContext) {
 fn pattern_path_completion(
     acc: &mut Completions,
     ctx: &CompletionContext,
-    PathCompletionCtx { qualifier, is_absolute_path, .. }: &PathCompletionCtx,
+    PathCompletionCtx { qualified, .. }: &PathCompletionCtx,
 ) {
-    match qualifier {
-        Some(PathQualifierCtx { resolution, is_super_chain, .. }) => {
+    match qualified {
+        Qualified::With(PathQualifierCtx { resolution, is_super_chain, .. }) => {
             if *is_super_chain {
                 acc.add_keyword(ctx, "super::");
             }
@@ -197,8 +197,8 @@ fn pattern_path_completion(
             }
         }
         // qualifier can only be none here if we are in a TuplePat or RecordPat in which case special characters have to follow the path
-        None if *is_absolute_path => acc.add_crate_roots(ctx),
-        None => {
+        Qualified::Absolute => acc.add_crate_roots(ctx),
+        Qualified::No => {
             ctx.process_all_names(&mut |name, res| {
                 // FIXME: properly filter here
                 if let ScopeDef::ModuleDef(_) = res {

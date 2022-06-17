@@ -5,26 +5,21 @@ use itertools::Itertools;
 use syntax::SmolStr;
 
 use crate::{
-    context::{CompletionContext, PathCompletionCtx, PathKind, PathQualifierCtx},
+    context::{CompletionContext, PathCompletionCtx, PathKind, PathQualifierCtx, Qualified},
     item::CompletionItem,
     Completions,
 };
 
 pub(crate) fn complete_derive(acc: &mut Completions, ctx: &CompletionContext) {
-    let (qualifier, is_absolute_path) = match ctx.path_context() {
-        Some(&PathCompletionCtx {
-            kind: PathKind::Derive,
-            ref qualifier,
-            is_absolute_path,
-            ..
-        }) => (qualifier, is_absolute_path),
+    let qualified = match ctx.path_context() {
+        Some(&PathCompletionCtx { kind: PathKind::Derive, ref qualified, .. }) => qualified,
         _ => return,
     };
 
     let core = ctx.famous_defs().core();
 
-    match qualifier {
-        Some(PathQualifierCtx { resolution, is_super_chain, .. }) => {
+    match qualified {
+        Qualified::With(PathQualifierCtx { resolution, is_super_chain, .. }) => {
             if *is_super_chain {
                 acc.add_keyword(ctx, "super::");
             }
@@ -47,9 +42,9 @@ pub(crate) fn complete_derive(acc: &mut Completions, ctx: &CompletionContext) {
                 }
             }
         }
-        None if is_absolute_path => acc.add_crate_roots(ctx),
+        Qualified::Absolute => acc.add_crate_roots(ctx),
         // only show modules in a fresh UseTree
-        None => {
+        Qualified::No => {
             ctx.process_all_names(&mut |name, def| {
                 let mac = match def {
                     ScopeDef::ModuleDef(hir::ModuleDef::Macro(mac))
@@ -65,7 +60,7 @@ pub(crate) fn complete_derive(acc: &mut Completions, ctx: &CompletionContext) {
 
                 match (core, mac.module(ctx.db).krate()) {
                     // show derive dependencies for `core`/`std` derives
-                    (Some(core), mac_krate) if core == mac_krate && qualifier.is_none() => {}
+                    (Some(core), mac_krate) if core == mac_krate => {}
                     _ => return acc.add_resolution(ctx, name, def),
                 };
 
