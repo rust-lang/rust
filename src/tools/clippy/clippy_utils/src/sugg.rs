@@ -771,7 +771,7 @@ impl<T: LintContext> DiagnosticExt<T> for rustc_errors::Diagnostic {
             }
         }
 
-        self.span_suggestion(remove_span, msg, String::new(), applicability);
+        self.span_suggestion(remove_span, msg, "", applicability);
     }
 }
 

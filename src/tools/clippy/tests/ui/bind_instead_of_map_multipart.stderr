@@ -56,7 +56,25 @@ LL |             if s == "43" {
 LL ~                 return 43;
 LL |             }
 LL |             s == "42"
+LL |         } {
+LL ~             return 45;
+LL |         }
+LL |         match s.len() {
+LL ~             10 => 2,
+LL |             20 => {
  ...
+LL |                         if foo() {
+LL ~                             return 20;
+LL |                         }
+LL |                         println!("foo");
+LL ~                         3
+LL |                     };
+LL |                 }
+LL ~                 20
+LL |             },
+LL ~             40 => 30,
+LL ~             _ => 1,
+   |
 
 error: using `Option.and_then(|x| Some(y))`, which is more succinctly expressed as `map(|x| y)`
   --> $DIR/bind_instead_of_map_multipart.rs:61:13
