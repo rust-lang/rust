@@ -27,22 +27,27 @@ const MAX_READERS: u32 = MASK - 1;
 const READERS_WAITING: u32 = 1 << 30;
 const WRITERS_WAITING: u32 = 1 << 31;
 
+#[inline]
 fn is_unlocked(state: u32) -> bool {
     state & MASK == 0
 }
 
+#[inline]
 fn is_write_locked(state: u32) -> bool {
     state & MASK == WRITE_LOCKED
 }
 
+#[inline]
 fn has_readers_waiting(state: u32) -> bool {
     state & READERS_WAITING != 0
 }
 
+#[inline]
 fn has_writers_waiting(state: u32) -> bool {
     state & WRITERS_WAITING != 0
 }
 
+#[inline]
 fn is_read_lockable(state: u32) -> bool {
     // This also returns false if the counter could overflow if we tried to read lock it.
     //
@@ -53,6 +58,7 @@ fn is_read_lockable(state: u32) -> bool {
     state & MASK < MAX_READERS && !has_readers_waiting(state) && !has_writers_waiting(state)
 }
 
+#[inline]
 fn has_reached_max_readers(state: u32) -> bool {
     state & MASK == MAX_READERS
 }
@@ -287,6 +293,7 @@ impl RwLock {
     }
 
     /// Spin for a while, but stop directly at the given condition.
+    #[inline]
     fn spin_until(&self, f: impl Fn(u32) -> bool) -> u32 {
         let mut spin = 100; // Chosen by fair dice roll.
         loop {
@@ -299,11 +306,13 @@ impl RwLock {
         }
     }
 
+    #[inline]
     fn spin_write(&self) -> u32 {
         // Stop spinning when it's unlocked or when there's waiting writers, to keep things somewhat fair.
         self.spin_until(|state| is_unlocked(state) || has_writers_waiting(state))
     }
 
+    #[inline]
     fn spin_read(&self) -> u32 {
         // Stop spinning when it's unlocked or read locked, or when there's waiting threads.
         self.spin_until(|state| {
