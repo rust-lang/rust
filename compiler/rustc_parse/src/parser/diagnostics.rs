@@ -2042,9 +2042,9 @@ impl<'a> Parser<'a> {
                 match pat.kind {
                     PatKind::Ident(_, ident, _) => (
                         ident,
-                        "self: ".to_string(),
+                        "self: ",
                         ": TypeName".to_string(),
-                        "_: ".to_string(),
+                        "_: ",
                         pat.span.shrink_to_lo(),
                         pat.span.shrink_to_hi(),
                         pat.span.shrink_to_lo(),
@@ -2058,9 +2058,9 @@ impl<'a> Parser<'a> {
                                 let mutab = mutab.prefix_str();
                                 (
                                     ident,
-                                    "self: ".to_string(),
+                                    "self: ",
                                     format!("{ident}: &{mutab}TypeName"),
-                                    "_: ".to_string(),
+                                    "_: ",
                                     pat.span.shrink_to_lo(),
                                     pat.span,
                                     pat.span.shrink_to_lo(),
