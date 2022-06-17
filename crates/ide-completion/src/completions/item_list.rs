@@ -2,7 +2,7 @@
 
 use crate::{
     completions::module_or_fn_macro,
-    context::{ItemListKind, NameRefContext, NameRefKind, PathCompletionCtx, PathKind, Qualified},
+    context::{ItemListKind, PathCompletionCtx, PathKind, Qualified},
     CompletionContext, Completions,
 };
 
@@ -11,44 +11,24 @@ pub(crate) mod trait_impl;
 pub(crate) fn complete_item_list(
     acc: &mut Completions,
     ctx: &CompletionContext,
-    name_ref_ctx: &NameRefContext,
+    path_ctx: &PathCompletionCtx,
 ) {
     let _p = profile::span("complete_item_list");
-
-    let (qualified, item_list_kind, is_trivial_path) = match name_ref_ctx {
-        NameRefContext {
-            kind:
-                Some(NameRefKind::Path(
-                    ctx @ PathCompletionCtx { kind: PathKind::Item { kind }, qualified, .. },
-                )),
-            ..
-        } => (qualified, Some(kind), ctx.is_trivial_path()),
-        NameRefContext {
-            kind:
-                Some(NameRefKind::Path(
-                    ctx @ PathCompletionCtx {
-                        kind: PathKind::Expr { in_block_expr: true, .. },
-                        qualified,
-                        ..
-                    },
-                )),
-            ..
-        } => (qualified, None, ctx.is_trivial_path()),
+    let qualified = match path_ctx {
+        PathCompletionCtx { kind: PathKind::Item { kind }, qualified, .. } => {
+            if path_ctx.is_trivial_path() {
+                add_keywords(acc, ctx, Some(kind));
+            }
+            qualified
+        }
+        PathCompletionCtx { kind: PathKind::Expr { in_block_expr: true, .. }, .. }
+            if path_ctx.is_trivial_path() =>
+        {
+            add_keywords(acc, ctx, None);
+            return;
+        }
         _ => return,
     };
-
-    if matches!(item_list_kind, Some(ItemListKind::TraitImpl)) {
-        trait_impl::complete_trait_impl_name_ref(acc, ctx, name_ref_ctx);
-    }
-
-    if is_trivial_path {
-        add_keywords(acc, ctx, item_list_kind);
-    }
-
-    if item_list_kind.is_none() {
-        // this is already handled by expression
-        return;
-    }
 
     match qualified {
         Qualified::With {
