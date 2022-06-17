@@ -16,17 +16,21 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// let end: u32 = 10;
-    /// let start: u32 = 5;
-    ///
+    /// # let end: u32 = 10;
+    /// # let start: u32 = 5;
     /// let mut i: u32 = end - start;
     ///
-    /// // Bad
     /// if i != 0 {
     ///     i -= 1;
     /// }
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
+    /// # let end: u32 = 10;
+    /// # let start: u32 = 5;
+    /// let mut i: u32 = end - start;
+    ///
     /// i = i.saturating_sub(1);
     /// ```
     #[clippy::version = "1.44.0"]
@@ -48,7 +52,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitSaturatingSub {
             // Check if the conditional expression is a binary operation
             if let ExprKind::Binary(ref cond_op, cond_left, cond_right) = cond.kind;
 
-            // Ensure that the binary operator is >, != and <
+            // Ensure that the binary operator is >, !=, or <
             if BinOpKind::Ne == cond_op.node || BinOpKind::Gt == cond_op.node || BinOpKind::Lt == cond_op.node;
 
             // Check if assign operation is done

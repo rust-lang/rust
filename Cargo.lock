@@ -698,6 +698,7 @@ name = "clippy_lints"
 version = "0.1.63"
 dependencies = [
  "cargo_metadata",
+ "clippy_dev",
  "clippy_utils",
  "if_chain",
  "itertools",
@@ -708,6 +709,7 @@ dependencies = [
  "semver",
  "serde",
  "serde_json",
+ "tempfile",
  "toml",
  "unicode-normalization",
  "unicode-script",

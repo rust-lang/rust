@@ -36,12 +36,14 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// // Bad: unnecessary lifetime annotations
+    /// // Unnecessary lifetime annotations
     /// fn in_and_out<'a>(x: &'a u8, y: u8) -> &'a u8 {
     ///     x
     /// }
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
     /// fn elided(x: &u8, y: u8) -> &u8 {
     ///     x
     /// }
@@ -65,12 +67,14 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// // Bad: unnecessary lifetimes
+    /// // unnecessary lifetimes
     /// fn unused_lifetime<'a>(x: u8) {
     ///     // ..
     /// }
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
     /// fn no_lifetime(x: u8) {
     ///     // ...
     /// }

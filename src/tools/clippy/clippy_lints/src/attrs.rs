@@ -340,7 +340,7 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
                             for lint in lint_list {
                                 match item.kind {
                                     ItemKind::Use(..) => {
-                                        if is_word(lint, sym!(unused_imports))
+                                        if is_word(lint, sym::unused_imports)
                                             || is_word(lint, sym::deprecated)
                                             || is_word(lint, sym!(unreachable_pub))
                                             || is_word(lint, sym!(unused))
@@ -355,7 +355,7 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
                                         }
                                     },
                                     ItemKind::ExternCrate(..) => {
-                                        if is_word(lint, sym!(unused_imports)) && skip_unused_imports {
+                                        if is_word(lint, sym::unused_imports) && skip_unused_imports {
                                             return;
                                         }
                                         if is_word(lint, sym!(unused_extern_crates)) {

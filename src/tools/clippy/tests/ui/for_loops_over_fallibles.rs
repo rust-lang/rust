@@ -2,7 +2,7 @@
 
 fn for_loops_over_fallibles() {
     let option = Some(1);
-    let result = option.ok_or("x not found");
+    let mut result = option.ok_or("x not found");
     let v = vec![0, 1, 2];
 
     // check over an `Option`
@@ -10,8 +10,23 @@ fn for_loops_over_fallibles() {
         println!("{}", x);
     }
 
+    // check over an `Option`
+    for x in option.iter() {
+        println!("{}", x);
+    }
+
     // check over a `Result`
     for x in result {
+        println!("{}", x);
+    }
+
+    // check over a `Result`
+    for x in result.iter_mut() {
+        println!("{}", x);
+    }
+
+    // check over a `Result`
+    for x in result.into_iter() {
         println!("{}", x);
     }
 

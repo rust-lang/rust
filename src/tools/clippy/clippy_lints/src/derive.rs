@@ -4,14 +4,19 @@ use clippy_utils::ty::{implements_trait, implements_trait_with_env, is_copy};
 use clippy_utils::{is_lint_allowed, match_def_path};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
+use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{walk_expr, walk_fn, walk_item, FnKind, Visitor};
 use rustc_hir::{
-    self as hir, BlockCheckMode, BodyId, Expr, ExprKind, FnDecl, HirId, Impl, Item, ItemKind, UnsafeSource, Unsafety,
+    self as hir, BlockCheckMode, BodyId, Constness, Expr, ExprKind, FnDecl, HirId, Impl, Item, ItemKind, UnsafeSource,
+    Unsafety,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
-use rustc_middle::ty::subst::GenericArg;
-use rustc_middle::ty::{self, BoundConstness, ImplPolarity, ParamEnv, PredicateKind, TraitPredicate, TraitRef, Ty};
+use rustc_middle::traits::Reveal;
+use rustc_middle::ty::{
+    self, Binder, BoundConstness, GenericParamDefKind, ImplPolarity, ParamEnv, PredicateKind, TraitPredicate, TraitRef,
+    Ty, TyCtxt, Visibility,
+};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 use rustc_span::sym;
@@ -459,50 +464,18 @@ impl<'tcx> Visitor<'tcx> for UnsafeVisitor<'_, 'tcx> {
 fn check_partial_eq_without_eq<'tcx>(cx: &LateContext<'tcx>, span: Span, trait_ref: &hir::TraitRef<'_>, ty: Ty<'tcx>) {
     if_chain! {
         if let ty::Adt(adt, substs) = ty.kind();
+        if cx.tcx.visibility(adt.did()) == Visibility::Public;
         if let Some(eq_trait_def_id) = cx.tcx.get_diagnostic_item(sym::Eq);
-        if let Some(peq_trait_def_id) = cx.tcx.get_diagnostic_item(sym::PartialEq);
         if let Some(def_id) = trait_ref.trait_def_id();
         if cx.tcx.is_diagnostic_item(sym::PartialEq, def_id);
-        // New `ParamEnv` replacing `T: PartialEq` with `T: Eq`
-        let param_env = ParamEnv::new(
-            cx.tcx.mk_predicates(cx.param_env.caller_bounds().iter().map(|p| {
-                let kind = p.kind();
-                match kind.skip_binder() {
-                    PredicateKind::Trait(p)
-                        if p.trait_ref.def_id == peq_trait_def_id
-                            && p.trait_ref.substs.get(0) == p.trait_ref.substs.get(1)
-                            && matches!(p.trait_ref.self_ty().kind(), ty::Param(_))
-                            && p.constness == BoundConstness::NotConst
-                            && p.polarity == ImplPolarity::Positive =>
-                    {
-                        cx.tcx.mk_predicate(kind.rebind(PredicateKind::Trait(TraitPredicate {
-                            trait_ref: TraitRef::new(
-                                eq_trait_def_id,
-                                cx.tcx.mk_substs([GenericArg::from(p.trait_ref.self_ty())].into_iter()),
-                            ),
-                            constness: BoundConstness::NotConst,
-                            polarity: ImplPolarity::Positive,
-                        })))
-                    },
-                    _ => p,
-                }
-            })),
-            cx.param_env.reveal(),
-            cx.param_env.constness(),
-        );
-        if !implements_trait_with_env(cx.tcx, param_env, ty, eq_trait_def_id, substs);
+        let param_env = param_env_for_derived_eq(cx.tcx, adt.did(), eq_trait_def_id);
+        if !implements_trait_with_env(cx.tcx, param_env, ty, eq_trait_def_id, &[]);
+        // If all of our fields implement `Eq`, we can implement `Eq` too
+        if adt
+            .all_fields()
+            .map(|f| f.ty(cx.tcx, substs))
+            .all(|ty| implements_trait_with_env(cx.tcx, param_env, ty, eq_trait_def_id, &[]));
         then {
-            // If all of our fields implement `Eq`, we can implement `Eq` too
-            for variant in adt.variants() {
-                for field in &variant.fields {
-                    let ty = field.ty(cx.tcx, substs);
-
-                    if !implements_trait(cx, ty, eq_trait_def_id, substs) {
-                        return;
-                    }
-                }
-            }
-
             span_lint_and_sugg(
                 cx,
                 DERIVE_PARTIAL_EQ_WITHOUT_EQ,
@@ -514,4 +487,42 @@ fn check_partial_eq_without_eq<'tcx>(cx: &LateContext<'tcx>, span: Span, trait_r
             )
         }
     }
+}
+
+/// Creates the `ParamEnv` used for the give type's derived `Eq` impl.
+fn param_env_for_derived_eq(tcx: TyCtxt<'_>, did: DefId, eq_trait_id: DefId) -> ParamEnv<'_> {
+    // Initial map from generic index to param def.
+    // Vec<(param_def, needs_eq)>
+    let mut params = tcx
+        .generics_of(did)
+        .params
+        .iter()
+        .map(|p| (p, matches!(p.kind, GenericParamDefKind::Type { .. })))
+        .collect::<Vec<_>>();
+
+    let ty_predicates = tcx.predicates_of(did).predicates;
+    for (p, _) in ty_predicates {
+        if let PredicateKind::Trait(p) = p.kind().skip_binder()
+            && p.trait_ref.def_id == eq_trait_id
+            && let ty::Param(self_ty) = p.trait_ref.self_ty().kind()
+            && p.constness == BoundConstness::NotConst
+        {
+            // Flag types which already have an `Eq` bound.
+            params[self_ty.index as usize].1 = false;
+        }
+    }
+
+    ParamEnv::new(
+        tcx.mk_predicates(ty_predicates.iter().map(|&(p, _)| p).chain(
+            params.iter().filter(|&&(_, needs_eq)| needs_eq).map(|&(param, _)| {
+                tcx.mk_predicate(Binder::dummy(PredicateKind::Trait(TraitPredicate {
+                    trait_ref: TraitRef::new(eq_trait_id, tcx.mk_substs([tcx.mk_param_from_def(param)].into_iter())),
+                    constness: BoundConstness::NotConst,
+                    polarity: ImplPolarity::Positive,
+                })))
+            }),
+        )),
+        Reveal::UserFacing,
+        Constness::NotConst,
+    )
 }

@@ -34,7 +34,12 @@ impl<T> Context for io::Result<T> {
 /// # Errors
 ///
 /// This function errors out if the files couldn't be created or written to.
-pub fn create(pass: Option<&str>, lint_name: Option<&str>, category: Option<&str>, msrv: bool) -> io::Result<()> {
+pub fn create(
+    pass: Option<&String>,
+    lint_name: Option<&String>,
+    category: Option<&String>,
+    msrv: bool,
+) -> io::Result<()> {
     let lint = LintData {
         pass: pass.expect("`pass` argument is validated by clap"),
         name: lint_name.expect("`name` argument is validated by clap"),

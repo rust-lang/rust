@@ -227,15 +227,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     _ => (None, 0),
                 };
                 if let Some((min, max, sz)) = range {
-                    if let (Some(lo), Some(hi)) = (lo.try_to_bits(sz), hi.try_to_bits(sz)) {
-                        // We want to compare ranges numerically, but the order of the bitwise
-                        // representation of signed integers does not match their numeric order.
-                        // Thus, to correct the ordering, we need to shift the range of signed
-                        // integers to correct the comparison. This is achieved by XORing with a
-                        // bias (see pattern/_match.rs for another pertinent example of this
-                        // pattern).
-                        let (lo, hi) = (lo ^ bias, hi ^ bias);
-                        if lo <= min && (hi > max || hi == max && end == RangeEnd::Included) {
+                    // We want to compare ranges numerically, but the order of the bitwise
+                    // representation of signed integers does not match their numeric order. Thus,
+                    // to correct the ordering, we need to shift the range of signed integers to
+                    // correct the comparison. This is achieved by XORing with a bias (see
+                    // pattern/_match.rs for another pertinent example of this pattern).
+                    //
+                    // Also, for performance, it's important to only do the second `try_to_bits` if
+                    // necessary.
+                    let lo = lo.try_to_bits(sz).unwrap() ^ bias;
+                    if lo <= min {
+                        let hi = hi.try_to_bits(sz).unwrap() ^ bias;
+                        if hi > max || hi == max && end == RangeEnd::Included {
                             // Irrefutable pattern match.
                             return Ok(());
                         }

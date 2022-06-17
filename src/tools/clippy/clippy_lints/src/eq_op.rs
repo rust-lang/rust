@@ -52,15 +52,13 @@ declare_clippy_lint! {
     /// ### Why is this bad?
     /// It is more idiomatic to dereference the other argument.
     ///
-    /// ### Known problems
-    /// None
-    ///
     /// ### Example
-    /// ```ignore
-    /// // Bad
+    /// ```rust,ignore
     /// &x == y
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust,ignore
     /// x == *y
     /// ```
     #[clippy::version = "pre 1.29.0"]

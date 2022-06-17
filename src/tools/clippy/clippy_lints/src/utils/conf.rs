@@ -9,6 +9,29 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::{cmp, env, fmt, fs, io, iter};
 
+#[rustfmt::skip]
+const DEFAULT_DOC_VALID_IDENTS: &[&str] = &[
+    "KiB", "MiB", "GiB", "TiB", "PiB", "EiB",
+    "DirectX",
+    "ECMAScript",
+    "GPLv2", "GPLv3",
+    "GitHub", "GitLab",
+    "IPv4", "IPv6",
+    "ClojureScript", "CoffeeScript", "JavaScript", "PureScript", "TypeScript",
+    "NaN", "NaNs",
+    "OAuth", "GraphQL",
+    "OCaml",
+    "OpenGL", "OpenMP", "OpenSSH", "OpenSSL", "OpenStreetMap", "OpenDNS",
+    "WebGL",
+    "TensorFlow",
+    "TrueType",
+    "iOS", "macOS", "FreeBSD",
+    "TeX", "LaTeX", "BibTeX", "BibLaTeX",
+    "MinGW",
+    "CamelCase",
+];
+const DEFAULT_BLACKLISTED_NAMES: &[&str] = &["foo", "baz", "quux"];
+
 /// Holds information used by `MISSING_ENFORCED_IMPORT_RENAMES` lint.
 #[derive(Clone, Debug, Deserialize)]
 pub struct Rename {
@@ -178,8 +201,10 @@ define_Conf! {
     (msrv: Option<String> = None),
     /// Lint: BLACKLISTED_NAME.
     ///
-    /// The list of blacklisted names to lint about. NB: `bar` is not here since it has legitimate uses
-    (blacklisted_names: Vec<String> = ["foo", "baz", "quux"].iter().map(ToString::to_string).collect()),
+    /// The list of blacklisted names to lint about. NB: `bar` is not here since it has legitimate uses. The value
+    /// `".."` can be used as part of the list to indicate, that the configured values should be appended to the
+    /// default configuration of Clippy. By default any configuraction will replace the default value.
+    (blacklisted_names: Vec<String> = super::DEFAULT_BLACKLISTED_NAMES.iter().map(ToString::to_string).collect()),
     /// Lint: COGNITIVE_COMPLEXITY.
     ///
     /// The maximum cognitive complexity a function can have
@@ -191,27 +216,14 @@ define_Conf! {
     (cyclomatic_complexity_threshold: Option<u64> = None),
     /// Lint: DOC_MARKDOWN.
     ///
-    /// The list of words this lint should not consider as identifiers needing ticks
-    (doc_valid_idents: Vec<String> = [
-        "KiB", "MiB", "GiB", "TiB", "PiB", "EiB",
-        "DirectX",
-        "ECMAScript",
-        "GPLv2", "GPLv3",
-        "GitHub", "GitLab",
-        "IPv4", "IPv6",
-        "ClojureScript", "CoffeeScript", "JavaScript", "PureScript", "TypeScript",
-        "NaN", "NaNs",
-        "OAuth", "GraphQL",
-        "OCaml",
-        "OpenGL", "OpenMP", "OpenSSH", "OpenSSL", "OpenStreetMap", "OpenDNS",
-        "WebGL",
-        "TensorFlow",
-        "TrueType",
-        "iOS", "macOS", "FreeBSD",
-        "TeX", "LaTeX", "BibTeX", "BibLaTeX",
-        "MinGW",
-        "CamelCase",
-    ].iter().map(ToString::to_string).collect()),
+    /// The list of words this lint should not consider as identifiers needing ticks. The value
+    /// `".."` can be used as part of the list to indicate, that the configured values should be appended to the
+    /// default configuration of Clippy. By default any configuraction will replace the default value. For example:
+    /// * `doc-valid-idents = ["ClipPy"]` would replace the default list with `["ClipPy"]`.
+    /// * `doc-valid-idents = ["ClipPy", ".."]` would append `ClipPy` to the default list.
+    ///
+    /// Default list:
+    (doc_valid_idents: Vec<String> = super::DEFAULT_DOC_VALID_IDENTS.iter().map(ToString::to_string).collect()),
     /// Lint: TOO_MANY_ARGUMENTS.
     ///
     /// The maximum number of argument a function or method can have
@@ -401,7 +413,21 @@ pub fn read(path: &Path) -> TryConf {
         Err(e) => return TryConf::from_error(e),
         Ok(content) => content,
     };
-    toml::from_str(&content).unwrap_or_else(TryConf::from_error)
+    match toml::from_str::<TryConf>(&content) {
+        Ok(mut conf) => {
+            extend_vec_if_indicator_present(&mut conf.conf.doc_valid_idents, DEFAULT_DOC_VALID_IDENTS);
+            extend_vec_if_indicator_present(&mut conf.conf.blacklisted_names, DEFAULT_BLACKLISTED_NAMES);
+
+            conf
+        },
+        Err(e) => TryConf::from_error(e),
+    }
+}
+
+fn extend_vec_if_indicator_present(vec: &mut Vec<String>, default: &[&str]) {
+    if vec.contains(&"..".to_string()) {
+        vec.extend(default.iter().map(ToString::to_string));
+    }
 }
 
 const SEPARATOR_WIDTH: usize = 4;
