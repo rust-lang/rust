@@ -137,7 +137,13 @@ LL +         foo(1);
 LL +     };
 LL +     {
 LL +         foo(2);
- ...
+LL +         foo(3);
+LL +     };
+LL +     taking_multiple_units(
+LL +         (),
+LL +         (),
+LL ~     );
+   |
 
 error: passing a unit value to a function
   --> $DIR/unit_arg.rs:85:13
