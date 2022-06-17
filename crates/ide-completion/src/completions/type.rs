@@ -34,7 +34,7 @@ pub(crate) fn complete_type_path(acc: &mut Completions, ctx: &CompletionContext)
                 matches!(location, TypeLocation::GenericArgList(_))
             }
             ScopeDef::ImplSelfType(_) => {
-                !ctx.previous_token_is(syntax::T![impl]) && !ctx.previous_token_is(syntax::T![for])
+                !matches!(location, TypeLocation::ImplTarget | TypeLocation::ImplTrait)
             }
             // Don't suggest attribute macros and derives.
             ScopeDef::ModuleDef(Macro(mac)) => mac.is_fn_like(ctx.db),

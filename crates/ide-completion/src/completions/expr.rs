@@ -2,7 +2,6 @@
 
 use hir::ScopeDef;
 use ide_db::FxHashSet;
-use syntax::T;
 
 use crate::{
     context::{NameRefContext, NameRefKind, PathCompletionCtx, PathKind, PathQualifierCtx},
@@ -20,6 +19,7 @@ pub(crate) fn complete_expr_path(acc: &mut Completions, ctx: &CompletionContext)
         is_func_update,
         after_if_expr,
         wants_mut_token,
+        in_condition,
     ) = match ctx.nameref_ctx() {
         Some(&NameRefContext {
             kind:
@@ -29,6 +29,7 @@ pub(crate) fn complete_expr_path(acc: &mut Completions, ctx: &CompletionContext)
                             in_block_expr,
                             in_loop_body,
                             after_if_expr,
+                            in_condition,
                             ref ref_expr_parent,
                             ref is_func_update,
                         },
@@ -45,6 +46,7 @@ pub(crate) fn complete_expr_path(acc: &mut Completions, ctx: &CompletionContext)
             is_func_update.is_some(),
             after_if_expr,
             ref_expr_parent.as_ref().map(|it| it.mut_token().is_none()).unwrap_or(false),
+            in_condition,
         ),
         _ => return,
     };
@@ -235,10 +237,7 @@ pub(crate) fn complete_expr_path(acc: &mut Completions, ctx: &CompletionContext)
                 add_keyword("true", "true");
                 add_keyword("false", "false");
 
-                if ctx.previous_token_is(T![if])
-                    || ctx.previous_token_is(T![while])
-                    || in_block_expr
-                {
+                if (in_condition && !is_absolute_path) || in_block_expr {
                     add_keyword("let", "let");
                 }
 

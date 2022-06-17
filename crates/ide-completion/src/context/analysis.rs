@@ -327,7 +327,8 @@ impl<'a> CompletionContext<'a> {
             return None;
         }
 
-        self.previous_token = previous_token(syntax_element.clone());
+        self.previous_token =
+            syntax_element.clone().into_token().and_then(previous_non_trivia_token);
 
         self.incomplete_let =
             syntax_element.ancestors().take(6).find_map(ast::LetStmt::cast).map_or(false, |it| {
@@ -647,8 +648,8 @@ impl<'a> CompletionContext<'a> {
             None
         };
 
-        let type_location = |it: Option<SyntaxNode>| {
-            let parent = it?;
+        let type_location = |node: &SyntaxNode| {
+            let parent = node.parent()?;
             let res = match_ast! {
                 match parent {
                     ast::Const(it) => {
@@ -690,6 +691,15 @@ impl<'a> CompletionContext<'a> {
                         }
                         TypeLocation::TypeAscription(TypeAscriptionTarget::Let(find_opt_node_in_file(original_file, it.pat())))
                     },
+                    ast::Impl(it) => {
+                        match it.trait_() {
+                            Some(t) if t.syntax() == node => TypeLocation::ImplTrait,
+                            _ => match it.self_ty() {
+                                Some(t) if t.syntax() == node => TypeLocation::ImplTarget,
+                                _ => return None,
+                            },
+                        }
+                    },
                     ast::TypeBound(_) => TypeLocation::TypeBound,
                     // is this case needed?
                     ast::TypeBoundList(_) => TypeLocation::TypeBound,
@@ -703,16 +713,49 @@ impl<'a> CompletionContext<'a> {
             Some(res)
         };
 
+        let is_in_condition = |it: &ast::Expr| {
+            (|| {
+                let parent = it.syntax().parent()?;
+                if let Some(expr) = ast::WhileExpr::cast(parent.clone()) {
+                    Some(expr.condition()? == *it)
+                } else if let Some(expr) = ast::IfExpr::cast(parent) {
+                    Some(expr.condition()? == *it)
+                } else {
+                    None
+                }
+            })()
+            .unwrap_or(false)
+        };
+
+        let make_path_kind_expr = |expr: ast::Expr| {
+            let it = expr.syntax();
+            let in_block_expr = is_in_block(it);
+            let in_loop_body = is_in_loop_body(it);
+            let after_if_expr = after_if_expr(it.clone());
+            let ref_expr_parent =
+                path.as_single_name_ref().and_then(|_| it.parent()).and_then(ast::RefExpr::cast);
+            let is_func_update = func_update_record(it);
+            let in_condition = is_in_condition(&expr);
+
+            PathKind::Expr {
+                in_block_expr,
+                in_loop_body,
+                after_if_expr,
+                in_condition,
+                ref_expr_parent,
+                is_func_update,
+            }
+        };
+        let make_path_kind_type = |ty: ast::Type| {
+            let location = type_location(ty.syntax());
+            PathKind::Type { location: location.unwrap_or(TypeLocation::Other) }
+        };
+
         // Infer the path kind
         let kind = path.syntax().parent().and_then(|it| {
             match_ast! {
                 match it {
-                    ast::PathType(it) => {
-                        let location = type_location(it.syntax().parent());
-                        Some(PathKind::Type {
-                            location: location.unwrap_or(TypeLocation::Other),
-                        })
-                    },
+                    ast::PathType(it) => Some(make_path_kind_type(it.into())),
                     ast::PathExpr(it) => {
                         if let Some(p) = it.syntax().parent() {
                             if ast::ExprStmt::can_cast(p.kind()) {
@@ -724,14 +767,8 @@ impl<'a> CompletionContext<'a> {
                         }
 
                         path_ctx.has_call_parens = it.syntax().parent().map_or(false, |it| ast::CallExpr::can_cast(it.kind()));
-                        let in_block_expr = is_in_block(it.syntax());
-                        let in_loop_body = is_in_loop_body(it.syntax());
-                        let after_if_expr = after_if_expr(it.syntax().clone());
-                        let ref_expr_parent = path.as_single_name_ref()
-                            .and_then(|_| it.syntax().parent()).and_then(ast::RefExpr::cast);
-                        let is_func_update = func_update_record(it.syntax());
 
-                        Some(PathKind::Expr { in_block_expr, in_loop_body, after_if_expr, ref_expr_parent, is_func_update })
+                        Some(make_path_kind_expr(it.into()))
                     },
                     ast::TupleStructPat(it) => {
                         path_ctx.has_call_parens = true;
@@ -748,50 +785,41 @@ impl<'a> CompletionContext<'a> {
                         Some(PathKind::Pat)
                     },
                     ast::MacroCall(it) => {
+                        // A macro call in this position is usually a result of parsing recovery, so check that
                         if let Some(kind) = inbetween_body_and_decl_check(it.syntax().clone()) {
                             nameref_ctx.kind = Some(NameRefKind::Keyword(kind));
                             return None;
                         }
 
                         path_ctx.has_macro_bang = it.excl_token().is_some();
-                        let parent = it.syntax().parent();
-                        match parent.as_ref().map(|it| it.kind()) {
-                            Some(SyntaxKind::MACRO_PAT) => Some(PathKind::Pat),
-                            Some(SyntaxKind::MACRO_TYPE) => {
-                                let location = type_location(parent.unwrap().parent());
-                                Some(PathKind::Type {
-                                    location: location.unwrap_or(TypeLocation::Other),
-                                })
-                            },
-                            Some(SyntaxKind::ITEM_LIST) => Some(PathKind::Item { kind: ItemListKind::Module }),
-                            Some(SyntaxKind::ASSOC_ITEM_LIST) => Some(PathKind::Item { kind: match parent.and_then(|it| it.parent()) {
-                                Some(it) => match_ast! {
-                                    match it {
-                                        ast::Trait(_) => ItemListKind::Trait,
-                                        ast::Impl(it) => if it.trait_().is_some() {
-                                            ItemListKind::TraitImpl
-                                        } else {
-                                            ItemListKind::Impl
-                                        },
-                                        _ => return None
-                                    }
-                                },
-                                None => return None,
-                            } }),
-                            Some(SyntaxKind::EXTERN_ITEM_LIST) => Some(PathKind::Item { kind: ItemListKind::ExternBlock }),
-                            Some(SyntaxKind::SOURCE_FILE) => Some(PathKind::Item { kind: ItemListKind::SourceFile }),
-                            _ => {
-                               return parent.and_then(ast::MacroExpr::cast).map(|it| {
-                                    let in_loop_body = is_in_loop_body(it.syntax());
-                                    let in_block_expr = is_in_block(it.syntax());
-                                    let after_if_expr = after_if_expr(it.syntax().clone());
-                                    let ref_expr_parent = path.as_single_name_ref()
-                                        .and_then(|_| it.syntax().parent()).and_then(ast::RefExpr::cast);
-                                    let is_func_update = func_update_record(it.syntax());
-                                    PathKind::Expr { in_block_expr, in_loop_body, after_if_expr, ref_expr_parent, is_func_update }
-                                });
-                            },
-                        }
+                        let parent = it.syntax().parent()?;
+                        // Any path in an item list will be treated as a macro call by the parser
+                        let res = match_ast! {
+                            match parent {
+                                ast::MacroExpr(expr) => make_path_kind_expr(expr.into()),
+                                ast::MacroPat(_) => PathKind::Pat,
+                                ast::MacroType(ty) => make_path_kind_type(ty.into()),
+                                ast::ItemList(_) => PathKind::Item { kind: ItemListKind::Module },
+                                ast::AssocItemList(_) => PathKind::Item { kind: match parent.parent() {
+                                    Some(it) => match_ast! {
+                                        match it {
+                                            ast::Trait(_) => ItemListKind::Trait,
+                                            ast::Impl(it) => if it.trait_().is_some() {
+                                                ItemListKind::TraitImpl
+                                            } else {
+                                                ItemListKind::Impl
+                                            },
+                                            _ => return None
+                                        }
+                                    },
+                                    None => return None,
+                                } },
+                                ast::ExternItemList(_) => PathKind::Item { kind: ItemListKind::ExternBlock },
+                                ast::SourceFile(_) => PathKind::Item { kind: ItemListKind::SourceFile },
+                                _ => return None,
+                            }
+                        };
+                        Some(res)
                     },
                     ast::Meta(meta) => (|| {
                         let attr = meta.parent_attr()?;
@@ -818,10 +846,13 @@ impl<'a> CompletionContext<'a> {
 
         match kind {
             Some(kind) => path_ctx.kind = kind,
+            // unresolved path kind, so this isn't really a path we should be completing,
+            // just some random identifier which might be in keyword position
             None => return res,
         }
         path_ctx.has_type_args = segment.generic_arg_list().is_some();
 
+        // calculate the qualifier context
         if let Some((path, use_tree_parent)) = path_or_use_tree_qualifier(&path) {
             if !use_tree_parent {
                 path_ctx.is_absolute_path =
@@ -1032,10 +1063,6 @@ fn has_ref(token: &SyntaxToken) -> bool {
         }
     }
     token.kind() == T![&]
-}
-
-pub(crate) fn previous_token(element: SyntaxElement) -> Option<SyntaxToken> {
-    element.into_token().and_then(previous_non_trivia_token)
 }
 
 pub(crate) fn is_in_token_of_for_loop(element: SyntaxElement) -> bool {
