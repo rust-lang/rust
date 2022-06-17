@@ -1285,6 +1285,7 @@ pub struct DrainFilter<
 {
     pred: F,
     inner: super::map::DrainFilterInner<'a, T, ()>,
+    /// The BTreeMap will outlive this IntoIter so we don't care about drop order for `alloc`.
     alloc: A,
 }
 

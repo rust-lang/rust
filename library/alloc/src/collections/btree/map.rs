@@ -175,6 +175,7 @@ pub struct BTreeMap<
 > {
     root: Option<Root<K, V>>,
     length: usize,
+    /// `ManuallyDrop` to control drop order (needs to be dropped after all the nodes).
     pub(super) alloc: ManuallyDrop<A>,
 }
 
@@ -384,6 +385,7 @@ pub struct IntoIter<
 > {
     range: LazyLeafRange<marker::Dying, K, V>,
     length: usize,
+    /// The BTreeMap will outlive this IntoIter so we don't care about drop order for `alloc`.
     alloc: A,
 }
 
@@ -1800,6 +1802,7 @@ pub struct DrainFilter<
 {
     pred: F,
     inner: DrainFilterInner<'a, K, V>,
+    /// The BTreeMap will outlive this IntoIter so we don't care about drop order for `alloc`.
     alloc: A,
 }
 /// Most of the implementation of DrainFilter are generic over the type

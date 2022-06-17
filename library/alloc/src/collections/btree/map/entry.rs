@@ -56,6 +56,7 @@ pub struct VacantEntry<
     pub(super) handle: Option<Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>>,
     pub(super) dormant_map: DormantMutRef<'a, BTreeMap<K, V, A>>,
 
+    /// The BTreeMap will outlive this IntoIter so we don't care about drop order for `alloc`.
     pub(super) alloc: A,
 
     // Be invariant in `K` and `V`
@@ -81,6 +82,7 @@ pub struct OccupiedEntry<
     pub(super) handle: Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, marker::KV>,
     pub(super) dormant_map: DormantMutRef<'a, BTreeMap<K, V, A>>,
 
+    /// The BTreeMap will outlive this IntoIter so we don't care about drop order for `alloc`.
     pub(super) alloc: A,
 
     // Be invariant in `K` and `V`
