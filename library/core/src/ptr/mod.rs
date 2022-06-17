@@ -1012,16 +1012,15 @@ const unsafe fn swap_nonoverlapping_simple<T>(x: *mut T, y: *mut T, count: usize
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_replace", issue = "83164")]
-pub const unsafe fn replace<T>(dst: *mut T, mut src: T) -> T {
+pub const unsafe fn replace<T>(dst: *mut T, src: T) -> T {
     // SAFETY: the caller must guarantee that `dst` is valid to be
     // cast to a mutable reference (valid for writes, aligned, initialized),
     // and cannot overlap `src` since `dst` must point to a distinct
     // allocated object.
     unsafe {
         assert_unsafe_precondition!(is_aligned_and_not_null(dst));
-        mem::swap(&mut *dst, &mut src); // cannot overlap
+        mem::replace(&mut *dst, src)
     }
-    src
 }
 
 /// Reads the value from `src` without moving it. This leaves the
