@@ -1,6 +1,6 @@
 #![unstable(issue = "none", feature = "windows_stdio")]
 
-use crate::char::{decode_utf16, MAX_UTF8};
+use crate::char::{decode_utf16, MAX_UTF8_LEN};
 use crate::cmp;
 use crate::io;
 use crate::os::windows::io::{FromRawHandle, IntoRawHandle};

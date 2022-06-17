@@ -43,7 +43,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 #[cfg(not(no_global_oom_handling))]
-use core::char::{decode_utf16, REPLACEMENT_CHARACTER, MAX_UTF8_LEN};
+use core::char::{decode_utf16, MAX_UTF8_LEN, REPLACEMENT_CHARACTER};
 use core::fmt;
 use core::hash;
 #[cfg(not(no_global_oom_handling))]
@@ -1219,7 +1219,6 @@ impl String {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn push(&mut self, ch: char) {
-
         match ch.len_utf8() {
             1 => self.vec.push(ch as u8),
             _ => self.vec.extend_from_slice(ch.encode_utf8(&mut [0; MAX_UTF8_LEN]).as_bytes()),
