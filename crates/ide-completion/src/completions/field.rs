@@ -1,29 +1,22 @@
 //! Completion of field list position.
 
 use crate::{
-    context::{
-        NameContext, NameKind, NameRefContext, NameRefKind, PathCompletionCtx, PathKind, Qualified,
-        TypeLocation,
-    },
+    context::{NameContext, NameKind, PathCompletionCtx, PathKind, Qualified, TypeLocation},
     CompletionContext, Completions,
 };
 
 pub(crate) fn complete_field_list_tuple_variant(
     acc: &mut Completions,
     ctx: &CompletionContext,
-    name_ref_ctx: &NameRefContext,
+    path_ctx: &PathCompletionCtx,
 ) {
-    match name_ref_ctx {
-        NameRefContext {
-            kind:
-                Some(NameRefKind::Path(PathCompletionCtx {
-                    has_macro_bang: false,
-                    qualified: Qualified::No,
-                    parent: None,
-                    kind: PathKind::Type { location: TypeLocation::TupleField },
-                    has_type_args: false,
-                    ..
-                })),
+    match path_ctx {
+        PathCompletionCtx {
+            has_macro_bang: false,
+            qualified: Qualified::No,
+            parent: None,
+            kind: PathKind::Type { location: TypeLocation::TupleField },
+            has_type_args: false,
             ..
         } => {
             if ctx.qualifier_ctx.vis_node.is_none() {

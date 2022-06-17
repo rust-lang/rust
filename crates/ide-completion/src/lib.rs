@@ -171,22 +171,25 @@ pub fn completions(
                 completions::item_list::trait_impl::complete_trait_impl_name(acc, ctx, name_ctx);
                 completions::mod_::complete_mod(acc, ctx, name_ctx);
             }
-            IdentContext::NameRef(name_ref_ctx @ NameRefContext { kind, .. }) => {
-                completions::expr::complete_expr_path(acc, ctx, name_ref_ctx);
-                completions::field::complete_field_list_tuple_variant(acc, ctx, name_ref_ctx);
-                completions::item_list::complete_item_list(acc, ctx, name_ref_ctx);
-                completions::use_::complete_use_tree(acc, ctx, name_ref_ctx);
+            IdentContext::NameRef(name_ctx @ NameRefContext { kind, .. }) => {
+                completions::item_list::trait_impl::complete_trait_impl_name_ref(
+                    acc, ctx, name_ctx,
+                );
+                completions::use_::complete_use_tree(acc, ctx, name_ctx);
 
                 match kind {
                     Some(NameRefKind::Path(path_ctx)) => {
-                        completions::flyimport::import_on_the_fly_path(acc, ctx, path_ctx);
-                        completions::record::complete_record_expr_func_update(acc, ctx, path_ctx);
                         completions::attribute::complete_attribute(acc, ctx, path_ctx);
                         completions::attribute::complete_derive(acc, ctx, path_ctx);
                         completions::dot::complete_undotted_self(acc, ctx, path_ctx);
+                        completions::expr::complete_expr_path(acc, ctx, path_ctx);
+                        completions::field::complete_field_list_tuple_variant(acc, ctx, path_ctx);
+                        completions::flyimport::import_on_the_fly_path(acc, ctx, path_ctx);
+                        completions::item_list::complete_item_list(acc, ctx, path_ctx);
                         completions::pattern::pattern_path_completion(acc, ctx, path_ctx);
                         completions::r#type::complete_inferred_type(acc, ctx, path_ctx);
                         completions::r#type::complete_type_path(acc, ctx, path_ctx);
+                        completions::record::complete_record_expr_func_update(acc, ctx, path_ctx);
                         completions::snippet::complete_expr_snippet(acc, ctx, path_ctx);
                         completions::snippet::complete_item_snippet(acc, ctx, path_ctx);
                         completions::vis::complete_vis_path(acc, ctx, path_ctx);
