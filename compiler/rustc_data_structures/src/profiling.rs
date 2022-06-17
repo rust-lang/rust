@@ -827,49 +827,16 @@ cfg_if! {
         }
     } else if #[cfg(target_os = "macos")] {
         pub fn get_resident_set_size() -> Option<usize> {
-            use libc::{c_int, getpid};
+            use libc::{c_int, c_void, getpid, proc_pidinfo, proc_taskinfo, PROC_PIDTASKINFO};
             use std::mem;
-
-            // Defined in `sys/proc_info.h`
-            #[repr(C)]
-            struct ProcTaskInfo {
-                pti_virtual_size: u64,
-                pti_resident_size: u64,
-                pti_total_user: u64,
-                pti_total_system: u64,
-                pti_threads_user: u64,
-                pti_threads_system: u64,
-                pti_policy: u32,
-                pti_faults: u32,
-                pti_pageins: u32,
-                pti_cow_faults: u32,
-                pti_messages_sent: u32,
-                pti_messages_received: u32,
-                pti_syscalls_mach: u32,
-                pti_syscalls_unix: u32,
-                pti_csw: u32,
-                pti_threadnum: u32,
-                pti_numrunning: u32,
-                pti_priority: u32,
-            }
-            extern {
-                fn proc_pidinfo(
-                    pid: c_int,
-                    flavor: c_int,
-                    arg: u64,
-                    buffer: *mut ProcTaskInfo,
-                    buffersize: c_int) -> c_int;
-            }
-            const PROC_PIDTASKINFO: c_int = 4;
-            const PROC_PIDTASKINFO_SIZE: c_int = mem::size_of::<ProcTaskInfo>() as c_int;
+            const PROC_PIDTASKINFO_SIZE: c_int = mem::size_of::<proc_taskinfo>() as c_int;
 
             unsafe {
-                let mut info: ProcTaskInfo = mem::zeroed();
-                let info_ptr = &mut info as *mut ProcTaskInfo;
+                let mut info: proc_taskinfo = mem::zeroed();
+                let info_ptr = &mut info as *mut proc_taskinfo as *mut c_void;
                 let pid = getpid() as c_int;
-                let result =
-                    proc_pidinfo(pid, PROC_PIDTASKINFO, 0, info_ptr, PROC_PIDTASKINFO_SIZE);
-                if result == PROC_PIDTASKINFO_SIZE {
+                let ret = proc_pidinfo(pid, PROC_PIDTASKINFO, 0, info_ptr, PROC_PIDTASKINFO_SIZE);
+                if ret == PROC_PIDTASKINFO_SIZE {
                     Some(info.pti_resident_size as usize)
                 } else {
                     None
