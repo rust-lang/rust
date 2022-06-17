@@ -4,6 +4,7 @@
 
 use crate::cell::{Cell, Ref, RefCell, RefMut, SyncUnsafeCell, UnsafeCell};
 use crate::char::EscapeDebugExtArgs;
+use crate::iter;
 use crate::marker::PhantomData;
 use crate::mem;
 use crate::num::fmt as numfmt;
@@ -693,7 +694,7 @@ pub(crate) mod macros {
     /// Derive macro generating an impl of the trait `Debug`.
     #[rustc_builtin_macro]
     #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
-    #[allow_internal_unstable(core_intrinsics)]
+    #[allow_internal_unstable(core_intrinsics, fmt_helpers_for_derive)]
     pub macro Debug($item:item) {
         /* compiler built-in */
     }
@@ -1964,6 +1965,129 @@ impl<'a> Formatter<'a> {
         builders::debug_struct_new(self, name)
     }
 
+    /// Used to shrink `derive(Debug)` code, for faster compilation and smaller binaries.
+    /// `debug_struct_fields_finish` is more general, but this is faster for 1 field.
+    #[doc(hidden)]
+    #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
+    pub fn debug_struct_field1_finish<'b>(
+        &'b mut self,
+        name: &str,
+        name1: &str,
+        value1: &dyn Debug,
+    ) -> Result {
+        let mut builder = builders::debug_struct_new(self, name);
+        builder.field(name1, value1);
+        builder.finish()
+    }
+
+    /// Used to shrink `derive(Debug)` code, for faster compilation and smaller binaries.
+    /// `debug_struct_fields_finish` is more general, but this is faster for 2 fields.
+    #[doc(hidden)]
+    #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
+    pub fn debug_struct_field2_finish<'b>(
+        &'b mut self,
+        name: &str,
+        name1: &str,
+        value1: &dyn Debug,
+        name2: &str,
+        value2: &dyn Debug,
+    ) -> Result {
+        let mut builder = builders::debug_struct_new(self, name);
+        builder.field(name1, value1);
+        builder.field(name2, value2);
+        builder.finish()
+    }
+
+    /// Used to shrink `derive(Debug)` code, for faster compilation and smaller binaries.
+    /// `debug_struct_fields_finish` is more general, but this is faster for 3 fields.
+    #[doc(hidden)]
+    #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
+    pub fn debug_struct_field3_finish<'b>(
+        &'b mut self,
+        name: &str,
+        name1: &str,
+        value1: &dyn Debug,
+        name2: &str,
+        value2: &dyn Debug,
+        name3: &str,
+        value3: &dyn Debug,
+    ) -> Result {
+        let mut builder = builders::debug_struct_new(self, name);
+        builder.field(name1, value1);
+        builder.field(name2, value2);
+        builder.field(name3, value3);
+        builder.finish()
+    }
+
+    /// Used to shrink `derive(Debug)` code, for faster compilation and smaller binaries.
+    /// `debug_struct_fields_finish` is more general, but this is faster for 4 fields.
+    #[doc(hidden)]
+    #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
+    pub fn debug_struct_field4_finish<'b>(
+        &'b mut self,
+        name: &str,
+        name1: &str,
+        value1: &dyn Debug,
+        name2: &str,
+        value2: &dyn Debug,
+        name3: &str,
+        value3: &dyn Debug,
+        name4: &str,
+        value4: &dyn Debug,
+    ) -> Result {
+        let mut builder = builders::debug_struct_new(self, name);
+        builder.field(name1, value1);
+        builder.field(name2, value2);
+        builder.field(name3, value3);
+        builder.field(name4, value4);
+        builder.finish()
+    }
+
+    /// Used to shrink `derive(Debug)` code, for faster compilation and smaller binaries.
+    /// `debug_struct_fields_finish` is more general, but this is faster for 5 fields.
+    #[doc(hidden)]
+    #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
+    pub fn debug_struct_field5_finish<'b>(
+        &'b mut self,
+        name: &str,
+        name1: &str,
+        value1: &dyn Debug,
+        name2: &str,
+        value2: &dyn Debug,
+        name3: &str,
+        value3: &dyn Debug,
+        name4: &str,
+        value4: &dyn Debug,
+        name5: &str,
+        value5: &dyn Debug,
+    ) -> Result {
+        let mut builder = builders::debug_struct_new(self, name);
+        builder.field(name1, value1);
+        builder.field(name2, value2);
+        builder.field(name3, value3);
+        builder.field(name4, value4);
+        builder.field(name5, value5);
+        builder.finish()
+    }
+
+    /// Used to shrink `derive(Debug)` code, for faster compilation and smaller binaries.
+    /// For the cases not covered by `debug_struct_field[12345]_finish`.
+    #[doc(hidden)]
+    #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
+    pub fn debug_struct_fields_finish<'b>(
+        &'b mut self,
+        name: &str,
+        names: &[&str],
+        values: &[&dyn Debug],
+    ) -> Result {
+        assert_eq!(names.len(), values.len());
+        let mut builder = builders::debug_struct_new(self, name);
+        for (name, value) in iter::zip(names, values) {
+            builder.field(name, value);
+        }
+        builder.finish()
+    }
+
     /// Creates a `DebugTuple` builder designed to assist with creation of
     /// `fmt::Debug` implementations for tuple structs.
     ///
@@ -1993,6 +2117,108 @@ impl<'a> Formatter<'a> {
     #[stable(feature = "debug_builders", since = "1.2.0")]
     pub fn debug_tuple<'b>(&'b mut self, name: &str) -> DebugTuple<'b, 'a> {
         builders::debug_tuple_new(self, name)
+    }
+
+    /// Used to shrink `derive(Debug)` code, for faster compilation and smaller binaries.
+    /// `debug_tuple_fields_finish` is more general, but this is faster for 1 field.
+    #[doc(hidden)]
+    #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
+    pub fn debug_tuple_field1_finish<'b>(&'b mut self, name: &str, value1: &dyn Debug) -> Result {
+        let mut builder = builders::debug_tuple_new(self, name);
+        builder.field(value1);
+        builder.finish()
+    }
+
+    /// Used to shrink `derive(Debug)` code, for faster compilation and smaller binaries.
+    /// `debug_tuple_fields_finish` is more general, but this is faster for 2 fields.
+    #[doc(hidden)]
+    #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
+    pub fn debug_tuple_field2_finish<'b>(
+        &'b mut self,
+        name: &str,
+        value1: &dyn Debug,
+        value2: &dyn Debug,
+    ) -> Result {
+        let mut builder = builders::debug_tuple_new(self, name);
+        builder.field(value1);
+        builder.field(value2);
+        builder.finish()
+    }
+
+    /// Used to shrink `derive(Debug)` code, for faster compilation and smaller binaries.
+    /// `debug_tuple_fields_finish` is more general, but this is faster for 3 fields.
+    #[doc(hidden)]
+    #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
+    pub fn debug_tuple_field3_finish<'b>(
+        &'b mut self,
+        name: &str,
+        value1: &dyn Debug,
+        value2: &dyn Debug,
+        value3: &dyn Debug,
+    ) -> Result {
+        let mut builder = builders::debug_tuple_new(self, name);
+        builder.field(value1);
+        builder.field(value2);
+        builder.field(value3);
+        builder.finish()
+    }
+
+    /// Used to shrink `derive(Debug)` code, for faster compilation and smaller binaries.
+    /// `debug_tuple_fields_finish` is more general, but this is faster for 4 fields.
+    #[doc(hidden)]
+    #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
+    pub fn debug_tuple_field4_finish<'b>(
+        &'b mut self,
+        name: &str,
+        value1: &dyn Debug,
+        value2: &dyn Debug,
+        value3: &dyn Debug,
+        value4: &dyn Debug,
+    ) -> Result {
+        let mut builder = builders::debug_tuple_new(self, name);
+        builder.field(value1);
+        builder.field(value2);
+        builder.field(value3);
+        builder.field(value4);
+        builder.finish()
+    }
+
+    /// Used to shrink `derive(Debug)` code, for faster compilation and smaller binaries.
+    /// `debug_tuple_fields_finish` is more general, but this is faster for 5 fields.
+    #[doc(hidden)]
+    #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
+    pub fn debug_tuple_field5_finish<'b>(
+        &'b mut self,
+        name: &str,
+        value1: &dyn Debug,
+        value2: &dyn Debug,
+        value3: &dyn Debug,
+        value4: &dyn Debug,
+        value5: &dyn Debug,
+    ) -> Result {
+        let mut builder = builders::debug_tuple_new(self, name);
+        builder.field(value1);
+        builder.field(value2);
+        builder.field(value3);
+        builder.field(value4);
+        builder.field(value5);
+        builder.finish()
+    }
+
+    /// Used to shrink `derive(Debug)` code, for faster compilation and smaller binaries.
+    /// For the cases not covered by `debug_tuple_field[12345]_finish`.
+    #[doc(hidden)]
+    #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
+    pub fn debug_tuple_fields_finish<'b>(
+        &'b mut self,
+        name: &str,
+        values: &[&dyn Debug],
+    ) -> Result {
+        let mut builder = builders::debug_tuple_new(self, name);
+        for value in values {
+            builder.field(value);
+        }
+        builder.finish()
     }
 
     /// Creates a `DebugList` builder designed to assist with creation of

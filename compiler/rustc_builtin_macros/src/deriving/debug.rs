@@ -3,14 +3,10 @@ use crate::deriving::generic::*;
 use crate::deriving::path_std;
 
 use rustc_ast::ptr::P;
-use rustc_ast::{self as ast, Expr, LocalKind, MetaItem};
+use rustc_ast::{self as ast, Expr, MetaItem};
 use rustc_expand::base::{Annotatable, ExtCtxt};
-use rustc_span::symbol::{sym, Ident};
-use rustc_span::{Span, DUMMY_SP};
-
-fn make_mut_borrow(cx: &mut ExtCtxt<'_>, sp: Span, expr: P<Expr>) -> P<Expr> {
-    cx.expr(sp, ast::ExprKind::AddrOf(ast::BorrowKind::Ref, ast::Mutability::Mut, expr))
-}
+use rustc_span::symbol::{sym, Ident, Symbol};
+use rustc_span::Span;
 
 pub fn expand_deriving_debug(
     cx: &mut ExtCtxt<'_>,
@@ -49,11 +45,7 @@ pub fn expand_deriving_debug(
     trait_def.expand(cx, mitem, item, push)
 }
 
-/// We use the debug builders to do the heavy lifting here
 fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>) -> P<Expr> {
-    // build fmt.debug_struct(<name>).field(<fieldname>, &<fieldval>)....build()
-    // or fmt.debug_tuple(<name>).field(&<fieldval>)....build()
-    // based on the "shape".
     let (ident, vdata, fields) = match substr.fields {
         Struct(vdata, fields) => (substr.type_ident, *vdata, fields),
         EnumMatching(_, _, v, fields) => (v.ident, &v.data, fields),
@@ -67,93 +59,130 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
     let name = cx.expr_lit(span, ast::LitKind::Str(ident.name, ast::StrStyle::Cooked));
     let fmt = substr.nonself_args[0].clone();
 
-    // Special fast path for unit variants. In the common case of an enum that is entirely unit
-    // variants (i.e. a C-like enum), this fast path allows LLVM to eliminate the entire switch in
-    // favor of a lookup table.
-    if let ast::VariantData::Unit(..) = vdata {
-        let fn_path_write_str = cx.std_path(&[sym::fmt, sym::Formatter, sym::write_str]);
-        let expr = cx.expr_call_global(span, fn_path_write_str, vec![fmt, name]);
-        let stmts = vec![cx.stmt_expr(expr)];
-        let block = cx.block(span, stmts);
-        return cx.expr_block(block);
-    }
-
-    let builder = Ident::new(sym::debug_trait_builder, span);
-    let builder_expr = cx.expr_ident(span, builder);
-
-    let mut stmts = Vec::with_capacity(fields.len() + 2);
-    let fn_path_finish;
-    match vdata {
+    // Struct and tuples are similar enough that we use the same code for both,
+    // with some extra pieces for structs due to the field names.
+    let (is_struct, args_per_field) = match vdata {
         ast::VariantData::Unit(..) => {
-            cx.span_bug(span, "unit variants should have been handled above");
+            // Special fast path for unit variants.
+            //let fn_path_write_str = cx.std_path(&[sym::fmt, sym::Formatter, sym::write_str]);
+            //return cx.expr_call_global(span, fn_path_write_str, vec![fmt, name]);
+            assert!(fields.is_empty());
+            (false, 0)
         }
-        ast::VariantData::Tuple(..) => {
-            // tuple struct/"normal" variant
-            let fn_path_debug_tuple = cx.std_path(&[sym::fmt, sym::Formatter, sym::debug_tuple]);
-            let expr = cx.expr_call_global(span, fn_path_debug_tuple, vec![fmt, name]);
-            let expr = make_mut_borrow(cx, span, expr);
-            stmts.push(cx.stmt_let(span, false, builder, expr));
+        ast::VariantData::Tuple(..) => (false, 1),
+        ast::VariantData::Struct(..) => (true, 2),
+    };
 
-            for field in fields {
-                // Use double indirection to make sure this works for unsized types
-                let field = cx.expr_addr_of(field.span, field.self_.clone());
-                let field = cx.expr_addr_of(field.span, field);
+    // The number of fields that can be handled without an array.
+    const CUTOFF: usize = 5;
 
-                let fn_path_field = cx.std_path(&[sym::fmt, sym::DebugTuple, sym::field]);
-                let expr =
-                    cx.expr_call_global(span, fn_path_field, vec![builder_expr.clone(), field]);
+    if fields.is_empty() {
+        // Special case for no fields.
+        let fn_path_write_str = cx.std_path(&[sym::fmt, sym::Formatter, sym::write_str]);
+        cx.expr_call_global(span, fn_path_write_str, vec![fmt, name])
+    } else if fields.len() <= CUTOFF {
+        // Few enough fields that we can use a specific-length method.
+        let debug = if is_struct {
+            format!("debug_struct_field{}_finish", fields.len())
+        } else {
+            format!("debug_tuple_field{}_finish", fields.len())
+        };
+        let fn_path_debug = cx.std_path(&[sym::fmt, sym::Formatter, Symbol::intern(&debug)]);
 
-                // Use `let _ = expr;` to avoid triggering the
-                // unused_results lint.
-                stmts.push(stmt_let_underscore(cx, span, expr));
-            }
-
-            fn_path_finish = cx.std_path(&[sym::fmt, sym::DebugTuple, sym::finish]);
-        }
-        ast::VariantData::Struct(..) => {
-            // normal struct/struct variant
-            let fn_path_debug_struct = cx.std_path(&[sym::fmt, sym::Formatter, sym::debug_struct]);
-            let expr = cx.expr_call_global(span, fn_path_debug_struct, vec![fmt, name]);
-            let expr = make_mut_borrow(cx, span, expr);
-            stmts.push(cx.stmt_let(DUMMY_SP, false, builder, expr));
-
-            for field in fields {
+        let mut args = Vec::with_capacity(2 + fields.len() * args_per_field);
+        args.extend([fmt, name]);
+        for i in 0..fields.len() {
+            let field = &fields[i];
+            if is_struct {
                 let name = cx.expr_lit(
                     field.span,
                     ast::LitKind::Str(field.name.unwrap().name, ast::StrStyle::Cooked),
                 );
-
-                // Use double indirection to make sure this works for unsized types
-                let fn_path_field = cx.std_path(&[sym::fmt, sym::DebugStruct, sym::field]);
-                let field = cx.expr_addr_of(field.span, field.self_.clone());
-                let field = cx.expr_addr_of(field.span, field);
-                let expr = cx.expr_call_global(
-                    span,
-                    fn_path_field,
-                    vec![builder_expr.clone(), name, field],
-                );
-                stmts.push(stmt_let_underscore(cx, span, expr));
+                args.push(name);
             }
-            fn_path_finish = cx.std_path(&[sym::fmt, sym::DebugStruct, sym::finish]);
+            // Use double indirection to make sure this works for unsized types
+            let field = cx.expr_addr_of(field.span, field.self_.clone());
+            let field = cx.expr_addr_of(field.span, field);
+            args.push(field);
         }
+        cx.expr_call_global(span, fn_path_debug, args)
+    } else {
+        // Enough fields that we must use the any-length method.
+        let mut name_exprs = Vec::with_capacity(fields.len());
+        let mut value_exprs = Vec::with_capacity(fields.len());
+
+        for field in fields {
+            if is_struct {
+                name_exprs.push(cx.expr_lit(
+                    field.span,
+                    ast::LitKind::Str(field.name.unwrap().name, ast::StrStyle::Cooked),
+                ));
+            }
+
+            // Use double indirection to make sure this works for unsized types
+            let value_ref = cx.expr_addr_of(field.span, field.self_.clone());
+            value_exprs.push(cx.expr_addr_of(field.span, value_ref));
+        }
+
+        // `let names: &'static _ = &["field1", "field2"];`
+        let names_let = if is_struct {
+            let lt_static = Some(cx.lifetime_static(span));
+            let ty_static_ref =
+                cx.ty_rptr(span, cx.ty_infer(span), lt_static, ast::Mutability::Not);
+            Some(cx.stmt_let_ty(
+                span,
+                false,
+                Ident::new(sym::names, span),
+                Some(ty_static_ref),
+                cx.expr_array_ref(span, name_exprs),
+            ))
+        } else {
+            None
+        };
+
+        // `let values: &[&dyn Debug] = &[&&self.field1, &&self.field2];`
+        let path_debug = cx.path_global(span, cx.std_path(&[sym::fmt, sym::Debug]));
+        let ty_dyn_debug = cx.ty(
+            span,
+            ast::TyKind::TraitObject(vec![cx.trait_bound(path_debug)], ast::TraitObjectSyntax::Dyn),
+        );
+        let ty_slice = cx.ty(
+            span,
+            ast::TyKind::Slice(cx.ty_rptr(span, ty_dyn_debug, None, ast::Mutability::Not)),
+        );
+        let values_let = cx.stmt_let_ty(
+            span,
+            false,
+            Ident::new(sym::values, span),
+            Some(cx.ty_rptr(span, ty_slice, None, ast::Mutability::Not)),
+            cx.expr_array_ref(span, value_exprs),
+        );
+
+        // `fmt::Formatter::debug_struct_fields_finish(fmt, name, names, values)` or
+        // `fmt::Formatter::debug_tuple_fields_finish(fmt, name, values)`
+        let sym_debug = if is_struct {
+            sym::debug_struct_fields_finish
+        } else {
+            sym::debug_tuple_fields_finish
+        };
+        let fn_path_debug_internal = cx.std_path(&[sym::fmt, sym::Formatter, sym_debug]);
+
+        let mut args = Vec::with_capacity(4);
+        args.push(fmt);
+        args.push(name);
+        if is_struct {
+            args.push(cx.expr_ident(span, Ident::new(sym::names, span)));
+        }
+        args.push(cx.expr_ident(span, Ident::new(sym::values, span)));
+        let expr = cx.expr_call_global(span, fn_path_debug_internal, args);
+
+        let mut stmts = Vec::with_capacity(3);
+        if is_struct {
+            stmts.push(names_let.unwrap());
+        }
+        stmts.push(values_let);
+        stmts.push(cx.stmt_expr(expr));
+
+        cx.expr_block(cx.block(span, stmts))
     }
-
-    let expr = cx.expr_call_global(span, fn_path_finish, vec![builder_expr]);
-
-    stmts.push(cx.stmt_expr(expr));
-    let block = cx.block(span, stmts);
-    cx.expr_block(block)
-}
-
-fn stmt_let_underscore(cx: &mut ExtCtxt<'_>, sp: Span, expr: P<ast::Expr>) -> ast::Stmt {
-    let local = P(ast::Local {
-        pat: cx.pat_wild(sp),
-        ty: None,
-        id: ast::DUMMY_NODE_ID,
-        kind: LocalKind::Init(expr),
-        span: sp,
-        attrs: ast::AttrVec::new(),
-        tokens: None,
-    });
-    ast::Stmt { id: ast::DUMMY_NODE_ID, kind: ast::StmtKind::Local(local), span: sp }
 }

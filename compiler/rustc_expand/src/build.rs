@@ -57,6 +57,10 @@ impl<'a> ExtCtxt<'a> {
         P(ast::Ty { id: ast::DUMMY_NODE_ID, span, kind, tokens: None })
     }
 
+    pub fn ty_infer(&self, span: Span) -> P<ast::Ty> {
+        self.ty(span, ast::TyKind::Infer)
+    }
+
     pub fn ty_path(&self, path: ast::Path) -> P<ast::Ty> {
         self.ty(path.span, ast::TyKind::Path(None, path))
     }
@@ -140,11 +144,26 @@ impl<'a> ExtCtxt<'a> {
         ast::Lifetime { id: ast::DUMMY_NODE_ID, ident: ident.with_span_pos(span) }
     }
 
+    pub fn lifetime_static(&self, span: Span) -> ast::Lifetime {
+        self.lifetime(span, Ident::new(kw::StaticLifetime, span))
+    }
+
     pub fn stmt_expr(&self, expr: P<ast::Expr>) -> ast::Stmt {
         ast::Stmt { id: ast::DUMMY_NODE_ID, span: expr.span, kind: ast::StmtKind::Expr(expr) }
     }
 
     pub fn stmt_let(&self, sp: Span, mutbl: bool, ident: Ident, ex: P<ast::Expr>) -> ast::Stmt {
+        self.stmt_let_ty(sp, mutbl, ident, None, ex)
+    }
+
+    pub fn stmt_let_ty(
+        &self,
+        sp: Span,
+        mutbl: bool,
+        ident: Ident,
+        ty: Option<P<ast::Ty>>,
+        ex: P<ast::Expr>,
+    ) -> ast::Stmt {
         let pat = if mutbl {
             let binding_mode = ast::BindingMode::ByValue(ast::Mutability::Mut);
             self.pat_ident_binding_mode(sp, ident, binding_mode)
@@ -153,7 +172,7 @@ impl<'a> ExtCtxt<'a> {
         };
         let local = P(ast::Local {
             pat,
-            ty: None,
+            ty,
             id: ast::DUMMY_NODE_ID,
             kind: LocalKind::Init(ex),
             span: sp,
