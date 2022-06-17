@@ -8,7 +8,11 @@ use crate::{
     CompletionContext, Completions,
 };
 
-pub(crate) fn complete_expr_path(acc: &mut Completions, ctx: &CompletionContext) {
+pub(crate) fn complete_expr_path(
+    acc: &mut Completions,
+    ctx: &CompletionContext,
+    name_ref_ctx: &NameRefContext,
+) {
     let _p = profile::span("complete_expr_path");
 
     let (
@@ -19,8 +23,8 @@ pub(crate) fn complete_expr_path(acc: &mut Completions, ctx: &CompletionContext)
         after_if_expr,
         wants_mut_token,
         in_condition,
-    ) = match ctx.nameref_ctx() {
-        Some(&NameRefContext {
+    ) = match name_ref_ctx {
+        &NameRefContext {
             kind:
                 Some(NameRefKind::Path(PathCompletionCtx {
                     kind:
@@ -36,7 +40,7 @@ pub(crate) fn complete_expr_path(acc: &mut Completions, ctx: &CompletionContext)
                     ..
                 })),
             ..
-        }) if ctx.qualifier_ctx.none() => (
+        } if ctx.qualifier_ctx.none() => (
             qualified,
             in_block_expr,
             in_loop_body,
@@ -65,11 +69,8 @@ pub(crate) fn complete_expr_path(acc: &mut Completions, ctx: &CompletionContext)
             .into_iter()
             .flat_map(|it| hir::Trait::from(it).items(ctx.sema.db))
             .for_each(|item| add_assoc_item(acc, ctx, item)),
-        Qualified::With { resolution, .. } => {
-            let resolution = match resolution {
-                Some(it) => it,
-                None => return,
-            };
+        Qualified::With { resolution: None, .. } => {}
+        Qualified::With { resolution: Some(resolution), .. } => {
             // Add associated types on type parameters and `Self`.
             ctx.scope.assoc_type_shorthand_candidates(resolution, |_, alias| {
                 acc.add_type_alias(ctx, alias);

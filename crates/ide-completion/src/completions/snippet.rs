@@ -15,13 +15,17 @@ fn snippet(ctx: &CompletionContext, cap: SnippetCap, label: &str, snippet: &str)
     item
 }
 
-pub(crate) fn complete_expr_snippet(acc: &mut Completions, ctx: &CompletionContext) {
-    let &can_be_stmt = match ctx.path_context() {
-        Some(PathCompletionCtx {
+pub(crate) fn complete_expr_snippet(
+    acc: &mut Completions,
+    ctx: &CompletionContext,
+    path_ctx: &PathCompletionCtx,
+) {
+    let &can_be_stmt = match path_ctx {
+        PathCompletionCtx {
             qualified: Qualified::No,
             kind: PathKind::Expr { in_block_expr, .. },
             ..
-        }) => in_block_expr,
+        } => in_block_expr,
         _ => return,
     };
 
@@ -40,13 +44,17 @@ pub(crate) fn complete_expr_snippet(acc: &mut Completions, ctx: &CompletionConte
     }
 }
 
-pub(crate) fn complete_item_snippet(acc: &mut Completions, ctx: &CompletionContext) {
-    let path_kind = match ctx.path_context() {
-        Some(PathCompletionCtx {
+pub(crate) fn complete_item_snippet(
+    acc: &mut Completions,
+    ctx: &CompletionContext,
+    path_ctx: &PathCompletionCtx,
+) {
+    let path_kind = match path_ctx {
+        PathCompletionCtx {
             qualified: Qualified::No,
             kind: kind @ (PathKind::Item { .. } | PathKind::Expr { in_block_expr: true, .. }),
             ..
-        }) => kind,
+        } => kind,
         _ => return,
     };
     if !ctx.qualifier_ctx.none() {

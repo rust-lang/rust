@@ -13,27 +13,22 @@ use text_edit::TextEdit;
 
 use crate::{
     completions::postfix::format_like::add_format_like_completions,
-    context::{CompletionContext, DotAccess, DotAccessKind, NameRefContext, NameRefKind},
+    context::{CompletionContext, DotAccess, DotAccessKind},
     item::{Builder, CompletionRelevancePostfixMatch},
     CompletionItem, CompletionItemKind, CompletionRelevance, Completions, SnippetScope,
 };
 
-pub(crate) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
+pub(crate) fn complete_postfix(
+    acc: &mut Completions,
+    ctx: &CompletionContext,
+    dot_access: &DotAccess,
+) {
     if !ctx.config.enable_postfix_completions {
         return;
     }
 
-    let (dot_receiver, receiver_ty, receiver_is_ambiguous_float_literal) = match ctx.nameref_ctx() {
-        Some(NameRefContext {
-            kind:
-                Some(NameRefKind::DotAccess(DotAccess {
-                    receiver_ty: Some(ty),
-                    receiver: Some(it),
-                    kind,
-                    ..
-                })),
-            ..
-        }) => (
+    let (dot_receiver, receiver_ty, receiver_is_ambiguous_float_literal) = match dot_access {
+        DotAccess { receiver_ty: Some(ty), receiver: Some(it), kind, .. } => (
             it,
             &ty.original,
             match *kind {

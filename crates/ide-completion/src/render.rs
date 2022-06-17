@@ -17,7 +17,7 @@ use ide_db::{
 use syntax::{SmolStr, SyntaxKind, TextRange};
 
 use crate::{
-    context::{PathCompletionCtx, PathKind},
+    context::{IdentContext, NameRefContext, NameRefKind, PathCompletionCtx, PathKind},
     item::{Builder, CompletionRelevanceTypeMatch},
     render::{function::render_fn, literal::render_variant_lit, macro_::render_macro},
     CompletionContext, CompletionItem, CompletionItemKind, CompletionRelevance,
@@ -75,7 +75,13 @@ impl<'a> RenderContext<'a> {
     }
 
     pub(crate) fn path_is_call(&self) -> bool {
-        self.completion.path_context().map_or(false, |it| it.has_call_parens)
+        matches!(
+            self.completion.ident_ctx,
+            IdentContext::NameRef(NameRefContext {
+                kind: Some(NameRefKind::Path(PathCompletionCtx { has_call_parens: true, .. })),
+                ..
+            })
+        )
     }
 
     fn is_deprecated(&self, def: impl HasAttrs) -> bool {
@@ -285,8 +291,15 @@ fn render_resolution_simple_(
 
     // Add `<>` for generic types
     let type_path_no_ty_args = matches!(
-        ctx.completion.path_context(),
-        Some(PathCompletionCtx { kind: PathKind::Type { .. }, has_type_args: false, .. })
+        ctx.completion.ident_ctx,
+        IdentContext::NameRef(NameRefContext {
+            kind: Some(NameRefKind::Path(PathCompletionCtx {
+                kind: PathKind::Type { .. },
+                has_type_args: false,
+                ..
+            })),
+            ..
+        })
     ) && ctx.completion.config.callable.is_some();
     if type_path_no_ty_args {
         if let Some(cap) = ctx.snippet_cap() {
@@ -937,7 +950,6 @@ fn main() -> RawIdentTable {
 
     #[test]
     fn no_parens_in_use_item() {
-        cov_mark::check!(no_parens_in_use_item);
         check_edit(
             "foo",
             r#"

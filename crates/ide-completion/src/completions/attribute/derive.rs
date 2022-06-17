@@ -10,26 +10,29 @@ use crate::{
     Completions,
 };
 
-pub(crate) fn complete_derive(acc: &mut Completions, ctx: &CompletionContext) {
-    let (qualified, existing_derives) = match ctx.path_context() {
-        Some(PathCompletionCtx {
-            kind: PathKind::Derive { existing_derives }, qualified, ..
-        }) => (qualified, existing_derives),
+pub(crate) fn complete_derive(
+    acc: &mut Completions,
+    ctx: &CompletionContext,
+    path_ctx: &PathCompletionCtx,
+) {
+    let (qualified, existing_derives) = match path_ctx {
+        PathCompletionCtx { kind: PathKind::Derive { existing_derives }, qualified, .. } => {
+            (qualified, existing_derives)
+        }
         _ => return,
     };
 
     let core = ctx.famous_defs().core();
 
     match qualified {
-        Qualified::With { resolution, is_super_chain, .. } => {
+        Qualified::With {
+            resolution: Some(hir::PathResolution::Def(hir::ModuleDef::Module(module))),
+            is_super_chain,
+            ..
+        } => {
             if *is_super_chain {
                 acc.add_keyword(ctx, "super::");
             }
-
-            let module = match resolution {
-                Some(hir::PathResolution::Def(hir::ModuleDef::Module(it))) => it,
-                _ => return,
-            };
 
             for (name, def) in module.scope(ctx.db, Some(ctx.module)) {
                 let add_def = match def {
@@ -101,7 +104,7 @@ pub(crate) fn complete_derive(acc: &mut Completions, ctx: &CompletionContext) {
             });
             acc.add_nameref_keywords_with_colon(ctx);
         }
-        Qualified::Infer => {}
+        Qualified::Infer | Qualified::With { .. } => {}
     }
 }
 

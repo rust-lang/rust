@@ -10,11 +10,15 @@ use crate::{
     CompletionContext, Completions,
 };
 
-pub(crate) fn complete_type_path(acc: &mut Completions, ctx: &CompletionContext) {
+pub(crate) fn complete_type_path(
+    acc: &mut Completions,
+    ctx: &CompletionContext,
+    path_ctx: &PathCompletionCtx,
+) {
     let _p = profile::span("complete_type_path");
 
-    let (location, qualified) = match ctx.path_context() {
-        Some(PathCompletionCtx { kind: PathKind::Type { location }, qualified, .. }) => {
+    let (location, qualified) = match path_ctx {
+        PathCompletionCtx { kind: PathKind::Type { location }, qualified, .. } => {
             (location, qualified)
         }
         _ => return,
@@ -58,11 +62,8 @@ pub(crate) fn complete_type_path(acc: &mut Completions, ctx: &CompletionContext)
             .into_iter()
             .flat_map(|it| hir::Trait::from(it).items(ctx.sema.db))
             .for_each(|item| add_assoc_item(acc, item)),
-        Qualified::With { resolution, .. } => {
-            let resolution = match resolution {
-                Some(it) => it,
-                None => return,
-            };
+        Qualified::With { resolution: None, .. } => {}
+        Qualified::With { resolution: Some(resolution), .. } => {
             // Add associated types on type parameters and `Self`.
             ctx.scope.assoc_type_shorthand_candidates(resolution, |_, alias| {
                 acc.add_type_alias(ctx, alias);
@@ -87,7 +88,7 @@ pub(crate) fn complete_type_path(acc: &mut Completions, ctx: &CompletionContext)
                         hir::ModuleDef::Adt(adt) => adt.ty(ctx.db),
                         hir::ModuleDef::TypeAlias(a) => a.ty(ctx.db),
                         hir::ModuleDef::BuiltinType(builtin) => builtin.ty(ctx.db),
-                        _ => unreachable!(),
+                        _ => return,
                     };
 
                     // XXX: For parity with Rust bug #22519, this does not complete Ty::AssocType.
@@ -190,14 +191,16 @@ pub(crate) fn complete_type_path(acc: &mut Completions, ctx: &CompletionContext)
     }
 }
 
-pub(crate) fn complete_inferred_type(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
-    let pat = match ctx.path_context() {
-        Some(
-            ctx @ PathCompletionCtx {
-                kind: PathKind::Type { location: TypeLocation::TypeAscription(ascription), .. },
-                ..
-            },
-        ) if ctx.is_trivial_path() => ascription,
+pub(crate) fn complete_inferred_type(
+    acc: &mut Completions,
+    ctx: &CompletionContext,
+    path_ctx: &PathCompletionCtx,
+) -> Option<()> {
+    let pat = match path_ctx {
+        PathCompletionCtx {
+            kind: PathKind::Type { location: TypeLocation::TypeAscription(ascription), .. },
+            ..
+        } if path_ctx.is_trivial_path() => ascription,
         _ => return None,
     };
     let x = match pat {

@@ -160,8 +160,6 @@ fn main() {
 "#,
         expect![[r#"
             fd ..Default::default()
-            fd foo1                 u32
-            fd foo2                 u32
             fn main()               fn()
             lc foo                  Foo
             lc thing                i32

@@ -362,6 +362,7 @@ impl<'a> CompletionContext<'a> {
         FamousDefs(&self.sema, self.krate)
     }
 
+    // FIXME: This shouldn't exist
     pub(super) fn nameref_ctx(&self) -> Option<&NameRefContext> {
         match &self.ident_ctx {
             IdentContext::NameRef(it) => Some(it),
@@ -369,20 +370,7 @@ impl<'a> CompletionContext<'a> {
         }
     }
 
-    pub(super) fn name_ctx(&self) -> Option<&NameContext> {
-        match &self.ident_ctx {
-            IdentContext::Name(it) => Some(it),
-            _ => None,
-        }
-    }
-
-    pub(super) fn lifetime_ctx(&self) -> Option<&LifetimeContext> {
-        match &self.ident_ctx {
-            IdentContext::Lifetime(it) => Some(it),
-            _ => None,
-        }
-    }
-
+    // FIXME: This shouldn't exist
     pub(crate) fn dot_receiver(&self) -> Option<&ast::Expr> {
         match self.nameref_ctx() {
             Some(NameRefContext {
@@ -393,10 +381,7 @@ impl<'a> CompletionContext<'a> {
         }
     }
 
-    pub(crate) fn has_dot_receiver(&self) -> bool {
-        self.dot_receiver().is_some()
-    }
-
+    // FIXME: This shouldn't exist
     pub(crate) fn path_context(&self) -> Option<&PathCompletionCtx> {
         self.nameref_ctx().and_then(|ctx| match &ctx.kind {
             Some(NameRefKind::Path(path)) => Some(path),
@@ -404,6 +389,7 @@ impl<'a> CompletionContext<'a> {
         })
     }
 
+    // FIXME: This shouldn't exist
     pub(crate) fn path_qual(&self) -> Option<&ast::Path> {
         self.path_context().and_then(|it| match &it.qualified {
             Qualified::With { path, .. } => Some(path),

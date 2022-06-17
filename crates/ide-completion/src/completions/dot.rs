@@ -4,21 +4,16 @@ use ide_db::FxHashSet;
 
 use crate::{
     context::{
-        CompletionContext, DotAccess, DotAccessKind, NameRefContext, NameRefKind,
-        PathCompletionCtx, PathKind, Qualified,
+        CompletionContext, DotAccess, DotAccessKind, PathCompletionCtx, PathKind, Qualified,
     },
     CompletionItem, CompletionItemKind, Completions,
 };
 
 /// Complete dot accesses, i.e. fields or methods.
-pub(crate) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) {
-    let (dot_access, receiver_ty) = match ctx.nameref_ctx() {
-        Some(NameRefContext {
-            kind:
-                Some(NameRefKind::DotAccess(access @ DotAccess { receiver_ty: Some(receiver_ty), .. })),
-            ..
-        }) => (access, &receiver_ty.original),
-        _ => return complete_undotted_self(acc, ctx),
+pub(crate) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext, dot_access: &DotAccess) {
+    let receiver_ty = match dot_access {
+        DotAccess { receiver_ty: Some(receiver_ty), .. } => &receiver_ty.original,
+        _ => return,
     };
 
     // Suggest .await syntax for types that implement Future trait
@@ -43,18 +38,17 @@ pub(crate) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) {
     complete_methods(ctx, &receiver_ty, |func| acc.add_method(ctx, func, None, None));
 }
 
-fn complete_undotted_self(acc: &mut Completions, ctx: &CompletionContext) {
+pub(crate) fn complete_undotted_self(
+    acc: &mut Completions,
+    ctx: &CompletionContext,
+    path_ctx: &PathCompletionCtx,
+) {
     if !ctx.config.enable_self_on_the_fly {
         return;
     }
-    match ctx.path_context() {
-        Some(
-            path_ctx @ PathCompletionCtx {
-                qualified: Qualified::No,
-                kind: PathKind::Expr { .. },
-                ..
-            },
-        ) if path_ctx.is_trivial_path() && ctx.qualifier_ctx.none() => {}
+    match path_ctx {
+        PathCompletionCtx { qualified: Qualified::No, kind: PathKind::Expr { .. }, .. }
+            if path_ctx.is_trivial_path() && ctx.qualifier_ctx.none() => {}
         _ => return,
     }
 

@@ -12,9 +12,13 @@ use crate::{
     CompletionItem, CompletionItemKind, CompletionRelevance, Completions,
 };
 
-pub(crate) fn complete_use_tree(acc: &mut Completions, ctx: &CompletionContext) {
-    let (qualified, name_ref, use_tree_parent) = match ctx.nameref_ctx() {
-        Some(NameRefContext {
+pub(crate) fn complete_use_tree(
+    acc: &mut Completions,
+    ctx: &CompletionContext,
+    name_ref_ctx: &NameRefContext,
+) {
+    let (qualified, name_ref, use_tree_parent) = match name_ref_ctx {
+        NameRefContext {
             kind:
                 Some(NameRefKind::Path(PathCompletionCtx {
                     kind: PathKind::Use,
@@ -24,12 +28,12 @@ pub(crate) fn complete_use_tree(acc: &mut Completions, ctx: &CompletionContext) 
                 })),
             nameref,
             ..
-        }) => (qualified, nameref, use_tree_parent),
+        } => (qualified, nameref, use_tree_parent),
         _ => return,
     };
 
     match qualified {
-        Qualified::With { path, resolution, is_super_chain } => {
+        Qualified::With { path, resolution: Some(resolution), is_super_chain } => {
             if *is_super_chain {
                 acc.add_keyword(ctx, "super::");
             }
@@ -42,11 +46,6 @@ pub(crate) fn complete_use_tree(acc: &mut Completions, ctx: &CompletionContext) 
             if not_preceded_by_self {
                 acc.add_keyword(ctx, "self");
             }
-
-            let resolution = match resolution {
-                Some(it) => it,
-                None => return,
-            };
 
             let mut already_imported_names = FxHashSet::default();
             if let Some(list) = ctx.token.parent_ancestors().find_map(ast::UseTreeList::cast) {
@@ -135,6 +134,6 @@ pub(crate) fn complete_use_tree(acc: &mut Completions, ctx: &CompletionContext) 
             });
             acc.add_nameref_keywords_with_colon(ctx);
         }
-        Qualified::Infer => {}
+        Qualified::Infer | Qualified::With { resolution: None, .. } => {}
     }
 }

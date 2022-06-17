@@ -1,23 +1,17 @@
-//! Completes keywords, except:
-//! - `self`, `super` and `crate`, as these are considered part of path completions.
-//! - `await`, as this is a postfix completion we handle this in the postfix completions.
+//! Completes `where` and `for` keywords.
 
-use syntax::ast::Item;
+use syntax::ast::{self, Item};
 
-use crate::{
-    context::{NameRefContext, NameRefKind},
-    CompletionContext, Completions,
-};
+use crate::{CompletionContext, Completions};
 
-pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionContext) {
-    let item = match ctx.nameref_ctx() {
-        Some(NameRefContext { kind: Some(NameRefKind::Keyword(item)), .. }) => item,
-        _ => return,
-    };
-
+pub(crate) fn complete_special_keywords(
+    acc: &mut Completions,
+    ctx: &CompletionContext,
+    keyword_item: &ast::Item,
+) {
     let mut add_keyword = |kw, snippet| acc.add_keyword_snippet(ctx, kw, snippet);
 
-    match item {
+    match keyword_item {
         Item::Impl(it) => {
             if it.for_token().is_none() && it.trait_().is_none() && it.self_ty().is_some() {
                 add_keyword("for", "for");
