@@ -328,8 +328,8 @@ pub(crate) struct CompletionContext<'a> {
     // FIXME: This shouldn't exist
     pub(super) previous_token: Option<SyntaxToken>,
 
+    // We might wanna split these out of CompletionContext
     pub(super) ident_ctx: IdentContext,
-
     pub(super) pattern_ctx: Option<PatternContext>,
     pub(super) qualifier_ctx: QualifierCtx,
 
@@ -360,41 +360,6 @@ impl<'a> CompletionContext<'a> {
 
     pub(crate) fn famous_defs(&self) -> FamousDefs {
         FamousDefs(&self.sema, self.krate)
-    }
-
-    // FIXME: This shouldn't exist
-    pub(super) fn nameref_ctx(&self) -> Option<&NameRefContext> {
-        match &self.ident_ctx {
-            IdentContext::NameRef(it) => Some(it),
-            _ => None,
-        }
-    }
-
-    // FIXME: This shouldn't exist
-    pub(crate) fn dot_receiver(&self) -> Option<&ast::Expr> {
-        match self.nameref_ctx() {
-            Some(NameRefContext {
-                kind: Some(NameRefKind::DotAccess(DotAccess { receiver, .. })),
-                ..
-            }) => receiver.as_ref(),
-            _ => None,
-        }
-    }
-
-    // FIXME: This shouldn't exist
-    pub(crate) fn path_context(&self) -> Option<&PathCompletionCtx> {
-        self.nameref_ctx().and_then(|ctx| match &ctx.kind {
-            Some(NameRefKind::Path(path)) => Some(path),
-            _ => None,
-        })
-    }
-
-    // FIXME: This shouldn't exist
-    pub(crate) fn path_qual(&self) -> Option<&ast::Path> {
-        self.path_context().and_then(|it| match &it.qualified {
-            Qualified::With { path, .. } => Some(path),
-            _ => None,
-        })
     }
 
     /// Checks if an item is visible and not `doc(hidden)` at the completion site.

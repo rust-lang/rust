@@ -10,7 +10,6 @@ mod render;
 mod tests;
 mod snippet;
 
-use completions::flyimport::position_for_import;
 use ide_db::{
     base_db::FilePosition,
     helpers::mod_path_to_ast,
@@ -25,11 +24,7 @@ use text_edit::TextEdit;
 
 use crate::{
     completions::Completions,
-    context::{
-        CompletionContext,
-        IdentContext::{self, NameRef},
-        NameRefContext, NameRefKind,
-    },
+    context::{CompletionContext, IdentContext, NameRefContext, NameRefKind},
 };
 
 pub use crate::{
@@ -156,8 +151,10 @@ pub fn completions(
 
     // prevent `(` from triggering unwanted completion noise
     if trigger_character == Some('(') {
-        if let NameRef(NameRefContext { kind: Some(NameRefKind::Path(path_ctx)), .. }) =
-            &ctx.ident_ctx
+        if let IdentContext::NameRef(NameRefContext {
+            kind: Some(NameRefKind::Path(path_ctx)),
+            ..
+        }) = &ctx.ident_ctx
         {
             completions::vis::complete_vis_path(&mut completions, ctx, path_ctx);
         }
@@ -171,16 +168,18 @@ pub fn completions(
         match &ctx.ident_ctx {
             IdentContext::Name(name_ctx) => {
                 completions::field::complete_field_list_record_variant(acc, ctx, name_ctx);
-                completions::mod_::complete_mod(acc, ctx, name_ctx);
                 completions::item_list::trait_impl::complete_trait_impl_name(acc, ctx, name_ctx);
+                completions::mod_::complete_mod(acc, ctx, name_ctx);
             }
-            NameRef(name_ref_ctx @ NameRefContext { kind, .. }) => {
+            IdentContext::NameRef(name_ref_ctx @ NameRefContext { kind, .. }) => {
                 completions::expr::complete_expr_path(acc, ctx, name_ref_ctx);
                 completions::field::complete_field_list_tuple_variant(acc, ctx, name_ref_ctx);
-                completions::use_::complete_use_tree(acc, ctx, name_ref_ctx);
                 completions::item_list::complete_item_list(acc, ctx, name_ref_ctx);
+                completions::use_::complete_use_tree(acc, ctx, name_ref_ctx);
+
                 match kind {
                     Some(NameRefKind::Path(path_ctx)) => {
+                        completions::flyimport::import_on_the_fly_path(acc, ctx, path_ctx);
                         completions::record::complete_record_expr_func_update(acc, ctx, path_ctx);
                         completions::attribute::complete_attribute(acc, ctx, path_ctx);
                         completions::attribute::complete_derive(acc, ctx, path_ctx);
@@ -193,6 +192,7 @@ pub fn completions(
                         completions::vis::complete_vis_path(acc, ctx, path_ctx);
                     }
                     Some(NameRefKind::DotAccess(dot_access)) => {
+                        completions::flyimport::import_on_the_fly_dot(acc, ctx, dot_access);
                         completions::dot::complete_dot(acc, ctx, dot_access);
                         completions::postfix::complete_postfix(acc, ctx, dot_access);
                     }
@@ -224,19 +224,11 @@ pub fn completions(
         }
 
         if let Some(pattern_ctx) = &ctx.pattern_ctx {
+            completions::flyimport::import_on_the_fly_pat(acc, ctx, pattern_ctx);
             completions::fn_param::complete_fn_param(acc, ctx, pattern_ctx);
+            completions::pattern::complete_pattern(acc, ctx, pattern_ctx);
             completions::record::complete_record_pattern_fields(acc, ctx, pattern_ctx);
-            // FIXME: this check is odd, we shouldn't need this?
-            if !matches!(
-                ctx.ident_ctx,
-                IdentContext::NameRef(NameRefContext { kind: Some(NameRefKind::Path(_)), .. })
-            ) {
-                completions::pattern::complete_pattern(acc, ctx, pattern_ctx);
-            }
         }
-
-        // FIXME: This should be split
-        completions::flyimport::import_on_the_fly(acc, ctx);
     }
 
     Some(completions)
@@ -252,7 +244,7 @@ pub fn resolve_completion_edits(
 ) -> Option<Vec<TextEdit>> {
     let _p = profile::span("resolve_completion_edits");
     let ctx = CompletionContext::new(db, position, config)?;
-    let position_for_import = &position_for_import(&ctx, None)?;
+    let position_for_import = &ctx.original_token.parent()?;
     let scope = ImportScope::find_insert_use_container(position_for_import, &ctx.sema)?;
 
     let current_module = ctx.sema.scope(position_for_import)?.module();
