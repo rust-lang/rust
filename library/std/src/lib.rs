@@ -422,6 +422,8 @@ pub use alloc_crate::option;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc_crate::rc;
 #[stable(feature = "rust1", since = "1.0.0")]
+pub use alloc_crate::result;
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc_crate::slice;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc_crate::str;
@@ -485,8 +487,6 @@ pub use core::ops;
 pub use core::pin;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::ptr;
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use core::result;
 #[stable(feature = "i128", since = "1.26.0")]
 #[allow(deprecated, deprecated_in_future)]
 pub use core::u128;
