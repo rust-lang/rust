@@ -114,15 +114,10 @@ fn pattern_path_completion(
     PathCompletionCtx { qualified, .. }: &PathCompletionCtx,
 ) {
     match qualified {
-        Qualified::With { resolution, is_super_chain, .. } => {
+        Qualified::With { resolution: Some(resolution), is_super_chain, .. } => {
             if *is_super_chain {
                 acc.add_keyword(ctx, "super::");
             }
-
-            let resolution = match resolution {
-                Some(it) => it,
-                None => return,
-            };
 
             match resolution {
                 hir::PathResolution::Def(hir::ModuleDef::Module(module)) => {
@@ -208,6 +203,6 @@ fn pattern_path_completion(
 
             acc.add_nameref_keywords_with_colon(ctx);
         }
-        Qualified::Infer => {}
+        Qualified::Infer | Qualified::With { .. } => {}
     }
 }

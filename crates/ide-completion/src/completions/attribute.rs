@@ -82,15 +82,14 @@ pub(crate) fn complete_attribute(acc: &mut Completions, ctx: &CompletionContext)
     };
 
     match qualified {
-        Qualified::With { resolution, is_super_chain, .. } => {
+        Qualified::With {
+            resolution: Some(hir::PathResolution::Def(hir::ModuleDef::Module(module))),
+            is_super_chain,
+            ..
+        } => {
             if *is_super_chain {
                 acc.add_keyword(ctx, "super::");
             }
-
-            let module = match resolution {
-                Some(hir::PathResolution::Def(hir::ModuleDef::Module(it))) => it,
-                _ => return,
-            };
 
             for (name, def) in module.scope(ctx.db, Some(ctx.module)) {
                 if let Some(def) = module_or_attr(ctx.db, def) {
@@ -110,7 +109,7 @@ pub(crate) fn complete_attribute(acc: &mut Completions, ctx: &CompletionContext)
             });
             acc.add_nameref_keywords_with_colon(ctx);
         }
-        Qualified::Infer => {}
+        Qualified::Infer | Qualified::With { .. } => {}
     }
 
     let attributes = annotated_item_kind.and_then(|kind| {

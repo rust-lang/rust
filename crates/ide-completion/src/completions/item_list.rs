@@ -44,12 +44,14 @@ pub(crate) fn complete_item_list(acc: &mut Completions, ctx: &CompletionContext)
     }
 
     match qualified {
-        Qualified::With { resolution, is_super_chain, .. } => {
-            if let Some(hir::PathResolution::Def(hir::ModuleDef::Module(module))) = resolution {
-                for (name, def) in module.scope(ctx.db, Some(ctx.module)) {
-                    if let Some(def) = module_or_fn_macro(ctx.db, def) {
-                        acc.add_resolution(ctx, name, def);
-                    }
+        Qualified::With {
+            resolution: Some(hir::PathResolution::Def(hir::ModuleDef::Module(module))),
+            is_super_chain,
+            ..
+        } => {
+            for (name, def) in module.scope(ctx.db, Some(ctx.module)) {
+                if let Some(def) = module_or_fn_macro(ctx.db, def) {
+                    acc.add_resolution(ctx, name, def);
                 }
             }
 
@@ -66,7 +68,7 @@ pub(crate) fn complete_item_list(acc: &mut Completions, ctx: &CompletionContext)
             });
             acc.add_nameref_keywords_with_colon(ctx);
         }
-        Qualified::Infer | Qualified::No => {}
+        Qualified::Infer | Qualified::No | Qualified::With { .. } => {}
     }
 }
 

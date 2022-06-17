@@ -58,11 +58,8 @@ pub(crate) fn complete_type_path(acc: &mut Completions, ctx: &CompletionContext)
             .into_iter()
             .flat_map(|it| hir::Trait::from(it).items(ctx.sema.db))
             .for_each(|item| add_assoc_item(acc, item)),
-        Qualified::With { resolution, .. } => {
-            let resolution = match resolution {
-                Some(it) => it,
-                None => return,
-            };
+        Qualified::With { resolution: None, .. } => {}
+        Qualified::With { resolution: Some(resolution), .. } => {
             // Add associated types on type parameters and `Self`.
             ctx.scope.assoc_type_shorthand_candidates(resolution, |_, alias| {
                 acc.add_type_alias(ctx, alias);
