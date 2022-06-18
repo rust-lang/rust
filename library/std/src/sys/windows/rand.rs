@@ -1,6 +1,6 @@
 use crate::io;
-use crate::lazy;
 use crate::mem;
+use crate::sync;
 use crate::sys::c;
 
 /// The kinds of HashMap RNG that may be available
@@ -28,7 +28,7 @@ fn get_hashmap_rng() -> HashMapRng {
     // Assume that if the preferred RNG is broken the first time we use it, it likely means
     // that: the DLL has failed to load, there is no point to calling it over-and-over again,
     // and we should cache the result
-    static VALUE: lazy::SyncOnceCell<HashMapRng> = lazy::SyncOnceCell::new();
+    static VALUE: sync::OnceLock<HashMapRng> = sync::OnceLock::new();
     *VALUE.get_or_init(choose_hashmap_rng)
 }
 

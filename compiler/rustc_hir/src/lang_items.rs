@@ -17,7 +17,7 @@ use rustc_macros::HashStable_Generic;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
 
-use std::lazy::SyncLazy;
+use std::sync::LazyLock;
 
 pub enum LangItemGroup {
     Op,
@@ -134,7 +134,7 @@ macro_rules! language_item_table {
         }
 
         /// A mapping from the name of the lang item to its order and the form it must be of.
-        pub static ITEM_REFS: SyncLazy<FxHashMap<Symbol, (usize, Target)>> = SyncLazy::new(|| {
+        pub static ITEM_REFS: LazyLock<FxHashMap<Symbol, (usize, Target)>> = LazyLock::new(|| {
             let mut item_refs = FxHashMap::default();
             $( item_refs.insert($module::$name, (LangItem::$variant as usize, $target)); )*
             item_refs

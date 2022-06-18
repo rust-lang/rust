@@ -2,13 +2,13 @@
 
 use crate::cmp;
 use crate::io::{self, IoSlice, IoSliceMut, Read};
-use crate::lazy::SyncOnceCell;
 use crate::mem;
 use crate::net::{Shutdown, SocketAddr};
 use crate::os::windows::io::{
     AsRawSocket, AsSocket, BorrowedSocket, FromRawSocket, IntoRawSocket, OwnedSocket, RawSocket,
 };
 use crate::ptr;
+use crate::sync::OnceLock;
 use crate::sys;
 use crate::sys::c;
 use crate::sys_common::net;
@@ -29,7 +29,7 @@ pub mod netc {
 
 pub struct Socket(OwnedSocket);
 
-static WSA_CLEANUP: SyncOnceCell<unsafe extern "system" fn() -> i32> = SyncOnceCell::new();
+static WSA_CLEANUP: OnceLock<unsafe extern "system" fn() -> i32> = OnceLock::new();
 
 /// Checks whether the Windows socket interface has been started already, and
 /// if not, starts it.

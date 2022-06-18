@@ -29,9 +29,9 @@ use rustc_span::{Span, DUMMY_SP};
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_trait_selection::traits::{self, ObligationCause, ObligationCauseCode, WellFormedLoc};
 
+use std::cell::LazyCell;
 use std::convert::TryInto;
 use std::iter;
-use std::lazy::Lazy;
 use std::ops::ControlFlow;
 
 /// Helper type of a temporary returned by `.for_item(...)`.
@@ -1728,7 +1728,7 @@ fn check_variances_for_type_defn<'tcx>(
     identify_constrained_generic_params(tcx, ty_predicates, None, &mut constrained_parameters);
 
     // Lazily calculated because it is only needed in case of an error.
-    let explicitly_bounded_params = Lazy::new(|| {
+    let explicitly_bounded_params = LazyCell::new(|| {
         let icx = crate::collect::ItemCtxt::new(tcx, item.def_id.to_def_id());
         hir_generics
             .predicates

@@ -9,7 +9,7 @@ use crate::{Features, Stability};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_span::symbol::{sym, Symbol};
 
-use std::lazy::SyncLazy;
+use std::sync::LazyLock;
 
 type GateFn = fn(&Features) -> bool;
 
@@ -809,8 +809,8 @@ pub fn is_builtin_only_local(name: Symbol) -> bool {
     BUILTIN_ATTRIBUTE_MAP.get(&name).map_or(false, |attr| attr.only_local)
 }
 
-pub static BUILTIN_ATTRIBUTE_MAP: SyncLazy<FxHashMap<Symbol, &BuiltinAttribute>> =
-    SyncLazy::new(|| {
+pub static BUILTIN_ATTRIBUTE_MAP: LazyLock<FxHashMap<Symbol, &BuiltinAttribute>> =
+    LazyLock::new(|| {
         let mut map = FxHashMap::default();
         for attr in BUILTIN_ATTRIBUTES.iter() {
             if map.insert(attr.name, attr).is_some() {

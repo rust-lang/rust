@@ -170,11 +170,18 @@ pub use self::poison::{LockResult, PoisonError, TryLockError, TryLockResult};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::rwlock::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 
+#[unstable(feature = "once_cell", issue = "74465")]
+pub use self::lazy_lock::LazyLock;
+#[unstable(feature = "once_cell", issue = "74465")]
+pub use self::once_lock::OnceLock;
+
 pub mod mpsc;
 
 mod barrier;
 mod condvar;
+mod lazy_lock;
 mod mutex;
 mod once;
+mod once_lock;
 mod poison;
 mod rwlock;
