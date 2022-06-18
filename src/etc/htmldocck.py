@@ -417,7 +417,7 @@ def check_snapshot(snapshot_name, actual_tree, normalize_to_text):
     snapshot_path = '{}.{}.{}'.format(rust_test_path[:-3], snapshot_name, 'html')
     try:
         with open(snapshot_path, 'r') as snapshot_file:
-            expected_str = snapshot_file.read()
+            expected_str = snapshot_file.read().replace("{{channel}}", channel)
     except FileNotFoundError:
         if bless:
             expected_str = None
@@ -428,8 +428,6 @@ def check_snapshot(snapshot_name, actual_tree, normalize_to_text):
         actual_str = ET.tostring(actual_tree).decode('utf-8')
     else:
         actual_str = flatten(actual_tree)
-
-    expected_str = expected_str.replace("{{channel}}", channel)
 
     # Conditions:
     #  1. Is --bless
