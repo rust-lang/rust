@@ -24,12 +24,12 @@ use rustc_span::source_map::FileLoader;
 use rustc_span::symbol::{sym, Symbol};
 use std::env;
 use std::env::consts::{DLL_PREFIX, DLL_SUFFIX};
-use std::lazy::SyncOnceCell;
 use std::mem;
 #[cfg(not(parallel_compiler))]
 use std::panic;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::OnceLock;
 use std::thread;
 use tracing::info;
 
@@ -242,7 +242,7 @@ pub fn get_codegen_backend(
     maybe_sysroot: &Option<PathBuf>,
     backend_name: Option<&str>,
 ) -> Box<dyn CodegenBackend> {
-    static LOAD: SyncOnceCell<unsafe fn() -> Box<dyn CodegenBackend>> = SyncOnceCell::new();
+    static LOAD: OnceLock<unsafe fn() -> Box<dyn CodegenBackend>> = OnceLock::new();
 
     let load = LOAD.get_or_init(|| {
         let default_codegen_backend = option_env!("CFG_DEFAULT_CODEGEN_BACKEND").unwrap_or("llvm");
@@ -265,7 +265,7 @@ pub fn get_codegen_backend(
 // loading, so we leave the code here. It is potentially useful for other tools
 // that want to invoke the rustc binary while linking to rustc as well.
 pub fn rustc_path<'a>() -> Option<&'a Path> {
-    static RUSTC_PATH: SyncOnceCell<Option<PathBuf>> = SyncOnceCell::new();
+    static RUSTC_PATH: OnceLock<Option<PathBuf>> = OnceLock::new();
 
     const BIN_PATH: &str = env!("RUSTC_INSTALL_BINDIR");
 

@@ -21,9 +21,9 @@ use rustc_span::symbol::sym;
 use rustc_span::{source_map, Span, Symbol};
 
 use std::cell::RefCell;
-use std::lazy::SyncLazy;
 use std::mem;
 use std::rc::Rc;
+use std::sync::LazyLock;
 
 use crate::clean::inline::build_external_trait;
 use crate::clean::{self, ItemId, TraitWithExtraInfo};
@@ -293,8 +293,8 @@ pub(crate) fn create_config(
             providers.typeck_item_bodies = |_, _| {};
             // hack so that `used_trait_imports` won't try to call typeck
             providers.used_trait_imports = |_, _| {
-                static EMPTY_SET: SyncLazy<FxHashSet<LocalDefId>> =
-                    SyncLazy::new(FxHashSet::default);
+                static EMPTY_SET: LazyLock<FxHashSet<LocalDefId>> =
+                    LazyLock::new(FxHashSet::default);
                 &EMPTY_SET
             };
             // In case typeck does end up being called, don't ICE in case there were name resolution errors

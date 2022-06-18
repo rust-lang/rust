@@ -8,10 +8,9 @@ use crate::io::prelude::*;
 use crate::cell::{Cell, RefCell};
 use crate::fmt;
 use crate::io::{self, BufReader, IoSlice, IoSliceMut, LineWriter, Lines};
-use crate::lazy::SyncOnceCell;
 use crate::pin::Pin;
 use crate::sync::atomic::{AtomicBool, Ordering};
-use crate::sync::{Arc, Mutex, MutexGuard};
+use crate::sync::{Arc, Mutex, MutexGuard, OnceLock};
 use crate::sys::stdio;
 use crate::sys_common::remutex::{ReentrantMutex, ReentrantMutexGuard};
 
@@ -318,7 +317,7 @@ pub struct StdinLock<'a> {
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn stdin() -> Stdin {
-    static INSTANCE: SyncOnceCell<Mutex<BufReader<StdinRaw>>> = SyncOnceCell::new();
+    static INSTANCE: OnceLock<Mutex<BufReader<StdinRaw>>> = OnceLock::new();
     Stdin {
         inner: INSTANCE.get_or_init(|| {
             Mutex::new(BufReader::with_capacity(stdio::STDIN_BUF_SIZE, stdin_raw()))
@@ -552,7 +551,7 @@ pub struct StdoutLock<'a> {
     inner: ReentrantMutexGuard<'a, RefCell<LineWriter<StdoutRaw>>>,
 }
 
-static STDOUT: SyncOnceCell<ReentrantMutex<RefCell<LineWriter<StdoutRaw>>>> = SyncOnceCell::new();
+static STDOUT: OnceLock<ReentrantMutex<RefCell<LineWriter<StdoutRaw>>>> = OnceLock::new();
 
 /// Constructs a new handle to the standard output of the current process.
 ///
@@ -837,7 +836,7 @@ pub fn stderr() -> Stderr {
     // Note that unlike `stdout()` we don't use `at_exit` here to register a
     // destructor. Stderr is not buffered , so there's no need to run a
     // destructor for flushing the buffer
-    static INSTANCE: SyncOnceCell<ReentrantMutex<RefCell<StderrRaw>>> = SyncOnceCell::new();
+    static INSTANCE: OnceLock<ReentrantMutex<RefCell<StderrRaw>>> = OnceLock::new();
 
     Stderr {
         inner: Pin::static_ref(&INSTANCE).get_or_init_pin(

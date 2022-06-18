@@ -3,7 +3,7 @@ use rustc_lint::LintStore;
 use rustc_lint_defs::{declare_tool_lint, Lint, LintId};
 use rustc_session::{lint, Session};
 
-use std::lazy::SyncLazy as Lazy;
+use std::sync::LazyLock as Lazy;
 
 /// This function is used to setup the lint initialization. By default, in rustdoc, everything
 /// is "allowed". Depending if we run in test mode or not, we want some of them to be at their

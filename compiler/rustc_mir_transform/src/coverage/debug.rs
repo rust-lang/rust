@@ -123,15 +123,15 @@ use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
 
 use std::iter;
-use std::lazy::SyncOnceCell;
 use std::ops::Deref;
+use std::sync::OnceLock;
 
 pub const NESTED_INDENT: &str = "    ";
 
 const RUSTC_COVERAGE_DEBUG_OPTIONS: &str = "RUSTC_COVERAGE_DEBUG_OPTIONS";
 
 pub(super) fn debug_options<'a>() -> &'a DebugOptions {
-    static DEBUG_OPTIONS: SyncOnceCell<DebugOptions> = SyncOnceCell::new();
+    static DEBUG_OPTIONS: OnceLock<DebugOptions> = OnceLock::new();
 
     &DEBUG_OPTIONS.get_or_init(DebugOptions::from_env)
 }
