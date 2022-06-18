@@ -89,5 +89,7 @@ module.exports = {
         "no-multi-assign": "error",
         "no-return-assign": "error",
         "no-script-url": "error",
+        "no-sequences": "error",
+        "no-throw-literal": "error",
     }
 };
