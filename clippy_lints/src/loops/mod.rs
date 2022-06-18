@@ -346,7 +346,14 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```ignore
-    /// while let Some(val) = iter() {
+    /// while let Some(val) = iter.next() {
+    ///     ..
+    /// }
+    /// ```
+    ///
+    /// Use instead:
+    /// ```ignore
+    /// for val in &mut iter {
     ///     ..
     /// }
     /// ```
