@@ -1320,7 +1320,7 @@ where
     fn next(&mut self) -> Option<T> {
         let pred = &mut self.pred;
         let mut mapped_pred = |k: &T, _v: &mut ()| pred(k);
-        self.inner.next(&mut mapped_pred, &self.alloc).map(|(k, _)| k)
+        self.inner.next(&mut mapped_pred, self.alloc.clone()).map(|(k, _)| k)
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
