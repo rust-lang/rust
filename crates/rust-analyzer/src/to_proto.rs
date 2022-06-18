@@ -670,7 +670,8 @@ pub(crate) fn folding_range(
         | FoldKind::Statics
         | FoldKind::WhereClause
         | FoldKind::ReturnType
-        | FoldKind::Array => None,
+        | FoldKind::Array
+        | FoldKind::MatchArm => None,
     };
 
     let range = range(line_index, fold.range);

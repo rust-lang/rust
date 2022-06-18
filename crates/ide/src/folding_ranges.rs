@@ -24,6 +24,7 @@ pub enum FoldKind {
     Array,
     WhereClause,
     ReturnType,
+    MatchArm,
 }
 
 #[derive(Debug)]
@@ -115,6 +116,11 @@ pub(crate) fn folding_ranges(file: &SourceFile) -> Vec<Fold> {
                         ast::WhereClause(where_clause) => {
                             if let Some(range) = fold_range_for_where_clause(where_clause) {
                                 res.push(Fold { range, kind: FoldKind::WhereClause })
+                            }
+                        },
+                        ast::MatchArm(match_arm) => {
+                            if let Some(range) = fold_range_for_multiline_match_arm(match_arm) {
+                                res.push(Fold {range, kind: FoldKind::MatchArm})
                             }
                         },
                         _ => (),
@@ -264,6 +270,16 @@ fn fold_range_for_where_clause(where_clause: ast::WhereClause) -> Option<TextRan
     None
 }
 
+fn fold_range_for_multiline_match_arm(match_arm: ast::MatchArm) -> Option<TextRange> {
+    if let Some(_) = fold_kind(match_arm.expr()?.syntax().kind()) {
+        return None;
+    }
+    if match_arm.expr()?.syntax().text().contains_char('\n') {
+        return Some(match_arm.expr()?.syntax().text_range());
+    }
+    None
+}
+
 #[cfg(test)]
 mod tests {
     use test_utils::extract_tags;
@@ -299,6 +315,7 @@ mod tests {
                 FoldKind::Array => "array",
                 FoldKind::WhereClause => "whereclause",
                 FoldKind::ReturnType => "returntype",
+                FoldKind::MatchArm => "matcharm",
             };
             assert_eq!(kind, &attr.unwrap());
         }
@@ -454,6 +471,36 @@ fn main() <fold block>{
 }</fold>
 "#,
         );
+    }
+
+    #[test]
+    fn test_fold_multiline_non_block_match_arm() {
+        check(
+            r#"
+            fn main() <fold block>{
+                match foo <fold block>{
+                    block => <fold block>{
+                    }</fold>,
+                    matcharm => <fold matcharm>some.
+                        call().
+                        chain()</fold>,
+                    matcharm2
+                        => 0,
+                    match_expr => <fold matcharm>match foo2 <fold block>{
+                        bar => (),
+                    }</fold></fold>,
+                    array_list => <fold array>[
+                        1,
+                        2,
+                        3,
+                    ]</fold>,
+                    strustS => <fold matcharm>StructS <fold block>{
+                        a: 31,
+                    }</fold></fold>,
+                }</fold>
+            }</fold>
+            "#,
+        )
     }
 
     #[test]
