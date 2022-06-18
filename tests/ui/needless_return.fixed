@@ -10,6 +10,8 @@
 )]
 #![warn(clippy::needless_return)]
 
+use std::cell::RefCell;
+
 macro_rules! the_answer {
     () => {
         42
@@ -86,17 +88,15 @@ fn test_nested_match(x: u32) {
     }
 }
 
-fn read_line() -> String {
-    use std::io::BufRead;
-    let stdin = ::std::io::stdin();
-    return stdin.lock().lines().next().unwrap().unwrap();
+fn temporary_outlives_local() -> String {
+    let x = RefCell::<String>::default();
+    return x.borrow().clone();
 }
 
 fn borrows_but_not_last(value: bool) -> String {
     if value {
-        use std::io::BufRead;
-        let stdin = ::std::io::stdin();
-        let _a = stdin.lock().lines().next().unwrap().unwrap();
+        let x = RefCell::<String>::default();
+        let _a = x.borrow().clone();
         String::from("test")
     } else {
         String::new()
@@ -197,17 +197,15 @@ async fn async_test_void_match(x: u32) {
     }
 }
 
-async fn async_read_line() -> String {
-    use std::io::BufRead;
-    let stdin = ::std::io::stdin();
-    return stdin.lock().lines().next().unwrap().unwrap();
+async fn async_temporary_outlives_local() -> String {
+    let x = RefCell::<String>::default();
+    return x.borrow().clone();
 }
 
 async fn async_borrows_but_not_last(value: bool) -> String {
     if value {
-        use std::io::BufRead;
-        let stdin = ::std::io::stdin();
-        let _a = stdin.lock().lines().next().unwrap().unwrap();
+        let x = RefCell::<String>::default();
+        let _a = x.borrow().clone();
         String::from("test")
     } else {
         String::new()
