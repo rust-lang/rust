@@ -171,26 +171,27 @@ pub(super) const MIN_LEN: usize = node::MIN_LEN_AFTER_SPLIT;
 pub struct BTreeMap<
     K,
     V,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator + Clone = Global,
 > {
     root: Option<Root<K, V>>,
     length: usize,
+    /// `ManuallyDrop` to control drop order (needs to be dropped after all the nodes).
     pub(super) alloc: ManuallyDrop<A>,
 }
 
 #[stable(feature = "btree_drop", since = "1.7.0")]
-unsafe impl<#[may_dangle] K, #[may_dangle] V, A: Allocator> Drop for BTreeMap<K, V, A> {
+unsafe impl<#[may_dangle] K, #[may_dangle] V, A: Allocator + Clone> Drop for BTreeMap<K, V, A> {
     fn drop(&mut self) {
         drop(unsafe { ptr::read(self) }.into_iter())
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<K: Clone, V: Clone, A: Clone + Allocator> Clone for BTreeMap<K, V, A> {
+impl<K: Clone, V: Clone, A: Allocator + Clone> Clone for BTreeMap<K, V, A> {
     fn clone(&self) -> BTreeMap<K, V, A> {
-        fn clone_subtree<'a, K: Clone, V: Clone, A: Clone + Allocator>(
+        fn clone_subtree<'a, K: Clone, V: Clone, A: Allocator + Clone>(
             node: NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal>,
-            alloc: &A,
+            alloc: A,
         ) -> BTreeMap<K, V, A>
         where
             K: 'a,
@@ -199,9 +200,9 @@ impl<K: Clone, V: Clone, A: Clone + Allocator> Clone for BTreeMap<K, V, A> {
             match node.force() {
                 Leaf(leaf) => {
                     let mut out_tree = BTreeMap {
-                        root: Some(Root::new(alloc)),
+                        root: Some(Root::new(alloc.clone())),
                         length: 0,
-                        alloc: ManuallyDrop::new((*alloc).clone()),
+                        alloc: ManuallyDrop::new(alloc),
                     };
 
                     {
@@ -224,11 +225,12 @@ impl<K: Clone, V: Clone, A: Clone + Allocator> Clone for BTreeMap<K, V, A> {
                     out_tree
                 }
                 Internal(internal) => {
-                    let mut out_tree = clone_subtree(internal.first_edge().descend(), alloc);
+                    let mut out_tree =
+                        clone_subtree(internal.first_edge().descend(), alloc.clone());
 
                     {
                         let out_root = out_tree.root.as_mut().unwrap();
-                        let mut out_node = out_root.push_internal_level(alloc);
+                        let mut out_node = out_root.push_internal_level(alloc.clone());
                         let mut in_edge = internal.first_edge();
                         while let Ok(kv) = in_edge.right_kv() {
                             let (k, v) = kv.into_kv();
@@ -236,7 +238,7 @@ impl<K: Clone, V: Clone, A: Clone + Allocator> Clone for BTreeMap<K, V, A> {
 
                             let k = (*k).clone();
                             let v = (*v).clone();
-                            let subtree = clone_subtree(in_edge.descend(), alloc);
+                            let subtree = clone_subtree(in_edge.descend(), alloc.clone());
 
                             // We can't destructure subtree directly
                             // because BTreeMap implements Drop
@@ -247,7 +249,11 @@ impl<K: Clone, V: Clone, A: Clone + Allocator> Clone for BTreeMap<K, V, A> {
                                 (root, length)
                             };
 
-                            out_node.push(k, v, subroot.unwrap_or_else(|| Root::new(alloc)));
+                            out_node.push(
+                                k,
+                                v,
+                                subroot.unwrap_or_else(|| Root::new(alloc.clone())),
+                            );
                             out_tree.length += 1 + sublength;
                         }
                     }
@@ -258,14 +264,14 @@ impl<K: Clone, V: Clone, A: Clone + Allocator> Clone for BTreeMap<K, V, A> {
         }
 
         if self.is_empty() {
-            BTreeMap::new_in(ManuallyDrop::into_inner(self.alloc.clone()))
+            BTreeMap::new_in((*self.alloc).clone())
         } else {
-            clone_subtree(self.root.as_ref().unwrap().reborrow(), &*self.alloc) // unwrap succeeds because not empty
+            clone_subtree(self.root.as_ref().unwrap().reborrow(), (*self.alloc).clone()) // unwrap succeeds because not empty
         }
     }
 }
 
-impl<K, Q: ?Sized, A: Allocator> super::Recover<Q> for BTreeMap<K, (), A>
+impl<K, Q: ?Sized, A: Allocator + Clone> super::Recover<Q> for BTreeMap<K, (), A>
 where
     K: Borrow<Q> + Ord,
     Q: Ord,
@@ -285,9 +291,14 @@ where
         let root_node = map.root.as_mut()?.borrow_mut();
         match root_node.search_tree(key) {
             Found(handle) => Some(
-                OccupiedEntry { handle, dormant_map, alloc: &*map.alloc, _marker: PhantomData }
-                    .remove_kv()
-                    .0,
+                OccupiedEntry {
+                    handle,
+                    dormant_map,
+                    alloc: (*map.alloc).clone(),
+                    _marker: PhantomData,
+                }
+                .remove_kv()
+                .0,
             ),
             GoDown(_) => None,
         }
@@ -295,7 +306,8 @@ where
 
     fn replace(&mut self, key: K) -> Option<K> {
         let (map, dormant_map) = DormantMutRef::new(self);
-        let root_node = map.root.get_or_insert_with(|| Root::new(&*map.alloc)).borrow_mut();
+        let root_node =
+            map.root.get_or_insert_with(|| Root::new((*map.alloc).clone())).borrow_mut();
         match root_node.search_tree::<K>(&key) {
             Found(mut kv) => Some(mem::replace(kv.key_mut(), key)),
             GoDown(handle) => {
@@ -303,7 +315,7 @@ where
                     key,
                     handle: Some(handle),
                     dormant_map,
-                    alloc: &*map.alloc,
+                    alloc: (*map.alloc).clone(),
                     _marker: PhantomData,
                 }
                 .insert(());
@@ -369,14 +381,15 @@ impl<K: fmt::Debug, V: fmt::Debug> fmt::Debug for IterMut<'_, K, V> {
 pub struct IntoIter<
     K,
     V,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator + Clone = Global,
 > {
     range: LazyLeafRange<marker::Dying, K, V>,
     length: usize,
+    /// The BTreeMap will outlive this IntoIter so we don't care about drop order for `alloc`.
     alloc: A,
 }
 
-impl<K, V, A: Allocator> IntoIter<K, V, A> {
+impl<K, V, A: Allocator + Clone> IntoIter<K, V, A> {
     /// Returns an iterator of references over the remaining items.
     #[inline]
     pub(super) fn iter(&self) -> Iter<'_, K, V> {
@@ -385,7 +398,7 @@ impl<K, V, A: Allocator> IntoIter<K, V, A> {
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
-impl<K: Debug, V: Debug, A: Allocator> Debug for IntoIter<K, V, A> {
+impl<K: Debug, V: Debug, A: Allocator + Clone> Debug for IntoIter<K, V, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.iter()).finish()
     }
@@ -456,12 +469,12 @@ impl<K, V: fmt::Debug> fmt::Debug for ValuesMut<'_, K, V> {
 /// [`into_keys`]: BTreeMap::into_keys
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "map_into_keys_values", since = "1.54.0")]
-pub struct IntoKeys<K, V, A: Allocator = Global> {
+pub struct IntoKeys<K, V, A: Allocator + Clone = Global> {
     inner: IntoIter<K, V, A>,
 }
 
 #[stable(feature = "map_into_keys_values", since = "1.54.0")]
-impl<K: fmt::Debug, V, A: Allocator> fmt::Debug for IntoKeys<K, V, A> {
+impl<K: fmt::Debug, V, A: Allocator + Clone> fmt::Debug for IntoKeys<K, V, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.inner.iter().map(|(key, _)| key)).finish()
     }
@@ -478,13 +491,13 @@ impl<K: fmt::Debug, V, A: Allocator> fmt::Debug for IntoKeys<K, V, A> {
 pub struct IntoValues<
     K,
     V,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator + Clone = Global,
 > {
     inner: IntoIter<K, V, A>,
 }
 
 #[stable(feature = "map_into_keys_values", since = "1.54.0")]
-impl<K, V: fmt::Debug, A: Allocator> fmt::Debug for IntoValues<K, V, A> {
+impl<K, V: fmt::Debug, A: Allocator + Clone> fmt::Debug for IntoValues<K, V, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.inner.iter().map(|(_, val)| val)).finish()
     }
@@ -557,7 +570,7 @@ impl<K, V> BTreeMap<K, V> {
     }
 }
 
-impl<K, V, A: Allocator> BTreeMap<K, V, A> {
+impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// Clears the map, removing all elements.
     ///
     /// # Examples
@@ -578,7 +591,7 @@ impl<K, V, A: Allocator> BTreeMap<K, V, A> {
         mem::drop(BTreeMap {
             root: mem::replace(&mut self.root, None),
             length: mem::replace(&mut self.length, 0),
-            alloc: ManuallyDrop::new(&*self.alloc),
+            alloc: self.alloc.clone(),
         });
     }
 
@@ -605,7 +618,7 @@ impl<K, V, A: Allocator> BTreeMap<K, V, A> {
     }
 }
 
-impl<K, V, A: Allocator> BTreeMap<K, V, A> {
+impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// Returns a reference to the value corresponding to the key.
     ///
     /// The key may be any borrowed form of the map's key type, but the ordering
@@ -721,7 +734,7 @@ impl<K, V, A: Allocator> BTreeMap<K, V, A> {
         Some(OccupiedEntry {
             handle: kv.forget_node_type(),
             dormant_map,
-            alloc: &*map.alloc,
+            alloc: (*map.alloc).clone(),
             _marker: PhantomData,
         })
     }
@@ -809,7 +822,7 @@ impl<K, V, A: Allocator> BTreeMap<K, V, A> {
         Some(OccupiedEntry {
             handle: kv.forget_node_type(),
             dormant_map,
-            alloc: &*map.alloc,
+            alloc: (*map.alloc).clone(),
             _marker: PhantomData,
         })
     }
@@ -1029,8 +1042,13 @@ impl<K, V, A: Allocator> BTreeMap<K, V, A> {
         let root_node = map.root.as_mut()?.borrow_mut();
         match root_node.search_tree(key) {
             Found(handle) => Some(
-                OccupiedEntry { handle, dormant_map, alloc: &*map.alloc, _marker: PhantomData }
-                    .remove_entry(),
+                OccupiedEntry {
+                    handle,
+                    dormant_map,
+                    alloc: (*map.alloc).clone(),
+                    _marker: PhantomData,
+                }
+                .remove_entry(),
             ),
             GoDown(_) => None,
         }
@@ -1106,14 +1124,15 @@ impl<K, V, A: Allocator> BTreeMap<K, V, A> {
             return;
         }
 
-        let self_iter =
-            mem::replace(self, Self::new_in(ManuallyDrop::into_inner(self.alloc.clone())))
-                .into_iter();
-        let other_iter =
-            mem::replace(other, Self::new_in(ManuallyDrop::into_inner(self.alloc.clone())))
-                .into_iter();
-        let root = self.root.get_or_insert_with(|| Root::new(&*self.alloc));
-        root.append_from_sorted_iters(self_iter, other_iter, &mut self.length, &*self.alloc)
+        let self_iter = mem::replace(self, Self::new_in((*self.alloc).clone())).into_iter();
+        let other_iter = mem::replace(other, Self::new_in((*self.alloc).clone())).into_iter();
+        let root = self.root.get_or_insert_with(|| Root::new((*self.alloc).clone()));
+        root.append_from_sorted_iters(
+            self_iter,
+            other_iter,
+            &mut self.length,
+            (*self.alloc).clone(),
+        )
     }
 
     /// Constructs a double-ended iterator over a sub-range of elements in the map.
@@ -1232,21 +1251,21 @@ impl<K, V, A: Allocator> BTreeMap<K, V, A> {
                 key,
                 handle: None,
                 dormant_map,
-                alloc: &*map.alloc,
+                alloc: (*map.alloc).clone(),
                 _marker: PhantomData,
             }),
             Some(ref mut root) => match root.borrow_mut().search_tree(&key) {
                 Found(handle) => Occupied(OccupiedEntry {
                     handle,
                     dormant_map,
-                    alloc: &*map.alloc,
+                    alloc: (*map.alloc).clone(),
                     _marker: PhantomData,
                 }),
                 GoDown(handle) => Vacant(VacantEntry {
                     key,
                     handle: Some(handle),
                     dormant_map,
-                    alloc: &*map.alloc,
+                    alloc: (*map.alloc).clone(),
                     _marker: PhantomData,
                 }),
             },
@@ -1289,22 +1308,18 @@ impl<K, V, A: Allocator> BTreeMap<K, V, A> {
         A: Clone,
     {
         if self.is_empty() {
-            return Self::new_in(ManuallyDrop::into_inner(self.alloc.clone()));
+            return Self::new_in((*self.alloc).clone());
         }
 
         let total_num = self.len();
         let left_root = self.root.as_mut().unwrap(); // unwrap succeeds because not empty
 
-        let right_root = left_root.split_off(key, &*self.alloc);
+        let right_root = left_root.split_off(key, (*self.alloc).clone());
 
         let (new_left_len, right_len) = Root::calc_split_length(total_num, &left_root, &right_root);
         self.length = new_left_len;
 
-        BTreeMap {
-            root: Some(right_root),
-            length: right_len,
-            alloc: ManuallyDrop::new((*self.alloc).clone()),
-        }
+        BTreeMap { root: Some(right_root), length: right_len, alloc: self.alloc.clone() }
     }
 
     /// Creates an iterator that visits all elements (key-value pairs) in
@@ -1340,7 +1355,7 @@ impl<K, V, A: Allocator> BTreeMap<K, V, A> {
     /// assert_eq!(odds.keys().copied().collect::<Vec<_>>(), [1, 3, 5, 7]);
     /// ```
     #[unstable(feature = "btree_drain_filter", issue = "70530")]
-    pub fn drain_filter<F>(&mut self, pred: F) -> DrainFilter<'_, K, V, F, &A>
+    pub fn drain_filter<F>(&mut self, pred: F) -> DrainFilter<'_, K, V, F, A>
     where
         K: Ord,
         F: FnMut(&K, &mut V) -> bool,
@@ -1349,7 +1364,7 @@ impl<K, V, A: Allocator> BTreeMap<K, V, A> {
         DrainFilter { pred, inner, alloc }
     }
 
-    pub(super) fn drain_filter_inner(&mut self) -> (DrainFilterInner<'_, K, V>, &A)
+    pub(super) fn drain_filter_inner(&mut self) -> (DrainFilterInner<'_, K, V>, A)
     where
         K: Ord,
     {
@@ -1362,7 +1377,7 @@ impl<K, V, A: Allocator> BTreeMap<K, V, A> {
                     dormant_root: Some(dormant_root),
                     cur_leaf_edge: Some(front),
                 },
-                &*self.alloc,
+                (*self.alloc).clone(),
             )
         } else {
             (
@@ -1371,7 +1386,7 @@ impl<K, V, A: Allocator> BTreeMap<K, V, A> {
                     dormant_root: None,
                     cur_leaf_edge: None,
                 },
-                &*self.alloc,
+                (*self.alloc).clone(),
             )
         }
     }
@@ -1426,15 +1441,15 @@ impl<K, V, A: Allocator> BTreeMap<K, V, A> {
         K: Ord,
         I: IntoIterator<Item = (K, V)>,
     {
-        let mut root = Root::new(&alloc);
+        let mut root = Root::new(alloc.clone());
         let mut length = 0;
-        root.bulk_push(DedupSortedIter::new(iter.into_iter()), &mut length, &alloc);
+        root.bulk_push(DedupSortedIter::new(iter.into_iter()), &mut length, alloc.clone());
         BTreeMap { root: Some(root), length, alloc: ManuallyDrop::new(alloc) }
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, K, V, A: Allocator> IntoIterator for &'a BTreeMap<K, V, A> {
+impl<'a, K, V, A: Allocator + Clone> IntoIterator for &'a BTreeMap<K, V, A> {
     type Item = (&'a K, &'a V);
     type IntoIter = Iter<'a, K, V>;
 
@@ -1503,7 +1518,7 @@ impl<K, V> Clone for Iter<'_, K, V> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, K, V, A: Allocator> IntoIterator for &'a mut BTreeMap<K, V, A> {
+impl<'a, K, V, A: Allocator + Clone> IntoIterator for &'a mut BTreeMap<K, V, A> {
     type Item = (&'a K, &'a mut V);
     type IntoIter = IterMut<'a, K, V>;
 
@@ -1573,7 +1588,7 @@ impl<'a, K, V> IterMut<'a, K, V> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<K, V, A: Allocator> IntoIterator for BTreeMap<K, V, A> {
+impl<K, V, A: Allocator + Clone> IntoIterator for BTreeMap<K, V, A> {
     type Item = (K, V);
     type IntoIter = IntoIter<K, V, A>;
 
@@ -1598,11 +1613,11 @@ impl<K, V, A: Allocator> IntoIterator for BTreeMap<K, V, A> {
 }
 
 #[stable(feature = "btree_drop", since = "1.7.0")]
-impl<K, V, A: Allocator> Drop for IntoIter<K, V, A> {
+impl<K, V, A: Allocator + Clone> Drop for IntoIter<K, V, A> {
     fn drop(&mut self) {
-        struct DropGuard<'a, K, V, A: Allocator>(&'a mut IntoIter<K, V, A>);
+        struct DropGuard<'a, K, V, A: Allocator + Clone>(&'a mut IntoIter<K, V, A>);
 
-        impl<'a, K, V, A: Allocator> Drop for DropGuard<'a, K, V, A> {
+        impl<'a, K, V, A: Allocator + Clone> Drop for DropGuard<'a, K, V, A> {
             fn drop(&mut self) {
                 // Continue the same loop we perform below. This only runs when unwinding, so we
                 // don't have to care about panics this time (they'll abort).
@@ -1622,7 +1637,7 @@ impl<K, V, A: Allocator> Drop for IntoIter<K, V, A> {
     }
 }
 
-impl<K, V, A: Allocator> IntoIter<K, V, A> {
+impl<K, V, A: Allocator + Clone> IntoIter<K, V, A> {
     /// Core of a `next` method returning a dying KV handle,
     /// invalidated by further calls to this function and some others.
     fn dying_next(
@@ -1653,7 +1668,7 @@ impl<K, V, A: Allocator> IntoIter<K, V, A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<K, V, A: Allocator> Iterator for IntoIter<K, V, A> {
+impl<K, V, A: Allocator + Clone> Iterator for IntoIter<K, V, A> {
     type Item = (K, V);
 
     fn next(&mut self) -> Option<(K, V)> {
@@ -1667,7 +1682,7 @@ impl<K, V, A: Allocator> Iterator for IntoIter<K, V, A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<K, V, A: Allocator> DoubleEndedIterator for IntoIter<K, V, A> {
+impl<K, V, A: Allocator + Clone> DoubleEndedIterator for IntoIter<K, V, A> {
     fn next_back(&mut self) -> Option<(K, V)> {
         // SAFETY: we consume the dying handle immediately.
         self.dying_next_back().map(unsafe { |kv| kv.into_key_val() })
@@ -1675,14 +1690,14 @@ impl<K, V, A: Allocator> DoubleEndedIterator for IntoIter<K, V, A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<K, V, A: Allocator> ExactSizeIterator for IntoIter<K, V, A> {
+impl<K, V, A: Allocator + Clone> ExactSizeIterator for IntoIter<K, V, A> {
     fn len(&self) -> usize {
         self.length
     }
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<K, V, A: Allocator> FusedIterator for IntoIter<K, V, A> {}
+impl<K, V, A: Allocator + Clone> FusedIterator for IntoIter<K, V, A> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, V> Iterator for Keys<'a, K, V> {
@@ -1781,12 +1796,13 @@ pub struct DrainFilter<
     K,
     V,
     F,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator + Clone = Global,
 > where
     F: 'a + FnMut(&K, &mut V) -> bool,
 {
     pred: F,
     inner: DrainFilterInner<'a, K, V>,
+    /// The BTreeMap will outlive this IntoIter so we don't care about drop order for `alloc`.
     alloc: A,
 }
 /// Most of the implementation of DrainFilter are generic over the type
@@ -1804,7 +1820,7 @@ pub(super) struct DrainFilterInner<'a, K, V> {
 }
 
 #[unstable(feature = "btree_drain_filter", issue = "70530")]
-impl<K, V, F, A: Allocator> Drop for DrainFilter<'_, K, V, F, A>
+impl<K, V, F, A: Allocator + Clone> Drop for DrainFilter<'_, K, V, F, A>
 where
     F: FnMut(&K, &mut V) -> bool,
 {
@@ -1826,7 +1842,7 @@ where
 }
 
 #[unstable(feature = "btree_drain_filter", issue = "70530")]
-impl<K, V, F, A: Allocator> Iterator for DrainFilter<'_, K, V, F, A>
+impl<K, V, F, A: Allocator + Clone> Iterator for DrainFilter<'_, K, V, F, A>
 where
     F: FnMut(&K, &mut V) -> bool,
 {
@@ -1849,7 +1865,7 @@ impl<'a, K, V> DrainFilterInner<'a, K, V> {
     }
 
     /// Implementation of a typical `DrainFilter::next` method, given the predicate.
-    pub(super) fn next<F, A: Allocator>(&mut self, pred: &mut F, alloc: &A) -> Option<(K, V)>
+    pub(super) fn next<F, A: Allocator + Clone>(&mut self, pred: &mut F, alloc: A) -> Option<(K, V)>
     where
         F: FnMut(&K, &mut V) -> bool,
     {
@@ -1862,10 +1878,10 @@ impl<'a, K, V> DrainFilterInner<'a, K, V> {
                         // SAFETY: we will touch the root in a way that will not
                         // invalidate the position returned.
                         let root = unsafe { self.dormant_root.take().unwrap().awaken() };
-                        root.pop_internal_level(alloc);
+                        root.pop_internal_level(alloc.clone());
                         self.dormant_root = Some(DormantMutRef::new(root).1);
                     },
-                    alloc,
+                    alloc.clone(),
                 );
                 self.cur_leaf_edge = Some(pos);
                 return Some(kv);
@@ -1944,7 +1960,7 @@ impl<K, V> ExactSizeIterator for ValuesMut<'_, K, V> {
 impl<K, V> FusedIterator for ValuesMut<'_, K, V> {}
 
 #[stable(feature = "map_into_keys_values", since = "1.54.0")]
-impl<K, V, A: Allocator> Iterator for IntoKeys<K, V, A> {
+impl<K, V, A: Allocator + Clone> Iterator for IntoKeys<K, V, A> {
     type Item = K;
 
     fn next(&mut self) -> Option<K> {
@@ -1969,24 +1985,24 @@ impl<K, V, A: Allocator> Iterator for IntoKeys<K, V, A> {
 }
 
 #[stable(feature = "map_into_keys_values", since = "1.54.0")]
-impl<K, V, A: Allocator> DoubleEndedIterator for IntoKeys<K, V, A> {
+impl<K, V, A: Allocator + Clone> DoubleEndedIterator for IntoKeys<K, V, A> {
     fn next_back(&mut self) -> Option<K> {
         self.inner.next_back().map(|(k, _)| k)
     }
 }
 
 #[stable(feature = "map_into_keys_values", since = "1.54.0")]
-impl<K, V, A: Allocator> ExactSizeIterator for IntoKeys<K, V, A> {
+impl<K, V, A: Allocator + Clone> ExactSizeIterator for IntoKeys<K, V, A> {
     fn len(&self) -> usize {
         self.inner.len()
     }
 }
 
 #[stable(feature = "map_into_keys_values", since = "1.54.0")]
-impl<K, V, A: Allocator> FusedIterator for IntoKeys<K, V, A> {}
+impl<K, V, A: Allocator + Clone> FusedIterator for IntoKeys<K, V, A> {}
 
 #[stable(feature = "map_into_keys_values", since = "1.54.0")]
-impl<K, V, A: Allocator> Iterator for IntoValues<K, V, A> {
+impl<K, V, A: Allocator + Clone> Iterator for IntoValues<K, V, A> {
     type Item = V;
 
     fn next(&mut self) -> Option<V> {
@@ -2003,21 +2019,21 @@ impl<K, V, A: Allocator> Iterator for IntoValues<K, V, A> {
 }
 
 #[stable(feature = "map_into_keys_values", since = "1.54.0")]
-impl<K, V, A: Allocator> DoubleEndedIterator for IntoValues<K, V, A> {
+impl<K, V, A: Allocator + Clone> DoubleEndedIterator for IntoValues<K, V, A> {
     fn next_back(&mut self) -> Option<V> {
         self.inner.next_back().map(|(_, v)| v)
     }
 }
 
 #[stable(feature = "map_into_keys_values", since = "1.54.0")]
-impl<K, V, A: Allocator> ExactSizeIterator for IntoValues<K, V, A> {
+impl<K, V, A: Allocator + Clone> ExactSizeIterator for IntoValues<K, V, A> {
     fn len(&self) -> usize {
         self.inner.len()
     }
 }
 
 #[stable(feature = "map_into_keys_values", since = "1.54.0")]
-impl<K, V, A: Allocator> FusedIterator for IntoValues<K, V, A> {}
+impl<K, V, A: Allocator + Clone> FusedIterator for IntoValues<K, V, A> {}
 
 #[stable(feature = "btree_range", since = "1.17.0")]
 impl<'a, K, V> DoubleEndedIterator for Range<'a, K, V> {
@@ -2083,7 +2099,7 @@ impl<K: Ord, V> FromIterator<(K, V)> for BTreeMap<K, V> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<K: Ord, V, A: Allocator> Extend<(K, V)> for BTreeMap<K, V, A> {
+impl<K: Ord, V, A: Allocator + Clone> Extend<(K, V)> for BTreeMap<K, V, A> {
     #[inline]
     fn extend<T: IntoIterator<Item = (K, V)>>(&mut self, iter: T) {
         iter.into_iter().for_each(move |(k, v)| {
@@ -2098,7 +2114,9 @@ impl<K: Ord, V, A: Allocator> Extend<(K, V)> for BTreeMap<K, V, A> {
 }
 
 #[stable(feature = "extend_ref", since = "1.2.0")]
-impl<'a, K: Ord + Copy, V: Copy, A: Allocator> Extend<(&'a K, &'a V)> for BTreeMap<K, V, A> {
+impl<'a, K: Ord + Copy, V: Copy, A: Allocator + Clone> Extend<(&'a K, &'a V)>
+    for BTreeMap<K, V, A>
+{
     fn extend<I: IntoIterator<Item = (&'a K, &'a V)>>(&mut self, iter: I) {
         self.extend(iter.into_iter().map(|(&key, &value)| (key, value)));
     }
@@ -2110,7 +2128,7 @@ impl<'a, K: Ord + Copy, V: Copy, A: Allocator> Extend<(&'a K, &'a V)> for BTreeM
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<K: Hash, V: Hash, A: Allocator> Hash for BTreeMap<K, V, A> {
+impl<K: Hash, V: Hash, A: Allocator + Clone> Hash for BTreeMap<K, V, A> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         state.write_length_prefix(self.len());
         for elt in self {
@@ -2128,17 +2146,17 @@ impl<K, V> Default for BTreeMap<K, V> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<K: PartialEq, V: PartialEq, A: Allocator> PartialEq for BTreeMap<K, V, A> {
+impl<K: PartialEq, V: PartialEq, A: Allocator + Clone> PartialEq for BTreeMap<K, V, A> {
     fn eq(&self, other: &BTreeMap<K, V, A>) -> bool {
         self.len() == other.len() && self.iter().zip(other).all(|(a, b)| a == b)
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<K: Eq, V: Eq, A: Allocator> Eq for BTreeMap<K, V, A> {}
+impl<K: Eq, V: Eq, A: Allocator + Clone> Eq for BTreeMap<K, V, A> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<K: PartialOrd, V: PartialOrd, A: Allocator> PartialOrd for BTreeMap<K, V, A> {
+impl<K: PartialOrd, V: PartialOrd, A: Allocator + Clone> PartialOrd for BTreeMap<K, V, A> {
     #[inline]
     fn partial_cmp(&self, other: &BTreeMap<K, V, A>) -> Option<Ordering> {
         self.iter().partial_cmp(other.iter())
@@ -2146,7 +2164,7 @@ impl<K: PartialOrd, V: PartialOrd, A: Allocator> PartialOrd for BTreeMap<K, V, A
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<K: Ord, V: Ord, A: Allocator> Ord for BTreeMap<K, V, A> {
+impl<K: Ord, V: Ord, A: Allocator + Clone> Ord for BTreeMap<K, V, A> {
     #[inline]
     fn cmp(&self, other: &BTreeMap<K, V, A>) -> Ordering {
         self.iter().cmp(other.iter())
@@ -2154,14 +2172,14 @@ impl<K: Ord, V: Ord, A: Allocator> Ord for BTreeMap<K, V, A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<K: Debug, V: Debug, A: Allocator> Debug for BTreeMap<K, V, A> {
+impl<K: Debug, V: Debug, A: Allocator + Clone> Debug for BTreeMap<K, V, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_map().entries(self.iter()).finish()
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<K, Q: ?Sized, V, A: Allocator> Index<&Q> for BTreeMap<K, V, A>
+impl<K, Q: ?Sized, V, A: Allocator + Clone> Index<&Q> for BTreeMap<K, V, A>
 where
     K: Borrow<Q> + Ord,
     Q: Ord,
@@ -2201,7 +2219,7 @@ impl<K: Ord, V, const N: usize> From<[(K, V); N]> for BTreeMap<K, V> {
     }
 }
 
-impl<K, V, A: Allocator> BTreeMap<K, V, A> {
+impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// Gets an iterator over the entries of the map, sorted by key.
     ///
     /// # Examples
