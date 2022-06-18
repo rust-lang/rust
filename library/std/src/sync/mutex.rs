@@ -423,7 +423,7 @@ impl<T: ?Sized> Mutex<T> {
         T: Sized,
     {
         let data = self.data.into_inner();
-        poison::map_result(self.poison.borrow(), |_| data)
+        poison::map_result(self.poison.borrow(), |()| data)
     }
 
     /// Returns a mutable reference to the underlying data.
@@ -448,7 +448,7 @@ impl<T: ?Sized> Mutex<T> {
     #[stable(feature = "mutex_get_mut", since = "1.6.0")]
     pub fn get_mut(&mut self) -> LockResult<&mut T> {
         let data = self.data.get_mut();
-        poison::map_result(self.poison.borrow(), |_| data)
+        poison::map_result(self.poison.borrow(), |()| data)
     }
 }
 
@@ -497,7 +497,7 @@ impl<T: ?Sized + fmt::Debug> fmt::Debug for Mutex<T> {
 
 impl<'mutex, T: ?Sized> MutexGuard<'mutex, T> {
     unsafe fn new(lock: &'mutex Mutex<T>) -> LockResult<MutexGuard<'mutex, T>> {
-        poison::map_result(lock.poison.borrow(), |guard| MutexGuard { lock, poison: guard })
+        poison::map_result(lock.poison.guard(), |guard| MutexGuard { lock, poison: guard })
     }
 }
 
