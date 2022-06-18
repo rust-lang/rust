@@ -56,10 +56,10 @@ where
 
 /// A view into a single entry in a map, which may either be vacant or occupied.
 ///
-/// This `enum` is constructed from the [`entry`] method on [`HashMap`].
+/// This `enum` is constructed from the [`rustc_entry`] method on [`HashMap`].
 ///
 /// [`HashMap`]: struct.HashMap.html
-/// [`entry`]: struct.HashMap.html#method.rustc_entry
+/// [`rustc_entry`]: struct.HashMap.html#method.rustc_entry
 pub enum RustcEntry<'a, K, V, A = Global>
 where
     A: Allocator + Clone,
@@ -145,7 +145,7 @@ impl<'a, K, V, A: Allocator + Clone> RustcEntry<'a, K, V, A> {
     /// use hashbrown::HashMap;
     ///
     /// let mut map: HashMap<&str, u32> = HashMap::new();
-    /// let entry = map.entry("horseyland").insert(37);
+    /// let entry = map.rustc_entry("horseyland").insert(37);
     ///
     /// assert_eq!(entry.key(), &"horseyland");
     /// ```
