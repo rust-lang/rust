@@ -118,7 +118,6 @@ use std::os::windows::fs::symlink_file;
 
 use filetime::FileTime;
 use once_cell::sync::OnceCell;
-use serde::Deserialize;
 
 use crate::builder::Kind;
 use crate::config::{LlvmLibunwind, TargetSelection};
@@ -294,8 +293,6 @@ pub struct Build {
     hosts: Vec<TargetSelection>,
     targets: Vec<TargetSelection>,
 
-    // Stage 0 (downloaded) compiler, lld and cargo or their local rust equivalents
-    stage0_metadata: Stage0Metadata,
     initial_rustc: PathBuf,
     initial_cargo: PathBuf,
     initial_lld: PathBuf,
@@ -320,18 +317,6 @@ pub struct Build {
 
     #[cfg(feature = "build-metrics")]
     metrics: metrics::BuildMetrics,
-}
-
-#[derive(Deserialize)]
-struct Stage0Metadata {
-    dist_server: String,
-    checksums_sha256: HashMap<String, String>,
-    rustfmt: Option<RustfmtMetadata>,
-}
-#[derive(Deserialize)]
-struct RustfmtMetadata {
-    date: String,
-    version: String,
 }
 
 #[derive(Debug)]
@@ -482,11 +467,7 @@ impl Build {
             bootstrap_out
         };
 
-        let stage0_json = t!(std::fs::read_to_string(&src.join("src").join("stage0.json")));
-        let stage0_metadata = t!(serde_json::from_str::<Stage0Metadata>(&stage0_json));
-
         let mut build = Build {
-            stage0_metadata,
             initial_rustc: config.initial_rustc.clone(),
             initial_cargo: config.initial_cargo.clone(),
             initial_lld,

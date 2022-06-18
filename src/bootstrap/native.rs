@@ -121,7 +121,7 @@ pub(crate) fn maybe_download_ci_llvm(builder: &Builder<'_>) {
     let mut rev_list = Command::new("git");
     rev_list.args(&[
         PathBuf::from("rev-list"),
-        "--author=bors@rust-lang.org".into(),
+        format!("--author={}", builder.config.stage0_metadata.config.git_merge_commit_email).into(),
         "-n1".into(),
         "--first-parent".into(),
         "HEAD".into(),
@@ -170,11 +170,10 @@ fn download_ci_llvm(builder: &Builder<'_>, llvm_sha: &str) {
     if !rustc_cache.exists() {
         t!(fs::create_dir_all(&rustc_cache));
     }
-    let base = "https://ci-artifacts.rust-lang.org";
-    let url = if llvm_assertions {
-        format!("rustc-builds-alt/{}", llvm_sha)
+    let base = if llvm_assertions {
+        &builder.config.stage0_metadata.config.artifacts_with_llvm_assertions_server
     } else {
-        format!("rustc-builds/{}", llvm_sha)
+        &builder.config.stage0_metadata.config.artifacts_server
     };
     let filename = format!("rust-dev-nightly-{}.tar.xz", builder.build.build.triple);
     let tarball = rustc_cache.join(&filename);
@@ -187,7 +186,11 @@ help: if trying to compile an old commit of rustc, disable `download-ci-llvm` in
 [llvm]
 download-ci-llvm = false
 ";
-        builder.download_component(base, &format!("{}/{}", url, filename), &tarball, help_on_error);
+        builder.download_component(
+            &format!("{base}/{llvm_sha}/{filename}"),
+            &tarball,
+            help_on_error,
+        );
     }
     let llvm_root = builder.config.ci_llvm_root();
     builder.unpack(&tarball, &llvm_root, "rust-dev");

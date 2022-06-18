@@ -1134,8 +1134,8 @@ impl<'a> Linker for EmLinker<'a> {
         // Preserve names or generate source maps depending on debug info
         self.cmd.arg(match self.sess.opts.debuginfo {
             DebugInfo::None => "-g0",
-            DebugInfo::Limited => "-g3",
-            DebugInfo::Full => "-g4",
+            DebugInfo::Limited => "--profiling-funcs",
+            DebugInfo::Full => "-g",
         });
     }
 
