@@ -35,6 +35,7 @@ use rustc_session::search_paths::PathKind;
 use rustc_session::{Limit, Session};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::FileName;
+use rustc_symbolic_exec as mir_symbolic_exec;
 use rustc_trait_selection::traits;
 use rustc_typeck as typeck;
 use tempfile::Builder as TempFileBuilder;
@@ -782,6 +783,7 @@ pub static DEFAULT_QUERY_PROVIDERS: SyncLazy<Providers> = SyncLazy::new(|| {
     rustc_middle::hir::provide(providers);
     mir_borrowck::provide(providers);
     mir_build::provide(providers);
+    mir_symbolic_exec::provide(providers);
     rustc_mir_transform::provide(providers);
     rustc_monomorphize::provide(providers);
     rustc_privacy::provide(providers);
@@ -952,6 +954,10 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
 
     sess.time("MIR_borrow_checking", || {
         tcx.hir().par_body_owners(|def_id| tcx.ensure().mir_borrowck(def_id));
+    });
+
+    sess.time("MIR_symbolic_execution", || {
+        tcx.hir().par_body_owners(|def_id| tcx.ensure().mir_symbolic_exec(def_id));
     });
 
     sess.time("MIR_effect_checking", || {

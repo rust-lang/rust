@@ -45,6 +45,8 @@ const EXCEPTIONS: &[(&str, &str)] = &[
     ("dunce", "CC0-1.0"),            // cargo (dev dependency)
     ("similar", "Apache-2.0"),       // cargo (dev dependency)
     ("normalize-line-endings", "Apache-2.0"), // cargo (dev dependency)
+    ("clang-sys", "Apache-2.0"),     // rustc symbolic exec
+    ("bindgen", "BSD-3-Clause"),     // rustc symbolic exec
 ];
 
 const EXCEPTIONS_CRANELIFT: &[(&str, &str)] = &[
@@ -85,17 +87,21 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "atty",
     "autocfg",
     "bitflags",
+    "bindgen",
     "block-buffer",
     "block-padding",
     "byte-tools",
     "byteorder",
     "cc",
+    "cexpr",
     "cfg-if",
     "chalk-derive",
     "chalk-engine",
     "chalk-ir",
     "chalk-solve",
     "chrono",
+    "clang-sys",
+    "clap",
     "cmake",
     "compiler_builtins",
     "cpufeatures",
@@ -126,6 +132,7 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "getopts",
     "getrandom",
     "gimli",
+    "glob",
     "gsgdt",
     "hashbrown",
     "hermit-abi",
@@ -138,6 +145,7 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "itertools",
     "itoa",
     "jobserver",
+    "lazycell",
     "lazy_static",
     "libc",
     "libloading",
@@ -151,6 +159,7 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "memmap2",
     "memoffset",
     "miniz_oxide",
+    "nom",
     "num-integer",
     "num-traits",
     "num_cpus",
@@ -161,6 +170,7 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "parking_lot",
     "parking_lot_core",
     "pathdiff",
+    "peeking_take_while",
     "perf-event-open-sys",
     "petgraph",
     "pin-project-lite",
@@ -202,15 +212,18 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "sha-1",
     "sha2",
     "sharded-slab",
+    "shlex",
     "smallvec",
     "snap",
     "stable_deref_trait",
     "stacker",
+    "strsim",
     "syn",
     "synstructure",
     "tempfile",
     "termcolor",
     "termize",
+    "textwrap",
     "thiserror",
     "thiserror-impl",
     "thorin-dwp",
@@ -241,15 +254,20 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "unicode-width",
     "unicode-xid",
     "vcpkg",
+    "vec_map",
     "version_check",
     "wasi",
+    "which",
     "winapi",
     "winapi-i686-pc-windows-gnu",
     "winapi-util",
     "winapi-x86_64-pc-windows-gnu",
+    "yaml-rust",
     // this is a false-positive: it's only used by rustfmt, but because it's enabled through a
     // feature, tidy thinks it's used by rustc as well.
     "yansi-term",
+    "z3",
+    "z3-sys",
 ];
 
 const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[

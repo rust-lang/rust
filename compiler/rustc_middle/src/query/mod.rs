@@ -877,6 +877,18 @@ rustc_queries! {
         }
     }
 
+    query mir_symbolic_exec(key: LocalDefId) -> () {
+        desc { |tcx| "running symbolic executor `{}`", tcx.def_path_str(key.to_def_id()) }
+        cache_on_disk_if(tcx) { tcx.is_typeck_child(key.to_def_id()) }
+    }
+
+    query mir_symbolic_exec_const_arg(key: (LocalDefId, DefId)) -> () {
+        desc {
+            |tcx| "running symbolic executor with the const argument`{}`",
+            tcx.def_path_str(key.0.to_def_id())
+        }
+    }
+
     /// Gets a complete map from all types to their inherent impls.
     /// Not meant to be used directly outside of coherence.
     query crate_inherent_impls(k: ()) -> CrateInherentImpls {
