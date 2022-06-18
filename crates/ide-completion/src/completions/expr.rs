@@ -14,7 +14,9 @@ pub(crate) fn complete_expr_path(
     path_ctx: &PathCompletionCtx,
 ) {
     let _p = profile::span("complete_expr_path");
-
+    if !ctx.qualifier_ctx.none() {
+        return;
+    }
     let (
         qualified,
         in_block_expr,
@@ -23,6 +25,7 @@ pub(crate) fn complete_expr_path(
         after_if_expr,
         wants_mut_token,
         in_condition,
+        ty,
     ) = match path_ctx {
         &PathCompletionCtx {
             kind:
@@ -33,10 +36,12 @@ pub(crate) fn complete_expr_path(
                     in_condition,
                     ref ref_expr_parent,
                     ref is_func_update,
+                    ref innermost_ret_ty,
+                    ..
                 },
             ref qualified,
             ..
-        } if ctx.qualifier_ctx.none() => (
+        } => (
             qualified,
             in_block_expr,
             in_loop_body,
@@ -44,6 +49,7 @@ pub(crate) fn complete_expr_path(
             after_if_expr,
             ref_expr_parent.as_ref().map(|it| it.mut_token().is_none()).unwrap_or(false),
             in_condition,
+            innermost_ret_ty,
         ),
         _ => return,
     };
@@ -252,10 +258,10 @@ pub(crate) fn complete_expr_path(
                     }
                 }
 
-                if let Some(fn_def) = &ctx.function_def {
+                if let Some(ty) = ty {
                     add_keyword(
                         "return",
-                        match (in_block_expr, fn_def.ret_type().is_some()) {
+                        match (in_block_expr, ty.is_unit()) {
                             (true, true) => "return ;",
                             (true, false) => "return;",
                             (false, true) => "return $0",

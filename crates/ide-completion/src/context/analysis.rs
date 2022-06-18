@@ -404,18 +404,6 @@ impl<'a> CompletionContext<'a> {
                 ast::Item::Impl(impl_) => Some(impl_),
                 _ => None,
             });
-        self.function_def = self
-            .sema
-            .token_ancestors_with_macros(self.token.clone())
-            .take_while(|it| {
-                it.kind() != SyntaxKind::SOURCE_FILE && it.kind() != SyntaxKind::MODULE
-            })
-            .filter_map(ast::Item::cast)
-            .take(2)
-            .find_map(|it| match it {
-                ast::Item::Fn(fn_) => Some(fn_),
-                _ => None,
-            });
 
         match name_like {
             ast::NameLike::Lifetime(lifetime) => {
@@ -727,6 +715,56 @@ impl<'a> CompletionContext<'a> {
             let after_if_expr = after_if_expr(it.clone());
             let ref_expr_parent =
                 path.as_single_name_ref().and_then(|_| it.parent()).and_then(ast::RefExpr::cast);
+            let (innermost_ret_ty, self_param) = {
+                let find_ret_ty = |it: SyntaxNode| {
+                    if let Some(item) = ast::Item::cast(it.clone()) {
+                        match item {
+                            ast::Item::Fn(f) => {
+                                Some(sema.to_def(&f).map(|it| it.ret_type(sema.db)))
+                            }
+                            ast::Item::MacroCall(_) => None,
+                            _ => Some(None),
+                        }
+                    } else {
+                        let expr = ast::Expr::cast(it)?;
+                        let callable = match expr {
+                            // FIXME
+                            // ast::Expr::BlockExpr(b) if b.async_token().is_some() || b.try_token().is_some() => sema.type_of_expr(b),
+                            ast::Expr::ClosureExpr(_) => sema.type_of_expr(&expr),
+                            _ => return None,
+                        };
+                        Some(
+                            callable
+                                .and_then(|c| c.adjusted().as_callable(sema.db))
+                                .map(|it| it.return_type()),
+                        )
+                    }
+                };
+                let find_fn_self_param = |it| match it {
+                    ast::Item::Fn(fn_) => {
+                        Some(sema.to_def(&fn_).and_then(|it| it.self_param(sema.db)))
+                    }
+                    ast::Item::MacroCall(_) => None,
+                    _ => Some(None),
+                };
+
+                match dbg!(find_node_in_file_compensated(original_file, &expr)) {
+                    Some(it) => {
+                        let innermost_ret_ty = sema
+                            .ancestors_with_macros(it.syntax().clone())
+                            .find_map(find_ret_ty)
+                            .flatten();
+
+                        let self_param = sema
+                            .ancestors_with_macros(it.syntax().clone())
+                            .filter_map(ast::Item::cast)
+                            .find_map(find_fn_self_param)
+                            .flatten();
+                        (innermost_ret_ty, self_param)
+                    }
+                    None => (None, None),
+                }
+            };
             let is_func_update = func_update_record(it);
             let in_condition = is_in_condition(&expr);
 
@@ -737,6 +775,8 @@ impl<'a> CompletionContext<'a> {
                 in_condition,
                 ref_expr_parent,
                 is_func_update,
+                innermost_ret_ty,
+                self_param,
             }
         };
         let make_path_kind_type = |ty: ast::Type| {

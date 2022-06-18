@@ -95,6 +95,8 @@ pub(super) enum PathKind {
         in_condition: bool,
         ref_expr_parent: Option<ast::RefExpr>,
         is_func_update: Option<ast::RecordExpr>,
+        self_param: Option<hir::SelfParam>,
+        innermost_ret_ty: Option<hir::Type>,
     },
     Type {
         location: TypeLocation,
@@ -317,9 +319,6 @@ pub(crate) struct CompletionContext<'a> {
     /// The expected type of what we are completing.
     pub(super) expected_type: Option<Type>,
 
-    /// The parent function of the cursor position if it exists.
-    // FIXME: This probably doesn't belong here
-    pub(super) function_def: Option<ast::Fn>,
     /// The parent impl of the cursor position if it exists.
     // FIXME: This probably doesn't belong here
     pub(super) impl_def: Option<ast::Impl>,
@@ -500,7 +499,6 @@ impl<'a> CompletionContext<'a> {
             module,
             expected_name: None,
             expected_type: None,
-            function_def: None,
             impl_def: None,
             incomplete_let: false,
             previous_token: None,
