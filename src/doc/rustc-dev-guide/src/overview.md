@@ -83,9 +83,9 @@ try to recover, parsing a superset of Rust's grammar, while also emitting an err
 
 ### HIR lowering
 
-We next take the AST and convert it to [High-Level Intermediate
+Next, we take the AST and convert it to [High-Level Intermediate
 Representation (HIR)][hir], a more compiler-friendly representation of the
-AST. This process called "lowering". It involves a lot of desugaring of things
+AST. This process is called "lowering". It involves a lot of desugaring of things
 like loops and `async fn`.
 
 We then use the HIR to do [*type inference*] (the process of automatic
