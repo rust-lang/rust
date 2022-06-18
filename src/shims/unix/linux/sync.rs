@@ -126,28 +126,63 @@ pub fn futex<'tcx>(
                 Align::from_bytes(4).unwrap(),
                 CheckInAllocMsg::MemoryAccessTest,
             )?;
+            // There may be a concurrent thread changing the value of addr
+            // and then invoking the FUTEX_WAKE syscall. It is critical that the
+            // effects of this and the other thread are correctly observed,
+            // otherwise we will deadlock.
+            //
+            // There are two scenarios to consider:
+            // 1. If we (FUTEX_WAIT) execute first, we'll push ourselves into
+            //    the waiters queue and go to sleep. They (addr write & FUTEX_WAKE)
+            //    will see us in the queue and wake us up.
+            // 2. If they (addr write & FUTEX_WAKE) execute first, we must observe
+            //    addr's new value. If we see an outdated value that happens to equal
+            //    the expected val, then we'll put ourselves to sleep with no one to wake us
+            //    up, so we end up with a deadlock. This is prevented by having a SeqCst
+            //    fence inside FUTEX_WAKE syscall, and another SeqCst fence
+            //    below, the atomic read on addr after the SeqCst fence is guaranteed
+            //    not to see any value older than the addr write immediately before
+            //    calling FUTEX_WAKE. We'll see futex_val != val and return without
+            //    sleeping.
+            //
+            //    Note that the fences do not create any happens-before relationship.
+            //    The read sees the write immediately before the fence not because
+            //    one happens after the other, but is instead due to a guarantee unique
+            //    to SeqCst fences that restricts what an atomic read placed AFTER the
+            //    fence can see. The read still has to be atomic, otherwise it's a data
+            //    race. This guarantee cannot be achieved with acquire-release fences
+            //    since they only talk about reads placed BEFORE a fence - and places
+            //    no restrictions on what the read itself can see, only that there is
+            //    a happens-before between the fences IF the read happens to see the
+            //    right value. This is useless to us, since we need the read itself
+            //    to see an up-to-date value.
+            //
+            // The above case distinction is valid since both FUTEX_WAIT and FUTEX_WAKE
+            // contain a SeqCst fence, therefore inducting a total order between the operations.
+            // It is also critical that the fence, the atomic load, and the comparison in FUTEX_WAIT
+            // altogether happen atomically. If the other thread's fence in FUTEX_WAKE
+            // gets interleaved after our fence, then we lose the guarantee on the
+            // atomic load being up-to-date; if the other thread's write on addr and FUTEX_WAKE
+            // call are interleaved after the load but before the comparison, then we get a TOCTOU
+            // race condition, and go to sleep thinking the other thread will wake us up,
+            // even though they have already finished.
+            //
+            // Thankfully, preemptions cannot happen inside a Miri shim, so we do not need to
+            // do anything special to guarantee fence-load-comparison atomicity.
+            this.atomic_fence(&[], AtomicFenceOp::SeqCst)?;
             // Read an `i32` through the pointer, regardless of any wrapper types.
             // It's not uncommon for `addr` to be passed as another type than `*mut i32`, such as `*const AtomicI32`.
             // FIXME: this fails if `addr` is not a pointer type.
-            // The atomic ordering for futex(https://man7.org/linux/man-pages/man2/futex.2.html):
-            //  "The load of the value of the futex word is an
-            //   atomic memory access (i.e., using atomic machine instructions
-            //   of the respective architecture).  This load, the comparison
-            //   with the expected value, and starting to sleep are performed
-            //   atomically and totally ordered with respect to other futex
-            //   operations on the same futex word."
-            // SeqCst is total order over all operations.
-            // FIXME: check if this should be changed when weak memory orders are added.
             let futex_val = this
                 .read_scalar_at_offset_atomic(
                     &addr.into(),
                     0,
                     this.machine.layouts.i32,
-                    AtomicReadOp::SeqCst,
+                    AtomicReadOp::Relaxed,
                 )?
                 .to_i32()?;
             if val == futex_val {
-                // The value still matches, so we block the trait make it wait for FUTEX_WAKE.
+                // The value still matches, so we block the thread make it wait for FUTEX_WAKE.
                 this.block_thread(thread);
                 this.futex_wait(addr_usize, thread, bitset);
                 // Succesfully waking up from FUTEX_WAIT always returns zero.
@@ -203,6 +238,10 @@ pub fn futex<'tcx>(
                 this.write_scalar(Scalar::from_machine_isize(-1, this), dest)?;
                 return Ok(());
             }
+            // Together with the SeqCst fence in futex_wait, this makes sure that futex_wait
+            // will see the latest value on addr which could be changed by our caller
+            // before doing the syscall.
+            this.atomic_fence(&[], AtomicFenceOp::SeqCst)?;
             let mut n = 0;
             for _ in 0..val {
                 if let Some(thread) = this.futex_wake(addr_usize, bitset) {

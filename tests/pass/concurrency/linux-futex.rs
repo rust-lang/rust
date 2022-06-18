@@ -6,6 +6,8 @@ extern crate libc;
 
 use std::mem::MaybeUninit;
 use std::ptr;
+use std::sync::atomic::AtomicI32;
+use std::sync::atomic::Ordering;
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -206,6 +208,47 @@ fn wait_wake_bitset() {
     t.join().unwrap();
 }
 
+const FREE: i32 = 0;
+const HELD: i32 = 1;
+fn concurrent_wait_wake() {
+    static FUTEX: AtomicI32 = AtomicI32::new(0);
+    for _ in 0..20 {
+        // Suppose the main thread is holding a lock implemented using futex...
+        FUTEX.store(HELD, Ordering::Relaxed);
+
+        let t = thread::spawn(move || {
+            // If this syscall runs first, then we'll be woken up by
+            // the main thread's FUTEX_WAKE, and all is fine.
+            //
+            // If this sycall runs after the main thread's store
+            // and FUTEX_WAKE, the syscall must observe that
+            // the FUTEX is FREE != HELD and return without waiting
+            // or we'll deadlock.
+            unsafe {
+                libc::syscall(
+                    libc::SYS_futex,
+                    &FUTEX as *const AtomicI32,
+                    libc::FUTEX_WAIT,
+                    HELD,
+                    ptr::null::<libc::timespec>(),
+                );
+            }
+        });
+
+        FUTEX.store(FREE, Ordering::Relaxed);
+        unsafe {
+            libc::syscall(
+                libc::SYS_futex,
+                &FUTEX as *const AtomicI32,
+                libc::FUTEX_WAKE,
+                1,
+            );
+        }
+
+        t.join().unwrap();
+    }
+}
+
 fn main() {
     wake_nobody();
     wake_dangling();
@@ -214,4 +257,5 @@ fn main() {
     wait_absolute_timeout();
     wait_wake();
     wait_wake_bitset();
+    concurrent_wait_wake();
 }
