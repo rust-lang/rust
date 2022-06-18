@@ -372,11 +372,13 @@ fn eq_stmts(
 }
 
 fn contains_acceptable_macro(cx: &LateContext<'_>, block: &Block<'_>) -> bool {
-    for stmt in block.stmts {
-        match stmt.kind {
-            StmtKind::Semi(semi_expr) if acceptable_macro(cx, semi_expr) => return true,
-            _ => {},
-        }
+    if block.stmts.first().map_or(false, |stmt|
+        matches!(
+            stmt.kind,
+            StmtKind::Semi(semi_expr) if acceptable_macro(cx, semi_expr)
+        )
+    ) {
+        return true;
     }
 
     if let Some(block_expr) = block.expr
