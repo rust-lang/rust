@@ -4,7 +4,6 @@ use crate::constrained_generic_params::{identify_constrained_generic_params, Par
 
 use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::sync::par_for_each_in;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -1861,10 +1860,10 @@ fn check_false_global_bounds(fcx: &FnCtxt<'_, '_>, mut span: Span, id: hir::HirI
 
 fn check_mod_type_wf(tcx: TyCtxt<'_>, module: LocalDefId) {
     let items = tcx.hir_module_items(module);
-    par_for_each_in(items.items(), |item| tcx.ensure().check_well_formed(item.def_id));
-    par_for_each_in(items.impl_items(), |item| tcx.ensure().check_well_formed(item.def_id));
-    par_for_each_in(items.trait_items(), |item| tcx.ensure().check_well_formed(item.def_id));
-    par_for_each_in(items.foreign_items(), |item| tcx.ensure().check_well_formed(item.def_id));
+    items.par_items(|item| tcx.ensure().check_well_formed(item.def_id));
+    items.par_impl_items(|item| tcx.ensure().check_well_formed(item.def_id));
+    items.par_trait_items(|item| tcx.ensure().check_well_formed(item.def_id));
+    items.par_foreign_items(|item| tcx.ensure().check_well_formed(item.def_id));
 }
 
 ///////////////////////////////////////////////////////////////////////////
