@@ -585,7 +585,6 @@ dependencies = [
  "textwrap 0.11.0",
  "unicode-width",
  "vec_map",
- "yaml-rust 0.3.5",
 ]
 
 [[package]]
@@ -1242,7 +1241,7 @@ name = "expand-yaml-anchors"
 version = "0.1.0"
 dependencies = [
  "yaml-merge-keys",
- "yaml-rust 0.4.4",
+ "yaml-rust",
 ]
 
 [[package]]
@@ -1862,7 +1861,7 @@ name = "installer"
 version = "0.0.0"
 dependencies = [
  "anyhow",
- "clap 2.34.0",
+ "clap 3.1.1",
  "flate2",
  "lazy_static",
  "num_cpus",
@@ -5892,14 +5891,8 @@ checksum = "fd236a7dc9bb598f349fe4a8754f49181fee50284daa15cd1ba652d722280004"
 dependencies = [
  "lazy_static",
  "thiserror",
- "yaml-rust 0.4.4",
+ "yaml-rust",
 ]
-
-[[package]]
-name = "yaml-rust"
-version = "0.3.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e66366e18dc58b46801afbf2ca7661a9f59cc8c5962c29892b6039b4f86fa992"
 
 [[package]]
 name = "yaml-rust"
