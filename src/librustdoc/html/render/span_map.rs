@@ -88,36 +88,48 @@ impl<'tcx> SpanMapVisitor<'tcx> {
 
     /// Adds the macro call into the span map. Returns `true` if the `span` was inside a macro
     /// expansion, whether or not it was added to the span map.
+    ///
+    /// The idea for the macro support is to check if the current `Span` comes from expansion. If
+    /// so, we loop until we find the macro definition by using `outer_expn_data` in a loop.
+    /// Finally, we get the information about the macro itself (`span` if "local", `DefId`
+    /// otherwise) and store it inside the span map.
     fn handle_macro(&mut self, span: Span) -> bool {
-        if span.from_expansion() {
-            let mut data = span.ctxt().outer_expn_data();
-            let mut call_site = data.call_site;
-            while call_site.from_expansion() {
-                data = call_site.ctxt().outer_expn_data();
-                call_site = data.call_site;
-            }
-
-            if let ExpnKind::Macro(MacroKind::Bang, macro_name) = data.kind {
-                let link_from_src = if let Some(macro_def_id) = data.macro_def_id {
-                    if macro_def_id.is_local() {
-                        LinkFromSrc::Local(clean::Span::new(data.def_site))
-                    } else {
-                        LinkFromSrc::External(macro_def_id)
-                    }
-                } else {
-                    return true;
-                };
-                let new_span = data.call_site;
-                let macro_name = macro_name.as_str();
-                // The "call_site" includes the whole macro with its "arguments". We only want
-                // the macro name.
-                let new_span = new_span.with_hi(new_span.lo() + BytePos(macro_name.len() as u32));
-                self.matches.insert(new_span, link_from_src);
-            }
-            true
-        } else {
-            false
+        if !span.from_expansion() {
+            return false;
         }
+        // So if the `span` comes from a macro expansion, we need to get the original
+        // macro's `DefId`.
+        let mut data = span.ctxt().outer_expn_data();
+        let mut call_site = data.call_site;
+        // Macros can expand to code containing macros, which will in turn be expanded, etc.
+        // So the idea here is to "go up" until we're back to code that was generated from
+        // macro expansion so that we can get the `DefId` of the original macro that was at the
+        // origin of this expansion.
+        while call_site.from_expansion() {
+            data = call_site.ctxt().outer_expn_data();
+            call_site = data.call_site;
+        }
+
+        let macro_name = match data.kind {
+            ExpnKind::Macro(MacroKind::Bang, macro_name) => macro_name,
+            // Even though we don't handle this kind of macro, this `data` still comes from
+            // expansion so we return `true` so we don't go any deeper in this code.
+            _ => return true,
+        };
+        let link_from_src = match data.macro_def_id {
+            Some(macro_def_id) if macro_def_id.is_local() => {
+                LinkFromSrc::Local(clean::Span::new(data.def_site))
+            }
+            Some(macro_def_id) => LinkFromSrc::External(macro_def_id),
+            None => return true,
+        };
+        let new_span = data.call_site;
+        let macro_name = macro_name.as_str();
+        // The "call_site" includes the whole macro with its "arguments". We only want
+        // the macro name.
+        let new_span = new_span.with_hi(new_span.lo() + BytePos(macro_name.len() as u32));
+        self.matches.insert(new_span, link_from_src);
+        true
     }
 }
 
@@ -175,7 +187,7 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
                 }
             }
         } else if self.handle_macro(expr.span) {
-            // We don't want to deeper into the macro.
+            // We don't want to go deeper into the macro.
             return;
         }
         intravisit::walk_expr(self, expr);

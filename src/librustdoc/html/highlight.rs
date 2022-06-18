@@ -103,7 +103,7 @@ fn write_code(
 ) {
     // This replace allows to fix how the code source with DOS backline characters is displayed.
     let src = src.replace("\r\n", "\n");
-    let mut closing_tag = "";
+    let mut closing_tags: Vec<&'static str> = Vec::new();
     Classifier::new(
         &src,
         edition,
@@ -113,8 +113,12 @@ fn write_code(
     .highlight(&mut |highlight| {
         match highlight {
             Highlight::Token { text, class } => string(out, Escape(text), class, &href_context),
-            Highlight::EnterSpan { class } => closing_tag = enter_span(out, class, &href_context),
-            Highlight::ExitSpan => exit_span(out, &closing_tag),
+            Highlight::EnterSpan { class } => {
+                closing_tags.push(enter_span(out, class, &href_context))
+            }
+            Highlight::ExitSpan => {
+                exit_span(out, closing_tags.pop().expect("ExitSpan without EnterSpan"))
+            }
         };
     });
 }
@@ -682,8 +686,10 @@ fn enter_span(
     klass: Class,
     href_context: &Option<HrefContext<'_, '_, '_>>,
 ) -> &'static str {
-    string_without_closing_tag(out, "", Some(klass), href_context)
-        .expect("no closing tag to close wrapper...")
+    string_without_closing_tag(out, "", Some(klass), href_context).expect(
+        "internal error: enter_span was called with Some(klass) but did not return a \
+            closing HTML tag",
+    )
 }
 
 /// Called at the end of a span of highlighted text.
@@ -718,6 +724,15 @@ fn string<T: Display>(
     }
 }
 
+/// This function writes `text` into `out` with some modifications depending on `klass`:
+///
+/// * If `klass` is `None`, `text` is written into `out` with no modification.
+/// * If `klass` is `Some` but `klass.get_span()` is `None`, it writes the text wrapped in a
+///   `<span>` with the provided `klass`.
+/// * If `klass` is `Some` and has a [`rustc_span::Span`], it then tries to generate a link (`<a>`
+///   element) by retrieving the link information from the `span_correspondance_map` that was filled
+///   in `span_map.rs::collect_spans_and_sources`. If it cannot retrieve the information, then it's
+///   the same as the second point (`klass` is `Some` but doesn't have a [`rustc_span::Span`]).
 fn string_without_closing_tag<T: Display>(
     out: &mut Buffer,
     text: T,
@@ -799,42 +814,55 @@ fn string_without_closing_tag<T: Display>(
     Some("</span>")
 }
 
-/// This function is to get the external macro path because they are not in the cache used n
+/// This function is to get the external macro path because they are not in the cache used in
 /// `href_with_root_path`.
 fn generate_macro_def_id_path(href_context: &HrefContext<'_, '_, '_>, def_id: DefId) -> String {
     let tcx = href_context.context.shared.tcx;
     let crate_name = tcx.crate_name(def_id.krate).to_string();
-    let cache = &href_context.context.cache();
+    let cache = href_context.context.cache();
 
     let relative = tcx.def_path(def_id).data.into_iter().filter_map(|elem| {
         // extern blocks have an empty name
         let s = elem.data.to_string();
         if !s.is_empty() { Some(s) } else { None }
     });
-    // Check to see if it is a macro 2.0 or built-in macro
-    let mut path = if matches!(
-        CStore::from_tcx(tcx).load_macro_untracked(def_id, tcx.sess),
-        LoadedMacro::MacroDef(def, _)
-            if matches!(&def.kind, ast::ItemKind::MacroDef(ast_def)
-                if !ast_def.macro_rules)
-    ) {
+    // Check to see if it is a macro 2.0 or built-in macro.
+    // More information in <https://rust-lang.github.io/rfcs/1584-macros.html>.
+    let is_macro_2 = match CStore::from_tcx(tcx).load_macro_untracked(def_id, tcx.sess) {
+        LoadedMacro::MacroDef(def, _) => {
+            // If `ast_def.macro_rules` is `true`, then it's not a macro 2.0.
+            matches!(&def.kind, ast::ItemKind::MacroDef(ast_def) if !ast_def.macro_rules)
+        }
+        _ => false,
+    };
+
+    let mut path = if is_macro_2 {
         once(crate_name.clone()).chain(relative).collect()
     } else {
-        vec![crate_name.clone(), relative.last().expect("relative was empty")]
+        vec![crate_name.clone(), relative.last().unwrap()]
     };
+    if path.len() < 2 {
+        // The minimum we can have is the crate name followed by the macro name. If shorter, then
+        // it means that that `relative` was empty, which is an error.
+        panic!("macro path cannot be empty!");
+    }
 
-    let url_parts = match cache.extern_locations[&def_id.krate] {
-        ExternalLocation::Remote(ref s) => vec![s.trim_end_matches('/')],
-        ExternalLocation::Local => vec![href_context.root_path.trim_end_matches('/'), &crate_name],
-        ExternalLocation::Unknown => panic!("unknown crate"),
-    };
+    if let Some(last) = path.last_mut() {
+        *last = format!("macro.{}.html", last);
+    }
 
-    let last = path.pop().unwrap();
-    let last = format!("macro.{}.html", last);
-    if path.is_empty() {
-        format!("{}/{}", url_parts.join("/"), last)
-    } else {
-        format!("{}/{}/{}", url_parts.join("/"), path.join("/"), last)
+    match cache.extern_locations[&def_id.krate] {
+        ExternalLocation::Remote(ref s) => {
+            // `ExternalLocation::Remote` always end with a `/`.
+            format!("{}{}", s, path.join("/"))
+        }
+        ExternalLocation::Local => {
+            // `href_context.root_path` always end with a `/`.
+            format!("{}{}/{}", href_context.root_path, crate_name, path.join("/"))
+        }
+        ExternalLocation::Unknown => {
+            panic!("crate {} not in cache when linkifying macros", crate_name)
+        }
     }
 }
 
