@@ -436,6 +436,17 @@ impl DefCollector<'_> {
         let mut unresolved_macros = mem::take(&mut self.unresolved_macros);
         let pos = unresolved_macros.iter().position(|directive| {
             if let MacroDirectiveKind::Attr { ast_id, mod_item, attr, tree } = &directive.kind {
+                self.def_map.diagnostics.push(DefDiagnostic::unresolved_proc_macro(
+                    directive.module_id,
+                    MacroCallKind::Attr {
+                        ast_id: ast_id.ast_id,
+                        attr_args: Default::default(),
+                        invoc_attr_index: attr.id.ast_index,
+                        is_derive: false,
+                    },
+                    None,
+                ));
+
                 self.skip_attrs.insert(ast_id.ast_id.with_value(*mod_item), attr.id);
 
                 let item_tree = tree.item_tree(self.db);
@@ -1135,19 +1146,7 @@ impl DefCollector<'_> {
 
                     let def = match resolver(path.clone()) {
                         Some(def) if def.is_attribute() => def,
-                        _ => {
-                            self.def_map.diagnostics.push(DefDiagnostic::unresolved_proc_macro(
-                                directive.module_id,
-                                MacroCallKind::Attr {
-                                    ast_id,
-                                    attr_args: Default::default(),
-                                    invoc_attr_index: attr.id.ast_index,
-                                    is_derive: false,
-                                },
-                                None,
-                            ));
-                            return true;
-                        }
+                        _ => return true,
                     };
                     if matches!(
                         def,
@@ -1389,9 +1388,8 @@ impl DefCollector<'_> {
                         ast_id.path.clone(),
                     ));
                 }
-                MacroDirectiveKind::Attr { .. } => {
-                    // FIXME: these should get diagnosed by `reseed_with_unresolved_attribute`
-                }
+                // These are diagnosed by `reseed_with_unresolved_attribute`, as that function consumes them
+                MacroDirectiveKind::Attr { .. } => {}
             }
         }
 
