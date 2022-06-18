@@ -456,7 +456,7 @@ impl<'a> CompletionContext<'a> {
                 ast::IdentPat(bind_pat) => {
                     let mut pat_ctx = pattern_context_for(sema, original_file, bind_pat.into());
                     if let Some(record_field) = ast::RecordPatField::for_field_name(&name) {
-                        pat_ctx.record_pat = find_node_in_file_compensated(original_file, &record_field.parent_record_pat());
+                        pat_ctx.record_pat = find_node_in_file_compensated(sema, original_file, &record_field.parent_record_pat());
                     }
 
                     NameKind::IdentPat(pat_ctx)
@@ -493,9 +493,13 @@ impl<'a> CompletionContext<'a> {
             |kind| (NameRefContext { nameref: nameref.clone(), kind }, Default::default());
 
         if let Some(record_field) = ast::RecordExprField::for_field_name(&name_ref) {
-            return find_node_in_file_compensated(original_file, &record_field.parent_record_lit())
-                .map(NameRefKind::RecordExpr)
-                .map(make_res);
+            return find_node_in_file_compensated(
+                sema,
+                original_file,
+                &record_field.parent_record_lit(),
+            )
+            .map(NameRefKind::RecordExpr)
+            .map(make_res);
         }
         if let Some(record_field) = ast::RecordPatField::for_field_name_ref(&name_ref) {
             let kind = NameRefKind::Pattern(PatternContext {
@@ -504,6 +508,7 @@ impl<'a> CompletionContext<'a> {
                 ref_token: None,
                 mut_token: None,
                 record_pat: find_node_in_file_compensated(
+                    sema,
                     original_file,
                     &record_field.parent_record_pat(),
                 ),
@@ -568,7 +573,7 @@ impl<'a> CompletionContext<'a> {
         };
         let func_update_record = |syn: &SyntaxNode| {
             if let Some(record_expr) = syn.ancestors().nth(2).and_then(ast::RecordExpr::cast) {
-                find_node_in_file_compensated(original_file, &record_expr)
+                find_node_in_file_compensated(sema, original_file, &record_expr)
             } else {
                 None
             }
@@ -670,9 +675,9 @@ impl<'a> CompletionContext<'a> {
                     ast::TypeBound(_) => TypeLocation::TypeBound,
                     // is this case needed?
                     ast::TypeBoundList(_) => TypeLocation::TypeBound,
-                    ast::GenericArg(it) => TypeLocation::GenericArgList(find_opt_node_in_file_compensated(original_file, it.syntax().parent().and_then(ast::GenericArgList::cast))),
+                    ast::GenericArg(it) => TypeLocation::GenericArgList(find_opt_node_in_file_compensated(sema, original_file, it.syntax().parent().and_then(ast::GenericArgList::cast))),
                     // is this case needed?
-                    ast::GenericArgList(it) => TypeLocation::GenericArgList(find_opt_node_in_file_compensated(original_file, Some(it))),
+                    ast::GenericArgList(it) => TypeLocation::GenericArgList(find_opt_node_in_file_compensated(sema, original_file, Some(it))),
                     ast::TupleField(_) => TypeLocation::TupleField,
                     _ => return None,
                 }
@@ -734,7 +739,7 @@ impl<'a> CompletionContext<'a> {
                     _ => Some(None),
                 };
 
-                match dbg!(find_node_in_file_compensated(original_file, &expr)) {
+                match find_node_in_file_compensated(sema, original_file, &expr) {
                     Some(it) => {
                         let innermost_ret_ty = sema
                             .ancestors_with_macros(it.syntax().clone())
@@ -757,7 +762,7 @@ impl<'a> CompletionContext<'a> {
                 .parent()
                 .and_then(ast::LetStmt::cast)
                 .map_or(false, |it| it.semicolon_token().is_none());
-            let impl_ = fetch_immediate_impl(sema, original_file, &expr);
+            let impl_ = fetch_immediate_impl(sema, original_file, expr.syntax());
 
             PathKind::Expr {
                 in_block_expr,
@@ -826,7 +831,7 @@ impl<'a> CompletionContext<'a> {
                                         match it {
                                             ast::Trait(_) => ItemListKind::Trait,
                                             ast::Impl(it) => if it.trait_().is_some() {
-                                                ItemListKind::TraitImpl(find_node_in_file_compensated(original_file, &it))
+                                                ItemListKind::TraitImpl(find_node_in_file_compensated(sema, original_file, &it))
                                             } else {
                                                 ItemListKind::Impl
                                             },
@@ -983,7 +988,7 @@ fn pattern_context_for(
                         let has_type_ascription = param.ty().is_some();
                         is_param = (|| {
                             let fake_param_list = param.syntax().parent().and_then(ast::ParamList::cast)?;
-                            let param_list = find_node_in_file_compensated(original_file, &fake_param_list)?;
+                            let param_list = find_node_in_file_compensated(sema, original_file, &fake_param_list)?;
                             let param_list_owner = param_list.syntax().parent()?;
                             let kind = match_ast! {
                                 match param_list_owner {
@@ -1017,42 +1022,25 @@ fn pattern_context_for(
         mut_token,
         ref_token,
         record_pat: None,
-        impl_: fetch_immediate_impl(sema, original_file, &pat),
+        impl_: fetch_immediate_impl(sema, original_file, pat.syntax()),
     }
 }
 
 fn fetch_immediate_impl(
     sema: &Semantics<RootDatabase>,
     original_file: &SyntaxNode,
-    node: &impl AstNode,
+    node: &SyntaxNode,
 ) -> Option<ast::Impl> {
-    // FIXME: The fallback here could be done better
-    let (f, s) = match find_node_in_file_compensated(original_file, node) {
-        Some(node) => {
-            let mut items = sema
-                .ancestors_with_macros(node.syntax().clone())
-                .filter_map(ast::Item::cast)
-                .filter(|it| !matches!(it, ast::Item::MacroCall(_)))
-                .take(2);
-            (items.next(), items.next())
-        }
-        None => {
-            let mut items = node
-                .syntax()
-                .ancestors()
-                .filter_map(ast::Item::cast)
-                .filter(|it| !matches!(it, ast::Item::MacroCall(_)))
-                .take(2);
-            (items.next(), items.next())
-        }
-    };
+    let mut ancestors = ancestors_in_file_compensated(sema, original_file, node)?
+        .filter_map(ast::Item::cast)
+        .filter(|it| !matches!(it, ast::Item::MacroCall(_)));
 
-    match f? {
+    match ancestors.next()? {
         ast::Item::Const(_) | ast::Item::Fn(_) | ast::Item::TypeAlias(_) => (),
         ast::Item::Impl(it) => return Some(it),
         _ => return None,
     }
-    match s? {
+    match ancestors.next()? {
         ast::Item::Impl(it) => Some(it),
         _ => None,
     }
@@ -1076,9 +1064,21 @@ fn find_node_in_file<N: AstNode>(syntax: &SyntaxNode, node: &N) -> Option<N> {
 /// Attempts to find `node` inside `syntax` via `node`'s text range while compensating
 /// for the offset introduced by the fake ident.
 /// This is wrong if `node` comes before the insertion point! Use `find_node_in_file` instead.
-fn find_node_in_file_compensated<N: AstNode>(syntax: &SyntaxNode, node: &N) -> Option<N> {
-    let syntax_range = syntax.text_range();
-    let range = node.syntax().text_range();
+fn find_node_in_file_compensated<N: AstNode>(
+    sema: &Semantics<RootDatabase>,
+    in_file: &SyntaxNode,
+    node: &N,
+) -> Option<N> {
+    ancestors_in_file_compensated(sema, in_file, node.syntax())?.find_map(N::cast)
+}
+
+fn ancestors_in_file_compensated<'sema>(
+    sema: &'sema Semantics<RootDatabase>,
+    in_file: &SyntaxNode,
+    node: &SyntaxNode,
+) -> Option<impl Iterator<Item = SyntaxNode> + 'sema> {
+    let syntax_range = in_file.text_range();
+    let range = node.text_range();
     let end = range.end().checked_sub(TextSize::try_from(COMPLETION_MARKER.len()).ok()?)?;
     if end < range.start() {
         return None;
@@ -1086,17 +1086,22 @@ fn find_node_in_file_compensated<N: AstNode>(syntax: &SyntaxNode, node: &N) -> O
     let range = TextRange::new(range.start(), end);
     // our inserted ident could cause `range` to go outside of the original syntax, so cap it
     let intersection = range.intersect(syntax_range)?;
-    syntax.covering_element(intersection).ancestors().find_map(N::cast)
+    let node = match in_file.covering_element(intersection) {
+        NodeOrToken::Node(node) => node,
+        NodeOrToken::Token(tok) => tok.parent()?,
+    };
+    Some(sema.ancestors_with_macros(node))
 }
 
 /// Attempts to find `node` inside `syntax` via `node`'s text range while compensating
 /// for the offset introduced by the fake ident..
 /// This is wrong if `node` comes before the insertion point! Use `find_node_in_file` instead.
 fn find_opt_node_in_file_compensated<N: AstNode>(
+    sema: &Semantics<RootDatabase>,
     syntax: &SyntaxNode,
     node: Option<N>,
 ) -> Option<N> {
-    find_node_in_file_compensated(syntax, &node?)
+    find_node_in_file_compensated(sema, syntax, &node?)
 }
 
 fn path_or_use_tree_qualifier(path: &ast::Path) -> Option<(ast::Path, bool)> {
