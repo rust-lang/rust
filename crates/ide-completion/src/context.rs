@@ -85,7 +85,7 @@ impl PathCompletionCtx {
 }
 
 /// The kind of path we are completing right now.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 pub(super) enum PathKind {
     Expr {
         in_block_expr: bool,
@@ -110,7 +110,9 @@ pub(super) enum PathKind {
     Item {
         kind: ItemListKind,
     },
-    Pat,
+    Pat {
+        pat_ctx: PatternContext,
+    },
     Vis {
         has_in_token: bool,
     },
@@ -164,7 +166,7 @@ pub(super) enum Qualified {
 }
 
 /// The state of the pattern we are completing.
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct PatternContext {
     pub(super) refutability: PatternRefutability,
     pub(super) param_ctx: Option<(ast::ParamList, ast::Param, ParamKind)>,
@@ -208,7 +210,7 @@ pub(super) enum NameKind {
     ConstParam,
     Enum,
     Function,
-    IdentPat,
+    IdentPat(PatternContext),
     MacroDef,
     MacroRules,
     /// Fake node
@@ -230,8 +232,7 @@ pub(super) enum NameKind {
 pub(super) struct NameRefContext {
     /// NameRef syntax in the original file
     pub(super) nameref: Option<ast::NameRef>,
-    // FIXME: This shouldn't be an Option
-    pub(super) kind: Option<NameRefKind>,
+    pub(super) kind: NameRefKind,
 }
 
 /// The kind of the NameRef we are completing.
@@ -243,6 +244,7 @@ pub(super) enum NameRefKind {
     Keyword(ast::Item),
     /// The record expression this nameref is a field of
     RecordExpr(ast::RecordExpr),
+    Pattern(PatternContext),
 }
 
 /// The identifier we are currently completing.
@@ -330,7 +332,6 @@ pub(crate) struct CompletionContext<'a> {
 
     // We might wanna split these out of CompletionContext
     pub(super) ident_ctx: IdentContext,
-    pub(super) pattern_ctx: Option<PatternContext>,
     pub(super) qualifier_ctx: QualifierCtx,
 
     pub(super) locals: FxHashMap<Name, Local>,
@@ -505,7 +506,6 @@ impl<'a> CompletionContext<'a> {
             previous_token: None,
             // dummy value, will be overwritten
             ident_ctx: IdentContext::UnexpandedAttrTT { fake_attribute_under_caret: None },
-            pattern_ctx: None,
             qualifier_ctx: Default::default(),
             locals,
         };

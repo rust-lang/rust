@@ -1,7 +1,7 @@
 use expect_test::{expect, Expect};
 
 use crate::{
-    context::NameRefKind,
+    context::{IdentContext, NameContext, NameKind, NameRefKind},
     tests::{check_edit, check_edit_with_config, TEST_CONFIG},
 };
 
@@ -11,16 +11,21 @@ fn check(ra_fixture: &str, expect: Expect) {
     let ctx = crate::context::CompletionContext::new(&db, position, &config).unwrap();
 
     let mut acc = crate::completions::Completions::default();
-    if let Some(pattern_ctx) = &ctx.pattern_ctx {
-        crate::completions::flyimport::import_on_the_fly_pat(&mut acc, &ctx, pattern_ctx);
+    if let IdentContext::Name(NameContext { kind: NameKind::IdentPat(pat_ctx), .. }) =
+        &ctx.ident_ctx
+    {
+        crate::completions::flyimport::import_on_the_fly_pat(&mut acc, &ctx, pat_ctx);
     }
-    if let crate::context::IdentContext::NameRef(name_ref_ctx) = &ctx.ident_ctx {
+    if let IdentContext::NameRef(name_ref_ctx) = &ctx.ident_ctx {
         match &name_ref_ctx.kind {
-            Some(NameRefKind::Path(path)) => {
+            NameRefKind::Path(path) => {
                 crate::completions::flyimport::import_on_the_fly_path(&mut acc, &ctx, path);
             }
-            Some(NameRefKind::DotAccess(dot_access)) => {
+            NameRefKind::DotAccess(dot_access) => {
                 crate::completions::flyimport::import_on_the_fly_dot(&mut acc, &ctx, dot_access);
+            }
+            NameRefKind::Pattern(pattern) => {
+                crate::completions::flyimport::import_on_the_fly_pat(&mut acc, &ctx, pattern);
             }
             _ => (),
         }

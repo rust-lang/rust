@@ -20,12 +20,12 @@ pub(crate) fn complete_use_tree(
     let (qualified, name_ref, use_tree_parent) = match name_ref_ctx {
         NameRefContext {
             kind:
-                Some(NameRefKind::Path(PathCompletionCtx {
+                NameRefKind::Path(PathCompletionCtx {
                     kind: PathKind::Use,
                     qualified,
                     use_tree_parent,
                     ..
-                })),
+                }),
             nameref,
             ..
         } => (qualified, nameref, use_tree_parent),

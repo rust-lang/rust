@@ -107,7 +107,7 @@ pub(crate) fn pattern_path_completion(
     ctx: &CompletionContext,
     PathCompletionCtx { qualified, kind, .. }: &PathCompletionCtx,
 ) {
-    if !matches!(kind, PathKind::Pat) {
+    if !matches!(kind, PathKind::Pat { .. }) {
         return;
     }
     match qualified {

@@ -7,7 +7,8 @@ use syntax::SmolStr;
 
 use crate::{
     context::{
-        IdentContext, NameRefContext, NameRefKind, ParamKind, PathCompletionCtx, PatternContext,
+        IdentContext, NameContext, NameKind, NameRefContext, NameRefKind, ParamKind,
+        PathCompletionCtx, PathKind, PatternContext,
     },
     render::{variant::visible_fields, RenderContext},
     CompletionItem, CompletionItemKind,
@@ -82,7 +83,7 @@ fn render_pat(
     let has_call_parens = matches!(
         ctx.completion.ident_ctx,
         IdentContext::NameRef(NameRefContext {
-            kind: Some(NameRefKind::Path(PathCompletionCtx { has_call_parens: true, .. })),
+            kind: NameRefKind::Path(PathCompletionCtx { has_call_parens: true, .. }),
             ..
         })
     );
@@ -97,14 +98,27 @@ fn render_pat(
         _ => name.to_owned(),
     };
 
-    if matches!(
-        ctx.completion.pattern_ctx,
-        Some(PatternContext {
-            param_ctx: Some((.., ParamKind::Function(_))),
-            has_type_ascription: false,
-            ..
-        }) if !has_call_parens
-    ) {
+    let needs_ascription = !has_call_parens
+        && matches!(
+            &ctx.completion.ident_ctx,
+            IdentContext::NameRef(NameRefContext {
+                kind: NameRefKind::Path(PathCompletionCtx {
+                    kind: PathKind::Pat {
+                        pat_ctx
+                    },
+                    ..
+                }),
+                ..
+            }) | IdentContext::Name(NameContext {
+                kind: NameKind::IdentPat(pat_ctx), ..}
+            )
+            if matches!(pat_ctx, PatternContext {
+                param_ctx: Some((.., ParamKind::Function(_))),
+                has_type_ascription: false,
+                ..
+            })
+        );
+    if needs_ascription {
         pat.push(':');
         pat.push(' ');
         pat.push_str(name);

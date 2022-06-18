@@ -55,15 +55,14 @@ fn render(
     let mut kind = thing.kind(db);
     let should_add_parens = match &completion.ident_ctx {
         IdentContext::NameRef(NameRefContext {
-            kind: Some(NameRefKind::Path(PathCompletionCtx { has_call_parens: true, .. })),
+            kind: NameRefKind::Path(PathCompletionCtx { has_call_parens: true, .. }),
             ..
         }) => false,
         IdentContext::NameRef(NameRefContext {
             kind:
-                Some(NameRefKind::Path(PathCompletionCtx {
-                    kind: PathKind::Use | PathKind::Type { .. },
-                    ..
-                })),
+                NameRefKind::Path(PathCompletionCtx {
+                    kind: PathKind::Use | PathKind::Type { .. }, ..
+                }),
             ..
         }) => false,
         _ => true,
