@@ -92,7 +92,7 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
         Ok(())
     }
 
-    fn build(mut self) {
+    fn build(mut self) -> bool {
         enum BuilderKind {
             Bsd(ar::Builder<File>),
             Gnu(ar::GnuBuilder<File>),
@@ -191,6 +191,8 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
             )
         };
 
+        let any_members = !entries.is_empty();
+
         // Add all files
         for (entry_name, data) in entries.into_iter() {
             let header = ar::Header::new(entry_name, data.len() as u64);
@@ -216,6 +218,8 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
                 self.sess.fatal(&format!("Ranlib exited with code {:?}", status.code()));
             }
         }
+
+        any_members
     }
 
     fn inject_dll_import_lib(

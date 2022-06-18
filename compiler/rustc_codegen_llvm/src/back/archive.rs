@@ -97,13 +97,14 @@ impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
 
     /// Combine the provided files, rlibs, and native libraries into a single
     /// `Archive`.
-    fn build(mut self) {
+    fn build(mut self) -> bool {
         let kind = self.llvm_archive_kind().unwrap_or_else(|kind| {
             self.sess.fatal(&format!("Don't know how to build archive of type: {}", kind))
         });
 
-        if let Err(e) = self.build_with_llvm(kind) {
-            self.sess.fatal(&format!("failed to build archive: {}", e));
+        match self.build_with_llvm(kind) {
+            Ok(any_members) => any_members,
+            Err(e) => self.sess.fatal(&format!("failed to build archive: {}", e)),
         }
     }
 
@@ -270,7 +271,7 @@ impl<'a> LlvmArchiveBuilder<'a> {
         kind.parse().map_err(|_| kind)
     }
 
-    fn build_with_llvm(&mut self, kind: ArchiveKind) -> io::Result<()> {
+    fn build_with_llvm(&mut self, kind: ArchiveKind) -> io::Result<bool> {
         let mut additions = mem::take(&mut self.additions);
         let mut strings = Vec::new();
         let mut members = Vec::new();
@@ -353,7 +354,7 @@ impl<'a> LlvmArchiveBuilder<'a> {
                 };
                 Err(io::Error::new(io::ErrorKind::Other, msg))
             } else {
-                Ok(())
+                Ok(!members.is_empty())
             };
             for member in members {
                 llvm::LLVMRustArchiveMemberFree(member);

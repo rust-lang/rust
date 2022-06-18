@@ -50,7 +50,7 @@ pub trait ArchiveBuilder<'a> {
     where
         F: FnMut(&str) -> bool + 'static;
 
-    fn build(self);
+    fn build(self) -> bool;
 
     fn inject_dll_import_lib(
         &mut self,

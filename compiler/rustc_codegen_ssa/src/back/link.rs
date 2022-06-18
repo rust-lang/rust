@@ -2503,8 +2503,9 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
             }) {
                 sess.fatal(&format!("failed to build archive from rlib: {}", e));
             }
-            archive.build();
-            link_upstream(&dst);
+            if archive.build() {
+                link_upstream(&dst);
+            }
         });
     }
 
